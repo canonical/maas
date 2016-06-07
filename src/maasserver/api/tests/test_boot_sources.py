@@ -16,7 +16,11 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Contains,
+    MatchesStructure,
+    Not,
+)
 
 
 def get_boot_source_uri(boot_source):
@@ -60,9 +64,14 @@ class TestBootSourceAPI(APITestCase.ForUser):
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys())
+        # Remove created and updated that is handled by django.
+        del returned_boot_source['created']
+        del returned_boot_source['updated']
         self.assertThat(
             boot_source,
             MatchesStructure.byEquality(**returned_boot_source))
+        self.assertThat(
+            returned_boot_source['keyring_data'], Not(Contains("<memory at")))
 
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()

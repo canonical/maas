@@ -11,7 +11,6 @@ __all__ = [
 from base64 import b64encode
 import http.client
 
-from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
@@ -28,46 +27,22 @@ DISPLAYED_BOOTSOURCE_FIELDS = (
     'url',
     'keyring_filename',
     'keyring_data',
+    'created',
+    'updated',
 )
-
-
-def json_boot_source(boot_source, request):
-    """Convert boot_source into a json object.
-
-    Use the same fields used when serialising objects, but base64-encode
-    keyring_data.
-    """
-    dict_representation = {
-        fieldname: getattr(boot_source, fieldname)
-        for fieldname in DISPLAYED_BOOTSOURCE_FIELDS
-        }
-    # Encode the keyring_data as base64.
-    keyring_data = getattr(boot_source, 'keyring_data')
-    dict_representation['keyring_data'] = b64encode(keyring_data)
-    dict_representation['resource_uri'] = reverse(
-        'boot_source_handler',
-        args=[boot_source.id])
-    emitter = JSONEmitter(dict_representation, typemapper, None)
-    stream = emitter.render(request)
-    return stream
 
 
 class BootSourceHandler(OperationsHandler):
     """Manage a boot source."""
     api_doc_section_name = "Boot source"
-    create = replace = None
+    create = None
 
     model = BootSource
     fields = DISPLAYED_BOOTSOURCE_FIELDS
 
     def read(self, request, id):
         """Read a boot source."""
-        boot_source = get_object_or_404(
-            BootSource, id=id)
-        stream = json_boot_source(boot_source, request)
-        return HttpResponse(
-            stream, content_type='application/json; charset=utf-8',
-            status=int(http.client.OK))
+        return get_object_or_404(BootSource, id=id)
 
     def update(self, request, id):
         """Update a specific boot source.
@@ -95,6 +70,10 @@ class BootSourceHandler(OperationsHandler):
         return rc.DELETED
 
     @classmethod
+    def keyring_data(cls, boot_source):
+        return b64encode(boot_source.keyring_data)
+
+    @classmethod
     def resource_uri(cls, bootsource=None):
         if bootsource is None:
             id = 'id'
@@ -106,8 +85,7 @@ class BootSourceHandler(OperationsHandler):
 class BootSourcesHandler(OperationsHandler):
     """Manage the collection of boot sources."""
     api_doc_section_name = "Boot sources"
-
-    create = replace = update = delete = None
+    update = delete = None
 
     @classmethod
     def resource_uri(cls):
@@ -133,9 +111,12 @@ class BootSourcesHandler(OperationsHandler):
             data=request.data, files=request.FILES)
         if form.is_valid():
             boot_source = form.save()
-            stream = json_boot_source(boot_source, request)
+            handler = BootSourceHandler()
+            emitter = JSONEmitter(
+                boot_source, typemapper, handler, handler.fields, False)
             return HttpResponse(
-                stream, content_type='application/json; charset=utf-8',
+                emitter.render(request),
+                content_type="application/json; charset=utf-8",
                 status=int(http.client.CREATED))
         else:
             raise MAASAPIValidationError(form.errors)
