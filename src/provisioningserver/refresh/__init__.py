@@ -29,7 +29,7 @@ maaslog = get_maas_logger("refresh")
 def get_architecture():
     """Get the architecture of the running system."""
     try:
-        stdout = call_and_check('archdetect')
+        stdout = call_and_check('archdetect').decode('utf-8')
     except ExternalProcessError:
         return ''
     arch, subarch = stdout.strip().split('/')

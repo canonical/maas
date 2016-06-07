@@ -32,7 +32,7 @@ class TestHelpers(MAASTestCase):
         arch = random.choice(['i386', 'amd64', 'arm64', 'ppc64el'])
         subarch = factory.make_name('subarch')
         self.patch(refresh, 'call_and_check').return_value = (
-            "%s/%s" % (arch, subarch))
+            "%s/%s" % (arch, subarch)).encode('utf-8')
         ret_arch = refresh.get_architecture()
         self.assertEquals("%s/generic" % arch, ret_arch)
 
@@ -40,7 +40,8 @@ class TestHelpers(MAASTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         architecture = "%s/%s" % (arch, subarch)
-        self.patch(refresh, 'call_and_check').return_value = architecture
+        self.patch(refresh, 'call_and_check').return_value = (
+            architecture.encode('utf-8'))
         ret_arch = refresh.get_architecture()
         self.assertEquals(architecture, ret_arch)
 
