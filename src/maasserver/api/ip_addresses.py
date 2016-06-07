@@ -116,7 +116,7 @@ class IPAddressesHandler(OperationsHandler):
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 user=user)
             if hostname is not None and hostname != '':
-                dnsrr = DNSResource.objects.get_or_create(
+                dnsrr, _ = DNSResource.objects.get_or_create(
                     name=hostname, domain=domain)
                 dnsrr.ip_addresses.add(sip)
             maaslog.info(

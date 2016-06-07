@@ -15,7 +15,10 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.models import StaticIPAddress
+from maasserver.models import (
+    DNSResource,
+    StaticIPAddress,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -84,6 +87,32 @@ class TestIPAddressesAPI(APITestCase.ForUser):
         self.assertEqual(
             IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
         self.assertEqual(self.user, staticipaddress.user)
+
+    def test_POST_reserve_creates_dnsresource(self):
+        # The api doesn't autocreate the domain, so create one now.
+        domain = factory.make_Domain()
+        hostname = factory.make_name("host")
+        fqdn = "%s.%s" % (hostname, domain.name)
+        subnet = factory.make_Subnet()
+        response = self.post_reservation_request(subnet, hostname=fqdn)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_address = json_load_bytes(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        # We don't need to test the value of the 'created' datetime
+        # field. By removing it, we also test for its presence.
+        del returned_address['created']
+        del returned_address['subnet']
+        expected = dict(
+            alloc_type=staticipaddress.alloc_type,
+            ip=staticipaddress.ip,
+            resource_uri=reverse('ipaddresses_handler'),
+            )
+        self.assertEqual(expected, returned_address)
+        self.assertEqual(
+            IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
+        self.assertEqual(self.user, staticipaddress.user)
+        dnsrr = DNSResource.objects.get(name=hostname, domain=domain)
+        self.assertItemsEqual(dnsrr.ip_addresses.all(), [staticipaddress])
 
     def test_POST_reserve_with_MAC_links_MAC_to_ip_address(self):
         subnet = factory.make_Subnet()
