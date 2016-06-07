@@ -19,9 +19,9 @@ from provisioningserver.boot.tftppath import (
     list_boot_images,
 )
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.networks import get_interfaces_definition
 from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
+from provisioningserver.utils.network import get_all_interfaces_definition
 
 
 all_arguments = (
@@ -73,8 +73,7 @@ NETWORKING_DUMP = [
         "function": get_ip_route
     },
     {
-        "title": "get_interfaces_definition()",
-        "function": lambda: get_interfaces_definition()[0]
+        "function": get_all_interfaces_definition,
     },
 ]
 

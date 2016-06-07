@@ -33,7 +33,6 @@ from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.networks import get_interfaces_definition
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
@@ -71,6 +70,7 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
+from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -384,7 +384,7 @@ class Cluster(RPCProtocol):
         def perform_refresh():
             architecture = get_architecture()
             os_release = get_os_release()
-            interfaces, _ = get_interfaces_definition()
+            interfaces = get_all_interfaces_definition()
             return architecture, os_release, interfaces
 
         def cb_result(result):
@@ -555,7 +555,7 @@ class ClusterClient(Cluster):
             system_id = ''
 
         # Gather the interface definition and hostname.
-        interfaces, _ = get_interfaces_definition()
+        interfaces = get_all_interfaces_definition()
         hostname = gethostname().split('.')[0]
 
         def cb_register(data):
