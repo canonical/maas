@@ -1417,6 +1417,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
     def test__imports_resources_in_thread_if_auto(self):
         self.patch(bootresources, "_import_resources_in_thread")
+        self.patch(bootresources, "is_dev_environment").return_value = False
 
         with transaction.atomic():
             Config.objects.set_config('boot_images_auto_import', True)
@@ -1428,6 +1429,20 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
         self.assertThat(
             bootresources._import_resources_in_thread,
             MockCalledOnceWith())
+
+    def test__no_auto_import_if_dev(self):
+        self.patch(bootresources, "_import_resources_in_thread")
+
+        with transaction.atomic():
+            Config.objects.set_config('boot_images_auto_import', True)
+
+        service = bootresources.ImportResourcesService()
+        maybe_import_resources = asynchronous(service.maybe_import_resources)
+        maybe_import_resources().wait(5)
+
+        self.assertThat(
+            bootresources._import_resources_in_thread,
+            MockNotCalled())
 
     def test__does_not_import_resources_in_thread_if_not_auto(self):
         self.patch(bootresources, "_import_resources_in_thread")

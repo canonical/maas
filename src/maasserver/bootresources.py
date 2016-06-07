@@ -68,6 +68,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.config import is_dev_environment
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
@@ -1060,9 +1061,17 @@ class ImportResourcesService(TimerService, object):
             interval.total_seconds(), self.maybe_import_resources)
 
     def maybe_import_resources(self):
-        d = deferToDatabase(
-            transactional(Config.objects.get_config),
-            'boot_images_auto_import')
+        def determine_auto():
+            auto = Config.objects.get_config('boot_images_auto_import')
+            if not auto:
+                return auto
+            dev_without_images = (
+                is_dev_environment() and not BootResourceSet.objects.exists())
+            if dev_without_images:
+                return False
+            else:
+                return auto
+        d = deferToDatabase(transactional(determine_auto))
         d.addCallback(self.import_resources_if_configured)
         d.addErrback(log.err, "Failure importing boot resources.")
         return d
