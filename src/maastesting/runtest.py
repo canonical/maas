@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test executors for MAAS."""
@@ -26,6 +26,7 @@ from twisted.internet import (
 )
 from twisted.internet.base import DelayedCall
 from twisted.internet.defer import (
+    Deferred,
     DeferredList,
     inlineCallbacks,
     returnValue,
@@ -36,6 +37,7 @@ from twisted.internet.task import (
     LoopingCall,
 )
 from twisted.internet.threads import blockingCallFromThread
+from twisted.python.threadable import isInIOThread
 
 
 def DelayedCall_bytes(call, __str__=DelayedCall.__str__):
@@ -75,6 +77,18 @@ def check_for_generator(result):
         raise InvalidTest(
             "Test returned a generator. Should it be "
             "decorated with inlineCallbacks?")
+    else:
+        return result
+
+
+def check_for_deferred(result):
+    if isinstance(result, Deferred) and not isInIOThread():
+        raise InvalidTest(
+            "Test returned a Deferred but this is not the IO/reactor thread. "
+            "When the reactor is being managed by crochet the test method "
+            "needs to be decorated with `crochet.wait_for`. In other cases "
+            "the test class needs to define `run_tests_with` with a runner "
+            "that understands Twisted, such as `MAASTwistedRunTest`.")
     else:
         return result
 
@@ -119,7 +133,9 @@ class MAASRunTest(runtest.RunTest):
         """
         try:
             result = function(*args, **kwargs)
-            return check_for_generator(result)
+            check_for_generator(result)
+            check_for_deferred(result)
+            return result
         except:
             return self._got_user_exception(sys.exc_info())
 
