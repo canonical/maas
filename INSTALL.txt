@@ -214,10 +214,74 @@ If they are missing, then::
 
  $ sudo apt-get install maas-dhcp maas-dns
 
-And then proceed to the post-install setup below.
+And then proceed to the post-install setup.
+
+.. _container-install:
+
+Installing MAAS in a LXC container
+----------------------------------
+
+Installing MAAS in a container is a typical setup for those users who
+would like to take advantange of their machine for other users at the
+same time of using MAAS.
+
+In order to setup MAAS, you need some requirements:
+
+ * Create a bridge (for example, it can be br0).
+ * Install LXD and ZFS.
+ * Create a Container profile for MAAS
+
+Install LXD and ZFS
+^^^^^^^^^^^^^^^^^^^
+
+The first thing to do is to install LXD and ZFS::
+
+ $ sudo apt-get install lxd zfsutils-linux
+ $ sudo modprobe zfs
+ $ sudo lxd init
+
+Create a LXC profile for MAAS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+First, lets create a container profile by copying the default::
+
+ $ lxc profile copy default maas
+
+Second, bind the NIC inside the container (eth0) against the bridge on the
+physical host (br0)::
+
+ $ lxc profile device set maas eth0 parent br0
+
+Third, edit the container profile (`lxc profile edit maas`) with::
+
+  raw.lxc: |-
+    lxc.cgroup.devices.allow = c 10:237 rwm
+    lxc.aa_profile = unconfined
+    lxc.cgroup.devices.allow = b 7:* rwm
+  security.privileged: "true"
+
+And lastly, ensure that the LXC container has loop devices added::
+
+  for i in `seq 0 7`; do lxc profile device add maas loop$i unix-block path=/dev/loop$i; done
+
+Launch LXD container
+^^^^^^^^^^^^^^^^^^^^
+
+Once the profile has been created, you can now launch the LXC container::
+
+  $ lxc launch -p maas ubuntu:16.04 xenial-maas
+
+Install MAAS
+^^^^^^^^^^^^
+
+Once the container is running, you can now install MAAS. First you need
+to access the container with::
+
+  $ lxc exec bash xenial-maas
+
+And you can proceed with the installation as above, :ref:`From a package repository. <pkg-install>`
 
 .. _post_install:
-
 
 Post-Install tasks
 ==================
@@ -360,68 +424,3 @@ Traffic between the region contoller and rack controllers
 
 Once everything is set up and running, you are ready to :doc:`start
 enlisting nodes <nodes>`
-
-.. _container-install:
-
-Installing MAAS in a LXC container
-----------------------------------
-
-Installing MAAS in a container is a typical setup for those users who
-would like to take advantange of their machine for other users at the
-same time of using MAAS.
-
-In order to setup MAAS, you need some requirements:
-
- * Create a bridge (for example, it can be br0).
- * Install LXD and ZFS.
- * Create a Container profile for MAAS
-
-Install LXD and ZFS
-^^^^^^^^^^^^^^^^^^^
-
-The first thing to do is to install LXD and ZFS::
-
- $ sudo apt-get install lxd zfsutils-linux
- $ sudo modprobe zfs
- $ sudo lxd init
-
-Create a LXC profile for MAAS
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-First, lets create a container profile by copying the default::
-
- $ lxc profile copy default maas
-
-Second, bind the NIC inside the container (eth0) against the bridge on the
-physical host (br0)::
-
- $ lxc profile device set maas eth0 parent br0
-
-Third, edit the container profile (`lxc profile edit maas`) with::
-
-  raw.lxc: |-
-    lxc.cgroup.devices.allow = c 10:237 rwm
-    lxc.aa_profile = unconfined
-    lxc.cgroup.devices.allow = b 7:* rwm
-  security.privileged: "true"
-
-And lastly, ensure that the LXC container has loop devices added::
-
-  for i in `seq 0 7`; do lxc profile device add maas loop$i unix-block path=/dev/loop$i; done
-
-Launch LXD container
-^^^^^^^^^^^^^^^^^^^^
-
-Once the profile has been created, you can now launch the LXC container::
-
-  $ lxc launch -p maas ubuntu:16.04 xenial-maas
-
-Install MAAS
-^^^^^^^^^^^^
-
-Once the container is running, you can now install MAAS. First you need
-to access the container with::
-
-  $ lxc exec bash xenial-maas
-
-And you can proceed with the installation as above, :ref:`From a package repository. <pkg-install>`
