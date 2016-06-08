@@ -30,7 +30,7 @@ DHCP_CONNECT = True
 # Connect to the PROXY server. TODO: Use the signals manager instead.
 PROXY_CONNECT = True
 
-MAAS_CLI = abspath("bin/maas-region")
+MAAS_CLI = abspath("bin/maas")
 
 # For demo purposes, give nodes unauthenticated access to their metadata
 # even if we can't pass boot parameters.  This is not safe; do not

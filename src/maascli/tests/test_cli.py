@@ -9,20 +9,25 @@ import doctest
 from io import StringIO
 import sys
 from textwrap import dedent
+from unittest.mock import sentinel
 
 from apiclient.creds import convert_string_to_tuple
+from django.core import management
 from maascli import cli
 from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_options
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import DocTestMatches
 
 
-class TestRegisterCLICommands(MAASTestCase):
-    """Tests for `register_cli_commands`."""
+class TestRegisterommands(MAASTestCase):
+    """Tests for registers CLI commands."""
 
     def test_registers_subparsers(self):
         parser = ArgumentParser()
@@ -36,6 +41,34 @@ class TestRegisterCLICommands(MAASTestCase):
         self.assertIsInstance(
             parser.subparsers.choices['login'].get_default('execute'),
             cli.cmd_login)
+
+    def test_doesnt_call_load_regiond_commands_if_no_management(self):
+        self.patch(cli, "get_django_management").return_value = None
+        mock_load_regiond_commands = self.patch(cli, "load_regiond_commands")
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        self.assertThat(mock_load_regiond_commands, MockNotCalled())
+
+    def test_calls_load_regiond_commands_when_management(self):
+        self.patch(
+            cli, "get_django_management").return_value = sentinel.management
+        mock_load_regiond_commands = self.patch(cli, "load_regiond_commands")
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        self.assertThat(
+            mock_load_regiond_commands,
+            MockCalledOnceWith(sentinel.management, parser))
+
+    def test_loads_all_regiond_commands(self):
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        for name, app, help_text in cli.regiond_commands:
+            subparser = parser.subparsers.choices.get(name)
+            klass = management.load_command_class(app, name)
+            if help_text is None:
+                help_text = klass.help
+            self.assertIsNotNone(subparser)
+            self.assertEqual(help_text, subparser.description)
 
 
 class TestLogin(MAASTestCase):

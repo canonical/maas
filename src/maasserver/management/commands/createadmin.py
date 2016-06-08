@@ -7,7 +7,6 @@ __all__ = []
 
 
 from getpass import getpass
-from optparse import make_option
 
 from django.contrib.auth.models import User
 from django.core.management.base import (
@@ -93,18 +92,18 @@ def prompt_for_email():
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--username', dest='username', default=None,
-            help="Username for the new account."),
-        make_option(
-            '--password', dest='password', default=None,
-            help="Force a given password instead of prompting."),
-        make_option(
-            '--email', dest='email', default=None,
-            help="Specifies the email for the admin."),
-    )
     help = "Create a MAAS administrator account."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--username', default=None,
+            help="Username for the new account.")
+        parser.add_argument(
+            '--password', default=None,
+            help="Force a given password instead of prompting.")
+        parser.add_argument(
+            '--email', default=None,
+            help="Specifies the email for the admin.")
 
     def handle(self, *args, **options):
         username = options.get('username', None)

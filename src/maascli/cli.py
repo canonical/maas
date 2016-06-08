@@ -7,6 +7,9 @@ __all__ = [
     'register_cli_commands',
     ]
 
+from functools import partial
+import os
+import sys
 from textwrap import fill
 
 from apiclient.creds import convert_tuple_to_string
@@ -155,12 +158,22 @@ class cmd_list(Command):
                     print(profile_name, url, creds)
 
 
+# Built-in commands to the maascli.
 commands = {
     'login': cmd_login,
     'logout': cmd_logout,
     'list': cmd_list,
     'refresh': cmd_refresh,
 }
+
+# Commands to expose in the maascli when installed on a machine with
+# python3-maasserver.
+regiond_commands = (
+    ('apikey', 'maasserver', None),
+    ('createadmin', 'maasserver', None),
+    ('changepassword', 'django.contrib.auth',
+     "Change a MAAS user's password."),
+)
 
 
 def register_cli_commands(parser):
@@ -171,3 +184,45 @@ def register_cli_commands(parser):
             safe_name(name), help=help_title, description=help_title,
             epilog=help_body)
         command_parser.set_defaults(execute=command(command_parser))
+
+    # Setup and the allowed django commands into the maascli.
+    management = get_django_management()
+    if management is not None:
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
+        sys.path.append('/usr/share/maas')
+        load_regiond_commands(management, parser)
+
+
+def get_django_management():
+    """Load the Django management module."""
+    try:
+        from django.core import management
+    except ImportError:
+        # No django installed so nothing to do.
+        return None
+    else:
+        return management
+
+
+def run_regiond_command(parser, management):
+    """Called to run the regiond command.
+
+    The command itself is sys.argv[1] so that is not passed into this function.
+    """
+    # At present, only root should execute regiond commands
+    if os.getuid() != 0:
+        raise SystemExit("You can only '%s' as root." % sys.argv[1])
+    management.execute_from_command_line()
+
+
+def load_regiond_commands(management, parser):
+    """Load the allowed regiond commands into the MAAS cli."""
+    for name, app, help_text in regiond_commands:
+        klass = management.load_command_class(app, name)
+        if help_text is None:
+            help_text = klass.help
+        command_parser = parser.subparsers.add_parser(
+            safe_name(name), help=help_text, description=help_text)
+        klass.add_arguments(command_parser)
+        command_parser.set_defaults(
+            execute=partial(run_regiond_command, management))

@@ -84,7 +84,7 @@ DHCP_CONNECT = True
 PROXY_CONNECT = True
 
 # The MAAS CLI.
-MAAS_CLI = 'sudo maas-region'
+MAAS_CLI = 'sudo maas'
 
 API_URL_REGEXP = '^/api/2[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
@@ -121,17 +121,24 @@ AUTHENTICATION_BACKENDS = (
     )
 
 # Database access configuration.
-with RegionConfiguration.open() as config:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': config.database_name,
-            'USER': config.database_user,
-            'PASSWORD': config.database_pass,
-            'HOST': config.database_host,
-            'PORT': '',
+try:
+    with RegionConfiguration.open() as config:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql_psycopg2',
+                'NAME': config.database_name,
+                'USER': config.database_user,
+                'PASSWORD': config.database_pass,
+                'HOST': config.database_host,
+                'PORT': '',
+            }
         }
-    }
+except:
+    # The regiond.conf will attempt to be loaded when the 'maas' command
+    # is read by a standard user. We allow this to fail and miss configure the
+    # database information. Django will still complain since no 'default'
+    # connection is defined.
+    DATABASES = {}
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
