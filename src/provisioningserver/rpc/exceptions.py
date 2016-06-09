@@ -24,6 +24,7 @@ __all__ = [
     "PowerActionFail",
     "UnknownPowerType",
     "RegistrationFailed",
+    "RefreshAlreadyInProgress",
 ]
 
 
@@ -151,3 +152,7 @@ class BootConfigNoResponse(Exception):
 
 class CannotDisableAndShutoffRackd(Exception):
     """Rackd cannot be disabled and shutoff."""
+
+
+class RefreshAlreadyInProgress(Exception):
+    """Refresh is already running, request ignored."""

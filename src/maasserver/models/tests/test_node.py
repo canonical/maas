@@ -147,6 +147,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import (
     CannotDisableAndShutoffRackd,
     NoConnectionsAvailable,
+    RefreshAlreadyInProgress,
     UnknownPowerType,
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
@@ -6894,59 +6895,92 @@ class TestUpdateInterfaces(MAASServerTestCase):
         self.assertIsNotNone(br0)
 
 
-class TestRackController(MAASServerTestCase):
+class TestRackControllerRefresh(MAASTransactionServerTestCase):
 
-    def test_refresh_issues_rpc_call(self):
-        rackcontroller = factory.make_RackController()
-
+    def setUp(self):
+        super().setUp()
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
-        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(
-            rackcontroller, RefreshRackControllerInfo)
-        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
-            'architecture': rackcontroller.architecture,
+        self.rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        self.rackcontroller = factory.make_RackController()
+        self.protocol = self.rpc.makeCluster(
+            self.rackcontroller, RefreshRackControllerInfo)
+
+    def get_token_for_rackcontroller(self):
+        token = NodeKey.objects.get_token_for_node(self.rackcontroller)
+        token.consumer.key  # Fetch this now while we're in the database.
+        return token
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_refresh_issues_rpc_call(self):
+        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': self.rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
             'interfaces': {},
         })
 
-        rackcontroller.refresh()
-        token = NodeKey.objects.get_token_for_node(rackcontroller)
+        yield self.rackcontroller.refresh()
+        token = yield deferToDatabase(self.get_token_for_rackcontroller)
 
         self.expectThat(
-            protocol.RefreshRackControllerInfo,
+            self.protocol.RefreshRackControllerInfo,
             MockCalledOnceWith(
-                ANY, system_id=rackcontroller.system_id,
+                ANY, system_id=self.rackcontroller.system_id,
                 consumer_key=token.consumer.key, token_key=token.key,
                 token_secret=token.secret))
 
+    @wait_for_reactor
+    @defer.inlineCallbacks
     def test_refresh_logs_user_request(self):
-        rackcontroller = factory.make_RackController(
-            interface=True, status=NODE_STATUS.NEW, power_type='manual')
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(
-            rackcontroller, RefreshRackControllerInfo)
-        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
-            'architecture': rackcontroller.architecture,
+        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': self.rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
             'interfaces': {},
         })
 
-        register_event = self.patch(rackcontroller, '_register_request_event')
-        rackcontroller.refresh()
-        post_commit_hooks.reset()  # Ignore these for now.
-        rackcontroller = reload_object(rackcontroller)
+        register_event = self.patch(
+            self.rackcontroller, '_register_request_event')
+
+        yield self.rackcontroller.refresh()
         self.assertThat(register_event, MockCalledOnceWith(
-            rackcontroller.owner,
+            self.rackcontroller.owner,
             EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
             action='starting refresh'))
 
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_refresh_clears_node_results(self):
+        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': self.rackcontroller.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        })
+        node_result = yield deferToDatabase(
+            factory.make_NodeResult_for_installation, node=self.rackcontroller)
+
+        yield self.rackcontroller.refresh()
+
+        def has_results():
+            return NodeResult.objects.filter(id=node_result.id).exists()
+
+        self.assertFalse((yield deferToDatabase(has_results)))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_refresh_does_nothing_when_locked(self):
+        self.protocol.RefreshRackControllerInfo.return_value = defer.fail(
+            RefreshAlreadyInProgress())
+        mock_save = self.patch(self.rackcontroller, 'save')
+        yield self.rackcontroller.refresh()
+        self.assertThat(mock_save, MockNotCalled())
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
     def test_refresh_sets_extra_values(self):
-        rackcontroller = factory.make_RackController(status=NODE_STATUS.NEW)
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('distro_series')
         interfaces = {
@@ -6959,26 +6993,28 @@ class TestRackController(MAASServerTestCase):
             }
         }
 
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(
-            rackcontroller, RefreshRackControllerInfo)
-        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
-            'architecture': rackcontroller.architecture,
+        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': self.rackcontroller.architecture,
             'osystem': osystem,
             'distro_series': distro_series,
             'interfaces': interfaces
         })
 
-        rackcontroller.refresh()
-        rackcontroller = reload_object(rackcontroller)
+        yield self.rackcontroller.refresh()
+        rackcontroller = yield deferToDatabase(
+            reload_object, self.rackcontroller)
         self.assertEquals(osystem, rackcontroller.osystem)
         self.assertEquals(distro_series, rackcontroller.distro_series)
-        self.assertIsNotNone(
-            Interface.objects.filter(
-                node=rackcontroller,
-                mac_address=interfaces["eth0"]["mac_address"]).first())
+
+        def has_nic():
+            mac_address = interfaces["eth0"]["mac_address"]
+            return Interface.objects.filter(
+                node=self.rackcontroller, mac_address=mac_address).exists()
+
+        self.assertTrue((yield deferToDatabase(has_nic)))
+
+
+class TestRackController(MAASServerTestCase):
 
     def test_add_chassis_issues_rpc_call(self):
         rackcontroller = factory.make_RackController()

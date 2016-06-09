@@ -169,6 +169,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionFail,
+    RefreshAlreadyInProgress,
     UnknownPowerType,
 )
 from provisioningserver.utils import (
@@ -181,6 +182,7 @@ from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
+    deferWithTimeout,
 )
 from twisted.internet.defer import (
     Deferred,
@@ -3600,6 +3602,48 @@ class Controller(Node):
             current_interfaces[delete_id].delete()
         self.save()
 
+    @transactional
+    def _get_token_for_controller(self):
+        # Avoid circular imports.
+        from metadataserver.models import NodeKey
+        return NodeKey.objects.get_token_for_node(self)
+
+    @transactional
+    def _get_current_node_result_ids(self):
+        # Avoid circular imports.
+        from metadataserver.models import NodeResult
+        # The IDs of existing results
+        results = NodeResult.objects.filter(node=self)
+        return results.values_list('id', flat=True)
+
+    @transactional
+    def _signal_start_of_refresh(self):
+        self._register_request_event(
+            self.owner, EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
+            action='starting refresh')
+
+    @transactional
+    def _process_refresh(self, response, previous_result_ids):
+        # Avoid circular imports.
+        from metadataserver.models import NodeResult
+
+        # Delete existing results. This is a bit shonk because it assumes that
+        # the commissioning scripts will run to completion on the controller.
+        # After deletion there will be a period when the controller has no
+        # results in the database while waiting to recieve the new data. If
+        # uploading fails this will leave the controller with no NodeResults.
+        NodeResult.objects.filter(id__in=previous_result_ids).delete()
+
+        if response['architecture'] != '':
+            self.architecture = response['architecture']
+        if response['osystem'] != '':
+            self.osystem = response['osystem']
+        if response['distro_series'] != '':
+            self.distro_series = response['distro_series']
+        if response['interfaces'] != {}:
+            self.update_interfaces(response['interfaces'])
+        self.save()
+
 
 class RackController(Controller):
     """A node which is running rackd."""
@@ -3613,36 +3657,33 @@ class RackController(Controller):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
-    @transactional
+    @inlineCallbacks
     def refresh(self):
-        """Refresh the hardware and networking columns of the rack controller."
+        """Refresh the hardware and networking columns of the rack controller.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
         """
-        # Avoid circular imports.
-        from metadataserver.models import NodeKey
+        client = yield getClientFor(self.system_id, timeout=1)
 
-        self._register_request_event(
-            self.owner, EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
-            action='starting refresh')
+        token = yield deferToDatabase(self._get_token_for_controller)
 
-        client = getClientFor(self.system_id, timeout=1)
-        token = NodeKey.objects.get_token_for_node(self)
-        call = client(
-            RefreshRackControllerInfo, system_id=self.system_id,
-            consumer_key=token.consumer.key, token_key=token.key,
-            token_secret=token.secret)
+        # Cache existing results. If we're doing the refresh we'll delete them.
+        result_ids = yield deferToDatabase(self._get_current_node_result_ids)
 
-        response = call.wait(30)
-        if response['architecture'] != '':
-            self.architecture = response['architecture']
-        if response['osystem'] != '':
-            self.osystem = response['osystem']
-        if response['distro_series'] != '':
-            self.distro_series = response['distro_series']
-        self.update_interfaces(response['interfaces'])
-        self.save()
+        yield deferToDatabase(self._signal_start_of_refresh)
+
+        try:
+            response = yield deferWithTimeout(
+                30, client, RefreshRackControllerInfo,
+                system_id=self.system_id, consumer_key=token.consumer.key,
+                token_key=token.key, token_secret=token.secret)
+        except RefreshAlreadyInProgress:
+            # If another refresh is in progress let the other process
+            # handle it and don't update the database
+            return
+        else:
+            yield deferToDatabase(self._process_refresh, response, result_ids)
 
     def add_chassis(
             self, user, chassis_type, hostname, username=None, password=None,

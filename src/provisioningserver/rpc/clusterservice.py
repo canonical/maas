@@ -70,12 +70,14 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
+from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
 )
 from provisioningserver.utils.twisted import (
+    callOut,
     DeferredValue,
     synchronous,
 )
@@ -376,9 +378,18 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
         """
-        d = deferToThread(
-            refresh, system_id, consumer_key, token_key, token_secret)
-        d.addErrback(log.err, "Failed to refresh the rack controller.")
+        lock = NamedLock('refresh')
+        try:
+            lock.acquire()
+        except lock.NotAvailable:
+            # Refresh is already running, don't do anything
+            raise exceptions.RefreshAlreadyInProgress()
+        else:
+            # Start gathering node results(lshw, lsblk, etc) but don't wait.
+            d = deferToThread(
+                refresh, system_id, consumer_key, token_key, token_secret)
+            d.addErrback(log.err, 'Failed to refresh the rack controller.')
+            d.addBoth(callOut, lock.release)
 
         @synchronous
         def perform_refresh():

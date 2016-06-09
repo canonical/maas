@@ -455,7 +455,10 @@ class RefreshRackControllerInfo(amp.Command):
         (b"distro_series", amp.Unicode()),
         (b"interfaces", StructureAsJSON()),
     ]
-    errors = {}
+    errors = {
+        exceptions.RefreshAlreadyInProgress: (
+            b"RefreshAlreadyInProgress"),
+    }
 
 
 class AddChassis(amp.Command):

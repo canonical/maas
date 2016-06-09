@@ -95,6 +95,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools import ExpectedException
@@ -1949,6 +1950,78 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         responder = protocol.locateResponder(
             cluster.RefreshRackControllerInfo.commandName)
         self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test__raises_refresh_already_in_progress_when_locked(self):
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+
+        with NamedLock('refresh'):
+            with ExpectedException(exceptions.RefreshAlreadyInProgress):
+                yield call_responder(
+                    Cluster(), cluster.RefreshRackControllerInfo,
+                    {
+                        "system_id": system_id,
+                        "consumer_key": consumer_key,
+                        "token_key": token_key,
+                        "token_secret": token_secret,
+                    })
+
+    @inlineCallbacks
+    def test__acquires_lock_when_refreshing_releases_when_done(self):
+        def mock_refresh(*args, **kwargs):
+            lock = NamedLock('refresh')
+            self.assertTrue(lock.is_locked())
+        self.patch(clusterservice, 'refresh', mock_refresh)
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+
+        yield call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
+            "system_id": system_id,
+            "consumer_key": consumer_key,
+            "token_key": token_key,
+            "token_secret": token_secret,
+        })
+
+        lock = NamedLock('refresh')
+        self.assertFalse(lock.is_locked())
+
+    @inlineCallbacks
+    def test__releases_on_error(self):
+        exception = factory.make_exception()
+        self.patch(clusterservice, 'refresh').side_effect = exception
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+
+        with TwistedLoggerFixture() as logger:
+            yield call_responder(
+                Cluster(), cluster.RefreshRackControllerInfo, {
+                    "system_id": system_id,
+                    "consumer_key": consumer_key,
+                    "token_key": token_key,
+                    "token_secret": token_secret,
+                })
+
+        # The failure is logged
+        self.assertDocTestMatches(
+            """
+            Failed to refresh the rack controller.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...:
+            """,
+            logger.output,
+        )
+
+        # The lock is released
+        lock = NamedLock('refresh')
+        self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__defers_refresh_to_thread(self):
