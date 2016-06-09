@@ -132,7 +132,8 @@ angular.module('MAAS').controller('FabricDetailsController', [
         $scope.deleteConfirmButton = function() {
             FabricsManager.deleteFabric($scope.fabric).then(function() {
                 $scope.confirmingDelete = false;
-                $location.path("/fabrics");
+                $location.path("/networks");
+                $location.search('by', 'fabric');
             }, function(reply) {
                 $scope.error =
                     ManagerHelperService.parseValidationError(reply.error);

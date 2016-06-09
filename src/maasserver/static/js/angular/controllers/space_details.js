@@ -99,7 +99,8 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         $scope.deleteConfirmButton = function() {
             SpacesManager.deleteSpace($scope.space).then(function() {
                 $scope.confirmingDelete = false;
-                $location.path("/spaces");
+                $location.path("/networks");
+                $location.search('by', 'space');
             }, function(error) {
                 $scope.error =
                     ManagerHelperService.parseValidationError(error);

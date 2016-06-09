@@ -224,12 +224,19 @@ describe("SpaceDetailsController", function() {
     describe("deleteSpace", function() {
 
         it("calls deleteSpace", function() {
+            $location = {};
+            $location.path = jasmine.createSpy('path');
+            $location.search = jasmine.createSpy('search');
             var controller = makeController();
             var deleteSpace = spyOn(SpacesManager, "deleteSpace");
             var defer = $q.defer();
             deleteSpace.and.returnValue(defer.promise);
             $scope.deleteConfirmButton();
+            defer.resolve();
+            $rootScope.$apply();
             expect(deleteSpace).toHaveBeenCalled();
+            expect($location.path).toHaveBeenCalledWith("/networks");
+            expect($location.search).toHaveBeenCalledWith("by", "space");
         });
     });
 

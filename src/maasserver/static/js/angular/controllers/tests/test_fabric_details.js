@@ -256,12 +256,19 @@ describe("FabricDetailsController", function() {
     describe("deleteFabric", function() {
 
         it("calls deleteFabric", function() {
+            $location = {};
+            $location.path = jasmine.createSpy('path');
+            $location.search = jasmine.createSpy('search');
             var controller = makeController();
             var deleteFabric = spyOn(FabricsManager, "deleteFabric");
             var defer = $q.defer();
             deleteFabric.and.returnValue(defer.promise);
             $scope.deleteConfirmButton();
+            defer.resolve();
+            $rootScope.$apply();
             expect(deleteFabric).toHaveBeenCalled();
+            expect($location.path).toHaveBeenCalledWith("/networks");
+            expect($location.search).toHaveBeenCalledWith("by", "fabric");
         });
     });
 
