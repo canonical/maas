@@ -62,6 +62,21 @@ describe("maasObjForm", function() {
         return errors;
     }
 
+    describe("inline form", function() {
+
+        it("adds 'form--inline'", function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" inline="true">',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var form = directive.find("form");
+            expect(form.hasClass("form--inline")).toBe(true);
+        });
+    });
+
     describe("input type=text", function() {
 
         var directive;
@@ -621,8 +636,29 @@ describe("maasObjForm", function() {
                 directive.find('maas-obj-field[key="key"]'));
             var field = angular.element(directive.find("#key"));
             expect(group.hasClass("form__group")).toBe(true);
-            expect(group.hasClass("form__group--inline")).toBe(true);
             expect(group.hasClass("form__group--subtle")).toBe(true);
+            expect(
+                field.parent("div").hasClass("form__group-input")).toBe(true);
+        });
+
+        it("adds form__group classes without subtle", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three" subtle="false"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var group = angular.element(
+                directive.find('maas-obj-field[key="key"]'));
+            var field = angular.element(directive.find("#key"));
+            expect(group.hasClass("form__group")).toBe(true);
+            expect(group.hasClass("form__group--subtle")).toBe(false);
             expect(
                 field.parent("div").hasClass("form__group-input")).toBe(true);
         });

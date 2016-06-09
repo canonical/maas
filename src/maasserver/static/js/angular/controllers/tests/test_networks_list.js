@@ -109,230 +109,304 @@ describe("NetworksListController", function() {
         expect($scope.actionOptions.length).toBe(0);
     });
 
-    setupController = function(fabrics, spaces, vlans, subnets) {
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        $scope.fabrics = fabrics;
-        FabricsManager._items = fabrics;
-        $scope.spaces = spaces;
-        SpacesManager._items = spaces;
-        $scope.vlans = vlans;
-        VLANsManager._items = vlans;
-        $scope.subnets = subnets;
-        SubnetsManager._items = subnets;
-        defer.resolve();
-        $rootScope.$digest();
-        return controller;
-    };
+    describe("watchers and resolved managers", function() {
 
-    doUpdates = function(controller, fabrics, spaces, vlans, subnets) {
-        $scope.fabrics = fabrics;
-        FabricsManager._items = fabrics;
-        $scope.spaces = spaces;
-        SpacesManager._items = spaces;
-        $scope.vlans = vlans;
-        VLANsManager._items = vlans;
-        $scope.subnets = subnets;
-        SubnetsManager._items = subnets;
-        $rootScope.$digest();
-    };
-
-    it("selects fabric groupBy by default", function() {
-        var controller = setupController([], [], [], []);
-        expect($scope.groupBy).toBe("fabric");
-    });
-
-    it("selects space groupBy with search string", function() {
-        $location.search('by', 'space');
-        var controller = setupController([], [], [], []);
-        expect($scope.groupBy).toBe("space");
-    });
-
-    it("updates groupBy when location changes", function() {
-        var controller = setupController([], [], [], []);
-        $location.search('by', 'space');
-        $rootScope.$broadcast('$routeUpdate');
-        expect($scope.groupBy).toBe("space");
-    });
-
-    it("updates location when groupBy changes", function() {
-        var controller = setupController([], [], [], []);
-        expect($location.search()).toEqual({by: 'fabric'});
-        $scope.groupBy = "space";
-        $scope.updateGroupBy();
-        expect($location.search()).toEqual({by: 'space'});
-    });
-
-    it("initial update populates fabrics", function() {
-        $location.search('by', 'fabric');
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-        ];
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        var rows = $scope.group.fabrics.rows;
-        expect(rows.length).toBe(1);
-        expect($scope.group.spaces.rows).toBe(undefined);
-        expect(rows[0].subnet).toBe(subnets[0]);
-        expect(rows[0].subnet_name).toBe("10.20.0.0/16 (subnet 0)");
-        expect(rows[0].space).toBe(spaces[0]);
-        expect(rows[0].fabric).toBe(fabrics[0]);
-        expect(rows[0].fabric_name).toBe("fabric 0");
-        expect(rows[0].vlan).toBe(vlans[0]);
-        expect(rows[0].vlan_name).toBe("4 (vlan4)");
-    });
-
-    it("initial update populates spaces", function() {
-        $location.search('by', 'space');
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-        ];
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        var rows = $scope.group.spaces.rows;
-        expect(rows.length).toBe(1);
-        expect($scope.group.fabrics.rows).toBe(undefined);
-        expect(rows[0].subnet).toBe(subnets[0]);
-        expect(rows[0].subnet_name).toBe("10.20.0.0/16 (subnet 0)");
-        expect(rows[0].space).toBe(spaces[0]);
-        expect(rows[0].space_name).toBe("space 0");
-        expect(rows[0].fabric).toBe(fabrics[0]);
-        expect(rows[0].vlan).toBe(vlans[0]);
-        expect(rows[0].vlan_name).toBe("4 (vlan4)");
-    });
-
-    it("adding fabric updates lists", function() {
-        var fabrics = [ { id: 0, name: "fabric-0" } ];
-        var spaces = [ { id: 0, name: "space-0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            { id:0, name:"subnet-0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-        ];
-
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(1);
-        fabrics.push({id: 1, name: "fabric 1"});
-        vlans.push({id: 2, vid:0, fabric: 1});
-        doUpdates(controller, fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(2);
-        $scope.groupBy = "space";
-        $scope.updateGroupBy();
-        // We can't show a new fabric+vlan that doesn't have a subnet+space
-        // on the "spaces" group by, so we need more data first.
-        expect($scope.group.spaces.rows.length).toBe(1);
-        subnets.push(
-            {id:1, name:"subnet 1", vlan: 2, space: 0, cidr:"10.21.0.0/16"});
-        spaces.push({id: 1, name: "space-1"});
-        doUpdates(controller, fabrics, spaces, vlans, subnets);
-        // We expect an extra row here for the space which isn't associated
-        // with any subnets.
-        expect($scope.group.spaces.rows.length).toBe(3);
-    });
-
-    it("adding space updates lists", function() {
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            {id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16"}
-        ];
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(1);
-        spaces.push({id: 1, name: "space 1"});
-        subnets.push(
-            {id:1, name:"subnet 1", vlan:1, space:1, cidr:"10.20.0.0/16"});
-        doUpdates(controller, fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(2);
-        $scope.groupBy = "space";
-        $scope.updateGroupBy();
-        // Second space should have a blank name
-        expect($scope.group.spaces.rows.length).toBe(2);
-        // Move 2nd subnet into first space and check that the name is no
-        // longer shown.
-        subnets[1].space = 0;
-        $scope.updateGroupBy();
-        expect($scope.group.spaces.rows[1].space_name).toBe("");
-    });
-
-    it("adding vlan updates lists appropriately", function() {
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-        ];
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(1);
-        vlans.push({id: 2, name: "vlan2", vid: 2, fabric: 0});
-        doUpdates(controller, fabrics, spaces, vlans, subnets);
-        // Fabric should have blank name
-        expect($scope.group.fabrics.rows[1].fabric_name).toBe("");
-        expect($scope.group.fabrics.rows.length).toBe(2);
-        $scope.groupBy = "space";
-        $scope.updateGroupBy();
-        // Orphaned VLANs should not be shown in the spaces view, since there
-        // is not path from the space to that VLAN.
-        expect($scope.group.spaces.rows.length).toBe(1);
-    });
-
-    it("adding subnet updates lists", function() {
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
-        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-        var subnets = [
-            { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-        ];
-        var controller = setupController(fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(1);
-        subnets.push(
-            {id: 1, name: "subnet 1", vlan: 1, space: 0,
-             cidr: "10.99.34.0/24"}
-        );
-        doUpdates(controller, fabrics, spaces, vlans, subnets);
-        expect($scope.group.fabrics.rows.length).toBe(2);
-        // Test that redundant fabric and VLAN names are suppressed
-        expect($scope.group.fabrics.rows[1].fabric_name).toBe("");
-        expect($scope.group.fabrics.rows[1].vlan_name).toBe("");
-        $scope.groupBy = "space";
-        $scope.updateGroupBy();
-        expect($scope.group.spaces.rows.length).toBe(2);
-    });
-
-    it("each action submit calls create on related manager", function() {
-        // Ensure the user is authorized to access all actions.
-        UsersManager._authUser = {
-            is_superuser: true
-        };
-        var controller = setupController([], [], [], []);
-        angular.forEach($scope.actionOptions, function(option) {
-            $scope.actionOption = option;
-            // Create some bogus data for the submitAction() function.
-            var expectedCall = {};
-            angular.forEach(option.form.items, function(item) {
-                // Mimic what the directive does by populating "name" with
-                // something to be used as a dictionary key, and "current"
-                // with an arbitrary value. The values don't matter since we
-                // mock the call to create.
-                item.name = makeName(item.title);
-                item.current = makeName(item.name);
-                expectedCall[item.name] = item.current;
-            });
+        function setupController(fabrics, spaces, vlans, subnets) {
             var defer = $q.defer();
-            spyOn(option.form.manager, "create").and.returnValue(
-                defer.promise);
-            $scope.submitAction(option);
-            expect($scope.requesting).toBe(true);
+            var controller = makeController(defer);
+            $scope.fabrics = fabrics;
+            FabricsManager._items = fabrics;
+            $scope.spaces = spaces;
+            SpacesManager._items = spaces;
+            $scope.vlans = vlans;
+            VLANsManager._items = vlans;
+            $scope.subnets = subnets;
+            SubnetsManager._items = subnets;
             defer.resolve();
-            $scope.$digest();
-            expect(option.form.manager.create).toHaveBeenCalledWith(
-                expectedCall);
-            expect($scope.requesting).toBe(false);
-            expect($scope.actionOption).toBe(null);
+            $rootScope.$digest();
+            return controller;
+        }
+
+        function doUpdates(controller, fabrics, spaces, vlans, subnets) {
+            $scope.fabrics = fabrics;
+            FabricsManager._items = fabrics;
+            $scope.spaces = spaces;
+            SpacesManager._items = spaces;
+            $scope.vlans = vlans;
+            VLANsManager._items = vlans;
+            $scope.subnets = subnets;
+            SubnetsManager._items = subnets;
+            $rootScope.$digest();
+        }
+
+        it("selects fabric groupBy by default", function() {
+            var controller = setupController([], [], [], []);
+            expect($scope.groupBy).toBe("fabric");
+        });
+
+        it("selects space groupBy with search string", function() {
+            $location.search('by', 'space');
+            var controller = setupController([], [], [], []);
+            expect($scope.groupBy).toBe("space");
+        });
+
+        it("updates groupBy when location changes", function() {
+            var controller = setupController([], [], [], []);
+            $location.search('by', 'space');
+            $rootScope.$broadcast('$routeUpdate');
+            expect($scope.groupBy).toBe("space");
+        });
+
+        it("updates location when groupBy changes", function() {
+            var controller = setupController([], [], [], []);
+            expect($location.search()).toEqual({by: 'fabric'});
+            $scope.groupBy = "space";
+            $scope.updateGroupBy();
+            expect($location.search()).toEqual({by: 'space'});
+        });
+
+        it("initial update populates fabrics", function() {
+            $location.search('by', 'fabric');
+            var fabrics = [ { id: 0, name: "fabric 0" } ];
+            var spaces = [ { id: 0, name: "space 0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            ];
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            var rows = $scope.group.fabrics.rows;
+            expect(rows.length).toBe(1);
+            expect($scope.group.spaces.rows).toBe(undefined);
+            expect(rows[0].subnet).toBe(subnets[0]);
+            expect(rows[0].subnet_name).toBe("10.20.0.0/16 (subnet 0)");
+            expect(rows[0].space).toBe(spaces[0]);
+            expect(rows[0].fabric).toBe(fabrics[0]);
+            expect(rows[0].fabric_name).toBe("fabric 0");
+            expect(rows[0].vlan).toBe(vlans[0]);
+            expect(rows[0].vlan_name).toBe("4 (vlan4)");
+        });
+
+        it("initial update populates spaces", function() {
+            $location.search('by', 'space');
+            var fabrics = [ { id: 0, name: "fabric 0" } ];
+            var spaces = [ { id: 0, name: "space 0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            ];
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            var rows = $scope.group.spaces.rows;
+            expect(rows.length).toBe(1);
+            expect($scope.group.fabrics.rows).toBe(undefined);
+            expect(rows[0].subnet).toBe(subnets[0]);
+            expect(rows[0].subnet_name).toBe("10.20.0.0/16 (subnet 0)");
+            expect(rows[0].space).toBe(spaces[0]);
+            expect(rows[0].space_name).toBe("space 0");
+            expect(rows[0].fabric).toBe(fabrics[0]);
+            expect(rows[0].vlan).toBe(vlans[0]);
+            expect(rows[0].vlan_name).toBe("4 (vlan4)");
+        });
+
+        it("adding fabric updates lists", function() {
+            var fabrics = [ { id: 0, name: "fabric-0" } ];
+            var spaces = [ { id: 0, name: "space-0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                { id:0, name:"subnet-0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            ];
+
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(1);
+            fabrics.push({id: 1, name: "fabric 1"});
+            vlans.push({id: 2, vid:0, fabric: 1});
+            doUpdates(controller, fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(2);
+            $scope.groupBy = "space";
+            $scope.updateGroupBy();
+            // We can't show a new fabric+vlan that doesn't have a subnet+space
+            // on the "spaces" group by, so we need more data first.
+            expect($scope.group.spaces.rows.length).toBe(1);
+            subnets.push({
+                id:1,
+                name:"subnet 1",
+                vlan: 2,
+                space: 0,
+                cidr:"10.21.0.0/16"
+            });
+            spaces.push({id: 1, name: "space-1"});
+            doUpdates(controller, fabrics, spaces, vlans, subnets);
+            // We expect an extra row here for the space which isn't associated
+            // with any subnets.
+            expect($scope.group.spaces.rows.length).toBe(3);
+        });
+
+        it("adding space updates lists", function() {
+            var fabrics = [ { id: 0, name: "fabric 0" } ];
+            var spaces = [ { id: 0, name: "space 0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                {id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16"}
+            ];
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(1);
+            spaces.push({id: 1, name: "space 1"});
+            subnets.push(
+                {id:1, name:"subnet 1", vlan:1, space:1, cidr:"10.20.0.0/16"});
+            doUpdates(controller, fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(2);
+            $scope.groupBy = "space";
+            $scope.updateGroupBy();
+            // Second space should have a blank name
+            expect($scope.group.spaces.rows.length).toBe(2);
+            // Move 2nd subnet into first space and check that the name is no
+            // longer shown.
+            subnets[1].space = 0;
+            $scope.updateGroupBy();
+            expect($scope.group.spaces.rows[1].space_name).toBe("");
+        });
+
+        it("adding vlan updates lists appropriately", function() {
+            var fabrics = [ { id: 0, name: "fabric 0" } ];
+            var spaces = [ { id: 0, name: "space 0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            ];
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(1);
+            vlans.push({id: 2, name: "vlan2", vid: 2, fabric: 0});
+            doUpdates(controller, fabrics, spaces, vlans, subnets);
+            // Fabric should have blank name
+            expect($scope.group.fabrics.rows[1].fabric_name).toBe("");
+            expect($scope.group.fabrics.rows.length).toBe(2);
+            $scope.groupBy = "space";
+            $scope.updateGroupBy();
+            // Orphaned VLANs should not be shown in the spaces view, since
+            // there is not path from the space to that VLAN.
+            expect($scope.group.spaces.rows.length).toBe(1);
+        });
+
+        it("adding subnet updates lists", function() {
+            var fabrics = [ { id: 0, name: "fabric 0" } ];
+            var spaces = [ { id: 0, name: "space 0" } ];
+            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
+            var subnets = [
+                { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            ];
+            var controller = setupController(fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(1);
+            subnets.push(
+                {id: 1, name: "subnet 1", vlan: 1, space: 0,
+                 cidr: "10.99.34.0/24"}
+            );
+            doUpdates(controller, fabrics, spaces, vlans, subnets);
+            expect($scope.group.fabrics.rows.length).toBe(2);
+            // Test that redundant fabric and VLAN names are suppressed
+            expect($scope.group.fabrics.rows[1].fabric_name).toBe("");
+            expect($scope.group.fabrics.rows[1].vlan_name).toBe("");
+            $scope.groupBy = "space";
+            $scope.updateGroupBy();
+            expect($scope.group.spaces.rows.length).toBe(2);
         });
     });
 
+    describe("actionChanged", function() {
+
+        it("initializes newObject for fabric", function() {
+            var controller = makeController();
+            $scope.actionOption = {
+                name: "add_fabric",
+                objectName: "fabric"
+            };
+            $scope.actionChanged();
+            expect($scope.newObject).toEqual({});
+        });
+
+        it("initializes newObject for vlan", function() {
+            var controller = makeController();
+            var fabric = {
+                id: makeInteger(0, 100)
+            };
+            $scope.fabrics = [fabric];
+            $scope.actionOption = {
+                name: "add_vlan",
+                objectName: "vlan"
+            };
+            $scope.actionChanged();
+            expect($scope.newObject).toEqual({
+                fabric: fabric.id
+            });
+        });
+
+        it("initializes newObject for space", function() {
+            var controller = makeController();
+            $scope.actionOption = {
+                name: "add_space",
+                objectName: "space"
+            };
+            $scope.actionChanged();
+            expect($scope.newObject).toEqual({});
+        });
+
+        it("initializes newObject for subnet", function() {
+            var controller = makeController();
+            var space = {
+                id: makeInteger(0, 100)
+            };
+            var fabric = {
+                id: makeInteger(0, 100)
+            };
+            var vlan = {
+                id: makeInteger(0, 100),
+                fabric: fabric.id
+            };
+            fabric.vlan_ids = [vlan.id];
+            $scope.fabrics = [fabric];
+            $scope.vlans = [vlan];
+            $scope.spaces = [space];
+            $scope.actionOption = {
+                name: "add_subnet",
+                objectName: "subnet"
+            };
+            $scope.actionChanged();
+            expect($scope.newObject).toEqual({
+                vlan: vlan.id,
+                space: space.id
+            });
+        });
+    });
+
+    describe("cancelAction", function() {
+
+        it("clears actionOption and newObject", function() {
+            var controller = makeController();
+            $scope.actionOption = {};
+            $scope.newObject = {};
+            $scope.cancelAction();
+            expect($scope.actionOption).toBeNull();
+            expect($scope.newObject).toBeNull();
+        });
+    });
+
+    describe("actionSubnetPreSave", function() {
+
+        it("sets fabric to fabric ID for selected VLAN", function() {
+            var controller = makeController();
+            var fabric = {
+                id: makeInteger(0, 100)
+            };
+            var vlan = {
+                id: makeInteger(0, 100),
+                fabric: fabric.id
+            };
+            VLANsManager._items = [vlan];
+            var updated = $scope.actionSubnetPreSave({
+                vlan: vlan.id
+            });
+            expect(updated).toEqual({
+                vlan: vlan.id,
+                fabric: fabric.id
+            });
+        });
+    });
 });

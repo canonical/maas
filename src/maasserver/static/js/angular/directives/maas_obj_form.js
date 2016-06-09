@@ -245,11 +245,13 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                 afterSave: "&",
                 tableForm: "=",
                 saveOnBlur: "=",
+                inline: "=",
                 ngDisabled: "&"
             },
             transclude: true,
             template: (
-                '<form class="form" ng-class="{saving: saving}" ' +
+                '<form class="form" ng-class="{saving: saving, ' +
+                '\'form--inline\': inline}" ' +
                 'ng-transclude></form>'),
             controller: ['$scope', MAASFormController]
         };
@@ -408,8 +410,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Set the classes for the wrapper if not a table form.
                 if(!controller.isTableForm()) {
                     element.addClass("form__group");
-                    element.addClass("form__group--inline");
-                    element.addClass("form__group--subtle");
+                    if(attrs.subtle !== "false") {
+                        element.addClass("form__group--subtle");
+                    }
                 }
 
                 // type and key required.
@@ -435,6 +438,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     '<label for="' + attrs.key + '">' + label + '</label>');
                 if(attrs.labelWidth) {
                     labelElement.addClass(attrs.labelWidth + "-col");
+                } else {
+                    labelElement.addClass("u-margin--right");
                 }
                 element.append(labelElement);
 
@@ -565,7 +570,10 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                 // Errors element.
                 var errorsElement = angular.element(
-                    '<ul class="form__group-errors errors"></ul>');
+                    '<ul class="errors no-margin-bottom"></ul>');
+                if(!controller.isTableForm()) {
+                    errorsElement.addClass("form__group--errors");
+                }
                 inputWrapper.append(errorsElement);
                 element.append(inputWrapper);
 
@@ -621,7 +629,7 @@ angular.module('MAAS').directive('maasObjErrors', function() {
             restrict: "E",
             require: ["^^maasObjForm"],
             scope: {},
-            template: '<ul class="errors"></ul>',
+            template: '<ul class="errors no-margin-bottom"></ul>',
             link: function(scope, element, attrs, controllers) {
                 // Set on the controller the global error handler.
                 controllers[0].errorScope = scope;

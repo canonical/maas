@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from django.core.exceptions import ValidationError
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
@@ -15,6 +17,7 @@ from maasserver.websockets.handlers.vlan import VLANHandler
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
+    ContainsDict,
     Equals,
     Is,
 )
@@ -81,6 +84,23 @@ class TestVLANHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_vlans,
             handler.list({}))
+
+    def test_create(self):
+        admin = factory.make_admin()
+        handler = VLANHandler(admin, {})
+        fabric = factory.make_Fabric()
+        vid = random.randint(1, 4094)
+        name = factory.make_name("vlan")
+        new_vlan = handler.create({
+            'fabric': fabric.id,
+            'vid': vid,
+            'name': name,
+        })
+        self.assertThat(new_vlan, ContainsDict({
+            "fabric": Equals(fabric.id),
+            "name": Equals(name),
+            "vid": Equals(vid),
+        }))
 
 
 class TestVLANHandlerDelete(MAASServerTestCase):

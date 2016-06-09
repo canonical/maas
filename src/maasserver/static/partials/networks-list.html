@@ -16,104 +16,103 @@
                     <div data-maas-cta="actionOptions"
                          data-default-title="Add"
                          data-ng-model="actionOption"
-                         data-ng-change="actionOptionChanged()">
+                         data-ng-change="actionChanged()">
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Forms -->
-        <div data-ng-repeat="option in actionOptions">
-            <div class="clearfix margin-bottom" data-ng-if="actionOption.name === option.name">
-                <div class="page-header__dropdown" data-ng-if="actionOption !== 'add_subnet'" data-ng-hide="actionOption.name === 'add_subnet'">
-                    <form class="form form--inline border-top u-padding--top">
-                        <div class="form__group"
-                             data-maas-model-field="item"
-                             data-maas-label-class="u-margin--right u-margin--bottom-none"
-                             data-maas-select-class="u-margin--right u-display--inline-block"
-                             data-maas-input-text-class="u-margin--right u-display--inline-block"
-                             data-ng-repeat="item in option.form.items">
-                        </div>
-                        <span data-ng-if="!option.error">
-                            <div class="right">
-                                <button class="cta-ubuntu text-button"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="cancelAction(option)">Cancel</button>
-                                <button class="cta-ubuntu"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="submitAction(option)">
-                                    {$ option.form.submit ? option.form.submit : "Go" $}
-                                </button>
-                            </div>
-                        </span>
-                        <span data-ng-if="option.error">
-                            <p class="u-display--inline-block u-margin--none"><i class="icon error u-margin--right-tiny"></i>{$ option.error $}</p>
-                            <div class="right align-right">
-                                <button class="cta-ubuntu text-button"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="cancelAction(option)">Cancel</button>
-                                <button class="cta-ubuntu"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="submitAction(option)">Retry</button>
-                            </div>
-                        </span>
-                    </form>
+        <div class="page-header__dropdown border u-padding--top margin-bottom" data-ng-if="actionOption.name == 'add_fabric'">
+            <maas-obj-form obj="newObject" manager="fabricManager" manager-method="createItem"
+                inline="true" save-on-blur="false" after-save="cancelAction()">
+                <div class="left">
+                    <maas-obj-field
+                        type="text" key="name" label="Add fabric" subtle="false"
+                        placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-errors></maas-obj-errors>
                 </div>
-                <div class="page-header__dropdown border" data-ng-if="actionOption.name === 'add_subnet'">
-                    <h3 class="u-padding--top">{$ actionOption.selectedTitle $}</h3>
-                    <form class="twelve-col u-margin--bottom-small">
-                        <div class="inline six-col {$ $odd ? 'last-col' : '' $}"
-                             data-maas-model-field="item"
-                             data-maas-label-class="two-col"
-                             data-maas-select-class="three-col {$ $odd ? 'last-col' : '' $}"
-                             data-maas-input-text-class="three-col {$ $odd ? 'last-col' : '' $}"
-                             data-ng-repeat="item in option.form.items"></div>
-                    </form>
-                    <div class="page-header__feedback twelve-col no-margin-bottom no-padding-bottom">
-                        <div data-ng-if="!option.error">
-                            <div class="right">
-                                <button class="cta-ubuntu text-button"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="cancelAction(option)">Cancel</button>
-                                <button class="cta-ubuntu"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="submitAction(option)">
-                                    {$ option.form.submit ? option.form.submit : "Go" $}
-                                </button>
-                            </div>
-                        </div>
-                        <div data-ng-if="option.error">
-                            <p class="u-display--inline-block u-margin--none"><i class="icon error u-margin--right-tiny"></i>{$ option.error $}</p>
-                            <div class="right align-right">
-                                <button class="cta-ubuntu text-button"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="cancelAction(option)">Cancel</button>
-                                <button class="cta-ubuntu"
-                                        data-ng-disabled="requesting"
-                                        data-ng-click="submitAction(option)">Retry</button>
-                            </div>
-                        </div>
-                    </div>
+                <div class="right">
+                    <a class="link-cta-ubuntu text-button" data-ng-click="cancelAction()">Cancel</a>
+                    <button class="cta-ubuntu" maas-obj-save>Add fabric</button>
                 </div>
-           </div>
+            </maas-obj-form>
         </div>
-        <!--
-        <div class="page-header__dropdown border ng-hide" data-ng-if="actionOption.name === 'merge_fabrics'">
-            <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
-                <div class="form__group">
-                    <label for="merge-fabric">Merge selected fabrics into</label>
-                    <select name="merge-fabric" id="merge-fabric">
-                        <option value="1">fabric-1</option>
-                        <option value="2">fabric-2</option>
-                        <option value="3">fabric-3</option>
-                    </select>
+        <div class="page-header__dropdown border u-padding--top margin-bottom" data-ng-if="actionOption.name == 'add_vlan'">
+            <maas-obj-form obj="newObject" manager="vlanManager" manager-method="createItem"
+                inline="true" save-on-blur="false" after-save="cancelAction()">
+                <div class="left">
+                    <maas-obj-field class="u-margin--right"
+                        type="text" key="name" label="Add VLAN" subtle="false"
+                        placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-field class="u-margin--right"
+                        type="text" key="vid" label="with VID" subtle="false"
+                        placeholder="numeric value 1-4094"></maas-obj-field>
+                    <maas-obj-field
+                        type="options" key="fabric" label="to fabric" subtle="false"
+                        options="f.id as f.name for f in fabrics"
+                        placeholder="Select fabric"></maas-obj-field>
+                    <maas-obj-errors></maas-obj-errors>
+                </div>
+                <div class="right">
+                    <a class="link-cta-ubuntu text-button" data-ng-click="cancelAction()">Cancel</a>
+                    <button class="cta-ubuntu" maas-obj-save>Add VLAN</button>
+                </div>
+            </maas-obj-form>
+        </div>
+        <div class="page-header__dropdown border u-padding--top margin-bottom" data-ng-if="actionOption.name == 'add_space'">
+            <maas-obj-form obj="newObject" manager="spaceManager" manager-method="createItem"
+                inline="true" save-on-blur="false" after-save="cancelAction()">
+                <div class="left">
+                    <maas-obj-field
+                        type="text" key="name" label="Add space" subtle="false"
+                        placeholder="Name (optional)"></maas-obj-field>
+                    <maas-obj-errors></maas-obj-errors>
+                </div>
+                <div class="right">
+                    <a class="link-cta-ubuntu text-button" data-ng-click="cancelAction()">Cancel</a>
+                    <button class="cta-ubuntu" maas-obj-save>Add space</button>
+                </div>
+            </maas-obj-form>
+        </div>
+        <div class="page-header__dropdown border" data-ng-if="actionOption.name == 'add_subnet'">
+            <h3 class="u-padding--top">Add subnet</h3>
+            <maas-obj-form obj="newObject" manager="subnetManager" manager-method="createItem"
+                table-form="true" save-on-blur="false" pre-process="actionSubnetPreSave" after-save="cancelAction()">
+                <div class="twelve-col">
+                    <maas-obj-field class="inline six-col"
+                        type="text" key="name" label="Name" placeholder="Name (optional)"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field class="inline six-col last-col"
+                        type="text" key="dns_servers" label="DNS servers"
+                        placeholder="Use IPv4 or IPv6 format (optional)"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field class="inline six-col"
+                        type="text" key="cidr" label="CIDR"
+                        placeholder="Use IPv4 or IPv6 format"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field class="inline six-col last-col"
+                        type="options" key="vlan" label="Farbic &amp; VLAN" placeholder="Choose Fabric &amp; VLAN"
+                        options="v.id as getVLANName(v) group by getFabricNameById(v.fabric) for v in vlans"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field class="inline six-col"
+                        type="text" key="gateway_ip" label="Gateway IP"
+                        placeholder="Use IPv4 or IPv6 format (optional)"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field class="inline six-col last-col"
+                        type="options" key="space" label="Space" placeholder="Choose Space"
+                        options="space.id as space.name for space in spaces"
+                        label-width="two" input-width="three"></maas-obj-field>
+                </div>
+                <div class="page-header__feedback twelve-col no-margin-bottom">
+                    <div class="left">
+                        <maas-obj-errors></maas-obj-errors>
+                    </div>
                     <div class="right">
-                        <button class="cta-ubuntu text-button">Cancel</button>
-                        <button class="cta-ubuntu">Merge fabrics</button>
+                        <a class="link-cta-ubuntu text-button" data-ng-click="cancelAction()">Cancel</a>
+                        <button class="cta-ubuntu" maas-obj-save>Add subnet</button>
                     </div>
                 </div>
-            </form>
+            </maas-obj-form>
         </div>
-        -->
     </div>
 </header>
 <section class="row no-padding-top">

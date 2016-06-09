@@ -542,7 +542,6 @@ select {
         margin-bottom: 0;
         line-height: 36px;
         vertical-align: top;
-        color: #888;
       }
 
       input,
@@ -558,6 +557,10 @@ select {
     }
 
     &.form__group--subtle {
+
+      label {
+        color: #888;
+      }
 
       input,
       select,

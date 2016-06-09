@@ -14,6 +14,7 @@ from maasserver.enum import (
 from maasserver.forms_iprange import IPRangeForm
 from maasserver.forms_vlan import VLANForm
 from maasserver.models import (
+    Fabric,
     IPRange,
     RackController,
     Subnet,
@@ -76,6 +77,18 @@ class VLANHandler(TimestampedModelHandler):
                 for subnet in obj.subnet_set.all()
             }))
         return data
+
+    def get_form_class(self, action):
+        if action == "create":
+            def create_vlan_form(*args, **kwargs):
+                data = kwargs.get('data', {})
+                fabric = data.get('fabric', None)
+                if fabric is not None:
+                    kwargs['fabric'] = Fabric.objects.get(id=fabric)
+                return VLANForm(*args, **kwargs)
+            return create_vlan_form
+        else:
+            return super(VLANHandler, self).get_form_class(action)
 
     def delete(self, parameters):
         """Delete this VLAN."""
