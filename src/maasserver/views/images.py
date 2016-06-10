@@ -263,10 +263,11 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                 else:
                     resource.complete = False
                     if self.clusters_syncing:
-                        resource.status = "Syncing to clusters"
+                        resource.status = "Syncing to rack controller(s)"
                         resource.downloading = True
                     else:
-                        resource.status = "Waiting for clusters to sync"
+                        resource.status = (
+                            "Waiting for rack controller(s) to sync")
                         resource.downloading = False
 
     def node_has_architecture_for_resource(self, node, resource):
@@ -548,10 +549,10 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             else:
                 resource.complete = False
                 if self.clusters_syncing:
-                    resource.status = "Syncing to clusters"
+                    resource.status = "Syncing to rack controller(s)"
                     resource.downloading = True
                 else:
-                    resource.status = "Waiting for clusters to sync"
+                    resource.status = "Waiting for rack controller(s) to sync"
                     resource.downloading = False
         return resource
 

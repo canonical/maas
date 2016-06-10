@@ -907,7 +907,7 @@ class TestImageAjax(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
-            "Waiting for clusters to sync", json_resource['status'])
+            "Waiting for rack controller(s) to sync", json_resource['status'])
 
     def test_combined_subarch_resource_shows_clusters_syncing(self):
         self.client_log_in()
@@ -928,7 +928,7 @@ class TestImageAjax(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
-            "Syncing to clusters", json_resource['status'])
+            "Syncing to rack controller(s)", json_resource['status'])
 
 
 class TestImageDelete(MAASServerTestCase):
