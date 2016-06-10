@@ -1464,6 +1464,12 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.commissioning import generate_user_data
         from metadataserver.models import NodeResult
 
+        # Only commission if power type is configured.
+        if self.power_type == '':
+            raise UnknownPowerType(
+                "Unconfigured power type. "
+                "Please configure the power type and try again.")
+
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING,
             action='start commissioning')

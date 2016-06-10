@@ -1880,6 +1880,13 @@ class TestNode(MAASServerTestCase):
             {status: status for status in unacceptable_states},
             {status: node.status for status, node in nodes.items()})
 
+    def test_start_commissioning_errors_for_unconfigured_power_type(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.NEW, power_type='')
+        admin = factory.make_admin()
+        self.assertRaises(
+            UnknownPowerType, node.start_commissioning, admin)
+
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.NEW, power_type='manual')

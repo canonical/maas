@@ -174,6 +174,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
             {
                 'hostname': 'diane',
                 'architecture': architecture,
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         diane = get_one(Machine.objects.filter(hostname='diane'))
