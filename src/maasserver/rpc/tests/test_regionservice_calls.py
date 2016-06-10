@@ -59,6 +59,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCalledWith,
 )
@@ -84,6 +85,7 @@ from provisioningserver.rpc.region import (
     ReportBootImages,
     ReportForeignDHCPServer,
     RequestNodeInfoByMACAddress,
+    RequestRackRefresh,
     SendEvent,
     SendEventMACAddress,
     UpdateInterfaces,
@@ -1233,3 +1235,25 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         params = {'mac_address': factory.make_mac_address()}
         d = call_responder(Region(), RequestNodeInfoByMACAddress, params)
         return assert_fails_with(d, NoSuchNode)
+
+
+class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
+
+    def test_request_refresh_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            RequestRackRefresh.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_refresh(self):
+        rack = yield deferToDatabase(factory.make_RackController)
+        self.patch(regionservice, 'deferToDatabase').return_value = succeed(
+            rack)
+        mock_refresh = self.patch(rack, 'refresh')
+        response = yield call_responder(
+            Region(), RequestRackRefresh, {'system_id': rack.system_id})
+        self.assertIsNotNone(response)
+
+        self.assertThat(mock_refresh, MockCalledOnce())

@@ -8,7 +8,10 @@ __all__ = [
 ]
 
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.rpc.region import UpdateInterfaces
+from provisioningserver.rpc.region import (
+    RequestRackRefresh,
+    UpdateInterfaces,
+)
 from provisioningserver.utils.services import NetworksMonitoringService
 
 
@@ -25,6 +28,10 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
     def recordInterfaces(self, interfaces):
         """Record the interfaces information."""
         client = self.clientService.getClient()
-        return client(
-            UpdateInterfaces, system_id=client.localIdent,
-            interfaces=interfaces)
+        # On first run perform a refresh
+        if self._recorded is None:
+            return client(RequestRackRefresh, system_id=client.localIdent)
+        else:
+            return client(
+                UpdateInterfaces, system_id=client.localIdent,
+                interfaces=interfaces)

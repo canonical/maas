@@ -321,7 +321,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         # Mock the registration into the database, as the rack controller is
         # already created. We reset this once registration is complete so as
         # to not interfere with other tests.
-        registered = rack_controller, False  # Hint that no refresh needed.
+        registered = rack_controller
         patcher = MonkeyPatcher()
         patcher.add_patch(
             rackcontrollers, "register",

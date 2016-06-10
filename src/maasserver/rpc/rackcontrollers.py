@@ -80,7 +80,7 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
     registered and successfully connected we will refresh all commissioning
     data.
 
-    :return: A ``(rack-controller, refresh-hint)`` tuple.
+    :return: A ``rack-controller``.
     """
     if interfaces is None:
         interfaces = {}
@@ -91,13 +91,18 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
         maaslog.info("Created new rack controller %s.", node.hostname)
     elif node.is_rack_controller:
         maaslog.info("Registering existing rack controller %s.", node.hostname)
-    else:
+    elif node.is_region_controller:
         maaslog.info(
-            "Found existing node %s as candidate for rack controller.",
-            node.hostname)
+            "Converting %s into a region and rack controller.", node.hostname)
+        node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        node.save()
+    else:
+        maaslog.info("Converting %s into a rack controller.", node.hostname)
+        node.node_type = NODE_TYPE.RACK_CONTROLLER
+        node.save()
 
-    # This may be a no-op, but it does provide us with a refresh hint.
-    rackcontroller, needs_refresh = upgrade(node)
+    rackcontroller = typecast_node(node, RackController)
+
     # Update `rackcontroller.url` from the given URL, but only when the
     # hostname is not 'localhost' (i.e. the default value used when the master
     # cluster connects).
@@ -112,8 +117,7 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
     rackcontroller.save(update_fields=update_fields)
     # Update networking information every time we see a rack.
     rackcontroller.update_interfaces(interfaces)
-    # Hint to callers whether or not this rack needs to be refreshed.
-    return rackcontroller, needs_refresh
+    return rackcontroller
 
 
 @typed
@@ -134,40 +138,6 @@ def find(system_id: Optional[str], hostname: str, interfaces: dict):
         Q(interface__mac_address__in=mac_addresses)
     )
     return Node.objects.filter(query).first()
-
-
-def upgrade(node):
-    """Upgrade `node` to a rack controller if it isn't already.
-
-    Return a hint as to whether a refresh is necessary.
-
-    :return: A ``(rack-controller, refresh-hint)`` tuple.
-    """
-    # Refresh whenever an existing node is converted for use as a rack
-    # controller. This is needed for two reasons. First, when the region starts
-    # it creates a node for itself but only gathers networking information.
-    # Second, information about the node may have changed since its last use.
-    needs_refresh = True
-
-    if node.is_rack_controller:
-        # We don't want to refresh existing rack controllers as each time a
-        # rack controller connects to a region it creates four connections.
-        # This means for every region we connect to we would refresh
-        # 4 * regions every time the rack controller restarts. If the cpu_count
-        # and memory is non-zero our information at this point should be
-        # current and the user can always manually refresh.
-        needs_refresh = (node.cpu_count == 0 or node.memory == 0)
-    elif node.is_region_controller:
-        maaslog.info(
-            "Converting %s into a region and rack controller.", node.hostname)
-        node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
-        node.save()
-    else:
-        maaslog.info("Converting %s into a rack controller.", node.hostname)
-        node.node_type = NODE_TYPE.RACK_CONTROLLER
-        node.save()
-
-    return typecast_node(node, RackController), needs_refresh
 
 
 @transactional

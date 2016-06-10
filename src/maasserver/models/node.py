@@ -3606,7 +3606,11 @@ class Controller(Node):
     def _get_token_for_controller(self):
         # Avoid circular imports.
         from metadataserver.models import NodeKey
-        return NodeKey.objects.get_token_for_node(self)
+        token = NodeKey.objects.get_token_for_node(self)
+        # Pull consumer into memory so it can be accessed outside a
+        # database thread
+        token.consumer
+        return token
 
     @transactional
     def _get_current_node_result_ids(self):

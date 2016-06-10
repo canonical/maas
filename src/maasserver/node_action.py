@@ -482,25 +482,6 @@ class ImportImages(NodeAction):
             raise NodeActionError(exception)
 
 
-class Refresh(NodeAction):
-    """Refresh a rack or region and rack controller."""
-    name = "refresh"
-    display = "Refresh"
-    display_sentence = "refreshed"
-    permission = NODE_PERMISSION.ADMIN
-    for_type = {
-        NODE_TYPE.RACK_CONTROLLER,
-        NODE_TYPE.REGION_AND_RACK_CONTROLLER
-    }
-
-    def execute(self):
-        """See `NodeAction.execute`."""
-        try:
-            self.node.refresh()
-        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
-
-
 ACTION_CLASSES = (
     Commission,
     Acquire,
@@ -514,7 +495,6 @@ ACTION_CLASSES = (
     SetZone,
     Delete,
     ImportImages,
-    Refresh,
 )
 
 ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)

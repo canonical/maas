@@ -523,7 +523,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         protocol.transport.getHost.return_value = host
         mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
         mock_deferToDatabase.side_effect = [
-            succeed((rack_controller, False)),
+            succeed(rack_controller),
             succeed(None),
         ]
         yield call_responder(

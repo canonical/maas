@@ -7,7 +7,6 @@ import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver.api import rackcontrollers
-from maasserver.models import node as node_module
 from maasserver.testing.api import (
     APITestCase,
     explain_unexpected_response,
@@ -48,22 +47,6 @@ class TestRackControllerAPI(APITestCase.ForUser):
         rack = factory.make_RackController(owner=self.user)
         response = self.client.put(self.get_rack_uri(rack), {})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_POST_refresh_checks_permission(self):
-        self.patch(node_module.RackController, 'refresh')
-        rack = factory.make_RackController(owner=factory.make_User())
-        response = self.client.post(self.get_rack_uri(rack), {'op': 'refresh'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_POST_refresh_returns_null(self):
-        self.patch(node_module.RackController, 'refresh')
-        self.become_admin()
-        rack = factory.make_RackController(owner=factory.make_User())
-        response = self.client.post(self.get_rack_uri(rack), {'op': 'refresh'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            ('Refresh of %s has begun' % rack.hostname).encode('utf-8'),
-            response.content)
 
     def test_POST_import_boot_images_import_to_rack_controllers(self):
         from maasserver.clusterrpc import boot_images

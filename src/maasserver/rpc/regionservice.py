@@ -445,6 +445,18 @@ class Region(RPCProtocol):
         return deferToDatabase(
             update_services, system_id, services)
 
+    @region.RequestRackRefresh.responder
+    def request_rack_refresh(self, system_id):
+        """Request a refresh of the rack
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.RequestRackRefresh`.
+        """
+        d = deferToDatabase(RackController.objects.get, system_id=system_id)
+        d.addCallback(lambda rack: rack.refresh())
+        d.addCallback(lambda _: {})
+        return d
+
 
 @transactional
 def registerConnection(region_id, rack_controller, host):
@@ -534,7 +546,7 @@ class RegionServer(Region):
 
         try:
             # Register, which includes updating interfaces.
-            rack_controller, needs_refresh = yield deferToDatabase(
+            rack_controller = yield deferToDatabase(
                 rackcontrollers.register, system_id=system_id,
                 hostname=hostname, interfaces=interfaces, url=url)
 
@@ -568,13 +580,6 @@ class RegionServer(Region):
             # the information about the rack controller if needed.
             log.msg(
                 "Rack controller '%s' has been registered." % self.ident)
-            if self.hostIsRemote and needs_refresh:
-                # Needs to be refresh. Perform this operation in a thread but
-                # we ignore when it is done.
-                log.msg(
-                    "Rack controller '%s' needs to be refreshed; "
-                    "performing the refresh operation." % self.ident)
-                deferToDatabase(rack_controller.refresh)
 
             # Done registering the rack controller and connection.
             return {'system_id': self.ident}

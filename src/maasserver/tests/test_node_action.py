@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import random
 from unittest.mock import ANY
 
 from django.db import transaction
@@ -28,10 +27,7 @@ from maasserver.models import (
     signals,
     StaticIPAddress,
 )
-from maasserver.models.node import (
-    RackController,
-    typecast_to_node_type,
-)
+from maasserver.models.node import typecast_to_node_type
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import (
     Abort,
@@ -46,7 +42,6 @@ from maasserver.node_action import (
     NodeAction,
     PowerOff,
     PowerOn,
-    Refresh,
     Release,
     RPC_EXCEPTIONS,
     SetZone,
@@ -854,33 +849,6 @@ class TestImportImages(MAASServerTestCase):
         self.assertFalse(ImportImages(node, user).is_actionable())
 
 
-class TestRefresh(MAASServerTestCase):
-
-    def test_refresh(self):
-        user = factory.make_admin()
-        rack = factory.make_RackController()
-        mock_refresh = self.patch(rack, 'refresh')
-
-        with post_commit_hooks:
-            Refresh(rack, user).execute()
-
-        self.assertThat(mock_refresh, MockCalledOnce())
-
-    def test_requires_admin_permission(self):
-        user = factory.make_User()
-        rack = factory.make_RackController()
-        self.assertFalse(Refresh(rack, user).is_permitted())
-
-    def test_requires_rack(self):
-        user = factory.make_User()
-        node = factory.make_Node(
-            node_type=factory.pick_choice(
-                NODE_TYPE_CHOICES, but_not=[
-                    NODE_TYPE.RACK_CONTROLLER,
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER]))
-        self.assertFalse(Refresh(node, user).is_actionable())
-
-
 class TestActionsErrorHandling(MAASServerTestCase):
     """Tests for error handling in actions.
 
@@ -904,8 +872,6 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.make_exception()
         self.patch(node, '_start').side_effect = exception
         self.patch(node, '_stop').side_effect = exception
-        if isinstance(node, RackController):
-            self.patch(node, 'refresh').side_effect = exception
 
     def make_action(
             self, action_class, node_status, power_state=None,
@@ -956,18 +922,6 @@ class TestActionsErrorHandling(MAASServerTestCase):
     def test_Release_handles_rpc_errors(self):
         action = self.make_action(
             Release, NODE_STATUS.ALLOCATED, power_state=POWER_STATE.ON)
-        self.patch_rpc_methods(action.node)
-        exception = self.assertRaises(NodeActionError, action.execute)
-        self.assertEqual(
-            get_error_message_for_exception(action.node._stop.side_effect),
-            str(exception))
-
-    def test_Refresh_handles_rpc_errors(self):
-        action = self.make_action(
-            Refresh, NODE_STATUS.ALLOCATED, power_state=POWER_STATE.ON,
-            node_type=random.choice([
-                NODE_TYPE.RACK_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER]))
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(

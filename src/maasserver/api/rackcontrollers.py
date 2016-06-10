@@ -124,21 +124,6 @@ class RackControllerHandler(NodeHandler, PowerMixin):
 
     @admin_method
     @operation(idempotent=False)
-    def refresh(self, request, system_id):
-        """Refresh the hardware information for a specific rack controller.
-
-        Returns 404 if the rack-controller is not found.
-        Returns 403 if the user does not have permission to refresh the rack.
-        """
-        rack = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        rack.refresh()
-        return HttpResponse(
-            "Refresh of %s has begun" % rack.hostname,
-            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
-
-    @admin_method
-    @operation(idempotent=False)
     def import_boot_images(self, request, system_id):
         """Import the boot images on this rack controller.
 

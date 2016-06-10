@@ -29,6 +29,22 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
+    def test_runs_refresh_first_time(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(region.RequestRackRefresh)
+        self.addCleanup((yield connecting))
+
+        rpc_service = services.getServiceNamed('rpc')
+        service = RackNetworksMonitoringService(rpc_service, Clock())
+
+        yield service.startService()
+        yield service.stopService()
+
+        self.assertThat(
+            protocol.RequestRackRefresh, MockCalledOnceWith(
+                protocol, system_id=rpc_service.getClient().localIdent))
+
+    @inlineCallbacks
     def test_reports_interfaces_to_region(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(region.UpdateInterfaces)
@@ -47,6 +63,10 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         rpc_service = services.getServiceNamed('rpc')
         service = RackNetworksMonitoringService(rpc_service, Clock())
         service.getInterfaces = lambda: succeed(interfaces)
+        # Put something in the cache. This tells recordInterfaces that refresh
+        # has already run but the interfaces have changed thus they need to be
+        # updated.
+        service._interfacesRecorded({})
 
         yield service.startService()
         yield service.stopService()

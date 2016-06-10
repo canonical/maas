@@ -108,23 +108,23 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_sets_owner_to_worker_when_none(self):
         node = factory.make_Node()
-        rack_registered, needs_refresh = register(system_id=node.system_id)
+        rack_registered = register(system_id=node.system_id)
         self.assertEqual(worker_user.get_worker_user(), rack_registered.owner)
 
     def test_leaves_owner_when_owned(self):
         user = factory.make_User()
         node = factory.make_Machine(owner=user)
-        rack_registered, needs_refresh = register(system_id=node.system_id)
+        rack_registered = register(system_id=node.system_id)
         self.assertEqual(user, rack_registered.owner)
 
     def test_finds_existing_node_by_system_id(self):
         node = factory.make_Node()
-        rack_registered, needs_refresh = register(system_id=node.system_id)
+        rack_registered = register(system_id=node.system_id)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_hostname(self):
         node = factory.make_Node()
-        rack_registered, needs_refresh = register(hostname=node.hostname)
+        rack_registered = register(hostname=node.hostname)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_mac(self):
@@ -140,38 +140,8 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered, needs_refresh = register(interfaces=interfaces)
+        rack_registered = register(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
-
-    def test_finds_existing_controller_needs_refresh_with_bad_info(self):
-        node_type = random.choice([
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        ])
-        node = factory.make_Node(node_type=node_type)
-        rack_registered, needs_refresh = register(system_id=node.system_id)
-        self.assertTrue(needs_refresh)
-
-    def test_finds_existing_controller_doesnt_need_refresh_good_info(self):
-        node_type = random.choice([
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        ])
-        node = factory.make_Node(
-            node_type=node_type, cpu_count=random.randint(1, 32),
-            memory=random.randint(1024, 8096))
-        rack_registered, needs_refresh = register(system_id=node.system_id)
-        self.assertFalse(needs_refresh)
-
-    def test_converts_existing_node_sets_needs_refresh_to_true(self):
-        node_type = random.choice([
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.DEVICE,
-            NODE_TYPE.REGION_CONTROLLER,
-        ])
-        node = factory.make_Node(node_type=node_type)
-        rack_registered, needs_refresh = register(system_id=node.system_id)
-        self.assertTrue(needs_refresh)
 
     def test_find_existing_keeps_type(self):
         node_type = random.choice(
@@ -190,7 +160,7 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_converts_region_controller(self):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        rack_registered, needs_refresh = register(system_id=node.system_id)
+        rack_registered = register(system_id=node.system_id)
         self.assertEqual(
             rack_registered.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
 
@@ -199,14 +169,12 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Found existing node %s as candidate for rack controller.\n"
-            "Converting %s into a region and rack controller.\n"
-            % (node.hostname, node.hostname),
-            logger.output)
+            "Converting %s into a region and rack controller.\n" %
+            node.hostname, logger.output)
 
     def test_converts_existing_node(self):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        rack_registered, needs_refresh = register(system_id=node.system_id)
+        rack_registered = register(system_id=node.system_id)
         self.assertEqual(rack_registered.node_type, NODE_TYPE.RACK_CONTROLLER)
 
     def test_logs_converting_existing_node(self):
@@ -214,9 +182,7 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Found existing node %s as candidate for rack controller.\n"
-            "Converting %s into a rack controller.\n"
-            % (node.hostname, node.hostname),
+            "Converting %s into a rack controller.\n" % node.hostname,
             logger.output)
 
     def test_creates_new_rackcontroller(self):
@@ -233,19 +199,6 @@ class TestRegisterRackController(MAASServerTestCase):
         }
         register(interfaces=interfaces)
         self.assertEqual(node_count + 1, len(Node.objects.all()))
-
-    def test_creates_new_rackcontroller_sets_needs_refresh_to_true(self):
-        interfaces = {
-            factory.make_name("eth0"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        rack_registered, needs_refresh = register(interfaces=interfaces)
-        self.assertTrue(needs_refresh)
 
     def test_logs_creating_new_rackcontroller(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -266,7 +219,7 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered, needs_refresh = register(interfaces=interfaces)
+        rack_registered = register(interfaces=interfaces)
         self.assertThat(
             rack_registered.interface_set.all(),
             MatchesSetwise(*(
@@ -293,7 +246,7 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered, needs_refresh = register(
+        rack_registered = register(
             rack_controller.system_id, interfaces=interfaces)
         self.assertThat(
             rack_registered.interface_set.all(),

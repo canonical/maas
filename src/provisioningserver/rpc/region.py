@@ -480,3 +480,16 @@ class UpdateServices(amp.Command):
     errors = {
         NoSuchCluster: b"NoSuchCluster",
     }
+
+
+class RequestRackRefresh(amp.Command):
+    """Request a refresh of the rack from the region.
+
+    :since: 2.0
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = []
+    errors = []
