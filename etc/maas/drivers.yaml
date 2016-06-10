@@ -45,7 +45,7 @@ drivers:
   - 'pci:v00001137d00000046sv*sd*bc*sc*i*'
   module: snic
   package: snic-dkms
-  repository: http://ppa.launchpad.net/cisco-ucs-team/snic-stable/ubuntu 
+  repository: http://ppa.launchpad.net/cisco-ucs-team/snic-stable/ubuntu
 - blacklist: ahci
   comment: HPDSA driver
   key_binary: !!binary |
@@ -75,4 +75,4 @@ drivers:
   - 'pci:v0000103Cd0000193Fsv0000103Csd00003381bc*sc*i*'
   module: hpdsa
   package: hpdsa-dkms
-  repository: http://downloads.linux.hp.com/SDR/repo/ubuntu-hpdsa
+  repository: http://downloads.linux.hpe.com/SDR/repo/ubuntu-hpdsa

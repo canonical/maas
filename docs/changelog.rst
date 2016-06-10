@@ -6,10 +6,17 @@ Changelog
 =====
 
 LP: #1584850    [1.9] DNS record added for non-boot interface IP when no address of that family exists on the boot interface
+
 LP: #1583715    [1.9] Ensure that restricted resources also perform meaningful authentication of clients.
+
 LP: #1584211    [1.9] Exclude RAM, floppy, and loopback devices from lsblk during commissioning.
+
 LP: #1585400    [1.9] Change detect_missing_packages in moonshot power driver to look for `ipmitool` instead of `ipmipower`
+
 LP: #1581318    [1.9] Append version to templateUrl in maas.js angular code.
+
+LP: #1591093    [2.0,1.9] 3rd party HP drivers (archive hostname renamed) - deployment fails
+
 
 1.9.3
 =====
@@ -20,9 +27,13 @@ Bug Fix Update
 --------------
 
 LP: #1521618    [1.9] wrong subnet in DHCP answer when multiple networks are present
+
 LP: #1536604    [1.9] IntegrityError while uploading leases - when there are reserved IP's on the dynamic range
+
 LP: #1580712    [1.9] dhcp update error: str object has no attribute mac
+
 LP: #1575567    [1.9] Re-commissioning doesn't detect storage changes
+
 LP: #1576194    [1.9] Enlistment via DHCP fails because DNS has bogus PTR record
 
 
