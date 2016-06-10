@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -432,10 +434,31 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         with ExpectedException(ValidationError, self.reserved_no_fit):
             iprange.save()
 
-    def test__dynamic_range_cannot_overlap_static_ip(self):
+    def test__reserved_range_can_overlap_most_ip_types(self):
         subnet = make_plain_subnet()
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+            subnet=subnet,
+            alloc_type=random.choice((
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED,
+                IPADDRESS_TYPE.DISCOVERED)))
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.RESERVED,
+            start_ip="192.168.0.1",
+            end_ip="192.168.0.254",
+        )
+        iprange.save()
+
+    def test__dynamic_range_cannot_overlap_most_ip_types(self):
+        subnet = make_plain_subnet()
+        factory.make_StaticIPAddress(
+            subnet=subnet,
+            alloc_type=random.choice((
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.USER_RESERVED)))
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
@@ -445,15 +468,33 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         with ExpectedException(ValidationError, self.dynamic_overlaps):
             iprange.save()
 
-    def test__reserved_range_can_overlap_static_ip(self):
+    # Regression for lp:1580772.
+    def test__dynamic_range_can_overlap_discovered_ip(self):
         subnet = make_plain_subnet()
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet)
+            ip="192.168.0.3",
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet)
         iprange = IPRange(
             subnet=subnet,
-            type=IPRANGE_TYPE.RESERVED,
-            start_ip="192.168.0.1",
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.2",
             end_ip="192.168.0.254",
+        )
+        iprange.save()
+
+    # Regression for lp:1580772.
+    def test__dynamic_range_can_match_discovered_ip(self):
+        subnet = make_plain_subnet()
+        factory.make_StaticIPAddress(
+            ip="192.168.0.3",
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet)
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.3",
+            end_ip="192.168.0.3",
         )
         iprange.save()
 

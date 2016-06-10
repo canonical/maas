@@ -27,6 +27,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     IPRANGE_TYPE,
     RDNS_MODE,
     RDNS_MODE_CHOICES,
@@ -401,20 +402,21 @@ class Subnet(CleanSave, TimestampedModel):
                 "IP range. (Delete the dynamic range or disable DHCP first.)")
         super().delete(*args, **kwargs)
 
-    def get_staticipaddresses_in_use(self):
-        """Returns a list of `netaddr.IPAddress` objects to represent each
-        IP address in use in this `Subnet`."""
-        # We could exclude DISCOVERED addresses here, but that wouldn't be
-        # genuine. (we'd be allowing something we have observed as an in-use
-        # address to potentially be claimed for something else, which could
-        # be a conflict.)
+    def _get_ranges_for_allocated_ips(self, ipnetwork):
+        """Returns a set of IPrange objects created from the set of allocated
+        StaticIPAddress objects.."""
+        # We exclude DISCOVERED addresses here because they aren't considered
+        # allocated ranges, and new ranges can overlap them - lp:1580772).
         # Note, the original implementation used .exclude() to filter,
         # but we'll filter at runtime so that prefetch_related in the
         # websocket works properly.
-        return set(
-            IPAddress(ip.ip)
-            for ip in self.staticipaddress_set.all()
-            if ip.ip)
+        ranges = set()
+        for sip in self.staticipaddress_set.all():
+            if sip.ip and sip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                ip = IPAddress(sip.ip)
+                if ip in ipnetwork:
+                    ranges.add(make_iprange(ip, purpose="assigned-ip"))
+        return ranges
 
     def get_ipranges_in_use(self, exclude_addresses=[], ranges_only=False):
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
@@ -447,7 +449,6 @@ class Subnet(CleanSave, TimestampedModel):
                     first, first, purpose="rfc-4291-2.6.1")}
         ipnetwork = self.get_ipnetwork()
         if not ranges_only:
-            assigned_ip_addresses = self.get_staticipaddresses_in_use()
             if (self.gateway_ip is not None and self.gateway_ip != '' and
                     self.gateway_ip in ipnetwork):
                 ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
@@ -457,11 +458,7 @@ class Subnet(CleanSave, TimestampedModel):
                     for server in self.dns_servers
                     if server in ipnetwork
                 )
-            ranges |= set(
-                make_iprange(ip, purpose="assigned-ip")
-                for ip in assigned_ip_addresses
-                if ip in ipnetwork
-            )
+            ranges |= self._get_ranges_for_allocated_ips(ipnetwork)
             ranges |= set(
                 make_iprange(address, purpose="excluded")
                 for address in exclude_addresses
