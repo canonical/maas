@@ -229,6 +229,15 @@
                             <dt class="two-col">Type</dt>
                                 <dd class="four-col last-col">
                                     {$ node.node_type_display $}
+                                    <span class="icon help tooltip"
+                                          data-tooltip="A region controller controls MAAS services like DNS and runs the database."
+                                          data-ng-show="node.node_type == 3"></span>
+                                    <span class="icon help tooltip"
+                                          data-tooltip="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."
+                                          data-ng-show="node.node_type == 2"></span>
+                                    <span class="icon help tooltip"
+                                          data-tooltip="A region controller controls MAAS services like DNS and runs the database.&#xa;&#xa;A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."
+                                          data-ng-show="node.node_type == 4"></span>
                                 </dd>
                             <span data-ng-show="node.node_type == 2 || node.node_type == 4">
                             <dt class="two-col">Last image sync</dt>
