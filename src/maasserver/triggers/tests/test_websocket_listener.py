@@ -557,42 +557,6 @@ class TestEventListener(
         finally:
             yield listener.stopService()
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("event", lambda *args: dv.set(args))
-        event = yield deferToDatabase(self.create_event)
-
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_event,
-                event.id,
-                {'description': factory.make_name('description')})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % event.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("event", lambda *args: dv.set(args))
-        event = yield deferToDatabase(self.create_event)
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_event, event.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('delete', '%s' % event.id), dv.value)
-        finally:
-            yield listener.stopService()
-
 
 class TestNodeEventListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):

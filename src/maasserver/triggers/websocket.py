@@ -1266,18 +1266,8 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'event_create_notify', 'event_create', 'NEW.id'))
-    register_procedure(
-        render_notification_procedure(
-            'event_update_notify', 'event_update', 'NEW.id'))
-    register_procedure(
-        render_notification_procedure(
-            'event_delete_notify', 'event_delete', 'OLD.id'))
     register_trigger(
         "maasserver_event", "event_create_notify", "insert")
-    register_trigger(
-        "maasserver_event", "event_update_notify", "update")
-    register_trigger(
-        "maasserver_event", "event_delete_notify", "delete")
 
     # Events table, update to linked node.
     register_procedure(EVENT_NODE_NOTIFY % (

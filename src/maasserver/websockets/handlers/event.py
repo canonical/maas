@@ -106,15 +106,9 @@ class EventHandler(TimestampedModelHandler):
 
     def on_listen(self, channel, action, pk):
         """Called by the protocol when a channel notification occurs."""
-        pk = self._meta.pk_type(pk)
-        if action == "delete":
-            # Possible to get a delete for an event that is currently, not
-            # being viewed by the user because it belongs to a differnet node.
-            # Since there is no way to get the deleted event, we just send the
-            # primary key, it will only be removed if the client has an event
-            # with that id.
-            return (self._meta.handler_name, action, pk)
-
+        # Only care about create everything else is ignored.
+        if action != "create":
+            return None
         obj = self.listen(channel, action, pk)
         if obj is None:
             return None

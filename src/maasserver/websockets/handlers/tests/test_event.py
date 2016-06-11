@@ -20,7 +20,10 @@ from maasserver.websockets.handlers.event import (
     EventHandler,
 )
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from testtools.matchers import (
     Equals,
     Is,
@@ -198,17 +201,28 @@ class TestEventHandler(MAASServerTestCase):
         self.expectThat(handler.clear({"node_id": node.id}), Is(None))
         self.expectThat(handler.cache["node_ids"], Equals([]))
 
-    def test_on_listen_calls_listen(self):
+    def test_on_listen_calls_listen_for_create(self):
         user = factory.make_User()
         handler = EventHandler(user, {})
         mock_listen = self.patch(handler, "listen")
         mock_listen.return_value = None
         pk = random.randint(1, 1000)
-        handler.on_listen(sentinel.channel, sentinel.action, pk)
+        handler.on_listen(sentinel.channel, "create", pk)
         self.assertThat(
             mock_listen,
             MockCalledOnceWith(
-                sentinel.channel, sentinel.action, pk))
+                sentinel.channel, "create", pk))
+
+    def test_on_listen_doesnt_call_listen_for_non_create(self):
+        user = factory.make_User()
+        handler = EventHandler(user, {})
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.return_value = None
+        pk = random.randint(1, 1000)
+        action = factory.make_string()
+        if action != "create":
+            handler.on_listen(sentinel.channel, action, pk)
+            self.assertThat(mock_listen, MockNotCalled())
 
     def test_on_listen_returns_None_if_listen_returns_None(self):
         user = factory.make_User()
@@ -218,15 +232,6 @@ class TestEventHandler(MAASServerTestCase):
         self.assertIsNone(
             handler.on_listen(
                 sentinel.channel, sentinel.action, random.randint(1, 1000)))
-
-    def test_on_listen_delete_returns_handler_name_and_pk(self):
-        user = factory.make_User()
-        pk = random.randint(1, 1000)
-        handler = EventHandler(user, {})
-        self.assertEqual(
-            (handler._meta.handler_name, "delete", pk),
-            handler.on_listen(
-                sentinel.channel, "delete", pk))
 
     def test_on_listen_returns_None_if_event_node_id_not_in_cache(self):
         user = factory.make_User()

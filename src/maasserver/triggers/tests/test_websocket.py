@@ -46,8 +46,6 @@ class TestTriggers(MAASServerTestCase):
             "auth_user_user_update_notify",
             "auth_user_user_delete_notify",
             "event_event_create_notify",
-            "event_event_update_notify",
-            "event_event_delete_notify",
             "event_event_create_machine_device_notify",
             "interface_ip_addresses_nd_sipaddress_link_notify",
             "interface_ip_addresses_nd_sipaddress_unlink_notify",
