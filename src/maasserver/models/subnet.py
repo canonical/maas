@@ -402,27 +402,28 @@ class Subnet(CleanSave, TimestampedModel):
                 "IP range. (Delete the dynamic range or disable DHCP first.)")
         super().delete(*args, **kwargs)
 
-    def _get_ranges_for_allocated_ips(self, ipnetwork):
+    def _get_ranges_for_allocated_ips(self, ipnetwork, ignore_discovered_ips):
         """Returns a set of IPrange objects created from the set of allocated
         StaticIPAddress objects.."""
-        # We exclude DISCOVERED addresses here because they aren't considered
-        # allocated ranges, and new ranges can overlap them - lp:1580772).
         # Note, the original implementation used .exclude() to filter,
         # but we'll filter at runtime so that prefetch_related in the
         # websocket works properly.
         ranges = set()
         for sip in self.staticipaddress_set.all():
-            if sip.ip and sip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+            if sip.ip and not (ignore_discovered_ips and (
+                    sip.alloc_type == IPADDRESS_TYPE.DISCOVERED)):
                 ip = IPAddress(sip.ip)
                 if ip in ipnetwork:
                     ranges.add(make_iprange(ip, purpose="assigned-ip"))
         return ranges
 
-    def get_ipranges_in_use(self, exclude_addresses=[], ranges_only=False):
+    def get_ipranges_in_use(self, exclude_addresses=[], ranges_only=False,
+                            ignore_discovered_ips=False):
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
         :param exclude_addresses: Additional addresses to consider "in use".
+        :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
         """
         ranges = set()
         network = self.get_ipnetwork()
@@ -458,7 +459,8 @@ class Subnet(CleanSave, TimestampedModel):
                     for server in self.dns_servers
                     if server in ipnetwork
                 )
-            ranges |= self._get_ranges_for_allocated_ips(ipnetwork)
+            ranges |= self._get_ranges_for_allocated_ips(
+                ipnetwork, ignore_discovered_ips)
             ranges |= set(
                 make_iprange(address, purpose="excluded")
                 for address in exclude_addresses
@@ -472,17 +474,21 @@ class Subnet(CleanSave, TimestampedModel):
         return self.get_ipranges_not_in_use(ranges_only=True)
 
     def get_ipranges_available_for_dynamic_range(self):
-        return self.get_ipranges_not_in_use()
+        return self.get_ipranges_not_in_use(
+            ranges_only=False, ignore_discovered_ips=True)
 
-    def get_ipranges_not_in_use(self, exclude_addresses=[], ranges_only=False):
+    def get_ipranges_not_in_use(self, exclude_addresses=[], ranges_only=False,
+                                ignore_discovered_ips=False):
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
         :param exclude_addresses: An iterable of addresses not to use.
+        :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
         """
         ranges = self.get_ipranges_in_use(
             exclude_addresses=exclude_addresses,
-            ranges_only=ranges_only)
+            ranges_only=ranges_only,
+            ignore_discovered_ips=ignore_discovered_ips)
         unused = ranges.get_unused_ranges(self.get_ipnetwork())
         return unused
 
