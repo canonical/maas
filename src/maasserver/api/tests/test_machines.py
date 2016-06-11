@@ -649,6 +649,22 @@ class TestMachinesAPI(APITestCase.ForUser):
             json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
 
+    def test_POST_allocate_allocates_machine_by_system_id(self):
+        # Positive test for system_id constraint.
+        # If a name constraint is given, "allocate" attempts to allocate
+        # a machine with that system_id.
+        machine = factory.make_Node(
+            domain=factory.make_Domain(),
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
+        response = self.client.post(reverse('machines_handler'), {
+            'op': 'allocate',
+            'system_id': machine.system_id,
+        })
+        self.assertEqual(http.client.OK, response.status_code)
+        resultant_system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
+        self.assertEqual(machine.system_id, resultant_system_id)
+
     def test_POST_allocate_treats_unknown_name_as_resource_conflict(self):
         # A name constraint naming an unknown machine produces a resource
         # conflict: most likely the machine existed but has changed or

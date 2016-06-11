@@ -1095,6 +1095,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_describe_constraints_shows_all_constraints(self):
         constraints = {
             'name': factory.make_name('host'),
+            'system_id': factory.make_name('system_id'),
             'arch': self.set_usable_arch(),
             'cpu_count': randint(1, 32),
             'mem': randint(1024, 256 * 1024),

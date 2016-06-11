@@ -431,7 +431,11 @@ class LabeledConstraintMapField(Field):
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
-    name = forms.CharField(label="Host name", required=False)
+    name = forms.CharField(
+        label="The hostname of the desired node", required=False)
+
+    system_id = forms.CharField(
+        label="The system_id of the desired node", required=False)
 
     # This becomes a multiple-choice field during cleaning, to accommodate
     # architecture wildcards.
@@ -686,6 +690,11 @@ class AcquireNodeForm(RenamableFieldsForm):
             else:
                 clause = Q(hostname=hostname)
             filtered_nodes = filtered_nodes.filter(clause)
+
+        # Filter by system_id.
+        system_id = self.cleaned_data.get(self.get_field_name('system_id'))
+        if system_id:
+            filtered_nodes = filtered_nodes.filter(system_id=system_id)
 
         # Filter by architecture.
         arch = self.cleaned_data.get(self.get_field_name('arch'))
