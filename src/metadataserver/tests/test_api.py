@@ -934,21 +934,21 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        content = 'virtual'.encode('utf-8')
+        content = 'qemu'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
-            ["virtual"], [each_tag.name for each_tag in node.tags.all()])
+            ['virtual'], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_removes_virtual_tag_on_node_if_not_virtual(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
         client = make_node_client(node=node)
-        content = 'notvirtual'.encode('utf-8')
+        content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
@@ -960,7 +960,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_leaves_untagged_physical_node_unaltered(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        content = 'notvirtual'.encode('utf-8')
+        content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})

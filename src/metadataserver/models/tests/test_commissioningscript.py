@@ -266,38 +266,36 @@ class TestSetVirtualTag(MAASServerTestCase):
     def test_sets_virtual_tag(self):
         node = factory.make_Node()
         self.assertTagsEqual(node, [])
-        set_virtual_tag(node, b"virtual", 0)
+        set_virtual_tag(node, b"qemu", 0)
         self.assertTagsEqual(node, ["virtual"])
 
     def test_removes_virtual_tag(self):
         node = factory.make_Node()
         node.tags.add(self.getVirtualTag())
         self.assertTagsEqual(node, ["virtual"])
-        set_virtual_tag(node, b"notvirtual", 0)
+        set_virtual_tag(node, b"none", 0)
         self.assertTagsEqual(node, [])
 
     def test_output_not_containing_virtual_does_not_set_tag(self):
         logger = self.useFixture(FakeLogger())
         node = factory.make_Node()
         self.assertTagsEqual(node, [])
-        set_virtual_tag(node, b"wibble", 0)
+        set_virtual_tag(node, b"", 0)
         self.assertTagsEqual(node, [])
         self.assertIn(
-            "Neither 'virtual' nor 'notvirtual' appeared in the captured "
-            "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
-            logger.output)
+            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "%s" % node.system_id, logger.output)
 
     def test_output_not_containing_virtual_does_not_remove_tag(self):
         logger = self.useFixture(FakeLogger())
         node = factory.make_Node()
         node.tags.add(self.getVirtualTag())
         self.assertTagsEqual(node, ["virtual"])
-        set_virtual_tag(node, b"wibble", 0)
+        set_virtual_tag(node, b"", 0)
         self.assertTagsEqual(node, ["virtual"])
         self.assertIn(
-            "Neither 'virtual' nor 'notvirtual' appeared in the captured "
-            "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
-            logger.output)
+            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "%s" % node.system_id, logger.output)
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):

@@ -231,7 +231,7 @@ def set_virtual_tag(node, output, exit_status):
     """Process the results of `VIRTUALITY_SCRIPT`.
 
     This adds or removes the *virtual* tag from the node, depending on
-    the presence of the terms "notvirtual" or "virtual" in `output`.
+    whether a virtualization type is listed.
 
     If `exit_status` is non-zero, this function returns without doing
     anything.
@@ -239,16 +239,16 @@ def set_virtual_tag(node, output, exit_status):
     assert isinstance(output, bytes)
     if exit_status != 0:
         return
+    decoded_output = output.decode('ascii').strip()
     tag, _ = Tag.objects.get_or_create(name='virtual')
-    if b'notvirtual' in output:
+    if 'none' in decoded_output:
         node.tags.remove(tag)
-    elif b'virtual' in output:
-        node.tags.add(tag)
-    else:
+    elif decoded_output == '':
         logger.warn(
-            "Neither 'virtual' nor 'notvirtual' appeared in the "
-            "captured VIRTUALITY_SCRIPT output for node %s.",
-            node.system_id)
+            "No virtual type reported in VIRTUALITY_SCRIPT output for node "
+            "%s", node.system_id)
+    else:
+        node.tags.add(tag)
 
 
 _xpath_routers = "/lldp//id[@type='mac']/text()"

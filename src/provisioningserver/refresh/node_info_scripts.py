@@ -70,16 +70,17 @@ IPADDR_SCRIPT = dedent("""\
     ip addr
     """)
 
-# Built-in script to detect virtual instances. It will only detect QEMU
-# for now and may need expanding/generalising at some point.
-# XXX ltrager 2016-01-14 - Replace with virt-what
+# Built-in script to detect virtual instances.
 VIRTUALITY_SCRIPT = dedent("""\
     #!/bin/sh
-    grep '^model name.*QEMU.*' /proc/cpuinfo >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        echo "virtual"
+    if type systemd-detect-virt 2>&1 > /dev/null; then
+        systemd-detect-virt
+    elif grep -q '^model name.*QEMU.*' /proc/cpuinfo; then
+        # Fall back if systemd-detect-virt isn't available. This method only
+        # detects QEMU virtualization not including KVM.
+        echo "qemu"
     else
-        echo "notvirtual"
+        echo "none"
     fi
     """)
 

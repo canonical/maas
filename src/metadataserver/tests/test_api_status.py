@@ -616,7 +616,7 @@ class TestStatusAPI(MAASServerTestCase):
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
         client = make_node_client(node=node)
-        content = 'notvirtual'.encode('utf-8')
+        content = 'none'.encode('utf-8')
         payload = {
             'event_type': 'finish',
             'result': 'SUCCESS',
