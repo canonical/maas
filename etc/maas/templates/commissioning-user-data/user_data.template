@@ -206,6 +206,7 @@ load_modules() {
    modprobe ipmi_msghandler
    modprobe ipmi_devintf
    modprobe ipmi_si ${IPMI_SI_PARAMS}
+   modprobe ipmi_ssif
    udevadm settle
 }
 
