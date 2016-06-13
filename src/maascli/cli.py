@@ -204,7 +204,7 @@ def get_django_management():
         return management
 
 
-def run_regiond_command(parser, management):
+def run_regiond_command(management, parser):
     """Called to run the regiond command.
 
     The command itself is sys.argv[1] so that is not passed into this function.
