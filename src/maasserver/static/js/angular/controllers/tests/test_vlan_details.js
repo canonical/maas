@@ -80,6 +80,7 @@ describe("VLANDetailsController", function() {
             system_id: sid,
             hostname: name,
             node_type: 2,
+            default_vlan_id: VLAN_ID,
             vlan_ids: [VLAN_ID]
         };
         ControllersManager._items.push(rack);

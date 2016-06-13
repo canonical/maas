@@ -420,7 +420,9 @@ angular.module('MAAS').controller('VLANDetailsController', [
                     vm.PROVIDE_DHCP_ACTION.title = "Provide DHCP";
                 }
                 vm.actionOptions.push(vm.PROVIDE_DHCP_ACTION);
-                vm.actionOptions.push(vm.DELETE_ACTION);
+                if(!vm.isFabricDefault) {
+                    vm.actionOptions.push(vm.DELETE_ACTION);
+                }
             }
         }
 
@@ -428,6 +430,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         function vlanLoaded(vlan) {
             vm.vlan = vlan;
             vm.fabric = FabricsManager.getItemFromList(vlan.fabric);
+            vm.isFabricDefault = vm.fabric.default_vlan_id === vm.vlan.id;
             vm.loaded = true;
 
             updateTitle();

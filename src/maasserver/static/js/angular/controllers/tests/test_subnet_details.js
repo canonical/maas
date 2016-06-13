@@ -256,6 +256,7 @@ describe("SubnetDetailsController", function() {
             };
             var fabric = {
                 id: makeInteger(0, 100),
+                default_vlan_id: vlan.id,
                 vlan_ids: [vlan.id]
             };
             FabricsManager._items.push(fabric);

@@ -44,6 +44,9 @@ class FabricHandler(TimestampedModelHandler):
             vlan.id
             for vlan in obj.vlan_set.all()
         ])
+        # Pass the default vlan id explicitly, so that we don't reproduce the
+        # logic in the javascript.
+        data["default_vlan_id"] = data["vlan_ids"][0]
         return data
 
     def delete(self, parameters):

@@ -1825,6 +1825,7 @@ describe("NodeNetworkingController", function() {
             var controller = makeController();
             var fabric = {
                 id: 0,
+                default_vlan_id: 0,
                 vlan_ids: [0]
             };
             var vlan = {
@@ -1846,6 +1847,7 @@ describe("NodeNetworkingController", function() {
             var controller = makeController();
             var fabric = {
                 id: 0,
+                default_vlan_id: 0,
                 vlan_ids: [0]
             };
             var vlan = {
@@ -3761,7 +3763,10 @@ describe("NodeNetworkingController", function() {
         it("sets mode to create-physical", function() {
             var controller = makeController();
             var vlan = { id: 0, fabric: 0 };
-            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            var fabric = {
+                id: 0, name: makeName("fabric"),
+                default_vlan_id: 0, vlan_ids: [0]
+            };
             VLANsManager._items = [vlan];
             $scope.fabrics = [fabric];
             $scope.selectedMode = null;
@@ -3772,7 +3777,10 @@ describe("NodeNetworkingController", function() {
         it("creates the newInterface", function() {
             var controller = makeController();
             var vlan = { id: 0, fabric: 0 };
-            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            var fabric = {
+                id: 0, name: makeName("fabric"),
+                default_vlan_id: 0, vlan_ids: [0]
+            };
             VLANsManager._items = [vlan];
             $scope.fabrics = [fabric];
             $scope.selectedMode = null;
@@ -3795,7 +3803,10 @@ describe("NodeNetworkingController", function() {
         it("sets newInterface.vlan with new fabric", function() {
             var controller = makeController();
             var vlan = { id: 0, fabric: 0 };
-            var fabric = { id: 0, name: makeName("fabric"), vlan_ids: [0] };
+            var fabric = {
+                id: 0, name: makeName("fabric"),
+                default_vlan_id: 0, vlan_ids: [0]
+            };
             VLANsManager._items = [vlan];
             $scope.newInterface.fabric = fabric;
             $scope.newInterface.subnet = {};

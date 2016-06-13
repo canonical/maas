@@ -181,6 +181,7 @@ describe("FabricDetailsController", function() {
             { id: 0, name:"subnet1", vlan: 1, space: 0, cidr: "10.20.0.0/16" }
         ];
         fabric.vlan_ids = [1];
+        fabric.default_vlan_id = 1;
         spaces[0].subnet_ids = [0];
         SpacesManager._items.push(spaces[0]);
         VLANsManager._items.push(vlans[0]);
@@ -197,6 +198,7 @@ describe("FabricDetailsController", function() {
     it("updates $scope.rows with VLANs containing no subnet(s)", function() {
         var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: fabric.id } ];
         fabric.vlan_ids = [1];
+        fabric.default_vlan_id = 1;
         VLANsManager._items.push(vlans[0]);
         var controller = makeControllerResolveSetActiveItem();
         $rootScope.$digest();

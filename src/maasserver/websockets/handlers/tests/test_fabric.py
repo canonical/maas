@@ -27,6 +27,7 @@ class TestFabricHandler(MAASServerTestCase):
                 for vlan in fabric.vlan_set.all()
             ]),
         }
+        data["default_vlan_id"] = data["vlan_ids"][0]
         return data
 
     def test_get(self):

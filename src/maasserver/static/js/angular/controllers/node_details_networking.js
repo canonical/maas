@@ -445,7 +445,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return the default VLAN for a fabric.
         function getDefaultVLAN(fabric) {
-            return VLANsManager.getItemFromList(fabric.vlan_ids[0]);
+            return VLANsManager.getItemFromList(fabric.default_vlan_id);
         }
 
         // Return list of unused VLANs for an interface. Also remove the

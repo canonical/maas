@@ -87,7 +87,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                 // Fabric changed, the websocket expects VLAN to be updated, so
                 // we set the VLAN to the default VLAN for the new fabric.
                 subnet.vlan = FabricsManager.getItemFromList(
-                    subnet.fabric).vlan_ids[0];
+                    subnet.fabric).default_vlan_id;
             }
             return subnet;
         };
