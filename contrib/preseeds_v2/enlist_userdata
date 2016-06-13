@@ -118,6 +118,7 @@ misc_bucket:
    if $IPMI_CHANGE_STATIC_TO_DHCP; then
       pargs="--dhcp-if-static"
    fi
+   set -x
    power_type=$(maas-ipmi-autodetect-tool)
    case "$power_type" in
        ipmi)

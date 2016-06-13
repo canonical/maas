@@ -2,6 +2,57 @@
 Changelog
 =========
 
+2.0.0 (beta7)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1587896    get_interfaces_definition is not thread-safe
+
+LP: #1590946    Auto detection of running virtual environment during commissioning almost always fails
+
+LP: #1591093    [2.0,1.9] 3rd party HP drivers (archive hostname renamed) - deployment fails
+
+LP: #1590021    [2.0] Cannot create an IP reservation with a hostname
+
+LP: #1591346    [2.0] maas createadmin fails
+
+LP: #1577953    [2.0b4] Rack Controller fail to update commissioning info?
+
+LP: #1579215    [2.0b4] Can attempt to commission enlisted nodes without chosen power type
+
+LP: #1581219    [2.0b4 UI] MAAS WebUI doesn't quickly refresh when deleting machines
+
+LP: #1581723    [2.0b5] request to http://192.168.10.27:5240/MAAS/metadata/status/43he8/latest failed
+
+LP: #1587896    [2.0b5] p.refresh.get_swap_size misconverting units
+
+LP: #1590499    [2.9b6] Can edit fabric and subnet on deployed node
+
+LP: #1591395    [2.0b6] some arm64 systems need ipmi_ssif module in addition to ipmi_si
+
+LP: #1589587    [2.0b6] Attempting to delete a VLAN that cannot be deleted, shows traceback in regiond.log
+
+LP: #1591958    [2.0b6] Commisioning fails on machines without HW virtualization
+
+LP: #1590991    [2.0b6] Cannot allocate a node based on its system_id
+
+LP: #1589562    [2.0b6, UI] When I delete a fabric, it takes me back to the Node listing page
+
+LP: #1589596    [2.0b6, UI] When I delete a space, it takes me back to the Node listing page
+
+LP: #1588298    [2.0b5, UI] No form validation when adding a subnet, space, fabric or vlan
+
+LP: #1589606    [2.0b6, UI] Message "No IP ranges have been reserved for this subnet." doesn't go away after adding IP Range
+
+LP: #1589583    [2.0b6, UI] Can't add a VLAN over the WebUI
+
+LP: #1589560    [2.6b6, UI] Adding a fabric with an optional name ends up with a new fabric with automatically assigned name
+
+LP: #1589595    [2.6b6, UI] Adding a space with an optional name ends up with a new space with automatically assigned name
+
+
 2.0.0 (beta6)
 =============
 
