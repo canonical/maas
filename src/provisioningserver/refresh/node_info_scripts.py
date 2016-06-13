@@ -73,8 +73,13 @@ IPADDR_SCRIPT = dedent("""\
 # Built-in script to detect virtual instances.
 VIRTUALITY_SCRIPT = dedent("""\
     #!/bin/sh
-    if type systemd-detect-virt 2>&1 > /dev/null; then
-        systemd-detect-virt
+    # In Bourne Shell `type -p` does not work; `which` is closest.
+    if which systemd-detect-virt > /dev/null; then
+        # systemd-detect-virt prints "none" and returns nonzero if
+        # virtualisation is not detected. We suppress the exit code so that
+        # the calling machinery does not think there was a failure, and rely
+        # on the "none" token instead.
+        systemd-detect-virt || true
     elif grep -q '^model name.*QEMU.*' /proc/cpuinfo; then
         # Fall back if systemd-detect-virt isn't available. This method only
         # detects QEMU virtualization not including KVM.

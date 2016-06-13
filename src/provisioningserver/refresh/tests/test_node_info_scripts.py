@@ -10,6 +10,7 @@ from inspect import getsource
 from io import StringIO
 import json
 import os.path
+from pathlib import Path
 import random
 import subprocess
 from subprocess import (
@@ -30,9 +31,16 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
     make_function_call_script,
+    VIRTUALITY_SCRIPT,
 )
 from provisioningserver.utils import typed
+from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import text_content
+from testtools.matchers import (
+    Equals,
+    MatchesAny,
+    Not,
+)
 
 
 class TestMakeFunctionCallScript(MAASTestCase):
@@ -43,7 +51,8 @@ class TestMakeFunctionCallScript(MAASTestCase):
         try:
             return check_output((script_filename,), stderr=STDOUT)
         except CalledProcessError as error:
-            self.addDetail("output", text_content(error.output))
+            self.addDetail("output", text_content(
+                error.output.decode("ascii", "replace")))
             raise
 
     def test_basic(self):
@@ -786,3 +795,57 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             for block_info in self.call_gather_physical_block_devices()
             ]
         self.assertEqual(names, device_names)
+
+
+class TestVirtualityScript(MAASTestCase):
+    """Tests for `VIRTUALITY_SCRIPT`."""
+
+    def setUp(self):
+        super(TestVirtualityScript, self).setUp()
+        # Set up a binaries directory which contains all the script deps.
+        self.bindir = Path(self.make_dir())
+        self.sysdv = self.bindir.joinpath("systemd-detect-virt")
+        self.sysdv.symlink_to("/usr/bin/systemd-detect-virt")
+        self.grep = self.bindir.joinpath("grep")
+        self.grep.symlink_to("/bin/grep")
+        self.which = self.bindir.joinpath("which")
+        self.which.symlink_to("/bin/which")
+
+    def run_script(self):
+        script = self.bindir.joinpath("virtuality")
+        script.write_text(VIRTUALITY_SCRIPT, "ascii")
+        script.chmod(0o700)
+        env = select_c_utf8_locale()
+        env["PATH"] = self.bindir.path
+        try:
+            return check_output((script.path,), stderr=STDOUT, env=env)
+        except CalledProcessError as error:
+            self.addDetail("output", text_content(
+                error.output.decode("ascii", "replace")))
+            raise
+
+    def test_runs_locally(self):
+        self.assertThat(self.run_script(), Not(Equals("")))
+
+    def test_runs_successfully_when_systemd_detect_virt_returns_nonzero(self):
+        # Replace symlink to systemd-detect-virt with a script of our making.
+        self.sysdv.unlink()
+        sysdv_name = factory.make_name("virt")
+        with self.sysdv.open("w") as fd:
+            fd.write("#!/bin/sh\n")
+            fd.write("echo %s\n" % sysdv_name)
+            fd.write("exit 1\n")
+        self.sysdv.chmod(0o700)
+        # The name echoed from our script is returned.
+        self.assertThat(
+            self.run_script(), Equals(
+                sysdv_name.encode("ascii") + b"\n"))
+
+    def test_runs_successfully_when_systemd_detect_virt_not_found(self):
+        # Remove symlink to systemd-detect-virt.
+        self.sysdv.unlink()
+        # Either "none" or "qemu" will be returned here depending on the host
+        # running these tests.
+        self.assertThat(
+            self.run_script(), MatchesAny(
+                Equals(b"none\n"), Equals(b"qemu\n")))
