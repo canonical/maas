@@ -37,8 +37,8 @@ angular.module('MAAS').filter('filterByUnusedForInterface', function() {
 // list of interfaces to not include the current parent interfaces being
 // bonded together.
 angular.module('MAAS').filter('removeInterfaceParents', function() {
-    return function(interfaces, childInterface) {
-        if(!angular.isObject(childInterface) ||
+    return function(interfaces, childInterface, skip) {
+        if(skip || !angular.isObject(childInterface) ||
             !angular.isArray(childInterface.parents)) {
             return interfaces;
         }
@@ -509,6 +509,26 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
             $scope.nodeHasLoaded = true;
             updateLoaded();
+        };
+
+        // Return true if the Node is Ready (or Broken)
+        $scope.isNodeEditingAllowed = function() {
+            if (!$scope.isSuperUser()) {
+                // If the user is not the superuser, pretend it's not Ready.
+                return false;
+            }
+            if ($scope.$parent.isController) {
+                // Controllers are always Ready, for our purposes.
+                return true;
+            }
+            if (angular.isObject($scope.node) &&
+                  ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
+                // If a non-controller node is not Ready or Broken, then no
+                // editing networking.
+                return false;
+            }
+            // All is well, let them edit.
+            return true;
         };
 
         // Return true if the networking information cannot be edited.

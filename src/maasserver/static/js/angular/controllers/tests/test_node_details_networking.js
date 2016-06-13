@@ -97,7 +97,8 @@ describe("removeInterfaceParents", function() {
             };
             interfaces.push(nic);
         }
-        expect(removeInterfaceParents(interfaces)).toEqual(interfaces);
+        expect(
+            removeInterfaceParents(interfaces)).toEqual(interfaces);
     });
 
     it("removes parents from interfaces", function() {
@@ -120,7 +121,34 @@ describe("removeInterfaceParents", function() {
         var bondInterface = {
             parents: interfaces
         };
-        expect(removeInterfaceParents(interfaces, bondInterface)).toEqual([]);
+        expect(
+            removeInterfaceParents(
+                interfaces, bondInterface, false)).toEqual([]);
+    });
+
+    it("does not remove parents from interfaces when skipping", function() {
+        var vlan = {
+            id: makeInteger(0, 100)
+        };
+        var nic1 = {
+            id: makeInteger(0, 100),
+            link_id: makeInteger(0, 100),
+            type: "physical",
+            vlan: vlan
+        };
+        var nic2 = {
+            id: makeInteger(0, 100),
+            link_id: makeInteger(0, 100),
+            type: "physical",
+            vlan: vlan
+        };
+        var interfaces = [nic1, nic2];
+        var bondInterface = {
+            parents: interfaces
+        };
+        expect(
+            removeInterfaceParents(
+                interfaces, bondInterface, true)).toEqual(interfaces);
     });
 });
 
