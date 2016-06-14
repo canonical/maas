@@ -96,14 +96,15 @@ class TestRegionServiceMaker(MAASTestCase):
             "dns-publication-cleanup",
             "import-resources",
             "import-resources-progress",
+            "networks-monitor",
             "nonce-cleanup",
+            "postgres-listener",
             "rack-controller",
             "region-controller",
             "rpc",
             "rpc-advertise",
-            "postgres-listener",
-            "status-monitor",
             "service-monitor",
+            "status-monitor",
             "web",
         ]
         self.assertItemsEqual(expected_services, service.namedServices)

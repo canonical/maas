@@ -129,6 +129,13 @@ def make_ServiceMonitorService(advertisingService):
     return ServiceMonitorService(advertisingService)
 
 
+def make_NetworksMonitoringService():
+    from maasserver.regiondservices.networks_monitoring import (
+        RegionNetworksMonitoringService,
+    )
+    return RegionNetworksMonitoringService(reactor)
+
+
 def make_WebApplicationService(postgresListener):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
@@ -237,6 +244,11 @@ class RegionEventLoop:
             "only_on_master": True,
             "factory": make_ServiceMonitorService,
             "requires": ["rpc-advertise"],
+        },
+        "networks-monitor": {
+            "only_on_master": False,
+            "factory": make_NetworksMonitoringService,
+            "requires": [],
         },
         "rack-controller": {
             "only_on_master": False,
