@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the SSHKey model."""
@@ -6,16 +6,17 @@
 __all__ = []
 
 import random
-from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
-from maasserver.models import SSHKey
+from maasserver.models import (
+    sshkey,
+    SSHKey,
+)
 from maasserver.models.sshkey import (
     get_html_display_for_key,
     HELLIPSIS,
-    Key,
     validate_ssh_public_key,
 )
 from maasserver.testing import get_data
@@ -33,6 +34,26 @@ class SSHKeyValidatorTest(MAASServerTestCase):
 
     def test_validates_dsa_public_key(self):
         key_string = get_data('data/test_dsa.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_validates_ecdsa_curve256_public_key(self):
+        key_string = get_data('data/test_ecdsa256.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_validates_ecdsa_curve384_public_key(self):
+        key_string = get_data('data/test_ecdsa384.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_validates_ecdsa_curve521_public_key(self):
+        key_string = get_data('data/test_ecdsa521.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_validates_ed25519_public_key(self):
+        key_string = get_data('data/test_ed25519.pub')
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
@@ -57,9 +78,9 @@ class SSHKeyValidatorTest(MAASServerTestCase):
             ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrong_key(self):
-        # If twisted.conch.ssh.keys.Key raises an exception, the validation
-        # fails.
-        self.patch(Key, 'fromString', Mock(side_effect=Exception()))
+        # Validation fails if normalise_openssh_public_key crashes.
+        norm = self.patch(sshkey, "normalise_openssh_public_key")
+        norm.side_effect = factory.make_exception_type()
         self.assertRaises(
             ValidationError, validate_ssh_public_key, factory.make_name('key'))
 
