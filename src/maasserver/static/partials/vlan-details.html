@@ -183,12 +183,12 @@
                         </dd>
                     </div>
                     <div class="ng-hide" data-ng-show="vlanDetails.primaryRack">
-                        <dt class="two-col">Primary controller <span class="icon help tooltip" data-tooltip="The rack controller where DHCP service runs on."></span></dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
+                        <dt class="two-col">Primary controller</dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
                     </div>
                     <div class="ng-hide" data-ng-show="vlanDetails.secondaryRack">
-                        <dt class="two-col">Secondary controller <span class="icon help tooltip" data-tooltip="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
+                        <dt class="two-col">Secondary controller</dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
                     </div>
-                    <dt class="two-col">Rack controllers <span class="icon help tooltip" data-tooltip="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
+                    <dt class="two-col">Rack controllers</dt>
                     <dd class="four-col last-col">
                         <span data-ng-repeat="rack in vlanDetails.relatedControllers">
                             <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>

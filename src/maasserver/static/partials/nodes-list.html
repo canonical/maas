@@ -4,21 +4,15 @@
             <span class="page-header__title--identicator" id="bulk-actions">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <a href=""
-                    class="tooltip"
-                    data-tooltip="A deployable node managed by MAAS."
                     data-ng-class="{ active: currentpage === 'nodes' }"
                     data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></a>
                 <span class="divide"></span>
                 <a href=""
-                    class="tooltip"
-                    data-tooltip="A node known to MAAS, but is not deployable."
                     data-ng-class="{ active: currentpage === 'devices' }"
                     data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
                 </a>
                 <span data-ng-show="isSuperUser()" class="divide"></span>
                 <a href="" data-ng-show="isSuperUser()"
-                    class="tooltip"
-                    data-tooltip="A node that provides MAAS services."
                     data-ng-class="{ active: currentpage === 'controllers' }"
                     data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize>
                 </a>
