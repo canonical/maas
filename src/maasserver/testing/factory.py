@@ -1431,9 +1431,13 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if size is None:
+            # We need space for MakePartition to choose "largest" _3_ times,
+            # because of TestManagersFilterByNode.test__bcache_on_partitions
+            # in maasserver/models/tests/test_filesystemgroup.py.
             size = round_size_to_nearest_block(
                 random.randint(
-                    MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024),
+                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE) * 16,
+                    MIN_BLOCK_DEVICE_SIZE * 1024),
                 block_size)
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
