@@ -333,8 +333,10 @@ def update_node_physical_block_devices(node, output, exit_status):
         model = block_info.get("MODEL", "")
         serial = block_info.get("SERIAL", "")
         id_path = block_info.get("ID_PATH", "")
-        if not id_path:
-            # Fallback to the dev path if id_path missing.
+        if not id_path or not serial:
+            # Fallback to the dev path if id_path missing or there is no
+            # serial number. (No serial number is a strong indicator that this
+            # is a virtual disk, so it's unlikely that the ID_PATH would work.)
             id_path = block_info["PATH"]
         size = int(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])

@@ -603,6 +603,24 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 name=name, id_path='/dev/%s' % name, size=size,
                 block_size=block_size, model=model, serial=serial))
 
+    def test__creates_physical_block_device_with_path_for_missing_serial(self):
+        name = factory.make_name('name')
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        model = factory.make_name('model')
+        serial = ''
+        device = self.make_block_device(
+            name=name, size=size, block_size=block_size,
+            model=model, serial=serial, id_path='bogus')
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first(),
+            MatchesStructure.byEquality(
+                name=name, id_path='/dev/%s' % name, size=size,
+                block_size=block_size, model=model, serial=serial))
+
     def test__creates_physical_block_device_only_for_node(self):
         device = self.make_block_device()
         node = factory.make_Node(with_boot_disk=False)
