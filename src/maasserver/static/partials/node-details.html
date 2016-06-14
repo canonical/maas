@@ -462,7 +462,7 @@
                                                 data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:interface">
                                             </select>
                                         </li>
-                                        <li class="margin-top--ten" data-ng-show="shouldShowIPAddress(interface)">
+                                        <li class="margin-top--ten" data-ng-if="shouldShowIPAddress(interface)">
                                             <input type="text" class="table__input no-margin-top"
                                                 data-ng-model="interface.ip_address"
                                                 data-ng-class="{ invalid: isIPAddressInvalid(interface) }"
@@ -470,6 +470,9 @@
                                                 data-ng-focus="setFocusInterface(interface)"
                                                 data-ng-blur="clearFocusInterface(interface)"
                                                 data-ng-disabled="interface.mode != 'static'">
+                                            <div class="table__data left" data-ng-if="getInterfaceError(interface)">
+                                                <span class="icon error"></span> {$ getInterfaceError(interface) $}
+                                            </div>
                                         </li>
                                     </ul>
                                     <span class="ng-hide" data-ng-show="isAllNetworkingDisabled() && !interface.discovered[0].ip_address">
