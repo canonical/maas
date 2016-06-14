@@ -14,6 +14,7 @@ from abc import (
 from datetime import timedelta
 
 from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.twisted import callOut
 from twisted.application.internet import TimerService
@@ -35,10 +36,18 @@ class NetworksMonitoringService(TimerService, metaclass=ABCMeta):
 
     interval = timedelta(seconds=30).total_seconds()
 
+    # The last successfully recorded interfaces.
+    _recorded = None
+
+    # Use a named filesystem lock to prevent more than one monitoring service
+    # running on each host machine. This service attempts to acquire this lock
+    # on each loop, and then it holds the lock until the service stops.
+    _lock = NamedLock("networks-monitoring")
+    _locked = False
+
     def __init__(self, reactor):
         super().__init__(self.interval, self.updateInterfaces)
         self.clock = reactor
-        self._recorded = None
 
     def updateInterfaces(self):
         """Update interfaces, catching and logging errors.
@@ -46,12 +55,20 @@ class NetworksMonitoringService(TimerService, metaclass=ABCMeta):
         This can be overridden by subclasses to conditionally update based on
         some external configuration.
         """
-        d = self.getInterfaces()
-        d.addCallback(self._maybeRecordInterfaces)
-        d.addErrback(lambda failure: maaslog.error(
-            "Failed to update and/or record network interface "
-            "configuration: %s", failure.getErrorMessage()))
-        return d
+        d = maybeDeferred(self._assumeSoleResponsibility)
+
+        def update(responsible):
+            if responsible:
+                d = maybeDeferred(self.getInterfaces)
+                d.addCallback(self._maybeRecordInterfaces)
+                return d
+
+        def failed(failure):
+            maaslog.error(
+                "Failed to update and/or record network interface "
+                "configuration: %s", failure.getErrorMessage())
+
+        return d.addCallback(update).addErrback(failed)
 
     def getInterfaces(self):
         """Get the current network interfaces configuration.
@@ -66,6 +83,45 @@ class NetworksMonitoringService(TimerService, metaclass=ABCMeta):
 
         This MUST be overridden in subclasses.
         """
+
+    def stopService(self):
+        """Stop the service.
+
+        Ensures that sole responsiblility for monitoring networks is released.
+        """
+        d = super().stopService()
+        d.addBoth(callOut, self._releaseSoleResponsibility)
+        return d
+
+    def _assumeSoleResponsibility(self):
+        """Assuming sole responsibility for monitoring networks.
+
+        It does this by attempting to acquire a host-wide lock. If this
+        service already holds the lock this is a no-op.
+
+        :return: True if we have responsibility, False otherwise.
+        """
+        if self._locked:
+            return True
+        else:
+            try:
+                self._lock.acquire()
+            except self._lock.NotAvailable:
+                return False
+            else:
+                self._locked = True
+                return True
+
+    def _releaseSoleResponsibility(self):
+        """Releases sole responsibility for monitoring networks.
+
+        Another network monitoring service on this host may then take up
+        responsibility. If this service is not currently responsible this is a
+        no-op.
+        """
+        if self._locked:
+            self._lock.release()
+            self._locked = False
 
     def _maybeRecordInterfaces(self, interfaces):
         """Record `interfaces` if they've changed."""
