@@ -70,6 +70,9 @@ class ConfigFormTest(MAASServerTestCase):
     def test_form_loads_initial_values_from_default_value(self):
         value = factory.make_string()
         DEFAULT_CONFIG['field1'] = value
+        # Remove the added config from the DEFAULT_CONFIG or it will
+        # break other tests.
+        self.addCleanup(lambda: DEFAULT_CONFIG.pop('field1'))
         form = TestOptionForm()
 
         self.assertItemsEqual(['field1'], form.initial)

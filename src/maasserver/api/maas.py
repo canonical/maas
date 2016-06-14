@@ -12,6 +12,7 @@ import json
 from django.http import HttpResponse
 from formencode import validators
 from maasserver.api.support import (
+    admin_method,
     operation,
     OperationsHandler,
 )
@@ -31,6 +32,7 @@ class MaasHandler(OperationsHandler):
     api_doc_section_name = "MAAS server"
     create = read = update = delete = None
 
+    @admin_method
     @operation(idempotent=False)
     def set_config(self, request):
         """Set a config value.

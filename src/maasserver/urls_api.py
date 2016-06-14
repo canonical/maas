@@ -166,6 +166,7 @@ from maasserver.api.zones import (
 )
 
 
+maas_handler = RestrictedResource(MaasHandler, authentication=api_auth)
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 boot_resource_handler = RestrictedResource(
     BootResourceHandler, authentication=api_auth)
@@ -266,7 +267,6 @@ ipranges_handler = RestrictedResource(IPRangesHandler, authentication=api_auth)
 
 
 # Admin handlers.
-maas_handler = AdminRestrictedResource(MaasHandler, authentication=api_auth)
 commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)
 commissioning_scripts_handler = AdminRestrictedResource(
@@ -296,6 +296,7 @@ urlpatterns = patterns(
 # API URLs for logged-in users.
 urlpatterns += patterns(
     '',
+    url(r'^maas/$', maas_handler, name='maas_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
         blockdevices_handler, name='blockdevices_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
@@ -458,7 +459,6 @@ urlpatterns += patterns(
 # API URLs for admin users.
 urlpatterns += patterns(
     '',
-    url(r'^maas/$', maas_handler, name='maas_handler'),
     url(
         r'^commissioning-scripts/$', commissioning_scripts_handler,
         name='commissioning_scripts_handler'),

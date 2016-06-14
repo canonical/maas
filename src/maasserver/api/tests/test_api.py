@@ -298,19 +298,19 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
 class MAASAPIAnonTest(APITestCase.ForAnonymous):
     """The MAAS' handler is not accessible to anon users."""
 
-    def test_anon_get_config_forbidden(self):
+    def test_anon_get_config_unauthorized(self):
         response = self.client.get(
             reverse('maas_handler'),
             {'op': 'get_config'})
 
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
-    def test_anon_set_config_forbidden(self):
+    def test_anon_set_config_unauthorized(self):
         response = self.client.post(
             reverse('maas_handler'),
             {'op': 'set_config'})
 
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
 
 class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -343,13 +343,6 @@ class MAASAPITest(APITestCase.ForUser):
         self.assertEqual(
             '/api/2.0/maas/', reverse('maas_handler'))
 
-    def test_simple_user_get_config_forbidden(self):
-        response = self.client.get(
-            reverse('maas_handler'),
-            {'op': 'get_config'})
-
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
     def test_simple_user_set_config_forbidden(self):
         response = self.client.post(
             reverse('maas_handler'),
@@ -358,7 +351,6 @@ class MAASAPITest(APITestCase.ForUser):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_get_config_requires_name_param(self):
-        self.become_admin()
         response = self.client.get(
             reverse('maas_handler'),
             {
@@ -369,7 +361,6 @@ class MAASAPITest(APITestCase.ForUser):
         self.assertEqual(b"No provided name!", response.content)
 
     def test_get_config_returns_config(self):
-        self.become_admin()
         name = 'maas_name'
         value = factory.make_string()
         Config.objects.set_config(name, value)
@@ -386,7 +377,6 @@ class MAASAPITest(APITestCase.ForUser):
         self.assertEqual(value, parsed_result)
 
     def test_get_config_rejects_unknown_config_item(self):
-        self.become_admin()
         name = factory.make_string()
         value = factory.make_string()
         Config.objects.set_config(name, value)

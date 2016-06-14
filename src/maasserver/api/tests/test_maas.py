@@ -6,10 +6,16 @@
 __all__ = []
 
 import http.client
+import json
+from operator import itemgetter
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.models.config import Config
+from maasserver.forms_settings import CONFIG_ITEMS_KEYS
+from maasserver.models.config import (
+    Config,
+    DEFAULT_CONFIG,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import (
@@ -17,12 +23,38 @@ from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
 )
+from maastesting.matchers import DocTestMatches
+from maastesting.testcase import MAASTestCase
+from testtools.content import text_content
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+
+# Names forbidden for use via the Web API.
+FORBIDDEN_NAMES = {
+    "omapi_key", "rpc_region_certificate",
+    "rpc_shared_secret", "commissioning_osystem",
+}
+
+
+class TestForbiddenNames(MAASTestCase):
+
+    def test_forbidden_names(self):
+        # The difference between the set of possible configuration keys and
+        # those permitted via the Web API is small but important to security.
+        self.assertThat(
+            set(DEFAULT_CONFIG).difference(CONFIG_ITEMS_KEYS),
+            Equals(FORBIDDEN_NAMES))
 
 
 class MAASHandlerAPITest(APITestCase.ForUser):
 
     def test_get_config_default_distro_series(self):
-        self.become_admin()
         default_distro_series = factory.make_name("distro_series")
         Config.objects.set_config(
             "default_distro_series", default_distro_series)
@@ -69,3 +101,48 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             })
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def assertInvalidConfigurationSetting(self, name, response):
+        self.addDetail(
+            "Response for op={get,set}_config&name=%s" % name, text_content(
+                response.serialize().decode(settings.DEFAULT_CHARSET)))
+        self.expectThat(
+            response, MatchesAll(
+                # An HTTP 400 response,
+                MatchesStructure(
+                    status_code=Equals(http.client.BAD_REQUEST)),
+                # with a JSON body,
+                AfterPreprocessing(
+                    itemgetter("Content-Type"),
+                    Equals("application/json")),
+                # containing a serialised ValidationError.
+                AfterPreprocessing(
+                    lambda response: json.loads(
+                        response.content.decode(settings.DEFAULT_CHARSET)),
+                    MatchesDict({
+                        name: MatchesListwise([
+                            DocTestMatches(
+                                name + " is not a valid config setting "
+                                "(valid settings are: ...)."),
+                        ]),
+                    })),
+                first_only=True,
+            ))
+
+    def test_get_config_forbidden_config_items(self):
+        for name in FORBIDDEN_NAMES:
+            response = self.client.get(
+                reverse('maas_handler'), {
+                    "op": "get_config", "name": name,
+                })
+            self.assertInvalidConfigurationSetting(name, response)
+
+    def test_set_config_forbidden_config_items(self):
+        self.become_admin()
+        for name in FORBIDDEN_NAMES:
+            response = self.client.post(
+                reverse('maas_handler'), {
+                    "op": "set_config", "name": name,
+                    "value": factory.make_name("nonsense"),
+                })
+            self.assertInvalidConfigurationSetting(name, response)
