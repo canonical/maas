@@ -1907,6 +1907,30 @@ describe("NodeNetworkingController", function() {
                     "ip_address": nic.ip_address
                 });
         });
+
+        it("handles errors", function() {
+            var controller = makeController();
+            var nic = {
+                id: makeInteger(0, 100),
+                mode: "static",
+                subnet: { id: makeInteger(0, 100) },
+                link_id: makeInteger(0, 100),
+                ip_address: "192.168.122.1"
+            };
+            var defer = $q.defer();
+            spyOn(console, "log");
+            spyOn(MachinesManager, "linkSubnet").and.returnValue(
+                defer.promise);
+            $scope.saveInterfaceLink(nic);
+            defer.reject("error");
+            $scope.$digest();
+            // Make sure error is set for UI.
+            expect($scope.interfaceErrorsByLinkId[nic.link_id]).toBe("error");
+            expect(console.log).toHaveBeenCalledWith("error");
+            // Make sure error is cleared on success.
+            $scope.saveInterfaceLink(nic);
+            expect($scope.interfaceErrorsByLinkId[nic.link_id]).toBeUndefined();
+        });
     });
 
     describe("subnetChanged", function() {

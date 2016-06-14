@@ -177,6 +177,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.subnets = SubnetsManager.getItems();
         $scope.interfaces = [];
         $scope.interfaceLinksMap = {};
+        $scope.interfaceErrorsByLinkId = {};
         $scope.originalInterfaces = {};
         $scope.showingMembers = [];
         $scope.focusInterface = null;
@@ -723,6 +724,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return !angular.isObject(nic.subnet);
         };
 
+        $scope.getInterfaceError = function(nic) {
+            if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
+                return $scope.interfaceErrorsByLinkId[nic.link_id];
+            }
+            return null;
+        };
+
         // Called when the link mode for this interface and link has been
         // changed.
         $scope.saveInterfaceLink = function(nic) {
@@ -734,17 +742,17 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
             if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
                 params.link_id = nic.link_id;
+                delete $scope.interfaceErrorsByLinkId[nic.link_id];
             }
             if(nic.mode === LINK_MODE.STATIC && nic.ip_address.length > 0) {
                 params.ip_address = nic.ip_address;
             }
             return $scope.$parent.nodesManager.linkSubnet(
                 $scope.node, nic.id, params).then(null, function(error) {
-                    // XXX blake_r: Just log the error in the console, but
-                    // we need to expose this as a better message to the
-                    // user.
                     console.log(error);
-
+                    if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
+                        $scope.interfaceErrorsByLinkId[nic.link_id] = error;
+                    }
                     // Update the interfaces so it is back to the way it
                     // was before the user changed it.
                     updateInterfaces();
