@@ -44,6 +44,11 @@
         background-image: url('../img/icons/info.svg'), none;
     }
 
+    &.help {
+        background-image: url('../img/icons/help.png');
+        background-image: url('../img/icons/help.svg'), none;
+    }
+
     &.edit {
         background-image: url('../img/icons/edit.png');
         background-image: url('../img/icons/edit.svg'), none;
@@ -349,66 +354,82 @@
   position: relative;
 
   &::before {
-    content: attr(data-tooltip) ;
-    font-size: 13px;
-    font-weight: 400;
-    position:absolute;
-    z-index: 999;
-    white-space:nowrap;
-    left: 50%;
-    -webkit-transform: translateX(-50%);
-    -ms-transform: translateX(-50%);
-    transform: translateX(-50%);
-    background:#333;
-    color:#FFF;
-    padding: 10px;
-    text-indent: 0;
-    opacity: 0;
-    transition:opacity 0.4s ease-out;
-    border-radius: 5px;
-    box-shadow: 0px 1px 3px 0 rgba(51,51,51,0.2);
-    top: -9999em;
-  }
-
-  &::after {
     position: absolute;
     left: 50%;
-    -webkit-transform: translateX(-50%);
-    -ms-transform: translateX(-50%);
-    transform: translateX(-50%);
+    -webkit-transform: translateX(-50%) translateY(-14px);
+    -moz-transform: translateX(-50%) translateY(-14px);
+    transform: translateX(-50%) translateY(-14px);
     content: '';
     width: 0;
     height: 0;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    z-index: 1000;
+    z-index: -1;
+    visibility: hidden;
 
-    transition:opacity 0.4s ease-out;
+    transition:opacity 0.2s ease-out;
 
     border-top: 5px solid #333;
     opacity: 0;
-    top: -9999em;
+    bottom: 100%;
+    margin-bottom: -11px;
   }
 
+  &::after {
+    content: attr(data-tooltip) ;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 16px;
+    position:absolute;
+    z-index: -1;
+    visibility: hidden;
+    left: 50%;
+    bottom: 100%;
+    -webkit-transform: translateX(-50%) translateY(-8px);
+    -moz-transform: translateX(-50%) translateY(-8px);
+    transform: translateX(-50%) translateY(-8px);
+    background:#333;
+    color:#FFF;
+    padding: 10px;
+    height: auto;
+    text-indent: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    border-radius: 5px;
+    box-shadow: 0px 1px 3px 0 rgba(51,51,51,0.2);
+    white-space: pre;
+    box-sizing: border-box;
+  }
 
+  &:hover::after,
   &:hover::before {
     opacity: 1 !important;
-    top: -47px;
+    z-index: 1000;
+    visibility: visible;
   }
 
-  &:hover::after {
-    opacity: 1 !important;
-    top: -10px;
-  }
-}
+  &.tooltip--right {
 
-.link-cta-ubuntu,
-.cta-ubuntu {
-
-    &.tooltip {
-
-      &:hover::before {
-        top: -50px;
-      }
+    &::before {
+      border-top: 5px solid transparent;
+      border-right: 5px solid #333;
+      border-bottom: 5px solid transparent;
+      left: 100%;
+      bottom: inherit;
+      top: 50%;
+      -webkit-transform: translateX(4px) translateY(-50%);
+      -moz-transform: translateX(4px) translateY(-50%);
+      transform: translateX(4px) translateY(-50%);
     }
+
+    &::after {
+      left: 100%;
+      bottom: inherit;
+      top: 50%;
+      margin-bottom: -14px;
+      -webkit-transform: translateX(14px) translateY(-50%);
+      -moz-transform: translateX(14px) translateY(-50%);
+      transform: translateX(14px) translateY(-50%);
+    }
+  }
 }
