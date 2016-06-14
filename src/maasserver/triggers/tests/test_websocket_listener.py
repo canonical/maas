@@ -919,6 +919,7 @@ class TestNodeInterfaceListener(
         finally:
             yield listener.stopService()
 
+    @skip("XXX: LaMontJones 2016-06-14 bug=1592474: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):

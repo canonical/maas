@@ -21,7 +21,10 @@ import re
 import sys
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import (
+    locate_config,
+    locate_template,
+)
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
@@ -178,8 +181,10 @@ def execute_rndc_command(arguments):
     call_and_check(rndc_cmd)
 
 
-# Location of DNS templates, relative to the configuration directory.
-TEMPLATES_DIR = 'templates/dns'
+def get_dns_template_path(template_name):
+    """Return the path to a dns template file."""
+    # This function exists solely to make unit testing easier.
+    return locate_template('dns', template_name)
 
 
 def set_up_options_conf(overwrite=True, **kwargs):
@@ -190,8 +195,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
     so relies on either the DNSFixture in the test suite, or the packaging.
     Both should set that file up appropriately to include our file.
     """
-    template_path = os.path.join(
-        locate_config(TEMPLATES_DIR),
+    template_path = get_dns_template_path(
         "named.conf.options.inside.maas.template")
     template = tempita.Template.from_filename(
         template_path, encoding="UTF-8")
@@ -249,11 +253,11 @@ def render_dns_template(template_name, *parameters):
     """Generate contents for a DNS configuration or zone file.
 
     :param template_name: Name of the template file that should be rendered.
-        It must be in `TEMPLATES_DIR`.
+        It must be in provisioningserver/templates/dns/.
     :param parameters: One or more dicts of paramaters to be passed to the
         template.  Each adds to (and may overwrite) the previous ones.
     """
-    template_path = locate_config(TEMPLATES_DIR, template_name)
+    template_path = locate_template('dns', template_name)
     template = tempita.Template.from_filename(template_path, encoding="UTF-8")
     combined_params = {}
     for params_dict in parameters:
