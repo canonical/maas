@@ -18,6 +18,8 @@ function makeUser() {
     };
 }
 
+// Global MAAS_config;
+MAAS_config = {};
 
 describe("NodesListController", function() {
 
@@ -307,6 +309,19 @@ describe("NodesListController", function() {
             });
 
             it("sets initial values on $scope", function() {
+                // Only controllers tab uses the registerUrl and
+                // registerSecret. Set the values before the controller is
+                // created. The create will pull the values into the scope.
+                var registerUrl, registerSecret;
+                if(tab === "controllers") {
+                    registerUrl = makeName("url");
+                    registerSecret = makeName("secret");
+                    MAAS_config = {
+                        register_url: registerUrl,
+                        register_secret: registerSecret
+                    };
+                }
+
                 var controller = makeController();
                 var tabScope = $scope.tabs[tab];
                 expect(tabScope.previous_search).toBe("");
@@ -340,6 +355,13 @@ describe("NodesListController", function() {
                         skipNetworking: false,
                         skipStorage: false
                     });
+                }
+
+                // Only controllers tab uses the registerUrl and
+                // registerSecret.
+                if(tab === "controllers") {
+                    expect(tabScope.registerUrl).toBe(registerUrl);
+                    expect(tabScope.registerSecret).toBe(registerSecret);
                 }
             });
 

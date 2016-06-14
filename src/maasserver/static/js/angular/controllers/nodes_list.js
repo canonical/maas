@@ -125,6 +125,9 @@ angular.module('MAAS').controller('NodesListController', [
         };
         $scope.tabs.controllers.zoneSelection = null;
         $scope.tabs.controllers.syncStatuses = {};
+        $scope.tabs.controllers.addController = false;
+        $scope.tabs.controllers.registerUrl = MAAS_config.register_url;
+        $scope.tabs.controllers.registerSecret = MAAS_config.register_secret;
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = null;

@@ -18,7 +18,12 @@ var MAAS_config = {
         images_handler: '{% url "images" %}'
         },
     files_version: '{{files_version}}',
+    {% if user.is_superuser %}
+    register_url: '{{register_url}}',
+    register_secret: '{{register_secret}}',
+    {% endif %}
     debug: {% if YUI_DEBUG %}true{% else %}false{% endif %}
+
 };
 // -->
 </script>

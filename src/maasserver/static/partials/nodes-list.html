@@ -405,7 +405,17 @@
         </div>
         <div data-ng-show="currentpage === 'controllers'">
             <div class="page-header__actions">
-                <div class="page-header__cta ng-hide" data-ng-show="tabs.controllers.selectedItems.length">
+                <div class="page-header__cta" data-ng-if="!tabs.controllers.selectedItems.length">
+                    <div class="right">
+                        <button class="cta-ubuntu"
+                            data-ng-click="tabs.controllers.addController = true"
+                            data-ng-hide="tabs.controllers.addController">Add rack controller</button>
+                        <button class="cta-ubuntu secondary ng-hide"
+                            data-ng-click="tabs.controllers.addController = false"
+                            data-ng-show="tabs.controllers.addController">Close add rack controller</button>
+                    </div>
+                </div>
+                <div class="page-header__cta ng-hide" data-ng-if="tabs.controllers.selectedItems.length">
                     <span class="page-header__cta-feedback" data-ng-click="showSelected('controllers')">
                         {$ tabs.controllers.selectedItems.length $} Selected
                     </span>
@@ -460,6 +470,25 @@
                         <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
                         failed with error: {$ error $}
                     </p>
+                </div>
+            </div>
+            <div class="page-header__dropdown border ng-hide" data-ng-show="tabs.controllers.addController">
+                <h3 class="u-padding--top">Add rack controller</h3>
+                <pre class="no-margin">
+                    <code>
+# To add a new rack controller, SSH into the rack controller.
+# Install the maas-rack-controller package.
+sudo apt install maas-rack-controller
+# Register the rack controller with this MAAS. If the rack controller (and machines)
+# don't have access to the URL, use a different IP address to allow connection.
+sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tabs.controllers.registerSecret $}
+                    </code>
+                </pre>
+                <div class="page-header__feedback twelve-col no-margin-bottom">
+                    <div class="right align-right">
+                        <button class="cta-ubuntu secondary"
+                            data-ng-click="tabs.controllers.addController = false">Close</button>
+                    </div>
                 </div>
             </div>
         </div>

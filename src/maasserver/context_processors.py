@@ -10,6 +10,7 @@ __all__ = [
 
 from django.conf import settings
 from maasserver.components import get_persistent_errors
+from maasserver.config import RegionConfiguration
 from maasserver.models import Config
 from maasserver.utils.version import (
     get_maas_doc_version,
@@ -25,6 +26,8 @@ def yui(context):
 
 def global_options(context):
     version = get_maas_version_ui()
+    with RegionConfiguration.open() as config:
+        maas_url = config.maas_url
     return {
         'persistent_errors': get_persistent_errors(),
         'global_options': {
@@ -34,4 +37,6 @@ def global_options(context):
         'version': version,
         'files_version': version.replace(" ", ""),
         'doc_version': get_maas_doc_version(),
+        'register_url': maas_url,
+        'register_secret': Config.objects.get_config('rpc_shared_secret'),
     }
