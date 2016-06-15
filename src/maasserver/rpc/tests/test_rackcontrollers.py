@@ -155,7 +155,7 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Registering existing rack controller %s." % node.hostname,
+            "Registering existing rack controller '%s'." % node.hostname,
             logger.output.strip())
 
     def test_converts_region_controller(self):
@@ -169,7 +169,7 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Converting %s into a region and rack controller.\n" %
+            "Converting '%s' into a region and rack controller.\n" %
             node.hostname, logger.output)
 
     def test_converts_existing_node(self):
@@ -182,7 +182,7 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Converting %s into a rack controller.\n" % node.hostname,
+            "Converting '%s' into a rack controller.\n" % node.hostname,
             logger.output)
 
     def test_creates_new_rackcontroller(self):
@@ -205,7 +205,7 @@ class TestRegisterRackController(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         register(hostname=hostname)
         self.assertEqual(
-            "Created new rack controller %s." % hostname,
+            "Created new rack controller '%s'." % hostname,
             logger.output.strip())
 
     def test_sets_interfaces(self):

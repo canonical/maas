@@ -42,7 +42,7 @@ from provisioningserver.import_images.boot_resources import (
 from provisioningserver.logger import get_maas_logger
 
 
-maaslog = get_maas_logger("cluster_upgrade")
+maaslog = get_maas_logger("rack_upgrade")
 
 
 def make_maas_own_boot_resources():
@@ -222,6 +222,8 @@ def add_arguments(parser):
 def run(args):
     """Perform any data migrations needed for upgrading this cluster."""
     for hook in UPGRADE_HOOKS:
-        maaslog.info("Cluster upgrade hook %s started." % hook.__name__)
+        maaslog.info(
+            "Rack controller upgrade hook '%s' started." % hook.__name__)
         hook()
-        maaslog.info("Cluster upgrade hook %s finished." % hook.__name__)
+        maaslog.info(
+            "Rack controller upgrade hook '%s' finished." % hook.__name__)

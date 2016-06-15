@@ -88,16 +88,18 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
     node = find(system_id, hostname, interfaces)
     if node is None:
         node = RackController.objects.create(hostname=hostname)
-        maaslog.info("Created new rack controller %s.", node.hostname)
+        maaslog.info("Created new rack controller '%s'.", node.hostname)
     elif node.is_rack_controller:
-        maaslog.info("Registering existing rack controller %s.", node.hostname)
+        maaslog.info(
+            "Registering existing rack controller '%s'.", node.hostname)
     elif node.is_region_controller:
         maaslog.info(
-            "Converting %s into a region and rack controller.", node.hostname)
+            "Converting '%s' into a region and rack controller.",
+            node.hostname)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.save()
     else:
-        maaslog.info("Converting %s into a rack controller.", node.hostname)
+        maaslog.info("Converting '%s' into a rack controller.", node.hostname)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 
