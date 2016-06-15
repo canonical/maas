@@ -38,6 +38,7 @@ from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import text_content
 from testtools.matchers import (
     Equals,
+    HasLength,
     MatchesAny,
     Not,
 )
@@ -821,11 +822,11 @@ class TestVirtualityScript(MAASTestCase):
             return check_output((script.path,), stderr=STDOUT, env=env)
         except CalledProcessError as error:
             self.addDetail("output", text_content(
-                error.output.decode("ascii", "replace")))
+                error.output.decode("utf-8", "replace")))
             raise
 
     def test_runs_locally(self):
-        self.assertThat(self.run_script(), Not(Equals("")))
+        self.assertThat(self.run_script().strip(), Not(HasLength(0)))
 
     def test_runs_successfully_when_systemd_detect_virt_returns_nonzero(self):
         # Replace symlink to systemd-detect-virt with a script of our making.
