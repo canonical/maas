@@ -11,6 +11,7 @@ __all__ = [
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
+    AnonymousOperationsHandler,
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
@@ -18,6 +19,20 @@ from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 from maasserver.utils.orm import get_one
 from piston3.utils import rc
+
+
+DISPLAYED_ZONE_FIELDS = (
+    'id',
+    'name',
+    'description',
+)
+
+
+class AnonZoneHandler(AnonymousOperationsHandler):
+    """Anonymous access to zone."""
+    read = create = update = delete = None
+    model = Zone
+    fields = DISPLAYED_ZONE_FIELDS
 
 
 class ZoneHandler(OperationsHandler):
@@ -33,7 +48,7 @@ class ZoneHandler(OperationsHandler):
     """
     api_doc_section_name = "Zone"
     model = Zone
-    fields = ('name', 'description')
+    fields = DISPLAYED_ZONE_FIELDS
 
     # Creation happens on the ZonesHandler.
     create = None

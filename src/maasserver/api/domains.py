@@ -5,6 +5,7 @@
 
 from maasserver.api.support import (
     admin_method,
+    AnonymousOperationsHandler,
     operation,
     OperationsHandler,
 )
@@ -76,6 +77,13 @@ class DomainsHandler(OperationsHandler):
                     'Expected a serial number between 1 and %d' % INT_MAX})
         zone_serial.set_value(serial)
         dns_force_reload()
+
+
+class AnonDomainHandler(AnonymousOperationsHandler):
+    """Anonymous access to domain."""
+    read = create = update = delete = None
+    model = Domain
+    fields = DISPLAYED_DOMAIN_FIELDS
 
 
 class DomainHandler(OperationsHandler):

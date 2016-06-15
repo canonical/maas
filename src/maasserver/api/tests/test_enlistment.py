@@ -377,6 +377,7 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json_load_bytes(response.content)
+        # Limited fields on machine.
         self.assertItemsEqual(
             [
                 'system_id',
@@ -395,6 +396,24 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
                 'resource_uri',
             ],
             list(parsed_result))
+        # Limited fields on domain.
+        self.assertItemsEqual(
+            [
+                'id',
+                'name',
+                'ttl',
+                'authoritative',
+                'resource_record_count',
+            ],
+            list(parsed_result['domain']))
+        # Limited fields on zone.
+        self.assertItemsEqual(
+            [
+                'id',
+                'name',
+                'description',
+            ],
+            list(parsed_result['zone']))
 
 
 class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
