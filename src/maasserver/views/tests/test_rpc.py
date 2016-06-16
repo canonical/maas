@@ -12,10 +12,11 @@ from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maastesting.factory import factory
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import (
     Equals,
     GreaterThan,
@@ -108,6 +109,10 @@ class RPCViewTest(MAASTransactionServerTestCase):
         self.assertEqual({"eventloops": None}, info)
 
     def test_rpc_info_when_rpc_advertise_running(self):
+        region = factory.make_RegionController()
+        self.useFixture(MAASIDFixture(region.system_id))
+        region.owner = factory.make_admin()
+        region.save()
         self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
 
         eventloop.start().wait(5)

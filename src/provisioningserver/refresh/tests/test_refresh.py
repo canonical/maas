@@ -15,6 +15,7 @@ from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    Equals,
     MockAnyCall,
     MockCalledWith,
 )
@@ -31,7 +32,7 @@ class TestHelpers(MAASTestCase):
     def test_get_architecture_returns_arch_with_generic(self):
         arch = random.choice(['i386', 'amd64', 'arm64', 'ppc64el'])
         subarch = factory.make_name('subarch')
-        self.patch(refresh, 'call_and_check').return_value = (
+        self.patch_autospec(refresh, 'call_and_check').return_value = (
             "%s/%s" % (arch, subarch)).encode('utf-8')
         ret_arch = refresh.get_architecture()
         self.assertEquals("%s/generic" % arch, ret_arch)
@@ -40,7 +41,7 @@ class TestHelpers(MAASTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         architecture = "%s/%s" % (arch, subarch)
-        self.patch(refresh, 'call_and_check').return_value = (
+        self.patch_autospec(refresh, 'call_and_check').return_value = (
             architecture.encode('utf-8'))
         ret_arch = refresh.get_architecture()
         self.assertEquals(architecture, ret_arch)
@@ -59,6 +60,73 @@ class TestHelpers(MAASTestCase):
         # found. Both exist in Ubuntu 16.04 (Xenial).
         self.assertIn('UBUNTU_CODENAME', os_release)
         self.assertIn('VERSION_ID', os_release)
+
+    def test_get_sys_info(self):
+        hostname = factory.make_hostname()
+        osystem = factory.make_name('id')
+        distro_series = factory.make_name('ubuntu_codename')
+        architecture = factory.make_name('architecture')
+        interfaces = factory.make_name('interfaces')
+        self.patch(refresh.socket, 'gethostname').return_value = hostname
+        self.patch_autospec(refresh, 'get_os_release').return_value = {
+            'ID': osystem,
+            'UBUNTU_CODENAME': distro_series,
+        }
+        self.patch_autospec(
+            refresh, 'get_architecture').return_value = architecture
+        self.patch_autospec(
+            refresh, 'get_all_interfaces_definition').return_value = interfaces
+        self.assertThat({
+            'hostname': hostname,
+            'architecture': architecture,
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'interfaces': interfaces,
+            }, Equals(refresh.get_sys_info()))
+
+    def test_get_sys_info_on_host(self):
+        self.assertNotIn(None, refresh.get_sys_info())
+
+    def test_get_sys_info_alt(self):
+        hostname = factory.make_hostname()
+        osystem = factory.make_name('name')
+        distro_series = factory.make_name('version_id')
+        architecture = factory.make_name('architecture')
+        interfaces = factory.make_name('interfaces')
+        self.patch(refresh.socket, 'gethostname').return_value = hostname
+        self.patch_autospec(refresh, 'get_os_release').return_value = {
+            'NAME': osystem,
+            'VERSION_ID': distro_series,
+        }
+        self.patch_autospec(
+            refresh, 'get_architecture').return_value = architecture
+        self.patch_autospec(
+            refresh, 'get_all_interfaces_definition').return_value = interfaces
+        self.assertThat({
+            'hostname': hostname,
+            'architecture': architecture,
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'interfaces': interfaces,
+            }, Equals(refresh.get_sys_info()))
+
+    def test_get_sys_info_empty(self):
+        hostname = factory.make_hostname()
+        architecture = factory.make_name('architecture')
+        interfaces = factory.make_name('interfaces')
+        self.patch(refresh.socket, 'gethostname').return_value = hostname
+        self.patch_autospec(refresh, 'get_os_release').return_value = {}
+        self.patch_autospec(
+            refresh, 'get_architecture').return_value = architecture
+        self.patch_autospec(
+            refresh, 'get_all_interfaces_definition').return_value = interfaces
+        self.assertThat({
+            'hostname': hostname,
+            'architecture': architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': interfaces,
+            }, Equals(refresh.get_sys_info()))
 
 
 class TestSignal(MAASTestCase):
@@ -181,6 +249,29 @@ class TestRefresh(MAASTestCase):
             })
         ])
 
+    def test_refresh_accepts_defined_url(self):
+        signal = self.patch(refresh, 'signal')
+        self.patch_scripts_success()
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/status/%s/latest" % (url, system_id),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Starting test_script [1/1]',
+        ))
+
     def test_refresh_signals_starting(self):
         signal = self.patch(refresh, 'signal')
         self.patch_scripts_success()
@@ -189,10 +280,11 @@ class TestRefresh(MAASTestCase):
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret)
-        self.assertItemsEqual([
-            "http://localhost:5240/MAAS/metadata/status/%s/latest" % system_id,
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/status/%s/latest" % (url, system_id),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -200,8 +292,8 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Starting test_script [1/1]'],
-            signal.call_args_list[0][0])
+            'Starting test_script [1/1]',
+        ))
 
     def test_refresh_signals_results(self):
         signal = self.patch(refresh, 'signal')
@@ -211,10 +303,11 @@ class TestRefresh(MAASTestCase):
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret)
-        self.assertItemsEqual([
-            "http://localhost:5240/MAAS/metadata/status/%s/latest" % system_id,
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/status/%s/latest" % (url, system_id),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -227,8 +320,8 @@ class TestRefresh(MAASTestCase):
                 'test_script.out': b'test script\n',
                 'test_script.err': b'',
             },
-            0],
-            signal.call_args_list[1][0])
+            0,
+        ))
 
     def test_refresh_signals_finished(self):
         signal = self.patch(refresh, 'signal')
@@ -238,10 +331,11 @@ class TestRefresh(MAASTestCase):
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret)
-        self.assertItemsEqual([
-            "http://localhost:5240/MAAS/metadata/status/%s/latest" % system_id,
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/status/%s/latest" % (url, system_id),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -249,8 +343,8 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'OK',
-            "Finished refreshing %s" % system_id],
-            signal.call_args_list[2][0])
+            "Finished refreshing %s" % system_id
+        ))
 
     def test_refresh_signals_failure(self):
         signal = self.patch(refresh, 'signal')
@@ -260,10 +354,11 @@ class TestRefresh(MAASTestCase):
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret)
-        self.assertItemsEqual([
-            "http://localhost:5240/MAAS/metadata/status/%s/latest" % system_id,
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/status/%s/latest" % (url, system_id),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -271,8 +366,8 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'FAILED',
-            "Failed refreshing %s" % system_id],
-            signal.call_args_list[2][0])
+            "Failed refreshing %s" % system_id,
+        ))
 
     def test_refresh_clears_up_temporary_directory(self):
 

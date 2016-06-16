@@ -450,6 +450,7 @@ class RefreshRackControllerInfo(amp.Command):
         (b"token_secret", amp.Unicode()),
     ]
     response = [
+        (b"hostname", amp.Unicode()),
         (b"architecture", amp.Unicode()),
         (b"osystem", amp.Unicode()),
         (b"distro_series", amp.Unicode()),

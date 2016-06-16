@@ -156,6 +156,7 @@ from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,
 )
+from provisioningserver.utils.fs import NamedLock
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
@@ -6918,10 +6919,18 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         token.consumer.key  # Fetch this now while we're in the database.
         return token
 
+    def test_refresh_calls_region_refresh_when_on_node(self):
+        rack = factory.make_RackController()
+        self.patch(node_module, 'get_maas_id').return_value = rack.system_id
+        mock_refresh = self.patch(node_module.RegionController, 'refresh')
+        rack.refresh()
+        self.assertThat(mock_refresh, MockCalledOnce())
+
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_refresh_issues_rpc_call(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'hostname': self.rackcontroller.hostname,
             'architecture': self.rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
@@ -6942,6 +6951,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_refresh_logs_user_request(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'hostname': self.rackcontroller.hostname,
             'architecture': self.rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
@@ -6954,13 +6964,14 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         yield self.rackcontroller.refresh()
         self.assertThat(register_event, MockCalledOnceWith(
             self.rackcontroller.owner,
-            EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
+            EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
             action='starting refresh'))
 
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_refresh_clears_node_results(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'hostname': self.rackcontroller.hostname,
             'architecture': self.rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
@@ -6988,6 +6999,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_refresh_sets_extra_values(self):
+        hostname = factory.make_hostname()
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('distro_series')
         interfaces = {
@@ -7001,6 +7013,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         }
 
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'hostname': hostname,
             'architecture': self.rackcontroller.architecture,
             'osystem': osystem,
             'distro_series': distro_series,
@@ -7010,6 +7023,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         yield self.rackcontroller.refresh()
         rackcontroller = yield deferToDatabase(
             reload_object, self.rackcontroller)
+        self.assertEquals(hostname, rackcontroller.hostname)
         self.assertEquals(osystem, rackcontroller.osystem)
         self.assertEquals(distro_series, rackcontroller.distro_series)
 
@@ -7377,3 +7391,171 @@ class TestRegionController(MAASServerTestCase):
         region = factory.make_RegionController()
         region.delete()
         self.assertIsNone(reload_object(region))
+
+
+class TestRegionControllerRefresh(MAASTransactionServerTestCase):
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__only_runs_on_running_region(self):
+        region = yield deferToDatabase(factory.make_RegionController)
+
+        with ExpectedException(NotImplementedError):
+            yield region.refresh()
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__acquires_and_releases_lock(self):
+        def mock_refresh(*args, **kwargs):
+            lock = NamedLock('refresh')
+            self.assertTrue(lock.is_locked())
+        self.patch(node_module, 'refresh', mock_refresh)
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': region.hostname,
+            'architecture': region.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        }
+        yield region.refresh()
+        lock = NamedLock('refresh')
+        self.assertFalse(lock.is_locked())
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__lock_released_on_error(self):
+        exception = factory.make_exception()
+        self.patch(node_module, 'refresh').side_effect = exception
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': region.hostname,
+            'architecture': region.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        }
+        with ExpectedException(type(exception)):
+            yield region.refresh()
+        lock = NamedLock('refresh')
+        self.assertFalse(lock.is_locked())
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__does_nothing_when_locked(self):
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        mock_deferToDatabase = self.patch(node_module, 'deferToDatabase')
+        with NamedLock('refresh'):
+            yield region.refresh()
+        self.assertThat(mock_deferToDatabase, MockNotCalled())
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__logs_user_request(self):
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        self.patch(node_module, 'refresh')
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': region.hostname,
+            'architecture': region.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        }
+        register_event = self.patch(region, '_register_request_event')
+
+        yield region.refresh()
+        self.assertThat(register_event, MockCalledOnceWith(
+            region.owner,
+            EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
+            action='starting refresh'))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__runs_refresh(self):
+        def get_token_for_controller(region):
+            token = NodeKey.objects.get_token_for_node(region)
+            token.consumer.key  # Fetch this now while we're in the database.
+            return token
+
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        mock_refresh = self.patch(node_module, 'refresh')
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': region.hostname,
+            'architecture': region.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        }
+        yield region.refresh()
+        token = yield deferToDatabase(get_token_for_controller, region)
+
+        self.expectThat(
+            mock_refresh,
+            MockCalledOnceWith(
+                region.system_id, token.consumer.key, token.key,
+                token.secret, 'http://127.0.0.1:5240/MAAS'))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__clears_node_results(self):
+        region = yield deferToDatabase(factory.make_RegionController)
+        node_result = yield deferToDatabase(
+            factory.make_NodeResult_for_installation, node=region)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        self.patch(node_module, 'refresh')
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': region.hostname,
+            'architecture': region.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'interfaces': {},
+        }
+        yield region.refresh()
+
+        def has_results():
+            return NodeResult.objects.filter(id=node_result.id).exists()
+
+        self.assertFalse((yield deferToDatabase(has_results)))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__sets_extra_values(self):
+        region = yield deferToDatabase(factory.make_RegionController)
+        self.patch(node_module, 'get_maas_id').return_value = region.system_id
+        self.patch(node_module, 'refresh')
+        hostname = factory.make_hostname()
+        osystem = factory.make_name('osystem')
+        distro_series = factory.make_name('distro_series')
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        self.patch(node_module, 'get_sys_info').return_value = {
+            'hostname': hostname,
+            'architecture': region.architecture,
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'interfaces': interfaces,
+        }
+        yield region.refresh()
+        region = yield deferToDatabase(reload_object, region)
+        self.assertEquals(hostname, region.hostname)
+        self.assertEquals(osystem, region.osystem)
+        self.assertEquals(distro_series, region.distro_series)
+
+        def has_nic(region):
+            mac_address = interfaces["eth0"]["mac_address"]
+            return Interface.objects.filter(
+                node=region, mac_address=mac_address).exists()
+
+        self.assertTrue((yield deferToDatabase(has_nic, region)))

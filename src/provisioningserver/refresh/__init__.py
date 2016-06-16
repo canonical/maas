@@ -9,13 +9,13 @@ import subprocess
 import tempfile
 import urllib
 
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
     encode_multipart_data,
     geturl,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -50,6 +50,31 @@ def get_os_release():
             os_release[full_strip(key)] = full_strip(value)
 
     return os_release
+
+
+@synchronous
+def get_sys_info():
+    """Return basic system information in a dictionary."""
+    os_release = get_os_release()
+    if 'ID' in os_release:
+        osystem = os_release['ID']
+    elif 'NAME' in os_release:
+        osystem = os_release['NAME']
+    else:
+        osystem = ''
+    if 'UBUNTU_CODENAME' in os_release:
+        distro_series = os_release['UBUNTU_CODENAME']
+    elif 'VERSION_ID' in os_release:
+        distro_series = os_release['VERSION_ID']
+    else:
+        distro_series = ''
+    return {
+        'hostname': socket.gethostname().split('.')[0],
+        'architecture': get_architecture(),
+        'osystem': osystem,
+        'distro_series': distro_series,
+        'interfaces': get_all_interfaces_definition(),
+    }
 
 
 def signal(
@@ -91,13 +116,12 @@ def signal(
 
 
 @synchronous
-def refresh(system_id, consumer_key, token_key, token_secret):
+def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
     """Run all builtin commissioning scripts and report results to region."""
     maaslog.info(
         "Refreshing rack controller hardware information.")
 
-    with ClusterConfiguration.open() as config:
-        url = "%s/metadata/status/%s/latest" % (config.maas_url, system_id)
+    url = "%s/metadata/status/%s/latest" % (maas_url, system_id)
 
     creds = {
         'consumer_key': consumer_key,

@@ -36,8 +36,7 @@ from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
-    get_architecture,
-    get_os_release,
+    get_sys_info,
     refresh,
 )
 from provisioningserver.rpc import (
@@ -79,7 +78,6 @@ from provisioningserver.utils.shell import (
 from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,
-    synchronous,
 )
 from twisted import web
 from twisted.application.internet import TimerService
@@ -385,43 +383,16 @@ class Cluster(RPCProtocol):
             # Refresh is already running, don't do anything
             raise exceptions.RefreshAlreadyInProgress()
         else:
+            with ClusterConfiguration.open() as config:
+                maas_url = config.maas_url
             # Start gathering node results(lshw, lsblk, etc) but don't wait.
             d = deferToThread(
-                refresh, system_id, consumer_key, token_key, token_secret)
+                refresh, system_id, consumer_key, token_key, token_secret,
+                maas_url)
             d.addErrback(log.err, 'Failed to refresh the rack controller.')
             d.addBoth(callOut, lock.release)
 
-        @synchronous
-        def perform_refresh():
-            architecture = get_architecture()
-            os_release = get_os_release()
-            interfaces = get_all_interfaces_definition()
-            return architecture, os_release, interfaces
-
-        def cb_result(result):
-            architecture, os_release, interfaces = result
-            if 'ID' in os_release:
-                osystem = os_release['ID']
-            elif 'NAME' in os_release:
-                osystem = os_release['NAME']
-            else:
-                osystem = ''
-            if 'UBUNTU_CODENAME' in os_release:
-                distro_series = os_release['UBUNTU_CODENAME']
-            elif 'VERSION_ID' in os_release:
-                distro_series = os_release['VERSION_ID']
-            else:
-                distro_series = ''
-            return {
-                'architecture': architecture,
-                'osystem': osystem,
-                'distro_series': distro_series,
-                'interfaces': interfaces
-            }
-
-        d = deferToThread(perform_refresh)
-        d.addCallback(cb_result)
-        return d
+        return deferToThread(get_sys_info)
 
     @cluster.AddChassis.responder
     def add_chassis(

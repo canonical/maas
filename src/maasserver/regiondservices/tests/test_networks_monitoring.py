@@ -36,6 +36,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_updates_interfaces_in_database(self):
         region = yield deferToDatabase(factory.make_RegionController)
+        region.owner = yield deferToDatabase(factory.make_admin)
+        yield deferToDatabase(region.save)
         # Declare this region controller as the one running here.
         self.useFixture(MAASIDFixture(region.system_id))
 

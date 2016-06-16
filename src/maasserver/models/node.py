@@ -160,6 +160,10 @@ from provisioningserver.events import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
+from provisioningserver.refresh import (
+    get_sys_info,
+    refresh,
+)
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DisableAndShutoffRackd,
@@ -179,6 +183,7 @@ from provisioningserver.utils import (
 )
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -189,6 +194,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("node")
@@ -546,7 +552,7 @@ class ControllerManager(BaseNodeManager):
             ]}
 
     def get_running_controller(self):
-        return self.get(system_id=get_maas_id())
+        return self.get(system_id=get_maas_id(), owner_id__isnull=False)
 
 
 class RackControllerManager(ControllerManager):
@@ -3629,30 +3635,28 @@ class Controller(Node):
     @transactional
     def _signal_start_of_refresh(self):
         self._register_request_event(
-            self.owner, EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
+            self.owner, EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
             action='starting refresh')
 
     @transactional
-    def _process_refresh(self, response, previous_result_ids):
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
-
-        # Delete existing results. This is a bit shonk because it assumes that
-        # the commissioning scripts will run to completion on the controller.
-        # After deletion there will be a period when the controller has no
-        # results in the database while waiting to recieve the new data. If
-        # uploading fails this will leave the controller with no NodeResults.
-        NodeResult.objects.filter(id__in=previous_result_ids).delete()
-
+    def _process_sys_info(self, response):
+        update_fields = []
+        if response['hostname'] != '':
+            self.hostname = response['hostname']
+            update_fields.append('hostname')
         if response['architecture'] != '':
             self.architecture = response['architecture']
+            update_fields.append('architecture')
         if response['osystem'] != '':
             self.osystem = response['osystem']
+            update_fields.append('osystem')
         if response['distro_series'] != '':
             self.distro_series = response['distro_series']
+            update_fields.append('distro_series')
         if response['interfaces'] != {}:
             self.update_interfaces(response['interfaces'])
-        self.save()
+        if len(update_fields) > 0:
+            self.save(update_fields=update_fields)
 
 
 class RackController(Controller):
@@ -3667,6 +3671,19 @@ class RackController(Controller):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
+    @transactional
+    def _delete_node_result(self, ids):
+        # Avoid circular imports.
+        from metadataserver.models import NodeResult
+
+        # Delete existing node results. This is a bit shonky for rack
+        # controllers because it assumes that the commissioning scripts will
+        # run to completion on rack controller. After deletion there will be a
+        # period when the rack controller has no results in the database while
+        # waiting to recieve the new data. If uploading fails this will leave
+        # the rack controller with no NodeResults.
+        NodeResult.objects.filter(id__in=ids).delete()
+
     @inlineCallbacks
     def refresh(self):
         """Refresh the hardware and networking columns of the rack controller.
@@ -3674,6 +3691,13 @@ class RackController(Controller):
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
         """
+        if self.system_id == get_maas_id():
+            # If the refresh is occuring on the running region execute it using
+            # the region process. This avoids using RPC and sends the node
+            # results back to this host when in HA.
+            yield typecast_node(self, RegionController).refresh()
+            return
+
         client = yield getClientFor(self.system_id, timeout=1)
 
         token = yield deferToDatabase(self._get_token_for_controller)
@@ -3690,10 +3714,11 @@ class RackController(Controller):
                 token_key=token.key, token_secret=token.secret)
         except RefreshAlreadyInProgress:
             # If another refresh is in progress let the other process
-            # handle it and don't update the database
+            # handle it and don't update the database.
             return
         else:
-            yield deferToDatabase(self._process_refresh, response, result_ids)
+            yield deferToDatabase(self._delete_node_result, result_ids)
+            yield deferToDatabase(self._process_sys_info, response)
 
     def add_chassis(
             self, user, chassis_type, hostname, username=None, password=None,
@@ -3914,6 +3939,38 @@ class RegionController(Controller):
             self.save()
         else:
             super().delete()
+
+    @transactional
+    def _delete_node_results(self):
+        # Avoid circular imports.
+        from metadataserver.models import NodeResult
+
+        NodeResult.objects.filter(node=self).delete()
+
+    @inlineCallbacks
+    def refresh(self):
+        """Refresh the region controller."""
+        # XXX ltrager 2016-05-25 - MAAS doesn't have an RPC method between
+        # region controllers. If this method refreshes a foreign region
+        # controller the foreign region controller will contain the running
+        # region's hardware and networking information.
+        if self.system_id != get_maas_id():
+            raise NotImplementedError(
+                'Can only refresh the running region controller')
+
+        try:
+            with NamedLock('refresh'):
+                token = yield deferToDatabase(self._get_token_for_controller)
+                yield deferToDatabase(self._signal_start_of_refresh)
+                yield deferToDatabase(self._delete_node_results)
+                sys_info = yield deferToThread(get_sys_info)
+                yield deferToDatabase(self._process_sys_info, sys_info)
+                yield deferToThread(
+                    refresh, self.system_id, token.consumer.key, token.key,
+                    token.secret, 'http://127.0.0.1:5240/MAAS')
+        except NamedLock.NotAvailable:
+            # Refresh already running.
+            pass
 
 
 class Device(Node):

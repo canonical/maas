@@ -22,16 +22,12 @@ from socket import (
 )
 import threading
 
-from django.db.models import Q
 from maasserver import (
     eventloop,
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
-from maasserver.enum import (
-    NODE_TYPE,
-    SERVICE_STATUS,
-)
+from maasserver.enum import SERVICE_STATUS
 from maasserver.models.node import (
     Node,
     RackController,
@@ -61,7 +57,6 @@ from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
-    get_one,
     transactional,
     with_connection,
 )
@@ -77,12 +72,7 @@ from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
-from provisioningserver.utils.env import (
-    get_maas_id,
-    set_maas_id,
-)
 from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.ipaddr import get_mac_addresses
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -116,7 +106,6 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
-from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
@@ -576,8 +565,7 @@ class RegionServer(Region):
                 yield deferToDatabase(
                     registerConnection, region_id, rack_controller, self.host)
 
-            # Rack controller is now registered. Log this status and refresh
-            # the information about the rack controller if needed.
+            # Rack controller is now registered. Log this status.
             log.msg(
                 "Rack controller '%s' has been registered." % self.ident)
 
@@ -1014,10 +1002,10 @@ class RegionAdvertisingService(service.Service):
         """
         while self.running:
             try:
-                advertising_info = yield deferToThread(
-                    self._getAdvertisingInfo)
-                advertising = yield deferToDatabase(
-                    RegionAdvertising.promote, *advertising_info)
+                advertising = yield deferToDatabase(RegionAdvertising.promote)
+            except RegionController.DoesNotExist:
+                # Wait for the region controller object to be created
+                yield pause(1)
             except:
                 log.err(None, (
                     "Promotion of %s failed; will try again in "
@@ -1030,14 +1018,6 @@ class RegionAdvertisingService(service.Service):
             # so raise CancelledError to prevent callbacks from being called.
             raise defer.CancelledError()
 
-    @staticmethod
-    def _getAdvertisingInfo():
-        """Return the info required to promote this regiond.
-
-        :return: A ``(region-id, hostname, mac-addresses)`` tuple.
-        """
-        return get_maas_id(), gethostname(), get_mac_addresses()
-
     def _promotionOkay(self, advertising):
         """Store the region advertising object.
 
@@ -1047,7 +1027,6 @@ class RegionAdvertisingService(service.Service):
 
         :param advertising: An instance of `RegionAdvertising`.
         """
-        set_maas_id(advertising.region_id)  # Create `maas_id` file.
         self.advertising.set(advertising)
 
     def _promotionFailed(self, failure):
@@ -1184,7 +1163,7 @@ class RegionAdvertising:
     @with_connection  # Needed by the following lock.
     @synchronised(locks.eventloop)
     @transactional
-    def promote(cls, region_id, hostname, mac_addresses):
+    def promote(cls):
         """Promote this regiond to active duty.
 
         Ensure that `RegionController` and `RegionControllerProcess` records
@@ -1192,17 +1171,7 @@ class RegionAdvertising:
 
         :return: An instance of `RegionAdvertising`.
         """
-        region_filter = Q() if region_id is None else Q(system_id=region_id)
-        region_filter |= Q(hostname=hostname)
-        region_filter |= Q(interface__mac_address__in=mac_addresses)
-        region_obj = get_one(Node.objects.filter(region_filter).distinct())
-        if region_obj is None:
-            # This is the first time MAAS has run on this node.
-            region_obj = RegionController.objects.create(hostname=hostname)
-        else:
-            # Already exists. Make sure it's configured as a region.
-            region_obj = fix_node_for_region(region_obj, hostname)
-
+        region_obj = RegionController.objects.get_running_controller()
         # Create the process for this region. This process object will be
         # updated by calls to `update`, which is the responsibility of the
         # rpc-advertise service. Calls to `update` also remove old process
@@ -1329,26 +1298,3 @@ class RegionAdvertising:
         for region_obj in Node.objects.filter(system_id=self.region_id):
             RegionControllerProcess.objects.get(
                 region=region_obj, pid=os.getpid()).delete()
-
-
-@transactional
-def fix_node_for_region(region_obj, hostname):
-    """Fix the `node_type` and `hostname` fields on `region_obj`.
-
-    This method only updates the database if it has changed.
-    """
-    update_fields = []
-    if region_obj.node_type not in [
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
-        if region_obj.node_type == NODE_TYPE.RACK_CONTROLLER:
-            region_obj.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
-        else:
-            region_obj.node_type = NODE_TYPE.REGION_CONTROLLER
-        update_fields.append("node_type")
-    if region_obj.hostname != hostname:
-        region_obj.hostname = hostname
-        update_fields.append("hostname")
-    if len(update_fields) > 0:
-        region_obj.save(update_fields=update_fields)
-    return region_obj

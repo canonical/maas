@@ -210,7 +210,7 @@ class TestHelpers(DjangoTestCase):
         self.assertIn(origin, event.description)
         self.assertIn(description, event.description)
         self.assertEqual(
-            EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH, event.type.name)
+            EVENT_TYPES.REQUEST_CONTROLLER_REFRESH, event.type.name)
 
 
 def make_node_client(node=None):

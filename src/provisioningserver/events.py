@@ -81,7 +81,7 @@ class EVENT_TYPES:
     REQUEST_NODE_START = "REQUEST_NODE_START"
     REQUEST_NODE_STOP = "REQUEST_NODE_STOP"
     # Rack controller request events
-    REQUEST_RACK_CONTROLLER_REFRESH = "REQUEST_RACK_CONTROLLER_REFRESH"
+    REQUEST_CONTROLLER_REFRESH = "REQUEST_CONTROLLER_REFRESH"
     REQUEST_RACK_CONTROLLER_ADD_CHASSIS = "REQUEST_RACK_CONTROLLER_ADD_CHASSIS"
 
 
@@ -202,9 +202,9 @@ EVENT_DETAILS = {
         description="User powering down node",
         level=INFO,
     ),
-    EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH: EventDetail(
-        description=("Starting refresh of rack controller hardware and "
-                     "networking information"),
+    EVENT_TYPES.REQUEST_CONTROLLER_REFRESH: EventDetail(
+        description=("Starting refresh of controller hardware and networking "
+                     "information"),
         level=INFO,
     ),
     EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS: EventDetail(

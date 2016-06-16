@@ -166,7 +166,7 @@ def add_event_to_node_event_log(node, origin, action, description):
     elif node.node_type in [
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
-        type_name = EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH
+        type_name = EVENT_TYPES.REQUEST_CONTROLLER_REFRESH
     else:
         type_name = EVENT_TYPES.NODE_STATUS_EVENT
 

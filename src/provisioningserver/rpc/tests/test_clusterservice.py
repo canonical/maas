@@ -2029,7 +2029,13 @@ class TestClusterProtocol_Refresh(MAASTestCase):
             clusterservice, 'deferToThread')
         mock_deferToThread.side_effect = [
             succeed(None),
-            succeed(('', {}, {})),
+            succeed({
+                'hostname': '',
+                'architecture': '',
+                'osystem': '',
+                'distro_series': '',
+                'interfaces': {}
+            }),
         ]
 
         system_id = factory.make_name('system_id')
@@ -2038,16 +2044,16 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         token_secret = factory.make_name('token_secret')
 
         yield call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
-            "system_id": system_id,
-            "consumer_key": consumer_key,
-            "token_key": token_key,
-            "token_secret": token_secret,
+            'system_id': system_id,
+            'consumer_key': consumer_key,
+            'token_key': token_key,
+            'token_secret': token_secret,
         })
 
         self.assertThat(
             mock_deferToThread, MockAnyCall(
                 clusterservice.refresh, system_id, consumer_key, token_key,
-                token_secret))
+                token_secret, ANY))
 
     @inlineCallbacks
     def test_returns_extra_info(self):
@@ -2057,17 +2063,17 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
-        architecture = factory.make_name("architecture")
-        osystem = factory.make_name("osystem")
-        distro_series = factory.make_name("distro_series")
-        os_release = {
-            'ID': osystem,
-            'UBUNTU_CODENAME': distro_series,
+        hostname = factory.make_hostname()
+        architecture = factory.make_name('architecture')
+        osystem = factory.make_name('osystem')
+        distro_series = factory.make_name('distro_series')
+        self.patch_autospec(clusterservice, 'get_sys_info').return_value = {
+            'hostname': hostname,
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'architecture': architecture,
+            'interfaces': {},
         }
-
-        self.patch(clusterservice, 'get_architecture').return_value = (
-            architecture)
-        self.patch(clusterservice, 'get_os_release').return_value = os_release
 
         response = yield call_responder(
             Cluster(), cluster.RefreshRackControllerInfo, {
@@ -2079,10 +2085,11 @@ class TestClusterProtocol_Refresh(MAASTestCase):
 
         self.assertItemsEqual(
             {
+                'hostname': hostname,
                 'osystem': osystem,
                 'distro_series': distro_series,
                 'architecture': architecture,
-                'interfaces': get_all_interfaces_definition(),
+                'interfaces': {},
             }, response)
 
 
