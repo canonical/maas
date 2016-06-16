@@ -85,9 +85,12 @@ class TestReleases(MAASServerTestCase):
 
     def make_release_choice(self, osystem, release, include_asterisk=False):
         key = '%s/%s' % (osystem['name'], release['name'])
+        title = release['title']
+        if not title:
+            title = release['name']
         if include_asterisk:
-            return ('%s*' % key, release['title'])
-        return (key, release['title'])
+            return ('%s*' % key, title)
+        return (key, title)
 
     def test_list_all_usable_releases(self):
         releases = [make_rpc_release() for _ in range(3)]
@@ -143,6 +146,21 @@ class TestReleases(MAASServerTestCase):
 
     def test_list_release_choices(self):
         releases = [make_rpc_release() for _ in range(3)]
+        osystem = make_rpc_osystem(releases=releases)
+        choices = [
+            self.make_release_choice(osystem, release)
+            for release in releases
+            ]
+        self.assertItemsEqual(
+            choices,
+            list_release_choices(
+                list_all_usable_releases([osystem]),
+                include_default=False))
+
+    def test_list_release_choices_fallsback_to_name(self):
+        releases = [make_rpc_release() for _ in range(3)]
+        for release in releases:
+            release['title'] = ""
         osystem = make_rpc_osystem(releases=releases)
         choices = [
             self.make_release_choice(osystem, release)

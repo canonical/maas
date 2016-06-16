@@ -301,7 +301,7 @@ class Deploy(NodeAction):
                     validate_osystem_and_distro_series(osystem, distro_series))
                 self.node.save()
             except ValidationError as e:
-                raise NodeActionError(e.message)
+                raise NodeActionError(e)
 
         try:
             self.node.hwe_kernel = validate_hwe_kernel(
@@ -310,7 +310,7 @@ class Deploy(NodeAction):
                 self.node.distro_series)
             self.node.save()
         except ValidationError as e:
-            raise NodeActionError(e.message)
+            raise NodeActionError(e)
 
         try:
             self.node.start(self.user)

@@ -42,7 +42,7 @@ class TestBootResourceForm(MAASServerTestCase):
         upload_name = factory.make_name('filename')
         uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
-            'name': name,
+            'name': 'custom/' + name,
             'title': title,
             'architecture': architecture,
             'filetype': upload_type,

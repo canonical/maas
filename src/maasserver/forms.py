@@ -2139,6 +2139,20 @@ class BootResourceForm(MAASModelForm):
             choices=choices, required=True, initial=default_arch,
             error_messages={'invalid_choice': invalid_arch_message})
 
+    def clean_name(self):
+        """Clean the name field.
+
+        The 'custom/' is reserved for custom uploaded images and should not
+        be present in the name field when uploaded. This allows users to
+        provide 'custom/' where it will be removed and the image will be marked
+        uploaded. Without this the image would be uploaded as Generated for
+        a custom OS which is an invalid boot resource.
+        """
+        name = self.cleaned_data['name']
+        if name.startswith('custom/'):
+            name = name[7:]
+        return name
+
     def get_existing_resource(self, resource):
         """Return existing resource if avaliable.
 

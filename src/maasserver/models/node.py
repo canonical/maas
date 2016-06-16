@@ -717,10 +717,10 @@ class Node(CleanSave, TimestampedModel):
     bios_boot_method = CharField(max_length=31, blank=True, null=True)
 
     osystem = CharField(
-        max_length=20, blank=True, default='')
+        max_length=255, blank=True, default='')
 
     distro_series = CharField(
-        max_length=20, blank=True, default='')
+        max_length=255, blank=True, default='')
 
     architecture = CharField(max_length=31, blank=True, null=True)
 

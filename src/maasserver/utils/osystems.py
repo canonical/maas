@@ -151,9 +151,15 @@ def list_release_choices(releases, include_default=True,
                 requires_key = get_release_requires_key(release)
             else:
                 requires_key = ''
+            title = release['title']
+            if not title:
+                # Uploaded boot resources are not required to have a title.
+                # Fallback to the name of the release when the title is
+                # missing.
+                title = release['name']
             choices.append((
                 '%s/%s%s' % (os_name, release['name'], requires_key),
-                release['title']
+                title
                 ))
     return choices
 
