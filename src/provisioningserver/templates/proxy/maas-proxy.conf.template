@@ -4,8 +4,6 @@
 # Inspired by UDS's conference proxy
 
 acl maas_proxy_manager proto cache_object
-acl localhost src 127.0.0.1/32 ::1
-acl to_localhost dst 127.0.0.0/8 0.0.0.0/32 ::1
 # Make sure that localnet has at least one entry in it, to avoid errors.
 acl localnet src 127.0.0.0/8
 {{for cidr in cidrs}}
