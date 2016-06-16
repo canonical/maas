@@ -86,4 +86,59 @@ angular.module('MAAS').service('ConverterService', function() {
         this.roundByBlockSize = function(bytes, block_size) {
             return block_size * Math.floor(bytes / block_size);
         };
+
+        // Convert string ipv4 address into octets array.
+        this.ipv4ToOctets = function(ipAddress) {
+            var parts = ipAddress.split('.');
+            var octets = [];
+            angular.forEach(parts, function(part) {
+                octets.push(parseInt(part, 10));
+            });
+            return octets;
+        };
+
+        // Convert string ipv4 address into integer.
+        this.ipv4ToInteger = function(ipAddress) {
+            var octets = this.ipv4ToOctets(ipAddress);
+            return (
+                (octets[0] * Math.pow(256,3)) +
+                (octets[1] * Math.pow(256,2)) +
+                (octets[2] * 256) + octets[3]);
+        };
+
+        // Convert ipv6 address to a full ipv6 address, removing the
+        // '::' shortcut and padding each group with zeros.
+        this.ipv6Expand = function(ipAddress) {
+            var i, expandedAddress = ipAddress;
+            if(expandedAddress.indexOf("::") !== -1) {
+                // '::' is present so replace it with the required
+                // number of '0000:' based on its location in the string.
+                var split = ipAddress.split("::");
+                var groups = 0;
+                for(i = 0; i < split.length; i++) {
+                    groups += split[i].split(":").length;
+                }
+                expandedAddress = split[0] + ":";
+                for(i = 0; i < 8 - groups; i++) {
+                    expandedAddress += "0000:";
+                }
+                expandedAddress += split[1];
+            }
+            // Pad the output of each part with zeros.
+            var output = [], parts = expandedAddress.split(":");
+            angular.forEach(parts, function(part) {
+                output.push("0000".substr(part.length) + part);
+            });
+            return output.join(":");
+        };
+
+        // Convert string ipv6 into groups array.
+        this.ipv6ToGroups = function(ipAddress) {
+            var groups = [];
+            var parts = this.ipv6Expand(ipAddress).split(":");
+            angular.forEach(parts, function(part) {
+                groups.push(parseInt(part, 16));
+            });
+            return groups;
+        };
     });

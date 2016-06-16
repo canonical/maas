@@ -134,6 +134,8 @@ class NODE_TYPE:
     REGION_AND_RACK_CONTROLLER = 4
 
 
+# This is copied in static/js/angular/controllers/subnet_details.js. If you
+# update any choices you also need to update the controller.
 NODE_TYPE_CHOICES = (
     (NODE_TYPE.MACHINE, "Machine"),
     (NODE_TYPE.DEVICE, "Device"),
@@ -226,12 +228,14 @@ class IPADDRESS_TYPE:
     DISCOVERED = 6
 
 
+# This is copied in static/js/angular/controllers/subnet_details.js. If you
+# update any choices you also need to update the controller.
 IPADDRESS_TYPE_CHOICES = (
-    (IPADDRESS_TYPE.AUTO, "Auto"),
-    (IPADDRESS_TYPE.STICKY, "Sticky"),
+    (IPADDRESS_TYPE.AUTO, "Automatic"),
+    (IPADDRESS_TYPE.STICKY, "Static"),
     (IPADDRESS_TYPE.USER_RESERVED, "User reserved"),
     (IPADDRESS_TYPE.DHCP, "DHCP"),
-    (IPADDRESS_TYPE.DISCOVERED, "Discovered"),
+    (IPADDRESS_TYPE.DISCOVERED, "Observed"),
     )
 
 

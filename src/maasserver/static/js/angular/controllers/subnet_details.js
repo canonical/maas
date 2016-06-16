@@ -8,10 +8,11 @@ angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'SubnetsManager', 'IPRangesManager', 'SpacesManager', 'VLANsManager',
     'UsersManager', 'FabricsManager', 'ManagerHelperService', 'ErrorService',
+    'ConverterService',
     function(
         $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
         IPRangesManager, SpacesManager, VLANsManager, UsersManager,
-        FabricsManager, ManagerHelperService, ErrorService) {
+        FabricsManager, ManagerHelperService, ErrorService, ConverterService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -29,9 +30,28 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.fabrics = FabricsManager.getItems();
+        $scope.reverse = false;
         $scope.newRange = null;
         $scope.editIPRange = null;
         $scope.deleteIPRange = null;
+
+        // Alloc type mapping.
+        var ALLOC_TYPES = {
+            0: 'Automatic',
+            1: 'Static',
+            4: 'User reserved',
+            5: 'DHCP',
+            6: 'Observed'
+        };
+
+        // Node type mapping.
+        var NODE_TYPES = {
+            0: 'Machine',
+            1: 'Device',
+            2: 'Rack controller',
+            3: 'Region controller',
+            4: 'Rack and region controller'
+        };
 
         // Updates the page title.
         function updateTitle() {
@@ -44,10 +64,75 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             }
         }
 
-        $scope.isSuperUser = function() {
-            return UsersManager.isSuperUser();
+        // Update the IP version of the CIDR.
+        function updateIPVersion() {
+            var ip = $scope.subnet.cidr.split('/')[0];
+            if(ip.indexOf(':') === -1) {
+                $scope.ipVersion = 4;
+            } else {
+                $scope.ipVersion = 6;
+            }
+        }
+
+        // Sort for IP address.
+        $scope.ipSort = function(ipAddress) {
+            if($scope.ipVersion === 4) {
+                return ConverterService.ipv4ToInteger(ipAddress.ip);
+            } else {
+                return ConverterService.ipv6Expand(ipAddress.ip);
+            }
         };
 
+        // Set default predicate to the ipSort function.
+        $scope.predicate = $scope.ipSort;
+
+        // Return the name of the allocation type.
+        $scope.getAllocType = function(allocType) {
+            var str = ALLOC_TYPES[allocType];
+            if(angular.isString(str)) {
+                return str;
+            } else {
+                return "Unknown";
+            }
+        };
+
+        // Sort based on the name of the allocation type.
+        $scope.allocTypeSort = function(ipAddress) {
+            return $scope.getAllocType(ipAddress.alloc_type);
+        };
+
+        // Return the name of the node type.
+        $scope.getNodeType = function(nodeType) {
+            var str = NODE_TYPES[nodeType];
+            if(angular.isString(str)) {
+                return str;
+            } else {
+                return "Unknown";
+            }
+        };
+
+        // Sort based on the node type string.
+        $scope.nodeTypeSort = function(ipAddress) {
+            return $scope.getNodeType(ipAddress.node_summary.node_type);
+        };
+
+        // Sort based on the owner name.
+        $scope.ownerSort = function(ipAddress) {
+            var owner = ipAddress.user;
+            if(angular.isString(owner) && owner.length > 0) {
+                return owner;
+            } else {
+                return "MAAS";
+            }
+        };
+
+        // Called to change the sort order of the IP table.
+        $scope.sortIPTable = function(predicate) {
+            $scope.predicate = predicate;
+            $scope.reverse = !$scope.reverse;
+        };
+
+        // Return the name of the VLAN.
         $scope.getVLANName = function(vlan) {
            return VLANsManager.getName(vlan);
         };
@@ -179,6 +264,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             };
             $scope.$watch("subnet.fabric", updateFabric);
             $scope.$watch("subnet.vlan", updateFabric);
+            $scope.$watch("subnet.cidr", updateIPVersion);
         }
 
         // Load all the required managers.

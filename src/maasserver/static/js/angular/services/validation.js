@@ -6,7 +6,8 @@
  * Used by controllers to validate user inputs.
  */
 
-angular.module('MAAS').service('ValidationService', function() {
+angular.module('MAAS').service('ValidationService', [
+    'ConverterService', function(ConverterService) {
 
         // Pattern that matches a domainname.
         // XXX 2016-02-24 lamont: This also matches "example.com.",
@@ -48,47 +49,6 @@ angular.module('MAAS').service('ValidationService', function() {
                 part += 1;
             }
             return true;
-        }
-
-        // Convert string ipv4 address into octets array.
-        function ipv4ToOctets(ipAddress) {
-            var parts = ipAddress.split('.');
-            var octets = [];
-            angular.forEach(parts, function(part) {
-                octets.push(parseInt(part, 10));
-            });
-            return octets;
-        }
-
-        // Convert ipv6 address to a full ipv6 address, removing the
-        // '::' shortcut.
-        function ipv6Expand(ipAddress) {
-            var i, expandedAddress = ipAddress;
-            if(expandedAddress.indexOf("::") !== -1) {
-                // '::' is present so replace it with the required
-                // number of '0000:' based on its location in the string.
-                var split = ipAddress.split("::");
-                var groups = 0;
-                for(i = 0; i < split.length; i++) {
-                    groups += split[i].split(":").length;
-                }
-                expandedAddress = split[0] + ":";
-                for(i = 0; i < 8 - groups; i++) {
-                    expandedAddress += "0000:";
-                }
-                expandedAddress += split[1];
-            }
-            return expandedAddress;
-        }
-
-        // Convert string ipv6 into octets array.
-        function ipv6ToOctets(ipAddress) {
-            var octets = [];
-            var parts = ipv6Expand(ipAddress).split(":");
-            angular.forEach(parts, function(part) {
-                octets.push(parseInt(part, 16));
-            });
-            return octets;
         }
 
         // Return true if the domainname is valid, false otherwise.
@@ -140,8 +100,8 @@ angular.module('MAAS').service('ValidationService', function() {
                 ipAddress.indexOf(':') === -1) {
                 return false;
             }
-            var expandedAddress = ipv6Expand(ipAddress);
-            var octets = ipv6ToOctets(expandedAddress);
+            var expandedAddress = ConverterService.ipv6Expand(ipAddress);
+            var octets = ConverterService.ipv6ToGroups(expandedAddress);
             if(octets.length !== 8) {
                 return false;
             }
@@ -180,14 +140,14 @@ angular.module('MAAS').service('ValidationService', function() {
             if(this.validateIPv4(ipAddress) &&
                 this.validateIPv4(networkAddress)) {
                 return cidrMatcher(
-                    ipv4ToOctets(ipAddress),
-                    ipv4ToOctets(networkAddress),
+                    ConverterService.ipv4ToOctets(ipAddress),
+                    ConverterService.ipv4ToOctets(networkAddress),
                     8, cidrBits);
             } else if(this.validateIPv6(ipAddress) &&
                 this.validateIPv6(networkAddress)) {
                 return cidrMatcher(
-                    ipv6ToOctets(ipAddress),
-                    ipv6ToOctets(networkAddress),
+                    ConverterService.ipv6ToGroups(ipAddress),
+                    ConverterService.ipv6ToGroups(networkAddress),
                     16, cidrBits);
             }
             return false;
@@ -210,9 +170,9 @@ angular.module('MAAS').service('ValidationService', function() {
 
                 // Check that each octet is of the ip address is more or equal
                 // to the low address and less or equal to the high address.
-                ipOctets = ipv4ToOctets(ipAddress);
-                lowOctets = ipv4ToOctets(lowAddress);
-                highOctets = ipv4ToOctets(highAddress);
+                ipOctets = ConverterService.ipv4ToOctets(ipAddress);
+                lowOctets = ConverterService.ipv4ToOctets(lowAddress);
+                highOctets = ConverterService.ipv4ToOctets(highAddress);
                 for(i = 0; i < 4; i++) {
                     if(ipOctets[i] > highOctets[i] ||
                         ipOctets[i] < lowOctets[i]) {
@@ -226,9 +186,9 @@ angular.module('MAAS').service('ValidationService', function() {
 
                 // Check that each octet is of the ip address is more or equal
                 // to the low address and less or equal to the high address.
-                ipOctets = ipv6ToOctets(ipAddress);
-                lowOctets = ipv6ToOctets(lowAddress);
-                highOctets = ipv6ToOctets(highAddress);
+                ipOctets = ConverterService.ipv6ToGroups(ipAddress);
+                lowOctets = ConverterService.ipv6ToGroups(lowAddress);
+                highOctets = ConverterService.ipv6ToGroups(highAddress);
                 for(i = 0; i < 8; i++) {
                     if(ipOctets[i] > highOctets[i] ||
                         ipOctets[i] < lowOctets[i]) {
@@ -239,4 +199,4 @@ angular.module('MAAS').service('ValidationService', function() {
             }
             return false;
         };
-    });
+    }]);

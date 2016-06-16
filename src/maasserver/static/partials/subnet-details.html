@@ -250,36 +250,33 @@
                 <table class="table-listing">
                     <thead>
                         <tr class="table-listing__row">
-                            <th class="table-listing__header table-col--20">IP Address</th>
-                            <th class="table-listing__header table-col--10">Type</th>
-                            <th class="table-listing__header table-col--15">Node</th>
-                            <th class="table-listing__header table-col--10">Interface</th>
-                            <th class="table-listing__header table-col--10">Usage</th>
-                            <th class="table-listing__header table-col--10">Owner</th>
-                            <th class="table-listing__header table-col--25">Last seen</th>
-                            <!-- XXX mpontillo need data for this -->
-                            <!--
-                            <th class="table-listing__header table-col--25" colspan="2">
-                                <a class="table-listing__header-link" href="#">Purpose</a>
-                                <span class="divide"></span>
-                                <a class="table-listing__header-link active" href="#">Last seen</a>
-                                <span class="divide"></span>
-                                <a  class="table-listing__header-link" href="#">Detected</a>
+                            <th class="table-listing__header table-col--20">
+                                <a href="" data-ng-click="sortIPTable(ipSort)" data-ng-class="{sort: predicate === ipSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">IP Address</a>
                             </th>
-                            -->
+                            <th class="table-listing__header table-col--10">
+                                <a href="" data-ng-click="sortIPTable(allocTypeSort)" data-ng-class="{sort: predicate === allocTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                            </th>
+                            <th class="table-listing__header table-col--15">
+                                <a href="" data-ng-click="sortIPTable('node_summary.hostname')" data-ng-class="{sort: predicate === 'node_summary.hostname', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Node</a>
+                            </th>
+                            <th class="table-listing__header table-col--10">
+                                <a href="" data-ng-click="sortIPTable('node_summary.via')" data-ng-class="{sort: predicate === 'node_summary.via', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Interface</a>
+                            </th>
+                            <th class="table-listing__header table-col--10">
+                                <a href="" data-ng-click="sortIPTable(nodeTypeSort)" data-ng-class="{sort: predicate === nodeTypeSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Usage</a>
+                            </th>
+                            <th class="table-listing__header table-col--10">
+                                <a href="" data-ng-click="sortIPTable(ownerSort)" data-ng-class="{sort: predicate === ownerSort, 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Owner</a>
+                            </th>
+                            <th class="table-listing__header table-col--25">
+                                <a href="" data-ng-click="sortIPTable('updated')" data-ng-class="{sort: predicate === 'updated', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Last seen</a>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr data-ng-repeat="ip in subnet.ip_addresses">
+                        <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
                             <td class="table-col--20">{$ ip.ip $}</td>
-                            <td class="table-col--10" data-ng-switch="ip.alloc_type">
-                                <span data-ng-switch-when="0">Automatic</span>
-                                <span data-ng-switch-when="1">Static</span>
-                                <span data-ng-switch-when="4">User reserved</span>
-                                <span data-ng-switch-when="5">DHCP</span>
-                                <span data-ng-switch-when="6">Observed</span>
-                                <span data-ng-switch-default>Unknown</span>
-                            </td>
+                            <td class="table-col--10">{$ getAllocType(ip.alloc_type) $}</td>
                             <td class="table-col--15" data-ng-switch="ip.node_summary.node_type">
                                 <span data-ng-switch-when="0"><a href="#/node/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                                 <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
@@ -295,14 +292,7 @@
                                 <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
                                 <span data-ng-switch-default>Unknown</span>
                             </td>
-                            <td class="table-col--10" data-ng-switch="ip.node_summary.node_type">
-                                <span data-ng-switch-when="0">Machine</span>
-                                <span data-ng-switch-when="1">Device</span>
-                                <span data-ng-switch-when="2">Rack controller</span>
-                                <span data-ng-switch-when="3">Region controller</span>
-                                <span data-ng-switch-when="4">Rack and region controller</span>
-                                <span data-ng-switch-default>Unknown</span>
-                            </td>
+                            <td class="table-col--10">{$ getNodeType(ip.node_summary.node_type) $}</td>
                             <td class="table-col--10">{$ ip.user ? ip.user : "MAAS" $}</td>
                             <td class="table-col--25">
                                 <time>{$ ip.updated $}</time>

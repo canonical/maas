@@ -72,6 +72,7 @@ describe("SubnetDetailsController", function() {
     // Load any injected managers and services.
     var SubnetsManager, IPRangesManager, SpacesManager, VLANsManager;
     var FabricsManager, UsersManager, HelperService, ErrorService;
+    var ConverterService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         IPRangesManager = $injector.get("IPRangesManager");
@@ -81,6 +82,7 @@ describe("SubnetDetailsController", function() {
         UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
+        ConverterService = $injector.get("ConverterService");
     }));
 
     var fabric, vlan, space, subnet;
@@ -207,6 +209,158 @@ describe("SubnetDetailsController", function() {
     it("title is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(subnet.cidr + " (" + subnet.name + ")");
+    });
+
+    describe("ipSort", function() {
+
+        it("calls ipv4ToInteger when ipVersion == 4", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.ipVersion = 4;
+            var expected = {};
+            spyOn(ConverterService, "ipv4ToInteger").and.returnValue(expected);
+            var ipAddress = {
+                ip: {}
+            };
+            var observed = $scope.ipSort(ipAddress);
+            expect(ConverterService.ipv4ToInteger).toHaveBeenCalledWith(
+                ipAddress.ip);
+            expect(observed).toBe(expected);
+        });
+
+        it("calls ipv6Expand when ipVersion == 6", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.ipVersion = 6;
+            var expected = {};
+            spyOn(ConverterService, "ipv6Expand").and.returnValue(expected);
+            var ipAddress = {
+                ip: {}
+            };
+            var observed = $scope.ipSort(ipAddress);
+            expect(ConverterService.ipv6Expand).toHaveBeenCalledWith(
+                ipAddress.ip);
+            expect(observed).toBe(expected);
+        });
+
+        it("is predicate default", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.predicate).toBe($scope.ipSort);
+        });
+    });
+
+    describe("getAllocType", function() {
+
+        var scenarios = {
+            0: 'Automatic',
+            1: 'Static',
+            4: 'User reserved',
+            5: 'DHCP',
+            6: 'Observed',
+            7: 'Unknown'
+        };
+
+        angular.forEach(scenarios, function(expected, allocType) {
+            it("allocType( " + allocType + ") = " + expected, function() {
+                var controller = makeControllerResolveSetActiveItem();
+                expect($scope.getAllocType(allocType)).toBe(expected);
+            });
+        });
+    });
+
+    describe("allocTypeSort", function() {
+
+        it("calls getAllocType", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var expected = {};
+            spyOn($scope, "getAllocType").and.returnValue(expected);
+            var ipAddress = {
+                alloc_type: {}
+            };
+            var observed = $scope.allocTypeSort(ipAddress);
+            expect($scope.getAllocType).toHaveBeenCalledWith(
+                ipAddress.alloc_type);
+            expect(observed).toBe(expected);
+        });
+    });
+
+    describe("getNodeType", function() {
+
+        var scenarios = {
+            0: 'Machine',
+            1: 'Device',
+            2: 'Rack controller',
+            3: 'Region controller',
+            4: 'Rack and region controller',
+            5: 'Unknown'
+        };
+
+        angular.forEach(scenarios, function(expected, nodeType) {
+            it("nodeType( " + nodeType + ") = " + expected, function() {
+                var controller = makeControllerResolveSetActiveItem();
+                expect($scope.getNodeType(nodeType)).toBe(expected);
+            });
+        });
+    });
+
+    describe("nodeTypeSort", function() {
+
+        it("calls getNodeType", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var expected = {};
+            spyOn($scope, "getNodeType").and.returnValue(expected);
+            var ipAddress = {
+                node_summary: {
+                    node_type: {}
+                }
+            };
+            var observed = $scope.nodeTypeSort(ipAddress);
+            expect($scope.getNodeType).toHaveBeenCalledWith(
+                ipAddress.node_summary.node_type);
+            expect(observed).toBe(expected);
+        });
+    });
+
+    describe("ownerSort", function() {
+
+        it("returns owner", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var ipAddress = {
+                user: makeName("owner")
+            };
+            var observed = $scope.ownerSort(ipAddress);
+            expect(observed).toBe(ipAddress.user);
+        });
+
+        it("returns MAAS for empty string", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var ipAddress = {
+                user: ""
+            };
+            var observed = $scope.ownerSort(ipAddress);
+            expect(observed).toBe("MAAS");
+        });
+
+        it("returns MAAS for null", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var ipAddress = {
+                user: null
+            };
+            var observed = $scope.ownerSort(ipAddress);
+            expect(observed).toBe("MAAS");
+        });
+    });
+
+    describe("sortIPTable", function() {
+
+        it("sets predicate and inverts reverse", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.reverse = true;
+            var predicate = {};
+            $scope.sortIPTable(predicate);
+            expect($scope.predicate).toBe(predicate);
+            expect($scope.reverse).toBe(false);
+            $scope.sortIPTable(predicate);
+            expect($scope.reverse).toBe(true);
+        });
     });
 
     describe("deleteButton", function() {
