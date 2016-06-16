@@ -56,15 +56,6 @@ logger = logging.getLogger(__name__)
 # extracted into this directory.
 ARCHIVE_PREFIX = "commissioning.d"
 
-# Count the processors which do not declare their number of 'threads'
-# as 1 processor.
-_xpath_processor_count = """\
-    sum(//node[@id='core']/
-        node[@class='processor']
-            [not(@disabled)]//setting[@id='threads']/@value) +
-    count(//node[@id='core']/node[@class='processor']
-        [not(@disabled)][not(configuration/setting[@id='threads'])])"""
-
 
 # Some machines have a <size> element in their memory <node> with the total
 # amount of memory, and other machines declare the size of the memory in
@@ -199,15 +190,9 @@ def update_hardware_details(node, output, exit_status):
     else:
         # Same document, many queries: use XPathEvaluator.
         evaluator = etree.XPathEvaluator(doc)
-        cpu_count = evaluator(_xpath_processor_count) or 0
         memory = evaluator(_xpath_memory_bytes)
         if not memory or math.isnan(memory):
             memory = 0
-        # XXX ltrager 2016-05-09 - Work around for LP:1579996. On some
-        # CPU's lshw doesn't detect all CPU cores. MAAS captures and
-        # processes /proc/cpuinfo so MAAS chooses the highest number.
-        if node.cpu_count is None or cpu_count > node.cpu_count:
-            node.cpu_count = cpu_count
         node.memory = memory
         node.save()
 
@@ -217,14 +202,13 @@ def parse_cpuinfo(node, output, exit_status):
     assert isinstance(output, bytes)
     if exit_status != 0:
         return
-    decoded_output = output.decode('ascii')
-    cpu_count = len([
-        m.start()
-        for m in re.finditer('processor\t:', decoded_output)
-    ])
-    if node.cpu_count is None or cpu_count > node.cpu_count:
-        node.cpu_count = cpu_count
-        node.save()
+    output = output.decode('ascii')
+    cpu_count = len(
+        re.findall(
+            '^(?P<CPU>\d+),(?P<CORE>\d+),(?P<SOCKET>\d+)$',
+            output, re.MULTILINE))
+    node.cpu_count = cpu_count
+    node.save()
 
 
 def set_virtual_tag(node, output, exit_status):

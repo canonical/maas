@@ -552,7 +552,7 @@ class ControllerManager(BaseNodeManager):
             ]}
 
     def get_running_controller(self):
-        return self.get(system_id=get_maas_id(), owner_id__isnull=False)
+        return self.get(system_id=get_maas_id())
 
 
 class RackControllerManager(ControllerManager):

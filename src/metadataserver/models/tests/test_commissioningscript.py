@@ -302,49 +302,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-    def test_hardware_updates_cpu_count(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-        <node id="core">
-           <node id="cpu:0" class="processor"/>
-           <node id="cpu:1" class="processor"/>
-        </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(2, node.cpu_count)
-
-    def test_cpu_count_counts_multi_cores(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-        <node id="core">
-           <node id="cpu:0" class="processor">
-             <configuration>
-               <setting id="cores" value="2" />
-               <setting id="enabledcores" value="2" />
-               <setting id="threads" value="4" />
-             </configuration>
-           </node>
-           <node id="cpu:1" class="processor"/>
-        </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(5, node.cpu_count)
-
-    def test_cpu_count_skips_disabled_cpus(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-        <node id="core">
-           <node id="cpu:0" class="processor"/>
-           <node id="cpu:1" disabled="true" class="processor"/>
-           <node id="cpu:2" disabled="true" class="processor"/>
-        </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(1, node.cpu_count)
-
     def test_hardware_updates_memory(self):
         node = factory.make_Node()
         xmlbytes = dedent("""\
@@ -420,15 +377,50 @@ class TestParseCPUInfo(MAASServerTestCase):
 
     def test_parse_cpuinfo(self):
         node = factory.make_Node()
+        node.cpu_count = 2
+        node.save()
+        # Sample lscpu output from a single socket, quad core with
+        # hyperthreading CPU. Flags have been ommitted to avoid lint errors.
         cpuinfo = dedent("""\
-        processor\t: 0
-        vendor_id\t: GenuineIntel
-
-        processor\t: 1
-        vendor_id\t: GenuineIntel
+        Architecture:          x86_64
+        CPU op-mode(s):        32-bit, 64-bit
+        Byte Order:            Little Endian
+        CPU(s):                8
+        On-line CPU(s) list:   0-7
+        Thread(s) per core:    2
+        Core(s) per socket:    4
+        Socket(s):             1
+        NUMA node(s):          1
+        Vendor ID:             GenuineIntel
+        CPU family:            6
+        Model:                 60
+        Model name:            Intel(R) Core(TM) i7-4910MQ CPU @ 2.90GHz
+        Stepping:              3
+        CPU MHz:               1247.000
+        CPU max MHz:           3900.0000
+        CPU min MHz:           800.0000
+        BogoMIPS:              5786.32
+        Virtualization:        VT-x
+        L1d cache:             32K
+        L1i cache:             32K
+        L2 cache:              256K
+        L3 cache:              8192K
+        NUMA node0 CPU(s):     0-7
+        # The following is the parsable format, which can be fed to other
+        # programs. Each different item in every column has an unique ID
+        # starting from zero.
+        # CPU,Core,Socket
+        0,0,0
+        1,0,0
+        2,1,0
+        3,1,0
+        4,2,0
+        5,2,0
+        6,3,0
+        7,3,0
         """).encode('utf-8')
         parse_cpuinfo(node, cpuinfo, 0)
-        self.assertEqual(2, reload_object(node).cpu_count)
+        self.assertEqual(8, reload_object(node).cpu_count)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

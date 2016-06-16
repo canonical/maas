@@ -91,7 +91,10 @@ VIRTUALITY_SCRIPT = dedent("""\
 
 CPUINFO_SCRIPT = dedent("""\
     #!/bin/sh
-    cat /proc/cpuinfo
+    # Gather the standard output as it has some extra info
+    lscpu
+    # Gather the machine readable output for processing
+    lscpu -p=cpu,core,socket
     """)
 
 SRIOV_SCRIPT = dedent("""\
