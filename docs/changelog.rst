@@ -2,6 +2,39 @@
 Changelog
 =========
 
+2.0.0 (rc1)
+===========
+
+Issues fixed in this release
+----------------------------
+
+LP: #1590081    Allow ed25519 and ecdsa ssh keys
+
+LP: #1462078    [2.0b2, UI] Can't add a device and it does not show why
+
+LP: #1573626    [2.0b3] Interfaces on region controllers are not discovered
+
+LP: #1562107    [2.0b4, UI] No feedback when failing to assign static IP address on the Node Details Page
+
+LP: #1583670    [2.0b5] No way to read settings, like proxy, for non-admin users
+
+LP: #1585016    [2.0b5] Commissing with LVM breaks deployments
+
+LP: #1581729    [2.0b5] dns templates still in /etc/maas/templates
+
+LP: #1588907    [2.0b6] django.db.utils.IntegrityError: insert or update on table "piston3_consumer" violates foreign key constraint LP: "piston3_consumer_user_id_4ac0863fa7e05162_fk_auth_user_id
+
+LP: #1581130    [2.0b6] Image status stays out-of-sync after adding custom image
+
+LP: #1590144    [2.0b6] core count not updated during commissioning if MAAS previously stored a higher core count
+
+LP: #1592282    [2.0b7] Adding rack controller instructions could be in the GUI
+
+LP: #1592132    [2.0b7] Enlisting output returns objects
+
+LP: #1592137    [2.0b7, UI] Can't sort IP addresses under a subnet details page
+
+
 2.0.0 (beta7)
 =============
 
