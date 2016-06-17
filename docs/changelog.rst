@@ -34,6 +34,8 @@ LP: #1592132    [2.0b7] Enlisting output returns objects
 
 LP: #1592137    [2.0b7, UI] Can't sort IP addresses under a subnet details page
 
+LP: #1593789    [2.0b7] Nodes API doesn't show regions
+
 
 2.0.0 (beta7)
 =============
