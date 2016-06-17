@@ -318,10 +318,16 @@ class NodesHandler(OperationsHandler):
             from maasserver.api.devices import DevicesHandler
             from maasserver.api.machines import MachinesHandler
             from maasserver.api.rackcontrollers import RackControllersHandler
+            from maasserver.api.regioncontrollers import (
+                RegionControllersHandler
+            )
+            racks = RackControllersHandler().read(request).order_by("id")
             nodes = list(chain(
                 DevicesHandler().read(request).order_by("id"),
                 MachinesHandler().read(request).order_by("id"),
-                RackControllersHandler().read(request).order_by("id"),
+                racks,
+                RegionControllersHandler().read(request).exclude(
+                    id__in=racks).order_by("id"),
             ))
             return nodes
         else:

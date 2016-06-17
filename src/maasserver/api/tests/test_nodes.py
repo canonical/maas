@@ -18,6 +18,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.testing.api import APITestCase
@@ -287,11 +288,25 @@ class TestNodesAPI(APITestCase.ForUser):
         response = self.client.get(reverse('nodes_handler'))
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-
         self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(
             [node1.system_id, node2.system_id],
             extract_system_ids(parsed_result))
+
+    def test_GET_lists_nodes_admin(self):
+        # Only admins can see controllers
+        self.become_admin()
+        system_ids = [
+            factory.make_Node(
+                node_type=node_type[0], owner=self.user).system_id
+            for node_type in NODE_TYPE_CHOICES
+        ]
+        response = self.client.get(reverse('nodes_handler'))
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertItemsEqual(system_ids, extract_system_ids(parsed_result))
 
     def create_nodes(self, nodegroup, nb):
         for _ in range(nb):

@@ -143,8 +143,8 @@ class TestNodeAPI(APITestCase.ForUser):
 
     def test_resource_uri_points_back_at_rack_controller(self):
         self.become_admin()
-        # When a Device is returned by the API, the field 'resource_uri'
-        # provides the URI for this Device.
+        # When a RackController is returned by the API, the field
+        # 'resource_uri' provides the URI for this RackController.
         rack = factory.make_RackController(
             hostname='diane', owner=self.user)
         response = self.client.get(self.get_node_uri(rack))
@@ -154,6 +154,22 @@ class TestNodeAPI(APITestCase.ForUser):
         self.assertEqual(
             reverse(
                 'rackcontroller_handler',
+                args=[parsed_result['system_id']]),
+            parsed_result['resource_uri'])
+
+    def test_resource_uri_points_back_at_region_controller(self):
+        self.become_admin()
+        # When a RegionController is returned by the API, the field
+        # 'resource_uri' provides the URI for this RegionController.
+        rack = factory.make_RegionController(
+            hostname='diane', owner=self.user)
+        response = self.client.get(self.get_node_uri(rack))
+        parsed_result = json_load_bytes(response.content)
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            reverse(
+                'regioncontroller_handler',
                 args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
 

@@ -281,12 +281,15 @@ class Factory(maastesting.factory.Factory):
                 INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
         return reload_object(device)
 
-    def make_RegionController(self, hostname=None, status=None):
+    def make_RegionController(self, hostname=None, status=None, owner=None):
         if hostname is None:
             hostname = self.make_string(20)
         if status is None:
             status = NODE_STATUS.DEFAULT
-        region = RegionController(hostname=hostname, status=status)
+        if owner is None:
+            owner = get_worker_user()
+        region = RegionController(
+            hostname=hostname, status=status, owner=owner)
         region.save()
         return region
 
