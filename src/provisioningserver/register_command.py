@@ -30,6 +30,11 @@ from provisioningserver.security import (
     set_shared_secret_on_filesystem,
     to_bin,
 )
+from provisioningserver.utils.env import set_maas_id
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 
 
 all_arguments = (
@@ -103,6 +108,14 @@ def run(args):
             "MAAS region controller URL must be given when supplying the "
             "shared secret via stdin with a non-interactive shell.")
         raise SystemExit(1)
+    try:
+        call_and_check(['systemctl', 'stop', 'maas-rackd'])
+    except ExternalProcessError as e:
+        print("Unable to stop maas-rackd service.")
+        print("Failed with error %s." % e.output_as_unicode)
+        return
+    # maas_id could be stale so remove it
+    set_maas_id(None)
     if args.url is not None:
         with ClusterConfiguration.open_for_update() as config:
             config.maas_url = args.url
@@ -122,3 +135,9 @@ def run(args):
         set_shared_secret_on_filesystem(to_bin(args.secret))
     else:
         InstallSharedSecretScript.run(args)
+    try:
+        call_and_check(['systemctl', 'enable', 'maas-rackd'])
+        call_and_check(['systemctl', 'start', 'maas-rackd'])
+    except ExternalProcessError as e:
+        print("Unable to enable and start the maas-rackd service")
+        print("Failed with error %s." % e.output_as_unicode)

@@ -11,11 +11,8 @@ import string
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.path import get_path
-from provisioningserver.utils.env import (
-    environment_variables,
-    get_maas_id,
-    set_maas_id,
-)
+from provisioningserver.utils import env
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     FileContains,
@@ -23,50 +20,49 @@ from testtools.matchers import (
     Is,
     Not,
 )
-from testtools.testcase import ExpectedException
 
 
 class TestEnvironmentVariables(MAASTestCase):
-    """Tests for `environment_variables`."""
+    """Tests for `env.environment_variables`."""
 
     def make_variable(self):
         return factory.make_name('testvar'), factory.make_name('value')
 
     def test__sets_variables(self):
         var, value = self.make_variable()
-        with environment_variables({var: value}):
-            env = os.environ.copy()
-        self.assertEqual(value, env[var])
+        with env.environment_variables({var: value}):
+            environment = os.environ.copy()
+        self.assertEqual(value, environment[var])
 
     def test__overrides_prior_values(self):
         var, prior_value = self.make_variable()
         temp_value = factory.make_name('temp-value')
-        with environment_variables({var: prior_value}):
-            with environment_variables({var: temp_value}):
-                env = os.environ.copy()
-        self.assertEqual(temp_value, env[var])
+        with env.environment_variables({var: prior_value}):
+            with env.environment_variables({var: temp_value}):
+                environment = os.environ.copy()
+        self.assertEqual(temp_value, environment[var])
 
     def test__leaves_other_variables_intact(self):
         untouched_var, untouched_value = self.make_variable()
         var, value = self.make_variable()
-        with environment_variables({untouched_var: untouched_value}):
-            with environment_variables({var: value}):
-                env = os.environ.copy()
-        self.assertEqual(untouched_value, env[untouched_var])
+        with env.environment_variables({untouched_var: untouched_value}):
+            with env.environment_variables({var: value}):
+                environment = os.environ.copy()
+        self.assertEqual(untouched_value, environment[untouched_var])
 
     def test__restores_variables_to_previous_values(self):
         var, prior_value = self.make_variable()
         temp_value = factory.make_name('temp-value')
-        with environment_variables({var: prior_value}):
-            with environment_variables({var: temp_value}):
+        with env.environment_variables({var: prior_value}):
+            with env.environment_variables({var: temp_value}):
                 pass
-            env = os.environ.copy()
-        self.assertEqual(prior_value, env[var])
+            environment = os.environ.copy()
+        self.assertEqual(prior_value, environment[var])
 
     def test__restores_previously_unset_variables_to_being_unset(self):
         var, value = self.make_variable()
         self.assertNotIn(var, os.environ)
-        with environment_variables({var: value}):
+        with env.environment_variables({var: value}):
             pass
         self.assertNotIn(var, os.environ)
 
@@ -78,7 +74,7 @@ class TestEnvironmentVariables(MAASTestCase):
             pass
 
         with ExpectedException(DeliberateException):
-            with environment_variables({var: value}):
+            with env.environment_variables({var: value}):
                 raise DeliberateException()
 
         self.assertNotIn(var, os.environ)
@@ -93,32 +89,36 @@ def unlink_if_exists(path):
 
 
 class TestMAASID(MAASTestCase):
-    """Tests for `get_maas_id` and `set_maas_id`."""
+    """Tests for `env.get_maas_id` and `env.set_maas_id`."""
 
     def setUp(self):
         super(TestMAASID, self).setUp()
         self.maas_id_path = get_path('/var/lib/maas/maas_id')
         self.addCleanup(unlink_if_exists, self.maas_id_path)
 
+    def tearDown(self):
+        super(TestMAASID, self).tearDown()
+        env.set_maas_id(None)
+
     def test_get_returns_None_if_maas_id_file_does_not_exist(self):
         self.assertThat(self.maas_id_path, Not(FileExists()))
-        self.assertThat(get_maas_id(), Is(None))
+        self.assertThat(env.get_maas_id(), Is(None))
 
     def test_get_returns_None_if_maas_id_file_is_empty(self):
         with open(self.maas_id_path, "w"):
             pass  # Write nothing.
-        self.assertThat(get_maas_id(), Is(None))
+        self.assertThat(env.get_maas_id(), Is(None))
 
     def test_get_returns_None_if_maas_id_file_is_whitespace(self):
         with open(self.maas_id_path, "w") as fd:
             fd.write(string.whitespace)
-        self.assertThat(get_maas_id(), Is(None))
+        self.assertThat(env.get_maas_id(), Is(None))
 
     def test_get_returns_contents_if_maas_id_file_contains_something(self):
         contents = factory.make_name("contents")
         with open(self.maas_id_path, "w") as fd:
             fd.write(contents)
-        self.assertThat(get_maas_id(), Equals(contents))
+        self.assertThat(env.get_maas_id(), Equals(contents))
 
     def test_get_strips_contents_if_maas_id_file_contains_something(self):
         contents = factory.make_name("contents")
@@ -126,35 +126,76 @@ class TestMAASID(MAASTestCase):
             fd.write(string.whitespace)
             fd.write(contents)
             fd.write(string.whitespace)
-        self.assertThat(get_maas_id(), Equals(contents))
+        self.assertThat(env.get_maas_id(), Equals(contents))
 
     def test_get_rejects_non_ASCII_content(self):
         contents = factory.make_unicode_non_ascii_string()
         with open(self.maas_id_path, "w") as fd:
             fd.write(contents)
-        self.assertRaises(UnicodeDecodeError, get_maas_id)
+        self.assertRaises(UnicodeDecodeError, env.get_maas_id)
+
+    def test_get_caches_result(self):
+        contents = factory.make_name("contents")
+        with open(self.maas_id_path, "w") as fd:
+            fd.write(contents)
+        self.assertEquals(contents, env.get_maas_id())
+        os.unlink(self.maas_id_path)
+        self.assertEquals(contents, env.get_maas_id())
+
+    def test_get_can_ignore_cache(self):
+        contents = factory.make_name("contents")
+        with open(self.maas_id_path, "w") as fd:
+            fd.write(contents)
+        self.assertEquals(contents, env.get_maas_id())
+        contents = factory.make_name("contents")
+        os.unlink(self.maas_id_path)
+        with open(self.maas_id_path, "w") as fd:
+            fd.write(contents)
+        self.assertEquals(contents, env.get_maas_id(read_cache=False))
 
     def test_set_writes_argument_to_maas_id_file(self):
         contents = factory.make_name("contents")
-        set_maas_id(contents)
+        env.set_maas_id(contents)
         self.assertThat(self.maas_id_path, FileContains(contents))
 
     def test_set_deletes_maas_id_file_if_argument_is_None(self):
         with open(self.maas_id_path, "w") as fd:
             fd.write("This file will be deleted.")
-        set_maas_id(None)
+        env.set_maas_id(None)
         self.assertThat(self.maas_id_path, Not(FileExists()))
+        self.assertIsNone(env.get_maas_id())
 
     def test_set_deletes_maas_id_file_if_argument_is_whitespace(self):
         with open(self.maas_id_path, "w") as fd:
             fd.write("This file will be deleted.")
-        set_maas_id(string.whitespace)
+        env.set_maas_id(string.whitespace)
         self.assertThat(self.maas_id_path, Not(FileExists()))
+        self.assertIsNone(env.get_maas_id())
 
-    def test_set_None_does_nothing_if_maas_id_file_idoes_not_exist(self):
+    def test_set_None_does_nothing_if_maas_id_file_does_not_exist(self):
         self.assertThat(self.maas_id_path, Not(FileExists()))
-        set_maas_id(None)
+        env.set_maas_id(None)
 
     def test_set_rejects_non_ASCII_content(self):
         contents = factory.make_unicode_non_ascii_string()
-        self.assertRaises(UnicodeEncodeError, set_maas_id, contents)
+        self.assertRaises(UnicodeEncodeError, env.set_maas_id, contents)
+
+    def test_set_caches(self):
+        contents = factory.make_name("contents")
+        env.set_maas_id(contents)
+        os.unlink(self.maas_id_path)
+        self.assertEquals(contents, env.get_maas_id())
+
+    def test_set_doesnt_cache_when_write_fails(self):
+        mock_atomic_write = self.patch_autospec(env, 'atomic_write')
+        exception = factory.make_exception()
+        mock_atomic_write.side_effect = exception
+        contents = factory.make_name("contents")
+        with ExpectedException(type(exception)):
+            env.set_maas_id(contents)
+        self.assertIsNone(env.get_maas_id())
+
+    def test_set_caches_to_normalized_value(self):
+        contents = "  %s  " % factory.make_name("contents")
+        env.set_maas_id(contents)
+        self.assertEquals(env._normalise_maas_id(contents), env.get_maas_id())

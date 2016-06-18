@@ -61,6 +61,7 @@ from provisioningserver.drivers.power import (
     power_drivers_by_name,
     PowerError,
 )
+from provisioningserver.path import get_path
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
@@ -95,6 +96,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.env import set_maas_id
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
@@ -844,7 +846,7 @@ class TestClusterClient(MAASTestCase):
         self.set_maas_id = self.patch(clusterservice, "set_maas_id")
         self.set_maas_id.side_effect = set_maas_id
 
-        def get_maas_id():
+        def get_maas_id(read_cache=True):
             return self.maas_id
 
         self.get_maas_id = self.patch(clusterservice, "get_maas_id")
@@ -1245,6 +1247,28 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
         self.assertThat(self.set_maas_id, MockCalledOnceWith(system_id))
+
+    @inlineCallbacks
+    def test_registerRackWithRegion_doesnt_read_maas_id_from_cache(self):
+        set_maas_id(factory.make_string())
+        os.unlink(get_path('/var/lib/maas/maas_id'))
+
+        maas_url = factory.make_simple_http_url()
+        hostname = platform.node().split('.')[0]
+        interfaces = get_all_interfaces_definition()
+        self.useFixture(ClusterConfigurationFixture(
+            maas_url=maas_url))
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop()
+        self.addCleanup((yield connecting))
+        yield getRegionClient()
+        self.assertThat(
+            protocol.RegisterRackController, MockCalledOnceWith(
+                protocol, system_id='', hostname=hostname,
+                interfaces=interfaces, url=urlparse(maas_url),
+                nodegroup_uuid=None))
+        # Clear cache for the next test
+        set_maas_id(None)
 
     @inlineCallbacks
     def test_registerRackWithRegion_returns_False_when_rejected(self):

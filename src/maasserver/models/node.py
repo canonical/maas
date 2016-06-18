@@ -551,8 +551,8 @@ class ControllerManager(BaseNodeManager):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
 
-    def get_running_controller(self):
-        return self.get(system_id=get_maas_id())
+    def get_running_controller(self, read_cache=True):
+        return self.get(system_id=get_maas_id(read_cache))
 
 
 class RackControllerManager(ControllerManager):

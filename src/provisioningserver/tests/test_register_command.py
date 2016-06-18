@@ -9,10 +9,16 @@ from argparse import ArgumentParser
 import io
 from itertools import combinations
 import pprint
-from unittest.mock import Mock
+from unittest.mock import (
+    call,
+    Mock,
+)
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver import register_command
 from provisioningserver.config import ClusterConfiguration
@@ -22,6 +28,8 @@ from provisioningserver.security import (
     to_hex,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import Equals
 
 
@@ -92,6 +100,8 @@ class TestRegisterMAASRack(MAASTestCase):
     def setUp(self):
         super(TestRegisterMAASRack, self).setUp()
         self.useFixture(ClusterConfigurationFixture())
+        self.mock_call_and_check = self.patch_autospec(
+            register_command, 'call_and_check')
 
     def make_args(self, **kwargs):
         args = Mock()
@@ -170,3 +180,20 @@ class TestRegisterMAASRack(MAASTestCase):
         input.side_effect = KeyboardInterrupt
         self.assertRaises(
             KeyboardInterrupt, register_command.run, args)
+
+    def test__restarts_maas_rackd_service(self):
+        url = factory.make_simple_http_url()
+        secret = factory.make_bytes()
+        register_command.run(self.make_args(url=url, secret=to_hex(secret)))
+        self.assertThat(self.mock_call_and_check, MockCallsMatch(
+            call(['systemctl', 'stop', 'maas-rackd']),
+            call(['systemctl', 'enable', 'maas-rackd']),
+            call(['systemctl', 'start', 'maas-rackd'])
+        ))
+
+    def test__deletes_maas_id_file(self):
+        self.useFixture(MAASIDFixture(factory.make_string()))
+        url = factory.make_simple_http_url()
+        secret = factory.make_bytes()
+        register_command.run(self.make_args(url=url, secret=to_hex(secret)))
+        self.assertIsNone(get_maas_id())

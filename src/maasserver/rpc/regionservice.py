@@ -1171,7 +1171,8 @@ class RegionAdvertising:
 
         :return: An instance of `RegionAdvertising`.
         """
-        region_obj = RegionController.objects.get_running_controller()
+        region_obj = RegionController.objects.get_running_controller(
+            read_cache=False)
         # Create the process for this region. This process object will be
         # updated by calls to `update`, which is the responsibility of the
         # rpc-advertise service. Calls to `update` also remove old process

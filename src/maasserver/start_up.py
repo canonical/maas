@@ -140,7 +140,7 @@ def inner_start_up():
 
 
 def create_region_obj():
-    region_id = get_maas_id()
+    region_id = get_maas_id(read_cache=False)
     hostname = gethostname()
     update_fields = []
     region_filter = Q() if region_id is None else Q(system_id=region_id)

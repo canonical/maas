@@ -6,6 +6,7 @@
 __all__ = []
 
 from datetime import datetime
+import os
 import random
 from unittest.mock import (
     ANY,
@@ -53,6 +54,7 @@ from maasserver.models import (
     BootResource,
     BridgeInterface,
     Config,
+    Controller,
     Device,
     Domain,
     Fabric,
@@ -136,6 +138,7 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
+from provisioningserver.path import get_path
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc.cluster import (
@@ -156,7 +159,12 @@ from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,
 )
+from provisioningserver.utils.env import (
+    get_maas_id,
+    set_maas_id,
+)
 from provisioningserver.utils.fs import NamedLock
+from provisioningserver.utils.testing import MAASIDFixture
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
@@ -301,7 +309,13 @@ class TestMachineManager(MAASServerTestCase):
             list(Machine.objects.get_available_machines_for_acquisition(user)))
 
 
-class TestControllerManager(MAASServerTestCase):
+class TestControllerManaer(MAASServerTestCase):
+
+    def tearDown(self):
+        super().tearDown()
+        # Make sure the maas_id is cleared when done
+        set_maas_id(None)
+
     def test_controller_lists_node_type_rack_and_region(self):
         racks_and_regions = set()
         for _ in range(3):
@@ -311,13 +325,23 @@ class TestControllerManager(MAASServerTestCase):
                     NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
                     NODE_TYPE.REGION_AND_RACK_CONTROLLER):
                 racks_and_regions.add(factory.make_Node(node_type=node_type))
-        self.assertItemsEqual(racks_and_regions, Node.controllers.all())
+        self.assertItemsEqual(racks_and_regions, Controller.objects.all())
 
     def test_get_running_controller(self):
         rack = factory.make_RackController()
-        get_maas_id = self.patch(node_module, 'get_maas_id')
-        get_maas_id.return_value = rack.system_id
-        self.assertEquals(rack, Node.controllers.get_running_controller())
+        self.useFixture(MAASIDFixture(rack.system_id))
+        self.assertEquals(rack, Controller.objects.get_running_controller())
+
+    def test_get_running_controller_can_ignore_cache(self):
+        set_maas_id(factory.make_string())
+        rack = factory.make_RackController()
+        maas_id_path = get_path('/var/lib/maas/maas_id')
+        os.unlink(maas_id_path)
+        with open(maas_id_path, 'w') as fd:
+            fd.write(rack.system_id)
+        self.assertEquals(
+            rack, Controller.objects.get_running_controller(read_cache=False))
+        self.assertEquals(rack.system_id, get_maas_id())
 
 
 class TestRackControllerManager(MAASServerTestCase):
@@ -418,8 +442,7 @@ class TestRackControllerManager(MAASServerTestCase):
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         ip = random.choice(['127.0.0.1', '::1'])
         mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
-        get_maas_id = self.patch(node_module, 'get_maas_id')
-        get_maas_id.return_value = rack.system_id
+        self.useFixture(MAASIDFixture(rack.system_id))
         self.assertEquals(
             [rack, ],
             RackController.objects.filter_by_url_accessible(ip, False))
