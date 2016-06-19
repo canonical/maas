@@ -9,9 +9,10 @@ __all__ = [
     'SeleniumTestCase',
     'SerializationFailureTestCase',
     'TestWithoutCrochetMixin',
+    'UniqueViolationTestCase',
     ]
 
-from contextlib import closing
+from itertools import count
 import socketserver
 import sys
 import threading
@@ -28,13 +29,19 @@ from django.db import (
     connection,
     transaction,
 )
-from django.db.utils import OperationalError
+from django.db.utils import (
+    IntegrityError,
+    OperationalError,
+)
 from fixtures import Fixture
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.testing.testclient import MAASSensibleClient
-from maasserver.utils.orm import is_serialization_failure
+from maasserver.utils.orm import (
+    is_serialization_failure,
+    is_unique_violation,
+)
 from maastesting.djangotestcase import (
     DjangoTestCase,
     DjangoTransactionTestCase,
@@ -234,11 +241,11 @@ class SerializationFailureTestCase(
         DjangoTransactionTestCase, PostCommitHooksTestMixin):
 
     def create_stest_table(self):
-        with closing(connection.cursor()) as cursor:
+        with connection.cursor() as cursor:
             cursor.execute("CREATE TABLE IF NOT EXISTS stest (a INTEGER)")
 
     def drop_stest_table(self):
-        with closing(connection.cursor()) as cursor:
+        with connection.cursor() as cursor:
             cursor.execute("DROP TABLE IF EXISTS stest")
 
     def setUp(self):
@@ -247,7 +254,7 @@ class SerializationFailureTestCase(
         # Put something into the stest table upon which to trigger a
         # serialization failure.
         with transaction.atomic():
-            with closing(connection.cursor()) as cursor:
+            with connection.cursor() as cursor:
                 cursor.execute("INSERT INTO stest VALUES (1)")
 
     def tearDown(self):
@@ -258,7 +265,7 @@ class SerializationFailureTestCase(
         """Trigger an honest, from the database, serialization failure."""
         # Helper to switch the transaction to SERIALIZABLE.
         def set_serializable():
-            with closing(connection.cursor()) as cursor:
+            with connection.cursor() as cursor:
                 cursor.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
 
         # Perform a conflicting update. This must run in a separate thread. It
@@ -269,7 +276,7 @@ class SerializationFailureTestCase(
         def do_conflicting_update():
             try:
                 with transaction.atomic():
-                    with closing(connection.cursor()) as cursor:
+                    with connection.cursor() as cursor:
                         cursor.execute("UPDATE stest SET a = 2")
             finally:
                 close_old_connections()
@@ -278,7 +285,7 @@ class SerializationFailureTestCase(
             # Fetch something first. This ensures that we're inside the
             # transaction, and that the database has a reference point for
             # calculating serialization failures.
-            with closing(connection.cursor()) as cursor:
+            with connection.cursor() as cursor:
                 cursor.execute("SELECT * FROM stest")
                 cursor.fetchall()
 
@@ -290,7 +297,7 @@ class SerializationFailureTestCase(
             # Updating the same rows as do_conflicting_update() did will
             # trigger a serialization failure. We have to check the __cause__
             # to confirm the failure type as reported by PostgreSQL.
-            with closing(connection.cursor()) as cursor:
+            with connection.cursor() as cursor:
                 cursor.execute("UPDATE stest SET a = 4")
 
         if connection.in_atomic_block:
@@ -309,6 +316,151 @@ class SerializationFailureTestCase(
             self.cause_serialization_failure()
         except OperationalError as e:
             if is_serialization_failure(e):
+                return sys.exc_info()
+            else:
+                raise
+
+
+class UniqueViolationTestCase(
+        DjangoTransactionTestCase, PostCommitHooksTestMixin):
+
+    def create_uvtest_table(self):
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS uvtest")
+            cursor.execute("CREATE TABLE uvtest (a INTEGER PRIMARY KEY)")
+
+    def drop_uvtest_table(self):
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS uvtest")
+
+    def setUp(self):
+        super(UniqueViolationTestCase, self).setUp()
+        self.conflicting_values = count(1)
+        self.create_uvtest_table()
+
+    def tearDown(self):
+        super(UniqueViolationTestCase, self).tearDown()
+        self.drop_uvtest_table()
+
+    def cause_unique_violation(self):
+        """Trigger an honest, from the database, unique violation.
+
+        This may appear needlessly elaborate, but it's for a good reason.
+        Indexes in PostgreSQL are a bit weird; they don't fully support MVCC
+        so it's possible for situations like the following:
+
+          CREATE TABLE foo (id SERIAL PRIMARY KEY);
+          -- Session A:
+          BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+          INSERT INTO foo (id) VALUES (1);
+          -- Session B:
+          BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+          SELECT id FROM foo;  -- Nothing.
+          INSERT INTO foo (id) VALUES (1);  -- Hangs.
+          -- Session A:
+          COMMIT;
+          -- Session B:
+          ERROR:  duplicate key value violates unique constraint "..."
+          DETAIL:  Key (id)=(1) already exists.
+
+        Two things to note:
+
+          1. Session B hangs when there's a potential conflict on id's index.
+
+          2. Session B fails with a duplicate key error.
+
+        Both differ from expectations:
+
+          1. I would expect the transaction to continue optimistically and
+             only fail if session A commits.
+
+          2. I would expect a serialisation failure instead.
+
+        This method jumps through hoops to reproduce the situation above so
+        that we're testing against PostgreSQL's exact behaviour as of today,
+        not the behaviour that we observed at a single moment in time.
+        PostgreSQL may change its behaviour in later versions and this test
+        ought to tell us about it.
+
+        """
+        # Helper to switch the transaction to REPEATABLE READ.
+        def set_repeatable_read():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SET TRANSACTION ISOLATION LEVEL "
+                    "REPEATABLE READ")
+
+        # Both threads / database sessions will attempt to insert this.
+        conflicting_value = next(self.conflicting_values)
+
+        # Perform a conflicting insert. This must run in a separate thread. It
+        # also must begin after the beginning of the transaction in which we
+        # will trigger a unique violation AND commit before that other
+        # transaction commits. This doesn't need to run with any special
+        # isolation; it just needs to be in a transaction.
+        def do_conflicting_insert():
+            try:
+                with transaction.atomic():
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "INSERT INTO uvtest VALUES (%s)",
+                            [conflicting_value])
+            finally:
+                close_old_connections()
+
+        def trigger_unique_violation():
+            # Fetch something first. This ensures that we're inside the
+            # transaction, and so the database has a reference point for
+            # repeatable reads.
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM uvtest WHERE a = %s",
+                    [conflicting_value])
+                self.assertIsNone(cursor.fetchone(), (
+                    "We've seen through PostgreSQL impenetrable transaction "
+                    "isolation — or so we once thought — to witness a "
+                    "conflicting value from another database session. "
+                    "Needless to say, this requires investigation."))
+
+            # Run do_conflicting_insert() in a separate thread and wait for it
+            # to commit and return.
+            thread = threading.Thread(target=do_conflicting_insert)
+            thread.start()
+            thread.join()
+
+            # Still no sign of that conflicting value from here.
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM uvtest WHERE a = %s",
+                    [conflicting_value])
+                self.assertIsNone(cursor.fetchone(), (
+                    "PostgreSQL, once thought of highly in transactional "
+                    "circles, has dropped its kimono and disgraced itself "
+                    "with its wanton exhibition of conflicting values from "
+                    "another's session."))
+
+            # Inserting the same row will trigger a unique violation.
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO uvtest VALUES (%s)",
+                    [conflicting_value])
+
+        if connection.in_atomic_block:
+            # We're already in a transaction.
+            set_repeatable_read()
+            trigger_unique_violation()
+        else:
+            # Start a transaction in this thread.
+            with transaction.atomic():
+                set_repeatable_read()
+                trigger_unique_violation()
+
+    def capture_unique_violation(self):
+        """Trigger a unique violation, return its ``exc_info`` tuple."""
+        try:
+            self.cause_unique_violation()
+        except IntegrityError as e:
+            if is_unique_violation(e):
                 return sys.exc_info()
             else:
                 raise

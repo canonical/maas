@@ -26,12 +26,16 @@ from django.db import (
 )
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
-from django.db.utils import OperationalError
+from django.db.utils import (
+    IntegrityError,
+    OperationalError,
+)
 from maasserver.models import Node
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
     SerializationFailureTestCase,
+    UniqueViolationTestCase,
 )
 from maasserver.utils import orm
 from maasserver.utils.orm import (
@@ -46,11 +50,12 @@ from maasserver.utils.orm import (
     get_psycopg2_deadlock_exception,
     get_psycopg2_exception,
     get_psycopg2_serialization_exception,
+    get_psycopg2_unique_violation_exception,
     in_transaction,
     is_deadlock_failure,
     is_retryable_failure,
     is_serialization_failure,
-    make_serialization_failure,
+    is_unique_violation,
     post_commit,
     post_commit_do,
     post_commit_hooks,
@@ -81,6 +86,7 @@ import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,
     SERIALIZATION_FAILURE,
+    UNIQUE_VIOLATION,
 )
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -221,6 +227,16 @@ class TestSerializationFailure(SerializationFailureTestCase):
             SERIALIZATION_FAILURE, error.__cause__.pgcode)
 
 
+class TestUniqueViolation(UniqueViolationTestCase):
+    """Detecting UNIQUE_VIOLATION failures."""
+
+    def test_unique_violation_detectable_via_error_cause(self):
+        error = self.assertRaises(
+            IntegrityError, self.cause_unique_violation)
+        self.assertEqual(
+            UNIQUE_VIOLATION, error.__cause__.pgcode)
+
+
 class TestGetPsycopg2Exception(MAASTestCase):
     """Tests for `get_psycopg2_exception`."""
 
@@ -279,6 +295,25 @@ class TestGetPsycopg2DeadlockException(MAASTestCase):
         self.assertIs(
             exception.__cause__,
             get_psycopg2_deadlock_exception(exception))
+
+
+class TestGetPsycopg2UniqueViolationException(MAASTestCase):
+    """Tests for `get_psycopg2_unique_violation_exception`."""
+
+    def test__returns_None_for_plain_psycopg2_error(self):
+        exception = psycopg2.Error()
+        self.assertIsNone(get_psycopg2_unique_violation_exception(exception))
+
+    def test__returns_None_for_other_error(self):
+        exception = factory.make_exception()
+        self.assertIsNone(get_psycopg2_unique_violation_exception(exception))
+
+    def test__returns_psycopg2_error_root_cause(self):
+        exception = Exception()
+        exception.__cause__ = orm.UniqueViolation()
+        self.assertIs(
+            exception.__cause__,
+            get_psycopg2_unique_violation_exception(exception))
 
 
 class TestIsSerializationFailure(SerializationFailureTestCase):
@@ -340,6 +375,36 @@ class TestIsDeadlockFailure(MAASTestCase):
         self.assertFalse(is_deadlock_failure(error))
 
 
+class TestIsUniqueViolation(UniqueViolationTestCase):
+    """Tests relating to MAAS's identification of unique violations."""
+
+    def test_detects_integrity_error_with_matching_cause(self):
+        error = self.assertRaises(
+            IntegrityError, self.cause_unique_violation)
+        self.assertTrue(is_unique_violation(error))
+
+    def test_rejects_integrity_error_without_matching_cause(self):
+        error = IntegrityError()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = factory.make_name("pgcode")
+        self.assertFalse(is_unique_violation(error))
+
+    def test_rejects_integrity_error_with_unrelated_cause(self):
+        error = IntegrityError()
+        error.__cause__ = Exception()
+        self.assertFalse(is_unique_violation(error))
+
+    def test_rejects_integrity_error_without_cause(self):
+        error = IntegrityError()
+        self.assertFalse(is_unique_violation(error))
+
+    def test_rejects_non_integrity_error_with_matching_cause(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = UNIQUE_VIOLATION
+        self.assertFalse(is_unique_violation(error))
+
+
 class TestIsRetryableFailure(MAASTestCase):
     """Tests relating to MAAS's use of catching retryable failures."""
 
@@ -351,8 +416,18 @@ class TestIsRetryableFailure(MAASTestCase):
         error = orm.make_deadlock_failure()
         self.assertTrue(is_retryable_failure(error))
 
+    def test_detects_unique_violation(self):
+        error = orm.make_unique_violation()
+        self.assertTrue(is_retryable_failure(error))
+
     def test_rejects_operational_error_without_matching_cause(self):
         error = OperationalError()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = factory.make_name("pgcode")
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_integrity_error_without_matching_cause(self):
+        error = IntegrityError()
         cause = self.patch(error, "__cause__", Exception())
         cause.pgcode = factory.make_name("pgcode")
         self.assertFalse(is_retryable_failure(error))
@@ -362,20 +437,35 @@ class TestIsRetryableFailure(MAASTestCase):
         error.__cause__ = Exception()
         self.assertFalse(is_retryable_failure(error))
 
+    def test_rejects_integrity_error_with_unrelated_cause(self):
+        error = IntegrityError()
+        error.__cause__ = Exception()
+        self.assertFalse(is_retryable_failure(error))
+
     def test_rejects_operational_error_without_cause(self):
         error = OperationalError()
         self.assertFalse(is_retryable_failure(error))
 
-    def test_rejects_non_operational_error_with_cause_serialization(self):
+    def test_rejects_integrity_error_without_cause(self):
+        error = IntegrityError()
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_non_database_error_with_cause_serialization(self):
         error = factory.make_exception()
         cause = self.patch(error, "__cause__", Exception())
         cause.pgcode = SERIALIZATION_FAILURE
         self.assertFalse(is_retryable_failure(error))
 
-    def test_rejects_non_operational_error_with_cause_deadlock(self):
+    def test_rejects_non_database_error_with_cause_deadlock(self):
         error = factory.make_exception()
         cause = self.patch(error, "__cause__", Exception())
         cause.pgcode = DEADLOCK_DETECTED
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_non_database_error_with_cause_unique_violation(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = UNIQUE_VIOLATION
         self.assertFalse(is_retryable_failure(error))
 
 
@@ -418,6 +508,36 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase):
         self.assertEqual(sentinel.result, function_wrapped())
         self.assertThat(function, MockCallsMatch(call(), call()))
 
+    def test_retries_on_unique_violation(self):
+        function = self.make_mock_function()
+        function.side_effect = orm.make_unique_violation()
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertRaises(IntegrityError, function_wrapped)
+        expected_calls = [call()] * 10
+        self.assertThat(function, MockCallsMatch(*expected_calls))
+
+    def test_retries_on_unique_violation_until_successful(self):
+        function = self.make_mock_function()
+        function.side_effect = [orm.make_unique_violation(), sentinel.result]
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertEqual(sentinel.result, function_wrapped())
+        self.assertThat(function, MockCallsMatch(call(), call()))
+
+    def test_retries_on_retry_transaction(self):
+        function = self.make_mock_function()
+        function.side_effect = orm.RetryTransaction()
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertRaises(orm.TooManyRetries, function_wrapped)
+        expected_calls = [call()] * 10
+        self.assertThat(function, MockCallsMatch(*expected_calls))
+
+    def test_retries_on_retry_transaction_until_successful(self):
+        function = self.make_mock_function()
+        function.side_effect = [orm.RetryTransaction(), sentinel.result]
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertEqual(sentinel.result, function_wrapped())
+        self.assertThat(function, MockCallsMatch(call(), call()))
+
     def test_passes_args_to_wrapped_function(self):
         function = lambda a, b: (a, b)
         function_wrapped = retry_on_retryable_failure(function)
@@ -450,19 +570,34 @@ class TestMakeSerializationFailure(MAASTestCase):
     """Tests for `make_serialization_failure`."""
 
     def test__makes_a_serialization_failure(self):
-        exception = make_serialization_failure()
+        exception = orm.make_serialization_failure()
         self.assertThat(exception, MatchesPredicate(
             is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestMakeDeadlockFailure(MAASTestCase):
+    """Tests for `make_deadlock_failure`."""
+
+    def test__makes_a_deadlock_failure(self):
+        exception = orm.make_deadlock_failure()
+        self.assertThat(exception, MatchesPredicate(
+            is_deadlock_failure, "%r is not a deadlock failure."))
+
+
+class TestMakeUniqueViolation(MAASTestCase):
+    """Tests for `make_unique_violation`."""
+
+    def test__makes_a_unique_violation(self):
+        exception = orm.make_unique_violation()
+        self.assertThat(exception, MatchesPredicate(
+            is_unique_violation, "%r is not a unique violation."))
 
 
 class TestRequestTransactionRetry(MAASTestCase):
     """Tests for `request_transaction_retry`."""
 
-    def test__raises_a_serialization_failure(self):
-        exception = self.assertRaises(
-            OperationalError, request_transaction_retry)
-        self.assertThat(exception, MatchesPredicate(
-            is_serialization_failure, "%r is not a serialization failure."))
+    def test__raises_a_retry_transaction_exception(self):
+        self.assertRaises(orm.RetryTransaction, request_transaction_retry)
 
 
 class TestGenRetryIntervals(MAASTestCase):

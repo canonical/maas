@@ -16,8 +16,10 @@ __all__ = [
     'is_deadlock_failure',
     'is_retryable_failure',
     'is_serialization_failure',
+    'is_unique_violation',
     'make_deadlock_failure',
     'make_serialization_failure',
+    'make_unique_violation',
     'post_commit',
     'post_commit_do',
     'psql_array',
@@ -54,7 +56,11 @@ from django.db import (
 )
 from django.db.models import Q
 from django.db.transaction import TransactionManagementError
-from django.db.utils import OperationalError
+from django.db.utils import (
+    DatabaseError,
+    IntegrityError,
+    OperationalError,
+)
 from django.http import Http404
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -72,6 +78,7 @@ import psycopg2
 from psycopg2.errorcodes import (
     DEADLOCK_DETECTED,
     SERIALIZATION_FAILURE,
+    UNIQUE_VIOLATION,
 )
 from twisted.internet.defer import Deferred
 
@@ -273,6 +280,68 @@ def is_deadlock_failure(exception):
     return get_psycopg2_deadlock_exception(exception) is not None
 
 
+def get_psycopg2_unique_violation_exception(exception):
+    """Return the root-cause if `exception` is a unique violation.
+
+    PostgreSQL sets a specific error code, "23505", when a transaction breaks
+    because of a unique violation.
+
+    :return: The underlying `psycopg2.Error` if it's a unique violation, or
+    `None` if there isn't one.
+    """
+    exception = get_psycopg2_exception(exception)
+    if exception is None:
+        return None
+    elif exception.pgcode == UNIQUE_VIOLATION:
+        return exception
+    else:
+        return None
+
+
+def is_unique_violation(exception):
+    """Does `exception` represent a unique violation?
+
+    PostgreSQL sets a specific error code, "23505", when a transaction breaks
+    because of a unique violation.
+    """
+    return get_psycopg2_unique_violation_exception(exception) is not None
+
+
+class UniqueViolation(psycopg2.IntegrityError):
+    """Explicit serialization failure.
+
+    A real unique violation, arising out of psycopg2 (and thus signalled from
+    the database) would *NOT* be an instance of this class. However, it is not
+    obvious how to create a `psycopg2.IntegrityError` with ``pgcode`` set to
+    `UNIQUE_VIOLATION` without subclassing. I suspect only the C interface can
+    do that.
+    """
+    pgcode = UNIQUE_VIOLATION
+
+
+def make_unique_violation():
+    """Make a serialization exception.
+
+    Artificially construct an exception that resembles what Django's ORM would
+    raise when PostgreSQL fails a transaction because of a unique violation.
+
+    :returns: an instance of :py:class:`IntegrityError` that will pass the
+        `is_unique_violation` predicate.
+    """
+    exception = IntegrityError()
+    exception.__cause__ = UniqueViolation()
+    assert is_unique_violation(exception)
+    return exception
+
+
+class RetryTransaction(BaseException):
+    """An explicit request that the transaction be retried."""
+
+
+class TooManyRetries(Exception):
+    """A transaction retry has been requested too many times."""
+
+
 def request_transaction_retry():
     """Raise a serialization exception.
 
@@ -280,15 +349,24 @@ def request_transaction_retry():
     this, and then retrying the transaction, though it may choose to re-raise
     the error if too many retries have already been attempted.
 
-    :raises OperationalError:
+    :raise RetryTransaction:
     """
-    raise make_serialization_failure()
+    raise RetryTransaction()
 
 
 def is_retryable_failure(exception):
-    """Does `exception` represent a serialization or deadlock failure?"""
+    """Does `exception` represent a retryable failure?
+
+    This does NOT include requested retries, i.e. `RetryTransaction`.
+
+    :param exception: An instance of :class:`DatabaseError` or one of its
+        subclasses.
+    """
     return (
-        is_serialization_failure(exception) or is_deadlock_failure(exception))
+        is_serialization_failure(exception) or
+        is_deadlock_failure(exception) or
+        is_unique_violation(exception)
+    )
 
 
 def gen_retry_intervals(base=0.01, rate=2.5, maximum=10.0):
@@ -341,14 +419,22 @@ def retry_on_retryable_failure(func, reset=noop):
         for _ in range(9):
             try:
                 return func(*args, **kwargs)
-            except OperationalError as error:
+            except RetryTransaction:
+                reset()  # Which may do nothing.
+                sleep(next(intervals))
+            except DatabaseError as error:
                 if is_retryable_failure(error):
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
                 else:
                     raise
         else:
-            return func(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            except RetryTransaction:
+                raise TooManyRetries(
+                    "This transaction has already been attempted "
+                    "multiple times; giving up.")
     return retrier
 
 
