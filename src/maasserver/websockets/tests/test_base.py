@@ -224,7 +224,7 @@ class TestHandler(MAASServerTestCase):
         handler.full_hydrate(node, {
             "hostname": hostname,
             "power_state": power_state,
-            "power_type": "etherwake",
+            "power_type": "manual",
             })
         self.expectThat(hostname, Equals(node.hostname))
         self.expectThat(power_state, Equals(node.power_state))
@@ -240,7 +240,7 @@ class TestHandler(MAASServerTestCase):
         handler.full_hydrate(node, {
             "hostname": hostname,
             "power_state": "on",
-            "power_type": "etherwake",
+            "power_type": "manual",
             })
         self.expectThat(hostname, Equals(node.hostname))
         self.expectThat("off", Equals(node.power_state))
@@ -257,7 +257,7 @@ class TestHandler(MAASServerTestCase):
         handler.full_hydrate(node, {
             "hostname": hostname,
             "power_state": "on",
-            "power_type": "etherwake",
+            "power_type": "manual",
             })
         self.expectThat(hostname, Equals(node.hostname))
         self.expectThat("off", Equals(node.power_state))

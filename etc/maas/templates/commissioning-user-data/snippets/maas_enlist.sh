@@ -222,7 +222,6 @@ if [ -n "$power_type" ]; then
 	case $power_type in
 		ipmi) continue ;;
 		virsh) continue ;;
-		etherwake) continue ;;
 		moonshot) continue ;;
 		*) Error "Invalid power type: [$power_type]"
 	esac
