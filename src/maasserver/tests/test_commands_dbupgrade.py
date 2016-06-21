@@ -31,6 +31,11 @@ from testtools.matchers import (
 
 class TestDBUpgrade(MAASTransactionServerTestCase):
 
+    def tearDown(self):
+        super(TestDBUpgrade, self).tearDown()
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS south_migrationhistory")
+
     def patch_subprocess(self, rc=0):
         popen = self.patch_autospec(subprocess, "Popen")
         popen.return_value.__enter__.return_value = popen.return_value
@@ -109,7 +114,7 @@ class TestDBUpgrade(MAASTransactionServerTestCase):
         self.assertCalledSouth(popen)
         self.assertCalledDjango(popen)
 
-    def test_runs_south_if_missing_maassever_last_migration(self):
+    def test_runs_south_if_missing_maasserver_last_migration(self):
         popen = self.patch_subprocess()
         self.make_south_history()
         self.insert_migration_into_history(

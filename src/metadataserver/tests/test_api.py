@@ -43,10 +43,12 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
-from maastesting.djangotestcase import DjangoTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -87,7 +89,7 @@ from testtools.matchers import (
 )
 
 
-class TestHelpers(DjangoTestCase):
+class TestHelpers(MAASServerTestCase):
     """Tests for the API helper functions."""
 
     def fake_request(self, **kwargs):
@@ -248,7 +250,7 @@ def call_signal(client=None, version='latest', files={}, headers={}, **kwargs):
     return client.post(url, params, **headers)
 
 
-class TestMetadataCommon(DjangoTestCase):
+class TestMetadataCommon(MAASServerTestCase):
     """Tests for the common metadata/curtin-metadata API views."""
 
     # The curtin-metadata and the metadata views are similar in every
@@ -464,7 +466,7 @@ class TestMetadataCommon(DjangoTestCase):
             Equals('\n'.join(keys)))
 
 
-class TestMetadataUserData(DjangoTestCase):
+class TestMetadataUserData(MAASServerTestCase):
     """Tests for the metadata user-data API endpoint."""
 
     def test_user_data_view_returns_binary_data(self):
@@ -524,7 +526,8 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
 
-class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
+class TestCurtinMetadataUserData(
+        PreseedRPCMixin, MAASTransactionServerTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
@@ -1154,7 +1157,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             NODE_STATUS.RELEASING, reload_object(node).status)
 
 
-class TestByMACMetadataAPI(DjangoTestCase):
+class TestByMACMetadataAPI(MAASServerTestCase):
 
     def test_api_retrieves_node_metadata_by_mac(self):
         node = factory.make_Node_with_Interface_on_Subnet()
@@ -1193,7 +1196,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestNetbootOperationAPI(DjangoTestCase):
+class TestNetbootOperationAPI(MAASServerTestCase):
 
     def test_netboot_off(self):
         node = factory.make_Node(netboot=True)
@@ -1212,7 +1215,7 @@ class TestNetbootOperationAPI(DjangoTestCase):
         self.assertTrue(node.netboot, response)
 
 
-class TestAnonymousAPI(DjangoTestCase):
+class TestAnonymousAPI(MAASServerTestCase):
 
     def test_anonymous_netboot_off(self):
         node = factory.make_Node(netboot=True)
@@ -1306,7 +1309,7 @@ class TestAnonymousAPI(DjangoTestCase):
             ))
 
 
-class TestEnlistViews(DjangoTestCase):
+class TestEnlistViews(MAASServerTestCase):
     """Tests for the enlistment metadata views."""
 
     def test_get_instance_id(self):

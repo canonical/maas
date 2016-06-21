@@ -7058,7 +7058,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         self.assertTrue((yield deferToDatabase(has_nic)))
 
 
-class TestRackController(MAASServerTestCase):
+class TestRackController(MAASTransactionServerTestCase):
 
     def test_add_chassis_issues_rpc_call(self):
         rackcontroller = factory.make_RackController()

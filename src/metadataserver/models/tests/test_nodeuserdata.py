@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`NodeUserData` and manager."""
@@ -6,11 +6,11 @@
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maastesting.djangotestcase import DjangoTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeUserData
 
 
-class TestNodeUserDataManager(DjangoTestCase):
+class TestNodeUserDataManager(MAASServerTestCase):
     """Test NodeUserDataManager."""
 
     def test_set_user_data_creates_new_nodeuserdata_if_needed(self):

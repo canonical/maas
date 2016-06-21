@@ -1562,7 +1562,7 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         yield deferToDatabase(service_status_updated)
 
 
-class TestValidateDHCPConfig(MAASServerTestCase):
+class TestValidateDHCPConfig(MAASTransactionServerTestCase):
     """Tests for `validate_dhcp_config`."""
 
     def prepare_rpc(self, rack_controller, return_value=None):

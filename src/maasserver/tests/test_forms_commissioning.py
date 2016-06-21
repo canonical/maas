@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for commissioning forms."""
@@ -11,14 +11,11 @@ from maasserver.forms import (
     CommissioningForm,
     CommissioningScriptForm,
 )
-from maasserver.models import (
-    BootSourceCache,
-    Config,
-)
+from maasserver.models import Config
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.orm import post_commit_hooks
 from metadataserver.models import CommissioningScript
 from testtools.matchers import MatchesStructure
 
@@ -45,15 +42,13 @@ class TestCommissioningFormForm(MAASServerTestCase):
         release = factory.pick_ubuntu_release()
         name = "ubuntu/" + release
         kernel = 'hwe-' + release[0]
-        # Stub out the post commit tasks otherwise the test fails due to
-        # unrun post-commit tasks at the end of the test.
-        self.patch(BootSourceCache, "post_commit_do")
-        # Force run the post commit tasks as we make new boot sources
-        with post_commit_hooks:
-            factory.make_BootSourceCache(
-                os=name,
-                subarch=kernel,
-                release=release)
+        # Disable boot sources signals otherwise the test fails due to unrun
+        # post-commit tasks at the end of the test.
+        self.useFixture(SignalsDisabled("bootsources"))
+        factory.make_BootSourceCache(
+            os=name,
+            subarch=kernel,
+            release=release)
         factory.make_usable_boot_resource(
             name=name,
             extra={'subarches': kernel},

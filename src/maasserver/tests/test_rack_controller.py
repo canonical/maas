@@ -21,7 +21,7 @@ from maasserver.rpc.regionservice import (
     RegionAdvertisingService,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
@@ -43,7 +43,7 @@ from twisted.internet.defer import (
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestRackControllerService(MAASServerTestCase):
+class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_init_sets_properties(self):
         service = RackControllerService(

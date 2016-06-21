@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`NodeKey` model and manager."""
@@ -6,12 +6,12 @@
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maastesting.djangotestcase import DjangoTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
 from testtools.matchers import HasLength
 
 
-class TestNodeKeyManager(DjangoTestCase):
+class TestNodeKeyManager(MAASServerTestCase):
     """Test NodeKeyManager."""
 
     def test_get_token_for_node_registers_node_key(self):

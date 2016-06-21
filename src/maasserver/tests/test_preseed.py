@@ -63,7 +63,10 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils import absolute_reverse
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.matchers import (
@@ -456,7 +459,7 @@ class TestPreseedContext(MAASServerTestCase):
 
 
 class TestNodePreseedContext(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
@@ -497,7 +500,7 @@ class TestPreseedTemplate(MAASServerTestCase):
 
 
 class TestRenderPreseed(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -745,7 +748,7 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
 
 
 class TestGetCurtinUserData(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
@@ -808,7 +811,7 @@ class TestGetCurtinUserData(
 
 
 class TestGetCurtinUserDataOS(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `get_curtin_userdata` using os specific scenarios."""
 
     # Create a scenario for each possible os specific preseed.
@@ -829,7 +832,7 @@ class TestGetCurtinUserDataOS(
 
 
 class TestCurtinUtilities(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
@@ -1064,7 +1067,7 @@ class TestCurtinUtilities(
 
 
 class TestPreseedMethods(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `get_enlist_preseed` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
@@ -1099,7 +1102,7 @@ class TestPreseedMethods(
 
 
 class TestPreseedURLs(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):

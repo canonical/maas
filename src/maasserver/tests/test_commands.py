@@ -18,11 +18,11 @@ from maasserver.management.commands import (
 )
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
-from maastesting.djangotestcase import DjangoTestCase
 from testtools.matchers import (
     AfterPreprocessing,
     HasLength,
@@ -46,7 +46,7 @@ IsEmpty = AfterPreprocessing(
     lambda buf: buf.getvalue().strip(), HasLength(0))
 
 
-class TestCommands(DjangoTestCase):
+class TestCommands(MAASServerTestCase):
     """Happy-path integration testing for custom commands.
 
     Detailed testing does not belong here.  If there's any complexity at all
@@ -173,7 +173,7 @@ class TestCommands(DjangoTestCase):
             createadmin.prompt_for_email)
 
 
-class TestChangePasswords(DjangoTestCase):
+class TestChangePasswords(MAASServerTestCase):
 
     def test_bad_input(self):
         stdin = io.StringIO("nobody")
@@ -216,7 +216,7 @@ class TestChangePasswords(DjangoTestCase):
             self.assertTrue(reload_object(user).check_password(newpass))
 
 
-class TestApikeyCommand(DjangoTestCase):
+class TestApikeyCommand(MAASServerTestCase):
 
     def test_apikey_requires_username(self):
         error_text = assertCommandErrors(self, 'apikey')

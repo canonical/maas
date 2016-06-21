@@ -35,7 +35,10 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import (
     post_commit_hooks,
     reload_object,
@@ -59,7 +62,7 @@ from testtools.matchers import (
 )
 
 
-class TestCreateNode(MAASServerTestCase):
+class TestCreateNode(MAASTransactionServerTestCase):
 
     def prepare_rack_rpc(self):
         rack_controller = factory.make_RackController()
@@ -268,7 +271,7 @@ class TestCreateNode(MAASServerTestCase):
         self.assertEqual(architecture, node.architecture)
 
 
-class TestCommissionNode(MAASServerTestCase):
+class TestCommissionNode(MAASTransactionServerTestCase):
 
     def prepare_rack_rpc(self):
         rack_controller = factory.make_RackController()

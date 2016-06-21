@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the :class:`NodeResult` model."""
@@ -10,8 +10,8 @@ from random import randint
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import XMLToYAML
-from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import NodeResult
@@ -21,7 +21,7 @@ from metadataserver.models.commissioningscript import (
 )
 
 
-class TestNodeResult(DjangoTestCase):
+class TestNodeResult(MAASServerTestCase):
     """Test the NodeResult model."""
 
     def test_string_conversion_represents_result(self):
@@ -90,7 +90,7 @@ class TestNodeResult(DjangoTestCase):
         self.assertEqual('&lt;&amp;&gt;', result.get_data_as_html())
 
 
-class TestNodeResultManager(DjangoTestCase):
+class TestNodeResultManager(MAASServerTestCase):
     """Test the manager utility for NodeResult."""
 
     def test_clear_results_removes_rows(self):

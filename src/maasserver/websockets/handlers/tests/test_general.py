@@ -15,13 +15,12 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_TYPE,
 )
-from maasserver.models import BootSourceCache
 from maasserver.models.config import Config
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
 import petname
@@ -53,9 +52,9 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_hwe_kernels(self):
         ubuntu_releases = UbuntuDistroInfo()
         expected_output = []
-        # Stub out the post commit tasks otherwise the test fails due to
-        # unrun post-commit tasks at the end of the test.
-        self.patch(BootSourceCache, "post_commit_do")
+        # Disable boot sources signals otherwise the test fails due to unrun
+        # post-commit tasks at the end of the test.
+        self.useFixture(SignalsDisabled("bootsources"))
         # Start with the first release MAAS supported. We do this
         # because the lookup between hwe- kernel and release can fail
         # when multiple releases start with the same letter. For
@@ -75,13 +74,11 @@ class TestGeneralHandler(MAASServerTestCase):
                 extra={'subarches': kernel},
                 architecture=architecture,
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
-            # Force run the post commit tasks as we make new boot sources
-            with post_commit_hooks:
-                factory.make_BootSourceCache(
-                    os="ubuntu",
-                    arch=arch,
-                    subarch=kernel,
-                    release=release)
+            factory.make_BootSourceCache(
+                os="ubuntu",
+                arch=arch,
+                subarch=kernel,
+                release=release)
             expected_output.append((kernel, '%s (%s)' % (release, kernel)))
         handler = GeneralHandler(factory.make_User(), {})
         self.assertItemsEqual(

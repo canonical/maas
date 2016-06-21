@@ -201,7 +201,7 @@ class TestDoPopulateTags(MAASServerTestCase):
             "splendid day for a spot of cricket", log.output)
 
 
-class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
+class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
     """Tests for populating tags on racks.
 
     This happens when there are connected rack controllers able to carry out

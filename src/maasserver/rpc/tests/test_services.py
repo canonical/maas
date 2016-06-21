@@ -12,12 +12,12 @@ from maasserver.models.service import (
 )
 from maasserver.rpc.services import update_services
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from testtools.matchers import MatchesStructure
 
 
-class TestUpdateServices(MAASServerTestCase):
+class TestUpdateServices(MAASTransactionServerTestCase):
 
     def make_service(
             self, service_name, status=None, status_info=None):

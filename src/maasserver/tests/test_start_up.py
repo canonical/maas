@@ -21,7 +21,10 @@ from maasserver.models.node import RegionController
 from maasserver.models.signals import bootsources
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.worker_user import get_worker_user
 from maastesting.matchers import (
@@ -48,7 +51,7 @@ class LockChecker:
         self.lock_was_held = locks.startup.is_locked()
 
 
-class TestStartUp(MAASServerTestCase):
+class TestStartUp(MAASTransactionServerTestCase):
 
     """Tests for the `start_up` function.
 

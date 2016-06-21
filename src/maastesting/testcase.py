@@ -143,6 +143,7 @@ class MAASTestCase(
         # it when reporting test failure or error details.
         if self.id() != testtools.TestCase.id(self):
             self.addDetail("test-id", text_content(self.id()))
+        self.maybeCheckTableRowCounts()
         self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()
         self.setUpResources()
@@ -155,6 +156,11 @@ class MAASTestCase(
         self.tearDownResources()
         super(MAASTestCase, self).tearDown()
         self.checkDatabaseUse()
+
+    def maybeCheckTableRowCounts(self):
+        if self.database_use_possible:
+            from maastesting.tablecounts import check_table_row_counts
+            check_table_row_counts(self)
 
     def maybeCloseDatabaseConnections(self):
         """Close database connections if their use is not permitted."""

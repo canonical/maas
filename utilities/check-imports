@@ -260,6 +260,7 @@ RegionControllerConfigRule = Rule(
     Allow("django|django.**"),
     Allow("formencode.validators.*"),
     Allow("maasserver.config.*"),
+    Allow("maasserver.testing.testcase.*"),
     Allow("maas|maas.**"),
     Allow("provisioningserver|provisioningserver.**"),
     Allow("psycopg2|psycopg2.**"),

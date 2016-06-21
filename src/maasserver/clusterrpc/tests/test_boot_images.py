@@ -11,7 +11,9 @@ from unittest.mock import (
     ANY,
     call,
     MagicMock,
+    sentinel,
 )
+from urllib.parse import urlparse
 
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.clusterrpc import boot_images as boot_images_module
@@ -21,6 +23,7 @@ from maasserver.clusterrpc.boot_images import (
     get_boot_images_for,
     get_common_available_boot_images,
     is_import_boot_images_running,
+    RackControllersImporter,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import BOOT_RESOURCE_TYPE
@@ -36,7 +39,10 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -62,9 +68,12 @@ from provisioningserver.testing.boot_images import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools.matchers import (
+    Equals,
+    Is,
     IsInstance,
     MatchesAll,
     MatchesListwise,
+    MatchesStructure,
 )
 from twisted.internet.defer import (
     DeferredLock,
@@ -92,7 +101,7 @@ def make_image_dir(image_params, tftp_root):
     factory.make_file(image_dir, 'initrd.gz')
 
 
-class TestIsImportBootImagesRunning(MAASServerTestCase):
+class TestIsImportBootImagesRunning(MAASTransactionServerTestCase):
     """Tests for `is_import_boot_images_running`."""
 
     def test_returns_True_when_one_cluster_returns_True(self):
@@ -161,23 +170,6 @@ class TestGetBootImages(MAASServerTestCase):
         super(TestGetBootImages, self).setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
-    def test_returns_boot_images(self):
-        rack_controller = factory.make_RackController()
-        self.useFixture(RunningClusterRPCFixture())
-
-        purposes = ['install', 'commissioning', 'xinstall']
-        params = [make_boot_image_storage_params() for _ in range(3)]
-        for param in params:
-            make_image_dir(param, self.tftp_root)
-            test_tftppath.make_osystem(self, param['osystem'], purposes)
-        self.assertItemsEqual(
-            [
-                make_image(param, purpose)
-                for param in params
-                for purpose in purposes
-            ],
-            get_boot_images(rack_controller))
-
     def test_calls_ListBootImagesV2_before_ListBootImages(self):
         rack_controller = factory.make_RackController()
         mock_client = MagicMock()
@@ -201,7 +193,32 @@ class TestGetBootImages(MAASServerTestCase):
             call(ListBootImages)))
 
 
-class TestGetAvailableBootImages(MAASServerTestCase):
+class TestGetBootImagesTxn(MAASTransactionServerTestCase):
+    """Transactional tests for `get_boot_images`."""
+
+    def setUp(self):
+        super(TestGetBootImagesTxn, self).setUp()
+        prepare_tftp_root(self)  # Sets self.tftp_root.
+
+    def test_returns_boot_images(self):
+        rack_controller = factory.make_RackController()
+        self.useFixture(RunningClusterRPCFixture())
+
+        purposes = ['install', 'commissioning', 'xinstall']
+        params = [make_boot_image_storage_params() for _ in range(3)]
+        for param in params:
+            make_image_dir(param, self.tftp_root)
+            test_tftppath.make_osystem(self, param['osystem'], purposes)
+        self.assertItemsEqual(
+            [
+                make_image(param, purpose)
+                for param in params
+                for purpose in purposes
+            ],
+            get_boot_images(rack_controller))
+
+
+class TestGetAvailableBootImages(MAASTransactionServerTestCase):
     """Tests for `get_common_available_boot_images` and
     `get_all_available_boot_images`."""
 
@@ -322,7 +339,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         self.assertItemsEqual([], self.get())
 
 
-class TestGetBootImagesFor(MAASServerTestCase):
+class TestGetBootImagesFor(MAASTransactionServerTestCase):
     """Tests for `get_boot_images_for`."""
 
     def setUp(self):
@@ -385,12 +402,6 @@ class TestGetBootImagesFor(MAASServerTestCase):
                 param['architecture'],
                 subarch,
                 param['release']))
-
-
-from unittest.mock import sentinel
-from maasserver.clusterrpc.boot_images import RackControllersImporter
-from testtools.matchers import MatchesStructure, Is, Equals
-from urllib.parse import urlparse
 
 
 class TestRackControllersImporter(MAASTestCase):
@@ -524,7 +535,7 @@ class TestRackControllersImporterNew(MAASServerTestCase):
             proxy=Equals(None)))
 
 
-class TestRackControllersImporterInAction(MAASServerTestCase):
+class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
     """Live tests for `RackControllersImporter`."""
 
     def setUp(self):

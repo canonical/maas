@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's remote procedure calls."""
@@ -48,10 +48,7 @@ from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import (
     reload_object,
@@ -138,7 +135,7 @@ class TestRegionProtocol_Identify(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_Authenticate(MAASServerTestCase):
+class TestRegionProtocol_Authenticate(MAASTransactionServerTestCase):
 
     def test_authenticate_is_registered(self):
         protocol = Region()

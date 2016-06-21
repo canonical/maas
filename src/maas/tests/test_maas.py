@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the maas package."""
@@ -18,7 +18,7 @@ from maas.settings import (
     _get_local_timezone,
     _read_timezone,
 )
-from maastesting.djangotestcase import DjangoTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
 from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 from testtools import TestCase
@@ -29,7 +29,7 @@ from testtools.matchers import (
 )
 
 
-class TestSettingsHelpers(DjangoTestCase):
+class TestSettingsHelpers(MAASServerTestCase):
     """Test Django settings helper functions."""
 
     def test_find_settings(self):
@@ -56,7 +56,7 @@ class TestSettingsHelpers(DjangoTestCase):
         self.assertEqual(expected, observed)
 
 
-class TestDatabaseConfiguration(DjangoTestCase):
+class TestDatabaseConfiguration(MAASServerTestCase):
 
     def test_transactionmiddleware_is_not_used(self):
         # The 'TransactionMiddleware' is not enabled (it has been

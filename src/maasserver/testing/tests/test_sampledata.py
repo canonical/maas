@@ -6,10 +6,10 @@
 __all__ = []
 
 from maasserver.testing import sampledata
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestPopulates(MAASTestCase):
+class TestPopulates(MAASServerTestCase):
     """Tests for `sampledata.populate`."""
 
     def test__runs(self):

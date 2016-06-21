@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django-enabled test cases."""
@@ -9,7 +9,6 @@ __all__ = [
     'DjangoTransactionTestCase',
     ]
 
-from contextlib import closing
 from time import (
     sleep,
     time,
@@ -24,7 +23,6 @@ from django.db import (
     DEFAULT_DB_ALIAS,
     reset_queries,
 )
-from django.db.utils import DatabaseError
 from django.http.response import HttpResponseBase
 import django.test
 from maastesting.djangoclient import SensibleClient
@@ -211,6 +209,9 @@ class DjangoTestCase(
         django.test.TestCase, MAASTestCase, InstallDjangoAppsMixin):
     """A Django `TestCase` for MAAS.
 
+    Generally you should NOT directly subclass this for tests; use an
+    application-specific subclass like `MAASServerTestCase`.
+
     Supports test resources and (non-Django) fixtures.
     """
 
@@ -224,40 +225,13 @@ class DjangoTestCase(
     # exist in the database.
     apps = []
 
-    def __get_connection_txid(self):
-        """Get PostgreSQL's current transaction ID."""
-        with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT txid_current()")
-            return cursor.fetchone()[0]
-
     def _fixture_setup(self):
-        """Record the transaction ID before the test is run."""
         super(DjangoTestCase, self)._fixture_setup()
         self._setup_apps(self.apps)
-        self.__txid_before = self.__get_connection_txid()
 
     def _fixture_teardown(self):
-        """Compare the transaction ID now to before the test ran.
-
-        If they differ, do a full database flush because the new transaction
-        could have been the result of a commit, and we don't want to leave
-        stale test state around.
-        """
         self._teardown_apps()
-        try:
-            self.__txid_after = self.__get_connection_txid()
-        except DatabaseError:
-            # We don't know if a transaction was committed to disk or if the
-            # transaction simply broke, so assume the worse and flush all
-            # databases.
-            super(DjangoTestCase, self)._fixture_teardown()
-            django.test.TransactionTestCase._fixture_teardown(self)
-        else:
-            super(DjangoTestCase, self)._fixture_teardown()
-            if self.__txid_after != self.__txid_before:
-                # We're in a different transaction now to the one we started
-                # in, so force a flush of all databases to ensure all's well.
-                django.test.TransactionTestCase._fixture_teardown(self)
+        super(DjangoTestCase, self)._fixture_teardown()
         # TODO blake_r: Fix so this is not disabled. Currently not
         # working with Django 1.8.
         # Don't let unfinished database activity get away with it.
@@ -269,6 +243,9 @@ class DjangoTransactionTestCase(
     """A Django `TransactionTestCase` for MAAS.
 
     A version of `MAASTestCase` that supports transactions.
+
+    Generally you should NOT directly subclass this for tests; use an
+    application-specific subclass like `MAASServerTestCase`.
 
     The basic Django TestCase class uses transactions to speed up tests
     so this class should only be used when tests involve transactions.

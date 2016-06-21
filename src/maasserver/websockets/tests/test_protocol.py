@@ -790,6 +790,10 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         self.assertItemsEqual(
             ALL_NOTIFIERS, factory.listener.listeners.keys())
 
+
+class TestWebSocketFactoryTransactional(
+        MAASTransactionServerTestCase, MakeProtocolFactoryMixin):
+
     @transactional
     def make_user(self):
         return maas_factory.make_User()
@@ -853,10 +857,6 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
             mock_class, sentinel.channel, action, sentinel.obj_id)
         self.assertThat(
             mock_sendNotify, MockCalledWith(name, action, data))
-
-
-class TestWebSocketFactoryTransactional(
-        MAASTransactionServerTestCase, MakeProtocolFactoryMixin):
 
     @wait_for_reactor
     @inlineCallbacks
