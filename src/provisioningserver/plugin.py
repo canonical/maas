@@ -170,12 +170,18 @@ class ProvisioningServiceMaker:
         import crochet
         crochet.no_setup()
 
+    def _configureLogging(self):
+        # Get something going with the logs.
+        from provisioningserver import logger
+        logger.basicConfig()
+
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
         add_term_error_code_to_tftp()
 
         self._configureCrochet()
+        self._configureLogging()
 
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root
