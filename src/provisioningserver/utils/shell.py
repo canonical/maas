@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for executing external commands."""
@@ -8,7 +8,9 @@ __all__ = [
     'ExternalProcessError',
     'pipefork',
     'PipeForkError',
-    ]
+    'select_c_utf8_bytes_locale',
+    'select_c_utf8_locale',
+]
 
 from contextlib import contextmanager
 import os
@@ -317,6 +319,10 @@ def select_c_utf8_locale(environ=os.environ):
     C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
     other locale makes sense.
 
+    This function takes a starting environment, by default that of the current
+    process, strips away all locale and language settings (i.e. LC_* and LANG)
+    and selects C.UTF-8 in their place.
+
     :param environ: A base environment to start from. By default this is
         ``os.environ``. It will not be modified.
     """
@@ -327,5 +333,29 @@ def select_c_utf8_locale(environ=os.environ):
     environ.update({
         'LC_ALL': 'C.UTF-8',
         'LANG': 'C.UTF-8',
+    })
+    return environ
+
+
+def select_c_utf8_bytes_locale(environ=os.environb):
+    """Return a dict containing an environment that uses the C.UTF-8 locale.
+
+    C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
+    other locale makes sense.
+
+    This function takes a starting environment, by default that of the current
+    process, strips away all locale and language settings (i.e. LC_* and LANG)
+    and selects C.UTF-8 in their place.
+
+    :param environ: A base environment to start from. By default this is
+        ``os.environb``. It will not be modified.
+    """
+    environ = {
+        name: value for name, value in environ.items()
+        if not name.startswith(b'LC_')
+    }
+    environ.update({
+        b'LC_ALL': b'C.UTF-8',
+        b'LANG': b'C.UTF-8',
     })
     return environ

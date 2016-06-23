@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for utilities to execute external commands."""
@@ -24,6 +24,7 @@ from provisioningserver.utils.shell import (
     objectfork,
     pipefork,
     PipeForkError,
+    select_c_utf8_bytes_locale,
     select_c_utf8_locale,
 )
 import provisioningserver.utils.shell as shell_module
@@ -311,15 +312,16 @@ class TestHasCommandAvailable(MAASTestCase):
         self.assertTrue(has_command_available(factory.make_name("cmd")))
 
 
+# Taken from locale(7).
+LC_VAR_NAMES = {
+    "LC_ADDRESS", "LC_COLLATE", "LC_CTYPE", "LC_IDENTIFICATION",
+    "LC_MONETARY", "LC_MESSAGES", "LC_MEASUREMENT", "LC_NAME",
+    "LC_NUMERIC", "LC_PAPER", "LC_TELEPHONE", "LC_TIME",
+}
+
+
 class TestSelectCUTF8Locale(MAASTestCase):
     """Tests for `select_c_utf8_locale`."""
-
-    # Taken from locale(7).
-    LC_VAR_NAMES = {
-        "LC_ADDRESS", "LC_COLLATE", "LC_CTYPE", "LC_IDENTIFICATION",
-        "LC_MONETARY", "LC_MESSAGES", "LC_MEASUREMENT", "LC_NAME",
-        "LC_NUMERIC", "LC_PAPER", "LC_TELEPHONE", "LC_TIME",
-    }
 
     def test__sets_LANG_and_LC_ALL(self):
         self.assertThat(
@@ -345,7 +347,7 @@ class TestSelectCUTF8Locale(MAASTestCase):
         self.assertThat(
             select_c_utf8_locale({
                 name: factory.make_name(name)
-                for name in self.LC_VAR_NAMES
+                for name in LC_VAR_NAMES
             }),
             Equals({
                 "LANG": "C.UTF-8",
@@ -358,7 +360,8 @@ class TestSelectCUTF8Locale(MAASTestCase):
             factory.make_name("name"): factory.make_name("value")
             for _ in range(5)
         }
-        expected = dict(basis, LANG="C.UTF-8", LC_ALL="C.UTF-8")
+        expected = basis.copy()
+        expected["LANG"] = expected["LC_ALL"] = "C.UTF-8"
         observed = select_c_utf8_locale(basis)
         self.assertThat(observed, Equals(expected))
 
@@ -369,4 +372,62 @@ class TestSelectCUTF8Locale(MAASTestCase):
             self.assertThat(
                 select_c_utf8_locale(),
                 ContainsDict({name: Equals(value)}),
+            )
+
+
+class TestSelectCUTF8BytesLocale(MAASTestCase):
+    """Tests for `select_c_utf8_bytes_locale`."""
+
+    def test__sets_LANG_and_LC_ALL(self):
+        self.assertThat(
+            select_c_utf8_bytes_locale({}),
+            Equals({
+                b"LANG": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            }),
+        )
+
+    def test__overwrites_LANG(self):
+        self.assertThat(
+            select_c_utf8_bytes_locale({
+                b"LANG": factory.make_name("LANG").encode("ascii"),
+            }),
+            Equals({
+                b"LANG": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            }),
+        )
+
+    def test__removes_other_LC_variables(self):
+        self.assertThat(
+            select_c_utf8_bytes_locale({
+                name.encode("ascii"): factory.make_name(name).encode("ascii")
+                for name in LC_VAR_NAMES
+            }),
+            Equals({
+                b"LANG": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            }),
+        )
+
+    def test__passes_other_variables_through(self):
+        basis = {
+            factory.make_name("name").encode("ascii"): (
+                factory.make_name("value").encode("ascii"))
+            for _ in range(5)
+        }
+        expected = basis.copy()
+        expected[b"LANG"] = expected[b"LC_ALL"] = b"C.UTF-8"
+        observed = select_c_utf8_bytes_locale(basis)
+        self.assertThat(observed, Equals(expected))
+
+    def test__defaults_to_process_environment(self):
+        name = factory.make_name("name")
+        value = factory.make_name("value")
+        with EnvironmentVariable(name, value):
+            self.assertThat(
+                select_c_utf8_bytes_locale(),
+                ContainsDict({
+                    name.encode("ascii"): Equals(value.encode("ascii")),
+                }),
             )
