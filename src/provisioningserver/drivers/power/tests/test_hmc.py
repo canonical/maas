@@ -96,7 +96,7 @@ class TestHMCPowerDriver(MAASTestCase):
         self.assertThat(
             run_hmc_command, MockCalledOnceWith(
                 "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
-                % (context['server_name'], context['lpar'])))
+                % (context['server_name'], context['lpar']), **context))
 
     def test_power_on_crashes_for_connection_error(self):
         driver = HMCPowerDriver()
@@ -118,7 +118,7 @@ class TestHMCPowerDriver(MAASTestCase):
         self.assertThat(
             run_hmc_command, MockCalledOnceWith(
                 "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
-                % (context['server_name'], context['lpar'])))
+                % (context['server_name'], context['lpar']), **context))
 
     def test_power_off_crashes_for_connection_error(self):
         driver = HMCPowerDriver()
