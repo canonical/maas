@@ -48,7 +48,7 @@ class HMCPowerDriver(PowerDriver):
             ssh_client.connect(
                 power_address, username=power_user, password=power_pass)
             _, stdout, _ = ssh_client.exec_command(command)
-            output = stdout.read().decode('utf-8')
+            output = stdout.read().decode('utf-8').strip()
         except (SSHException, EOFError, SOCKETError) as e:
             raise PowerConnError(
                 "Could not make SSH connection to HMC for "
@@ -66,7 +66,7 @@ class HMCPowerDriver(PowerDriver):
             # Power lpar on
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
-                % (context['server_name'], context['lpar']))
+                % (context['server_name'], context['lpar']), **context)
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power on lpar %s: %s"
@@ -78,7 +78,7 @@ class HMCPowerDriver(PowerDriver):
             # Power lpar off
             self.run_hmc_command(
                 "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
-                % (context['server_name'], context['lpar']))
+                % (context['server_name'], context['lpar']), **context)
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power off lpar %s: %s"
@@ -90,7 +90,7 @@ class HMCPowerDriver(PowerDriver):
             # Power query lpar
             power_state = self.run_hmc_command(
                 "lssyscfg -m %s -r lpar -F state --filter lpar_names=%s"
-                % (context['server_name'], context['lpar']))
+                % (context['server_name'], context['lpar']), **context)
         except PowerConnError as e:
             raise PowerActionError(
                 "HMC Power Driver unable to power query lpar %s: %s"
