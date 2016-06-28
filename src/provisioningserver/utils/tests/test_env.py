@@ -12,6 +12,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.path import get_path
 from provisioningserver.utils import env
+from provisioningserver.utils.fs import atomic_delete
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -94,11 +95,7 @@ class TestMAASID(MAASTestCase):
     def setUp(self):
         super(TestMAASID, self).setUp()
         self.maas_id_path = get_path('/var/lib/maas/maas_id')
-        self.addCleanup(unlink_if_exists, self.maas_id_path)
-
-    def tearDown(self):
-        super(TestMAASID, self).tearDown()
-        env.set_maas_id(None)
+        self.addCleanup(env.set_maas_id, None)
 
     def test_get_returns_None_if_maas_id_file_does_not_exist(self):
         self.assertThat(self.maas_id_path, Not(FileExists()))
@@ -199,3 +196,19 @@ class TestMAASID(MAASTestCase):
         contents = "  %s  " % factory.make_name("contents")
         env.set_maas_id(contents)
         self.assertEquals(env._normalise_maas_id(contents), env.get_maas_id())
+
+    def test_set_none_clears_cache(self):
+        contents = factory.make_name("contents")
+        env.set_maas_id(contents)
+        self.assertEquals(contents, env.get_maas_id())
+        env.set_maas_id(None)
+        self.assertIsNone(env.get_maas_id())
+        self.assertFalse(os.path.exists(self.maas_id_path))
+
+    def test_set_none_works_with_missing_file(self):
+        contents = factory.make_name("contents")
+        env.set_maas_id(contents)
+        atomic_delete(self.maas_id_path)
+        env.set_maas_id(None)
+        self.assertIsNone(env.get_maas_id())
+        self.assertFalse(os.path.exists(self.maas_id_path))

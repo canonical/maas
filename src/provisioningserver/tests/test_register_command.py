@@ -29,8 +29,10 @@ from provisioningserver.security import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
 
 
 class TestAddArguments(MAASTestCase):
@@ -197,3 +199,69 @@ class TestRegisterMAASRack(MAASTestCase):
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
         self.assertIsNone(get_maas_id())
+
+    def test__show_service_stop_error(self):
+        url = factory.make_simple_http_url()
+        secret = factory.make_bytes()
+        register_command.run(self.make_args(url=url, secret=to_hex(secret)))
+        mock_call_and_check = self.patch(register_command, 'call_and_check')
+        mock_call_and_check.side_effect = [
+            ExternalProcessError(1, 'systemctl stop', 'mock error'),
+            call(),
+            call(),
+        ]
+        mock_stderr = self.patch(register_command.stderr, 'write')
+        with ExpectedException(SystemExit):
+            register_command.run(
+                self.make_args(url=url, secret=to_hex(secret)))
+        self.assertThat(
+            mock_stderr, MockCallsMatch(
+                call('Unable to stop maas-rackd service.'),
+                call('\n'),
+                call('Failed with error: mock error.'),
+                call('\n'),
+            ))
+
+    def test__show_service_enable_error(self):
+        url = factory.make_simple_http_url()
+        secret = factory.make_bytes()
+        register_command.run(self.make_args(url=url, secret=to_hex(secret)))
+        mock_call_and_check = self.patch(register_command, 'call_and_check')
+        mock_call_and_check.side_effect = [
+            call(),
+            ExternalProcessError(1, 'systemctl enable', 'mock error'),
+            call(),
+        ]
+        mock_stderr = self.patch(register_command.stderr, 'write')
+        with ExpectedException(SystemExit):
+            register_command.run(
+                self.make_args(url=url, secret=to_hex(secret)))
+        self.assertThat(
+            mock_stderr, MockCallsMatch(
+                call('Unable to enable and start the maas-rackd service.'),
+                call('\n'),
+                call('Failed with error: mock error.'),
+                call('\n'),
+            ))
+
+    def test__show_service_start_error(self):
+        url = factory.make_simple_http_url()
+        secret = factory.make_bytes()
+        register_command.run(self.make_args(url=url, secret=to_hex(secret)))
+        mock_call_and_check = self.patch(register_command, 'call_and_check')
+        mock_call_and_check.side_effect = [
+            call(),
+            call(),
+            ExternalProcessError(1, 'systemctl start', 'mock error'),
+        ]
+        mock_stderr = self.patch(register_command.stderr, 'write')
+        with ExpectedException(SystemExit):
+            register_command.run(
+                self.make_args(url=url, secret=to_hex(secret)))
+        self.assertThat(
+            mock_stderr, MockCallsMatch(
+                call('Unable to enable and start the maas-rackd service.'),
+                call('\n'),
+                call('Failed with error: mock error.'),
+                call('\n'),
+            ))

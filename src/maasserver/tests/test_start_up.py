@@ -67,7 +67,6 @@ class TestStartUp(MAASTransactionServerTestCase):
         super(TestStartUp, self).tearDown()
         # start_up starts the Twisted event loop, so we need to stop it.
         eventloop.reset().wait(5)
-        set_maas_id(None)
 
     def test_inner_start_up_runs_in_exclusion(self):
         # Disable boot source cache signals.
@@ -119,11 +118,6 @@ class TestInnerStartUp(MAASServerTestCase):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-    def tearDown(self):
-        super().tearDown()
-        # Clear maas_id cache
-        set_maas_id(None)
-
     def test__calls_dns_kms_setting_changed_if_master(self):
         self.patch(start_up, "is_master_process").return_value = True
         self.patch(start_up, "post_commit_do")
@@ -173,11 +167,6 @@ class TestInnerStartUp(MAASServerTestCase):
 class TestCreateRegionObj(MAASServerTestCase):
 
     """Tests for the actual work done in `create_region_obj`."""
-
-    def tearDown(self):
-        super().tearDown()
-        # Clear maas_id cache
-        set_maas_id(None)
 
     def test__creates_obj(self):
         region = start_up.create_region_obj()
