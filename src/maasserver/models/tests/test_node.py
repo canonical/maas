@@ -159,10 +159,7 @@ from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,
 )
-from provisioningserver.utils.env import (
-    get_maas_id,
-    set_maas_id,
-)
+from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools import ExpectedException
@@ -309,12 +306,7 @@ class TestMachineManager(MAASServerTestCase):
             list(Machine.objects.get_available_machines_for_acquisition(user)))
 
 
-class TestControllerManaer(MAASServerTestCase):
-
-    def tearDown(self):
-        super().tearDown()
-        # Make sure the maas_id is cleared when done
-        set_maas_id(None)
+class TestControllerManager(MAASServerTestCase):
 
     def test_controller_lists_node_type_rack_and_region(self):
         racks_and_regions = set()
@@ -333,8 +325,10 @@ class TestControllerManaer(MAASServerTestCase):
         self.assertEquals(rack, Controller.objects.get_running_controller())
 
     def test_get_running_controller_can_ignore_cache(self):
-        set_maas_id(factory.make_string())
+        # Store invalid value in cache
+        self.useFixture(MAASIDFixture(factory.make_string()))
         rack = factory.make_RackController()
+        # Write valid value to disk
         maas_id_path = get_path('/var/lib/maas/maas_id')
         os.unlink(maas_id_path)
         with open(maas_id_path, 'w') as fd:

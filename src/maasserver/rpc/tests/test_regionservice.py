@@ -77,6 +77,7 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 import netaddr
+from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     common,
     exceptions,
@@ -87,6 +88,10 @@ from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import events
+from provisioningserver.utils.env import (
+    get_maas_id,
+    set_maas_id,
+)
 from provisioningserver.utils.testing import MAASIDFixture
 from provisioningserver.utils.twisted import (
     callInReactorWithTimeout,
@@ -1198,6 +1203,15 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             if len(exceptions) == 0:
                 return original()
             else:
+                # Stick a bad value in maas_id cache to test that maas_id is
+                # being reread from disk each time.
+                good_maas_id = get_maas_id()
+                set_maas_id(factory.make_string())
+                # Write the good value to disk
+                maas_id_path = get_path("/var/lib/maas/maas_id")
+                os.unlink(maas_id_path)
+                with open(maas_id_path, "w") as fd:
+                    fd.write(good_maas_id)
                 raise exceptions.pop(0)
 
         fake_promote = self.patch(regionservice.RegionAdvertising, "promote")

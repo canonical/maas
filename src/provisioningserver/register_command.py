@@ -21,7 +21,10 @@ __all__ = [
     'run',
 ]
 
-from sys import stdin
+from sys import (
+    stderr,
+    stdin,
+)
 from textwrap import dedent
 
 from provisioningserver.config import ClusterConfiguration
@@ -111,9 +114,9 @@ def run(args):
     try:
         call_and_check(['systemctl', 'stop', 'maas-rackd'])
     except ExternalProcessError as e:
-        print("Unable to stop maas-rackd service.")
-        print("Failed with error %s." % e.output_as_unicode)
-        return
+        print("Unable to stop maas-rackd service.", file=stderr)
+        print("Failed with error: %s." % e.output_as_unicode, file=stderr)
+        raise SystemExit(1)
     # maas_id could be stale so remove it
     set_maas_id(None)
     if args.url is not None:
@@ -139,5 +142,7 @@ def run(args):
         call_and_check(['systemctl', 'enable', 'maas-rackd'])
         call_and_check(['systemctl', 'start', 'maas-rackd'])
     except ExternalProcessError as e:
-        print("Unable to enable and start the maas-rackd service")
-        print("Failed with error %s." % e.output_as_unicode)
+        print(
+            "Unable to enable and start the maas-rackd service.", file=stderr)
+        print("Failed with error: %s." % e.output_as_unicode, file=stderr)
+        raise SystemExit(1)
