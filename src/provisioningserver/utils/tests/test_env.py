@@ -139,17 +139,6 @@ class TestMAASID(MAASTestCase):
         os.unlink(self.maas_id_path)
         self.assertEquals(contents, env.get_maas_id())
 
-    def test_get_can_ignore_cache(self):
-        contents = factory.make_name("contents")
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(contents)
-        self.assertEquals(contents, env.get_maas_id())
-        contents = factory.make_name("contents")
-        os.unlink(self.maas_id_path)
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(contents)
-        self.assertEquals(contents, env.get_maas_id(read_cache=False))
-
     def test_set_writes_argument_to_maas_id_file(self):
         contents = factory.make_name("contents")
         env.set_maas_id(contents)
@@ -183,7 +172,22 @@ class TestMAASID(MAASTestCase):
         os.unlink(self.maas_id_path)
         self.assertEquals(contents, env.get_maas_id())
 
-    def test_set_doesnt_cache_when_write_fails(self):
+    def test_set_None_clears_cache(self):
+        contents = factory.make_name("contents")
+        env.set_maas_id(contents)
+        self.assertThat(env.get_maas_id(), Equals(contents))
+        env.set_maas_id(None)
+        self.assertThat(env.get_maas_id(), Is(None))
+
+    def test_set_None_clears_cache_if_maas_id_file_does_not_exist(self):
+        contents = factory.make_name("contents")
+        env.set_maas_id(contents)
+        self.assertThat(env.get_maas_id(), Equals(contents))
+        os.unlink(self.maas_id_path)
+        env.set_maas_id(None)
+        self.assertThat(env.get_maas_id(), Is(None))
+
+    def test_set_does_not_cache_when_write_fails(self):
         mock_atomic_write = self.patch_autospec(env, 'atomic_write')
         exception = factory.make_exception()
         mock_atomic_write.side_effect = exception

@@ -6,7 +6,6 @@
 __all__ = []
 
 from datetime import datetime
-import os
 import random
 from unittest.mock import (
     ANY,
@@ -117,6 +116,7 @@ from maasserver.utils.threads import (
     callOutToDatabase,
     deferToDatabase,
 )
+from maasserver.worker_user import get_worker_user
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -138,7 +138,6 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
-from provisioningserver.path import get_path
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc.cluster import (
@@ -162,6 +161,7 @@ from provisioningserver.utils.enum import (
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.testing import MAASIDFixture
+from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
@@ -319,24 +319,6 @@ class TestControllerManager(MAASServerTestCase):
                 racks_and_regions.add(factory.make_Node(node_type=node_type))
         self.assertItemsEqual(racks_and_regions, Controller.objects.all())
 
-    def test_get_running_controller(self):
-        rack = factory.make_RackController()
-        self.useFixture(MAASIDFixture(rack.system_id))
-        self.assertEquals(rack, Controller.objects.get_running_controller())
-
-    def test_get_running_controller_can_ignore_cache(self):
-        # Store invalid value in cache
-        self.useFixture(MAASIDFixture(factory.make_string()))
-        rack = factory.make_RackController()
-        # Write valid value to disk
-        maas_id_path = get_path('/var/lib/maas/maas_id')
-        os.unlink(maas_id_path)
-        with open(maas_id_path, 'w') as fd:
-            fd.write(rack.system_id)
-        self.assertEquals(
-            rack, Controller.objects.get_running_controller(read_cache=False))
-        self.assertEquals(rack.system_id, get_maas_id())
-
 
 class TestRackControllerManager(MAASServerTestCase):
 
@@ -363,6 +345,13 @@ class TestRackControllerManager(MAASServerTestCase):
                 node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)]
         self.assertItemsEqual(rack_controllers, RackController.objects.all())
+
+    def test_get_running_controller(self):
+        rack = factory.make_RackController()
+        self.useFixture(MAASIDFixture(rack.system_id))
+        rack_running = RackController.objects.get_running_controller()
+        self.assertThat(rack_running, Equals(rack))
+        self.assertThat(rack_running, IsInstance(RackController))
 
     def test_filter_by_url_accessible_finds_correct_racks(self):
         accessible_subnet = factory.make_Subnet()
@@ -486,6 +475,192 @@ class TestRackControllerManager(MAASServerTestCase):
         mock_getaddr_info.return_value = (('', '', '', '', (url,)),)
         self.assertEquals(
             None, RackController.objects.get_accessible_by_url(url, False))
+
+
+class TestRegionControllerManager(MAASServerTestCase):
+
+    def test_region_controller_lists_node_type_region_controller(self):
+        # Create a device, a machine, and a rack controller.
+        factory.make_Device()
+        factory.make_Machine()
+        factory.make_RackController()
+        # Create region controllers.
+        regions = [factory.make_RegionController() for _ in range(3)]
+        # Only the region controllers are found.
+        self.assertItemsEqual(regions, RegionController.objects.all())
+
+    def test_get_running_controller_finds_controller_via_maas_id(self):
+        region = factory.make_RegionController()
+        self.useFixture(MAASIDFixture(region.system_id))
+        region_running = RegionController.objects.get_running_controller()
+        self.assertThat(region_running, IsInstance(RegionController))
+        self.assertThat(region_running, Equals(region))
+
+    def test_get_running_controller_crashes_when_maas_id_is_not_set(self):
+        self.useFixture(MAASIDFixture(None))
+        self.assertRaises(
+            RegionController.DoesNotExist,
+            RegionController.objects.get_running_controller)
+
+    def test_get_running_controller_crashes_when_maas_id_is_not_found(self):
+        self.useFixture(MAASIDFixture("bogus"))
+        self.assertRaises(
+            RegionController.DoesNotExist,
+            RegionController.objects.get_running_controller)
+
+
+class TestRegionControllerManagerGetOrCreateRunningController(
+        MAASServerTestCase):
+
+    scenarios_hosts = (
+        ("rack", dict(make_host_node=factory.make_RackController)),
+        ("region", dict(make_host_node=factory.make_RegionController)),
+        ("machine", dict(make_host_node=factory.make_Machine)),
+        ("device", dict(make_host_node=factory.make_Device)),
+        ("unknown", dict(make_host_node=None)),
+    )
+
+    scenarios_hostnames = (
+        ("hostname-matches", dict(hostname_matches=True)),
+        ("hostname-does-not-match", dict(hostname_matches=False)),
+    )
+
+    scenarios_mac_addresses = (
+        ("macs-match", dict(mac_addresses_match=True)),
+        ("macs-do-not-match", dict(mac_addresses_match=False)),
+    )
+
+    scenarios_owners = (
+        ("owned-by-worker", dict(make_owner=get_worker_user)),
+        ("owned-by-other", dict(make_owner=factory.make_User)),
+        ("owned-by-nobody", dict(make_owner=lambda: None)),
+    )
+
+    scenarios_maas_ids = (
+        ("maas-id-is-set", dict(with_maas_id="yes")),
+        ("maas-id-not-set", dict(with_maas_id="no")),
+        ("maas-id-stale", dict(with_maas_id="stale")),
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_hosts, scenarios_hostnames, scenarios_mac_addresses,
+        scenarios_owners, scenarios_maas_ids)
+
+    def setUp(self):
+        super().setUp()
+        # Patch out gethostname and get_mac_addresses.
+        self.patch_autospec(node_module, "gethostname")
+        node_module.gethostname.return_value = factory.make_name("host")
+        self.patch_autospec(node_module, "get_mac_addresses")
+        node_module.get_mac_addresses.return_value = []
+
+    def set_hostname_to_match(self, node):
+        node_module.gethostname.return_value = node.hostname
+
+    def set_mac_address_to_match(self, node):
+        raw_macs = [nic.mac_address.raw for nic in node.interface_set.all()]
+        node_module.get_mac_addresses.return_value = [random.choice(raw_macs)]
+
+    def prepare_existing_host(self):
+        # Create a record for the current host if requested.
+        if self.make_host_node is None:
+            host = owner = None
+        else:
+            # Create the host record using this scenario's factory.
+            host = self.make_host_node()
+            # Give the host an owner using this scenario's factory.
+            owner = host.owner = self.make_owner()
+            host.save()
+            # Optionally make the host discoverable by hostname.
+            if self.hostname_matches:
+                self.set_hostname_to_match(host)
+            # Optionally make the host discoverable by MAC address.
+            if self.mac_addresses_match:
+                factory.make_Interface(node=host)
+                factory.make_Interface(node=host)
+                self.set_mac_address_to_match(host)
+        return host, owner
+
+    def prepare_maas_id(self, host):
+        # Configure a preexisting MAAS ID file.
+        if self.with_maas_id == "stale":
+            # Populate the MAAS ID file with something bogus.
+            self.useFixture(MAASIDFixture(factory.make_name("stale")))
+        elif self.with_maas_id == "yes":
+            # Populate the MAAS ID file for the current host, if there is one.
+            self.useFixture(MAASIDFixture(
+                None if host is None else host.system_id))
+        else:
+            # Remove the MAAD ID file.
+            self.useFixture(MAASIDFixture(None))
+
+    def get_or_create_running_controller(self):
+        # A more concise way to call get_or_create_running_controller().
+        with post_commit_hooks:
+            return RegionController.objects.get_or_create_running_controller()
+
+    def can_be_discovered(self):
+        # An existing host record can only be discovered by hostname, MAC
+        # address, or from the value stored in the MAAS ID file.
+        return (
+            self.hostname_matches or
+            self.mac_addresses_match or
+            self.with_maas_id == "yes"
+        )
+
+    def test(self):
+        host, owner = self.prepare_existing_host()
+        self.prepare_maas_id(host)
+
+        # This is the big moment.
+        region = self.get_or_create_running_controller()
+
+        # The type returned is always RegionController.
+        self.assertThat(region, IsInstance(RegionController))
+        # The MAAS ID always matches the controller's.
+        self.assertThat(get_maas_id(), Equals(region.system_id))
+
+        if host is None:
+            # There was no existing host record so, no matter what else, a new
+            # controller is created.
+            self.assertControllerCreated(region)
+        elif self.can_be_discovered():
+            # The current host is represented in the database and we do have
+            # enough information to discover it.
+            self.assertControllerDiscovered(region, host, owner)
+        else:
+            # The current host is represented in the database but we do NOT
+            # have enough information to discover it. Though unlikely this is
+            # possible if the MAAS ID file is removed, the hostname is
+            # changed, and all MAC addresses differ.
+            self.assertControllerNotDiscovered(region, host)
+
+    def assertControllerCreated(self, region):
+        # A controller is created and it is always a region controller.
+        self.assertEquals(NODE_TYPE.REGION_CONTROLLER, region.node_type)
+        # It's a fresh controller so the worker user is always owner.
+        self.assertThat(region.owner, Equals(get_worker_user()))
+
+    def assertControllerDiscovered(self, region, host, owner):
+        # The controller discovered is the original host.
+        self.assertThat(region.id, Equals(host.id))
+        # When the discovered host record is not owned the worker user is
+        # used, otherwise existing ownership remains intact.
+        self.assertThat(region.owner, Equals(
+            get_worker_user() if owner is None else region.owner))
+        # The host has been upgraded to the expected type.
+        self.assertThat(region.node_type, Equals(
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER
+            if host.is_rack_controller else
+            NODE_TYPE.REGION_CONTROLLER))
+
+    def assertControllerNotDiscovered(self, region, host):
+        # A controller is created and it is always a region controller.
+        self.assertEquals(NODE_TYPE.REGION_CONTROLLER, region.node_type)
+        # It's new; the primary key differs from the host we planted.
+        self.assertThat(region.id, Not(Equals(host.id)))
+        # It's a fresh controller so the worker user is always owner.
+        self.assertThat(region.owner, Equals(get_worker_user()))
 
 
 class TestDeviceManager(MAASServerTestCase):

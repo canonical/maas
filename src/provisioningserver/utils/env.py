@@ -9,6 +9,7 @@ __all__ = [
 
 from contextlib import contextmanager
 import os
+import threading
 
 from provisioningserver.path import get_path
 from provisioningserver.utils.fs import (
@@ -38,41 +39,45 @@ def environment_variables(variables):
 # Cache the MAAS ID so we don't have to keep reading it from the filesystem.
 # This avoids errors when running maas-rack register while regiond is running.
 _maas_id = None
+_maas_id_lock = threading.Lock()
 
 
-def get_maas_id(read_cache=True):
+def get_maas_id():
     """Return the system_id for this rack/region controller that is created
     when either the rack or region first starts.
     """
     global _maas_id
-    if read_cache and _maas_id is not None:
-        return _maas_id
-
-    maas_id_path = get_path('/var/lib/maas/maas_id')
-    try:
-        with open(maas_id_path, "r", encoding="ascii") as fp:
-            contents = fp.read().strip()
-    except FileNotFoundError:
-        return None
-    else:
-        _maas_id = _normalise_maas_id(contents)
-        return _maas_id
+    with _maas_id_lock:
+        if _maas_id is None:
+            maas_id_path = get_path('/var/lib/maas/maas_id')
+            try:
+                with open(maas_id_path, "r", encoding="ascii") as fp:
+                    contents = fp.read().strip()
+            except FileNotFoundError:
+                return None
+            else:
+                _maas_id = _normalise_maas_id(contents)
+                return _maas_id
+        else:
+            return _maas_id
 
 
 def set_maas_id(system_id):
     """Set the system_id for this rack/region permanently for MAAS."""
     global _maas_id
-    maas_id_path = get_path('/var/lib/maas/maas_id')
-    maas_id = _normalise_maas_id(system_id)
-    if maas_id is None:
-        try:
-            atomic_delete(maas_id_path)
-        except FileNotFoundError:
-            pass  # Job done already.
-        _maas_id = None
-    else:
-        atomic_write(maas_id.encode("ascii"), maas_id_path)
-        _maas_id = maas_id
+    system_id = _normalise_maas_id(system_id)
+    with _maas_id_lock:
+        maas_id_path = get_path('/var/lib/maas/maas_id')
+        if system_id is None:
+            try:
+                atomic_delete(maas_id_path)
+            except FileNotFoundError:
+                _maas_id = None  # Job done already.
+            else:
+                _maas_id = None
+        else:
+            atomic_write(system_id.encode("ascii"), maas_id_path)
+            _maas_id = system_id
 
 
 def _normalise_maas_id(system_id):

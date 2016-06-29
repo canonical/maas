@@ -846,7 +846,7 @@ class TestClusterClient(MAASTestCase):
         self.set_maas_id = self.patch(clusterservice, "set_maas_id")
         self.set_maas_id.side_effect = set_maas_id
 
-        def get_maas_id(read_cache=True):
+        def get_maas_id():
             return self.maas_id
 
         self.get_maas_id = self.patch(clusterservice, "get_maas_id")

@@ -23,6 +23,7 @@ from operator import attrgetter
 import random
 import re
 import socket
+from socket import gethostname
 from urllib.parse import urlparse
 
 from crochet import TimeoutError
@@ -141,12 +142,14 @@ from maasserver.utils.orm import (
     get_one,
     MAASQueriesMixin,
     post_commit,
+    post_commit_do,
     transactional,
 )
 from maasserver.utils.threads import (
     callOutToDatabase,
     deferToDatabase,
 )
+from maasserver.worker_user import get_worker_user
 from metadataserver.enum import RESULT_TYPE
 from netaddr import (
     IPAddress,
@@ -182,8 +185,12 @@ from provisioningserver.utils import (
     znums,
 )
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import (
+    get_maas_id,
+    set_maas_id,
+)
 from provisioningserver.utils.fs import NamedLock
+from provisioningserver.utils.ipaddr import get_mac_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -551,9 +558,6 @@ class ControllerManager(BaseNodeManager):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
 
-    def get_running_controller(self, read_cache=True):
-        return self.get(system_id=get_maas_id(read_cache))
-
 
 class RackControllerManager(ControllerManager):
     """Rack controllers are nodes which are used by MAAS to deploy nodes."""
@@ -563,6 +567,13 @@ class RackControllerManager(ControllerManager):
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
+
+    def get_running_controller(self):
+        """Return the rack controller for the current host.
+
+        :raises: `DoesNotExist` if no matching controller is found.
+        """
+        return self.get(system_id=get_maas_id())
 
     def filter_by_url_accessible(self, url, with_connection=True):
         """Return a list of rack controllers which have access to the given URL
@@ -619,6 +630,106 @@ class RegionControllerManager(ControllerManager):
             NODE_TYPE.REGION_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
+
+    def get_running_controller(self):
+        """Return the region controller for the current host.
+
+        :raises: `DoesNotExist` if no matching controller is found.
+        """
+        return self.get(system_id=get_maas_id())
+
+    def get_or_create_running_controller(self):
+        """Return the region controller for the current host.
+
+        :attention: This should be called early in the start-up process for a
+            region controller to ensure that it can refer to itself.
+
+        If the MAAS ID has been set, this searches for the controller only by
+        its system ID. If the controller is not found `DoesNotExist` will be
+        raised.
+
+        If the MAAS ID has not yet been set this tries to discover a matching
+        node via the current host's name and its MAC addresses. If no matching
+        node is found, a new region controller will be created. In either case
+        the MAAS ID will be set on the filesystem once the transaction has
+        been committed.
+        """
+        maas_id = get_maas_id()
+        if maas_id is None:
+            return self._find_or_create_running_controller()
+        else:
+            try:
+                node = Node.objects.get(system_id=maas_id)
+            except Node.DoesNotExist:
+                # The MAAS ID on the filesystem is stale. Perhaps this machine
+                # has not been cleaned-up sufficiently from a previous life?
+                # Regardless, a deliberate act has brought this about, like a
+                # purge of the database, so we continue instead of crashing.
+                return self._find_or_create_running_controller()
+            else:
+                return self._upgrade_running_node(node)
+
+    def _find_or_create_running_controller(self):
+        """Find the controller for the current host, or create one.
+
+        Tries to discover the controller via the current host's name and MAC
+        addresses. Don't use this if the MAAS ID has been set.
+
+        If the discovered node is not yet a controller it is upgraded. If no
+        node is found a preconfigured controller is minted. In either case,
+        the MAAS ID on the filesystem is set post-commit.
+        """
+        node = self._find_running_node()
+        if node is None:
+            region = self._create_running_controller()
+        else:
+            region = self._upgrade_running_node(node)
+        post_commit_do(set_maas_id, region.system_id)
+        return region
+
+    def _find_running_node(self):
+        """Find the node for the current host.
+
+        Tries to discover the node via the current host's name and MAC
+        addresses. Don't use this if the MAAS ID has been set.
+        """
+        hostname = gethostname()
+        filter_hostname = Q(hostname=hostname)
+        filter_macs = Q(interface__mac_address__in=get_mac_addresses())
+        # Look at all nodes, not just controllers; we might have to upgrade.
+        nodes = Node.objects.filter(filter_hostname | filter_macs)
+        # Select distinct because the join to MACs might yield duplicates.
+        return get_one(nodes.distinct())
+
+    def _upgrade_running_node(self, node):
+        """Upgrade a node to a region controller for the host machine.
+
+        This node is already known to MAAS, but this MAY be the first time
+        that regiond has run on it, so ensure it's a region, owned by the
+        worker user.
+        """
+        update_fields = []
+        if not node.is_region_controller:
+            if node.is_rack_controller:
+                node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+            else:
+                node.node_type = NODE_TYPE.REGION_CONTROLLER
+            update_fields.append("node_type")
+        if node.owner is None:
+            node.owner = get_worker_user()
+            update_fields.append("owner")
+        if len(update_fields) > 0:
+            node.save(update_fields=update_fields)
+        return typecast_node(node, self.model)
+
+    def _create_running_controller(self):
+        """Create a region controller for the host machine.
+
+        This node is NOT previously known to MAAS, and this is the first time
+        regiond has run on it. Create a region controller only; it can be
+        upgraded to a region+rack controller later if necessary.
+        """
+        return self.create(owner=get_worker_user(), hostname=gethostname())
 
 
 def get_default_domain():

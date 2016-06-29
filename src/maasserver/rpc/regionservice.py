@@ -1004,7 +1004,9 @@ class RegionAdvertisingService(service.Service):
             try:
                 advertising = yield deferToDatabase(RegionAdvertising.promote)
             except RegionController.DoesNotExist:
-                # Wait for the region controller object to be created
+                # Wait for the region controller object to be created. This is
+                # belt-n-braces engineering: the RegionController should have
+                # created before this service is started.
                 yield pause(1)
             except:
                 log.err(None, (
@@ -1171,8 +1173,7 @@ class RegionAdvertising:
 
         :return: An instance of `RegionAdvertising`.
         """
-        region_obj = RegionController.objects.get_running_controller(
-            read_cache=False)
+        region_obj = RegionController.objects.get_running_controller()
         # Create the process for this region. This process object will be
         # updated by calls to `update`, which is the responsibility of the
         # rpc-advertise service. Calls to `update` also remove old process

@@ -5,17 +5,12 @@
 
 __all__ = []
 
-import os
 from unittest.mock import call
 
 from maasserver import (
     eventloop,
     locks,
     start_up,
-)
-from maasserver.enum import (
-    NODE_TYPE,
-    NODE_TYPE_CHOICES,
 )
 from maasserver.models.node import RegionController
 from maasserver.models.signals import bootsources
@@ -26,29 +21,26 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks
-from maasserver.worker_user import get_worker_user
 from maastesting.matchers import (
-    MockCalledOnce,
+    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
-from provisioningserver.path import get_path
-from provisioningserver.utils.env import set_maas_id
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
+from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
-
-
-class LockChecker:
-
-    """Callable.  Records calls, and whether the startup lock was held."""
-
-    def __init__(self, lock_file=None):
-        self.call_count = 0
-        self.lock_was_held = None
-
-    def __call__(self, *args, **kwargs):
-        self.call_count += 1
-        self.lock_was_held = locks.startup.is_locked()
+from testtools.matchers import (
+    HasLength,
+    Is,
+    IsInstance,
+    Not,
+)
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
 
 
 class TestStartUp(MAASTransactionServerTestCase):
@@ -73,22 +65,15 @@ class TestStartUp(MAASTransactionServerTestCase):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-        lock_checker = LockChecker()
-        self.patch(start_up, 'register_mac_type', lock_checker)
-        start_up.inner_start_up()
-        self.assertEqual(1, lock_checker.call_count)
-        self.assertEqual(True, lock_checker.lock_was_held)
+        locked = factory.make_exception("locked")
+        unlocked = factory.make_exception("unlocked")
 
-    def test_refresh_on_master(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
+        def check_lock(_):
+            raise locked if locks.startup.is_locked() else unlocked
 
-        self.patch(start_up, 'is_master_process').return_value = True
-        self.patch(start_up, 'register_mac_type')
-        mock_refresh = self.patch_autospec(RegionController, 'refresh')
-        start_up.start_up()
-        self.assertThat(mock_refresh, MockCalledOnce())
+        self.patch(start_up, 'register_mac_type').side_effect = check_lock
+        self.patch(start_up, 'is_master_process').return_value = False
+        self.assertRaises(type(locked), start_up.inner_start_up)
 
     def test_start_up_retries_with_wait_on_exception(self):
         inner_start_up = self.patch(start_up, 'inner_start_up')
@@ -108,134 +93,83 @@ class TestStartUp(MAASTransactionServerTestCase):
 
 
 class TestInnerStartUp(MAASServerTestCase):
-
     """Tests for the actual work done in `inner_start_up`."""
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
+        self.useFixture(MAASIDFixture(None))
+        self.patch_autospec(start_up, "is_master_process")
         self.patch_autospec(start_up, 'dns_kms_setting_changed')
+        self.patch_autospec(start_up, 'post_commit_do')
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
     def test__calls_dns_kms_setting_changed_if_master(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        self.patch(start_up, "post_commit_do")
+        start_up.is_master_process.return_value = True
         with post_commit_hooks:
             start_up.inner_start_up()
         self.assertThat(start_up.dns_kms_setting_changed, MockCalledOnceWith())
 
-    def test__doesnt_call_dns_kms_setting_changed_if_not_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
+    def test__does_not_call_dns_kms_setting_changed_if_not_master(self):
+        start_up.is_master_process.return_value = False
         with post_commit_hooks:
             start_up.inner_start_up()
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
 
-    def test__creates_region_obj_if_master(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        self.patch(start_up, "set_maas_id")
-        mock_create_region_obj = self.patch_autospec(
-            start_up, "create_region_obj")
+    def test__refreshes_if_master(self):
+        start_up.is_master_process.return_value = True
         with post_commit_hooks:
             start_up.inner_start_up()
-        self.assertThat(mock_create_region_obj, MockCalledOnce())
+        region = RegionController.objects.first()
+        self.assertThat(start_up.post_commit_do, MockCalledOnceWith(
+            reactor.callLater, 0, start_up.refreshRegion, region))
 
-    def test__doesnt_create_region_obj_if_not_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
-        mock_create_region_obj = self.patch_autospec(
-            start_up, "create_region_obj")
+    def test__does_refresh_if_not_master(self):
+        start_up.is_master_process.return_value = False
         with post_commit_hooks:
             start_up.inner_start_up()
-        self.assertThat(mock_create_region_obj, MockNotCalled())
+        self.assertThat(start_up.post_commit_do, MockNotCalled())
+
+    def test__doesnt_call_dns_kms_setting_changed_if_not_master(self):
+        start_up.is_master_process.return_value = False
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
+
+    def test__creates_region_controller(self):
+        start_up.is_master_process.return_value = False
+        self.assertThat(RegionController.objects.all(), HasLength(0))
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        self.assertThat(RegionController.objects.all(), HasLength(1))
 
     def test__creates_maas_id_file(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        mock_set_maas_id = self.patch_autospec(start_up, "set_maas_id")
-        self.patch(start_up.RegionController, 'refresh')
+        start_up.is_master_process.return_value = False
+        self.assertThat(get_maas_id(), Is(None))
         with post_commit_hooks:
             start_up.inner_start_up()
-        self.assertThat(mock_set_maas_id, MockCalledOnce())
-
-    def test__doesnt_create_maas_id_file_if_not_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
-        mock_set_maas_id = self.patch_autospec(start_up, "set_maas_id")
-        with post_commit_hooks:
-            start_up.inner_start_up()
-        self.assertThat(mock_set_maas_id, MockNotCalled())
+        self.assertThat(get_maas_id(), Not(Is(None)))
 
 
-class TestCreateRegionObj(MAASServerTestCase):
+class TestFunctions(MAASServerTestCase):
+    """Tests for other functions in the `start_up` module."""
 
-    """Tests for the actual work done in `create_region_obj`."""
-
-    def test__creates_obj(self):
-        region = start_up.create_region_obj()
-        self.assertIsNotNone(region)
-        self.assertIsNotNone(
-            RegionController.objects.get(system_id=region.system_id))
-
-    def test__doesnt_read_maas_id_from_cache(self):
-        set_maas_id(factory.make_string())
-        os.unlink(get_path('/var/lib/maas/maas_id'))
-        region = start_up.create_region_obj()
-        self.assertIsNotNone(region)
-        self.assertIsNotNone(
-            RegionController.objects.get(system_id=region.system_id))
-
-    def test__finds_region_by_maas_id(self):
+    def test_regionRefresh_refreshes_a_region(self):
         region = factory.make_RegionController()
-        self.useFixture(MAASIDFixture(region.system_id))
-        self.assertEquals(region, start_up.create_region_obj())
-
-    def test__finds_region_by_hostname(self):
-        region = factory.make_RegionController()
-        mock_gethostname = self.patch_autospec(start_up, "gethostname")
-        mock_gethostname.return_value = region.hostname
-        self.assertEquals(region, start_up.create_region_obj())
-
-    def test__finds_region_by_mac(self):
-        region = factory.make_RegionController()
-        factory.make_Interface(node=region)
-        mock_get_mac_addresses = self.patch_autospec(
-            start_up, "get_mac_addresses")
-        mock_get_mac_addresses.return_value = [
-            nic.mac_address.raw
-            for nic in region.interface_set.all()
-        ]
-        self.assertEquals(region, start_up.create_region_obj())
-
-    def test__converts_rack_to_region_rack(self):
-        rack = factory.make_RackController()
-        self.useFixture(MAASIDFixture(rack.system_id))
-        region_rack = start_up.create_region_obj()
-        self.assertEquals(rack, region_rack)
-        self.assertEquals(
-            region_rack.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
-
-    def test__converts_node_to_region_rack(self):
-        node = factory.make_Node(
-            node_type=factory.pick_choice(
-                NODE_TYPE_CHOICES,
-                but_not=[
-                    NODE_TYPE.REGION_CONTROLLER,
-                    NODE_TYPE.RACK_CONTROLLER,
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                ]))
-        self.useFixture(MAASIDFixture(node.system_id))
-        region = start_up.create_region_obj()
-        self.assertEquals(node, region)
-        self.assertEquals(region.node_type, NODE_TYPE.REGION_CONTROLLER)
-
-    def test__sets_owner_if_none(self):
-        region = factory.make_RegionController()
-        self.useFixture(MAASIDFixture(region.system_id))
-        self.assertEquals(
-            get_worker_user(), start_up.create_region_obj().owner)
-
-    def test__leaves_owner_if_set(self):
-        region = factory.make_RegionController()
-        self.useFixture(MAASIDFixture(region.system_id))
-        user = factory.make_User()
-        region.owner = user
-        region.save()
-        self.assertEquals(user, start_up.create_region_obj().owner)
+        self.patch(region, "refresh").return_value = Deferred()
+        d = start_up.refreshRegion(region)
+        self.assertThat(d, IsInstance(Deferred))
+        exception = factory.make_exception_type()
+        with TwistedLoggerFixture() as logger:
+            d.errback(exception("boom"))
+            # The exception is suppressed ...
+            self.assertThat(extract_result(d), Is(None))
+        # ... but it has been logged.
+        self.assertThat(
+            logger.output, DocTestMatches(
+                """
+                Failure when refreshing region.
+                Traceback (most recent call last):...
+                Failure: maastesting.factory.TestException#...: boom
+                """))

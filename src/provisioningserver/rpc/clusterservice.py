@@ -531,7 +531,7 @@ class ClusterClient(Cluster):
             cluster_uuid = config.cluster_uuid
 
         # Grab the set system_id if already set for this controller.
-        system_id = get_maas_id(read_cache=False)
+        system_id = get_maas_id()
         if system_id is None:
             # Cannot send None over RPC when the system_id is not set.
             system_id = ''
