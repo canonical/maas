@@ -85,6 +85,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "id": node.id,
             "primary_mac": (
                 "" if boot_interface is None else
                 "%s" % boot_interface.mac_address),

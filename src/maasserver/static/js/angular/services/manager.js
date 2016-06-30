@@ -25,6 +25,11 @@ angular.module('MAAS').service(
             // Primary key on the items in the list. Used to match items.
             this._pk = "id";
 
+            // Key used when loading batches. Typically the same as _pk
+            // but not always.
+            this._batchKey = "id";
+
+            // The field from which to get a human-readable name.
             this._name_field = "name";
 
             // Handler on the region to call to list, create, update, delete,
@@ -129,10 +134,10 @@ angular.module('MAAS').service(
                 var params = self._initBatchLoadParameters();
                 params.limit = 50;
 
-                // Get the last pk in the list so the region knows to
+                // Get the last batchKey in the list so the region knows to
                 // start at that offset.
                 if(array.length > 0) {
-                    params.start = array[array.length-1][self._pk];
+                    params.start = array[array.length-1][self._batchKey];
                 }
                 RegionConnection.callMethod(
                     method, params).then(function(items) {

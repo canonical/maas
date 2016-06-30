@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from operator import attrgetter
 import random
 from unittest.mock import (
     ANY,
@@ -363,11 +362,7 @@ class TestHandler(MAASServerTestCase):
         self.assertItemsEqual(output, handler.list({}))
 
     def test_list_start(self):
-        nodes = [
-            factory.make_Node()
-            for _ in range(6)
-            ]
-        nodes = sorted(nodes, key=attrgetter("system_id"))
+        nodes = [factory.make_Node() for _ in range(6)]
         output = [
             {"hostname": node.hostname}
             for node in nodes[3:]
@@ -375,51 +370,44 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(fields=['hostname'])
         self.assertItemsEqual(
             output,
-            handler.list({"start": nodes[2].system_id}))
+            handler.list({"start": nodes[2].id}))
 
     def test_list_limit(self):
+        nodes = [factory.make_Node() for _ in range(6)]
         output = [
-            {"hostname": factory.make_Node().hostname}
-            for _ in range(3)
+            {"hostname": node.hostname}
+            for node in nodes[:3]
             ]
-        for _ in range(3):
-            factory.make_Node()
         handler = self.make_nodes_handler(fields=['hostname'])
         self.assertItemsEqual(output, handler.list({"limit": 3}))
 
     def test_list_start_and_limit(self):
-        nodes = [
-            factory.make_Node()
-            for _ in range(9)
-            ]
-        nodes = sorted(nodes, key=attrgetter("system_id"))
+        nodes = [factory.make_Node() for _ in range(9)]
         output = [
             {"hostname": node.hostname}
             for node in nodes[3:6]
             ]
         handler = self.make_nodes_handler(fields=['hostname'])
         self.assertItemsEqual(
-            output, handler.list({"start": nodes[2].system_id, "limit": 3}))
+            output, handler.list({"start": nodes[2].id, "limit": 3}))
 
     def test_list_adds_to_loaded_pks(self):
-        pks = [
-            factory.make_Node().system_id
-            for _ in range(3)
-            ]
+        pks = [factory.make_Node().system_id for _ in range(3)]
         handler = self.make_nodes_handler(fields=['hostname'])
         handler.list({})
         self.assertItemsEqual(pks, handler.cache['loaded_pks'])
 
     def test_list_unions_the_loaded_pks(self):
-        pks = [
-            factory.make_Node().system_id
-            for _ in range(3)
-            ]
+        nodes = [factory.make_Node() for _ in range(3)]
+        pks = {node.system_id for node in nodes}
         handler = self.make_nodes_handler(fields=['hostname'])
         # Make two calls to list making sure the loaded_pks contains all of
         # the primary keys listed.
         handler.list({"limit": 1})
-        handler.list({"start": pks[0]})
+        # Nodes are little special: they are referred to by system_id, but
+        # ordered by id. This is because system_id is no longer guaranteed to
+        # sort from oldest node to newest.
+        handler.list({"start": nodes[0].id})
         self.assertItemsEqual(pks, handler.cache['loaded_pks'])
 
     def test_get(self):

@@ -181,9 +181,9 @@ describe("Manager", function() {
             });
         });
 
-        it("batch calls with the last system_id", function(done) {
+        it("batch calls with the last id", function(done) {
             var fakeNodes = makeNodes(50);
-            var system_id = fakeNodes[fakeNodes.length-1].system_id;
+            var node_id = fakeNodes[fakeNodes.length-1].id;
             webSocket.returnData.push(makeFakeResponse(fakeNodes));
             // A total of 2 calls should be completed, with the last one
             // being an empty list of nodes.
@@ -193,9 +193,9 @@ describe("Manager", function() {
                 first_msg = angular.fromJson(webSocket.sentData[0]);
                 expect(first_msg.params.start).toBeUndefined();
 
-                // Expect the second message to have the last system_id.
+                // Expect the second message to have the last node's id.
                 second_msg = angular.fromJson(webSocket.sentData[1]);
-                expect(second_msg.params.start).toEqual(system_id);
+                expect(second_msg.params.start).toEqual(node_id);
                 done();
             });
         });

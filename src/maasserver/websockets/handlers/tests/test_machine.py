@@ -104,6 +104,7 @@ from testtools.matchers import (
     Equals,
     HasLength,
     Is,
+    MatchesDict,
     MatchesException,
     MatchesListwise,
     MatchesStructure,
@@ -869,9 +870,11 @@ class TestMachineHandler(MAASServerTestCase):
         node.boot_interface = boot_interface
         node.save()
 
-        self.assertEqual(
-            self.dehydrate_node(node, handler, include_summary=True),
-            handler.get({"system_id": node.system_id}))
+        observed = handler.get({"system_id": node.system_id})
+        expected = self.dehydrate_node(node, handler, include_summary=True)
+        self.assertThat(observed, MatchesDict({
+            name: Equals(value) for name, value in expected.items()
+        }))
 
     def test_get_includes_special_filesystems(self):
         owner = factory.make_User()

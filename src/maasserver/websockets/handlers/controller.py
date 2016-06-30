@@ -64,12 +64,13 @@ class ControllerHandler(MachineHandler):
             "managing_process",
         ]
         list_fields = [
+            "id",
             "system_id",
             "hostname",
             "node_type",
             "status",
             "last_image_sync",
-            ]
+        ]
         listen_channels = [
             "controller",
         ]

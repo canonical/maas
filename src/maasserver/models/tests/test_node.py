@@ -80,6 +80,7 @@ from maasserver.models.bmc import (
 )
 from maasserver.models.event import Event
 from maasserver.models.node import (
+    generate_node_system_id,
     PowerInfo,
     typecast_node,
     typecast_to_node_type,
@@ -118,6 +119,7 @@ from maasserver.utils.threads import (
 )
 from maasserver.worker_user import get_worker_user
 from maastesting.matchers import (
+    DocTestMatches,
     MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -178,6 +180,31 @@ from twisted.internet import defer
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
+class TestGenerateNodeSystemID(MAASServerTestCase):
+    """Tests for `generate_node_system_id`."""
+
+    def test_identifier_is_six_digits(self):
+        self.assertThat(generate_node_system_id(), HasLength(6))
+
+    def test_avoids_identifiers_already_in_use(self):
+        used_system_id = factory.make_Node().system_id
+        used_system_num = znums.to_int(used_system_id)
+        randrange = self.patch_autospec(random, "randrange")
+        randrange.side_effect = [used_system_num, used_system_num + 1]
+        self.assertThat(
+            generate_node_system_id(), Equals(
+                znums.from_int(used_system_num + 1)))
+
+    def test_crashes_after_1000_iterations(self):
+        used_system_id = factory.make_Node().system_id
+        used_system_num = znums.to_int(used_system_id)
+        randrange = self.patch_autospec(random, "randrange")
+        randrange.return_value = used_system_num
+        error = self.assertRaises(AssertionError, generate_node_system_id)
+        self.assertThat(str(error), DocTestMatches(
+            "... after 1000 iterations ... no unused node identifiers."))
 
 
 class TestTypeCastNode(MAASServerTestCase):

@@ -11,6 +11,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from testscenarios import multiply_scenarios
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+)
 
 
 class TestControllerHandler(MAASServerTestCase):
@@ -84,3 +89,35 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual({
             node1.system_id: "Unknown",
             node2.system_id: "Unknown"}, data)
+
+
+class TestControllerHandlerScenarios(MAASServerTestCase):
+
+    scenarios_controllers = (
+        ("rack", dict(
+            make_controller=factory.make_RackController)),
+        ("region", dict(
+            make_controller=factory.make_RegionController)),
+        ("region+rack", dict(
+            make_controller=factory.make_RegionRackController)),
+    )
+
+    scenarios_fetch_types = (
+        ("in-full", dict(for_list=False)),
+        ("for-list", dict(for_list=True)),
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_controllers, scenarios_fetch_types)
+
+    def test_fully_dehydrated_controller_contains_essential_fields(self):
+        user = factory.make_User()
+        controller = self.make_controller()
+        handler = ControllerHandler(user, {})
+        data = handler.full_dehydrate(controller, for_list=False)
+        self.assertThat(data, ContainsDict({
+            handler._meta.pk: Equals(
+                getattr(controller, handler._meta.pk)),
+            handler._meta.batch_key: Equals(
+                getattr(controller, handler._meta.batch_key)),
+        }))

@@ -141,6 +141,7 @@ class MachineHandler(NodeHandler):
             "last_image_sync",
         ]
         list_fields = [
+            "id",
             "system_id",
             "hostname",
             "owner",

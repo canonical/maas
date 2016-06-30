@@ -79,6 +79,7 @@ class HandlerOptions(object):
     form = None
     form_requires_request = True
     listen_channels = []
+    batch_key = 'id'
 
     def __new__(cls, meta=None):
         overrides = {}
@@ -324,14 +325,17 @@ class Handler(metaclass=HandlerMetaclass):
     def list(self, params):
         """List objects.
 
+        :param start: A value of the `batch_key` column and NOT `pk`. They are
+            often the same but that is not a certainty. Make sure the client
+            also understands this distinction.
         :param offset: Offset into the queryset to return.
         :param limit: Maximum number of objects to return.
         """
         queryset = self.get_queryset()
-        queryset = queryset.order_by(self._meta.pk)
+        queryset = queryset.order_by(self._meta.batch_key)
         if "start" in params:
             queryset = queryset.filter(**{
-                "%s__gt" % self._meta.pk: params["start"]
+                "%s__gt" % self._meta.batch_key: params["start"]
                 })
         if "limit" in params:
             queryset = queryset[:params["limit"]]

@@ -130,7 +130,6 @@ from maasserver.rpc import (
     getClientFor,
     getClientFromIdentifiers,
 )
-from maasserver.sequence import Sequence
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     StorageLayoutError,
@@ -219,24 +218,31 @@ PowerInfo = namedtuple("PowerInfo", (
     "can_be_started", "can_be_stopped", "can_be_queried", "power_type",
     "power_parameters"))
 
-# The sequence from which the decimal form of node system IDs should be
-# pulled. At the time of writing this should match the definition in migration
-# 0021_create_node_system_id_sequence, and vice-versa.
-node_system_id = Sequence(
-    "maasserver_node_system_id_seq", cycle=False,
-    minvalue=(24 ** 5), maxvalue=((24 ** 6) - 1),
-    start=15600471, owner="maasserver_node.system_id",
-)
-
-
-def generate_node_system_ids():
-    """Return an iterable that yields short system IDs."""
-    return map(znums.from_int, node_system_id)
-
 
 def generate_node_system_id():
-    """Return the next short system ID."""
-    return next(generate_node_system_ids())
+    """Return an unused six-digit system ID.
+
+    This chooses an ID at random and returns it if it's not currently in use.
+    There is a chance of a collision between concurrent processes, which would
+    result in an `IntegrityError` in one process or the other, but it's small:
+    there are over 183 million six-digit system IDs to choose from.
+    """
+    for attempt in range(1, 1001):
+        system_num = random.randrange(24 ** 5, 24 ** 6)
+        system_id = znums.from_int(system_num)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM maasserver_node "
+                "WHERE system_id = %s", [system_id])
+            if cursor.fetchone() is None:
+                return system_id
+    else:
+        # Wow, really? This should _never_ happen. You must be managing a
+        # *lot* of machines. This is here as a fail-safe; it does not feels
+        # right to leave a loop that might never terminate in the code.
+        raise AssertionError(
+            "The unthinkable has come to pass: after %d iterations "
+            "we could find no unused node identifiers." % attempt)
 
 
 def typecast_node(node, model):

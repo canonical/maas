@@ -70,7 +70,6 @@ class DeviceHandler(NodeHandler):
         queryset = node_prefetch(Device.objects.filter(parent=None))
         allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
         exclude = [
-            "id",
             "type",
             "boot_interface",
             "boot_cluster_ip",
@@ -109,6 +108,7 @@ class DeviceHandler(NodeHandler):
             "last_image_sync",
             ]
         list_fields = [
+            "id",
             "system_id",
             "hostname",
             "owner",
