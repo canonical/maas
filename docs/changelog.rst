@@ -8,6 +8,25 @@ Changelog
 Issues fixed in this release
 ----------------------------
 
+LP: #1576357    Determine a method for how to reconnect a deleted rack controller
+
+LP: #1592246    [2.0b7, regression] maas-rack register makes up a new hostname
+
+LP: #1595753    [beta8] HMC power driver regression -- Not able to connect via SSH.
+
+LP: #1592885    [2.0b7] Date and time format should be consistent accross logs
+
+LP: #1597324    [2.0b8] Unable to set default gateway interface
+
+LP: #1515188    [1.9] VMware power management fails when VMs are organized in nested subfolders
+
+
+2.0.0 (beta8)
+=============
+
+Issues fixed in this release
+----------------------------
+
 LP: #1590081    Allow ed25519 and ecdsa ssh keys
 
 LP: #1462078    [2.0b2, UI] Can't add a device and it does not show why

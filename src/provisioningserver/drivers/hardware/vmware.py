@@ -7,9 +7,14 @@ __all__ = [
     'probe_vmware_and_enlist',
     ]
 
-from abc import abstractmethod
+from abc import (
+    ABCMeta,
+    abstractmethod,
+)
 from collections import OrderedDict
 from importlib import import_module
+from inspect import getcallargs
+import ssl
 import traceback
 from typing import Optional
 from urllib.parse import unquote
@@ -64,7 +69,7 @@ class VMwareAPIConnectionFailed(VMwareAPIException):
     """The VMware API endpoint could not be contacted."""
 
 
-class VMwareAPI(object):
+class VMwareAPI(metaclass=ABCMeta):
     """Abstract base class to represent a MAAS-capable VMware API. The API
     must be capable of:
     - Gathering names, UUID, and MAC addresses of each virtual machine
@@ -101,8 +106,33 @@ class VMwareAPI(object):
         """Returns True if the VMware API is thought to be connected"""
         raise NotImplementedError
 
+    @abstractmethod
     def disconnect(self):
         """Disconnects from the VMware API"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_folder(self, obj):
+        """Returns true if the specified API object is a Folder."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_datacenter(self, obj):
+        """Returns true if the specified API object is a Datacenter."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_vm(self, obj):
+        """Returns true if the specified API object is a VirtualMachine."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def has_children(self, obj):
+        """Returns true if the specified API object has children.
+
+        This is used to determine if it should be traversed in order to look
+        for more virutal machines.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -115,9 +145,8 @@ class VMwareAPI(object):
         """
         raise NotImplementedError
 
-    @staticmethod
     @abstractmethod
-    def get_maas_power_state(vm):
+    def get_maas_power_state(self, vm):
         """
         Returns the MAAS representation of the power status for the
         specified virtual machine.
@@ -125,9 +154,8 @@ class VMwareAPI(object):
         """
         raise NotImplementedError
 
-    @staticmethod
     @abstractmethod
-    def set_power_state(vm, power_change):
+    def set_power_state(self, vm, power_change):
         """
         Sets the power state for the specified VM to the specified value.
         :param:power_change: the new desired state ('on' or 'off')
@@ -158,25 +186,51 @@ class VMwarePyvmomiAPI(VMwareAPI):
         self.service_instance = None
 
     def connect(self):
-        # place optional arguments in a dictionary to pass to the
+        # Place optional arguments in a dictionary to pass to the
         # VMware API call; otherwise the API will see 'None' and fail.
         extra_args = {}
         if self.port is not None:
             extra_args['port'] = self.port
-
         if self.protocol is not None:
-            extra_args['protocol'] = self.protocol
-
+            if self.protocol == "https+unverified":
+                # This is a workaround for using untrusted certificates.
+                extra_args['protocol'] = 'https'
+                if 'sslContext' in getcallargs(vmomi_api.SmartConnect):
+                    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                    context.verify_mode = ssl.CERT_NONE
+                    extra_args['sslContext'] = context
+                else:
+                    maaslog.error(
+                        "Unable to use unverified SSL context to connect to "
+                        "'%s'. (In order to use this feature, you must update "
+                        "to a more recent version of the python3-pyvmomi "
+                        "package.)" % self.host)
+                    raise VMwareAPIException(
+                        "Failed to set up unverified SSL context. Please "
+                        "update to a more recent version of the "
+                        "python3-pyvmomi package.")
+            else:
+                extra_args['protocol'] = self.protocol
         self.service_instance = vmomi_api.SmartConnect(host=self.host,
                                                        user=self.username,
                                                        pwd=self.password,
                                                        **extra_args)
-
         if not self.service_instance:
             raise VMwareAPIConnectionFailed(
                 "Could not connect to VMware service API")
-
         return self.service_instance is not None
+
+    def is_folder(self, obj):
+        return isinstance(obj, vim.Folder)
+
+    def is_datacenter(self, obj):
+        return isinstance(obj, vim.Datacenter)
+
+    def is_vm(self, obj):
+        return isinstance(obj, vim.VirtualMachine)
+
+    def has_children(self, obj):
+        return isinstance(obj, (vim.Folder, vim.Datacenter))
 
     def is_connected(self):
         return self.service_instance is not None
@@ -185,8 +239,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
         vmomi_api.Disconnect(self.service_instance)
         self.service_instance = None
 
-    @staticmethod
-    def _probe_network_cards(vm):
+    def _probe_network_cards(self, vm):
         """Returns a list of MAC addresses for this VM, followed by a list
         of unique keys that VMware uses to uniquely identify the NICs. The
         MAC addresses are used to create the node. If the node is created
@@ -202,8 +255,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
                     nic_keys.append(device.key)
         return mac_addresses, nic_keys
 
-    @staticmethod
-    def _get_uuid(vm):
+    def _get_uuid(self, vm):
         # In vCenter environments, using the BIOS UUID (uuid) is deprecated.
         # But we can use it as a fallback, since the API supports both.
         if hasattr(vm.summary.config, 'instanceUuid') \
@@ -214,16 +266,27 @@ class VMwarePyvmomiAPI(VMwareAPI):
             return vm.summary.config.uuid
         return None
 
-    def _get_vm_list(self):
+    def _find_virtual_machines(self, parent):
         vms = []
-        content = self.service_instance.RetrieveContent()
-        for child in content.rootFolder.childEntity:
-            if hasattr(child, 'vmFolder'):
-                datacenter = child
-                vm_folder = datacenter.vmFolder
-                vm_list = vm_folder.childEntity
-                vms = vms + vm_list
+        if self.is_datacenter(parent):
+            children = parent.vmFolder.childEntity
+        elif self.is_folder(parent):
+            children = parent.childEntity
+        else:
+            raise ValueError("Unknown type: %s" % type(parent))
+        for child in children:
+            if self.is_vm(child):
+                vms.append(child)
+            elif self.has_children(child):
+                vms.extend(self._find_virtual_machines(child))
+            else:
+                print("Unknown type: %s" % type(child))
         return vms
+
+    def _get_vm_list(self):
+        content = self.service_instance.RetrieveContent()
+        root_folder = content.rootFolder
+        return self._find_virtual_machines(root_folder)
 
     def find_vm_by_name(self, vm_name):
         vm_list = self._get_vm_list()
@@ -243,12 +306,10 @@ class VMwarePyvmomiAPI(VMwareAPI):
             vm = content.searchIndex.FindByUuid(None, uuid, True, False)
         return vm
 
-    @staticmethod
-    def _get_power_state(vm):
+    def _get_power_state(self, vm):
         return vm.runtime.powerState
 
-    @staticmethod
-    def pyvmomi_to_maas_powerstate(power_state):
+    def pyvmomi_to_maas_powerstate(self, power_state):
         """Returns a MAAS power state given the specified pyvmomi state"""
         if power_state == 'poweredOn':
             return "on"
@@ -259,13 +320,10 @@ class VMwarePyvmomiAPI(VMwareAPI):
         else:
             return "error"
 
-    @staticmethod
-    def get_maas_power_state(vm):
-        return VMwarePyvmomiAPI.pyvmomi_to_maas_powerstate(
-            vm.runtime.powerState)
+    def get_maas_power_state(self, vm):
+        return self.pyvmomi_to_maas_powerstate(vm.runtime.powerState)
 
-    @staticmethod
-    def set_power_state(vm, power_change):
+    def set_power_state(self, vm, power_change):
         if vm is not None:
             if power_change == 'on':
                 vm.PowerOn()
@@ -276,8 +334,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
                     "set_power_state: Invalid power_change state: {state}"
                     .format(power_change))
 
-    @staticmethod
-    def set_pxe_boot(vm_properties):
+    def set_pxe_boot(self, vm_properties):
         boot_devices = []
         for nic in vm_properties['nics']:
             boot_nic = vim.vm.BootOptions.BootableEthernetDevice()

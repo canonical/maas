@@ -209,6 +209,18 @@ class TestVMwarePyvmomi(MAASTestCase):
         mock_vmomi_api.SmartConnect.return_value = FakeVmomiServiceInstance(
             servers=servers, has_instance_uuid=has_instance_uuid,
             has_uuid=has_uuid)
+        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, 'is_datacenter')
+        is_datacenter.side_effect = lambda x: isinstance(
+            x, FakeVmomiDatacenter)
+        is_datacenter = self.patch(vmware.VMwarePyvmomiAPI, 'is_vm')
+        is_datacenter.side_effect = lambda x: isinstance(
+            x, FakeVmomiVM)
+        is_folder = self.patch(vmware.VMwarePyvmomiAPI, 'is_folder')
+        is_folder.side_effect = lambda x: isinstance(
+            x, (FakeVmomiVmFolder, FakeVmomiRootFolder))
+        has_children = self.patch(vmware.VMwarePyvmomiAPI, 'has_children')
+        has_children.side_effect = lambda x: isinstance(
+            x, (FakeVmomiVmFolder, FakeVmomiDatacenter))
         return mock_vmomi_api
 
     def setUp(self):
@@ -257,7 +269,6 @@ class TestVMwarePyvmomi(MAASTestCase):
 
     def test_get_vmware_servers(self):
         self.configure_vmomi_api(servers=10)
-
         servers = vmware.get_vmware_servers(
             factory.make_hostname(),
             factory.make_username(),
