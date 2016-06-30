@@ -228,7 +228,10 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
         """Return IP links on the instance that are of the correct type,
         have a subnet, and has a gateway_ip set."""
         links = self.instance.ip_addresses.filter(
-            alloc_type__in=[IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY],
+            alloc_type__in=[
+                IPADDRESS_TYPE.AUTO,
+                IPADDRESS_TYPE.STICKY,
+                IPADDRESS_TYPE.DHCP],
             subnet__isnull=False, subnet__gateway_ip__isnull=False)
         links = links.select_related("subnet")
         return [
