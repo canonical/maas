@@ -563,6 +563,19 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         ]
         self.assertItemsEqual(link_ids, choice_ids)
 
+    def test__sets_gateway_links_works_on_dhcp_with_gateway_ip(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        ipv4_link = self.make_ip_family_link(
+            interface, factory.make_ipv4_network(), IPADDRESS_TYPE.DHCP)
+        ipv6_link = self.make_ip_family_link(
+            interface, factory.make_ipv6_network(), IPADDRESS_TYPE.DHCP)
+        form = InterfaceSetDefaultGatwayForm(instance=interface, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        node = interface.get_node()
+        self.assertEqual(ipv4_link, node.gateway_link_ipv4)
+        self.assertEqual(ipv6_link, node.gateway_link_ipv6)
+
     def test__sets_gateway_links_on_node_when_no_link_id(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ipv4_link = self.make_ip_family_link(
