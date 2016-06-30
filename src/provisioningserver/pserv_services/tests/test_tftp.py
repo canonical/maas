@@ -49,6 +49,7 @@ from provisioningserver.pserv_services.tftp import (
     UDPServer,
 )
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.rpc.region import GetBootConfig
 from provisioningserver.testing.boot_images import (
     make_boot_image_params,
     make_image,
@@ -503,6 +504,30 @@ class TestTFTPBackend(MAASTestCase):
         # XXX: GavinPanella 2015-11-25 bug=1519804: get_by_pxealias() on
         # ArchitectureRegistry is not stable, so we permit either here.
         self.assertIn(observed_params["arch"], ["armhf", "arm64"])
+
+    def test_get_kernel_params_filters_out_unnecessary_arguments(self):
+        params_okay = {
+            name.decode("ascii"): factory.make_name("value")
+            for name, _ in GetBootConfig.arguments
+        }
+        params_other = {
+            factory.make_name("name"): factory.make_name("value")
+            for _ in range(3)
+        }
+        params_all = params_okay.copy()
+        params_all.update(params_other)
+
+        client_service = Mock()
+        client = client_service.getClient.return_value
+        client.localIdent = params_okay["system_id"]
+        backend = TFTPBackend(self.make_dir(), client_service)
+        backend.fetcher = Mock()
+
+        backend.get_kernel_params(params_all)
+
+        self.assertThat(
+            backend.fetcher, MockCalledOnceWith(
+                client, GetBootConfig, **params_okay))
 
 
 class TestTFTPService(MAASTestCase):

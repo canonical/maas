@@ -49,6 +49,20 @@ re_config_file = re_config_file.format(
 re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
+# Due to the "ppc64el" prefix all files requested from the client using
+# relative paths will have that prefix. Capturing the path after that prefix
+# will give us the correct path in the local tftp root on disk.
+re_other_file = r'''
+    # Optional leading slash(es).
+    ^/*
+    ppc64el           # PowerNV PXE prefix, set by dhcpd.
+    /
+    (?P<path>.+)      # Capture path.
+    $
+'''
+re_other_file = re_other_file.encode("ascii")
+re_other_file = re.compile(re_other_file, re.VERBOSE)
+
 
 def format_bootif(mac):
     """Formats a mac address into the BOOTIF format, expected by
@@ -65,15 +79,16 @@ class PowerNVBootMethod(BootMethod):
     template_subdir = "pxe"
     bootloader_path = "pxelinux.0"
     arch_octet = "00:0E"
-    path_prefix = b"ppc64el/"
+    path_prefix = "ppc64el/"
 
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""
         match = re_config_file.match(path)
         if match is not None:
             return get_parameters(match)
-        if path.lstrip(b'/').startswith(self.path_prefix):
-            return {'path': path}
+        match = re_other_file.match(path)
+        if match is not None:
+            return get_parameters(match)
         return None
 
     def match_path(self, backend, path):
@@ -94,23 +109,22 @@ class PowerNVBootMethod(BootMethod):
                 params['mac'] = mac
         return params
 
-    def get_reader(self, backend, kernel_params, **extra):
+    def get_reader(self, backend, kernel_params, mac=None, path=None, **extra):
         """Render a configuration file as a unicode string.
 
         :param backend: requesting backend
         :param kernel_params: An instance of `KernelParameters`.
+        :param path: Optional MAC address discovered by `match_path`.
+        :param path: Optional path discovered by `match_path`.
         :param extra: Allow for other arguments. This is a safety valve;
             parameters generated in another component (for example, see
             `TFTPBackend.get_config_reader`) won't cause this to break.
         """
-        # Due to the path prefix, all requested files from the client will
-        # contain that prefix. Removing the prefix from the path will return
-        # the correct path in the tftp root.
-        if 'path' in extra:
-            path = extra['path']
-            if path.startswith(self.path_prefix):
-                path = path[len(self.path_prefix):]
-            target_path = backend.base.descendant(path.split(b'/'))
+        if path is not None:
+            # This is a request for a static file, not a configuration file.
+            # The prefix was already trimmed by `match_path` so we need only
+            # return a FilesystemReader for `path` beneath the backend's base.
+            target_path = backend.base.descendant(path.split('/'))
             return FilesystemReader(target_path)
 
         # Return empty config for PowerNV local. PowerNV fails to
@@ -128,10 +142,8 @@ class PowerNVBootMethod(BootMethod):
         # support the IPAPPEND pxelinux flag.
         def kernel_command(params):
             cmd_line = compose_kernel_command_line(params)
-            if 'mac' in extra:
-                mac = extra['mac']
-                mac = format_bootif(mac)
-                return '%s BOOTIF=%s' % (cmd_line, mac)
+            if mac is not None:
+                return '%s BOOTIF=%s' % (cmd_line, format_bootif(mac))
             return cmd_line
 
         namespace['kernel_command'] = kernel_command
