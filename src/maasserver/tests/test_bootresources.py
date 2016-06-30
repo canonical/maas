@@ -946,6 +946,21 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
             other_file.largefile, reload_object(other_file).largefile)
         self.assertThat(mock_save_later, MockNotCalled())
 
+    def test_insert_doesnt_create_largefile_for_unknown_ftype(self):
+        name, architecture, product = make_product()
+        product['ftype'] = factory.make_name('ftype')
+        with transaction.atomic():
+            resource = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+                architecture=architecture)
+            resource_set = factory.make_BootResourceSet(
+                resource, version=product['version_name'])
+        product['sha256'] = factory.make_string(size=64)
+        product['size'] = randint(1024, 2048)
+        store = BootResourceStore()
+        store.insert(product, sentinel.reader)
+        self.assertThat(reload_object(resource_set).files.all(), HasLength(0))
+
     def test_insert_creates_new_largefile(self):
         name, architecture, product = make_product()
         with transaction.atomic():

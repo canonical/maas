@@ -17,6 +17,7 @@ LP: #1581318    [1.9] Append version to templateUrl in maas.js angular code.
 
 LP: #1591093    [2.0,1.9] 3rd party HP drivers (archive hostname renamed) - deployment fails
 
+LP: #1597460    [1.9] MAAS 1.9 should only download filetypes from a SimpleStream is can process
 
 1.9.3
 =====
