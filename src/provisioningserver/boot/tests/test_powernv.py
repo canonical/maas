@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import os
 import re
 from unittest.mock import Mock
 
@@ -114,7 +113,7 @@ class TestPowerNVBootMethod(MAASTestCase):
 
     def test_path_prefix(self):
         method = PowerNVBootMethod()
-        self.assertEqual(b'ppc64el/', method.path_prefix)
+        self.assertEqual('ppc64el/', method.path_prefix)
 
 
 class TestPowerNVBootMethodMatchPath(MAASTestCase):
@@ -150,7 +149,8 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
         expected = {
             'arch': 'ppc64el',
             'mac': fake_mac,
-            'path': file_path,
+            # The "ppc64el/" prefix has been removed from the path.
+            'path': file_path.decode("utf-8")[8:],
             }
         self.assertEqual(expected, params)
 
@@ -242,41 +242,41 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
 
 
 class TestPowerNVBootMethodPathPrefix(MAASTestCase):
-    """Tests for
-    `provisioningserver.boot.powernv.PowerNVBootMethod.get_reader`.
-    """
+    """Tests for `provisioningserver.boot.powernv.PowerNVBootMethod`."""
 
-    def test_get_reader_path_prefix(self):
+    def test_path_prefix_removed(self):
+        temp_dir = FilePath(self.make_dir())
+        backend = Mock(base=temp_dir)  # A `TFTPBackend`.
+
+        # Create a file in the backend's base directory.
         data = factory.make_string().encode("ascii")
-        temp_file = self.make_file(name="example", contents=data)
-        temp_dir = os.path.dirname(temp_file)
-        backend = Mock(base=FilePath(temp_dir))  # A `TFTPBackend`.
+        temp_file = temp_dir.child("example")
+        temp_file.setContent(data)
+
         method = PowerNVBootMethod()
-        options = {
-            'backend': backend,
-            'kernel_params': make_kernel_parameters(),
-            'path': b'ppc64el/example',
-        }
-        reader = method.get_reader(**options)
+        params = method.get_params(backend, b"ppc64el/example")
+        self.assertEqual({"path": "example"}, params)
+        reader = method.get_reader(backend, make_kernel_parameters(), **params)
         self.addCleanup(reader.finish)
         self.assertEqual(len(data), reader.size)
         self.assertEqual(data, reader.read(len(data)))
         self.assertEqual(b"", reader.read(1))
 
-    def test_get_reader_path_prefix_only_removes_first_occurrence(self):
+    def test_path_prefix_only_first_occurrence_removed(self):
+        temp_dir = FilePath(self.make_dir())
+        backend = Mock(base=temp_dir)  # A `TFTPBackend`.
+
+        # Create a file nested within a "ppc64el" directory.
         data = factory.make_string().encode("ascii")
-        temp_dir = self.make_dir()
-        temp_subdir = os.path.join(temp_dir, 'ppc64el')
-        os.mkdir(temp_subdir)
-        factory.make_file(temp_subdir, "example", data)
-        backend = Mock(base=FilePath(temp_dir))  # A `TFTPBackend`.
+        temp_subdir = temp_dir.child("ppc64el")
+        temp_subdir.createDirectory()
+        temp_file = temp_subdir.child("example")
+        temp_file.setContent(data)
+
         method = PowerNVBootMethod()
-        options = {
-            'backend': backend,
-            'kernel_params': make_kernel_parameters(),
-            'path': b'ppc64el/ppc64el/example',
-        }
-        reader = method.get_reader(**options)
+        params = method.get_params(backend, b"ppc64el/ppc64el/example")
+        self.assertEqual({"path": "ppc64el/example"}, params)
+        reader = method.get_reader(backend, make_kernel_parameters(), **params)
         self.addCleanup(reader.finish)
         self.assertEqual(len(data), reader.size)
         self.assertEqual(data, reader.read(len(data)))

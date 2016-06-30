@@ -204,6 +204,17 @@ class TFTPBackend(FilesystemSynchronousBackend):
             path requested.
         :return: A `KernelParameters` instance.
         """
+        # Extract from params only those arguments that GetBootConfig cares
+        # about; params is a context-like object and other stuff (too much?)
+        # gets in there.
+        arguments = (
+            name.decode("ascii")
+            for name, _ in GetBootConfig.arguments
+        )
+        params = {
+            name: params[name] for name in arguments
+            if name in params
+        }
         client = self.client_service.getClient()
         params["system_id"] = client.localIdent
         d = self.fetcher(client, GetBootConfig, **params)
@@ -223,9 +234,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return boot_method.get_reader(
                 self, kernel_params=kernel_params, **params)
 
-        d = self.get_kernel_params(params)
-        d.addCallback(generate)
-        return d
+        return self.get_kernel_params(params).addCallback(generate)
 
     @staticmethod
     def no_response_errback(failure, file_name):
