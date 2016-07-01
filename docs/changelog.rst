@@ -20,6 +20,8 @@ LP: #1597324    [2.0b8] Unable to set default gateway interface
 
 LP: #1515188    [1.9] VMware power management fails when VMs are organized in nested subfolders
 
+LP: #1596046    [2.0] maas 2.0 pxeboot fails on PowerNV
+
 
 2.0.0 (beta8)
 =============
