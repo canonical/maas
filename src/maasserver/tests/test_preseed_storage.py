@@ -222,12 +222,13 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             number: 4
             device: sda
             flag: extended
+            size: 4287627264B
           - id: sda-part5
             name: sda-part5
             type: partition
             number: 5
             uuid: 1b59e74f-6189-41a1-ba8e-fbf38df19820
-            size: 2147483648B
+            size: 2146435072B
             device: sda
             wipe: superblock
             flag: logical
@@ -236,7 +237,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             type: partition
             number: 6
             uuid: 8c365c80-900b-40a1-a8c7-1e445878d19a
-            size: 2139095040B
+            size: 2138046464B
             device: sda
             wipe: superblock
             flag: logical
