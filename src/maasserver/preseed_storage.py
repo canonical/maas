@@ -9,13 +9,16 @@ __all__ = [
 
 from operator import attrgetter
 
+from django.db.models import Sum
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
+from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import (
     INITIAL_PARTITION_OFFSET,
+    PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -287,16 +290,39 @@ class CurtinStorageGenerator:
             # Fifth partition on an MBR partition, must add the extend
             # partition operation. So the remaining partitions can be added.
             if partition_number == 5:
+                # Calculate the remaining size of the disk available for the
+                # extended partition.
+                extended_size = block_device.size - PARTITION_TABLE_EXTRA_SPACE
+                previous_partitions = Partition.objects.filter(
+                    id__lt=partition.id, partition_table=partition_table)
+                extended_size = extended_size - (
+                    previous_partitions.aggregate(Sum('size'))['size__sum'])
+                # Curtin adds 1MiB between each logical partition inside the
+                # extended partition. It incorrectly adds onto the size
+                # automatically so we have to extract that size from the
+                # overall size of the extended partition.
+                following_partitions = Partition.objects.filter(
+                    id__gte=partition.id, partition_table=partition_table)
+                logical_extra_space = following_partitions.count() * (1 << 20)
+                extended_size = extended_size - logical_extra_space
                 self.storage_config.append({
                     "id": "%s-part4" % block_device.get_name(),
                     "type": "partition",
                     "number": 4,
                     "device": block_device.get_name(),
                     "flag": "extended",
+                    "size": "%sB" % extended_size,
                 })
                 partition_operation["flag"] = "logical"
+                partition_operation["size"] = "%sB" % (
+                    partition.size - (1 << 20))
             elif partition_number > 5:
+                # Curtin adds 1MiB between each logical partition. We subtract
+                # the 1MiB from the size of the partition so all the partitions
+                # fit within the extended partition.
                 partition_operation["flag"] = "logical"
+                partition_operation["size"] = "%sB" % (
+                    partition.size - (1 << 20))
         self.storage_config.append(partition_operation)
 
     def _generate_format_operations(self):
