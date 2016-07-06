@@ -68,6 +68,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.utils.version import get_maas_version_ui
 from provisioningserver.config import is_dev_environment
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
@@ -869,7 +870,14 @@ def download_boot_resources(path, store, product_mapping,
     writer = BootResourceRepoWriter(store, product_mapping)
     (mirror, rpath) = sutil.path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring_file)
-    reader = UrlMirrorReader(mirror, policy=policy)
+    try:
+        reader = UrlMirrorReader(
+            mirror, policy=policy,
+            user_agent="MAAS %s" % get_maas_version_ui())
+    except TypeError:
+        # UrlMirrorReader doesn't support the user_agent argument.
+        # simplestream >=bzr429 is required for this feature.
+        reader = UrlMirrorReader(mirror, policy=policy)
     writer.sync(reader, rpath)
 
 

@@ -7,7 +7,10 @@ __all__ = []
 
 from os import environ
 from unittest import skip
-from unittest.mock import MagicMock
+from unittest.mock import (
+    ANY,
+    MagicMock,
+)
 
 from maasserver import bootsources
 from maasserver.bootsources import (
@@ -36,6 +39,8 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
+from maasserver.utils.version import get_maas_version_ui
+from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
@@ -217,6 +222,16 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertEqual(
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['https_proxy']))
+
+    def test__passes_user_agent_with_maas_version(self):
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        factory.make_BootSource(keyring_data=b'1234')
+        cache_boot_sources()
+        self.assertThat(
+            mock_download,
+            MockCalledOnceWith(
+                ANY, user_agent="MAAS %s" % get_maas_version_ui()))
 
     @skip("XXX: GavinPanella 2015-12-04 bug=1546235: Fails spuriously.")
     def test__doesnt_have_env_http_and_https_proxy_set_if_disabled(self):

@@ -6,11 +6,19 @@
 __all__ = []
 
 import logging
-from unittest.mock import sentinel
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
@@ -346,3 +354,46 @@ class TestRepoDumper(MAASTestCase):
                 mock_sync, MockCalledOnceWith(sentinel.reader, sentinel.path))
             self.assertDocTestMatches(
                 "...error...syncing boot images...", maaslog.output)
+
+
+class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
+    """Tests for user agent string with `download_image_descriptions.`"""
+
+    def test_doesnt_pass_user_agent_when_not_set(self):
+        mock_UrlMirrorReader = self.patch(
+            download_descriptions, "UrlMirrorReader")
+        self.patch(download_descriptions.RepoDumper, "sync")
+        path = factory.make_url()
+        download_descriptions.download_image_descriptions(path)
+        self.assertThat(
+            mock_UrlMirrorReader, MockCalledOnceWith(ANY, policy=ANY))
+
+    def test_passes_user_agent(self):
+        mock_UrlMirrorReader = self.patch(
+            download_descriptions, "UrlMirrorReader")
+        self.patch(download_descriptions.RepoDumper, "sync")
+        path = factory.make_url()
+        user_agent = factory.make_name("agent")
+        download_descriptions.download_image_descriptions(
+            path, user_agent=user_agent)
+        self.assertThat(
+            mock_UrlMirrorReader,
+            MockCalledOnceWith(ANY, policy=ANY, user_agent=user_agent))
+
+    def test_doesnt_pass_user_agenton_fallback(self):
+        mock_UrlMirrorReader = self.patch(
+            download_descriptions, "UrlMirrorReader")
+        mock_UrlMirrorReader.side_effect = [
+            TypeError(),
+            Mock(),
+        ]
+        self.patch(download_descriptions.RepoDumper, "sync")
+        path = factory.make_url()
+        user_agent = factory.make_name("agent")
+        download_descriptions.download_image_descriptions(
+            path, user_agent=user_agent)
+        self.assertThat(
+            mock_UrlMirrorReader,
+            MockCallsMatch(
+                call(ANY, policy=ANY, user_agent=user_agent),
+                call(ANY, policy=ANY)))

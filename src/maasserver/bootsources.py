@@ -25,6 +25,7 @@ from maasserver.models import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maasserver.utils.version import get_maas_version_ui
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -190,7 +191,8 @@ def cache_boot_sources():
         with tempdir("keyrings") as keyrings_path:
             [source] = write_all_keyrings(keyrings_path, [source])
             try:
-                descriptions = download_all_image_descriptions([source])
+                descriptions = download_all_image_descriptions(
+                    [source], user_agent="MAAS %s" % get_maas_version_ui())
             except (IOError, ConnectionError) as error:
                 errors.append(
                     "Failed to import images from boot source "

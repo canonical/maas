@@ -185,28 +185,41 @@ def boot_merge(destination, additions, filters=None):
             destination.setdefault(image, resource)
 
 
-def download_image_descriptions(path, keyring=None):
+def download_image_descriptions(path, keyring=None, user_agent=None):
     """Download image metadata from upstream Simplestreams repo.
 
     :param path: The path to a Simplestreams repo.
     :param keyring: Optional keyring for verifying the repo's signatures.
+    :param user_agent: Optional user agent string for downloading the image
+        descriptions.
     :return: A `BootImageMapping` describing available boot resources.
     """
     maaslog.info("Downloading image descriptions from %s", path)
     mirror, rpath = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring)
-    reader = UrlMirrorReader(mirror, policy=policy)
+    if user_agent is None:
+        reader = UrlMirrorReader(mirror, policy=policy)
+    else:
+        try:
+            reader = UrlMirrorReader(
+                mirror, policy=policy, user_agent=user_agent)
+        except TypeError:
+            # UrlMirrorReader doesn't support the user_agent argument.
+            # simplestream >=bzr429 is required for this feature.
+            reader = UrlMirrorReader(mirror, policy=policy)
+
     boot_images_dict = BootImageMapping()
     dumper = RepoDumper(boot_images_dict)
     dumper.sync(reader, rpath)
     return boot_images_dict
 
 
-def download_all_image_descriptions(sources):
+def download_all_image_descriptions(sources, user_agent=None):
     """Download image metadata for all sources in `config`."""
     boot = BootImageMapping()
     for source in sources:
         repo_boot = download_image_descriptions(
-            source['url'], keyring=source.get('keyring', None))
+            source['url'], keyring=source.get('keyring', None),
+            user_agent=None)
         boot_merge(boot, repo_boot, source['selections'])
     return boot

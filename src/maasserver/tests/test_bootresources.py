@@ -16,6 +16,7 @@ from subprocess import CalledProcessError
 from unittest import skip
 from unittest.mock import (
     ANY,
+    call,
     Mock,
     sentinel,
 )
@@ -79,8 +80,10 @@ from maasserver.utils.orm import (
     post_commit_hooks,
     reload_object,
 )
+from maasserver.utils.version import get_maas_version_ui
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
@@ -1200,6 +1203,38 @@ class TestImportImages(MAASTransactionServerTestCase):
         download_boot_resources(
             source_url, store, None, None)
         self.assertEqual(1, len(fake_sync.mock_calls))
+
+    def test_download_boot_resources_passes_user_agent(self):
+        self.patch(bootresources.BootResourceRepoWriter, 'sync')
+        store = BootResourceStore()
+        source_url = factory.make_url()
+        mock_UrlMirrorReader = self.patch(bootresources, "UrlMirrorReader")
+        download_boot_resources(
+            source_url, store, None, None)
+        self.assertThat(
+            mock_UrlMirrorReader,
+            MockCalledOnceWith(
+                ANY, policy=ANY, user_agent="MAAS %s" % get_maas_version_ui()))
+
+    def test_download_boot_resources_fallsback_to_no_user_agent(self):
+        self.patch(bootresources.BootResourceRepoWriter, 'sync')
+        store = BootResourceStore()
+        source_url = factory.make_url()
+        mock_UrlMirrorReader = self.patch(bootresources, "UrlMirrorReader")
+        mock_UrlMirrorReader.side_effect = [
+            TypeError(),
+            Mock(),
+        ]
+        download_boot_resources(
+            source_url, store, None, None)
+        self.assertThat(
+            mock_UrlMirrorReader,
+            MockCallsMatch(
+                call(
+                    ANY, policy=ANY,
+                    user_agent="MAAS %s" % get_maas_version_ui()),
+                call(
+                    ANY, policy=ANY)))
 
     def test_download_all_boot_resources_calls_download_boot_resources(self):
         source = {
