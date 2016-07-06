@@ -12,7 +12,6 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import ProtectedError
-from django.db.utils import IntegrityError
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.space import (
     DEFAULT_SPACE_NAME,
@@ -20,7 +19,6 @@ from maasserver.models.space import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnce
 from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
 
@@ -142,16 +140,6 @@ class SpaceTest(MAASServerTestCase):
         self.assertEqual(0, default_space.id)
         self.assertEqual(DEFAULT_SPACE_NAME, default_space.get_name())
         self.assertEqual(DEFAULT_SPACE_NAME, default_space.name)
-
-    def test_get_default_space_handles_exception(self):
-        default_space = Space.objects.get_default_space()
-        func = self.patch(Space.objects, "get_or_create")
-        func.side_effect = IntegrityError(
-            'duplicate key value violates unique constraint '
-            '"maasserver_space_pkey"')
-        space = Space.objects.get_default_space()
-        self.assertThat(func, MockCalledOnce())
-        self.assertEqual(default_space.id, space.id)
 
     def test_invalid_name_raises_exception(self):
         self.assertRaises(

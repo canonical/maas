@@ -13,7 +13,6 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import ProtectedError
-from django.db.utils import IntegrityError
 from maasserver.dns.zonegenerator import (
     get_hostname_dnsdata_mapping,
     lazydict,
@@ -32,7 +31,6 @@ from maasserver.models.domain import (
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnce
 from netaddr import IPAddress
 from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
@@ -160,16 +158,6 @@ class DomainTest(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         self.assertEqual(0, default_domain.id)
         self.assertEqual(DEFAULT_DOMAIN_NAME, default_domain.get_name())
-
-    def test_get_default_domain_handles_exception(self):
-        default_domain = Domain.objects.get_default_domain()
-        func = self.patch(Domain.objects, "get_or_create")
-        func.side_effect = IntegrityError(
-            'duplicate key value violates unique constraint '
-            '"maasserver_domain_pkey"')
-        domain = Domain.objects.get_default_domain()
-        self.assertThat(func, MockCalledOnce())
-        self.assertEqual(default_domain.id, domain.id)
 
     def test_invalid_name_raises_exception(self):
         self.assertRaises(

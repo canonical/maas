@@ -21,6 +21,7 @@ from django.core.exceptions import ValidationError
 from django.db import (
     connection,
     IntegrityError,
+    transaction,
 )
 from django.db.models import (
     ForeignKey,
@@ -54,7 +55,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import strip_domain
 from maasserver.utils.dns import get_ip_based_hostname
 from maasserver.utils.orm import (
-    make_serialization_failure,
+    request_transaction_retry,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
@@ -149,8 +150,11 @@ class StaticIPAddressManager(Manager):
             subnet=subnet)
         ipaddress.set_ip_address(requested_address.format())
         try:
-            # Try to save this address to the database.
-            ipaddress.save()
+            # Try to save this address to the database. Do this in a nested
+            # transaction so that we can continue using the outer transaction
+            # even if this breaks.
+            with transaction.atomic():
+                ipaddress.save()
         except IntegrityError:
             # The address is already taken.
             raise StaticIPAddressUnavailable(
@@ -208,10 +212,9 @@ class StaticIPAddressManager(Manager):
                         requested_address, alloc_type, user,
                         subnet=subnet)
                 except StaticIPAddressUnavailable:
-                    # This is phantom read: another transaction has
-                    # taken this IP.  Raise a serialization failure to
-                    # let the retry mechanism do its thing.
-                    raise make_serialization_failure()
+                    # We lost the race: another transaction has taken this IP
+                    # address. Retry this transaction from the top.
+                    request_transaction_retry()
         else:
             requested_address = IPAddress(requested_address)
             subnet.validate_static_ip(requested_address)

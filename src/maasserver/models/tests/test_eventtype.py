@@ -7,8 +7,8 @@ __all__ = []
 
 import random
 import threading
+import time
 
-from django.db import IntegrityError
 from maasserver.models.eventtype import (
     EventType,
     LOGGING_LEVELS,
@@ -20,11 +20,8 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from testtools.matchers import (
-    AfterPreprocessing,
     AllMatch,
     Equals,
-    GreaterThan,
-    MatchesAny,
     MatchesStructure,
 )
 
@@ -57,6 +54,22 @@ class EventTypeTest(MAASServerTestCase):
         self.assertThat(event_type, MatchesStructure.byEquality(
             name=name, description=desc, level=level))
 
+    def test_register_does_not_update_existing_description_or_level(self):
+        name = factory.make_name("name")
+        levels = set(LOGGING_LEVELS)
+
+        desc1 = factory.make_name("desc1")
+        level1 = levels.pop()
+        event_type1 = EventType.objects.register(name, desc1, level1)
+
+        desc2 = factory.make_name("desc2")
+        level2 = levels.pop()
+        event_type2 = EventType.objects.register(name, desc2, level2)
+
+        self.assertThat(event_type2, Equals(event_type1))
+        self.assertThat(event_type2, MatchesStructure.byEquality(
+            name=name, description=desc1, level=level1))
+
 
 class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
 
@@ -65,39 +78,21 @@ class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
         desc = factory.make_name("desc")
         level = random.choice(list(LOGGING_LEVELS))
 
-        # Intercept calls to EventType.objects.create() so that we can capture
-        # IntegrityErrors. Later on, all but one thread should experience an
-        # IntegrityError, indicating that the event type has already been
-        # registered.
-        create_original = EventType.objects.create
-        create_errors_lock = threading.Lock()
-        create_errors = []
-
-        def create_and_capture(**kwargs):
-            # Capture IntegrityError but don't change the behaviour of
-            # EventType.objects.create().
-            try:
-                return create_original(**kwargs)
-            except IntegrityError as e:
-                with create_errors_lock:
-                    create_errors.append(e)
-                raise
-
-        self.patch(EventType.objects, "create", create_and_capture)
-
         # A list to store the event types that are being registered, and a
         # lock to synchronise write access to it.
         event_types_lock = threading.Lock()
         event_types = []
 
-        # Use the transactional decorator to ensure that old connections are
-        # closed in the threads we're spawning. If we don't do that Django
-        # sometimes gets angry.
+        # Use the transactional decorator to do two things: retry when there's
+        # an IntegrityError, and ensure that old connections are closed in the
+        # threads we're spawning. If we don't do the latter Django gets angry.
         @transactional
         def make_event_type():
             # Create the event type then wait a short time to increase the
             # chances that transactions between threads overlap.
-            return EventType.objects.register(name, desc, level)
+            etype = EventType.objects.register(name, desc, level)
+            time.sleep(0.1)
+            return etype
 
         # Only save the event type when the txn that make_event_type() runs is
         # has been committed. This is when we're likely to see errors.
@@ -119,17 +114,6 @@ class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
         for thread in threads:
             thread.join()
 
-        # All but one thread fails to create the event type at least once.
-        # Each /may/ fail more than once, if the event-type is not yet visible
-        # in that thread's transaction; see the comments in register().
-        expected_create_errors_min = len(threads) - 1
-        expected_create_errors_count = MatchesAny(
-            Equals(expected_create_errors_min),
-            GreaterThan(expected_create_errors_min),
-        )
-        self.expectThat(
-            create_errors, AfterPreprocessing(
-                len, expected_create_errors_count))
         # All threads return the same event type.
         self.expectThat(len(threads), Equals(len(event_types)))
         self.expectThat(

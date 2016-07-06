@@ -23,7 +23,6 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
-from django.db.utils import IntegrityError
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
@@ -80,24 +79,15 @@ class FabricManager(Manager, FabricQueriesMixin):
     def get_default_fabric(self):
         """Return the default fabric."""
         now = datetime.datetime.now()
-        try:
-            fabric, created = self.get_or_create(
-                id=0,
-                defaults={
-                    'id': 0,
-                    'name': None,
-                    'created': now,
-                    'updated': now,
-                }
-            )
-        except IntegrityError as err:
-            if (err.args[0].startswith(
-                    'duplicate key value violates unique'
-                    ' constraint "maasserver_fabric_pkey"')):
-                fabric = self.get(id=0)
-                created = False
-            else:
-                raise(err)
+        fabric, created = self.get_or_create(
+            id=0,
+            defaults={
+                'id': 0,
+                'name': None,
+                'created': now,
+                'updated': now,
+            },
+        )
         if created:
             fabric._create_default_vlan()
         return fabric

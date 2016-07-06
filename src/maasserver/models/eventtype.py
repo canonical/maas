@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`EventType` and friends."""
@@ -10,10 +10,6 @@ __all__ = [
 
 import logging
 
-from django.db import (
-    IntegrityError,
-    transaction,
-)
 from django.db.models import (
     CharField,
     IntegerField,
@@ -22,7 +18,6 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import request_transaction_retry
 
 # Describes how the log levels are displayed in the UI.
 LOGGING_LEVELS = {
@@ -46,24 +41,19 @@ class EventTypeManager(Manager):
     """A utility to manage the collection of Events."""
 
     def register(self, name, description, level):
-        """Register EventType if it does not exist."""
-        try:
-            # Attempt to create the event type in a nested transaction so that
-            # we can continue using the outer transaction even if this breaks.
-            with transaction.atomic():
-                return self.create(
-                    name=name, description=description, level=level)
-        except IntegrityError:
-            # We may be in a situation where the event type already existed,
-            # or that another session has created the event type concurrently
-            # with this thread. Proceed on that assumption.
-            try:
-                return self.get(name=name)
-            except EventType.DoesNotExist:
-                # PostgreSQL's indexes do not grok MVCC. Another session has
-                # created this event-type, but we cannot see it yet in this
-                # session. We need to retry the whole transaction.
-                request_transaction_retry()
+        """Register EventType if it does not exist.
+
+        If the event type already exists the description and level are NOT
+        updated with new values. This method is meant to be a just-in-time way
+        of creating event types from a predefined and static catalog.
+        """
+        event_type, _ = self.get_or_create(
+            name=name, defaults={
+                "description": description,
+                "level": level,
+            },
+        )
+        return event_type
 
 
 class EventType(CleanSave, TimestampedModel):

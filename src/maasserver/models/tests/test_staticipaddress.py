@@ -39,8 +39,8 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import (
-    is_serialization_failure,
     reload_object,
+    RetryTransaction,
     transactional,
 )
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
@@ -131,7 +131,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 IPADDRESS_FAMILY.IPv6))
 
 
-class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
+class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
     """The following TestStaticIPAddressManager tests require
         MAASTransactionServerTestCase, and thus have been separated
         from the TestStaticIPAddressManager above.
@@ -228,15 +228,14 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
                 subnet, requested_address=requested_address)
 
     @transactional
-    def test_allocate_new_raises_serialization_error_if_ip_taken(self):
+    def test_allocate_new_requests_transaction_retry_if_ip_taken(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         # Simulate a "IP already taken" error.
         mock_attempt_allocation = self.patch(
             StaticIPAddress.objects, '_attempt_allocation')
         mock_attempt_allocation.side_effect = StaticIPAddressUnavailable()
-        error = self.assertRaises(
-            Exception, StaticIPAddress.objects.allocate_new, subnet)
-        self.assertTrue(is_serialization_failure(error))
+        self.assertRaises(
+            RetryTransaction, StaticIPAddress.objects.allocate_new, subnet)
 
     @transactional
     def test_allocate_new_does_not_use_lock_for_requested_ip(self):

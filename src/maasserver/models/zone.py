@@ -18,7 +18,6 @@ from django.db.models import (
     Manager,
     TextField,
 )
-from django.db.utils import IntegrityError
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -42,22 +41,14 @@ class ZoneManager(Manager):
     def get_default_zone(self):
         """Return the default zone."""
         now = datetime.datetime.now()
-        try:
-            zone, _ = self.get_or_create(
-                name=DEFAULT_ZONE_NAME,
-                defaults={
-                    'name': DEFAULT_ZONE_NAME,
-                    'created': now,
-                    'updated': now,
-                }
-            )
-        except IntegrityError as err:
-            if (err.args[0].startswith(
-                    'duplicate key value violates unique'
-                    ' constraint "maasserver_zone_name_key"')):
-                zone = self.get(name=DEFAULT_ZONE_NAME)
-            else:
-                raise(err)
+        zone, _ = self.get_or_create(
+            name=DEFAULT_ZONE_NAME,
+            defaults={
+                'name': DEFAULT_ZONE_NAME,
+                'created': now,
+                'updated': now,
+            },
+        )
         return zone
 
 
