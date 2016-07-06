@@ -120,6 +120,7 @@ class MachineHandler(NodeHandler):
         form = AdminMachineWithMACAddressesForm
         exclude = [
             "status_expires",
+            "previous_status",
             "parent",
             "boot_interface",
             "boot_cluster_ip",

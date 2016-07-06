@@ -84,6 +84,7 @@ class DeviceHandler(NodeHandler):
             "architecture",
             "bios_boot_method",
             "status",
+            "previous_status",
             "status_expires",
             "power_state_queried",
             "power_state_updated",

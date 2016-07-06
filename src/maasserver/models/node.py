@@ -774,6 +774,8 @@ class Node(CleanSave, TimestampedModel):
         This is only relevant for node types other than node.
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
+    :ivar previous_status: This `Node`'s previous status.  See the vocabulary
+        :class:`NODE_STATUS`.
     :ivar error_description: A human-readable description of why a node is
         marked broken.  Only meaningful when the node is in the state 'BROKEN'.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
@@ -818,6 +820,10 @@ class Node(CleanSave, TimestampedModel):
     address_ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
     status = IntegerField(
+        choices=NODE_STATUS_CHOICES, editable=False,
+        default=NODE_STATUS.DEFAULT)
+
+    previous_status = IntegerField(
         choices=NODE_STATUS_CHOICES, editable=False,
         default=NODE_STATUS.DEFAULT)
 
