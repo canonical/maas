@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nose plugins for MAAS."""
@@ -6,14 +6,18 @@
 __all__ = [
     "Crochet",
     "main",
+    "Scenarios",
     "Select",
 ]
 
 import inspect
 import logging
+import unittest
 
+from nose.case import Test
 from nose.core import TestProgram
 from nose.plugins.base import Plugin
+from testscenarios import generate_scenarios
 from twisted.python.filepath import FilePath
 
 
@@ -70,6 +74,63 @@ class Crochet(Plugin):
                 crochet.no_setup()
             else:
                 crochet.setup()
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
+
+
+class Scenarios(Plugin):
+    """Expand test scenarios so that they're visible to Nose."""
+
+    name = "scenarios"
+    log = logging.getLogger('nose.plugins.%s' % name)
+
+    def makeTest(self, obj, parent):
+        """Attempt to expand test scenarios in the given test or tests.
+
+        If `obj` is a test case class, this loads tests and expands scenarios.
+
+        If `parent` is a test case class, this assumes that `obj` is a method,
+        instantiates the test case, then expands scenarios.
+
+        Everything else is ignored so the loader that invoked this will revert
+        to its default behaviour.
+        """
+        # obj may be a test case class.
+        if isinstance(obj, type):
+            if issubclass(obj, unittest.TestCase):
+                loader = self._getTestLoader()
+                tests = loader.loadTestsFromTestCase(obj)
+                tests = map(self._unwrapTest, tests)
+                return generate_scenarios(tests)
+        # obj may be a function/method.
+        elif isinstance(parent, type):
+            if issubclass(parent, unittest.TestCase):
+                test = parent(obj.__name__)
+                return generate_scenarios(test)
+
+    def _getTestLoader(self):
+        """Return the currently active test loader.
+
+        The loader may have non-default configuration, so we ought to reuse it
+        rather than create a default loader. Sadly this involves walking the
+        stack.
+        """
+        stack = inspect.stack()
+        for info in stack[2:]:
+            f_self = info.frame.f_locals.get("self")
+            if isinstance(f_self, unittest.TestLoader):
+                return f_self
+        else:
+            return None
+
+    def _unwrapTest(self, test):
+        """Remove Nose's annoying wrapper."""
+        return test.test if isinstance(test, Test) else test
 
     def help(self):
         """Used in the --help text.
@@ -163,4 +224,4 @@ def main():
     still necessary to enable these with the flags ``--with-crochet`` and/or
     ``--with-select``.
     """
-    return TestProgram(addplugins=[Crochet(), Select()])
+    return TestProgram(addplugins=[Crochet(), Select(), Scenarios()])

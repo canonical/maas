@@ -11,6 +11,8 @@ from os.path import (
     dirname,
     join,
 )
+import random
+import unittest
 from unittest.mock import (
     ANY,
     sentinel,
@@ -25,11 +27,14 @@ from maastesting.matchers import (
 )
 from maastesting.noseplug import (
     Crochet,
+    Scenarios,
     Select,
 )
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
+    AllMatch,
     Equals,
+    HasLength,
     IsInstance,
     MatchesListwise,
     MatchesSetwise,
@@ -100,6 +105,86 @@ class TestCrochet(MAASTestCase):
         self.assertThat(crochet_module.no_setup, MockNotCalled())
 
 
+class TestScenarios(MAASTestCase):
+
+    @staticmethod
+    def makeTest(plugin, obj, parent):
+        # Call the plugin via an intermediate function where we can create a
+        # test loader and call it `self`; the Scenarios plugin walks the stack
+        # to find it.
+        self = unittest.TestLoader()  # noqa
+        tests = plugin.makeTest(obj, parent)
+        return list(tests)
+
+    def test_makeTest_makes_tests_from_test_case_class(self):
+
+        class SomeTests(MAASTestCase):
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        tests = self.makeTest(Scenarios(), SomeTests, self)
+
+        self.assertThat(tests, HasLength(2))
+        self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
+        self.assertThat(
+            {test._testMethodName for test in tests},
+            Equals({"test_a", "test_b"}))
+
+    def test_makeTest_makes_tests_from_test_case_class_with_scenarios(self):
+
+        class SomeTests(MAASTestCase):
+            scenarios = [("scn1", {"attr": 1}), ("scn2", {"attr": 2})]
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        tests = self.makeTest(Scenarios(), SomeTests, self)
+
+        self.assertThat(tests, HasLength(4))
+        self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
+        self.assertThat(
+            {(test._testMethodName, test.attr) for test in tests},
+            Equals({
+                ("test_a", 1), ("test_a", 2),
+                ("test_b", 1), ("test_b", 2),
+            }))
+
+    def test_makeTest_makes_tests_from_test_function(self):
+
+        class SomeTests(MAASTestCase):
+            def test_a(self):
+                """Example test method."""
+            def test_b(self):
+                """Example test method."""
+
+        method = random.choice((SomeTests.test_a, SomeTests.test_b))
+        tests = self.makeTest(Scenarios(), method, SomeTests)
+
+        self.assertThat(tests, HasLength(1))
+        self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
+        self.assertThat(
+            {test._testMethodName for test in tests},
+            Equals({method.__name__}))
+
+    def test_makeTest_makes_tests_from_test_function_with_scenarios(self):
+
+        class SomeTests(MAASTestCase):
+            scenarios = [("scn1", {"attr": 1}), ("scn2", {"attr": 2})]
+
+            def test_a(self):
+                """Example test method."""
+            def test_b(self):
+                """Example test method."""
+
+        method = random.choice((SomeTests.test_a, SomeTests.test_b))
+        tests = self.makeTest(Scenarios(), method, SomeTests)
+
+        self.assertThat(tests, HasLength(2))
+        self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
+        self.assertThat(
+            {(test._testMethodName, test.attr) for test in tests},
+            Equals({(method.__name__, 1), (method.__name__, 2)}))
+
+
 class TestSelect(MAASTestCase):
 
     def test__create_has_dirs(self):
@@ -167,7 +252,7 @@ class TestMain(MAASTestCase):
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=[ANY, ANY]))
+            MockCalledOnceWith(addplugins=[ANY, ANY, ANY]))
         plugins = noseplug.TestProgram.call_args[1]["addplugins"]
         self.assertThat(plugins, MatchesSetwise(
-            IsInstance(Select), IsInstance(Crochet)))
+            IsInstance(Select), IsInstance(Scenarios), IsInstance(Crochet)))
