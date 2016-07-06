@@ -3,6 +3,6 @@ set timeout=0
 
 menuentry 'Local' {
     echo 'Booting local disk...'
-    search --set=root --file /boot/grub/grub.cfg
-    configfile /boot/grub/grub.cfg
+    search --set=root --file /efi/ubuntu/grubaa64.efi
+    chainloader /efi/ubuntu/grubaa64.efi
 }
