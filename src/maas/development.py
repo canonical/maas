@@ -114,6 +114,7 @@ PASSWORD_HASHERS = (
 # This tells django-nose to load the given Nose plugins.
 NOSE_PLUGINS = [
     "maastesting.noseplug.Crochet",
+    "maastesting.noseplug.Resources",
     "maastesting.noseplug.Scenarios",
     "maastesting.noseplug.Select",
 ]

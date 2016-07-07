@@ -27,10 +27,13 @@ from maastesting.matchers import (
 )
 from maastesting.noseplug import (
     Crochet,
+    Resources,
     Scenarios,
     Select,
 )
 from maastesting.testcase import MAASTestCase
+import nose.case
+from testresources import OptimisingTestSuite
 from testtools.matchers import (
     AllMatch,
     Equals,
@@ -39,6 +42,7 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesSetwise,
     MatchesStructure,
+    Not,
 )
 from twisted.python.filepath import FilePath
 
@@ -103,6 +107,113 @@ class TestCrochet(MAASTestCase):
 
         self.assertThat(crochet_module.setup, MockNotCalled())
         self.assertThat(crochet_module.no_setup, MockNotCalled())
+
+
+class TestResources(MAASTestCase):
+
+    def test_prepareTest_returns_optimised_test_suite(self):
+
+        class SomeTests(MAASTestCase):
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(SomeTests)
+        self.assertThat(suite, Not(IsInstance(OptimisingTestSuite)))
+        self.assertThat(suite.countTestCases(), Equals(2))
+
+        plugin = Resources()
+        suite = plugin.prepareTest(suite)
+
+        self.assertThat(suite, IsInstance(OptimisingTestSuite))
+        self.assertThat(suite.countTestCases(), Equals(2))
+
+    def test_prepareTest_flattens_nested_suites(self):
+
+        class SomeTests(MAASTestCase):
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        class MoreTests(MAASTestCase):
+            test_c = lambda self: None
+            test_d = lambda self: None
+
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite([
+            loader.loadTestsFromTestCase(SomeTests),
+            loader.loadTestsFromTestCase(MoreTests),
+        ])
+
+        self.assertThat(list(suite), HasLength(2))
+        self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestSuite)))
+        self.assertThat(suite.countTestCases(), Equals(4))
+
+        plugin = Resources()
+        suite = plugin.prepareTest(suite)
+
+        self.assertThat(list(suite), HasLength(4))
+        self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestCase)))
+        self.assertThat(suite.countTestCases(), Equals(4))
+
+    def test_prepareTest_hoists_resources(self):
+
+        class SomeTests(MAASTestCase):
+            resources = sentinel.resources
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(SomeTests)
+        # Nose wraps each test in another test to make our lives miserable.
+        suite = unittest.TestSuite(map(nose.case.Test, suite))
+
+        self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
+        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertThat(
+            {getattr(test, "resources", sentinel.notset) for test in suite},
+            Equals({sentinel.notset}))
+
+        plugin = Resources()
+        suite = plugin.prepareTest(suite)
+
+        # The test wrappers remain, but resources from the wrapped test are
+        # now referenced from the wrapper so that testresources can see them.
+        self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
+        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertThat(
+            {getattr(test, "resources", sentinel.notset) for test in suite},
+            Equals({SomeTests.resources}))
+
+    def test_prepareTest_hoists_resources_of_nested_tests(self):
+
+        class SomeTests(MAASTestCase):
+            resources = sentinel.resources
+            test_a = lambda self: None
+            test_b = lambda self: None
+
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(SomeTests)
+        # Nose wraps each test in another test to make our lives miserable.
+        suite = unittest.TestSuite(map(nose.case.Test, suite))
+        # Nest this suite within another.
+        suite = unittest.TestSuite([suite])
+
+        self.assertThat(list(suite), HasLength(1))
+        self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestSuite)))
+        self.assertThat(suite.countTestCases(), Equals(2))
+
+        plugin = Resources()
+        suite = plugin.prepareTest(suite)
+
+        # The nested suite is gone, the test wrappers remain, and resources
+        # from the wrapped test are now referenced from the wrapper so that
+        # testresources can see them.
+        self.assertThat(list(suite), HasLength(2))
+        self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
+        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertThat(
+            {getattr(test, "resources", sentinel.notset) for test in suite},
+            Equals({SomeTests.resources}))
 
 
 class TestScenarios(MAASTestCase):
@@ -252,7 +363,9 @@ class TestMain(MAASTestCase):
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=[ANY, ANY, ANY]))
+            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY)))
         plugins = noseplug.TestProgram.call_args[1]["addplugins"]
         self.assertThat(plugins, MatchesSetwise(
-            IsInstance(Select), IsInstance(Scenarios), IsInstance(Crochet)))
+            IsInstance(Crochet), IsInstance(Resources),
+            IsInstance(Scenarios), IsInstance(Select),
+        ))

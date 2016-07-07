@@ -10,7 +10,7 @@ from itertools import (
     repeat,
 )
 from random import randint
-import time
+import unittest
 from unittest.mock import (
     ANY,
     call,
@@ -105,14 +105,12 @@ from twisted.internet.defer import (
 from twisted.python.failure import Failure
 
 
-def setUp():
-    # Prevent real sleeps.
-    orm.sleep = lambda _: None
+class NoSleepMixin(unittest.TestCase):
+    """Test case mix-in to prevent real sleeps in the `orm` module."""
 
-
-def tearDown():
-    # Re-enable real sleeps.
-    orm.sleep = time.sleep
+    def setUp(self):
+        super(NoSleepMixin, self).setUp()
+        self.patch(orm, "sleep", lambda _: None)
 
 
 class FakeModel:
@@ -469,7 +467,7 @@ class TestIsRetryableFailure(MAASTestCase):
         self.assertFalse(is_retryable_failure(error))
 
 
-class TestRetryOnRetryableFailure(SerializationFailureTestCase):
+class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
 
     def make_mock_function(self):
         function_name = factory.make_name("function")
@@ -939,7 +937,7 @@ class TestTransactional(MAASTransactionServerTestCase):
         self.assertEqual("outer > inner", outer())
 
 
-class TestTransactionalRetries(SerializationFailureTestCase):
+class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
 
     def test__retries_upon_serialization_failures(self):
         function = Mock()

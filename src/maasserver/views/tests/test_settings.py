@@ -6,6 +6,7 @@
 __all__ = []
 
 import http.client
+from unittest import skip
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -81,6 +82,7 @@ class SettingsTest(MAASServerTestCase):
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
 
+    @skip("XXX: GavinPanella 2016-07-07 bug=1599931: Fails spuriously.")
     def test_settings_maas_POST(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)

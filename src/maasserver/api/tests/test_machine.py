@@ -574,7 +574,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEquals('virsh', response_content['power_type'])
 
     def test_POST_release_releases_owned_machine(self):
-        self.patch(node_module.Node, '_stop')
+        self.patch(node_module.Machine, '_stop')
         owned_statuses = [
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
@@ -596,8 +596,7 @@ class TestMachineAPI(APITestCase.ForUser):
              for machine in reload_objects(Node, owned_machines)])
 
     def test_POST_release_releases_failed_machine(self):
-        self.patch(node_module.Node, '_stop')
-        self.patch(node_module.Machine, 'start_transition_monitor')
+        self.patch(node_module.Machine, '_stop')
         owned_machine = factory.make_Node(
             owner=self.user,
             status=NODE_STATUS.FAILED_DEPLOYMENT,
@@ -681,8 +680,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(machine).status)
 
     def test_POST_release_allows_admin_to_release_anyones_machine(self):
-        self.patch(node_module.Node, '_stop')
-        self.patch(node_module.Machine, 'start_transition_monitor')
+        self.patch(node_module.Machine, '_stop')
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
             power_type='ipmi', power_state=POWER_STATE.ON)
@@ -694,8 +692,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(machine).status)
 
     def test_POST_release_combines_with_allocate(self):
-        self.patch(node_module.Node, '_stop')
-        self.patch(node_module.Machine, 'start_transition_monitor')
+        self.patch(node_module.Machine, '_stop')
         machine = factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
             power_state=POWER_STATE.ON, with_boot_disk=True)
@@ -733,8 +730,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 ANY, ANY, agent_name=ANY, comment=None))
 
     def test_POST_release_frees_hwe_kernel(self):
-        self.patch(node_module.Node, '_stop')
-        self.patch(node_module.Machine, 'start_transition_monitor')
+        self.patch(node_module.Machine, '_stop')
         machine = factory.make_Node(
             owner=self.user, status=NODE_STATUS.ALLOCATED,
             power_type='ipmi', power_state=POWER_STATE.ON,

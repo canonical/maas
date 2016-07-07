@@ -8,6 +8,7 @@ __all__ = [
     "main",
     "Scenarios",
     "Select",
+    "Resources",
 ]
 
 import inspect
@@ -17,6 +18,7 @@ import unittest
 from nose.case import Test
 from nose.core import TestProgram
 from nose.plugins.base import Plugin
+from testresources import OptimisingTestSuite
 from testscenarios import generate_scenarios
 from twisted.python.filepath import FilePath
 
@@ -74,6 +76,48 @@ class Crochet(Plugin):
                 crochet.no_setup()
             else:
                 crochet.setup()
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
+
+
+class Resources(Plugin):
+    """Optimise the use of test resources."""
+
+    name = "resources"
+    log = logging.getLogger('nose.plugins.%s' % name)
+
+    def prepareTest(self, test):
+        """Convert the test suite gathered by Nose.
+
+        :return: An instance of :class:`OptimisingTestSuite`.
+        """
+        tests = self._flattenTests(test)
+        tests = map(self._hoistResources, tests)
+        return OptimisingTestSuite(tests)
+
+    def _flattenTests(self, tests):
+        """Recursively eliminate test suites."""
+        for test in tests:
+            if isinstance(test, unittest.TestSuite):
+                yield from self._flattenTests(test)
+            else:
+                yield test
+
+    def _hoistResources(self, test):
+        """Hoist resources from the real test to Nose's test wrapper."""
+        if isinstance(test, Test):
+            try:
+                resources = test.test.resources
+            except AttributeError:
+                pass  # Test has no resources.
+            else:
+                test.resources = resources
+        return test
 
     def help(self):
         """Used in the --help text.
@@ -220,8 +264,10 @@ class Select(Plugin):
 def main():
     """Invoke Nose's `TestProgram` with extra plugins.
 
-    Specifically the `Crochet` and `Select` plugins. At the command-line it's
-    still necessary to enable these with the flags ``--with-crochet`` and/or
-    ``--with-select``.
+    Specifically the `Crochet`, `Resources`, `Scenarios`, and `Select`
+    plugins. At the command-line it's still necessary to enable these with the
+    flags ``--with-crochet``, ``--with-resources``, ``--with-scenarios``,
+    and/or ``--with-select``.
     """
-    return TestProgram(addplugins=[Crochet(), Select(), Scenarios()])
+    plugins = Crochet(), Resources(), Scenarios(), Select()
+    return TestProgram(addplugins=plugins)
