@@ -7,7 +7,7 @@ __all__ = [
     'SSHKey',
     ]
 
-from cgi import escape
+from html import escape
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
