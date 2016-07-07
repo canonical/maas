@@ -26,7 +26,10 @@ class TestSubnetHandler(MAASServerTestCase):
             "created": dehydrate_datetime(subnet.created),
             "name": subnet.name,
             "description": subnet.description,
-            "dns_servers": " ".join(sorted(subnet.dns_servers)),
+            "dns_servers": (
+                " ".join(sorted(subnet.dns_servers))
+                if subnet.dns_servers is not None else ''
+            ),
             "vlan": subnet.vlan_id,
             "space": subnet.space_id,
             "rdns_mode": subnet.rdns_mode,
@@ -48,6 +51,16 @@ class TestSubnetHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = SubnetHandler(user, {})
         subnet = factory.make_Subnet()
+        expected_data = self.dehydrate_subnet(subnet)
+        result = handler.get({"id": subnet.id})
+        self.assertThat(result, Equals(expected_data))
+
+    def test_get_handles_null_dns_servers(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        subnet.dns_servers = None
+        subnet.save()
         expected_data = self.dehydrate_subnet(subnet)
         result = handler.get({"id": subnet.id})
         self.assertThat(result, Equals(expected_data))

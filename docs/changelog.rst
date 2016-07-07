@@ -2,6 +2,12 @@
 Changelog
 =========
 
+2.0.0 (rc2)
+===========
+
+LP: #1599997    [2.0rc1] after upgrade from 2.0b3, Error on request (13) subnet.list: 'NoneType' object is not iterable
+
+
 2.0.0 (rc1)
 ===========
 
