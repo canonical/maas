@@ -305,7 +305,9 @@ def get_curtin_installer_url(node):
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
     image = get_curtin_image(node)
-    if image['xinstall_type'] == 'tgz':
+    if image['xinstall_type'] == 'squashfs':
+        return 'cp:///media/root-ro'
+    elif image['xinstall_type'] == 'tgz':
         url_prepend = ''
     else:
         url_prepend = '%s:' % image['xinstall_type']

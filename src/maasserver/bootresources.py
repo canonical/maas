@@ -42,6 +42,7 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE,
     COMPONENT,
@@ -574,11 +575,6 @@ class BootResourceStore(ObjectStore):
         :type product: dict
         :param reader: File-like object.
         """
-        # Skip filetypes that we don't care about. We don't even import them.
-        if product['ftype'] not in dict(
-                BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
-            return
-
         resource = self.get_or_create_boot_resource(product)
         is_resource_initially_complete = (
             resource.get_latest_complete_set() is not None)
@@ -852,7 +848,21 @@ class BootResourceRepoWriter(BasicMirrorWriter):
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
         item = sutil.products_exdata(src, pedigree)
-        self.store.insert(item, contentsource)
+        product_name = pedigree[0]
+        version_name = pedigree[1]
+        versions = src['products'][product_name]['versions']
+        items = versions[version_name]['items']
+        if (
+                item['ftype'] == BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE and
+                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in items.keys()):
+            # If both a SquashFS and root-image.gz are available only insert
+            # the SquashFS image.
+            return
+        elif item['ftype'] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
+            # Skip filetypes that we don't know about.
+            return
+        else:
+            self.store.insert(item, contentsource)
 
 
 def download_boot_resources(path, store, product_mapping,

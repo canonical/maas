@@ -138,12 +138,18 @@ def compose_targets_conf(snapshot_path):
         entries.add((osystem, arch, subarch, release, label))
     tgt_entries = []
     for osystem, arch, subarch, release, label in sorted(entries):
-        root_image = os.path.join(
+        base_path = os.path.join(
             snapshot_path, osystem, arch, subarch,
-            release, label, 'root-image')
+            release, label)
+        root_image = os.path.join(base_path, 'root-image')
         if os.path.isfile(root_image):
             entry = tgt_entry(
                 osystem, arch, subarch, release, label, root_image)
+            tgt_entries.append(entry)
+        squashfs_image = os.path.join(base_path, 'squashfs')
+        if os.path.isfile(squashfs_image):
+            entry = tgt_entry(
+                osystem, arch, subarch, release, label, squashfs_image)
             tgt_entries.append(entry)
     text = ''.join(tgt_entries)
     return text.encode('utf-8')
