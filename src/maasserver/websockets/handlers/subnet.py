@@ -43,6 +43,8 @@ class SubnetHandler(TimestampedModelHandler):
         ]
 
     def dehydrate_dns_servers(self, dns_servers):
+        if dns_servers is None:
+            return ""
         return " ".join(sorted(dns_servers))
 
     def dehydrate(self, subnet, data, for_list=False):
