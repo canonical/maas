@@ -104,3 +104,17 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                 });
         }
     });
+
+// Send pageview to Google Anayltics when the route has changed.
+angular.module('MAAS').run(['$rootScope',
+    function ($rootScope) {
+        window.ga = window.ga || function() {
+            (window.ga.q = window.ga.q || []).push(arguments);
+        };
+        window.ga.l = +new Date();
+        window.ga('create', 'UA-1018242-63', 'auto');
+        $rootScope.$on('$routeChangeSuccess', function() {
+            var path = window.location.pathname + window.location.hash;
+            window.ga('send', 'pageview', path);
+        });
+    }]);

@@ -20,7 +20,8 @@ __all__ = [
     "CreatePhysicalBlockDeviceForm",
     "get_node_edit_form",
     "list_all_usable_architectures",
-    "MAASAndNetworkForm",
+    "MAASForm",
+    "NetworkForm",
     "NetworksListingForm",
     "MachineWithMACAddressesForm",
     "CreatePhysicalBlockDeviceForm",
@@ -1297,9 +1298,14 @@ class ConfigForm(Form):
             return True
 
 
-class MAASAndNetworkForm(ConfigForm):
-    """Settings page, MAAS and Network section."""
+class MAASForm(ConfigForm):
+    """Settings page, MAAS section."""
     maas_name = get_config_field('maas_name')
+    enable_analytics = get_config_field('enable_analytics')
+
+
+class NetworkForm(ConfigForm):
+    """Settings page, Network section."""
     enable_http_proxy = get_config_field('enable_http_proxy')
     http_proxy = get_config_field('http_proxy')
     upstream_dns = get_config_field('upstream_dns')

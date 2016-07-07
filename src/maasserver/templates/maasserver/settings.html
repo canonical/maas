@@ -157,14 +157,27 @@
         </div>
     </div>
     <div class="eight-col border">
-        <div id="maas_and_network" class="eight-col">
+        <div id="maas" class="eight-col">
+            <h2>MAAS Configuration</h2>
+            <form action="{% url 'settings' %}" method="post">
+                {% csrf_token %}
+                <ul>
+                    {% for field in maas_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                </ul>
+                <input type="hidden" name="maas_submit" value="1" />
+                <input type="submit" class="cta-ubuntu right" value="Save" />
+            </form>
+        </div>
+    </div>
+    <div class="eight-col border">
+        <div id="network" class="eight-col">
             <h2>Network Configuration</h2>
             <form action="{% url 'settings' %}" method="post">
                 {% csrf_token %}
                 <ul>
-                    {% for field in maas_and_network_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                    {% for field in network_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
-                <input type="hidden" name="maas_and_network_submit" value="1" />
+                <input type="hidden" name="network_submit" value="1" />
                 <input type="submit" class="cta-ubuntu right" value="Save" />
             </form>
         </div>

@@ -32,6 +32,7 @@ def global_options(context):
         'persistent_errors': get_persistent_errors(),
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
+            'enable_analytics': Config.objects.get_config('enable_analytics'),
         },
         'debug': settings.DEBUG,
         'version': version,

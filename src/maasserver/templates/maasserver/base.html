@@ -28,6 +28,18 @@
         {% include "maasserver/js-conf.html" %}
     {% endblock %}
 
+    <!-- Only present on none AngularJS pages. The MAAS AngularJS module
+         handles sending page views between routes.
+    -->
+    <script>
+        window.ga = window.ga || function() {
+            (window.ga.q = window.ga.q || []).push(arguments);
+        };
+        window.ga.l = +new Date();
+        window.ga('create', 'UA-1018242-63', 'auto');
+        window.ga('send', 'pageview');
+    </script>
+
     {% block head %}
     {% endblock %}
 </head>

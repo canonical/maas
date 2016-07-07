@@ -65,6 +65,8 @@ def get_default_config():
         'enable_disk_erasing_on_release': False,
         # Curtin.
         'curtin_verbose': False,
+        # Analytics.
+        'enable_analytics': True,
         # # /settings
         }
 

@@ -383,6 +383,17 @@ CONFIG_ITEMS = {
                 "provides more detail in the installation logs.")
         }
     },
+    'enable_analytics': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Enable MAAS UI usage of Google Analytics. This helps the "
+                "developers of MAAS to identify usage statistics to futher "
+                "development.")
+        }
+    },
 }
 
 

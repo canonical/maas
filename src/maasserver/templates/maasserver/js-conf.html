@@ -47,3 +47,7 @@ var MAAS_config = {
 <script type="text/javascript"
     src="{% url "merge" filename="maas-yui.js" %}?v={{files_version}}">
 </script>
+
+{% if global_options.enable_analytics %}
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+{% endif %}

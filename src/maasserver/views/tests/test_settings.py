@@ -81,28 +81,40 @@ class SettingsTest(MAASServerTestCase):
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
 
-    def test_settings_maas_and_network_POST(self):
+    def test_settings_maas_POST(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
         self.client_log_in(as_admin=True)
         new_name = factory.make_string()
-        new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
-                prefix='maas_and_network',
+                prefix='maas',
                 data={
                     'maas_name': new_name,
-                    'http_proxy': new_proxy,
                 }))
         self.assertEqual(
             http.client.FOUND, response.status_code, response.content)
         self.assertEqual(
-            (new_name,
-             new_proxy),
-            (Config.objects.get_config('maas_name'),
-             Config.objects.get_config('http_proxy')))
+            new_name, Config.objects.get_config('maas_name'))
+
+    def test_settings_network_POST(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+        self.client_log_in(as_admin=True)
+        new_proxy = "http://%s.example.com:1234/" % factory.make_string()
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='network',
+                data={
+                    'http_proxy': new_proxy,
+                }))
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
+        self.assertEqual(new_proxy, Config.objects.get_config('http_proxy'))
 
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)
