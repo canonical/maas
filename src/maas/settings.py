@@ -156,9 +156,9 @@ SITE_ID = 1
 # to load the internationalization machinery.
 USE_I18N = True
 
-# If you set this to False, Django will not format dates, numbers and
-# calendars according to the current locale
-USE_L10N = True
+# Set the datetime format Django uses in templates to show the time in UTC.
+# The format is consistent with what the websockets use.
+DATETIME_FORMAT = 'D, d M. o H:i:s'
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
