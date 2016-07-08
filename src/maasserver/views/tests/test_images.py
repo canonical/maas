@@ -308,7 +308,11 @@ class OtherImagesTest(MAASServerTestCase):
         last_update = doc.cssselect(
             'table#other-resources > tbody > '
             'tr > td')[5].text_content().strip()
-        self.assertNotEqual('not synced', last_update)
+        dt = datetime.datetime.strptime(last_update, '%a, %d %b. %Y %H:%M:%S')
+        # TimestampedModel includes microseconds which we don't print. To
+        # confirm the right time is returned its easiest to just compare the
+        # ctimes
+        self.assertEquals(cache.updated.ctime(), dt.ctime())
 
     def test_shows_number_of_nodes_for_synced_resource(self):
         self.client_log_in(as_admin=True)
@@ -480,6 +484,20 @@ class GeneratedImagesTest(MAASServerTestCase):
             1, len(delete_btn),
             "Didn't show delete button for generated image.")
 
+    def test_shows_last_update_time_for_synced_resource(self):
+        self.client_log_in(as_admin=True)
+        resource = self.make_generated_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        last_update = doc.cssselect(
+            'table#generated-resources > tbody > '
+            'tr > td')[5].text_content().strip()
+        dt = datetime.datetime.strptime(last_update, '%a, %d %b. %Y %H:%M:%S')
+        # TimestampedModel includes microseconds which we don't print. To
+        # confirm the right time is returned its easiest to just compare the
+        # ctimes
+        self.assertEquals(resource.updated.ctime(), dt.ctime())
+
     def test_hides_delete_button_for_generated_resource_when_not_admin(self):
         self.client_log_in()
         self.make_generated_resource()
@@ -551,6 +569,20 @@ class UploadedImagesTest(MAASServerTestCase):
         name_col = doc.cssselect(
             'table#uploaded-resources > tbody > tr > td')[1].text_content()
         self.assertEqual(name, name_col.strip())
+
+    def test_shows_last_update_time_for_synced_resource(self):
+        self.client_log_in(as_admin=True)
+        resource = self.make_uploaded_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        last_update = doc.cssselect(
+            'table#uploaded-resources > tbody > '
+            'tr > td')[5].text_content().strip()
+        dt = datetime.datetime.strptime(last_update, '%a, %d %b. %Y %H:%M:%S')
+        # TimestampedModel includes microseconds which we don't print. To
+        # confirm the right time is returned its easiest to just compare the
+        # ctimes
+        self.assertEquals(resource.updated.ctime(), dt.ctime())
 
     def test_shows_delete_button_for_uploaded_resource(self):
         self.client_log_in(as_admin=True)
