@@ -377,7 +377,7 @@ class StaticIPAddressManager(Manager):
                 )
             ORDER BY
                 node.hostname,
-                is_boot,
+                is_boot DESC,
                 family(staticip.ip),
                 CASE
                     WHEN interface.type = 'bond' AND
@@ -410,6 +410,42 @@ class StaticIPAddressManager(Manager):
                 END,
                 interface.id
             """
+        iface_sql_query = """
+            SELECT
+                node.hostname,
+                node.system_id,
+                node.node_type,
+                """ + ttl_clause + """ AS ttl,
+                domain.name, staticip.ip,
+                interface.name
+            FROM
+                maasserver_interface AS interface
+            JOIN maasserver_node AS node ON
+                node.id = interface.node_id
+            JOIN maasserver_domain as domain ON
+                domain.id = node.domain_id
+            JOIN maasserver_interface_ip_addresses AS link ON
+                link.interface_id = interface.id
+            JOIN maasserver_staticipaddress AS staticip ON
+                staticip.id = link.staticipaddress_id
+            LEFT JOIN maasserver_domain as domain2 ON
+                /* Pick up another copy of domain looking for instances of
+                 * the name as the top of a domain.
+                 */
+                domain2.name = CONCAT(
+                    interface.name, '.', node.hostname, '.', domain.name)
+            WHERE
+                staticip.ip IS NOT NULL AND
+                host(staticip.ip) != '' AND
+                (""" + search_term + """ = %s) AND
+                (
+                    node.disable_ipv4 IS FALSE OR
+                    family(staticip.ip) <> 4
+                )
+            ORDER BY
+                node.hostname,
+                interface.id
+            """
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
         mapping = self._get_user_reserved_mappings(domain_or_subnet)
@@ -421,22 +457,31 @@ class StaticIPAddressManager(Manager):
         # stripping domain), the boot and non-boot interface ip address in ipv4
         # and ipv6.  Our task: if there are boot interace IPs, they win.  If
         # there are none, then whatever we got wins.  The ORDER BY means that
-        # we will see all of the non-boot interfaces before we see any boot
+        # we will see all of the boot interfaces before we see any non-boot
         # interface IPs.  See Bug#1584850
-        for (node_name, system_id, node_type,
-                ttl, domain_name, ip, is_boot) in cursor.fetchall():
-            hostname = "%s.%s" % (strip_domain(node_name), domain_name)
-            mapping[hostname].node_type = node_type
-            mapping[hostname].system_id = system_id
-            mapping[hostname].ttl = ttl
-            # If this is a boot interface, and we have previously only found
-            # non-boot interface IPs, discard them. See also Bug#1584850.
-            if is_boot and not iface_is_boot[hostname]:
-                mapping[hostname].ips = set()
-                iface_is_boot[hostname] = True
-            # At this point, if the interface type is correct, keep the IP.
-            if is_boot == iface_is_boot[hostname]:
-                mapping[hostname].ips.add(ip)
+        for (node_name, system_id, node_type, ttl, domain_name,
+                ip, is_boot) in cursor.fetchall():
+            fqdn = "%s.%s" % (strip_domain(node_name), domain_name)
+            mapping[fqdn].node_type = node_type
+            mapping[fqdn].system_id = system_id
+            mapping[fqdn].ttl = ttl
+            if is_boot:
+                iface_is_boot[fqdn] = True
+            # If we have an IP on the right interface type, save it.
+            if is_boot == iface_is_boot[fqdn]:
+                mapping[fqdn].ips.add(ip)
+        # Next, get all the addresses, on all the interfaces, and add the ones
+        # that are not already present on the FQDN as $IFACE.$FQDN.
+        cursor.execute(iface_sql_query, (domain_or_subnet.id,))
+        for (node_name, system_id, node_type, ttl,
+                domain_name, ip, iface_name) in cursor.fetchall():
+            fqdn = "%s.%s" % (strip_domain(node_name), domain_name)
+            if ip not in mapping[fqdn].ips:
+                name = "%s.%s" % (iface_name, fqdn)
+                mapping[name].node_type = node_type
+                mapping[name].system_id = system_id
+                mapping[name].ttl = ttl
+                mapping[name].ips.add(ip)
         return mapping
 
     def filter_by_ip_family(self, family):

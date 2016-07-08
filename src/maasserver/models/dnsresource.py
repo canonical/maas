@@ -75,14 +75,17 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
     """
     if fqdn is None or fqdn == '' or fqdn == '@':
         return (fqdn, None)
-    elif Domain.objects.filter(name=fqdn).exists():
-        if domainname == fqdn or domainname is None:
+    if domainname is not None:
+        if domainname == fqdn:
             return ('@', fqdn)
         else:
             # strip off the passed in ".$domainname" from the fqdn.
             name = fqdn[:-len(domainname) - 1]
             return (name, domainname)
-    elif rrtype == 'SRV':
+    else:
+        if Domain.objects.filter(name=fqdn).exists():
+            return ('@', fqdn)
+    if rrtype == 'SRV':
         spec = SRV_LHS
     else:
         spec = LABEL

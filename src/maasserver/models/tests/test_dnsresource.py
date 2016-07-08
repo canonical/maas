@@ -131,9 +131,9 @@ class DNSResourceTest(MAASServerTestCase):
         parent = "%s.%s" % (
             factory.make_name("b"),
             factory.make_name("c"))
-        label = factory.make_name("a")
+        label = "%s.%s" % (factory.make_name("a"), factory.make_name("d"))
         name = "%s.%s" % (label, parent)
-        factory.make_Domain(name=name)
+        factory.make_Domain(name=parent)
         self.assertEqual(
             (label, parent), separate_fqdn(name, domainname=parent))
 
