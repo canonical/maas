@@ -808,6 +808,13 @@ class AnonMachinesHandler(AnonNodesHandler):
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
         :type power_type:unicode
+
+        :param power_parameters_{param}: The parameter(s) for the power_type.
+            Note that this is dynamic as the available parameters depend on
+            the selected value of the Machine's power_type. `Power types`_
+            section for a list of the available power parameters for each
+            power type.
+        :type power_parameters_{param1}: unicode
         """
         return create_machine(request)
 
