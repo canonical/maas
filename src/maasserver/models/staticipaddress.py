@@ -52,7 +52,6 @@ from maasserver.models.config import Config
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils import strip_domain
 from maasserver.utils.dns import get_ip_based_hostname
 from maasserver.utils.orm import (
     request_transaction_retry,
@@ -229,8 +228,10 @@ class StaticIPAddressManager(Manager):
         qs = self.filter(
             Q(alloc_type=IPADDRESS_TYPE.USER_RESERVED) |
             Q(dnsresource__isnull=False))
+        # If this is a subnet, we need to ignore subnet.id, as per
+        # get_hostname_ip_mapping().  LP#1600259
         if isinstance(domain_or_subnet, Subnet):
-            qs = qs.filter(subnet_id=domain_or_subnet.id)
+            pass
         elif isinstance(domain_or_subnet, Domain):
             qs = qs.filter(dnsresource__domain_id=domain_or_subnet.id)
         qs = qs.prefetch_related("dnsresource_set")
@@ -310,20 +311,6 @@ class StaticIPAddressManager(Manager):
         # return the IPs for the oldest Interface address.
         #
         # For nodes that have disable_ipv4 set, leave out any IPv4 address.
-        if isinstance(domain_or_subnet, Subnet):
-            search_term = "staticip.subnet_id"
-        elif isinstance(domain_or_subnet, Domain):
-            # The model has nodes in the parent domain, but they actually live
-            # in the child domain.  And the parent needs the glue.  So we
-            # return such nodes addresses in _BOTH_ the parent and the child
-            # domains. domain2.name will be non-null if this host's fqdn is the
-            # name of a domain in MAAS.
-            # n.b.  The SQL says: WHERE ... $search_term = %s ...
-            # we overload that to accomplish our objectives.
-            search_term = """domain2.name IS NOT NULL OR node.domain_id"""
-        else:
-            raise ValueError('bad object passed to get_hostname_ip_mapping')
-
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
         if raw_ttl:
             ttl_clause = """node.address_ttl"""
@@ -335,11 +322,11 @@ class StaticIPAddressManager(Manager):
                     %s)""" % default_ttl
         sql_query = """
             SELECT DISTINCT ON (node.hostname, is_boot, family(staticip.ip))
-                node.hostname,
+                CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
                 """ + ttl_clause + """ AS ttl,
-                domain.name, staticip.ip,
+                staticip.ip,
                 COALESCE(
                     node.boot_interface_id IS NOT NULL AND
                     (
@@ -362,15 +349,35 @@ class StaticIPAddressManager(Manager):
                 link.interface_id = interface.id
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.staticipaddress_id
+            """
+        if isinstance(domain_or_subnet, Domain):
+            # The model has nodes in the parent domain, but they actually live
+            # in the child domain.  And the parent needs the glue.  So we
+            # return such nodes addresses in _BOTH_ the parent and the child
+            # domains. domain2.name will be non-null if this host's fqdn is the
+            # name of a domain in MAAS.
+            sql_query += """
             LEFT JOIN maasserver_domain as domain2 ON
                 /* Pick up another copy of domain looking for instances of
                  * nodes a the top of a domain.
                  */
                 domain2.name = CONCAT(node.hostname, '.', domain.name)
             WHERE
+                (domain2.name IS NOT NULL OR node.domain_id = %s) AND
+            """
+            query_parms = [domain_or_subnet.id, ]
+        else:
+            # For subnets, we need ALL the names, so that we can correctly
+            # identify which ones should have the FQDN.  dns/zonegenerator.py
+            # optimizes based on this, and only calls once with a subnet,
+            # expecting to get all the subnets back in one table.
+            sql_query += """
+            WHERE
+            """
+            query_parms = []
+        sql_query += """
                 staticip.ip IS NOT NULL AND
                 host(staticip.ip) != '' AND
-                (""" + search_term + """ = %s) AND
                 (
                     node.disable_ipv4 IS FALSE OR
                     family(staticip.ip) <> 4
@@ -412,11 +419,11 @@ class StaticIPAddressManager(Manager):
             """
         iface_sql_query = """
             SELECT
-                node.hostname,
+                CONCAT(node.hostname, '.', domain.name) AS fqdn,
                 node.system_id,
                 node.node_type,
                 """ + ttl_clause + """ AS ttl,
-                domain.name, staticip.ip,
+                staticip.ip,
                 interface.name
             FROM
                 maasserver_interface AS interface
@@ -428,6 +435,10 @@ class StaticIPAddressManager(Manager):
                 link.interface_id = interface.id
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.staticipaddress_id
+            """
+        if isinstance(domain_or_subnet, Domain):
+            # This logic is similar to the logic in sql_query above.
+            iface_sql_query += """
             LEFT JOIN maasserver_domain as domain2 ON
                 /* Pick up another copy of domain looking for instances of
                  * the name as the top of a domain.
@@ -435,9 +446,19 @@ class StaticIPAddressManager(Manager):
                 domain2.name = CONCAT(
                     interface.name, '.', node.hostname, '.', domain.name)
             WHERE
+                (domain2.name IS NOT NULL OR node.domain_id = %s) AND
+            """
+        else:
+            # For subnets, we need ALL the names, so that we can correctly
+            # identify which ones should have the FQDN.  dns/zonegenerator.py
+            # optimizes based on this, and only calls once with a subnet,
+            # expecting to get all the subnets back in one table.
+            iface_sql_query += """
+            WHERE
+            """
+        iface_sql_query += """
                 staticip.ip IS NOT NULL AND
                 host(staticip.ip) != '' AND
-                (""" + search_term + """ = %s) AND
                 (
                     node.disable_ipv4 IS FALSE OR
                     family(staticip.ip) <> 4
@@ -449,19 +470,20 @@ class StaticIPAddressManager(Manager):
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
         mapping = self._get_user_reserved_mappings(domain_or_subnet)
+        # All of the mappings that we got mean that we will only want to add
+        # addresses for the boot interface (is_boot == True).
         iface_is_boot = defaultdict(bool, {
             hostname: True for hostname in mapping.keys()
         })
-        cursor.execute(sql_query, (domain_or_subnet.id,))
+        cursor.execute(sql_query, query_parms)
         # The records from the query provide, for each hostname (after
         # stripping domain), the boot and non-boot interface ip address in ipv4
         # and ipv6.  Our task: if there are boot interace IPs, they win.  If
         # there are none, then whatever we got wins.  The ORDER BY means that
         # we will see all of the boot interfaces before we see any non-boot
         # interface IPs.  See Bug#1584850
-        for (node_name, system_id, node_type, ttl, domain_name,
+        for (fqdn, system_id, node_type, ttl,
                 ip, is_boot) in cursor.fetchall():
-            fqdn = "%s.%s" % (strip_domain(node_name), domain_name)
             mapping[fqdn].node_type = node_type
             mapping[fqdn].system_id = system_id
             mapping[fqdn].ttl = ttl
@@ -473,9 +495,8 @@ class StaticIPAddressManager(Manager):
         # Next, get all the addresses, on all the interfaces, and add the ones
         # that are not already present on the FQDN as $IFACE.$FQDN.
         cursor.execute(iface_sql_query, (domain_or_subnet.id,))
-        for (node_name, system_id, node_type, ttl,
-                domain_name, ip, iface_name) in cursor.fetchall():
-            fqdn = "%s.%s" % (strip_domain(node_name), domain_name)
+        for (fqdn, system_id, node_type, ttl,
+                ip, iface_name) in cursor.fetchall():
             if ip not in mapping[fqdn].ips:
                 name = "%s.%s" % (iface_name, fqdn)
                 mapping[name].node_type = node_type

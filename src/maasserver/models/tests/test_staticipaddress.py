@@ -33,6 +33,7 @@ from maasserver.models.staticipaddress import (
     HostnameIPMapping,
     StaticIPAddress,
 )
+from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -354,6 +355,26 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             expected_mapping[full_hostname] = HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_returns_all_mappings_for_subnet(self):
+        domain = Domain.objects.get_default_domain()
+        expected_mapping = {}
+        for _ in range(3):
+            node = factory.make_Node(interface=True, disable_ipv4=False)
+            boot_interface = node.get_boot_interface()
+            subnet = factory.make_Subnet()
+            staticip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip=factory.pick_ip_in_Subnet(subnet),
+                subnet=subnet, interface=boot_interface)
+            full_hostname = "%s.%s" % (node.hostname, domain.name)
+            expected_mapping[full_hostname] = HostnameIPMapping(
+                node.system_id, 30, {staticip.ip}, node.node_type)
+        # See also LP#1600259.  It doesn't matter what subnet is passed in, you
+        # get all of them.
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            Subnet.objects.first())
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_returns_fqdn_and_other(self):
