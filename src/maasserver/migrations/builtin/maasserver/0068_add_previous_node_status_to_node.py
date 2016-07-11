@@ -10,7 +10,7 @@ from django.db import (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0066_drop_node_system_id_sequence'),
+        ('maasserver', '0067_drop_node_system_id_sequence'),
     ]
 
     operations = [
