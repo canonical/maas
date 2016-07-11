@@ -1746,8 +1746,9 @@
                         data-ng-disabled="!canCreateCacheSet()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createCacheSet()">Create cache Set</a>
-                    <a class="link-cta-ubuntu secondary margin-right tooltip"
-                        data-tooltip="Create at least one cache set, then select your backing device to create bcache"
+                    <a class="link-cta-ubuntu secondary margin-right"
+                        data-tooltip="{$ getCannotCreateBcacheMsg() $}"
+                        data-ng-class="{ tooltip: !canCreateBcache() }"
                         data-ng-disabled="!canCreateBcache()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createBcache()">Create bcache</a>

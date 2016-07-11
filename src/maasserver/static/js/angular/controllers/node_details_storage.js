@@ -1415,20 +1415,47 @@ angular.module('MAAS').controller('NodeStorageController', [
             $scope.available.splice(idx, 1);
         };
 
+        // Return the reason a bcache device cannot be created.
+        $scope.getCannotCreateBcacheMsg = function() {
+            if($scope.cachesets.length === 0) {
+                return "Create at least one cache set to create bcache";
+            } else {
+                var selected = $scope.getSelectedAvailable();
+                if(selected.length === 1) {
+                    if($scope.hasUnmountedFilesystem(selected[0])) {
+                        return (
+                            "Device is formatted; unformat the " +
+                            "device to create bcache");
+                    } else if(selected[0].type === "lvm-vg") {
+                        return (
+                            "Cannot use a logical volume as a backing " +
+                            "device for bcache.");
+                    } else if(selected[0].has_partitions) {
+                        return (
+                            "Device has already been partitioned; create a " +
+                            "new partition to use as the bcache backing " +
+                            "device");
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return "Select only one available device to create bcache";
+                }
+            }
+        };
+
         // Return true if a bcache can be created.
         $scope.canCreateBcache = function() {
-            if($scope.isAvailableDisabled() || ! $scope.isSuperUser()) {
+            if($scope.isAvailableDisabled() || !$scope.isSuperUser()) {
                 return false;
             }
 
-            var selected = $scope.getSelectedAvailable();
-            if(selected.length === 1) {
-                var allowed = (
-                    !$scope.hasUnmountedFilesystem(selected[0]) &&
-                    selected[0].type !== "lvm-vg");
-                return allowed && $scope.cachesets.length > 0;
+            var msg = $scope.getCannotCreateBcacheMsg();
+            if(msg === null) {
+                return true;
+            } else {
+                return false;
             }
-            return false;
         };
 
         // Enter bcache mode.
