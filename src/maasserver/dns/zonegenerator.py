@@ -22,11 +22,7 @@ from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
-from maasserver.models.node import Node
-from maasserver.models.staticipaddress import (
-    HostnameIPMapping,
-    StaticIPAddress,
-)
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import (
@@ -255,12 +251,16 @@ class ZoneGenerator:
                         IPNetwork("%s/124" % network.network).network)
                     rfc2317_glue.setdefault(basenet, set()).add(network)
 
+        # Since get_hostname_ip_mapping(Subnet) ignores Subnet.id, so we can
+        # just do it once and be happy.  LP#1600259
+        if len(subnets):
+            mappings['reverse'] = mappings[Subnet.objects.first()]
+
         # For each of the zones that we are generating (one or more per
         # subnet), compile the zone from:
         # 1. Dynamic ranges on this subnet.
         # 2. Node: ip mapping(subnet), including DNSResource records for
         #    StaticIPAddresses in this subnet.
-        # 3. Interfaces on any node that have IP addresses in this subnet.
         # All of this needs to be done smallest to largest so that we can
         # correctly gather the rfc2317 glue that we need.  Failure to sort
         # means that we wind up grabbing (and deleting) the rfc2317 glue info
@@ -283,38 +283,12 @@ class ZoneGenerator:
                 for ip_range in subnet.get_dynamic_ranges()
             ]
 
-            # 2. Start with the map of all of the nodes on this subnet,
-            # including all DNSResource-associated addresses.
-            mapping = mappings[subnet]
-
-            # 3. Add all of the interface named records.
-            # 2015-12-18 lamont N.B., these are not found in the forward zone,
-            # on purpose.  If someone eventually calls this a bug, we can
-            # revisit the size increase this would create in the forward zone.
-            # This will also include any discovered addresses on such
-            # interfaces.
-            nodes = Node.objects.filter(
-                interface__ip_addresses__subnet_id=subnet.id,
-                interface__ip_addresses__ip__isnull=False).prefetch_related(
-                "interface_set__ip_addresses")
-            for node in nodes:
-                if node.address_ttl is not None:
-                    ttl = node.address_ttl
-                elif node.domain.ttl is not None:
-                    ttl = node.domain.ttl
-                else:
-                    ttl = default_ttl
-                for iface in node.interface_set.all():
-                    ips_in_subnet = {
-                        ip.ip
-                        for ip in iface.ip_addresses.all()
-                        if (ip.ip is not None and ip.subnet_id == subnet.id)}
-                    if len(ips_in_subnet) > 0:
-                        iface_map = HostnameIPMapping(
-                            node.system_id, ttl, ips_in_subnet, node.node_type)
-                        mapping.update({
-                            "%s.%s" % (iface.name, iface.node.fqdn): iface_map
-                        })
+            # 2. Start with the map of all of the nodes, including all
+            # DNSResource-associated addresses.  We will prune this to just
+            # entries for the subnet when we actually generate the zonefile.
+            # If we get here, then we have subnets, so we noticed that above
+            # and created mappings['reverse'].  LP#1600259
+            mapping = mappings['reverse']
 
             # Use the default_domain as the name for the NS host in the reverse
             # zones.  If this network is actually a parent rfc2317 glue
