@@ -19,6 +19,8 @@ LP: #1591093    [2.0,1.9] 3rd party HP drivers (archive hostname renamed) - depl
 
 LP: #1597460    [1.9] MAAS 1.9 should only download filetypes from a SimpleStream is can process
 
+LP: #1567249    [1.9] If rack and region have different versions, the error is uninformative and confusing.
+
 1.9.3
 =====
 

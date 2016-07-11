@@ -27,6 +27,7 @@ from maasserver.clusterrpc.power_parameters import (
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
 )
 from maasserver.config_forms import DictCharField
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MACAddressFormField
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -322,3 +323,20 @@ class TestPowerTypes(MAASTestCase):
         self.assertThat(
             mocked, MockCalledOnceWith(
                 sentinel.nodegroup, sentinel.ignore_errors))
+
+    def test_get_power_types_detects_missing_missing_packages_key(self):
+        mocked = self.patch(power_parameters, "call_clusters")
+        mocked.return_value = [{
+            'power_types': [
+                {'name': "virsh", 'fields': "foo", 'description': "desc"},
+                {'name': "other", 'fields': "bar", 'description': "meh"},
+            ],
+        }]
+        e = self.assertRaises(
+            ClusterUnavailable,
+            power_parameters.get_all_power_types_from_clusters
+        )
+        self.assertEqual(
+            """Bad response from cluster controller.  This likely """
+            """means that it is running an earlier version of MAAS.""",
+            e.message)

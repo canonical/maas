@@ -40,6 +40,7 @@ from django import forms
 from jsonschema import validate
 from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MACAddressFormField
 from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.power.schema import (
@@ -199,7 +200,20 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
             name = power_type['name']
             fields = power_type['fields']
             description = power_type['description']
-            missing_packages = power_type['missing_packages']
+            try:
+                missing_packages = power_type['missing_packages']
+            except KeyError:
+                msg = (
+                    """Bad response from cluster controller.  This likely """
+                    """means that it is running an earlier version of MAAS.""")
+                if nodegroups is not None:
+                    if len(nodegroups) == 1:
+                        msg += " Controller: "
+                    else:
+                        msg += " Controllers: "
+                    msg += ", ".join([ctl.name for ctl in nodegroups])
+                    msg += "."
+                raise ClusterUnavailable(msg)
             add_power_type_parameters(
                 name, description, fields, missing_packages, merged_types)
     return sorted(merged_types, key=itemgetter("description"))
