@@ -3202,6 +3202,92 @@ describe("NodeStorageController", function() {
             });
     });
 
+    describe("getCannotCreateBcacheMsg", function() {
+
+        it("returns msg if no cachesets",
+            function() {
+                var controller = makeController();
+                $scope.available = [
+                    {
+                        fstype: null,
+                        $selected: true,
+                        has_partitions: false
+                    }
+                ];
+                $scope.cachesets = [];
+                expect($scope.getCannotCreateBcacheMsg()).toBe(
+                    "Create at least one cache set to create bcache");
+            });
+
+        it("returns msg if two selected", function() {
+            var controller = makeController();
+            $scope.cachesets = [{}];
+            $scope.available = [ { $selected: true }, { $selected: true }];
+            expect($scope.getCannotCreateBcacheMsg()).toBe(
+                "Select only one available device to create bcache");
+        });
+
+        it("returns msg if selected has fstype", function() {
+            var controller = makeController();
+            $scope.available = [
+                {
+                    fstype: "ext4",
+                    $selected: true,
+                    has_partitions: false
+                }
+            ];
+            $scope.cachesets = [{}];
+
+            expect($scope.getCannotCreateBcacheMsg()).toBe(
+                "Device is formatted; unformat the device to create bcache");
+        });
+
+        it("returns msg if selected is volume group", function() {
+            var controller = makeController();
+            $scope.available = [
+                {
+                    type: "lvm-vg",
+                    fstype: null,
+                    $selected: true,
+                    has_partitions: false
+                }
+            ];
+            $scope.cachesets = [{}];
+            expect($scope.getCannotCreateBcacheMsg()).toBe(
+                "Cannot use a logical volume as a backing device for bcache.");
+        });
+
+        it("returns msg if selected has partitions", function() {
+            var controller = makeController();
+            $scope.available = [
+                {
+                    fstype: null,
+                    $selected: true,
+                    has_partitions: true
+                }
+            ];
+            $scope.cachesets = [{}];
+            expect($scope.getCannotCreateBcacheMsg()).toBe(
+                "Device has already been partitioned; create a " +
+                "new partition to use as the bcache backing " +
+                "device");
+        });
+
+        it("returns null if selected is valid",
+            function() {
+                var controller = makeController();
+                $scope.available = [
+                    {
+                        fstype: null,
+                        $selected: true,
+                        has_partitions: false
+                    }
+                ];
+                $scope.cachesets = [{}];
+                expect($scope.getCannotCreateBcacheMsg()).toBeNull();
+            });
+    });
+
     describe("canCreateBcache", function() {
 
         it("returns false when isAvailableDisabled is true", function() {
@@ -3227,7 +3313,8 @@ describe("NodeStorageController", function() {
             $scope.available = [
                 {
                     fstype: "ext4",
-                    $selected: true
+                    $selected: true,
+                    has_partitions: false
                 }
             ];
             $scope.cachesets = [{}];
@@ -3243,7 +3330,24 @@ describe("NodeStorageController", function() {
                 {
                     type: "lvm-vg",
                     fstype: null,
-                    $selected: true
+                    $selected: true,
+                    has_partitions: false
+                }
+            ];
+            $scope.cachesets = [{}];
+            $scope.isSuperUser = function() { return true; };
+
+            expect($scope.canCreateBcache()).toBe(false);
+        });
+
+        it("returns false if selected has partitions", function() {
+            var controller = makeController();
+            spyOn($scope, "isAvailableDisabled").and.returnValue(false);
+            $scope.available = [
+                {
+                    fstype: null,
+                    $selected: true,
+                    has_partitions: true
                 }
             ];
             $scope.cachesets = [{}];
@@ -3259,7 +3363,8 @@ describe("NodeStorageController", function() {
                 $scope.available = [
                     {
                         fstype: null,
-                        $selected: true
+                        $selected: true,
+                        has_partitions: false
                     }
                 ];
                 $scope.cachesets = [];
@@ -3275,7 +3380,8 @@ describe("NodeStorageController", function() {
                 $scope.available = [
                     {
                         fstype: null,
-                        $selected: true
+                        $selected: true,
+                        has_partitions: false
                     }
                 ];
                 $scope.cachesets = [{}];
@@ -3291,7 +3397,8 @@ describe("NodeStorageController", function() {
                 $scope.available = [
                     {
                         fstype: null,
-                        $selected: true
+                        $selected: true,
+                        has_partitions: false
                     }
                 ];
                 $scope.cachesets = [{}];
