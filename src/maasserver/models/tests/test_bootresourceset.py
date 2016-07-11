@@ -9,10 +9,7 @@ import random
 from unittest import skip
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
-from maasserver.models.bootresourceset import (
-    COMMISSIONABLE_SET,
-    XINSTALL_TYPES,
-)
+from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -31,15 +28,25 @@ class TestBootResourceSet(MAASServerTestCase):
     def test_commissionable_returns_true_when_all_filetypes_present(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
-        self.make_all_boot_resource_files(resource_set, COMMISSIONABLE_SET)
+        commissionable_set = {
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+            random.choice([
+                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+                BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+            ]),
+        }
+        self.make_all_boot_resource_files(resource_set, commissionable_set)
         self.assertTrue(resource_set.commissionable)
 
     def test_commissionable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
-        types = COMMISSIONABLE_SET.copy()
-        types.pop()
-        self.make_all_boot_resource_files(resource_set, types)
+        commissionable_set = {
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+        }
+        self.make_all_boot_resource_files(resource_set, commissionable_set)
         self.assertFalse(resource_set.commissionable)
 
     def test_xinstallable_returns_true_when_filetype_present(self):
@@ -55,7 +62,12 @@ class TestBootResourceSet(MAASServerTestCase):
     def test_xinstallable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
-        filetype = random.choice(list(COMMISSIONABLE_SET))
+        filetype = random.choice([
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+        ])
         factory.make_boot_resource_file_with_content(
             resource_set, filename=filetype, filetype=filetype)
         self.assertFalse(resource_set.xinstallable)

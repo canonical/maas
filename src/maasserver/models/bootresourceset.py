@@ -16,18 +16,11 @@ from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
-# `BootResourceSet` must contain all file types to be consider as supporting
-# the ability to commission.
-COMMISSIONABLE_SET = {
-    BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
-    BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
-    BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
-    }
-
 # `BootResourceSet` must contain at least one of the file types to be consider
 # as supporting the ability to xinstall. 'xinstall' being the
 # fastpath-installer.
 XINSTALL_TYPES = (
+    BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
     BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
     BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
     BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
@@ -76,7 +69,14 @@ class BootResourceSet(CleanSave, TimestampedModel):
         """True if `BootResourceSet` supports the ability to commission a
         node."""
         types = {resource_file.filetype for resource_file in self.files.all()}
-        return COMMISSIONABLE_SET.issubset(types)
+        return (
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL in types and
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD in types and
+            (
+                BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in types or
+                BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE in types
+            )
+        )
 
     @property
     def xinstallable(self):

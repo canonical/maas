@@ -314,10 +314,13 @@ class BOOT_RESOURCE_FILE_TYPE:
     ROOT_DD = 'root-dd'
 
     # Following are not allowed on user upload. Only used for syncing
-    # from another simplestreams source. (Most likely maas.io)
+    # from another simplestreams source. (Most likely images.maas.io)
 
-    #: Root Image (gets converted to root-image root-tgz, on Cluster)
+    #: Root Image (gets converted to root-image root-tgz, on the rack)
     ROOT_IMAGE = 'root-image.gz'
+
+    # Root image in SquashFS form, does not need to be converted
+    SQUASHFS_IMAGE = 'squashfs'
 
     #: Boot Kernel (ISCSI kernel)
     BOOT_KERNEL = 'boot-kernel'
@@ -335,6 +338,7 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, "Root Image (tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_DD, "Root Compressed DD (dd -> tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE, "Compressed Root Image"),
+    (BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE, "SquashFS Root Image"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, "Initial ISCSI Ramdisk"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, "ISCSI Device Tree Blob"),

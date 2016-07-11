@@ -953,7 +953,7 @@ class TestCurtinUtilities(
             'get_boot_images_for').return_value = images
         self.assertEqual(xinstall_image, get_curtin_image(node))
 
-    def test_get_curtin_installer_url_returns_url(self):
+    def test_get_curtin_installer_url_returns_url_for_tgz(self):
         osystem = make_usable_osystem(self)
         series = osystem['default_release']
         architecture = make_usable_architecture(self)
@@ -980,6 +980,30 @@ class TestCurtinUtilities(
                 xinstall_type, cluster_ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
+
+    def test_get_curtin_installer_url_returns_cp_for_squashfs(self):
+        osystem = make_usable_osystem(self)
+        series = osystem['default_release']
+        architecture = make_usable_architecture(self)
+        xinstall_path = factory.make_name('xi_path')
+        xinstall_type = 'squashfs'
+        cluster_ip = factory.make_ipv4_address()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=osystem['name'],
+            architecture=architecture, distro_series=series,
+            boot_cluster_ip=cluster_ip)
+        arch, subarch = architecture.split('/')
+        boot_image = make_rpc_boot_image(
+            osystem=osystem['name'], release=series,
+            architecture=arch, subarchitecture=subarch,
+            purpose='xinstall', xinstall_path=xinstall_path,
+            xinstall_type=xinstall_type)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
+
+        installer_url = get_curtin_installer_url(node)
+        self.assertEqual('cp:///media/root-ro', installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
         osystem = make_usable_osystem(self)

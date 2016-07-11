@@ -5,12 +5,15 @@
 
 __all__ = []
 
+from datetime import datetime
+from email.utils import format_datetime
 import http.client
 from io import BytesIO
 import json
 import logging
 import os
 from os import environ
+import random
 from random import randint
 from subprocess import CalledProcessError
 from unittest import skip
@@ -34,6 +37,7 @@ from fixtures import (
 )
 from maasserver import bootresources
 from maasserver.bootresources import (
+    BootResourceRepoWriter,
     BootResourceStore,
     download_all_boot_resources,
     download_boot_resources,
@@ -80,6 +84,7 @@ from maasserver.utils.orm import (
     reload_object,
 )
 from maastesting.matchers import (
+    MockCalledOnce,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -953,21 +958,6 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             other_file.largefile, reload_object(other_file).largefile)
         self.assertThat(mock_save_later, MockNotCalled())
 
-    def test_insert_doesnt_create_largefile_for_unknown_ftype(self):
-        name, architecture, product = make_product()
-        product['ftype'] = factory.make_name("ftype")
-        with transaction.atomic():
-            resource = factory.make_BootResource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
-                architecture=architecture)
-            resource_set = factory.make_BootResourceSet(
-                resource, version=product['version_name'])
-        product['sha256'] = factory.make_string(size=64)
-        product['size'] = randint(1024, 2048)
-        store = BootResourceStore()
-        store.insert(product, sentinel.reader)
-        self.assertThat(reload_object(resource_set).files.all(), HasLength(0))
-
     def test_insert_creates_new_largefile(self):
         name, architecture, product = make_product()
         with transaction.atomic():
@@ -1647,3 +1637,102 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         response = {"images": [make_rpc_boot_image()]}
         cluster_rpc.ListBootImages.return_value = succeed(response)
         self.assertTrue(service.are_boot_images_available_in_any_rack())
+
+
+class TestBootResourceRepoWriter(MAASServerTestCase):
+    """Tests for `BootResourceRepoWriter`."""
+
+    def create_simplestream(self, ftypes):
+        version = '16.04'
+        arch = 'amd64'
+        subarch = 'hwe-x'
+        product = "com.ubuntu.maas.daily:v2:boot:%s:%s:%s" % (
+            version, arch, subarch)
+        version = datetime.now().date().strftime('%Y%m%d.0')
+        versions = {
+            version: {
+                'items': {
+                    ftype: {
+                        'sha256': factory.make_name('sha256'),
+                        'path': factory.make_name('path'),
+                        'ftype': ftype,
+                        'size': random.randint(0, 2**64),
+                    } for ftype in ftypes
+                }
+            }
+        }
+        products = {
+            product: {
+                'krel': 'xenial',
+                'subarch': subarch,
+                'label': 'daily',
+                'os': 'ubuntu',
+                'arch': arch,
+                'subarches': 'generic,%s' % subarch,
+                'kflavor': 'generic',
+                'version': version,
+                'versions': versions,
+            }
+        }
+        src = {
+            'datatype': 'image-downloads',
+            'format': 'products:1.0',
+            'updated': format_datetime(datetime.now()),
+            'products': products,
+            'content_id': 'com.ubuntu.maas:daily:v2:download'
+        }
+        return src, product, version
+
+    def test_insert_prefers_squashfs_over_root_image(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockNotCalled())
+
+    def test_insert_allows_squashfs(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+
+    def test_insert_allows_root_image(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+
+    def test_insert_ignores_unknown_ftypes(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        unknown_ftype = factory.make_name('ftype')
+        src, product, version = self.create_simplestream([
+            unknown_ftype,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            unknown_ftype]
+        pedigree = (product, version, unknown_ftype)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockNotCalled())

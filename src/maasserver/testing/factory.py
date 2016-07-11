@@ -96,10 +96,7 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC
-from maasserver.models.bootresourceset import (
-    COMMISSIONABLE_SET,
-    XINSTALL_TYPES,
-)
+from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.interface import (
     Interface,
     InterfaceRelationship,
@@ -1391,7 +1388,14 @@ class Factory(maastesting.factory.Factory):
             kflavor=kflavor)
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
-        filetypes = set(COMMISSIONABLE_SET)
+        filetypes = {
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+        }
+        filetypes.add(random.choice([
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+        ]))
         filetypes.add(random.choice(XINSTALL_TYPES))
         for filetype in filetypes:
             # We set the filename to the same value as filetype, as in most

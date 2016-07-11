@@ -47,7 +47,10 @@ from provisioningserver.testing.config import (
     BootSourcesFixture,
     ClusterConfigurationFixture,
 )
-from provisioningserver.utils.fs import write_text_file
+from provisioningserver.utils.fs import (
+    tempdir,
+    write_text_file,
+)
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
 from testtools.matchers import (
@@ -98,6 +101,60 @@ class TestTgtEntry(MAASTestCase):
         self.addDetail('tgt-stderr', Content(UTF8_TEXT, lambda: [stderr]))
         self.addDetail('tgt-stdout', Content(UTF8_TEXT, lambda: [stdout]))
         self.assertEqual(0, cmd.returncode)
+
+
+class TestComposeTargetsConf(MAASTestCase):
+    """Tests for `compose_targets_conf`."""
+
+    def make_fake_boot_resource(
+            self, boot_resource_path, image, boot_images=None):
+        if boot_images is None:
+            boot_images = []
+        osystem = factory.make_name('osystem')
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        release = factory.make_name('release')
+        label = factory.make_name('label')
+        boot_images.append({
+            'osystem': osystem,
+            'architecture': arch,
+            'subarchitecture': subarch,
+            'release': release,
+            'label': label,
+        })
+        path = os.path.join(
+            boot_resource_path, osystem, arch, subarch, release, label)
+        os.makedirs(path)
+        path = os.path.join(path, image)
+        open(path, 'a').close()
+        return boot_images, path
+
+    def test__creates_root_image_entry(self):
+        with tempdir('boot_resource_path') as boot_resource_path:
+            boot_images, path = self.make_fake_boot_resource(
+                boot_resource_path, 'root-image')
+            self.patch(
+                boot_resources, 'list_boot_images').return_value = boot_images
+            output = boot_resources.compose_targets_conf(boot_resource_path)
+            self.assertIn(path, output.decode('utf-8'))
+
+    def test__creates_squashfs_entry(self):
+        with tempdir('boot_resource_path') as boot_resource_path:
+            boot_images, path = self.make_fake_boot_resource(
+                boot_resource_path, 'squashfs')
+            self.patch(
+                boot_resources, 'list_boot_images').return_value = boot_images
+            output = boot_resources.compose_targets_conf(boot_resource_path)
+            self.assertIn(path, output.decode('utf-8'))
+
+    def test__returns_empty_for_unknown_image(self):
+        with tempdir('boot_resource_path') as boot_resource_path:
+            boot_images, _ = self.make_fake_boot_resource(
+                boot_resource_path, factory.make_name('unknown_image'))
+            self.patch(
+                boot_resources, 'list_boot_images').return_value = boot_images
+            output = boot_resources.compose_targets_conf(boot_resource_path)
+            self.assertEquals(b'', output)
 
 
 class TestUpdateCurrentSymlink(MAASTestCase):
