@@ -45,6 +45,7 @@ from maastesting.matchers import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
+    TwistedLoggerFixture,
 )
 from netaddr import (
     IPAddress,
@@ -627,22 +628,77 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'dhcp_snippets',
                 ]))
 
-    def test__sets_dns_and_ntp_from_arguments(self):
+    def test__sets_ipv4_dns_from_arguments(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[], version=4)
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
-        dns = '%s %s' % (
-            factory.make_ipv4_address(),
-            factory.make_ipv6_address(),
-            )
+        maas_dns = factory.make_ipv4_address()
         ntp = factory.make_name('ntp')
         default_domain = Domain.objects.get_default_domain()
         config = dhcp.make_subnet_config(
-            rack_controller, subnet, dns, ntp, default_domain)
-        self.expectThat(config['dns_servers'], Equals(dns))
+            rack_controller, subnet, maas_dns, ntp, default_domain)
+        self.expectThat(config['dns_servers'], Equals(maas_dns))
+
+    def test__sets_ipv6_dns_from_arguments(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[], version=6)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        maas_dns = factory.make_ipv6_address()
+        ntp = factory.make_name('ntp')
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, maas_dns, ntp, default_domain)
+        self.expectThat(config['dns_servers'], Equals(maas_dns))
+
+    def test__sets_ntp_from_arguments(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        ntp = factory.make_name('ntp')
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, "", ntp, default_domain)
         self.expectThat(config['ntp_server'], Equals(ntp))
+
+    def test__overrides_ipv4_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, version=4)
+        maas_dns = factory.make_ipv4_address()
+        subnet_dns_servers = ["8.8.8.8", "8.8.4.4"]
+        subnet.dns_servers = subnet_dns_servers
+        subnet.save()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        ntp = factory.make_name('ntp')
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, maas_dns, ntp, default_domain)
+        self.expectThat(
+            config['dns_servers'], Equals(", ".join(subnet_dns_servers)))
+
+    def test__overrides_ipv6_dns_from_subnet(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, version=6)
+        maas_dns = factory.make_ipv6_address()
+        subnet_dns_servers = ["2001:db8::1", "2001:db8::2"]
+        subnet.dns_servers = subnet_dns_servers
+        subnet.save()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        ntp = factory.make_name('ntp')
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, maas_dns, ntp, default_domain)
+        self.expectThat(
+            config['dns_servers'], Equals(", ".join(subnet_dns_servers)))
 
     def test__sets_domain_name_from_passed_domain(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1121,7 +1177,8 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         ha_vlan = factory.make_VLAN(
             dhcp_on=True, primary_rack=primary_rack,
             secondary_rack=secondary_rack)
-        ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
+        ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            vlan=ha_vlan, dns_servers=['127.0.0.1'])
         ha_network = ha_subnet.get_ipnetwork()
         ha_dhcp_snippets = [
             factory.make_DHCPSnippet(subnet=ha_subnet, enabled=True)
@@ -1136,7 +1193,8 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         secondary_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
             interface=secondary_interface)
-        other_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
+        other_subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            vlan=ha_vlan, dns_servers=['127.0.0.1'])
         other_network = other_subnet.get_ipnetwork()
         other_dhcp_snippets = [
             factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
@@ -1358,7 +1416,8 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         return cluster, cluster.ConfigureDHCPv4, cluster.ConfigureDHCPv6
 
     @transactional
-    def create_rack_controller(self, dhcp_on=True):
+    def create_rack_controller(
+            self, dhcp_on=True, missing_ipv4=False, missing_ipv6=False):
         """Create a `rack_controller` in a state that will call both
         `ConfigureDHCPv4` and `ConfigureDHCPv6` with data."""
         primary_rack = factory.make_RackController(interface=False)
@@ -1382,18 +1441,20 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             subnet_v6, "fd38:c341:27da:c831:0:1::",
             "fd38:c341:27da:c831:0:1:ffff:0")
 
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
-            interface=primary_interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
-            interface=secondary_interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
-            interface=primary_interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
-            interface=secondary_interface)
+        if not missing_ipv4:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+                interface=primary_interface)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+                interface=secondary_interface)
+        if not missing_ipv6:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+                interface=primary_interface)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+                interface=secondary_interface)
 
         for _ in range(3):
             factory.make_DHCPSnippet(subnet=subnet_v4, enabled=True)
@@ -1445,6 +1506,26 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
                 interfaces=interfaces_v6,
                 global_dhcp_snippets=global_dhcp_snippets,
                 ))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__logs_DHCPConfigurationError_ipv4(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        with TwistedLoggerFixture() as logger:
+            yield deferToDatabase(
+                self.create_rack_controller, missing_ipv4=True)
+            self.assertDocTestMatches(
+                "...No IPv4 interface...", logger.output)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__logs_DHCPConfigurationError_ipv6(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        with TwistedLoggerFixture() as logger:
+            yield deferToDatabase(
+                self.create_rack_controller, missing_ipv6=True)
+            self.assertDocTestMatches(
+                "...No IPv6 interface...", logger.output)
 
     @wait_for_reactor
     @inlineCallbacks

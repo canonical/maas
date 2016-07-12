@@ -316,10 +316,17 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 
 def make_subnet_config(
-        rack_controller, subnet, dns_servers, ntp_server, default_domain,
+        rack_controller, subnet, maas_dns_server, ntp_server, default_domain,
         failover_peer=None, subnets_dhcp_snippets=[]):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
+    if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
+        # Replace MAAS DNS with the servers defined on the subnet.
+        dns_servers = ", ".join(subnet.dns_servers)
+    elif maas_dns_server is not None and len(maas_dns_server) > 0:
+        dns_servers = maas_dns_server
+    else:
+        dns_servers = ""
     return {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
@@ -368,12 +375,10 @@ def get_dhcp_configure_for(
     from maasserver.dns.zonegenerator import get_dns_server_address
 
     try:
-        dns_servers = get_dns_server_address(
+        maas_dns_server = get_dns_server_address(
             rack_controller, ipv4=(ip_version == 4), ipv6=(ip_version == 6))
     except UnresolvableHost:
-        # No IPv6 DNS server addresses found.  As a space-separated string,
-        # that becomes the empty string.
-        dns_servers = ''
+        maas_dns_server = None
 
     # Select the best interface for this VLAN. This is an interface that
     # at least has an IP address.
@@ -382,9 +387,10 @@ def get_dhcp_configure_for(
     interface = get_best_interface(interfaces)
     if interface is None:
         raise DHCPConfigurationError(
-            "No interface on rack controller '%s' has an IP address on any "
-            "subnet on VLAN '%s.%d'." % (
-                rack_controller.hostname, vlan.fabric.name, vlan.vid))
+            "No IPv%d interface on rack controller '%s' has an IP address on "
+            "any subnet on VLAN '%s.%d'." % (
+                ip_version, rack_controller.hostname, vlan.fabric.name,
+                vlan.vid))
 
     # Generate the failover peer for this VLAN.
     if vlan.secondary_rack_id is not None:
@@ -406,7 +412,7 @@ def get_dhcp_configure_for(
     for subnet in subnets:
         subnet_configs.append(
             make_subnet_config(
-                rack_controller, subnet, dns_servers, ntp_server,
+                rack_controller, subnet, maas_dns_server, ntp_server,
                 domain, peer_name, subnets_dhcp_snippets))
 
     # Generate the hosts for all subnets.
@@ -470,31 +476,52 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
         if len(subnets_v4) > 0:
-            failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
-                4, rack_controller, vlan, subnets_v4,
-                ntp_server, default_domain, dhcp_snippets)
-            if failover_peer is not None:
-                failover_peers_v4.append(failover_peer)
-            shared_networks_v4.append({
-                "name": "vlan-%d" % vlan.id,
-                "subnets": subnets,
-            })
-            hosts_v4.extend(hosts)
-            interfaces_v4.add(interface)
-
+            try:
+                config = get_dhcp_configure_for(
+                    4, rack_controller, vlan, subnets_v4, ntp_server,
+                    default_domain, dhcp_snippets)
+            except DHCPConfigurationError as e:
+                # XXX bug #1602412: this silently breaks DHCPv4, but we cannot
+                # allow it to crash here since DHCPv6 might be able to run.
+                # This error may be irrelevant if there is an IPv4 network in
+                # the MAAS model which is not configured on the rack, and the
+                # user only wants to serve DHCPv6. But it is still something
+                # worth noting, so log it and continue.
+                log.err(e)
+            else:
+                failover_peer, subnets, hosts, interface = config
+                if failover_peer is not None:
+                    failover_peers_v4.append(failover_peer)
+                shared_networks_v4.append({
+                    "name": "vlan-%d" % vlan.id,
+                    "subnets": subnets,
+                })
+                hosts_v4.extend(hosts)
+                interfaces_v4.add(interface)
         # IPv6
         if len(subnets_v6) > 0:
-            failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
-                6, rack_controller, vlan, subnets_v6,
-                ntp_server, default_domain, dhcp_snippets)
-            if failover_peer is not None:
-                failover_peers_v6.append(failover_peer)
-            shared_networks_v6.append({
-                "name": "vlan-%d" % vlan.id,
-                "subnets": subnets,
-            })
-            hosts_v6.extend(hosts)
-            interfaces_v6.add(interface)
+            try:
+                config = get_dhcp_configure_for(
+                    6, rack_controller, vlan, subnets_v6,
+                    ntp_server, default_domain, dhcp_snippets)
+            except DHCPConfigurationError as e:
+                # XXX bug #1602412: this silently breaks DHCPv6, but we cannot
+                # allow it to crash here since DHCPv4 might be able to run.
+                # This error may be irrelevant if there is an IPv6 network in
+                # the MAAS model which is not configured on the rack, and the
+                # user only wants to serve DHCPv4. But it is still something
+                # worth noting, so log it and continue.
+                log.err(e)
+            else:
+                failover_peer, subnets, hosts, interface = config
+                if failover_peer is not None:
+                    failover_peers_v6.append(failover_peer)
+                shared_networks_v6.append({
+                    "name": "vlan-%d" % vlan.id,
+                    "subnets": subnets,
+                })
+                hosts_v6.extend(hosts)
+                interfaces_v6.add(interface)
     return (
         get_omapi_key(),
         failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
