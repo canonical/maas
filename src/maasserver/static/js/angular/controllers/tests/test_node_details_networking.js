@@ -238,7 +238,7 @@ describe("filterLinkModes", function() {
         ]);
     });
 
-    it("auto and static modes if more than one link", function() {
+    it("auto, static, and dhcp modes if more than one link", function() {
         var nic = {
             subnet : {},
             links: [{}, {}]
@@ -251,6 +251,10 @@ describe("filterLinkModes", function() {
             {
                 "mode": "static",
                 "text": "Static assign"
+            },
+            {
+                "mode": "dhcp",
+                "text": "DHCP"
             }
         ]);
     });
@@ -788,7 +792,7 @@ describe("NodeNetworkingController", function() {
             it("updates newInterface.parent object", function() {
                 var controller = makeController();
                 var newInterface = {
-                    type: "vlan"
+                    type: "alias"
                 };
                 setupNewInterface(controller, newInterface);
                 var parent = newInterface.parent;
@@ -1960,7 +1964,7 @@ describe("NodeNetworkingController", function() {
             expect($scope.canAddAlias(nic)).toBe(false);
         });
 
-        it("returns false if nic has dhcp", function() {
+        it("returns true if nic has dhcp", function() {
             var controller = makeController();
             var nic = {
                 type: "physical",
@@ -1968,7 +1972,7 @@ describe("NodeNetworkingController", function() {
                     mode: "dhcp"
                 }]
             };
-            expect($scope.canAddAlias(nic)).toBe(false);
+            expect($scope.canAddAlias(nic)).toBe(true);
         });
 
         it("returns true if nic has static", function() {

@@ -98,15 +98,17 @@ angular.module('MAAS').filter('filterLinkModes', function() {
                 }
             });
         } else {
-            // Don't add LINK_UP  or DHCP if more than one link exists or
+            // Don't add LINK_UP if more than one link exists or
             // if the interface is an alias.
-            var allowLinkUpAndDHCP = (
+            var allowLinkUp = (
                 (angular.isObject(nic.links) && nic.links.length > 1) ||
                 (nic.type === "alias"));
             angular.forEach(modes, function(mode) {
-                if(allowLinkUpAndDHCP && (
-                    mode.mode === "link_up" ||
-                    mode.mode === "dhcp")) {
+                if(allowLinkUp && mode.mode === "link_up") {
+                    return;
+                }
+                // Can't run DHCP twice on one NIC.
+                if(nic.type === "alias" && mode.mode === "dhcp") {
                     return;
                 }
                 filtered.push(mode);
@@ -808,8 +810,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             } else if(nic.type === INTERFACE_TYPE.ALIAS) {
                 return false;
             } else if(nic.links.length === 0 ||
-                nic.links[0].mode === LINK_MODE.LINK_UP ||
-                nic.links[0].mode === LINK_MODE.DHCP) {
+                nic.links[0].mode === LINK_MODE.LINK_UP) {
                 return false;
             } else {
                 return true;
