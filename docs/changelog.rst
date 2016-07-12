@@ -21,6 +21,11 @@ LP: #1597460    [1.9] MAAS 1.9 should only download filetypes from a SimpleStrea
 
 LP: #1567249    [1.9] If rack and region have different versions, the error is uninformative and confusing.
 
+LP: #1582070    Update the UEFI ARM64 local boot config to chainload the locally installed EFI binary.
+
+LP: #1597787    Send size with the extended partition for MBR partition tables.
+
+
 1.9.3
 =====
 
