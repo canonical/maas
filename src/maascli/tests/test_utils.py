@@ -8,14 +8,21 @@ __all__ = []
 import collections
 import http.client
 import io
+import os
 import random
 from unittest.mock import sentinel
 
+from fixtures import EnvironmentVariable
 import httplib2
 from maascli import utils
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCalledWith,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
+from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -298,3 +305,71 @@ class TestPrintResponseContent(MAASTestCase):
             b"Success.\n"
             b"Machine-readable output follows:\n" +
             response['content'] + b"\n", buf.getvalue())
+
+
+class TestSudoUID(MAASTestCase):
+    """Tests for `utils.sudo_uid`."""
+
+    def setUp(self):
+        super(TestSudoUID, self).setUp()
+        # Always ensure that SUDO_UID is not set in the environment.
+        self.useFixture(EnvironmentVariable("SUDO_UID"))
+        # We probably can't set EUID to anything we want in tests so we must
+        # capture calls that attempt to do so.
+        self.patch_autospec(utils, "seteuid")
+
+    def test_does_nothing_when_environ_not_set(self):
+        with utils.sudo_uid():
+            self.assertThat(utils.seteuid, MockNotCalled())
+        self.assertThat(utils.seteuid, MockNotCalled())
+
+    def test_sets_and_resets_euid(self):
+        original_euid = os.geteuid()
+        example_euid = original_euid + random.randrange(500, 1000)
+        self.useFixture(EnvironmentVariable("SUDO_UID", str(example_euid)))
+        with utils.sudo_uid():
+            self.assertThat(utils.seteuid, MockCalledOnceWith(example_euid))
+        self.assertThat(utils.seteuid, MockCalledWith(original_euid))
+
+    def test_sets_and_resets_euid_on_crash(self):
+        original_euid = os.geteuid()
+        example_euid = original_euid + random.randrange(500, 1000)
+        self.useFixture(EnvironmentVariable("SUDO_UID", str(example_euid)))
+        with ExpectedException(ZeroDivisionError):
+            with utils.sudo_uid():
+                0 / 0  # A very realistic example.
+        self.assertThat(utils.seteuid, MockCalledWith(original_euid))
+
+
+class TestSudoGID(MAASTestCase):
+    """Tests for `utils.sudo_gid`."""
+
+    def setUp(self):
+        super(TestSudoGID, self).setUp()
+        # Always ensure that SUDO_GID is not set in the environment.
+        self.useFixture(EnvironmentVariable("SUDO_GID"))
+        # We probably can't set EGID to anything we want in tests so we must
+        # capture calls that attempt to do so.
+        self.patch_autospec(utils, "setegid")
+
+    def test_does_nothing_when_environ_not_set(self):
+        with utils.sudo_gid():
+            self.assertThat(utils.setegid, MockNotCalled())
+        self.assertThat(utils.setegid, MockNotCalled())
+
+    def test_sets_and_resets_egid(self):
+        original_egid = os.getegid()
+        example_egid = original_egid + random.randrange(500, 1000)
+        self.useFixture(EnvironmentVariable("SUDO_GID", str(example_egid)))
+        with utils.sudo_gid():
+            self.assertThat(utils.setegid, MockCalledOnceWith(example_egid))
+        self.assertThat(utils.setegid, MockCalledWith(original_egid))
+
+    def test_sets_and_resets_egid_on_crash(self):
+        original_egid = os.getegid()
+        example_egid = original_egid + random.randrange(500, 1000)
+        self.useFixture(EnvironmentVariable("SUDO_GID", str(example_egid)))
+        with ExpectedException(ZeroDivisionError):
+            with utils.sudo_gid():
+                0 / 0  # A very realistic example.
+        self.assertThat(utils.setegid, MockCalledWith(original_egid))

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration abstractions for the MAAS CLI."""
@@ -15,6 +15,8 @@ import json
 import os
 from os.path import expanduser
 import sqlite3
+
+from maascli import utils
 
 
 class ProfileConfig:
@@ -61,6 +63,11 @@ class ProfileConfig:
                 " WHERE name = ?", (name,))
 
     @classmethod
+    def create_database(cls, dbpath):
+        # Initialise the database file with restrictive permissions.
+        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0o600))
+
+    @classmethod
     @contextmanager
     def open(cls, dbpath=expanduser("~/.maascli.db")):
         """Load a profiles database.
@@ -71,9 +78,17 @@ class ProfileConfig:
         **Note** that this returns a context manager which will close the
         database on exit, saving if the exit is clean.
         """
-        # Initialise filename with restrictive permissions...
-        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0o600))
-        # before opening it with sqlite.
+        # As the effective UID and GID of the user invoking `sudo` (if any)...
+        try:
+            with utils.sudo_gid(), utils.sudo_uid():
+                cls.create_database(dbpath)
+        except PermissionError:
+            # Creating the database might fail if $HOME is set to the current
+            # effective UID's $HOME, but we have permission to change the UID
+            # to one without permission to access $HOME. So try again without
+            # changing the GID/UID.
+            cls.create_database(dbpath)
+
         database = sqlite3.connect(dbpath)
         try:
             yield cls(database)
