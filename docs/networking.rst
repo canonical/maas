@@ -58,6 +58,27 @@ A subnet can be in a single space.
 Subnets are considered managed if a cluster interface specifies the cluster
 network range.
 
+**IP Ranges**
+
+MAAS assumes it can allocate all unreserved IPs in a subnet. For example,
+MAAS will assign IPs out of the unreserved pool to node interfaces configured
+"IP Address" type "Auto assign". You can reserve IPs for other purposes by
+adding one or more "reserved ranges" in your subnet configuration.
+
+There are two kinds of reserved ranges: "Reserved Range" and "Reserved Dynamic
+Range". Use a "Reserved Range" to block out a set of static IPs that you plan
+to use for other devices on your network (e.g. managed switches or routers).
+
+Use a "Reserved Dynamic Range" to block out a set of IP addresses that you
+plan to hand out using a DHCP server. If you enable DHCP on your subnet's
+VLAN, MAAS will provide a DHCP for IPs in this range, otherwise you are
+responsible for proving an external DHCP server for this range.
+
+Note that a "Reserved Dynamic Range" with active DHCP is *required* if you
+have nodes that require DHCP to network boot (e.g. PXE clients), or if you
+have configured any node interfaces as "IP Address" type "DHCP".
+
+
 VLANs
 ^^^^^
 
@@ -221,3 +242,29 @@ To delete an interface, use the ``node-interface delete`` API. For example::
     $ maas admin node-interface delete node-d83ce230-4b50-11e5-a267-00163eb185eb 41
     Success.
 
+Machine Interface Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Auto Assign**
+
+Interfaces configured as "Auto assign" will be deployed with a static
+(non-DHCP) network configuration. MAAS will choose an IP from the subnet
+that does not fall into a defined reserved range.
+
+**Static**
+
+When you configure an interfaces as "Static", you will provide an IP address
+for that interface to use when deployed.
+
+**DHCP**
+
+Interfaces configured as "DHCP" will be configured to use DHCP to request
+configuration information at boot. In order for the interface to successfully
+configure, you will need to insure that a "Dynamic Range" has been reserved
+on the associated subnet, and that either you have configured MAAS to provide
+DHCP services on the associated VLAN, or that you have provided an external
+DHCP server to do so.
+
+**(Unconfigured)**
+
+These interfaces will be left unconfigured.
