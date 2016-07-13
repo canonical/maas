@@ -2,6 +2,16 @@
 Changelog
 =========
 
+
+2.0.0 (rc3)
+===========
+
+Issues fixed in this release
+----------------------------
+
+LP: #1557434    For the MAAS CLI, mimic the error behaviour provided by argparse 1.1 on PyPI when insufficient arguments are given.
+
+
 2.0.0 (rc2)
 ===========
 

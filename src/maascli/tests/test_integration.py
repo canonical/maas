@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Integration-test the `maascli` command."""
@@ -6,14 +6,23 @@
 __all__ = []
 
 import os.path
+import random
 from subprocess import (
     CalledProcessError,
     check_output,
     STDOUT,
 )
+from textwrap import dedent
 
+from maascli import main
+from maascli.config import ProfileConfig
+from maascli.testing.config import make_configs
+from maascli.utils import handler_command_name
 from maastesting import root
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
+from testtools.matchers import Equals
 
 
 def locate_maascli():
@@ -54,3 +63,35 @@ class TestMAASCli(MAASTestCase):
         else:
             # The test is that we get here without error.
             pass
+
+
+class TestMain(MAASTestCase):
+    """Tests of `maascli.main` directly."""
+
+    def fake_profile(self):
+        """Fake a profile."""
+        configs = make_configs()  # Instance of FakeConfig.
+        self.patch(ProfileConfig, 'open').return_value = configs
+        return configs
+
+    def test_complains_about_too_few_arguments(self):
+        configs = self.fake_profile()
+        [profile_name] = configs
+        resources = configs[profile_name]["description"]["resources"]
+        resource_name = random.choice(resources)["name"]
+        command = "maas", profile_name, handler_command_name(resource_name)
+
+        with CaptureStandardIO() as stdio:
+            error = self.assertRaises(SystemExit, main, command)
+
+        self.assertThat(error.code, Equals(2))
+        self.assertThat(
+            stdio.getError(),
+            DocTestMatches(dedent(
+                """\
+                usage: maas [-h] COMMAND ...
+                <BLANKLINE>
+                ...
+                <BLANKLINE>
+                too few arguments
+                """)))

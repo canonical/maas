@@ -25,9 +25,16 @@ def main(argv=sys.argv):
 
     try:
         options = parser.parse_args(argv[1:])
-        options.execute(options)
+        if hasattr(options, "execute"):
+            options.execute(options)
+        else:
+            # This mimics the error behaviour provided by argparse 1.1 from
+            # PyPI (which differs from argparse 1.1 in the standard library).
+            parser.error("too few arguments")
     except KeyboardInterrupt:
         raise SystemExit(1)
+    except SystemExit:
+        raise  # Pass-through.
     except Exception as error:
         if options.debug:
             raise

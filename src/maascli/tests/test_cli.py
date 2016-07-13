@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.cli`."""
@@ -26,7 +26,7 @@ from maastesting.testcase import MAASTestCase
 from testtools.matchers import DocTestMatches
 
 
-class TestRegisterommands(MAASTestCase):
+class TestRegisterCommands(MAASTestCase):
     """Tests for registers CLI commands."""
 
     def test_registers_subparsers(self):
