@@ -5,7 +5,25 @@ Changelog
 2.0.0 (rc2)
 ===========
 
+LP: #1567249    [1.9] If rack and region have different versions, the error is uninformative and confusing squashfs
+
+LP: #1582070    Pick up wrong grub.cfg if another filesystem exists
+
+LP: #1599223    [2.0] confusing reverse DNS lookups because MAAS creates multiple PTR records
+
+LP: #1600259    [2.0] reverse DNS sometimes assigns FQDN where it should assign IFACE.FQDN
+
 LP: #1599997    [2.0rc1] after upgrade from 2.0b3, Error on request (13) subnet.list: 'NoneType' object is not iterable
+
+LP: #1598461    [2.0rc1] Image import dates are inconsistent
+
+LP: #1598937    [2.0rc1] Following fresh install maas command fails - PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.maascli.db'
+
+LP: #1597787    [1.9.3,2.0] cannot create more than 4 partitions when disk is configured with mbr
+
+LP: #1600267    [1.9,2.0,UX] Can't add aliases when parent interface is set to 'DCHP'
+
+LP: #1600198    [1.9,2.0,UX] Creating a Bcache disk is not prevented when is not created in partition
 
 
 2.0.0 (rc1)
