@@ -5,8 +5,6 @@ Changelog
 2.0.0 (rc2)
 ===========
 
-LP: #1567249    [1.9] If rack and region have different versions, the error is uninformative and confusing squashfs
-
 LP: #1582070    Pick up wrong grub.cfg if another filesystem exists
 
 LP: #1599223    [2.0] confusing reverse DNS lookups because MAAS creates multiple PTR records
