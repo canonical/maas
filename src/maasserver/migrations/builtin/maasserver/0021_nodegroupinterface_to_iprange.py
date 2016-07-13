@@ -51,9 +51,7 @@ def add_ip_range(IPRange, Subnet, type, low, high, ngi):
             find_best_subnet_for_ip_query, [low, high])
         for subnet in subnets:
             # There will only ever be one or zero due to the LIMIT 1.
-            comment = "Migrated from %s on %s" % (
-                ngi.interface, ngi.nodegroup.cluster_name)
-            comment = comment[255:]
+            comment = "Migrated from MAAS 1.x"
             iprange, created = IPRange.objects.get_or_create(
                 start_ip=low, end_ip=high, defaults={
                     'comment': comment,
