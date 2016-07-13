@@ -104,7 +104,7 @@ class TestPowerHelpers(MAASTestCase):
         self.assertThat(
             protocol.SendEvent,
             MockCalledOnceWith(
-                ANY, type_name=EVENT_TYPES.NODE_POWER_QUERIED,
+                ANY, type_name=EVENT_TYPES.NODE_POWER_QUERIED_DEBUG,
                 system_id=system_id, description=message))
 
 

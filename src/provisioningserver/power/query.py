@@ -103,7 +103,7 @@ def power_query_success(system_id, hostname, state):
     message = "Power state queried: %s" % state
     yield power.power_state_update(system_id, state)
     yield send_event_node(
-        EVENT_TYPES.NODE_POWER_QUERIED,
+        EVENT_TYPES.NODE_POWER_QUERIED_DEBUG,
         system_id, hostname, message)
 
 
