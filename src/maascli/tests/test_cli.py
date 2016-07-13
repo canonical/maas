@@ -26,7 +26,7 @@ from maastesting.testcase import MAASTestCase
 from testtools.matchers import DocTestMatches
 
 
-class TestRegisterommands(MAASTestCase):
+class TestRegisterCommands(MAASTestCase):
     """Tests for registers CLI commands."""
 
     def test_registers_subparsers(self):
