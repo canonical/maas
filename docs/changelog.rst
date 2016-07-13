@@ -11,9 +11,14 @@ Issues fixed in this release
 
 LP: #1557434    For the MAAS CLI, mimic the error behaviour provided by argparse 1.1 on PyPI when insufficient arguments are given.
 
+LP: #1594991    MAAS displays every power query on the summarized view of node event log.
+
 
 2.0.0 (rc2)
 ===========
+
+Issues fixed in this release
+----------------------------
 
 LP: #1582070    Pick up wrong grub.cfg if another filesystem exists
 
