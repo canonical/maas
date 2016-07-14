@@ -21,16 +21,22 @@ PCAP_NATIVE_BYTE_ORDER_MAGIC_NUMBER = 0xa1b2c3d4
 PCAP_HEADER_SIZE = 24
 PCAP_PACKET_HEADER_SIZE = 16
 
-PCAPHeader = namedtuple(
-    'PCAPHeader', 'magic_number pcap_version_major pcap_version_minor '
-                  'time_zone_gmt_offset timestamp_accuracy_sigfigs '
-                  'max_capture_bytes_per_packet data_link_type',
-)
+PCAPHeader = namedtuple('PCAPHeader', (
+    'magic_number',
+    'pcap_version_major',
+    'pcap_version_minor',
+    'time_zone_gmt_offset',
+    'timestamp_accuracy_sigfigs',
+    'max_capture_bytes_per_packet',
+    'data_link_type',
+))
 
-PCAPPacketHeader = namedtuple(
-    'PCAPPacketHeader', 'timestamp_seconds timestamp_microseconds '
-                        'bytes_captured original_packet_length'
-)
+PCAPPacketHeader = namedtuple('PCAPPacketHeader', (
+    'timestamp_seconds',
+    'timestamp_microseconds',
+    'bytes_captured',
+    'original_packet_length',
+))
 
 
 class PCAPError(IOError):
