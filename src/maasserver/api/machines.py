@@ -341,12 +341,41 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
         :param comment: Optional comment for the event log.
         :type comment: unicode
+        :param erase: Erase the disk when releasing.
+        :type erase: boolean
+        :param secure_erase: Use the drive's secure erase feature if available.
+            In some cases this can be much faster than overwriting the drive.
+            Some drives implement secure erasure by overwriting themselves so
+            this could still be slow.
+        :type secure_erase: boolean
+        :param quick_erase: Wipe 1MiB at the start and at the end of the drive
+            to make data recovery inconvenient and unlikely to happen by
+            accident. This is not secure.
+        :type quick_erase: boolean
+
+        If neither secure_erase nor quick_erase are specified, MAAS will
+        overwrite the whole disk with null bytes. This can be very slow.
+
+        If both secure_erase and quick_erase are specified and the drive does
+        NOT have a secure erase feature, MAAS will behave as if only
+        quick_erase was specified.
+
+        If secure_erase is specified and quick_erase is NOT specified and the
+        drive does NOT have a secure erase feature, MAAS will behave as if
+        secure_erase was NOT specified, i.e. will overwrite the whole disk
+        with null bytes. This can be very slow.
 
         Returns 404 if the machine is not found.
         Returns 403 if the user doesn't have permission to release the machine.
         Returns 409 if the machine is in a state where it may not be released.
         """
         comment = get_optional_param(request.POST, 'comment')
+        erase = get_optional_param(
+            request.POST, 'erase', default=False, validator=StringBool)
+        secure_erase = get_optional_param(
+            request.POST, 'secure_erase', default=None, validator=StringBool)
+        quick_erase = get_optional_param(
+            request.POST, 'quick_erase', default=None, validator=StringBool)
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
@@ -355,7 +384,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             # postcondition is achieved, so call this success.
             pass
         elif machine.status in RELEASABLE_STATUSES:
-            machine.release_or_erase(request.user, comment)
+            machine.release_or_erase(
+                request.user, comment,
+                erase=erase, secure_erase=secure_erase,
+                quick_erase=quick_erase)
         else:
             raise NodeStateViolation(
                 "Machine cannot be released in its current state ('%s')."

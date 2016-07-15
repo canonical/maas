@@ -1323,6 +1323,10 @@ class StorageSettingsForm(ConfigForm):
     default_storage_layout = get_config_field('default_storage_layout')
     enable_disk_erasing_on_release = get_config_field(
         'enable_disk_erasing_on_release')
+    disk_erase_with_secure_erase = get_config_field(
+        'disk_erase_with_secure_erase')
+    disk_erase_with_quick_erase = get_config_field(
+        'disk_erase_with_quick_erase')
 
 
 class CommissioningForm(ConfigForm):

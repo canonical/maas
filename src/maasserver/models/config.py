@@ -62,7 +62,10 @@ def get_default_config():
         'boot_images_auto_import': True,
         # Third Party
         'enable_third_party_drivers': True,
+        # Disk erasing.
         'enable_disk_erasing_on_release': False,
+        'disk_erase_with_secure_erase': True,
+        'disk_erase_with_quick_erase': False,
         # Curtin.
         'curtin_verbose': False,
         # Analytics.

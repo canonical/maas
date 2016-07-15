@@ -595,6 +595,20 @@ class TestMachineAPI(APITestCase.ForUser):
             [machine.status
              for machine in reload_objects(Node, owned_machines)])
 
+    def test_POST_release_starts_disk_erasing(self):
+        self.patch(
+            node_module.Node, '_start').return_value = defer.succeed(None)
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.DEPLOYED, power_type='virsh',
+            power_state=POWER_STATE.OFF)
+        response = self.client.post(self.get_machine_uri(machine), {
+            'op': 'release',
+            'erase': 'true',
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.DISK_ERASING, reload_object(machine).status)
+
     def test_POST_release_releases_failed_machine(self):
         self.patch(node_module.Machine, '_stop')
         owned_machine = factory.make_Node(
@@ -755,7 +769,31 @@ class TestMachineAPI(APITestCase.ForUser):
             {'op': 'release', 'comment': comment})
         self.assertThat(
             machine_release,
-            MockCalledOnceWith(self.user, comment))
+            MockCalledOnceWith(
+                self.user, comment,
+                erase=False, quick_erase=None, secure_erase=None))
+
+    def test_POST_release_passes_erase_options(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
+            power_type='ipmi', power_state=POWER_STATE.OFF)
+        self.become_admin()
+        secure_erase = factory.pick_bool()
+        quick_erase = factory.pick_bool()
+        machine_release = self.patch(node_module.Machine, 'release_or_erase')
+        self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'release',
+                'erase': True,
+                'secure_erase': secure_erase,
+                'quick_erase': quick_erase
+            })
+        self.assertThat(
+            machine_release,
+            MockCalledOnceWith(
+                self.user, None,
+                erase=True, quick_erase=quick_erase,
+                secure_erase=secure_erase))
 
     def test_POST_release_handles_missing_comment(self):
         machine = factory.make_Node(
@@ -767,7 +805,9 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine), {'op': 'release'})
         self.assertThat(
             machine_release,
-            MockCalledOnceWith(self.user, None))
+            MockCalledOnceWith(
+                self.user, None,
+                erase=False, quick_erase=None, secure_erase=None))
 
     def test_POST_commission_commissions_machine(self):
         self.patch(

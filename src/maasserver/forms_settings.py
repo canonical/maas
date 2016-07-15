@@ -359,7 +359,34 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'required': False,
             'label': (
-                "Erase nodes' disks prior to releasing.")
+                "Erase nodes' disks prior to releasing."),
+            'help_text': (
+                "Forces users to always disk erase when releasing.")
+        }
+    },
+    'disk_erase_with_secure_erase': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Use secure erase by default when performing disk erasing."),
+            'help_text': (
+                "Will only be used on devices that support secure erase.  "
+                "Other devices will fallback to full wipe or quick erase "
+                "depending selected options.")
+        }
+    },
+    'disk_erase_with_quick_erase': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Use quick erase by default when performing disk erasing."),
+            'help_text': (
+                "This is not a secure erase it only wipes the beginning and "
+                "end of devices.")
         }
     },
     'boot_images_auto_import': {

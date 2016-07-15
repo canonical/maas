@@ -5,7 +5,9 @@
 
 __all__ = []
 
+import base64
 from datetime import datetime
+import email
 import random
 from unittest.mock import (
     ANY,
@@ -1404,6 +1406,48 @@ class TestNode(MAASServerTestCase):
         with ExpectedException(StorageLayoutError):
             node.set_storage_layout(
                 unknown_layout, sentinel.params)
+
+    def test_start_disk_erasing_uses_global_values(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        node_start = self.patch(node, '_start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
+        Config.objects.set_config('disk_erase_with_secure_erase', True)
+        Config.objects.set_config('disk_erase_with_quick_erase', True)
+        with post_commit_hooks:
+            node.start_disk_erasing(owner)
+        # Extract the user_data from the start call.
+        user_data = node_start.call_args[0][1]
+        parsed_data = email.message_from_string(user_data.decode("utf-8"))
+        user_data_script = parsed_data.get_payload()[1]
+        self.assertThat(
+            base64.b64decode(user_data_script.get_payload()), Contains(
+                b'maas-wipe --secure-erase --quick-erase',
+            ))
+
+    def test_start_disk_erasing_uses_passed_values(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        node_start = self.patch(node, '_start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
+        Config.objects.set_config('disk_erase_with_secure_erase', False)
+        Config.objects.set_config('disk_erase_with_quick_erase', False)
+        with post_commit_hooks:
+            node.start_disk_erasing(owner, secure_erase=True, quick_erase=True)
+        # Extract the user_data from the start call.
+        user_data = node_start.call_args[0][1]
+        parsed_data = email.message_from_string(user_data.decode("utf-8"))
+        user_data_script = parsed_data.get_payload()[1]
+        self.assertThat(
+            base64.b64decode(user_data_script.get_payload()), Contains(
+                b'maas-wipe --secure-erase --quick-erase',
+            ))
 
     def test_start_disk_erasing_changes_state_and_starts_node(self):
         agent_name = factory.make_name('agent-name')
@@ -3771,7 +3815,29 @@ class TestNodeErase(MAASServerTestCase):
         erase_mock = self.patch_autospec(node, 'start_disk_erasing')
         release_mock = self.patch_autospec(node, 'release')
         node.release_or_erase(owner)
-        self.assertThat(erase_mock, MockCalledOnceWith(owner, None))
+        self.assertThat(
+            erase_mock,
+            MockCalledOnceWith(
+                owner, None, secure_erase=None, quick_erase=None))
+        self.assertThat(release_mock, MockNotCalled())
+
+    def test_release_or_erase_erases_when_disabled_and_erase_param(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        Config.objects.set_config(
+            'enable_disk_erasing_on_release', False)
+        erase_mock = self.patch_autospec(node, 'start_disk_erasing')
+        release_mock = self.patch_autospec(node, 'release')
+        secure_erase = factory.pick_bool()
+        quick_erase = factory.pick_bool()
+        node.release_or_erase(
+            owner, erase=True,
+            secure_erase=secure_erase, quick_erase=quick_erase)
+        self.assertThat(
+            erase_mock,
+            MockCalledOnceWith(
+                owner, None,
+                secure_erase=secure_erase, quick_erase=quick_erase))
         self.assertThat(release_mock, MockNotCalled())
 
     def test_release_or_erase_releases_when_disabled(self):

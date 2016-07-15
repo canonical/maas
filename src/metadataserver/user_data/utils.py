@@ -27,7 +27,8 @@ ENCODING = 'utf-8'
 
 
 def generate_user_data(node, userdata_dir,
-                       userdata_template_name, config_template_name):
+                       userdata_template_name, config_template_name,
+                       extra_context=None):
     """Produce a user_data script for use by commissioning and other
     operations.
 
@@ -60,6 +61,8 @@ def generate_user_data(node, userdata_dir,
     # Render the snippets in the main template.
     snippets = get_snippet_context(encoding=ENCODING)
     snippets.update(preseed_context)
+    if extra_context is not None:
+        snippets.update(extra_context)
     userdata = userdata_template.substitute(snippets).encode(ENCODING)
 
     # Render the config.

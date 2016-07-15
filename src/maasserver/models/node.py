@@ -2102,7 +2102,8 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s: moved from %s zone to %s zone." % (
             self.hostname, old_zone_name, self.zone.name))
 
-    def start_disk_erasing(self, user, comment=None):
+    def start_disk_erasing(
+            self, user, comment=None, secure_erase=None, quick_erase=None):
         """Erase the disks on a node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -2113,7 +2114,20 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from metadataserver.user_data.disk_erasing import generate_user_data
 
-        disk_erase_user_data = generate_user_data(node=self)
+        # Generate the user data based on the global options and the passed
+        # configuration.
+        use_secure_erase = Config.objects.get_config(
+            'disk_erase_with_secure_erase')
+        use_quick_erase = Config.objects.get_config(
+            'disk_erase_with_quick_erase')
+        if secure_erase is not None:
+            use_secure_erase = secure_erase
+        if quick_erase is not None:
+            use_quick_erase = quick_erase
+        disk_erase_user_data = generate_user_data(
+            node=self,
+            secure_erase=use_secure_erase,
+            quick_erase=use_quick_erase)
 
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
@@ -2364,13 +2378,17 @@ class Node(CleanSave, TimestampedModel):
         # Remove all set owner data.
         OwnerData.objects.filter(node=self).delete()
 
-    def release_or_erase(self, user, comment=None):
+    def release_or_erase(
+            self, user, comment=None,
+            erase=False, secure_erase=None, quick_erase=None):
         """Either release the node or erase the node then release it, depending
-        on settings."""
+        on settings and parameters."""
         erase_on_release = Config.objects.get_config(
             'enable_disk_erasing_on_release')
-        if erase_on_release:
-            self.start_disk_erasing(user, comment)
+        if erase or erase_on_release:
+            self.start_disk_erasing(
+                user, comment,
+                secure_erase=secure_erase, quick_erase=quick_erase)
         else:
             self.release(user, comment)
 
