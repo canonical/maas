@@ -23,7 +23,7 @@ angular.module('MAAS').controller('NodeEventsController', [
         $scope.node = null;
         $scope.events = [];
         $scope.eventsLoaded = false;
-        $scope.days = 30;
+        $scope.days = 1;
 
         // Called once the node is loaded.
         function nodeLoaded(node) {
@@ -56,7 +56,7 @@ angular.module('MAAS').controller('NodeEventsController', [
 
         // Called to load more events.
         $scope.loadMore = function() {
-            $scope.days += 30;
+            $scope.days += 1;
             eventsManager.loadMaximumDays($scope.days);
         };
 

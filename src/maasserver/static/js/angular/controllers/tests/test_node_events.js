@@ -101,7 +101,7 @@ describe("NodeEventsController", function() {
         expect($scope.node).toBeNull();
         expect($scope.events).toEqual([]);
         expect($scope.eventsLoaded).toEqual(false);
-        expect($scope.days).toEqual(30);
+        expect($scope.days).toEqual(1);
     });
 
     it("calls loadManager with MachinesManager", function() {
@@ -235,7 +235,7 @@ describe("NodeEventsController", function() {
 
     describe("loadMore", function() {
 
-        it("adds 30 days to $scope.days", function() {
+        it("adds 1 days to $scope.days", function() {
             var defer = $q.defer();
             var controller = makeController(defer);
             MachinesManager._activeItem = node;
@@ -244,7 +244,7 @@ describe("NodeEventsController", function() {
             $rootScope.$digest();
             $scope.loadMore();
 
-            expect($scope.days).toBe(60);
+            expect($scope.days).toBe(2);
         });
 
         it("calls loadMaximumDays with $scope.days", function() {
@@ -258,7 +258,7 @@ describe("NodeEventsController", function() {
             $rootScope.$digest();
             $scope.loadMore();
 
-            expect(manager.loadMaximumDays).toHaveBeenCalledWith(60);
+            expect(manager.loadMaximumDays).toHaveBeenCalledWith(2);
         });
     });
 });

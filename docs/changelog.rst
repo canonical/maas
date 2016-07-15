@@ -19,6 +19,8 @@ LP: #1576116    [2.0rc1] MAAS does not respect default subnet's DNS server when 
 
 LP: #1600720    [2.0rc1] MAAS doesn't honor DNS settings for a subnet for DHCP
 
+LP: #1598028    [2.0] Loading latest machine events can make web browser unresponsive
+
 
 2.0.0 (rc2)
 ===========
