@@ -188,3 +188,17 @@ class TestGeneralHandler(MAASServerTestCase):
             general,
             "get_all_power_types_from_clusters").return_value = sentinel.types
         self.assertEqual(sentinel.types, handler.power_types({}))
+
+    def test_release_options(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        erase = factory.pick_bool()
+        secure_erase = factory.pick_bool()
+        quick_erase = factory.pick_bool()
+        Config.objects.set_config('enable_disk_erasing_on_release', erase)
+        Config.objects.set_config('disk_erase_with_secure_erase', secure_erase)
+        Config.objects.set_config('disk_erase_with_quick_erase', quick_erase)
+        self.assertEqual({
+            "erase": erase,
+            "secure_erase": secure_erase,
+            "quick_erase": quick_erase,
+        }, handler.release_options({}))

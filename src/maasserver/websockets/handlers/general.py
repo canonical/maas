@@ -54,6 +54,7 @@ class GeneralHandler(Handler):
             'bond_options',
             'version',
             'power_types',
+            'release_options',
             ]
 
     def architectures(self, params):
@@ -156,3 +157,14 @@ class GeneralHandler(Handler):
     def power_types(self, params):
         """Return all power types."""
         return get_all_power_types_from_clusters()
+
+    def release_options(self, params):
+        """Return global release options."""
+        return {
+            "erase": Config.objects.get_config(
+                "enable_disk_erasing_on_release"),
+            "secure_erase": Config.objects.get_config(
+                "disk_erase_with_secure_erase"),
+            "quick_erase": Config.objects.get_config(
+                "disk_erase_with_quick_erase"),
+        }

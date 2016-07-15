@@ -392,12 +392,12 @@ class Release(NodeAction):
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
 
-    def execute(self):
+    def execute(self, erase=False, secure_erase=False, quick_erase=False):
         """See `NodeAction.execute`."""
         try:
-            self.node.release_or_erase(self.user)
-            self.node.hwe_kernel = ""
-            self.node.save()
+            self.node.release_or_erase(
+                self.user, erase=erase,
+                secure_erase=secure_erase, quick_erase=quick_erase)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 

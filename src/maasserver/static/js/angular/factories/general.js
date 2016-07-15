@@ -162,6 +162,16 @@ angular.module('MAAS').factory(
                             }
                         }
                     }
+                },
+                release_options: {
+                    method: "general.release_options",
+                    data: {},
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null,
+                    replaceData: function(oldData, newData) {
+                        angular.copy(newData, oldData);
+                    }
                 }
             };
 

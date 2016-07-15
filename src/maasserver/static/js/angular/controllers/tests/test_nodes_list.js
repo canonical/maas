@@ -355,6 +355,7 @@ describe("NodesListController", function() {
                         skipNetworking: false,
                         skipStorage: false
                     });
+                    expect(tabScope.releaseOptions).toEqual({});
                 }
 
                 // Only controllers tab uses the registerUrl and
@@ -1355,6 +1356,30 @@ describe("NodesListController", function() {
                             enable_ssh: true,
                             skip_networking: false,
                             skip_storage: false
+                        });
+            });
+
+            it("calls performAction with releaseOptions",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("nodes");
+                    var spy = spyOn(
+                        $scope.tabs.nodes.manager,
+                        "performAction").and.returnValue(
+                        $q.defer().promise);
+                    var secureErase = makeName("secureErase");
+                    var quickErase = makeName("quickErase");
+                    $scope.tabs.nodes.actionOption = { name: "release" };
+                    $scope.tabs.nodes.selectedItems = [object];
+                    $scope.tabs.nodes.releaseOptions.erase = true;
+                    $scope.tabs.nodes.releaseOptions.secureErase = secureErase;
+                    $scope.tabs.nodes.releaseOptions.quickErase = quickErase;
+                    $scope.actionGo("nodes");
+                    expect(spy).toHaveBeenCalledWith(
+                        object, "release", {
+                            erase: true,
+                            secure_erase: secureErase,
+                            quick_erase: quickErase
                         });
             });
 

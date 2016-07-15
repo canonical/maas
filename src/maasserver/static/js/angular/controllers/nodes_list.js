@@ -70,6 +70,7 @@ angular.module('MAAS').controller('NodesListController', [
             skipNetworking: false,
             skipStorage: false
         };
+        $scope.tabs.nodes.releaseOptions = {};
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -517,6 +518,14 @@ angular.module('MAAS').controller('NodesListController', [
                     $scope.tabs[tab].commissionOptions.skipNetworking);
                 extra.skip_storage = (
                     $scope.tabs[tab].commissionOptions.skipStorage);
+            } else if($scope.tabs[tab].actionOption.name === "release") {
+                // Set the release options.
+                extra.erase = (
+                    $scope.tabs[tab].releaseOptions.erase);
+                extra.secure_erase = (
+                    $scope.tabs[tab].releaseOptions.secureErase);
+                extra.quick_erase = (
+                    $scope.tabs[tab].releaseOptions.quickErase);
             }
 
             // Setup actionProgress.

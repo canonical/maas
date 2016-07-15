@@ -82,6 +82,9 @@
                                 <option value="" disabled="disabled">Choose a zone</option>
                             </select>
                         </span>
+                        <span class="form__group ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'release'">
+                            <span data-maas-release-options="tabs.nodes.releaseOptions"></span>
+                        </span>
                         <div class="right">
                             <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel('nodes')">Cancel</a>
                             <button class="cta-ubuntu" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">Go</button>

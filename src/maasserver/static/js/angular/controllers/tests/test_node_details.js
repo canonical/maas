@@ -196,6 +196,7 @@ describe("NodeDetailsController", function() {
             skipNetworking: false,
             skipStorage: false
         });
+        expect($scope.releaseOptions).toEqual({});
         expect($scope.checkingPower).toBe(false);
         expect($scope.devices).toEqual([]);
         expect($scope.services).toEqual({});
@@ -1021,11 +1022,11 @@ describe("NodeDetailsController", function() {
                 $q.defer().promise);
             $scope.node = node;
             $scope.actionOption = {
-                name: "release"
+                name: "power_off"
             };
             $scope.actionGo();
             expect(MachinesManager.performAction).toHaveBeenCalledWith(
-                node, "release", {});
+                node, "power_off", {});
         });
 
         it("calls performAction with osystem and distro_series", function() {
@@ -1063,6 +1064,28 @@ describe("NodeDetailsController", function() {
                     enable_ssh: true,
                     skip_networking: false,
                     skip_storage: false
+                });
+        });
+
+        it("calls performAction with releaseOptions", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "release"
+            };
+            var secureErase = makeName("secureErase");
+            var quickErase = makeName("quickErase");
+            $scope.releaseOptions.erase = true;
+            $scope.releaseOptions.secureErase = secureErase;
+            $scope.releaseOptions.quickErase = quickErase;
+            $scope.actionGo();
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
+                node, "release", {
+                    erase: true,
+                    secure_erase: secureErase,
+                    quick_erase: quickErase
                 });
         });
 

@@ -724,6 +724,47 @@ class TestReleaseAction(MAASServerTestCase):
         self.assertThat(
             node_stop, MockCalledOnceWith(user))
 
+    def test_Release_enters_disk_erasing(self):
+        user = factory.make_User()
+        params = dict(
+            power_address=factory.make_ipv4_address(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        node = factory.make_Node(
+            interface=True, status=self.actionable_status,
+            power_type='ipmi', power_state=POWER_STATE.OFF,
+            owner=user, power_parameters=params)
+        node_start = self.patch_autospec(node, '_start')
+        node_start.return_value = None
+
+        with post_commit_hooks:
+            Release(node, user).execute(erase=True)
+
+        self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
+        self.assertThat(
+            node_start, MockCalledOnceWith(user, user_data=ANY))
+
+    def test_Release_passes_secure_erase_and_quick_erase(self):
+        user = factory.make_User()
+        params = dict(
+            power_address=factory.make_ipv4_address(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        node = factory.make_Node(
+            interface=True, status=self.actionable_status,
+            power_type='ipmi', power_state=POWER_STATE.OFF,
+            owner=user, power_parameters=params)
+        node_release_or_erase = self.patch_autospec(node, 'release_or_erase')
+
+        with post_commit_hooks:
+            Release(node, user).execute(
+                erase=True, secure_erase=True, quick_erase=True)
+
+        self.assertThat(
+            node_release_or_erase,
+            MockCalledOnceWith(
+                user, erase=True, secure_erase=True, quick_erase=True))
+
 
 class TestMarkBrokenAction(MAASServerTestCase):
 

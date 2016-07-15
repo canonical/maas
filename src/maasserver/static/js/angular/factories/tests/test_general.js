@@ -53,7 +53,7 @@ describe("GeneralManager", function() {
             ["machine_actions", "device_actions", "region_controller_actions",
             "rack_controller_actions", "region_and_rack_controller_actions",
             "architectures", "hwe_kernels", "default_min_hwe_kernel", "osinfo",
-            "bond_options", "version", "power_types"]);
+            "bond_options", "version", "power_types", "release_options"]);
     });
 
     it("_data.machine_actions has correct data", function() {
@@ -177,6 +177,16 @@ describe("GeneralManager", function() {
         expect(angular.isFunction(power_types.replaceData)).toBe(true);
     });
 
+    it("_data.release_options has correct data", function() {
+        var release_options = GeneralManager._data.release_options;
+        expect(release_options.method).toBe("general.release_options");
+        expect(release_options.data).toEqual({});
+        expect(release_options.loaded).toBe(false);
+        expect(release_options.polling).toBe(false);
+        expect(release_options.nextPromise).toBeNull();
+        expect(angular.isFunction(release_options.replaceData)).toBe(true);
+    });
+
     describe("_data.power_types.replaceData", function() {
 
         var power_types, data, replaceData;
@@ -273,7 +283,9 @@ describe("GeneralManager", function() {
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             GeneralManager._data.bond_options.loaded = true;
-            GeneralManager._data.version.loaded = false;
+            GeneralManager._data.version.loaded = true;
+            GeneralManager._data.power_types.loaded = true;
+            GeneralManager._data.release_options.loaded = false;
             expect(GeneralManager.isLoaded()).toBe(false);
         });
 
@@ -291,6 +303,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.bond_options.loaded = true;
             GeneralManager._data.version.loaded = true;
             GeneralManager._data.power_types.loaded = true;
+            GeneralManager._data.release_options.loaded = true;
             expect(GeneralManager.isLoaded()).toBe(true);
         });
     });
@@ -544,11 +557,13 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(12);
+            expect(GeneralManager._loadData.calls.count()).toBe(13);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

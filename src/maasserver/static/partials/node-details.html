@@ -77,6 +77,9 @@
                                 <label for="image" class="u-margin--right">Choose your image</label>
                                 <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
                             </div>
+                            <div class="form__group ng-hide" data-ng-show="actionOption.name === 'release'">
+                                <span data-maas-release-options="releaseOptions"></span>
+                            </div>
                             <div class="right">
                                 <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                                 <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>

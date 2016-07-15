@@ -91,6 +91,7 @@ MERGE_VIEWS = {
             "js/angular/directives/power_parameters.js",
             "js/angular/directives/type.js",
             "js/angular/directives/contenteditable.js",
+            "js/angular/directives/release_options.js",
             "js/angular/directives/sticky_header.js",
             "js/angular/directives/placeholder.js",
             "js/angular/directives/version_reloader.js",

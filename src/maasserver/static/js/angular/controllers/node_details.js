@@ -37,6 +37,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             skipNetworking: false,
             skipStorage: false
         };
+        $scope.releaseOptions = {};
         $scope.checkingPower = false;
         $scope.devices = [];
 
@@ -623,6 +624,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.skip_networking = (
                     $scope.commissionOptions.skipNetworking);
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
+            } else if($scope.actionOption.name === "release") {
+                // Set the release options.
+                extra.erase = $scope.releaseOptions.erase;
+                extra.secure_erase = $scope.releaseOptions.secureErase;
+                extra.quick_erase = $scope.releaseOptions.quickErase;
             }
 
             $scope.nodesManager.performAction(
