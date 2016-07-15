@@ -36,6 +36,7 @@ from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
+    INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -93,6 +94,7 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
@@ -136,6 +138,7 @@ from metadataserver.user_data import (
     commissioning,
     disk_erasing,
 )
+from netaddr import IPAddress
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -4301,6 +4304,158 @@ class TestGetDefaultGateways(MAASServerTestCase):
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
             ), node.get_default_gateways())
+
+
+class TestGetDefaultDNSServers(MAASServerTestCase):
+    """Tests for `Node.get_default_dns_servers`."""
+
+    def make_Node_with_RackController(
+            self, ipv4=True, ipv6=True, ipv4_gateway=True, ipv6_gateway=True,
+            ipv4_subnet_dns=None, ipv6_subnet_dns=None):
+        ipv4_subnet_dns = [] if ipv4_subnet_dns is None else ipv4_subnet_dns
+        ipv6_subnet_dns = [] if ipv6_subnet_dns is None else ipv6_subnet_dns
+        rack_v4 = None
+        rack_v6 = None
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        if ipv4:
+            gateway_ip = None if ipv4_gateway else ""
+            v4_subnet = factory.make_Subnet(
+                version=4, vlan=vlan, dns_servers=ipv4_subnet_dns,
+                gateway_ip=gateway_ip)
+        if ipv6:
+            gateway_ip = None if ipv6_gateway else ""
+            v6_subnet = factory.make_Subnet(
+                version=6, vlan=vlan, dns_servers=ipv6_subnet_dns,
+                gateway_ip=gateway_ip)
+        rack = factory.make_RegionRackController()
+        vlan.primary_rack = rack
+        vlan.dhcp_on = True
+        vlan.save()
+        # In order to determine the correct IP address per-address-family,
+        # a name lookup is performed on the hostname part of the URL.
+        # We need to mock that so we can return whatever IP addresses it
+        # resolves to.
+        rack.url = "http://region:5240/MAAS/"
+        if ipv4:
+            rack_v4 = factory.pick_ip_in_Subnet(v4_subnet)
+        if ipv6:
+            rack_v6 = factory.pick_ip_in_Subnet(v6_subnet)
+
+        def get_address(hostname, ip_version=4):
+            """Mock function to return the IP address of the rack based on the
+            given address family.
+            """
+            if ip_version == 4:
+                return {IPAddress(rack_v4)} if rack_v4 else set()
+            elif ip_version == 6:
+                return {IPAddress(rack_v6)} if rack_v6 else set()
+
+        resolve_hostname = self.patch(
+            server_address_module, 'resolve_hostname')
+        resolve_hostname.side_effect = get_address
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=vlan, node=rack)
+        if ipv4:
+            rackif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v4_subnet, rack_v4)
+        if ipv6:
+            rackif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v6_subnet, rack_v6)
+        rack.boot_interface = rackif
+        rack.save()
+        node = factory.make_Node(status=NODE_STATUS.READY, disable_ipv4=False)
+        nodeif = factory.make_Interface(vlan=vlan, node=node)
+        if ipv4:
+            nodeif.link_subnet(INTERFACE_LINK_TYPE.AUTO, v4_subnet)
+        if ipv6:
+            nodeif.link_subnet(INTERFACE_LINK_TYPE.AUTO, v6_subnet)
+        node.boot_interface = nodeif
+        node.save()
+        return rack_v4, rack_v6, node
+
+    def test__uses_rack_ipv4_if_ipv4_only_with_no_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+
+    def test__uses_rack_ipv4_if_ipv4_only_with_no_gateway_v4_dns(self):
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False,
+            ipv4_subnet_dns=[ipv4_subnet_dns])
+        self.assertThat(
+            node.get_default_dns_servers(), Equals([rack_v4]))
+
+    def test__uses_rack_ipv6_if_ipv6_only_with_no_gateway_v6_dns(self):
+        ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=False,
+            ipv6_subnet_dns=[ipv6_subnet_dns])
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+
+    def test__uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+
+    def test__uses_rack_ipv4_if_dual_stack_with_ipv4_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=False)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+
+    def test__uses_subnet_ipv4_if_dual_stack_with_ipv4_gateway_with_dns(self):
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=False,
+            ipv4_subnet_dns=[ipv4_subnet_dns],
+            ipv6_subnet_dns=[ipv6_subnet_dns])
+        self.assertThat(
+            node.get_default_dns_servers(), Equals([ipv4_subnet_dns]))
+
+    def test__uses_rack_ipv6_if_dual_stack_with_ipv6_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=True)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+
+    def test__uses_subnet_ipv6_if_dual_stack_with_ipv6_gateway(self):
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=True,
+            ipv4_subnet_dns=[ipv4_subnet_dns],
+            ipv6_subnet_dns=[ipv6_subnet_dns])
+        self.assertThat(
+            node.get_default_dns_servers(), Equals([ipv6_subnet_dns]))
+
+    def test__uses_rack_ipv4_if_ipv4_with_ipv4_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+
+    def test__uses_subnet_ipv4_if_ipv4_stack_with_ipv4_gateway_and_dns(self):
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False,
+            ipv4_subnet_dns=[ipv4_subnet_dns],
+            ipv6_subnet_dns=[ipv6_subnet_dns])
+        self.assertThat(
+            node.get_default_dns_servers(), Equals([ipv4_subnet_dns]))
+
+    def test__uses_rack_ipv6_if_ipv6_with_ipv6_gateway(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True)
+        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+
+    def test__uses_subnet_ipv6_if_ipv6_with_ipv6_gateway_and_dns(self):
+        ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
+        ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True,
+            ipv4_subnet_dns=[ipv4_subnet_dns],
+            ipv6_subnet_dns=[ipv6_subnet_dns])
+        self.assertThat(
+            node.get_default_dns_servers(), Equals([ipv6_subnet_dns]))
 
 
 class TestNode_Start(MAASServerTestCase):
