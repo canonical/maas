@@ -15,7 +15,9 @@ LP: #1594991    MAAS displays every power query on the summarized view of node e
 
 LP: #1603147    Commissioning dropdown is grey and checkmarks are missing.
 
-LP: #1576116    MAAS adds regions controller as DNS resolver
+LP: #1576116    [2.0rc1] MAAS does not respect default subnet's DNS server when choosing default DNS
+
+LP: #1600720    [2.0rc1] MAAS doesn't honor DNS settings for a subnet for DHCP
 
 
 2.0.0 (rc2)
