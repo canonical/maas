@@ -13,6 +13,8 @@ LP: #1557434    For the MAAS CLI, mimic the error behaviour provided by argparse
 
 LP: #1594991    MAAS displays every power query on the summarized view of node event log.
 
+LP: #1603147    Commissioning dropdown is grey and checkmarks are missing.
+
 
 2.0.0 (rc2)
 ===========
