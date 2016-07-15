@@ -139,7 +139,7 @@ describe("EventsManagerFactory", function() {
             expect(eventManager._nodeId).toBe(nodeId);
             expect(eventManager._handler).toBe("event");
             expect(eventManager._factory).toBe(EventsManagerFactory);
-            expect(eventManager._maxDays).toBe(30);
+            expect(eventManager._maxDays).toBe(1);
         });
 
         describe("_initBatchLoadParameters", function() {
@@ -147,7 +147,7 @@ describe("EventsManagerFactory", function() {
             it("returns parameters with node_id and max_days", function() {
                 expect(eventManager._initBatchLoadParameters()).toEqual({
                     "node_id": nodeId,
-                    "max_days": 30
+                    "max_days": 1
                 });
             });
         });
@@ -198,7 +198,7 @@ describe("EventsManagerFactory", function() {
                     defer.promise);
                 spyOn(eventManager, "isLoading").and.returnValue(true);
                 eventManager.loadMaximumDays(maxDays);
-                expect(eventManager._maxDays).toBe(30);
+                expect(eventManager._maxDays).toBe(1);
 
                 defer.resolve();
                 $rootScope.$digest();

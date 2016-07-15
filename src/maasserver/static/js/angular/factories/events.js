@@ -19,7 +19,7 @@ angular.module('MAAS').factory(
             this._handler = "event";
             this._nodeId = nodeId;
             this._factory = factory;
-            this._maxDays = 30;
+            this._maxDays = 1;
         }
 
         EventsManager.prototype = new Manager();
