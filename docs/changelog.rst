@@ -15,6 +15,8 @@ LP: #1594991    MAAS displays every power query on the summarized view of node e
 
 LP: #1603147    Commissioning dropdown is grey and checkmarks are missing.
 
+LP: #1576116    MAAS adds regions controller as DNS resolver
+
 
 2.0.0 (rc2)
 ===========
@@ -61,6 +63,9 @@ LP: #1515188    [1.9] VMware power management fails when VMs are organized in ne
 
 LP: #1596046    [2.0] maas 2.0 pxeboot fails on PowerNV
 
+LP: #1600267    [1.9,2.0,UX] Can't add aliases when parent interface is set to 'DCHP'
+
+LP: #1598937    [2.0 rc1] Following fresh install maas command fails - PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.maascli.db'
 
 2.0.0 (beta8)
 =============

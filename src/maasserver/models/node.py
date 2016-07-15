@@ -209,8 +209,23 @@ DEFAULT_BIOS_BOOT_METHOD = "pxe"
 
 # Return type from `get_effective_power_info`.
 PowerInfo = namedtuple("PowerInfo", (
-    "can_be_started", "can_be_stopped", "can_be_queried", "power_type",
-    "power_parameters"))
+    "can_be_started",
+    "can_be_stopped",
+    "can_be_queried",
+    "power_type",
+    "power_parameters",
+))
+
+DefaultGateways = namedtuple("DefaultGateways", (
+    "ipv4",
+    "ipv6",
+))
+
+GatewayDefinition = namedtuple("GatewayDefinition", (
+    "interface_id",
+    "subnet_id",
+    "gateway_ip",
+))
 
 # The sequence from which the decimal form of node system IDs should be
 # pulled. At the time of writing this should match the definition in migration
@@ -2568,7 +2583,7 @@ class Node(CleanSave, TimestampedModel):
                 interface.id
             """, (self.id,))
         return [
-            (found[0], found[1], found[2])
+            GatewayDefinition._make((found[0], found[1], found[2]))
             for found in cursor.fetchall()
         ]
 
@@ -2620,7 +2635,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Early out if we already have both gateways.
         if gateway_ipv4 and gateway_ipv6:
-            return (gateway_ipv4, gateway_ipv6)
+            return DefaultGateways._make((gateway_ipv4, gateway_ipv6))
 
         # Get the best guesses for the missing IP families.
         found_gateways = self.get_best_guess_for_default_gateways()
@@ -2630,7 +2645,47 @@ class Node(CleanSave, TimestampedModel):
         if not gateway_ipv6:
             gateway_ipv6 = self._get_gateway_tuple_by_family(
                 found_gateways, IPADDRESS_FAMILY.IPv6)
-        return (gateway_ipv4, gateway_ipv6)
+        return DefaultGateways._make((gateway_ipv4, gateway_ipv6))
+
+    def get_default_dns_servers(self):
+        """Return the default DNS servers for this node."""
+        # Circular imports.
+        from maasserver.dns.zonegenerator import get_dns_server_address
+
+        gateways = self.get_default_gateways()
+
+        # Try first to use DNS servers from default gateway subnets.
+        if gateways.ipv4 is not None:
+            subnet = Subnet.objects.get(id=gateways.ipv4.subnet_id)
+            if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
+                # An IPv4 subnet is hosting the default gateway and has DNS
+                # servers defined. IPv4 DNS servers take first-priority.
+                return subnet.dns_servers
+        if gateways.ipv6 is not None:
+            subnet = Subnet.objects.get(id=gateways.ipv6.subnet_id)
+            if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
+                # An IPv6 subnet is hosting the default gateway and has DNS
+                # servers defined. IPv6 DNS servers take second-priority.
+                return subnet.dns_servers
+
+        # No default gateway subnet has specific DNS servers defined, so
+        # use MAAS for the default DNS server.
+        if gateways.ipv4 is None and gateways.ipv6 is None:
+            # If there are no default gateways, the default is the MAAS
+            # region IP address.
+            maas_dns_server = get_dns_server_address(
+                rack_controller=self.get_boot_rack_controller())
+        else:
+            # Choose an address consistent with the primary address-family
+            # in use, as indicated by the presence (or not) of a gateway.
+            # Note that this path is only taken if the MAAS URL is set to
+            # a hostname, and the hostname resolves to both an IPv4 and an
+            # IPv6 address.
+            maas_dns_server = get_dns_server_address(
+                rack_controller=self.get_boot_rack_controller(),
+                ipv4=(gateways.ipv4 is not None),
+                ipv6=(gateways.ipv6 is not None))
+        return [maas_dns_server]
 
     def get_boot_purpose(self):
         """

@@ -6,10 +6,7 @@
 __all__ = [
     ]
 
-from maasserver.dns.zonegenerator import (
-    get_dns_search_paths,
-    get_dns_server_address,
-)
+from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
@@ -24,6 +21,7 @@ class CurtinNetworkGenerator:
     def __init__(self, node):
         self.node = node
         self.gateways = node.get_default_gateways()
+        self.dns_servers = node.get_default_dns_servers()
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
         self.operations = {
@@ -51,8 +49,7 @@ class CurtinNetworkGenerator:
 
         self.network_config.append({
             "type": "nameserver",
-            "address": get_dns_server_address(
-                rack_controller=self.node.get_boot_rack_controller()),
+            "address": self.dns_servers,
             "search": sorted(get_dns_search_paths()),
         })
 
