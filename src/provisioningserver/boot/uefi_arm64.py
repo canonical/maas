@@ -93,11 +93,6 @@ class UEFIARM64BootMethod(UEFIBootMethod):
             for module_path in glob.glob(os.path.join(module_dir, '*.mod')):
                 module_filename = os.path.basename(module_path)
                 module_name, _ = os.path.splitext(module_filename)
-                # XXX newell 2015-04-28 bug=1459871,1459872: The module
-                # skipping logic below can be removed once the listed bugs have
-                # been fixed and released. See listed bugs for details.
-                if module_name in ('setjmp', 'setjmp_test', 'progress'):
-                    continue
                 modules.append(module_name)
 
             # Generate the grub bootloader
