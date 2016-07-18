@@ -503,6 +503,22 @@ class SubnetTest(MAASServerTestCase):
             {'gateway_ip': ["Gateway IP must be within CIDR range."]},
             error.message_dict)
 
+    def test_allows_fe80_gateway(self):
+        network = factory.make_ipv6_network(slash=64)
+        gateway_ip = factory.pick_ip_in_network(IPNetwork('fe80::/64'))
+        subnet = factory.make_Subnet(cidr=str(network), gateway_ip=gateway_ip)
+        self.assertEqual(subnet.gateway_ip, gateway_ip)
+
+    def test_denies_fe80_gateway_for_ipv4(self):
+        network = factory.make_ipv4_network(slash=22)
+        gateway_ip = factory.pick_ip_in_network(IPNetwork('fe80::/64'))
+        error = self.assertRaises(
+            ValidationError, factory.make_Subnet,
+            cidr=str(network), gateway_ip=gateway_ip)
+        self.assertEqual(
+            {'gateway_ip': ["Gateway IP must be within CIDR range."]},
+            error.message_dict)
+
     def test_create_from_cidr_creates_subnet(self):
         vlan = factory.make_VLAN()
         cidr = str(factory.make_ip4_or_6_network().cidr)
