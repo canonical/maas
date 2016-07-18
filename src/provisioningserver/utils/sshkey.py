@@ -136,7 +136,7 @@ def normalise_openssh_public_key(keytext):
         try:
             with open(os.devnull, "r") as devnull:
                 rfc4716key = check_output(
-                    ("setsid", "-w", "ssh-keygen", "-e", "-f", keypath.path),
+                    ("setsid", "-w", "ssh-keygen", "-e", "-f", str(keypath)),
                     stdin=devnull, stderr=PIPE, env=env)
         except CalledProcessError:
             raise OpenSSHKeyError(
@@ -146,7 +146,7 @@ def normalise_openssh_public_key(keytext):
         try:
             with open(os.devnull, "r") as devnull:
                 opensshkey = check_output(
-                    ("setsid", "-w", "ssh-keygen", "-i", "-f", keypath.path),
+                    ("setsid", "-w", "ssh-keygen", "-i", "-f", str(keypath)),
                     stdin=devnull, stderr=PIPE, env=env)
         except CalledProcessError:
             # If this happens it /might/ be an OpenSSH bug. If we've managed

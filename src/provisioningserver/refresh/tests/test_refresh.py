@@ -377,7 +377,7 @@ class TestRefresh(MAASTestCase):
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = Path(tmpdir).absolute()
                 return {
-                    entry.path for entry in tmpdir.parent.iterdir()
+                    str(entry) for entry in tmpdir.parent.iterdir()
                     if entry.is_dir() and entry != tmpdir
                 }
 
