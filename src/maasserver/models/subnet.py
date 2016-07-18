@@ -383,13 +383,10 @@ class Subnet(CleanSave, TimestampedModel):
         if gateway_addr in network:
             # If the gateway is in the network, it is fine.
             return
-        elif network.version == 6 and gateway_addr in IPNetwork('fe80::/64'):
-            # If this is an IPv6 network and the gateway is in fe80::/64, then
-            # it is also valid.  fe80::/64 is the link local network that is
-            # required by the IPv6 spec.
-            # XXX lamont 2016-07-16: revisit after we don't support anything
-            # where python << 3.4 could possibly be installed, and switch to
-            # gateway_addr.is_link_local().
+        elif network.version == 6 and gateway_addr.is_link_local():
+            # If this is an IPv6 network and the gateway is in the link-local
+            # network (fe80::/64 -- required to be configured by the spec),
+            # then it is also valid.
             return
         else:
             # The gateway is not valid for the network.
