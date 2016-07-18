@@ -13,9 +13,9 @@ __all__ = [
     'get_updates_package',
     ]
 
-import gzip
 import hashlib
 import io
+import lzma
 import os
 from platform import linux_distribution
 import re
@@ -58,11 +58,11 @@ def get_file(url):
         raise
 
 
-def get_md5sum(data):
-    """Returns the md5sum for the provided data."""
-    md5 = hashlib.md5()
-    md5.update(data)
-    return md5.hexdigest()
+def get_sha256sum(data):
+    """Returns the sha256sum for the provided data."""
+    sha256 = hashlib.sha256()
+    sha256.update(data)
+    return sha256.hexdigest()
 
 
 def gpg_verify_data(signature, data_file):
@@ -87,7 +87,7 @@ def gpg_verify_data(signature, data_file):
 
 def decompress_packages(packages):
     compressed = io.BytesIO(packages)
-    decompressed = gzip.GzipFile(fileobj=compressed)
+    decompressed = lzma.LZMAFile(compressed)
     return str(decompressed.read(), errors='ignore')
 
 
@@ -100,15 +100,16 @@ def get_packages(archive, component, architecture, release=None):
     release_file_gpg = get_file('%s.gpg' % release_url)
     gpg_verify_data(release_file_gpg, release_file)
 
-    # Download the packages and verify that md5sum matches
-    path = '%s/binary-%s/Packages.gz' % (component, architecture)
+    # Download the packages and verify that the sha256 matches
+    path = '%s/binary-%s/Packages.xz' % (component, architecture)
     packages_url = urljoin(url, path)
     packages = get_file(packages_url)
-    md5sum = re.search(
-        rb"^\s*?([a-zA-Z0-9]{32})\s+?[0-9]+\s+%s$" % path.encode("utf-8"),
+    regex_path = re.escape(path).encode('utf-8')
+    sha256sum = re.search(
+        rb"^\s*?([a-fA-F0-9]{64})\s+?[0-9]+\s+%s$" % regex_path,
         release_file,
         re.MULTILINE).group(1)
-    if get_md5sum(packages).encode("utf-8") != md5sum:
+    if get_sha256sum(packages).encode('utf-8') != sha256sum:
         raise ValueError("%s failed checksum." % packages_url)
 
     return decompress_packages(packages)
@@ -151,8 +152,8 @@ def get_package(package, archive, component, architecture, release=None):
     filename = os.path.basename(path)
     url = urljoin(archive, path)
     deb = get_file(url)
-    md5 = get_md5sum(deb)
-    if md5 != package['MD5sum']:
+    sha256 = get_sha256sum(deb)
+    if sha256 != package['SHA256']:
         raise ValueError("%s failed checksum." % filename)
     return deb, filename
 

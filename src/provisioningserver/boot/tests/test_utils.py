@@ -23,19 +23,19 @@ class TestBootMethodUtils(MAASTestCase):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
         release_gpg = factory.make_string()
-        packages_gz = factory.make_bytes()
+        packages_xz = factory.make_bytes()
 
         url = utils.urljoin(archive, 'dists', release)
         release_url = utils.urljoin(url, 'Release')
         release_gpg_url = utils.urljoin(url, 'Release.gpg')
-        packages_path = '%s/binary-%s/Packages.gz' % (comp, arch)
+        packages_path = '%s/binary-%s/Packages.xz' % (comp, arch)
         packages_url = utils.urljoin(url, packages_path)
-        packages_gz_md5 = utils.get_md5sum(packages_gz)
-        release_data = (
-            "  %s  012 %s" % (packages_gz_md5, packages_path)).encode("utf-8")
+        packages_xz_sha256 = utils.get_sha256sum(packages_xz)
+        release_data = "  %s  012 %s" % (packages_xz_sha256, packages_path)
+        release_data = release_data.encode("utf-8")
 
         get_file = self.patch(utils, "get_file")
-        get_file.side_effect = [release_data, release_gpg, packages_gz]
+        get_file.side_effect = [release_data, release_gpg, packages_xz]
         verify_data = self.patch(utils, "gpg_verify_data")
         decompress = self.patch(utils, "decompress_packages")
 
@@ -46,7 +46,7 @@ class TestBootMethodUtils(MAASTestCase):
             MockCalledOnceWith(release_gpg, release_data))
         self.assertThat(
             decompress,
-            MockCalledOnceWith(packages_gz))
+            MockCalledOnceWith(packages_xz))
         self.assertThat(
             get_file,
             MockCallsMatch(
@@ -58,15 +58,15 @@ class TestBootMethodUtils(MAASTestCase):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
         release_gpg = factory.make_string()
-        packages_gz = factory.make_bytes()
+        packages_xz = factory.make_bytes()
 
-        packages_path = '%s/binary-%s/Packages.gz' % (comp, arch)
-        packages_gz_md5 = utils.get_md5sum(packages_gz + b'0')
-        release_data = (
-            "  %s  012 %s" % (packages_gz_md5, packages_path)).encode("utf-8")
+        packages_path = '%s/binary-%s/Packages.xz' % (comp, arch)
+        packages_xz_sha256 = utils.get_sha256sum(packages_xz + b'0')
+        release_data = "  %s  012 %s" % (packages_xz_sha256, packages_path)
+        release_data = release_data.encode("utf-8")
 
         get_file = self.patch(utils, "get_file")
-        get_file.side_effect = [release_data, release_gpg, packages_gz]
+        get_file.side_effect = [release_data, release_gpg, packages_xz]
         self.patch(utils, "gpg_verify_data")
         self.patch(utils, "decompress_packages")
 
@@ -104,11 +104,11 @@ class TestBootMethodUtils(MAASTestCase):
         comp, arch, release = factory.make_names("comp", "arch", "release")
 
         package_data = factory.make_bytes()
-        package_md5 = utils.get_md5sum(package_data)
+        package_sha256 = utils.get_sha256sum(package_data)
         package_info = {
             'Package': package,
             'Filename': filename,
-            'MD5sum': package_md5
+            'SHA256': package_sha256
         }
 
         get_package_info = self.patch(utils, "get_package_info")
@@ -132,11 +132,11 @@ class TestBootMethodUtils(MAASTestCase):
         comp, arch, release = factory.make_names("comp", "arch", "release")
 
         package_data = factory.make_bytes()
-        package_md5 = utils.get_md5sum(package_data + b'0')
+        package_sha256 = utils.get_sha256sum(package_data + b'0')
         package_info = {
             'Package': package,
             'Filename': filename,
-            'MD5sum': package_md5
+            'SHA256': package_sha256
         }
 
         get_package_info = self.patch(utils, "get_package_info")
