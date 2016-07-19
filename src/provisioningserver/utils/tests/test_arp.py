@@ -19,54 +19,19 @@ from netaddr import (
 from provisioningserver.utils.arp import (
     ARP,
     ARP_OPERATION,
-    bytes_to_hex,
-    bytes_to_int,
-    format_eui,
-    hex_str_to_bytes,
-    ipv4_to_bytes,
     SEEN_AGAIN_THRESHOLD,
     update_and_print_bindings,
     update_bindings_and_get_event,
+)
+from provisioningserver.utils.network import (
+    format_eui,
+    hex_str_to_bytes,
+    ipv4_to_bytes,
 )
 from testtools.matchers import (
     Equals,
     HasLength,
 )
-
-
-class TestConversionFunctions(MAASTestCase):
-
-    def test__bytes_to_hex(self):
-        self.assertThat(bytes_to_hex(b'\x01\xff'), Equals(b'01ff'))
-        self.assertThat(bytes_to_hex(b'\x00\x01\xff'), Equals(b'0001ff'))
-
-    def test__bytes_to_int(self):
-        self.assertThat(bytes_to_int(b'\xff\xff'), Equals(65535))
-        self.assertThat(bytes_to_int(b'\xff\xff\xff'), Equals(16777215))
-        self.assertThat(
-            bytes_to_int(b'\xff\xff\xff\xff\xff\xff'), Equals(281474976710655))
-
-    def test__hex_str_to_bytes(self):
-        self.assertThat(hex_str_to_bytes('0x0000'), Equals(b'\x00\x00'))
-        self.assertThat(hex_str_to_bytes('ff:ff'), Equals(b'\xff\xff'))
-        self.assertThat(hex_str_to_bytes('ff ff  '), Equals(b'\xff\xff'))
-        self.assertThat(hex_str_to_bytes('  ff-ff'), Equals(b'\xff\xff'))
-        self.assertThat(hex_str_to_bytes('ff-ff'), Equals(b'\xff\xff'))
-        self.assertThat(hex_str_to_bytes('0xffff'), Equals(b'\xff\xff'))
-        self.assertThat(hex_str_to_bytes(' 0xffff'), Equals(b'\xff\xff'))
-        self.assertThat(
-            hex_str_to_bytes('01:02:03:04:05:06'),
-            Equals(b'\x01\x02\x03\x04\x05\x06'))
-        self.assertThat(
-            hex_str_to_bytes('0A:0B:0C:0D:0E:0F'),
-            Equals(b'\x0a\x0b\x0c\x0d\x0e\x0f'))
-        self.assertThat(
-            hex_str_to_bytes('0a:0b:0c:0d:0e:0f'),
-            Equals(b'\x0a\x0b\x0c\x0d\x0e\x0f'))
-
-    def test__format_eui(self):
-        self.assertThat(
-            format_eui(EUI('0A-0B-0C-0D-0E-0F')), Equals("0a:0b:0c:0d:0e:0f"))
 
 
 def make_arp_packet(

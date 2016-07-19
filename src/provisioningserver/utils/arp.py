@@ -7,7 +7,6 @@ __all__ = [
     "ARP"
 ]
 
-import codecs
 from collections import namedtuple
 from datetime import datetime
 import json
@@ -19,6 +18,11 @@ import sys
 from netaddr import (
     EUI,
     IPAddress,
+)
+from provisioningserver.utils.network import (
+    bytes_to_int,
+    format_eui,
+    hex_str_to_bytes,
 )
 from provisioningserver.utils.pcap import (
     PCAP,
@@ -45,45 +49,6 @@ ARPPacket = namedtuple('ARPPacket', (
     'target_mac',
     'target_ip',
 ))
-
-
-def bytes_to_hex(byte_string):
-    """Utility function to convert the the specified `bytes` object into
-    a string of hex characters."""
-    return codecs.encode(byte_string, 'hex')
-
-
-def bytes_to_int(byte_string):
-    """Utility function to convert the specified string of bytes into
-    an `int`."""
-    return int(bytes_to_hex(byte_string), 16)
-
-
-def hex_str_to_bytes(data):
-    """Strips spaces, '-', and ':' characters out of the specified string,
-    and (assuming the characters that remain are hex digits) returns an
-    equivalent `bytes` object."""
-    data = data.strip()
-    if data.startswith('0x'):
-        data = data[2:]
-    data = data.replace(':', '')
-    data = data.replace('-', '')
-    data = data.replace(' ', '')
-    try:
-        return bytes.fromhex(data)
-    except ValueError as e:
-        # The default execption is not really useful since it doesn't specify
-        # the incorrect input.
-        raise ValueError("Invalid hex string: '%s'; %s" % (data, str(e)))
-
-
-def ipv4_to_bytes(ipv4_address):
-    return bytes.fromhex("%08x" % IPAddress(ipv4_address).value)
-
-
-def format_eui(eui):
-    """Returns the specified netaddr.EUI object formatted in the MAAS style."""
-    return str(eui).replace('-', ':').lower()
 
 
 class ARP_OPERATION:
