@@ -78,6 +78,8 @@ setup(
              'scripts/uec2roottar']),
         ('/usr/sbin',
             ['scripts/maas-dhcp-helper']),
+        ('/usr/lib/maas',
+            ['scripts/maas-network-monitor']),
     ],
 
     classifiers=[
