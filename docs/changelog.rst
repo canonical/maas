@@ -2,6 +2,11 @@
 Changelog
 =========
 
+1.9.5
+=====
+
+LP: #1603590    [1.9] MAAS does not allow link-local address for default gateway on ipv6 subnet.
+
 1.9.4
 =====
 

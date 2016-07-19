@@ -383,7 +383,17 @@ class Subnet(CleanSave, TimestampedModel):
         if self.gateway_ip is None or self.gateway_ip == '':
             return
         gateway_addr = IPAddress(self.gateway_ip)
-        if gateway_addr not in self.get_ipnetwork():
+        network = self.get_ipnetwork()
+        if gateway_addr in network:
+            # If the gateway is in the network, it is fine.
+            return
+        elif network.version == 6 and gateway_addr.is_link_local():
+            # If this is an IPv6 network and the gateway is in the link-local
+            # network (fe80::/64 -- required to be configured by the spec),
+            # then it is also valid.
+            return
+        else:
+            # The gateway is not valid for the network.
             message = "Gateway IP must be within CIDR range."
             raise ValidationError({'gateway_ip': [message]})
 
