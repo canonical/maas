@@ -21,6 +21,8 @@ LP: #1600720    [2.0rc1] MAAS doesn't honor DNS settings for a subnet for DHCP
 
 LP: #1598028    [2.0] Loading latest machine events can make web browser unresponsive
 
+LP: #1604128    [2.0rc2] Unable to add a public SSH Key due to lp1604147
+
 
 2.0.0 (rc2)
 ===========

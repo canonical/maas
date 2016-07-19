@@ -817,9 +817,9 @@ class TestVirtualityScript(MAASTestCase):
         script.write_text(VIRTUALITY_SCRIPT, "ascii")
         script.chmod(0o700)
         env = select_c_utf8_locale()
-        env["PATH"] = self.bindir.path
+        env["PATH"] = str(self.bindir)
         try:
-            return check_output((script.path,), stderr=STDOUT, env=env)
+            return check_output((str(script),), stderr=STDOUT, env=env)
         except CalledProcessError as error:
             self.addDetail("output", text_content(
                 error.output.decode("utf-8", "replace")))
