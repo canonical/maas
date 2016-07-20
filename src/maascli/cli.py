@@ -9,6 +9,7 @@ __all__ = [
 
 from functools import partial
 import os
+import pkgutil
 import sys
 from textwrap import fill
 
@@ -187,7 +188,7 @@ def register_cli_commands(parser):
 
     # Setup and the allowed django commands into the maascli.
     management = get_django_management()
-    if management is not None:
+    if management is not None and is_maasserver_available():
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
         sys.path.append('/usr/share/maas')
         load_regiond_commands(management, parser)
@@ -202,6 +203,11 @@ def get_django_management():
         return None
     else:
         return management
+
+
+def is_maasserver_available():
+    """Ensure that 'maasserver' module is available."""
+    return pkgutil.find_loader("maasserver") is not None
 
 
 def run_regiond_command(management, parser):
