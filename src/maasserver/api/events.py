@@ -26,7 +26,7 @@ from maasserver.models import Event
 from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
 
 
-MAX_EVENT_LOG_COUNT = 1000
+MAX_EVENT_LOG_COUNT = 
 DEFAULT_EVENT_LOG_LIMIT = 100
 
 
@@ -89,6 +89,12 @@ class EventsHandler(OperationsHandler):
         :param level: Desired minimum log level of returned events. Returns
             this level of events and greater. Choose from: %(log_levels)s.
             The default is INFO.
+        :param limit: Optional number of events to return. Default 100.
+            Maximum: 1000.
+        :param before: Optional event id.  Defines where to start returning
+            older events.
+        :param after: Optional event id.  Defines where to start returning
+            newer events.
         """
         # Filter first by optional node ID, hostname, MAC, etc.
         nodes = filtered_nodes_list_from_request(request)
