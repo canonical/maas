@@ -26,7 +26,7 @@ from maasserver.models import Event
 from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
 
 
-MAX_EVENT_LOG_COUNT = 
+MAX_EVENT_LOG_COUNT = 1000
 DEFAULT_EVENT_LOG_LIMIT = 100
 
 
