@@ -19,10 +19,13 @@ from netaddr import (
     EUI,
     IPAddress,
 )
+from provisioningserver.utils.ethernet import (
+    Ethernet,
+    ETHERTYPE,
+)
 from provisioningserver.utils.network import (
     bytes_to_int,
     format_eui,
-    hex_str_to_bytes,
 )
 from provisioningserver.utils.pcap import (
     PCAP,
@@ -49,6 +52,8 @@ ARPPacket = namedtuple('ARPPacket', (
     'target_mac',
     'target_ip',
 ))
+
+SIZEOF_ARP_PACKET = 28
 
 
 class ARP_OPERATION:
@@ -89,7 +94,8 @@ class ARP_OPERATION:
 class ARP:
     """Representation of an ARP packet."""
 
-    def __init__(self, pkt_bytes, time=None, src_mac=None, dst_mac=None):
+    def __init__(
+            self, pkt_bytes, time=None, src_mac=None, dst_mac=None, vid=None):
         """
         :param pkt_bytes: The input bytes of the ARP packet.
         :type pkt_bytes: bytes
@@ -99,11 +105,12 @@ class ARP:
         :type src_mac: bytes
         :param dst_mac: Destination MAC address from Ethernet header.
         :type dst_mac: bytes
+        :param vid: 802.1q VLAN ID (VID), or None if untagged.
+        :type vid: int
         :return:
         """
-        # Truncate the packet at 28 bytes.
         packet = ARPPacket._make(
-            struct.unpack(ARP_PACKET, pkt_bytes[0:28]))
+            struct.unpack(ARP_PACKET, pkt_bytes[0:SIZEOF_ARP_PACKET]))
         self.packet = packet
         self.time = time
         if src_mac is not None:
@@ -114,6 +121,7 @@ class ARP:
             self.dst_mac = EUI(bytes_to_int(dst_mac))
         else:
             self.dst_mac = None
+        self.vid = vid
         self.hardware_type = packet.hardware_type
         self.protocol_type = packet.protocol
         self.hardware_length = packet.hardware_length
@@ -191,6 +199,9 @@ class ARP:
         if self.time is not None:
             out.write("ARP observed at %s:\n" % (
                 datetime.fromtimestamp(self.time)))
+        if self.vid is not None:
+            out.write("   802.1q VLAN ID (VID): %s (0x%03x)\n" % (
+                self.vid, self.vid))
         if self.src_mac is not None:
             out.write("        Ethernet source: %s\n" % format_eui(
                 self.src_mac))
@@ -212,7 +223,7 @@ class ARP:
         out.write("\n")
 
 
-def update_bindings_and_get_event(bindings, ip, mac, time):
+def update_bindings_and_get_event(bindings, vid, ip, mac, time):
     """Update the specified bindings dictionary and returns a dictionary if the
     information resulted in an update to the bindings. (otherwise, returns
     None.)
@@ -226,8 +237,8 @@ def update_bindings_and_get_event(bindings, ip, mac, time):
         time - The time (in seconds since the epoch) the binding was observed.
         event - An event type; either "NEW", "MOVED", or "REFRESHED".
     """
-    if ip in bindings:
-        binding = bindings[ip]
+    if (vid, ip) in bindings:
+        binding = bindings[(vid, ip)]
         if binding['mac'] != mac:
             # Another MAC claimed ownership of this IP address. Update the
             # MAC and emit a "MOVED" event.
@@ -236,12 +247,12 @@ def update_bindings_and_get_event(bindings, ip, mac, time):
             binding['time'] = time
             return (dict(
                 ip=str(ip), mac=format_eui(mac), time=time, event="MOVED",
-                previous_mac=format_eui(previous_mac)))
+                previous_mac=format_eui(previous_mac), vid=vid))
         elif time - binding['time'] >= SEEN_AGAIN_THRESHOLD:
             binding['time'] = time
             return dict(
                 ip=str(ip), mac=format_eui(mac), time=time,
-                event="REFRESHED")
+                event="REFRESHED", vid=vid)
         else:
             # The IP was found in the bindings dict, but within the
             # SEEN_AGAIN_THRESHOLD. Don't update the record; the time field
@@ -250,10 +261,10 @@ def update_bindings_and_get_event(bindings, ip, mac, time):
     else:
         # We haven't seen this IP before, so add a binding for it and
         # emit a "NEW" event.
-        bindings[ip] = {'mac': mac, 'time': time}
+        bindings[(vid, ip)] = {'mac': mac, 'time': time}
         return dict(
             ip=str(ip), mac=format_eui(mac), time=time,
-            event="NEW")
+            event="NEW", vid=vid)
 
 
 def update_and_print_bindings(bindings, arp, out=sys.stdout):
@@ -263,7 +274,8 @@ def update_and_print_bindings(bindings, arp, out=sys.stdout):
     the results of updating the binding.
     """
     for ip, mac in arp.bindings():
-        event = update_bindings_and_get_event(bindings, ip, mac, arp.time)
+        event = update_bindings_and_get_event(
+            bindings, arp.vid, ip, mac, arp.time)
         if event is not None:
             out.write("%s\n" % json.dumps(event))
             out.flush()
@@ -279,7 +291,6 @@ def observe_arp_packets(
     :param input: Stream to read PCAP data from.
     :type input: a file or stream supporting `read(int)`
     """
-    arp_ethertype = hex_str_to_bytes('0806')
     if bindings:
         bindings = dict()
     else:
@@ -291,16 +302,20 @@ def observe_arp_packets(
             # assumptions about the link layer header won't be correct.
             return 4
         for header, packet in pcap:
-            src_mac, dst_mac, ethertype = struct.unpack('6s6s2s', packet[:14])
-            if len(packet) < (14 + 28):
-                # Ignore truncated packets.
+            ethernet = Ethernet(packet, time=header.timestamp_seconds)
+            if not ethernet.is_valid():
+                # Ignore packets with a truncated Ethernet header.
                 continue
-            if ethertype != arp_ethertype:
+            if len(ethernet.payload) < SIZEOF_ARP_PACKET:
+                # Ignore truncated ARP packets.
+                continue
+            if ethernet.ethertype != ETHERTYPE.ARP:
                 # Ignore non-ARP packets.
                 continue
             arp = ARP(
-                packet[14:], src_mac=src_mac, dst_mac=dst_mac,
-                time=header.timestamp_seconds)
+                ethernet.payload, src_mac=ethernet.src_mac,
+                dst_mac=ethernet.dst_mac, vid=ethernet.vid,
+                time=ethernet.time)
             if bindings is not None:
                 update_and_print_bindings(bindings, arp)
             if verbose:

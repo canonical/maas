@@ -1,7 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for ``provisioningserver.utils.pcap``."""
+"""Tests for ``provisioningserver.utils.arp``."""
 
 __all__ = []
 
@@ -87,11 +87,12 @@ class TestARP(MAASTestCase):
             pkt_sender_ip, pkt_sender_mac, pkt_target_ip, pkt_target_mac)
         arp = ARP(
             arp_packet, time=ts, src_mac=hex_str_to_bytes(eth_src),
-            dst_mac=hex_str_to_bytes(eth_dst))
+            dst_mac=hex_str_to_bytes(eth_dst), vid=100)
         out = io.StringIO()
         arp.write(out)
         expected_output = dedent("""\
         ARP observed at {expected_time}:
+           802.1q VLAN ID (VID): 100 (0x064)
                 Ethernet source: {eth_src}
            Ethernet destination: {eth_dst}
                   Hardware type: 0x0001
@@ -215,41 +216,68 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
+        vid = None
         event = update_bindings_and_get_event(
-            bindings, ip, mac, 0)
+            bindings, vid, ip, mac, 0)
         self.assertThat(bindings, Equals({
-            ip: {"mac": mac, "time": 0}
+            (vid, ip): {"mac": mac, "time": 0}
         }))
         self.assertThat(event, Equals(dict(
-            event="NEW", ip=str(ip), mac=format_eui(mac), time=0
+            event="NEW", ip=str(ip), mac=format_eui(mac), time=0, vid=vid
+        )))
+
+    def test__new_bindings_with_vid(self):
+        bindings = {}
+        ip = IPAddress("192.168.0.1")
+        mac = EUI("00:01:02:03:04:05")
+        vid = None
+        event = update_bindings_and_get_event(
+            bindings, vid, ip, mac, 0)
+        self.assertThat(bindings, Equals({
+            (vid, ip): {"mac": mac, "time": 0}
+        }))
+        self.assertThat(event, Equals(dict(
+            event="NEW", ip=str(ip), mac=format_eui(mac), time=0, vid=vid
+        )))
+        vid = 4095
+        event = update_bindings_and_get_event(
+            bindings, vid, ip, mac, 0)
+        self.assertThat(bindings, Equals({
+            (None, ip): {"mac": mac, "time": 0},
+            (4095, ip): {"mac": mac, "time": 0}
+        }))
+        self.assertThat(event, Equals(dict(
+            event="NEW", ip=str(ip), mac=format_eui(mac), time=0, vid=vid
         )))
 
     def test__refreshed_binding(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
+        vid = None
         update_bindings_and_get_event(
-            bindings, ip, mac, 0)
+            bindings, vid, ip, mac, 0)
         event = update_bindings_and_get_event(
-            bindings, ip, mac, SEEN_AGAIN_THRESHOLD)
+            bindings, vid, ip, mac, SEEN_AGAIN_THRESHOLD)
         self.assertThat(bindings, Equals({
-            ip: {"mac": mac, "time": SEEN_AGAIN_THRESHOLD}
+            (vid, ip): {"mac": mac, "time": SEEN_AGAIN_THRESHOLD}
         }))
         self.assertThat(event, Equals(dict(
             event="REFRESHED", ip=str(ip), mac=format_eui(mac),
-            time=SEEN_AGAIN_THRESHOLD
+            time=SEEN_AGAIN_THRESHOLD, vid=vid
         )))
 
     def test__refreshed_binding_within_threshold_does_not_emit_event(self):
         bindings = {}
         ip = IPAddress("192.168.0.1")
         mac = EUI("00:01:02:03:04:05")
+        vid = None
         update_bindings_and_get_event(
-            bindings, ip, mac, 0)
+            bindings, vid, ip, mac, 0)
         event = update_bindings_and_get_event(
-            bindings, ip, mac, 1)
+            bindings, vid, ip, mac, 1)
         self.assertThat(bindings, Equals({
-            ip: {"mac": mac, "time": 0}
+            (vid, ip): {"mac": mac, "time": 0}
         }))
         self.assertIsNone(event)
 
@@ -258,25 +286,27 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         ip = IPAddress("192.168.0.1")
         mac1 = EUI("00:01:02:03:04:05")
         mac2 = EUI("02:03:04:05:06:07")
+        vid = None
         update_bindings_and_get_event(
-            bindings, ip, mac1, 0)
+            bindings, vid, ip, mac1, 0)
         event = update_bindings_and_get_event(
-            bindings, ip, mac2, 1)
+            bindings, vid, ip, mac2, 1)
         self.assertThat(bindings, Equals({
-            ip: {"mac": mac2, "time": 1}
+            (vid, ip): {"mac": mac2, "time": 1}
         }))
         self.assertThat(event, Equals(dict(
             event="MOVED", ip=str(ip), mac=format_eui(mac2),
-            time=1, previous_mac=format_eui(mac1)
+            time=1, previous_mac=format_eui(mac1), vid=vid
         )))
 
 
 class FakeARP:
     """Fake ARP packet used for testing the processing of bindings."""
 
-    def __init__(self, mock_bindings, time=0):
+    def __init__(self, mock_bindings, time=0, vid=None):
         self.mock_bindings = mock_bindings
         self.time = time
+        self.vid = vid
 
     def bindings(self):
         for binding in self.mock_bindings:
@@ -301,7 +331,7 @@ class TestUpdateAndPrintBindings(MAASTestCase):
         update_and_print_bindings(bindings, arp1, out)
         update_and_print_bindings(bindings, arp2, out)
         self.assertThat(bindings, Equals({
-            ip: {"mac": mac2, "time": SEEN_AGAIN_THRESHOLD}
+            (None, ip): {"mac": mac2, "time": SEEN_AGAIN_THRESHOLD}
         }))
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
@@ -311,7 +341,8 @@ class TestUpdateAndPrintBindings(MAASTestCase):
             "ip": str(ip),
             "mac": format_eui(mac1),
             "time": 0,
-            "event": "NEW"
+            "event": "NEW",
+            "vid": None
         }))
         line2 = json.loads(lines[1])
         self.assertThat(line2, Equals({
@@ -319,12 +350,14 @@ class TestUpdateAndPrintBindings(MAASTestCase):
             "mac": format_eui(mac2),
             "previous_mac": format_eui(mac1),
             "time": 0,
-            "event": "MOVED"
+            "event": "MOVED",
+            "vid": None
         }))
         line3 = json.loads(lines[2])
         self.assertThat(line3, Equals({
             "ip": str(ip),
             "mac": format_eui(mac2),
             "time": SEEN_AGAIN_THRESHOLD,
-            "event": "REFRESHED"
+            "event": "REFRESHED",
+            "vid": None
         }))
