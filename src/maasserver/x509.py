@@ -1,12 +1,14 @@
-# Copyright 2014-2015 Cloudbase Solutions SRL.
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+# Copyright 2014-2016 Canonical Ltd.
+# Copyright 2014 Cloudbase Solutions SRL.
+# This software is licensed under the GNU Affero General Public License
+# version 3 (see the file LICENSE).
 
 __all__ = []
 
 import getpass
 import logging
 import os
+from os import makedirs
 import random
 import socket
 from string import (
@@ -18,7 +20,6 @@ from string import (
 import OpenSSL
 from provisioningserver.utils.fs import (
     atomic_write,
-    ensure_dir,
     read_text_file,
 )
 
@@ -157,7 +158,7 @@ class WinRMX509:
         if cert_dir is None:
             home_dir = os.path.expanduser("~")
             cert_dir = os.path.join(home_dir, '.ssl')
-        ensure_dir(cert_dir)
+        makedirs(cert_dir, exist_ok=True)
         return cert_dir
 
     def generate_passphrase(self):

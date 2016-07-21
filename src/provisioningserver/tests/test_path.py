@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for filesystem paths."""
@@ -43,12 +43,12 @@ class TestGetPathFunctions(MAASTestCase):
 
     def test__defaults_to_root(self):
         self.set_root()
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         self.assertEqual('/', self.get_path_function())
 
     def test__appends_path_elements(self):
         self.set_root('/')
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         part1 = factory.make_name('dir')
         part2 = factory.make_name('file')
         self.assertEqual(
@@ -58,7 +58,7 @@ class TestGetPathFunctions(MAASTestCase):
     def test__obeys_MAAS_ROOT_variable(self):
         root = factory.make_name('/root')
         self.set_root(root)
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         path = factory.make_name('path')
         self.assertEqual(
             os.path.join(root, path),
@@ -66,7 +66,7 @@ class TestGetPathFunctions(MAASTestCase):
 
     def test__assumes_MAAS_ROOT_is_unset_if_empty(self):
         self.set_root("")
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         path = factory.make_name('path')
         self.assertEqual(
             os.path.join("/", path),
@@ -74,14 +74,14 @@ class TestGetPathFunctions(MAASTestCase):
 
     def test__returns_absolute_path(self):
         self.set_root('.')
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         self.assertThat(self.get_path_function(), StartsWith('/'))
         self.assertEqual(getcwd(), self.get_path_function())
 
     def test__concatenates_despite_leading_slash(self):
         root = self.make_dir()
         self.set_root(root)
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         filename = factory.make_name('file')
         self.assertEqual(
             os.path.join(root, filename),
@@ -89,7 +89,7 @@ class TestGetPathFunctions(MAASTestCase):
 
     def test__normalises(self):
         self.set_root()
-        self.patch(provisioningserver.path, 'ensure_dir')
+        self.patch(provisioningserver.path, 'makedirs')
         self.assertEqual(
             '/foo/bar',
             self.get_path_function('foo///szut//..///bar//'))

@@ -7,7 +7,6 @@ __all__ = [
     'atomic_delete',
     'atomic_symlink',
     'atomic_write',
-    'ensure_dir',
     'FileLock',
     'incremental_write',
     'NamedLock',
@@ -30,7 +29,6 @@ from os import (
     rename,
     stat,
 )
-from os.path import isdir
 from random import randint
 from shutil import rmtree
 import string
@@ -259,20 +257,6 @@ def sudo_delete_file(filename):
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         raise ExternalProcessError(proc.returncode, command, stderr)
-
-
-def ensure_dir(path):
-    """Do the equivalent of `mkdir -p`, creating `path` if it didn't exist."""
-    try:
-        os.makedirs(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-        if not isdir(path):
-            # Path exists, but isn't a directory.
-            raise
-        # Otherwise, the error is that the directory already existed.
-        # Which is actually success.
 
 
 @contextmanager

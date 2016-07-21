@@ -19,10 +19,7 @@ import time
 import fixtures
 from maastesting.fixtures import TempDirectory
 from provisioningserver.dns.config import generate_rndc
-from provisioningserver.utils.fs import (
-    atomic_write,
-    ensure_dir,
-)
+from provisioningserver.utils.fs import atomic_write
 import tempita
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
@@ -349,7 +346,7 @@ if __name__ == "__main__":
         default=False)
     arguments = parser.parse_args()
 
-    ensure_dir(arguments.homedir)
+    os.makedirs(arguments.homedir, exist_ok=True)
 
     # Create BINDServerResources with the provided options.
     resources = BINDServerResources(

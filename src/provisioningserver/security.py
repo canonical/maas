@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Cluster security code."""
@@ -17,7 +17,10 @@ from binascii import (
 import errno
 from hashlib import sha256
 from hmac import HMAC
-from os import fchmod
+from os import (
+    fchmod,
+    makedirs,
+)
 from os.path import dirname
 from sys import (
     stderr,
@@ -26,7 +29,6 @@ from sys import (
 
 from provisioningserver.path import get_path
 from provisioningserver.utils.fs import (
-    ensure_dir,
     FileLock,
     read_text_file,
     write_text_file,
@@ -61,7 +63,7 @@ def get_shared_secret_from_filesystem():
     :return: A byte string of arbitrary length.
     """
     secret_path = get_shared_secret_filesystem_path()
-    ensure_dir(dirname(secret_path))
+    makedirs(dirname(secret_path), exist_ok=True)
     with FileLock(secret_path).wait(10):
         # Load secret from the filesystem, if it exists.
         try:
@@ -85,7 +87,7 @@ def set_shared_secret_on_filesystem(secret):
     :type secret: A byte string of arbitrary length.
     """
     secret_path = get_shared_secret_filesystem_path()
-    ensure_dir(dirname(secret_path))
+    makedirs(dirname(secret_path), exist_ok=True)
     secret_hex = to_hex(secret)
     with FileLock(secret_path).wait(10):
         # Ensure that the file has sensible permissions.

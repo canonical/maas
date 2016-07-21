@@ -9,6 +9,7 @@ import binascii
 from binascii import b2a_hex
 from os import (
     chmod,
+    makedirs,
     stat,
 )
 from os.path import dirname
@@ -23,7 +24,6 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
 from provisioningserver.utils.fs import (
-    ensure_dir,
     FileLock,
     read_text_file,
     write_text_file,
@@ -40,7 +40,7 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
     def write_secret(self):
         secret = factory.make_bytes()
         secret_path = security.get_shared_secret_filesystem_path()
-        ensure_dir(dirname(secret_path))
+        makedirs(dirname(secret_path), exist_ok=True)
         write_text_file(secret_path, security.to_hex(secret))
         return secret
 

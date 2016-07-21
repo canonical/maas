@@ -171,16 +171,16 @@ class TestWinRMX509(MAASTestCase):
             self.dump_privatekey(key),
             self.dump_privatekey(p12.get_privatekey()))
 
-    def test_get_ssl_dir_calls_ensure_dir(self):
+    def test_get_ssl_dir_ensures_directory_exists(self):
         winrmx509 = self.configure_WinRMX509()
-        mock_ensure_dir = self.patch(x509, 'ensure_dir')
+        makedirs = self.patch(x509, 'makedirs')
         fake_dir = factory.make_name('dir')
         winrmx509.get_ssl_dir(fake_dir)
-        self.assertThat(mock_ensure_dir, MockCalledOnceWith(fake_dir))
+        self.assertThat(makedirs, MockCalledOnceWith(fake_dir, exist_ok=True))
 
     def test_get_ssl_dir_returns_home_ssl_dir(self):
         winrmx509 = self.configure_WinRMX509()
-        self.patch(x509, 'ensure_dir')
+        self.patch(x509, 'makedirs')
         self.assertEqual(
             os.path.join(os.path.expanduser("~"), '.ssl'),
             winrmx509.get_ssl_dir())

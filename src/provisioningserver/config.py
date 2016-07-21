@@ -151,7 +151,6 @@ from provisioningserver.utils.config import (
 )
 from provisioningserver.utils.fs import (
     atomic_write,
-    ensure_dir,
     RunLock,
 )
 import yaml
@@ -686,7 +685,7 @@ class Configuration:
     def open(cls, filepath=None):
         if filepath is None:
             filepath = cls.DEFAULT_FILENAME
-        ensure_dir(os.path.dirname(filepath))
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with cls.backend.open(filepath) as store:
             yield cls(store)
 
@@ -695,7 +694,7 @@ class Configuration:
     def open_for_update(cls, filepath=None):
         if filepath is None:
             filepath = cls.DEFAULT_FILENAME
-        ensure_dir(os.path.dirname(filepath))
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with cls.backend.open_for_update(filepath) as store:
             yield cls(store)
 
