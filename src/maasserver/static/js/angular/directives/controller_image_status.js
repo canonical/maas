@@ -11,6 +11,9 @@
         $timeout, $interval, ControllersManager) {
      var self = this;
 
+     // How often to check the sync status of a controller in seconds.
+     var CHECK_INTERVAL = 30;
+
      // List of controllers that need to have the image status updated.
      this.controllers = [];
 
@@ -67,7 +70,7 @@
              self.startTimeout = undefined;
              self.runningInterval = $interval(function() {
                  self.updateStatuses();
-             }, 10 * 1000);
+             }, CHECK_INTERVAL * 1000);
              self.updateStatuses();
          }, 100);
      };

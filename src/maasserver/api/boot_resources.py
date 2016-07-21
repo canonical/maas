@@ -300,6 +300,8 @@ class BootResourceFileUploadHandler(OperationsHandler):
                     "Too much data recieved.")
 
             stream.write(data)
+            rfile.largefile.size = current_size + size
+            rfile.largefile.save()
 
         if rfile.largefile.complete:
             if not rfile.largefile.valid:

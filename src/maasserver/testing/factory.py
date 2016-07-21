@@ -1320,7 +1320,8 @@ class Factory(maastesting.factory.Factory):
         with largeobject.open('wb') as stream:
             stream.write(content)
         return LargeFile.objects.create(
-            sha256=sha256, total_size=size, content=largeobject)
+            sha256=sha256, size=len(content),
+            total_size=size, content=largeobject)
 
     def make_BootResource(self, rtype=None, name=None, architecture=None,
                           extra=None, kflavor=None):
