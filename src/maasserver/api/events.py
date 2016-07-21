@@ -56,15 +56,17 @@ class EventsHandler(OperationsHandler):
 
     model = Event
 
-    all_params = (
-        'after',
+    all_params = frozenset((
         'agent_name',
-        'id',
+        'domain',
+        'hostname',
+        'id',  # system_id.
         'level',
         'limit',
         'mac_address',
         'op',
-        'zone')
+        'zone',
+    ))
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

@@ -602,15 +602,17 @@ class TestEventsURIs(APITestCase.ForUser):
 
         prev_uri = urlparse(parsed_result['prev_uri'])
         prev_uri_params = dict(parse_qsl(prev_uri.query))
-        self.assertThat(prev_uri_params, Contains("before"))
+        self.assertThat(prev_uri_params, Contains("before"), prev_uri)
         self.assertThat(prev_uri_params["before"], Equals(str(before)))
         self.assertThat(prev_uri_params, Not(Contains("after")))
 
         next_uri = urlparse(parsed_result['next_uri'])
         next_uri_params = dict(parse_qsl(next_uri.query))
-        self.assertThat(next_uri_params, Contains("after"))
+        self.assertThat(next_uri_params, Contains("after"), next_uri)
         self.assertThat(next_uri_params["after"], Equals(str(after)))
         self.assertThat(next_uri_params, Not(Contains("before")))
+
+        return prev_uri_params, next_uri_params
 
     def test_GET_query_provides_prev_and_next_uris(self):
         event1, event2, event3 = make_events(3)
@@ -635,10 +637,33 @@ class TestEventsURIs(APITestCase.ForUser):
             "There is undetermined behaviour when both "
             "`after` and `before` are specified.")))
 
+    def test_GET_prev_and_next_uris_contain_search_parameters(self):
+        machine = factory.make_Machine(
+            domain=factory.make_Domain(), zone=factory.make_Zone())
+        interface = factory.make_Interface(node=machine)
+        machine.agent_name = factory.make_name("agent")
+        machine.save()
+        query = {
+            "op": "query",
+            "level": "DEBUG",
+            # Node filtering parameters.
+            "agent_name": machine.agent_name,
+            "domain": machine.domain.name,
+            "hostname": machine.hostname,
+            "id": machine.system_id,
+            "mac_address": interface.mac_address.raw,
+            "zone": machine.zone.name,
+        }
+        event = factory.make_Event(node=machine)
+        prev_params, next_params = self.assertURIs(query, event.id, event.id)
+        params_expected = {p: Equals(v) for p, v in query.items()}
+        self.assertThat(prev_params, ContainsDict(params_expected))
+        self.assertThat(next_params, ContainsDict(params_expected))
+
 
 # Parameters used in queries, excluding "op", which
 # is a detail of MAAS's Web API machinery.
-parameters = list(events_module.EventsHandler.all_params)
+parameters = sorted(events_module.EventsHandler.all_params)
 parameters.remove("op")
 
 
@@ -660,6 +685,8 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
     factories = {
         'after': lambda: str(randint(1, 6)),
         'agent_name': factory.make_string,
+        'domain': factory.make_string,
+        'hostname': factory.make_string,
         'id': factory.make_string,
         'level': lambda: random.choice(
             ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")),

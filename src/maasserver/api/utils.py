@@ -143,7 +143,7 @@ def get_overridden_query_dict(defaults, data, fields):
     :param data: The data used to override the defaults.
     :type data: :class:`django.http.QueryDict` or dict
     :param fields: The list of field names to consider.
-    :type fields: list
+    :type fields: :class:`collections.Container`
     :return: The updated QueryDict.
     :raises: :class:`django.http.QueryDict`
     """
