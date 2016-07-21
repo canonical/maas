@@ -3,7 +3,7 @@
 
 """Management command: upgrade the cluster.
 
-This module implements the `ActionScript` interface for pserv commands.
+This module implements the `ActionScript` interface for rackd commands.
 
 Use the upgrade-cluster command when the MAAS code has been updated (e.g. while
 installing a package ugprade, from the packaging) to perform any data

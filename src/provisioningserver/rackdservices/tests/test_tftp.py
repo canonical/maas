@@ -39,8 +39,8 @@ from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.pserv_services import tftp as tftp_module
-from provisioningserver.pserv_services.tftp import (
+from provisioningserver.rackdservices import tftp as tftp_module
+from provisioningserver.rackdservices.tftp import (
     get_boot_image,
     log_request,
     Port,

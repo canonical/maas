@@ -12,7 +12,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from provisioningserver import services
-from provisioningserver.pserv_services.networks_monitoring_service import (
+from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
 from provisioningserver.rpc import region

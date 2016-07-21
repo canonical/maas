@@ -12,8 +12,8 @@ from unittest.mock import sentinel
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTwistedRunTest
-from provisioningserver.pserv_services import lease_socket_service
-from provisioningserver.pserv_services.lease_socket_service import (
+from provisioningserver.rackdservices import lease_socket_service
+from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
 from provisioningserver.testing.testcase import PservTestCase

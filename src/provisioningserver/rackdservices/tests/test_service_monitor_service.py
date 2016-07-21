@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for
-:py:module:`~provisioningserver.pserv_services.service_monitor_service`."""
+:py:module:`~provisioningserver.rackdservices.service_monitor_service`."""
 
 __all__ = []
 
@@ -22,7 +22,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from provisioningserver.pserv_services import service_monitor_service as sms
+from provisioningserver.rackdservices import service_monitor_service as sms
 from provisioningserver.rpc import (
     getRegionClient,
     region,

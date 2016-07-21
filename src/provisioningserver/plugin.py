@@ -52,7 +52,7 @@ class ProvisioningServiceMaker:
         return site_service
 
     def _makeImageService(self, resource_root):
-        from provisioningserver.pserv_services.image import (
+        from provisioningserver.rackdservices.image import (
             BootImageEndpointService)
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
         port = 5248  # config["port"]
@@ -89,7 +89,7 @@ class ProvisioningServiceMaker:
     def _makeTFTPService(
             self, tftp_root, tftp_port, rpc_service):
         """Create the dynamic TFTP service."""
-        from provisioningserver.pserv_services.tftp import TFTPService
+        from provisioningserver.rackdservices.tftp import TFTPService
         tftp_service = TFTPService(
             resource_root=tftp_root, port=tftp_port,
             client_service=rpc_service)
@@ -97,7 +97,7 @@ class ProvisioningServiceMaker:
         return tftp_service
 
     def _makeImageDownloadService(self, rpc_service, tftp_root):
-        from provisioningserver.pserv_services.image_download_service \
+        from provisioningserver.rackdservices.image_download_service \
             import ImageDownloadService
         image_download_service = ImageDownloadService(
             rpc_service, tftp_root, reactor)
@@ -105,7 +105,7 @@ class ProvisioningServiceMaker:
         return image_download_service
 
     def _makeLeaseSocketService(self, rpc_service):
-        from provisioningserver.pserv_services.lease_socket_service import (
+        from provisioningserver.rackdservices.lease_socket_service import (
             LeaseSocketService)
         lease_socket_service = LeaseSocketService(
             rpc_service, reactor)
@@ -113,7 +113,7 @@ class ProvisioningServiceMaker:
         return lease_socket_service
 
     def _makeNodePowerMonitorService(self):
-        from provisioningserver.pserv_services.node_power_monitor_service \
+        from provisioningserver.rackdservices.node_power_monitor_service \
             import NodePowerMonitorService
         node_monitor = NodePowerMonitorService(reactor)
         node_monitor.setName("node_monitor")
@@ -126,14 +126,14 @@ class ProvisioningServiceMaker:
         return rpc_service
 
     def _makeNetworksMonitoringService(self, rpc_service):
-        from provisioningserver.pserv_services.networks_monitoring_service \
+        from provisioningserver.rackdservices.networks_monitoring_service \
             import RackNetworksMonitoringService
         networks_monitor = RackNetworksMonitoringService(rpc_service, reactor)
         networks_monitor.setName("networks_monitor")
         return networks_monitor
 
     def _makeDHCPProbeService(self, rpc_service):
-        from provisioningserver.pserv_services.dhcp_probe_service \
+        from provisioningserver.rackdservices.dhcp_probe_service \
             import DHCPProbeService
         dhcp_probe_service = DHCPProbeService(
             rpc_service, reactor)
@@ -141,7 +141,7 @@ class ProvisioningServiceMaker:
         return dhcp_probe_service
 
     def _makeServiceMonitorService(self, rpc_service):
-        from provisioningserver.pserv_services.service_monitor_service \
+        from provisioningserver.rackdservices.service_monitor_service \
             import ServiceMonitorService
         service_monitor = ServiceMonitorService(rpc_service, reactor)
         service_monitor.setName("service_monitor")

@@ -21,26 +21,26 @@ from provisioningserver.plugin import (
     Options,
     ProvisioningServiceMaker,
 )
-from provisioningserver.pserv_services.dhcp_probe_service import (
+from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
-from provisioningserver.pserv_services.image import BootImageEndpointService
-from provisioningserver.pserv_services.image_download_service import (
+from provisioningserver.rackdservices.image import BootImageEndpointService
+from provisioningserver.rackdservices.image_download_service import (
     ImageDownloadService,
 )
-from provisioningserver.pserv_services.lease_socket_service import (
+from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
-from provisioningserver.pserv_services.networks_monitoring_service import (
+from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
-from provisioningserver.pserv_services.node_power_monitor_service import (
+from provisioningserver.rackdservices.node_power_monitor_service import (
     NodePowerMonitorService,
 )
-from provisioningserver.pserv_services.service_monitor_service import (
+from provisioningserver.rackdservices.service_monitor_service import (
     ServiceMonitorService,
 )
-from provisioningserver.pserv_services.tftp import (
+from provisioningserver.rackdservices.tftp import (
     TFTPBackend,
     TFTPService,
 )

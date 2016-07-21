@@ -1,7 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for provisioningserver.pserv_services.image_download_service"""
+"""Tests for provisioningserver.rackdservices.image_download_service"""
 
 __all__ = []
 
@@ -27,7 +27,7 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver.boot import tftppath
-from provisioningserver.pserv_services.image_download_service import (
+from provisioningserver.rackdservices.image_download_service import (
     ImageDownloadService,
 )
 from provisioningserver.rpc import boot_images

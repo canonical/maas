@@ -137,7 +137,6 @@ Developing MAAS
    development/cluster-registration
    development/cluster-bootstrap
    development/tagging
-   development/lease-scanning-and-dns
    development/preseeds
    development/metadata
    development/rpc

@@ -4,7 +4,7 @@ RPC HOWTO
 =========
 
 MAAS contains an RPC mechanism such that every process in the region is
-connected to every process in the cluster (strictly, every pserv
+connected to every process in the cluster (strictly, every rackd
 process). It's based on AMP_, specifically `Twisted's implementation`_.
 
 .. _AMP:

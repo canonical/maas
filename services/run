@@ -8,10 +8,10 @@
 Service names should be provided on the command-line.
 
 If a service name is preceded by a "+" (plus) it is started in the
-foreground. For example, to start the `pserv` service in the background
-and `webapp` in the foreground:
+foreground. For example, to start the `rackd` service in the background
+and `regiond` in the foreground:
 
-  $ services/run pserv +webapp
+  $ services/run rackd +regiond
 
 It does not matter if a service name appears twice in the list. If the service
 name appears once with a preceding "+" and once without, the "+" one takes

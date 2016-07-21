@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for
-:py:module:`~provisioningserver.pserv_services.node_power_monitor_service`."""
+:py:module:`~provisioningserver.rackdservices.node_power_monitor_service`."""
 
 __all__ = []
 
@@ -23,7 +23,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
-from provisioningserver.pserv_services import (
+from provisioningserver.rackdservices import (
     node_power_monitor_service as npms,
 )
 from provisioningserver.rpc import (

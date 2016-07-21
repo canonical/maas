@@ -21,8 +21,8 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
-from provisioningserver.pserv_services import dhcp_probe_service
-from provisioningserver.pserv_services.dhcp_probe_service import (
+from provisioningserver.rackdservices import dhcp_probe_service
+from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
 from provisioningserver.rpc import (

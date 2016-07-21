@@ -1,7 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for src/provisioningserver/pserv_services/lease_socket_service.py"""
+"""Tests for src/provisioningserver/rackdservices/lease_socket_service.py"""
 
 __all__ = []
 
@@ -17,8 +17,8 @@ from unittest.mock import (
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTwistedRunTest
-from provisioningserver.pserv_services import lease_socket_service
-from provisioningserver.pserv_services.lease_socket_service import (
+from provisioningserver.rackdservices import lease_socket_service
+from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
 from provisioningserver.rpc import getRegionClient
