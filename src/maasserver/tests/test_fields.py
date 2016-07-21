@@ -19,6 +19,7 @@ from django.db.models import BinaryField
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
     EditableBinaryField,
+    HostListFormField,
     IPListFormField,
     LargeObjectField,
     LargeObjectFile,
@@ -47,9 +48,11 @@ from maasserver.tests.models import (
 )
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestMAC(MAASServerTestCase):
@@ -518,7 +521,7 @@ class TestIPv4CIDRField(MAASServerTestCase):
             ValidationError, IPv4CIDRTestModel.objects.create, cidr=cidr)
 
 
-class IPListFormFieldTest(MAASServerTestCase):
+class IPListFormFieldTest(MAASTestCase):
 
     def test_accepts_none(self):
         self.assertIsNone(IPListFormField().clean(None))
@@ -551,6 +554,70 @@ class IPListFormFieldTest(MAASServerTestCase):
     def test_separators_dont_conflict_with_ipv6_address(self):
         self.assertIsNone(re.search(
             IPListFormField.separators, factory.make_ipv6_address()))
+
+
+class HostListFormFieldTest(MAASTestCase):
+
+    def test_accepts_none(self):
+        self.assertIsNone(HostListFormField().clean(None))
+
+    def test_accepts_single_ip(self):
+        ip = factory.make_ip_address()
+        self.assertEqual(ip, HostListFormField().clean(ip))
+
+    def test_accepts_space_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ' '.join(ips)
+        self.assertEqual(input, HostListFormField().clean(input))
+
+    def test_accepts_comma_separated_ips(self):
+        ips = [factory.make_ip_address() for _ in range(5)]
+        input = ','.join(ips)
+        self.assertEqual(' '.join(ips), HostListFormField().clean(input))
+
+    def test_separators_dont_conflict_with_ipv4_address(self):
+        self.assertIsNone(re.search(
+            HostListFormField.separators, factory.make_ipv4_address()))
+
+    def test_separators_dont_conflict_with_ipv6_address(self):
+        self.assertIsNone(re.search(
+            HostListFormField.separators, factory.make_ipv6_address()))
+
+    def test_accepts_hostname(self):
+        hostname = factory.make_hostname()
+        self.assertEqual(hostname, HostListFormField().clean(hostname))
+
+    def test_accepts_space_separated_hostnames(self):
+        hostnames = factory.make_hostname(), factory.make_hostname()
+        input = ' '.join(hostnames)
+        self.assertEqual(input, HostListFormField().clean(input))
+
+    def test_accepts_comma_separated_hostnames(self):
+        hostnames = factory.make_hostname(), factory.make_hostname()
+        input = ','.join(hostnames)
+        self.assertEqual(' '.join(hostnames), HostListFormField().clean(input))
+
+    def test_rejects_invalid_ipv4_address(self):
+        input = "%s 12.34.56.999" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, HostListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Failed to detect a valid IP address from '12.34.56.999'."))
+
+    def test_rejects_invalid_ipv6_address(self):
+        input = "%s fe80::abcde" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, HostListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Failed to detect a valid IP address from 'fe80::abcde'."))
+
+    def test_rejects_invalid_hostname(self):
+        input = "%s abc-.foo" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, HostListFormField().clean, input)
+        self.assertThat(error.message, Equals(
+            "Invalid hostname: Label cannot start or end with "
+            "hyphen: 'abc-'."))
 
 
 class TestNodeChoiceField(MAASServerTestCase):

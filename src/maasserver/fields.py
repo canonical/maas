@@ -6,6 +6,7 @@
 __all__ = [
     "CIDRField",
     "EditableBinaryField",
+    "HostListFormField",
     "IPListFormField",
     "IPv4CIDRField",
     "MAASIPAddressField",
@@ -40,13 +41,17 @@ from django.db.models import (
 from django.db.models.fields.subclassing import Creator
 from django.utils.encoding import force_text
 from maasserver.models.versionedtextfile import VersionedTextFile
-from maasserver.utils.dns import validate_domain_name
+from maasserver.utils.dns import (
+    validate_domain_name,
+    validate_hostname,
+)
 from maasserver.utils.orm import (
     get_one,
     validate_in_transaction,
 )
 from netaddr import (
     AddrFormatError,
+    IPAddress,
     IPNetwork,
 )
 from provisioningserver.utils import typed
@@ -558,6 +563,54 @@ class IPListFormField(forms.CharField):
                         "Invalid IP address: %s; provide a list of "
                         "space-separated IP addresses" % ip)
             return ' '.join(ips)
+
+
+class HostListFormField(forms.CharField):
+    """Accepts a space/comma separated list of hostnames or IP addresses.
+
+    This field normalizes the list to a space-separated list.
+    """
+    separators = re.compile('[,\s]+')
+
+    # Regular expressions to sniff out things that look like IP addresses;
+    # additional and more robust validation ought to be done to make sure.
+    pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
+    pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % pt_ipv4
+    pt_ip = re.compile(r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+
+    def clean(self, value):
+        if value is None:
+            return None
+        else:
+            values = map(str.strip, self.separators.split(value))
+            values = (value for value in values if len(value) != 0)
+            values = map(self._clean_addr_or_host, values)
+            return ' '.join(values)
+
+    def _clean_addr_or_host(self, value):
+        looks_like_ip = self.pt_ip.match(value) is not None
+        if looks_like_ip:
+            return self._clean_addr(value)
+        else:
+            return self._clean_host(value)
+
+    def _clean_addr(self, addr):
+        try:
+            addr = IPAddress(addr)
+        except AddrFormatError as error:
+            message = str(error)  # netaddr has good messages.
+            message = message[:1].upper() + message[1:] + "."
+            raise ValidationError(message)
+        else:
+            return str(addr)
+
+    def _clean_host(self, host):
+        try:
+            validate_hostname(host)
+        except ValidationError as error:
+            raise ValidationError("Invalid hostname: " + error.message)
+        else:
+            return host
 
 
 class CaseInsensitiveChoiceField(forms.ChoiceField):
