@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 import hashlib
-import os
 
 from django.db.models import (
     BigIntegerField,
@@ -72,7 +71,7 @@ class FileStorageManager(Manager):
                 objstream.write(data)
                 length += len(data)
         return self.create(
-            sha256=hexdigest, total_size=length, content=objfile)
+            sha256=hexdigest, size=length, total_size=length, content=objfile)
 
 
 class LargeFile(CleanSave, TimestampedModel):
@@ -85,6 +84,7 @@ class LargeFile(CleanSave, TimestampedModel):
     process by only saving unique files.
 
     :ivar sha256: Calculated SHA256 value of `content`.
+    :ivar size: Current size of `content`.
     :ivar total_size: Final size of `content`. The data might currently
         be saving, so total_size could be larger than `size`. `size` should
         never be larger than `total_size`.
@@ -98,6 +98,8 @@ class LargeFile(CleanSave, TimestampedModel):
 
     sha256 = CharField(max_length=64, unique=True, editable=False)
 
+    size = BigIntegerField(default=0, editable=False)
+
     total_size = BigIntegerField(editable=False)
 
     # content is stored directly in the database, in the large object storage.
@@ -106,14 +108,6 @@ class LargeFile(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "<LargeFile size=%d sha256=%s>" % (self.total_size, self.sha256)
-
-    @property
-    def size(self):
-        """Size of content."""
-        with self.content.open('rb') as stream:
-            stream.seek(0, os.SEEK_END)
-            size = stream.tell()
-        return size
 
     @property
     def progress(self):

@@ -10,6 +10,7 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
+    Sum,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
@@ -89,32 +90,41 @@ class BootResourceSet(CleanSave, TimestampedModel):
     @property
     def total_size(self):
         """Total amount of space this set will consume."""
-        return sum(
-            resource_file.largefile.total_size
-            for resource_file in self.files.all())
+        total_size = self.files.all().aggregate(
+            total_size=Sum('largefile__total_size'))['total_size']
+        if total_size is None:
+            total_size = 0
+        return total_size
 
     @property
     def size(self):
         """Amount of space this set currently consumes."""
-        return sum(
-            resource_file.largefile.size
-            for resource_file in self.files.all())
+        size = self.files.all().aggregate(size=Sum('largefile__size'))['size']
+        if size is None:
+            size = 0
+        return size
 
     @property
     def progress(self):
         """Percentage complete for all files in the set."""
-        size = self.size
-        if size <= 0:
+        size_info = self.files.all().aggregate(
+            total_size=Sum('largefile__total_size'),
+            size=Sum('largefile__size'))
+        if size_info['size'] is None:
+            size_info['size'] = 0
+        if size_info['total_size'] is None:
+            size_info['total_size'] = 0
+        if size_info['size'] <= 0:
             # Handle division by zero
             return 0
-        return 100.0 * size / float(self.total_size)
+        return 100.0 * size_info['size'] / float(size_info['total_size'])
 
     @property
     def complete(self):
         """True if all files in the set are complete."""
         if not self.files.exists():
             return False
-        for resource_file in self.files.all():
-            if not resource_file.largefile.complete:
-                return False
-        return True
+        size_info = self.files.all().aggregate(
+            total_size=Sum('largefile__total_size'),
+            size=Sum('largefile__size'))
+        return size_info['total_size'] == size_info['size']

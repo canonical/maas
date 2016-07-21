@@ -135,6 +135,8 @@ class TestBootResourceSet(MAASServerTestCase):
         self.assertEqual(0, resource_set.progress)
         for _ in range(total_size):
             stream.write(b"a")
+            largefile.size += 1
+            largefile.save()
             current_size += 1
             self.assertAlmostEqual(
                 100.0 * current_size / float(total_size),

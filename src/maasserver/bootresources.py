@@ -670,6 +670,10 @@ class BootResourceStore(ObjectStore):
             {'sha256': rfile.largefile.sha256})
         maaslog.debug("Finalizing boot image %s.", ident)
 
+        # Ensure that the size of the largefile starts at zero.
+        rfile.largefile.size = 0
+        rfile.largefile.save(update_fields=['size'])
+
         # Write the contents into the database, while calculating the sha256
         # hash for the read data.
         with rfile.largefile.content.open('wb') as stream:
@@ -677,7 +681,10 @@ class BootResourceStore(ObjectStore):
                 buf = reader.read(self.read_size)
                 stream.write(buf)
                 cksummer.update(buf)
-                if len(buf) != self.read_size:
+                buf_len = len(buf)
+                rfile.largefile.size += buf_len
+                rfile.largefile.save(update_fields=['size'])
+                if buf_len != self.read_size:
                     break
 
         if not cksummer.check():

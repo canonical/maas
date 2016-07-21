@@ -68,6 +68,8 @@ class TestLargeFileManager(MAASServerTestCase):
             written_content = stream.read()
         self.assertEqual(
             content, written_content)
+        self.assertEqual(
+            len(content), largefile.size)
 
 
 class TestLargeFile(MAASServerTestCase):
@@ -87,13 +89,6 @@ class TestLargeFile(MAASServerTestCase):
         with largefile.content.open('rb') as stream:
             data = stream.read()
         self.assertEqual(content, data)
-
-    def test_size(self):
-        size = randint(512, 1024)
-        total_size = randint(1025, 2048)
-        content = factory.make_bytes(size=size)
-        largefile = factory.make_LargeFile(content, size=total_size)
-        self.assertEqual(size, largefile.size)
 
     def test_progress(self):
         size = randint(512, 1024)

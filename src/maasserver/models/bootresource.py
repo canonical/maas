@@ -10,8 +10,10 @@ __all__ = [
 from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
+    Count,
     IntegerField,
     Manager,
+    Sum,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -381,8 +383,13 @@ class BootResource(CleanSave, TimestampedModel):
     def get_latest_complete_set(self):
         """Return latest `BootResourceSet` where all `BootResouceFile`'s
         are complete."""
-        for resource_set in self.sets.order_by('id').reverse():
-            if resource_set.complete:
+        resource_sets = self.sets.order_by('id').annotate(
+            files_count=Count('files__id'),
+            files_size=Sum('files__largefile__size'),
+            files_total_size=Sum('files__largefile__total_size'))
+        for resource_set in resource_sets.reverse():
+            if (resource_set.files_count > 0 and
+                    resource_set.files_size == resource_set.files_total_size):
                 return resource_set
         return None
 

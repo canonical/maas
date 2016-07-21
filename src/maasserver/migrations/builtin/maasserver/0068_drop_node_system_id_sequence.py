@@ -31,7 +31,7 @@ sequence_drop = (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0066_allow_squashfs'),
+        ('maasserver', '0067_add_size_to_largefile'),
     ]
 
     operations = [

@@ -813,6 +813,9 @@ class TestBootResourceStore(MAASServerTestCase):
         with rfile.largefile.content.open('rb') as stream:
             written_data = stream.read()
         self.assertEqual(content, written_data)
+        rfile.largefile = reload_object(rfile.largefile)
+        self.assertEqual(rfile.largefile.size, len(written_data))
+        self.assertEqual(rfile.largefile.size, rfile.largefile.total_size)
 
     @skip(
         "XXX blake_r: Skipped because it causes the test that runs after this "
