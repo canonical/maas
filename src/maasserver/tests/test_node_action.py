@@ -292,14 +292,15 @@ class TestCommissionAction(MAASServerTestCase):
             interface=True, status=self.status,
             power_type='manual', power_state=POWER_STATE.OFF)
         node_start = self.patch(node, '_start')
-        node_start.side_effect = lambda user, user_data: post_commit()
+        node_start.side_effect = (
+            lambda user, user_data, old_status: post_commit())
         admin = factory.make_admin()
         action = Commission(node, admin)
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            node_start, MockCalledOnceWith(admin, ANY))
+            node_start, MockCalledOnceWith(admin, ANY, ANY))
 
 
 class TestAbortAction(MAASTransactionServerTestCase):
@@ -734,6 +735,7 @@ class TestReleaseAction(MAASServerTestCase):
             interface=True, status=self.actionable_status,
             power_type='ipmi', power_state=POWER_STATE.OFF,
             owner=user, power_parameters=params)
+        old_status = node.status
         node_start = self.patch_autospec(node, '_start')
         node_start.return_value = None
 
@@ -742,7 +744,8 @@ class TestReleaseAction(MAASServerTestCase):
 
         self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
         self.assertThat(
-            node_start, MockCalledOnceWith(user, user_data=ANY))
+            node_start, MockCalledOnceWith(
+                user, user_data=ANY, old_status=old_status))
 
     def test_Release_passes_secure_erase_and_quick_erase(self):
         user = factory.make_User()

@@ -1657,7 +1657,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self._start(user, commissioning_user_data)
+            starting = self._start(user, commissioning_user_data, old_status)
         except Exception as error:
             self.status = old_status
             self.save()
@@ -1687,11 +1687,6 @@ class Node(CleanSave, TimestampedModel):
             starting.addCallback(
                 callOut, self._start_commissioning_async, is_starting,
                 self.hostname)
-
-            # If there's an error, reset the node's status.
-            starting.addErrback(
-                callOutToDatabase, Node._set_status, self.system_id,
-                status=old_status)
 
             def eb_start(failure, hostname):
                 maaslog.error(
@@ -2135,6 +2130,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Change the status of the node now to avoid races when starting
         # nodes in bulk.
+        old_status = self.status
         self.status = NODE_STATUS.DISK_ERASING
         self.save()
 
@@ -2142,7 +2138,7 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self._start(user, disk_erase_user_data)
+            starting = self._start(user, disk_erase_user_data, old_status)
         except Exception as error:
             # We always mark the node as failed here, although we could
             # potentially move it back to the state it was in previously. For
@@ -3019,7 +3015,7 @@ class Node(CleanSave, TimestampedModel):
         return client_idents, fallback_idents
 
     @transactional
-    def _start(self, user, user_data=None):
+    def _start(self, user, user_data=None, old_status=None):
         """Request on given user's behalf that the node be started up.
 
         :param user: Requesting user.
@@ -3055,6 +3051,7 @@ class Node(CleanSave, TimestampedModel):
         NodeUserData.objects.set_user_data(self, user_data)
 
         if self.status == NODE_STATUS.ALLOCATED:
+            old_status = self.status
             # Claim AUTO IP addresses for the node if it's ALLOCATED.
             # The current state being ALLOCATED is our indication that the node
             # is being deployed for the first time.
@@ -3083,6 +3080,12 @@ class Node(CleanSave, TimestampedModel):
             d.addCallback(
                 callOutToDatabase, Node._set_status_expires,
                 self.system_id, deployment_timeout)
+
+        if old_status is not None:
+            # If there's an error, reset the node's status.
+            d.addErrback(
+                callOutToDatabase, Node._set_status, self.system_id,
+                status=old_status)
 
         # If any part of this processes fails be sure to release the grabbed
         # auto IP addresses.
