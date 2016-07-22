@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import os
 
 from django.db import (
     migrations,
@@ -8,7 +9,7 @@ from django.db import (
 
 
 def get_size_of_content(large_file):
-    with self.content.open('rb') as stream:
+    with large_file.content.open('rb') as stream:
         stream.seek(0, os.SEEK_END)
         return stream.tell()
 
