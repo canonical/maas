@@ -142,7 +142,7 @@ def make_WebApplicationService(postgresListener):
     # Make a socket with SO_REUSEPORT set so that we can run multiple web
     # applications. This is easier to do from outside of Twisted as there's
     # not yet official support for setting socket options.
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -155,7 +155,9 @@ def make_WebApplicationService(postgresListener):
         # log message when we see this error, and a test for it.
         if e.errno != ENOPROTOOPT:
             raise e
-    s.bind(('0.0.0.0', site_port))
+    # N.B, using the IPv6 INADDR_ANY means that getpeername() returns something
+    # like: ('::ffff:192.168.133.32', 40588, 0, 0)
+    s.bind(('::', site_port))
     # Use a backlog of 50, which seems to be fairly common.
     s.listen(50)
     # Adopt this socket into Twisted's reactor.

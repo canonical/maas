@@ -257,12 +257,13 @@ class TestFactories(MAASTestCase):
         self.assertThat(service, IsInstance(webapp.WebApplicationService))
         # The endpoint is set to port 5243 on localhost.
         self.assertThat(service.endpoint, MatchesStructure.byEquality(
-            reactor=reactor, addressFamily=socket.AF_INET))
+            reactor=reactor, addressFamily=socket.AF_INET6))
         self.assertThat(
             service.endpoint.port, Equals(DEFAULT_PORT))
+        # IPv6 address is: (host, port, flowinfo, scopeid)
         self.assertThat(
             service.endpoint.socket.getsockname(),
-            Equals(("0.0.0.0", DEFAULT_PORT)))
+            Equals(("::", DEFAULT_PORT, 0, 0)))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_WebApplicationService,

@@ -18,6 +18,7 @@ from os import urandom
 import random
 from socket import (
     AF_INET,
+    AF_INET6,
     gethostname,
 )
 import threading
@@ -820,8 +821,7 @@ class RegionService(service.Service, object):
     def getPort(self):
         """Return the TCP port number on which this service is listening.
 
-        This currently only considers ports (in the Twisted sense) for
-        ``AF_INET`` sockets, i.e. IPv4 sockets.
+        This considers ports (in the Twisted sense) for both IPv4 and IPv6.
 
         Returns `None` if the port has not yet been opened.
         """
@@ -829,10 +829,10 @@ class RegionService(service.Service, object):
             # Look for the first AF_INET port.
             port = next(
                 port for port in self.ports
-                if port.addressFamily == AF_INET)
+                if port.addressFamily in [AF_INET, AF_INET6])
         except StopIteration:
-            # There's no AF_INET (IPv4) port. As far as this method goes, this
-            # means there's no connection.
+            # There's no AF_INET (IPv4) or AF_INET6 (IPv6) port. As far as this
+            # method goes, this means there's no connection.
             return None
 
         try:

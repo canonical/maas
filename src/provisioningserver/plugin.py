@@ -12,7 +12,10 @@ import socket
 from socket import error as socket_error
 
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.monkey import add_term_error_code_to_tftp
+from provisioningserver.monkey import (
+    add_patches_to_twisted,
+    add_term_error_code_to_tftp,
+)
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -59,7 +62,7 @@ class ProvisioningServiceMaker:
         # Make a socket with SO_REUSEPORT set so that we can run multiple we
         # applications. This is easier to do from outside of Twisted as there's
         # not yet official support for setting socket options.
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -72,7 +75,7 @@ class ProvisioningServiceMaker:
             # log message when we see this error, and a test for it.
             if e.errno != ENOPROTOOPT:
                 raise e
-        s.bind(('0.0.0.0', port))
+        s.bind(('::', port))
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
         # Adopt this socket into Twisted's reactor.
@@ -179,6 +182,7 @@ class ProvisioningServiceMaker:
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
         add_term_error_code_to_tftp()
+        add_patches_to_twisted()
 
         self._configureCrochet()
         self._configureLogging()
