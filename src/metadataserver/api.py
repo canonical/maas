@@ -352,7 +352,6 @@ class StatusHandler(MetadataViewHandler):
         # At the end of a top-level event, we change the node status.
         if _is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
-                node.status_expires = None
                 if result in ['FAIL', 'FAILURE']:
                     node.status = NODE_STATUS.FAILED_COMMISSIONING
 
@@ -370,6 +369,7 @@ class StatusHandler(MetadataViewHandler):
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
                     NODE_STATUS.READY,
                     NODE_STATUS.FAILED_COMMISSIONING]:
+                node.status_expires = None
                 node.owner = None
                 node.error = 'failed: %s' % description
 
@@ -518,8 +518,10 @@ class VersionIndexHandler(MetadataViewHandler):
                 if node.power_type != "mscm":
                     store_node_power_parameters(node, request)
 
-            node.status_expires = None
             target_status = self.signaling_statuses.get(status)
+            if target_status in [NODE_STATUS.FAILED_COMMISSIONING,
+               NODE_STATUS.READY]:
+                node.status_expires = None
             # Recalculate tags when commissioning ends.
             if target_status == NODE_STATUS.READY:
                 populate_tags_for_single_node(Tag.objects.all(), node)

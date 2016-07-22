@@ -162,6 +162,22 @@ NODE_FAILURE_STATUS_TRANSITIONS = {
     NODE_STATUS.DISK_ERASING: NODE_STATUS.FAILED_DISK_ERASING,
 }
 
+# State transitions that are monitored for timeouts for when a node
+# fails:
+# Mapping between in-progress statuses and the corresponding failed
+# statuses.
+NODE_FAILURE_MONITORED_STATUS_TRANSITIONS = {
+    NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
+    NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
+    NODE_STATUS.RELEASING: NODE_STATUS.FAILED_RELEASING,
+}
+
+NODE_FAILURE_MONITORED_STATUS_TIMEOUTS = {
+    NODE_STATUS.COMMISSIONING: 20,
+    NODE_STATUS.DEPLOYING: 40,
+    NODE_STATUS.RELEASING: 5,
+}
+
 # Statuses that correspond to managed steps for which MAAS actively
 # monitors that the status changes after a fixed period of time.
 MONITORED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.keys())

@@ -123,6 +123,7 @@ from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
     get_failed_status,
     is_failed_status,
+    NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
     NODE_TRANSITIONS,
 )
 from maasserver.rpc import (
@@ -1106,7 +1107,9 @@ class Node(CleanSave, TimestampedModel):
         """
         # Return a *very* conservative estimate for now.
         # Something that shouldn't conflict with any deployment.
-        return timedelta(minutes=40).total_seconds()
+        return timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
+                NODE_STATUS.DEPLOYING]).total_seconds()
 
     def get_commissioning_time(self):
         """Return the commissioning time of this node (in seconds).
@@ -1114,14 +1117,18 @@ class Node(CleanSave, TimestampedModel):
         This is the maximum time the commissioning is allowed to take.
         """
         # Return a *very* conservative estimate for now.
-        return timedelta(minutes=20).total_seconds()
+        return timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
+                NODE_STATUS.COMMISSIONING]).total_seconds()
 
     def get_releasing_time(self):
         """Return the releasing time of this node (in seconds).
 
         This is the maximum time that releasing is allowed to take.
         """
-        return timedelta(minutes=5).total_seconds()
+        return timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
+                NODE_STATUS.RELEASING]).total_seconds()
 
     def _register_request_event(
             self, user, type_name, action='', comment=None):
