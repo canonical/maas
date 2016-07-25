@@ -193,7 +193,8 @@ class TestStatusAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         # Check last node event.
         self.assertEqual(
-            "'curtin' Command Install",
+            "Installation failed (refer to the installation"
+            " log for more information).",
             Event.objects.filter(node=node).last().description)
 
     def test_status_installation_fail_leaves_node_failed(self):
@@ -212,7 +213,8 @@ class TestStatusAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         # Check last node event.
         self.assertEqual(
-            "'curtin' Command Install",
+            "Installation failed (refer to the installation"
+            " log for more information).",
             Event.objects.filter(node=node).last().description)
 
     def test_status_installation_failure_doesnt_clear_owner(self):
@@ -270,7 +272,7 @@ class TestStatusAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
         # Check last node event.
         self.assertEqual(
-            "'curtin' Erasing disk",
+            "Failed to erase disks.",
             Event.objects.filter(node=node).last().description)
 
     def test_status_erasure_failure_does_not_populate_tags(self):

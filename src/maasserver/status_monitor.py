@@ -43,7 +43,7 @@ def mark_nodes_failed_after_expiring():
             NODE_STATUS_CHOICES_DICT[node.status],
             NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
             )
-        node._mark_failed(None, commit=False, comment=comment)
+        node.mark_failed(commit=False, comment=comment)
         node.status_expires = None
         node.save()
 

@@ -3148,14 +3148,23 @@ class TestNode(MAASServerTestCase):
             event_action=event_action,
             event_description=event_description))
 
-    def test__register_request_event_with_none_user_saves_no_event(self):
+    def test__register_request_event_none_user_saves_comment_not_user(self):
         node = factory.make_Node()
         log_mock = self.patch_autospec(
             Event.objects, 'register_event_and_event_type')
         event_name = EVENT_TYPES.REQUEST_NODE_START
+        event_action = factory.make_name('action')
+        event_details = EVENT_DETAILS[event_name]
         comment = factory.make_name("comment")
-        node._register_request_event(None, event_name, comment)
-        self.assertThat(log_mock, MockNotCalled())
+        event_description = "%s" % (comment)
+        node._register_request_event(None, event_name, event_action, comment)
+        self.assertThat(log_mock, MockCalledOnceWith(
+            node.system_id,
+            EVENT_TYPES.REQUEST_NODE_START,
+            type_level=event_details.level,
+            type_description=event_details.description,
+            event_action=event_action,
+            event_description=event_description))
 
     def test__status_message_returns_most_recent_event(self):
         # The first event won't be returned.

@@ -66,7 +66,9 @@ class EVENT_TYPES:
     # Node status events
     NODE_STATUS_EVENT = "NODE_STATUS_EVENT"
     NODE_COMMISSIONING_EVENT = "NODE_COMMISSIONING_EVENT"
+    NODE_COMMISSIONING_EVENT_FAILED = "NODE_COMMISSIONING_EVENT_FAILED"
     NODE_INSTALL_EVENT = "NODE_INSTALL_EVENT"
+    NODE_INSTALL_EVENT_FAILED = "NODE_INSTALL_EVENT_FAILED"
     # Node user request events
     REQUEST_NODE_START_COMMISSIONING = "REQUEST_NODE_START_COMMISSIONING"
     REQUEST_NODE_ABORT_COMMISSIONING = "REQUEST_NODE_ABORT_COMMISSIONING"
@@ -76,6 +78,7 @@ class EVENT_TYPES:
     REQUEST_NODE_ABORT_ERASE_DISK = "REQUEST_NODE_ABORT_ERASE_DISK"
     REQUEST_NODE_RELEASE = "REQUEST_NODE_RELEASE"
     REQUEST_NODE_MARK_FAILED = "REQUEST_NODE_MARK_FAILED"
+    REQUEST_NODE_MARK_FAILED_SYSTEM = "REQUEST_NODE_MARK_FAILED_SYSTEM"
     REQUEST_NODE_MARK_BROKEN = "REQUEST_NODE_MARK_BROKEN"
     REQUEST_NODE_MARK_FIXED = "REQUEST_NODE_MARK_FIXED"
     REQUEST_NODE_START_DEPLOYMENT = "REQUEST_NODE_START_DEPLOYMENT"
@@ -151,9 +154,17 @@ EVENT_DETAILS = {
         description="Node commissioning",
         level=DEBUG,
     ),
+    EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED: EventDetail(
+        description="Node commissioning failure",
+        level=ERROR,
+    ),
     EVENT_TYPES.NODE_INSTALL_EVENT: EventDetail(
         description="Node installation",
         level=DEBUG,
+    ),
+    EVENT_TYPES.NODE_INSTALL_EVENT_FAILED: EventDetail(
+        description="Node installation failure",
+        level=ERROR,
     ),
     EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
         description="User starting node commissioning",
@@ -186,6 +197,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.REQUEST_NODE_MARK_FAILED: EventDetail(
         description="User marking node failed",
         level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_MARK_FAILED_SYSTEM: EventDetail(
+        description="Marking node failed",
+        level=ERROR,
     ),
     EVENT_TYPES.REQUEST_NODE_MARK_BROKEN: EventDetail(
         description="User marking node broken",

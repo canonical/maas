@@ -157,12 +157,19 @@ def check_version(version):
         raise UnknownMetadataVersion("Unknown metadata version: %s" % version)
 
 
-def add_event_to_node_event_log(node, origin, action, description):
+def add_event_to_node_event_log(
+        node, origin, action, description, result=None):
     """Add an entry to the node's event log."""
     if node.status == NODE_STATUS.COMMISSIONING:
-        type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
+        if result in ['SUCCESS', None]:
+            type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
+        else:
+            type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED
     elif node.status == NODE_STATUS.DEPLOYING:
-        type_name = EVENT_TYPES.NODE_INSTALL_EVENT
+        if result in ['SUCCESS', None]:
+            type_name = EVENT_TYPES.NODE_INSTALL_EVENT
+        else:
+            type_name = EVENT_TYPES.NODE_INSTALL_EVENT_FAILED
     elif node.node_type in [
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
@@ -327,7 +334,8 @@ class StatusHandler(MetadataViewHandler):
         result = message.get('result')
 
         # Add this event to the node event log.
-        add_event_to_node_event_log(node, origin, activity_name, description)
+        add_event_to_node_event_log(
+            node, origin, activity_name, description, result)
 
         # Save attached files, if any.
         for sent_file in message.get('files', []):
@@ -358,12 +366,11 @@ class StatusHandler(MetadataViewHandler):
             elif node.status == NODE_STATUS.DEPLOYING:
                 if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(
-                        None,
-                        "Installation failed (refer to the "
-                        "installation log for more information).")
+                        comment="Installation failed (refer to the "
+                                "installation log for more information).")
             elif node.status == NODE_STATUS.DISK_ERASING:
                 if result in ['FAIL', 'FAILURE']:
-                    node.mark_failed(None, "Failed to erase disks.")
+                    node.mark_failed(comment="Failed to erase disks.")
 
             # Deallocate the node if we enter any terminal state.
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
@@ -530,16 +537,15 @@ class VersionIndexHandler(MetadataViewHandler):
             self._store_installation_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
                 node.mark_failed(
-                    None,
-                    "Installation failed (refer to the "
-                    "installation log for more information).")
+                    comment="Installation failed (refer to the "
+                            "installation log for more information).")
             target_status = None
         elif node.status == NODE_STATUS.DISK_ERASING:
             if status == SIGNAL_STATUS.OK:
                 # disk erasing complete, release node
                 node.release()
             elif status == SIGNAL_STATUS.FAILED:
-                node.mark_failed(None, "Failed to erase disks.")
+                node.mark_failed(comment="Failed to erase disks.")
             target_status = None
 
         if target_status in (None, node.status):
