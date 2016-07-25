@@ -34,7 +34,6 @@ from twisted.internet.defer import (
     returnValue,
     succeed,
 )
-from twisted.python import log
 
 
 maaslog = get_maas_logger("power")
@@ -163,8 +162,11 @@ def maaslog_report_failure(node, failure):
         maaslog.error(
             "%s: Failed to refresh power state: %s",
             node['hostname'], failure.getErrorMessage())
-        # Also write out a full traceback to the server log.
-        log.err(failure, "Failed to refresh power state.")
+        # XXX: newell 07-25-16 bug=1600264: Will re-instate
+        # the traceback logging with python.twisted.log once
+        # Debug is added for the rack controller.
+        # # Also write out a full traceback to the server log.
+        # log.err(failure, "Failed to refresh power state.")
 
 
 def query_node(node, clock):

@@ -513,13 +513,6 @@ class TestPowerQueryAsync(MAASTestCase):
             hostname-...: Power state has changed from ... to ...
             """ % error_message,
             maaslog.output)
-        self.assertDocTestMatches(
-            """\
-            Failed to refresh power state.
-            Traceback (most recent call last):
-            Failure: maastesting.factory.TestException#...: %s
-            """ % error_message,
-            twistlog.output)
 
     @inlineCallbacks
     def test_query_all_nodes_returns_deferredlist_of_number_of_nodes(self):
