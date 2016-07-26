@@ -622,7 +622,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'broadcast_ip',
                 'router_ip',
                 'dns_servers',
-                'ntp_server',
+                'ntp_servers',
                 'domain_name',
                 'pools',
                 'dhcp_snippets',
@@ -664,7 +664,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         config = dhcp.make_subnet_config(
             rack_controller, subnet, "", ntp, default_domain)
-        self.expectThat(config['ntp_server'], Equals(ntp))
+        self.expectThat(config['ntp_servers'], Equals(ntp))
 
     def test__overrides_ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1162,12 +1162,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             interface=secondary_interface)
         other_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
 
-        ntp_server = factory.make_name("ntp")
+        ntp_servers = factory.make_name("ntp")
         default_domain = Domain.objects.get_default_domain()
         self.assertRaises(
             DHCPConfigurationError, dhcp.get_dhcp_configure_for,
             4, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_server, default_domain)
+            ntp_servers, default_domain)
 
     def test__returns_for_ipv4(self):
         primary_rack = factory.make_RackController()
@@ -1200,12 +1200,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
             for _ in range(3)]
 
-        ntp_server = factory.make_name("ntp")
+        ntp_servers = factory.make_name("ntp")
         default_domain = Domain.objects.get_default_domain()
         (observed_failover, observed_subnets, observed_hosts,
          observed_interface) = dhcp.get_dhcp_configure_for(
             4, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_server, default_domain, DHCPSnippet.objects.all())
+            ntp_servers, default_domain, DHCPSnippet.objects.all())
 
         self.assertEquals({
             "name": "failover-vlan-%d" % ha_vlan.id,
@@ -1221,7 +1221,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "broadcast_ip": str(ha_network.broadcast),
                 "router_ip": str(ha_subnet.gateway_ip),
                 "dns_servers": '127.0.0.1',
-                "ntp_server": ntp_server,
+                "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1245,7 +1245,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "broadcast_ip": str(other_network.broadcast),
                 "router_ip": str(other_subnet.gateway_ip),
                 "dns_servers": '127.0.0.1',
-                "ntp_server": ntp_server,
+                "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1290,12 +1290,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         other_subnet = factory.make_Subnet(
             vlan=ha_vlan, cidr="fd38:c341:27da:c832::/64")
 
-        ntp_server = factory.make_name("ntp")
+        ntp_servers = factory.make_name("ntp")
         default_domain = Domain.objects.get_default_domain()
         self.assertRaises(
             DHCPConfigurationError, dhcp.get_dhcp_configure_for,
             6, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_server, default_domain)
+            ntp_servers, default_domain)
 
     def test__returns_for_ipv6(self):
         primary_rack = factory.make_RackController()
@@ -1331,12 +1331,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
             for _ in range(3)]
 
-        ntp_server = factory.make_name("ntp")
+        ntp_servers = factory.make_name("ntp")
         default_domain = Domain.objects.get_default_domain()
         (observed_failover, observed_subnets, observed_hosts,
          observed_interface) = dhcp.get_dhcp_configure_for(
             6, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_server, default_domain, DHCPSnippet.objects.all())
+            ntp_servers, default_domain, DHCPSnippet.objects.all())
 
         # Because developers running this unit test might not have an IPv6
         # address configured we remove the dns_servers from the generated
@@ -1357,7 +1357,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "subnet_cidr": str(ha_network.cidr),
                 "broadcast_ip": str(ha_network.broadcast),
                 "router_ip": str(ha_subnet.gateway_ip),
-                "ntp_server": ntp_server,
+                "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1380,7 +1380,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "subnet_cidr": str(other_network.cidr),
                 "broadcast_ip": str(other_network.broadcast),
                 "router_ip": str(other_subnet.gateway_ip),
-                "ntp_server": ntp_server,
+                "ntp_servers": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,

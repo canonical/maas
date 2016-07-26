@@ -146,3 +146,46 @@ class MAASHandlerAPITest(APITestCase.ForUser):
                     "value": factory.make_name("nonsense"),
                 })
             self.assertInvalidConfigurationSetting(name, response)
+
+    def test_get_config_ntp_server_alias_for_ntp_servers(self):
+        ntp_servers = factory.make_hostname() + " " + factory.make_hostname()
+        Config.objects.set_config("ntp_servers", ntp_servers)
+        response = self.client.get(
+            reverse('maas_handler'), {
+                "op": "get_config",
+                "name": "ntp_server",
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(status_code=Equals(http.client.OK)),
+                # with a JSON body,
+                AfterPreprocessing(
+                    itemgetter("Content-Type"),
+                    Equals("application/json")),
+                # containing the ntp_servers setting.
+                AfterPreprocessing(
+                    lambda response: json.loads(
+                        response.content.decode(settings.DEFAULT_CHARSET)),
+                    Equals(ntp_servers)),
+            ))
+
+    def test_set_config_ntp_server_alias_for_ntp_servers(self):
+        self.become_admin()
+        ntp_servers = factory.make_hostname() + " " + factory.make_hostname()
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "ntp_server",
+                "value": ntp_servers,
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(
+                    status_code=Equals(http.client.OK),
+                    content=Equals(b"OK")),
+            ))
+        self.assertThat(
+            Config.objects.get_config("ntp_servers"),
+            Equals(ntp_servers))

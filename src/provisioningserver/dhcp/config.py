@@ -82,7 +82,7 @@ def get_config(template_name, **params):
     template_file = locate_template('dhcp', template_name)
     params['bootloader'] = compose_conditional_bootloader()
     params['platform_codename'] = linux_distribution()[2]
-    params.setdefault("ntp_server")
+    params.setdefault("ntp_servers")
     try:
         template = tempita.Template.from_filename(
             template_file, encoding="UTF-8")

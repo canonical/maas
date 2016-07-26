@@ -296,7 +296,7 @@ class _ConfigureDHCP(amp.Command):
                 (b"broadcast_ip", amp.Unicode()),
                 (b"router_ip", amp.Unicode()),
                 (b"dns_servers", amp.Unicode()),
-                (b"ntp_server", amp.Unicode()),
+                (b"ntp_servers", amp.Unicode()),
                 (b"domain_name", amp.Unicode()),
                 (b"pools", AmpList([
                     (b"ip_range_low", amp.Unicode()),

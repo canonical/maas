@@ -17,7 +17,10 @@ from socket import gethostname
 from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
-from maasserver.fields import IPListFormField
+from maasserver.fields import (
+    HostListFormField,
+    IPListFormField,
+)
 from maasserver.models import BootResource
 from maasserver.models.config import (
     Config,
@@ -269,15 +272,16 @@ CONFIG_ITEMS = {
                 "server config.")
         }
     },
-    'ntp_server': {
+    'ntp_servers': {
         'default': None,
-        'form': forms.CharField,
+        'form': HostListFormField,
         'form_kwargs': {
-            'label': "Address of NTP server for nodes",
+            'label': "Addresses of NTP servers",
             'required': False,
             'help_text': (
-                "NTP server address passed to nodes via a DHCP response. "
-                "e.g. ntp.ubuntu.com")
+                "NTP servers, specified as IP addresses or hostnames, to be "
+                "used as time references for MAAS itself and the machines "
+                "MAAS deploys, e.g. ntp.ubuntu.com"),
         }
     },
     'default_osystem': {
@@ -424,7 +428,7 @@ CONFIG_ITEMS = {
 }
 
 
-CONFIG_ITEMS_KEYS = list(CONFIG_ITEMS)
+CONFIG_ITEMS_KEYS = frozenset(CONFIG_ITEMS)
 
 
 INVALID_SETTING_MSG_TEMPLATE = (

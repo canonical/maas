@@ -316,7 +316,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 
 def make_subnet_config(
-        rack_controller, subnet, maas_dns_server, ntp_server, default_domain,
+        rack_controller, subnet, maas_dns_server, ntp_servers, default_domain,
         failover_peer=None, subnets_dhcp_snippets=[]):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
@@ -336,7 +336,7 @@ def make_subnet_config(
             '' if not subnet.gateway_ip
             else str(subnet.gateway_ip)),
         'dns_servers': dns_servers,
-        'ntp_server': ntp_server,
+        'ntp_servers': ntp_servers,
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
         'dhcp_snippets': [
@@ -368,7 +368,7 @@ def make_failover_peer_config(vlan, rack_controller):
 
 
 def get_dhcp_configure_for(
-        ip_version, rack_controller, vlan, subnets, ntp_server, domain,
+        ip_version, rack_controller, vlan, subnets, ntp_servers, domain,
         dhcp_snippets=[]):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
@@ -412,7 +412,7 @@ def get_dhcp_configure_for(
     for subnet in subnets:
         subnet_configs.append(
             make_subnet_config(
-                rack_controller, subnet, maas_dns_server, ntp_server,
+                rack_controller, subnet, maas_dns_server, ntp_servers,
                 domain, peer_name, subnets_dhcp_snippets))
 
     # Generate the hosts for all subnets.
@@ -471,14 +471,14 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     shared_networks_v6 = []
     hosts_v6 = []
     interfaces_v6 = set()
-    ntp_server = Config.objects.get_config("ntp_server")
+    ntp_servers = Config.objects.get_config("ntp_servers")
     default_domain = Domain.objects.get_default_domain()
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
         if len(subnets_v4) > 0:
             try:
                 config = get_dhcp_configure_for(
-                    4, rack_controller, vlan, subnets_v4, ntp_server,
+                    4, rack_controller, vlan, subnets_v4, ntp_servers,
                     default_domain, dhcp_snippets)
             except DHCPConfigurationError as e:
                 # XXX bug #1602412: this silently breaks DHCPv4, but we cannot
@@ -503,7 +503,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
             try:
                 config = get_dhcp_configure_for(
                     6, rack_controller, vlan, subnets_v6,
-                    ntp_server, default_domain, dhcp_snippets)
+                    ntp_servers, default_domain, dhcp_snippets)
             except DHCPConfigurationError as e:
                 # XXX bug #1602412: this silently breaks DHCPv6, but we cannot
                 # allow it to crash here since DHCPv4 might be able to run.

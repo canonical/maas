@@ -60,8 +60,8 @@ shared-network {{shared_network["name"]}} {
            # http://www.isc.org/blogs/routing-configuration-over-dhcpv6-2/
            #
            #option routers {{dhcp_subnet['router_ip']}};
-           {{if dhcp_subnet.get('ntp_server')}}
-           option ntp-servers {{dhcp_subnet['ntp_server']}};
+           {{if dhcp_subnet.get('ntp_servers')}}
+           option ntp-servers {{dhcp_subnet['ntp_servers']}};
            {{endif}}
            default-lease-time 600;
            max-lease-time 600;

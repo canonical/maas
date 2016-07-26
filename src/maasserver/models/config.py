@@ -53,7 +53,7 @@ def get_default_config():
         'http_proxy': None,
         'upstream_dns': None,
         'dnssec_validation': "auto",
-        'ntp_server': 'ntp.ubuntu.com',
+        'ntp_servers': 'ntp.ubuntu.com',
         'omapi_key': '',
         # RPC configuration.
         'rpc_region_certificate': None,
@@ -70,8 +70,7 @@ def get_default_config():
         'curtin_verbose': False,
         # Analytics.
         'enable_analytics': True,
-        # # /settings
-        }
+    }
 
 
 # Default values for config options.

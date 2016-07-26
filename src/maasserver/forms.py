@@ -1310,7 +1310,7 @@ class NetworkForm(ConfigForm):
     http_proxy = get_config_field('http_proxy')
     upstream_dns = get_config_field('upstream_dns')
     dnssec_validation = get_config_field('dnssec_validation')
-    ntp_server = get_config_field('ntp_server')
+    ntp_servers = get_config_field('ntp_servers')
 
 
 class ThirdPartyDriversForm(ConfigForm):

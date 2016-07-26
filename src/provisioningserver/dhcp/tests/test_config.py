@@ -166,7 +166,7 @@ class TestGetConfig(PservTestCase):
         params = make_sample_params(ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
-                del subnet['ntp_server']
+                del subnet['ntp_servers']
         template = self.patch_template()
         rendered = template.substitute(params)
         self.assertEqual(

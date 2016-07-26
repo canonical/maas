@@ -27,6 +27,11 @@ from maasserver.models import Config
 from piston3.utils import rc
 
 
+def rewrite_config_name(name):
+    """Rewrite the config name for backwards compatibility."""
+    return 'ntp_servers' if name == 'ntp_server' else name
+
+
 class MaasHandler(OperationsHandler):
     """Manage the MAAS server."""
     api_doc_section_name = "MAAS server"
@@ -44,6 +49,7 @@ class MaasHandler(OperationsHandler):
         """
         name = get_mandatory_param(
             request.data, 'name', validators.String(min=1))
+        name = rewrite_config_name(name)
         value = get_mandatory_param(request.data, 'value')
         form = get_config_form(name, {name: value})
         if not form.is_valid():
@@ -64,6 +70,7 @@ class MaasHandler(OperationsHandler):
         %s
         """
         name = get_mandatory_param(request.GET, 'name')
+        name = rewrite_config_name(name)
         validate_config_name(name)
         value = Config.objects.get_config(name)
         return HttpResponse(json.dumps(value), content_type='application/json')
