@@ -29,6 +29,8 @@ LP: #1604962    Fixes to correctly log cloud-init/curtin FAIL events in the node
 
 LP: #1604987    Fixes to correctly log "mark_failed" events.
 
+LP: #1602721    [2.0rc2] Can't get node-results via cli/api
+
 
 2.0.0 (rc2)
 ===========
