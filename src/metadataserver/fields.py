@@ -57,7 +57,7 @@ class Bin(bytes):
 
         Exists as a hook for Piston's JSON encoder.
         """
-        return b64encode(self)
+        return b64encode(self).decode('ascii')
 
 
 class BinaryField(Field, metaclass=SubfieldBase):
