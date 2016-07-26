@@ -173,6 +173,36 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             ]
         )
 
+    def test_list_returns_with_multiple_empty_data(self):
+        commissioning_results = [
+            factory.make_NodeResult_for_commissioning(data=b"")
+            for counter in range(3)]
+        url = reverse('node_results_handler')
+        response = self.client.get(url)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_results = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            [
+                (
+                    commissioning_result.name,
+                    commissioning_result.script_result,
+                    b64encode(commissioning_result.data).decode("utf-8"),
+                    commissioning_result.node.system_id,
+                )
+                for commissioning_result in commissioning_results
+            ],
+            [
+                (
+                    result.get('name'),
+                    result.get('script_result'),
+                    result.get('data'),
+                    result.get('node').get('system_id'),
+                )
+                for result in parsed_results
+            ]
+        )
+
     def test_list_can_be_filtered_by_node(self):
         commissioning_results = [
             factory.make_NodeResult_for_commissioning()

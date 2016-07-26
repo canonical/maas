@@ -35,10 +35,10 @@ class TestBin(MAASServerTestCase):
         # Piston hooks onto an __emittable__() method, if present.
         # Bin() returns a base-64 encoded string so that it can be
         # transmitted in JSON.
-        self.assertEqual(b"", Bin(b"").__emittable__())
+        self.assertEqual("", Bin(b"").__emittable__())
         example_bytes = factory.make_bytes()
         self.assertEqual(
-            b64encode(example_bytes),
+            b64encode(example_bytes).decode('ascii'),
             Bin(example_bytes).__emittable__())
 
 
