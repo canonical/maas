@@ -49,7 +49,7 @@ def mark_node_failed(system_id, error_description):
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
     try:
-        node.mark_failed(None, error_description)
+        node.mark_failed(comment=error_description)
     except exceptions.NodeStateViolation as e:
         raise NodeStateViolation(e)
 

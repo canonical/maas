@@ -1009,20 +1009,29 @@ class Node(CleanSave, TimestampedModel):
 
     def _register_request_event(
             self, user, type_name, action='', comment=None):
-        """Register a node user request event."""
-        # don't register system generated non-user requests
+        """Register a node request event.
+
+        It registers events like start_commission (started by a user),
+        or mark_failed (started by the system)"""
+
+        # the description will be the comment, if any.
+        description = comment if comment else ''
+        # if the user exists, we need to construct the description with
+        # the user. as it would be a user-driven request.
         if user is not None:
-            event_details = EVENT_DETAILS[type_name]
-            description = "(%s)" % user.username
-            if comment:
-                description = "%s - %s" % (description, comment)
-            # Avoid circular imports.
-            from maasserver.models.event import Event
-            Event.objects.register_event_and_event_type(
-                self.system_id, type_name, type_level=event_details.level,
-                type_description=event_details.description,
-                event_action=action,
-                event_description=description)
+            if len(description) == 0:
+                description = "(%s)" % user
+            else:
+                description = "(%s) - %s" % (user, description)
+        event_details = EVENT_DETAILS[type_name]
+
+        # Avoid circular imports.
+        from maasserver.models.event import Event
+        Event.objects.register_event_and_event_type(
+            self.system_id, type_name, type_level=event_details.level,
+            type_description=event_details.description,
+            event_action=action,
+            event_description=description)
 
     def storage_layout_issues(self):
         """Return any errors with the storage layout.
@@ -2271,18 +2280,22 @@ class Node(CleanSave, TimestampedModel):
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 
-    def mark_failed(self, user, comment=None):
-        self._register_request_event(
-            user, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, action='mark_failed',
-            comment=comment)
-        self._mark_failed(user, comment)
-
-    def _mark_failed(self, user, comment=None, commit=True):
+    def mark_failed(self, user=None, comment=None, commit=True):
         """Mark this node as failed.
 
         The actual 'failed' state depends on the current status of the
         node.
         """
+        if user is None:
+            # This is a system-driven event. Log level is ERROR.
+            event_type = EVENT_TYPES.REQUEST_NODE_MARK_FAILED_SYSTEM
+        else:
+            # This is a user-driven event. Log level is INFO.
+            event_type = EVENT_TYPES.REQUEST_NODE_MARK_FAILED
+        self._register_request_event(
+            user, event_type, action='mark_failed',
+            comment=comment)
+
         new_status = get_failed_status(self.status)
         if new_status is not None:
             self.status = new_status

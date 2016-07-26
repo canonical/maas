@@ -25,6 +25,10 @@ LP: #1604128    [2.0rc2] Unable to add a public SSH Key due to lp1604147
 
 LP: #1604169    [2.0] maas login yields "ImportError: No module named 'maasserver'"
 
+LP: #1604962    Fixes to correctly log cloud-init/curtin FAIL events in the node event log.
+
+LP: #1604987    Fixes to correctly log "mark_failed" events.
+
 
 2.0.0 (rc2)
 ===========
