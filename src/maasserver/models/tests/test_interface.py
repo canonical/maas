@@ -42,6 +42,7 @@ from maasserver.models.interface import (
     UnknownInterface,
     VLANInterface,
 )
+from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
@@ -527,6 +528,17 @@ class InterfaceTest(MAASServerTestCase):
             name=name, node=node, mac_address=mac,
             type=INTERFACE_TYPE.PHYSICAL))
 
+    def test_allows_null_vlan(self):
+        name = factory.make_name('name')
+        node = factory.make_Node()
+        mac = factory.make_MAC()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name=name, node=node, mac_address=mac, disconnected=True)
+        self.assertThat(interface, MatchesStructure.byEquality(
+            name=name, node=node, mac_address=mac,
+            type=INTERFACE_TYPE.PHYSICAL, vlan=None))
+
     def test_string_representation_contains_essential_data(self):
         name = factory.make_name('name')
         node = factory.make_Node()
@@ -569,6 +581,11 @@ class InterfaceTest(MAASServerTestCase):
         nic1.vlan.mtu = vlan_mtu
         nic1.vlan.save()
         self.assertEqual(vlan_mtu, nic1.get_effective_mtu())
+
+    def test_get_effective_mtu_returns_default_mtu(self):
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+        self.assertEqual(DEFAULT_MTU, nic1.get_effective_mtu())
 
     def test_get_links_returns_links_for_each_type(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1595,6 +1612,11 @@ class TestLinkSubnet(MAASServerTestCase):
 class TestForceAutoOrDHCPLink(MAASServerTestCase):
     """Tests for `Interface.force_auto_or_dhcp_link`."""
 
+    def test__does_nothing_when_disconnected(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+        self.assertIsNone(interface.force_auto_or_dhcp_link())
+
     def test__sets_to_AUTO_on_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -1621,6 +1643,15 @@ class TestEnsureLinkUp(MAASServerTestCase):
         self.assertEqual(
             1, interface.ip_addresses.count(),
             "Should only have one IP address assigned.")
+
+    def test__does_nothing_if_no_vlan(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+        interface.ensure_link_up()
+        interface = reload_object(interface)
+        self.assertEqual(
+            0, interface.ip_addresses.count(),
+            "Should only have no IP address assigned.")
 
     def test__creates_link_up_to_discovered_subnet_on_same_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

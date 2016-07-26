@@ -654,11 +654,17 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if($scope.isInterfaceNameInvalid(nic)) {
                 nic.name = originalInteface.name;
             } else if(originalInteface.name !== nic.name ||
+                (originalInteface.vlan_id === null && nic.vlan !== null) ||
+                (originalInteface.vlan_id !== null && nic.vlan === null) ||
                 originalInteface.vlan_id !== nic.vlan.id) {
                 var params = {
-                    "name": nic.name,
-                    "vlan": nic.vlan.id
+                    "name": nic.name
                 };
+                if(nic.vlan !== null) {
+                    params.vlan = nic.vlan.id;
+                } else {
+                    params.vlan = null;
+                }
                 $scope.$parent.nodesManager.updateInterface(
                     $scope.node, nic.id, params).then(null, function(error) {
                         // XXX blake_r: Just log the error in the console, but
@@ -716,7 +722,11 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.fabricChanged = function(nic) {
             // Update the VLAN on the node to be the default VLAN for that
             // fabric. The first VLAN for the fabric is the default.
-            nic.vlan = getDefaultVLAN(nic.fabric);
+            if(nic.fabric !== null) {
+                nic.vlan = getDefaultVLAN(nic.fabric);
+            } else {
+                nic.vlan = null;
+            }
             $scope.saveInterface(nic);
         };
 

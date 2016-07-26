@@ -1685,6 +1685,62 @@ describe("NodeNetworkingController", function() {
                     "vlan": vlan.id
                 });
         });
+
+        it("calls MachinesManager.updateInterface if vlan set", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var name = makeName("nic");
+            var vlan = { id: makeInteger(0, 100) };
+            var original_nic = {
+                id: id,
+                name: name,
+                vlan_id: null
+            };
+            var nic = {
+                id: id,
+                name: name,
+                vlan: vlan
+            };
+            $scope.originalInterfaces[id] = original_nic;
+            $scope.interfaces = [nic];
+
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
+                $q.defer().promise);
+            $scope.saveInterface(nic);
+            expect(MachinesManager.updateInterface).toHaveBeenCalledWith(
+                node, id, {
+                    "name": name,
+                    "vlan": vlan.id
+                });
+        });
+
+        it("calls MachinesManager.updateInterface if vlan unset", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var name = makeName("nic");
+            var vlan = { id: makeInteger(0, 100) };
+            var original_nic = {
+                id: id,
+                name: name,
+                vlan_id: makeInteger(200, 300)
+            };
+            var nic = {
+                id: id,
+                name: name,
+                vlan: null
+            };
+            $scope.originalInterfaces[id] = original_nic;
+            $scope.interfaces = [nic];
+
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
+                $q.defer().promise);
+            $scope.saveInterface(nic);
+            expect(MachinesManager.updateInterface).toHaveBeenCalledWith(
+                node, id, {
+                    "name": name,
+                    "vlan": null
+                });
+        });
     });
 
     describe("setFocusInterface", function() {
@@ -1845,6 +1901,17 @@ describe("NodeNetworkingController", function() {
             spyOn($scope, "saveInterface");
             $scope.fabricChanged(nic);
             expect(nic.vlan).toBe(vlan);
+        });
+
+        it("sets vlan to null", function() {
+            var controller = makeController();
+            var nic = {
+                vlan: {},
+                fabric: null
+            };
+            spyOn($scope, "saveInterface");
+            $scope.fabricChanged(nic);
+            expect(nic.vlan).toBeNull();
         });
 
         it("calls saveInterface", function() {

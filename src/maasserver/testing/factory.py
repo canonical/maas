@@ -902,7 +902,7 @@ class Factory(maastesting.factory.Factory):
     def make_Interface(
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
-            ip=None, enabled=True, fabric=None, tags=None):
+            ip=None, enabled=True, fabric=None, tags=None, disconnected=False):
         if name is None:
             if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
                 name = self.make_name('eth')
@@ -919,20 +919,21 @@ class Factory(maastesting.factory.Factory):
                 name = None
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
-        if vlan is None:
-            if fabric is not None:
-                if iftype == INTERFACE_TYPE.VLAN:
-                    vlan = self.make_VLAN(fabric=fabric)
+        if not disconnected:
+            if vlan is None:
+                if fabric is not None:
+                    if iftype == INTERFACE_TYPE.VLAN:
+                        vlan = self.make_VLAN(fabric=fabric)
+                    else:
+                        vlan = fabric.get_default_vlan()
                 else:
-                    vlan = fabric.get_default_vlan()
-            else:
-                if iftype == INTERFACE_TYPE.VLAN and parents:
-                    vlan = self.make_VLAN(fabric=parents[0].vlan.fabric)
-                elif iftype == INTERFACE_TYPE.BOND and parents:
-                    vlan = parents[0].vlan
-                else:
-                    fabric = self.make_Fabric()
-                    vlan = fabric.get_default_vlan()
+                    if iftype == INTERFACE_TYPE.VLAN and parents:
+                        vlan = self.make_VLAN(fabric=parents[0].vlan.fabric)
+                    elif iftype == INTERFACE_TYPE.BOND and parents:
+                        vlan = parents[0].vlan
+                    else:
+                        fabric = self.make_Fabric()
+                        vlan = fabric.get_default_vlan()
         if (mac_address is None and
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,

@@ -617,11 +617,13 @@
                                             data-ng-disabled="interface.type == 'alias' || interface.type == 'vlan' || !isNodeEditingAllowed()"
                                             data-ng-change="fabricChanged(interface)"
                                             data-ng-options="fabric as fabric.name for fabric in fabrics">
+                                                <option value="">Disconnected</option>
                                         </select>
                                     </div>
                                     <div class="table__data table-col--14">
                                         <select class="table__input" name="vlan" id="vlan"
                                             data-ng-model="interface.vlan"
+                                            data-ng-if="interface.fabric"
                                             data-ng-disabled="isController || interface.type == 'alias' || interface.vlan.vid === 0 || !isNodeEditingAllowed()"
                                             data-ng-change="saveInterface(interface)"
                                             data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:interface.fabric">
@@ -629,6 +631,7 @@
                                     </div>
                                     <div class="table__data table-col--18">
                                         <select class="table__input" name="subnet" id="subnet"
+                                            data-ng-if="interface.fabric"
                                             data-ng-hide="isAllNetworkingDisabled() && interface.discovered[0].subnet_id"
                                             data-ng-disabled="isController || !isNodeEditingAllowed()"
                                             data-ng-model="interface.subnet"
@@ -641,7 +644,7 @@
                                         </span>
                                     </div>
                                     <div class="table__data table-col--21">
-                                        <ul class="no-bullets no-margin-bottom" data-ng-if="!isController && !isAllNetworkingDisabled()">
+                                        <ul class="no-bullets no-margin-bottom" data-ng-if="!isController && !isAllNetworkingDisabled() && interface.fabric">
                                             <li class="no-margin">
                                                 <select class="table__input" name="link-mode" id="link-mode"
                                                     data-ng-model="interface.mode"

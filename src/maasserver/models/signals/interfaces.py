@@ -197,22 +197,25 @@ def interface_vlan_update(instance, old_values, **kwargs):
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER):
         # Interface VLAN was changed on a controller. Move all linked subnets
-        # to that new VLAN.
-        for ip_address in instance.ip_addresses.all():
-            if ip_address.subnet is not None:
-                ip_address.subnet.vlan = new_vlan
-                ip_address.subnet.save()
+        # to that new VLAN, unless the new VLAN is None. When the VLAN is
+        # None then the administrator is say that the interface is now
+        # disconnected.
+        if new_vlan is not None:
+            for ip_address in instance.ip_addresses.all():
+                if ip_address.subnet is not None:
+                    ip_address.subnet.vlan = new_vlan
+                    ip_address.subnet.save()
 
-        # If any children are VLAN interfaces then we need to move those
-        # VLANs into the same fabric as the parent.
-        for rel in instance.children_relationships.all():
-            if rel.child.type == INTERFACE_TYPE.VLAN:
-                new_child_vlan, _ = VLAN.objects.get_or_create(
-                    fabric=new_vlan.fabric, vid=rel.child.vlan.vid)
-                rel.child.vlan = new_child_vlan
-                rel.child.save()
-                # No need to update the IP addresses here this function
-                # will be called again because the child has been saved.
+            # If any children are VLAN interfaces then we need to move those
+            # VLANs into the same fabric as the parent.
+            for rel in instance.children_relationships.all():
+                if rel.child.type == INTERFACE_TYPE.VLAN:
+                    new_child_vlan, _ = VLAN.objects.get_or_create(
+                        fabric=new_vlan.fabric, vid=rel.child.vlan.vid)
+                    rel.child.vlan = new_child_vlan
+                    rel.child.save()
+                    # No need to update the IP addresses here this function
+                    # will be called again because the child has been saved.
 
     else:
         # Interface VLAN was changed on a machine or device. Remove all its

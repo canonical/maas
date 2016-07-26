@@ -194,6 +194,17 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
         self.assertIsNone(reload_object(static_ip))
         self.assertIsNotNone(reload_object(discovered_ip))
 
+    def test__removes_links_when_goes_to_disconnected(self):
+        node = self.maker()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        static_ip = factory.make_StaticIPAddress(interface=interface)
+        discovered_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
+        interface.vlan = None
+        interface.save()
+        self.assertIsNone(reload_object(static_ip))
+        self.assertIsNotNone(reload_object(discovered_ip))
+
 
 class TestInterfaceVLANUpdateController(MAASServerTestCase):
 
@@ -221,6 +232,17 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         interface.vlan = new_vlan
         interface.save()
         self.assertEquals(new_vlan, reload_object(subnet).vlan)
+
+    def test__doesnt_move_link_subnets_when_vlan_is_None(self):
+        node = self.maker()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        old_vlan = interface.vlan
+        subnet = factory.make_Subnet(vlan=old_vlan)
+        factory.make_StaticIPAddress(
+            subnet=subnet, interface=interface)
+        interface.vlan = None
+        interface.save()
+        self.assertEquals(old_vlan, reload_object(subnet).vlan)
 
     def test__moves_children_vlans_to_same_fabric(self):
         node = self.maker()

@@ -67,11 +67,6 @@ maaslog = get_maas_logger("interface")
 INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
 
 
-def get_default_vlan():
-    from maasserver.models.vlan import VLAN
-    return VLAN.objects.get_default_vlan().id
-
-
 def get_subnet_family(subnet):
     """Return the IPADDRESS_FAMILY for the `subnet`."""
     if subnet is not None:
@@ -375,8 +370,7 @@ class Interface(CleanSave, TimestampedModel):
         through='InterfaceRelationship', symmetrical=False)
 
     vlan = ForeignKey(
-        'VLAN', default=get_default_vlan, editable=True, blank=False,
-        null=False, on_delete=PROTECT)
+        'VLAN', editable=True, blank=True, null=True, on_delete=PROTECT)
 
     ip_addresses = ManyToManyField(
         'StaticIPAddress', editable=True, blank=True)
@@ -438,8 +432,13 @@ class Interface(CleanSave, TimestampedModel):
         mtu = None
         if self.params:
             mtu = self.params.get('mtu', None)
-        if mtu is None:
+        if mtu is None and self.vlan is not None:
             mtu = self.vlan.mtu
+        if mtu is None:
+            # Use default MTU for the interface when the interface has no
+            # MTU set and it is disconnected.
+            from maasserver.models.vlan import DEFAULT_MTU
+            mtu = DEFAULT_MTU
         return mtu
 
     def get_links(self):
@@ -752,11 +751,12 @@ class Interface(CleanSave, TimestampedModel):
         # subnets into the default VLAN, this assumption might be incorrect in
         # many cases, leading to interfaces being configured as AUTO when
         # they should be configured as DHCP.
-        found_subnet = self.vlan.subnet_set.first()
-        if found_subnet is not None:
-            return self.link_subnet(INTERFACE_LINK_TYPE.AUTO, found_subnet)
-        else:
-            return self.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
+        if self.vlan is not None:
+            found_subnet = self.vlan.subnet_set.first()
+            if found_subnet is not None:
+                return self.link_subnet(INTERFACE_LINK_TYPE.AUTO, found_subnet)
+            else:
+                return self.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
 
     def ensure_link_up(self):
         """Ensure that if no subnet links exists that at least a LINK_UP
@@ -766,7 +766,7 @@ class Interface(CleanSave, TimestampedModel):
         if has_links:
             # Nothing to do, already has links.
             return
-        else:
+        elif self.vlan is not None:
             # Use an associated subnet if it exists and its on the same VLAN
             # the interface is currently connected, else it will just be a
             # LINK_UP without a subnet.
@@ -1265,18 +1265,29 @@ class VLANInterface(Interface):
                     "parents": ["VLAN interface must have exactly one parent."]
                     })
             parent = parents[0]
+            # We do not allow a bridge interface to be a parent for a VLAN
+            # interface.
             allowed_vlan_parent_types = (
                 INTERFACE_TYPE.PHYSICAL,
                 INTERFACE_TYPE.BOND,
                 INTERFACE_TYPE.BRIDGE
             )
             if parent.get_type() not in allowed_vlan_parent_types:
-                # XXX mpontillo 2016-06-23: we won't mention bridges in this
-                # error message, since users can't configure bridges on nodes.
+                # XXX blake_r 2016-07-18: we won't mention bridges in this
+                # error message, since users can't configure VLAN interfaces
+                # on bridges.
                 raise ValidationError({
                     "parents": [
                         "VLAN interface can only be created on a physical "
                         "or bond interface."
+                    ]
+                })
+            # VLAN interface must be connected to a VLAN, it cannot be
+            # disconnected like physical and bond interfaces.
+            if self.vlan is None:
+                raise ValidationError({
+                    "vlan": [
+                        "VLAN interface requires connection to a VLAN."
                     ]
                 })
 

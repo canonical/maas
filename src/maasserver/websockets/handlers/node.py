@@ -455,7 +455,8 @@ class NodeHandler(TimestampedModelHandler):
     def get_all_fabric_names(self, obj, subnets):
         fabric_names = set()
         for interface in obj.interface_set.all():
-            fabric_names.add(interface.vlan.fabric.name)
+            if interface.vlan is not None:
+                fabric_names.add(interface.vlan.fabric.name)
         for subnet in subnets:
             fabric_names.add(subnet.vlan.fabric.name)
         return list(fabric_names)

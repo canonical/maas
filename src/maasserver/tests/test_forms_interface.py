@@ -86,6 +86,22 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             MatchesStructure.byEquality(
                 name=interface.name, vlan=new_vlan, enabled=interface.enabled))
 
+    def test__allows_no_vlan(self):
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        form = ControllerInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': None,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface.name, vlan=None, enabled=interface.enabled))
+
 
 class PhysicalInterfaceFormTest(MAASServerTestCase):
 
@@ -114,6 +130,30 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             MatchesStructure.byEquality(
                 node=node, mac_address=mac_address, name=interface_name,
                 type=INTERFACE_TYPE.PHYSICAL, tags=tags))
+        self.assertItemsEqual([], interface.parents.all())
+
+    def test__creates_physical_interface_disconnected(self):
+        node = factory.make_Node()
+        mac_address = factory.make_mac_address()
+        interface_name = 'eth0'
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'mac_address': mac_address,
+                'tags': ",".join(tags),
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                node=node, mac_address=mac_address, name=interface_name,
+                type=INTERFACE_TYPE.PHYSICAL, tags=tags, vlan=None))
         self.assertItemsEqual([], interface.parents.all())
 
     def test__create_ensures_link_up(self):
@@ -253,6 +293,26 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 name=new_name, vlan=new_vlan, enabled=False, tags=[]))
+        self.assertItemsEqual([], interface.parents.all())
+
+    def test__edits_interface_disconnected(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0')
+        new_name = 'eth1'
+        form = PhysicalInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'vlan': None,
+                'enabled': False,
+                'tags': "",
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=new_name, vlan=None, enabled=False, tags=[]))
         self.assertItemsEqual([], interface.parents.all())
 
     def test__create_sets_interface_parameters(self):
@@ -403,6 +463,20 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY))
 
+    def test__create_rejects_interface_without_vlan(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        form = VLANInterfaceForm(
+            node=parent.node,
+            data={
+                'parents': [parent.id],
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(
+            ['vlan'], form.errors.keys(), form.errors)
+        self.assertIn(
+            "A VLAN interface must be connected to a tagged VLAN.",
+            form.errors['vlan'][0])
+
     def test_rejects_interface_with_duplicate_name(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
@@ -467,6 +541,20 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         self.assertIn(
             "VLAN interface can't have another VLAN interface as parent.",
             form.errors['parents'][0])
+
+    def test__rejects_no_vlan(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        form = VLANInterfaceForm(
+            node=parent.node,
+            data={
+                'vlan': None,
+                'parents': [parent.id],
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(['vlan'], form.errors.keys())
+        self.assertIn(
+            "A VLAN interface must be connected to a tagged VLAN.",
+            form.errors['vlan'][0])
 
     def test__rejects_vlan_not_on_same_fabric(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -576,7 +664,8 @@ class BondInterfaceFormTest(MAASServerTestCase):
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                name=interface_name, type=INTERFACE_TYPE.BOND))
+                name=interface_name, type=INTERFACE_TYPE.BOND,
+                vlan=parent1.vlan))
         self.assertIn(
             interface.mac_address, [parent1.mac_address, parent2.mac_address])
         self.assertItemsEqual([parent1, parent2], interface.parents.all())
@@ -786,6 +875,25 @@ class BondInterfaceFormTest(MAASServerTestCase):
             reload_object(parent).vlan
             for parent in [parent1, parent2, new_parent]
         ))
+
+    def test__edits_interface_allows_disconnected(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        form = BondInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': None,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                mac_address=interface.mac_address, vlan=None,
+                type=INTERFACE_TYPE.BOND))
 
     def test__edits_interface_removes_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1118,6 +1226,26 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 vlan=new_vlan, type=INTERFACE_TYPE.BRIDGE))
         self.assertItemsEqual(
             [parent1, parent2, new_parent], interface.parents.all())
+
+    def test__edits_interface_allows_disconnected(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            parents=[parent1, parent2])
+        form = BridgeInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': None,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                mac_address=interface.mac_address,
+                vlan=None, type=INTERFACE_TYPE.BRIDGE))
 
     def test__edits_interface_removes_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

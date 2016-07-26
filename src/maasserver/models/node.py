@@ -3407,6 +3407,10 @@ class Controller(Node):
                     new_vlan = new_fabric.get_default_vlan()
                     interface.vlan = new_vlan
                     interface.save()
+                else:
+                    interface.vlan = (
+                        Fabric.objects.get_default_fabric().get_default_vlan())
+                    interface.save()
         else:
             if interface.node.id != self.id:
                 # MAC address was on a different node. We need to move

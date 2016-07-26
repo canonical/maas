@@ -99,6 +99,11 @@ class InterfaceForm(MAASModelForm):
                     rel = interface.parent_relationships.filter(
                         parent=parent_to_del)
                     rel.delete()
+        # Allow setting the VLAN to None.
+        new_vlan = self.cleaned_data.get('vlan')
+        vlan_was_set = 'vlan' in self.data
+        if new_vlan is None and vlan_was_set:
+            interface.vlan = new_vlan
         self.set_extra_parameters(interface, created)
         interface.save()
         if created:
@@ -167,6 +172,17 @@ class ControllerInterfaceForm(MAASModelForm):
         fields = (
             'vlan',
             )
+
+    def save(self, *args, **kwargs):
+        """Persist the interface into the database."""
+        interface = super(ControllerInterfaceForm, self).save(commit=False)
+        # Allow setting the VLAN to None.
+        new_vlan = self.cleaned_data.get('vlan')
+        vlan_was_set = 'vlan' in self.data
+        if new_vlan is None and vlan_was_set:
+            interface.vlan = new_vlan
+        interface.save()
+        return interface
 
 
 class PhysicalInterfaceForm(InterfaceForm):
@@ -251,7 +267,13 @@ class VLANInterfaceForm(InterfaceForm):
         return parents
 
     def clean_vlan(self):
+        created = self.instance.id is None
         new_vlan = self.cleaned_data.get('vlan')
+        vlan_was_set = 'vlan' in self.data
+        if (created and new_vlan is None) or (
+                not created and new_vlan is None and vlan_was_set):
+            raise ValidationError(
+                "A VLAN interface must be connected to a tagged VLAN.")
         if new_vlan and new_vlan.fabric.get_default_vlan() == new_vlan:
             raise ValidationError(
                 "A VLAN interface can only belong to a tagged VLAN.")
@@ -280,15 +302,6 @@ class ChildInterfaceForm(InterfaceForm):
     require their "parent" interfaces in order to exist, such as bonds and
     bridges.
     """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Allow VLAN to be blank when creating.
-        instance = kwargs.get("instance", None)
-        if instance is not None and instance.id is not None:
-            self.fields['vlan'].required = True
-        else:
-            self.fields['vlan'].required = False
 
     def clean_parents(self):
         """Validate that child interfaces cannot be created unless at least one

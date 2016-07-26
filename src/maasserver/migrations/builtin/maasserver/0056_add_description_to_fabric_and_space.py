@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='interface',
             name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', default=maasserver.models.interface.get_default_vlan, on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(to='maasserver.VLAN', default=None, on_delete=django.db.models.deletion.PROTECT),
         ),
         migrations.AlterField(
             model_name='subnet',
