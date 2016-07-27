@@ -31,6 +31,12 @@ LP: #1604987    Fixes to correctly log "mark_failed" events.
 
 LP: #1602721    [2.0rc2] Can't get node-results via cli/api
 
+LP: #1604465    [2.0] RackController.get_image_sync_status causes huge load on regiond process
+
+LP: #1598149    [2.0rc2] MAAS is not automatically monitoring timeouts for commissioning.
+
+LP: #1605252    [2.0] Error messaging about monitor expiry has been dropped
+
 
 2.0.0 (rc2)
 ===========
