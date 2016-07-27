@@ -52,7 +52,7 @@
                 + .accordion__tab-content {
                     max-height: 400px;
                     transition: max-height .5s ease-in;
-                    overflow-y: scroll;
+                    overflow-y: auto;
                 }
             }
         }
