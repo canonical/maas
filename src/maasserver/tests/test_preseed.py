@@ -120,12 +120,12 @@ class TestGetNetlocAndPath(MAASServerTestCase):
 
     def test_get_netloc_and_path(self):
         input_and_results = [
-            ('http://name.domain:66/my/path', ('name.domain:66', '/my/path')),
-            ('http://name.domain:80/my/path', ('name.domain:80', '/my/path')),
-            ('http://name.domain/my/path', ('name.domain', '/my/path')),
-            ('https://domain/path', ('domain', '/path')),
+            ('http://name.domain:66/my/path', ('name.domain:66', 'my/path')),
+            ('http://name.domain:80/my/path', ('name.domain:80', 'my/path')),
+            ('http://name.domain/my/path', ('name.domain', 'my/path')),
+            ('https://domain/path', ('domain', 'path')),
             ('http://domain:12', ('domain:12', '')),
-            ('http://domain/', ('domain', '/')),
+            ('http://domain/', ('domain', '')),
             ('http://domain', ('domain', '')),
             ]
         inputs = [input for input, _ in input_and_results]
@@ -443,9 +443,9 @@ class TestPreseedContext(MAASServerTestCase):
         self.assertEqual(
             (
                 parsed_main_archive.hostname,
-                parsed_main_archive.path,
+                parsed_main_archive.path.lstrip('/'),
                 parsed_ports_archive.hostname,
-                parsed_ports_archive.path,
+                parsed_ports_archive.path.lstrip('/'),
             ),
             (
                 context['main_archive_hostname'],
