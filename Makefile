@@ -327,7 +327,6 @@ clean-styles:
 	$(RM) $(scss_output)
 
 clean: stop clean-run
-	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)

@@ -1,7 +1,7 @@
+*.DS_Store
 *.egg
 *.egg-info
 *.log
-*.DS_Store
 /.db.lock
 /.hypothesis
 /.idea
@@ -9,11 +9,6 @@
 /.idea/workspace.xml
 /.installed.cfg
 /.noseids
-/acceptance/*.build
-/acceptance/*.changes
-/acceptance/*.deb
-/acceptance/build
-/acceptance/source
 /bin
 /build
 /coverage
@@ -43,7 +38,6 @@
 /run/etc/*
 /run/etc/maas/*
 /services/*/supervise
-/src/maasserver/data/templates.py
 /src/maasserver/static/js/enums.js
 /TAGS
 /tags
