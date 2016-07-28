@@ -573,7 +573,7 @@ def get_netloc_and_path(url):
     and, optionally, the port.
     """
     parsed_url = urlparse(url)
-    return parsed_url.netloc, parsed_url.path
+    return parsed_url.netloc, parsed_url.path.lstrip("/")
 
 
 def get_preseed_context(osystem='', release='', rack_controller=None):
