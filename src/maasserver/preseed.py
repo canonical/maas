@@ -46,6 +46,7 @@ from maasserver.exceptions import (
 from maasserver.models import (
     BootResource,
     Config,
+    PackageRepository,
 )
 from maasserver.models.filesystem import Filesystem
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
@@ -588,9 +589,9 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
     """
     server_host = get_maas_facing_server_host(rack_controller=rack_controller)
     main_archive_hostname, main_archive_directory = get_netloc_and_path(
-        Config.objects.get_config('main_archive'))
+        PackageRepository.get_main_archive())
     ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
-        Config.objects.get_config('ports_archive'))
+        PackageRepository.get_ports_archive())
     if rack_controller is None:
         base_url = None
     else:

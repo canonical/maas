@@ -73,6 +73,7 @@ from maasserver.models import (
     Machine,
     Node,
     OwnerData,
+    PackageRepository,
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
@@ -1716,6 +1717,17 @@ class Factory(maastesting.factory.Factory):
         return DHCPSnippet.objects.create(
             name=name, value=value, description=description, enabled=enabled,
             node=node, subnet=subnet)
+
+    def make_PackageRepository(
+            self, name=None, url=None, arches=None, default=False):
+        if name is None:
+            name = self.make_name("package_repository")
+        if url is None:
+            url = self.make_parsed_url(scheme='http')
+        if arches is None:
+            arches = [self.make_name("arch%d" % i) for i in range(3)]
+        return PackageRepository.objects.create(
+            name=name, url=url, arches=arches, default=default)
 
 
 # Create factory singleton.

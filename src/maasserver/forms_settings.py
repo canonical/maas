@@ -168,32 +168,6 @@ def make_dnssec_validation_field(*args, **kwargs):
 
 
 CONFIG_ITEMS = {
-    'main_archive': {
-        'default': 'http://archive.ubuntu.com/ubuntu',
-        'form': forms.URLField,
-        'form_kwargs': {
-            'label': "Main archive",
-            'error_messages': {'invalid': INVALID_URL_MESSAGE},
-            'help_text': (
-                "Archive used by nodes to retrieve packages for Intel "
-                "architectures. "
-                "E.g. http://archive.ubuntu.com/ubuntu."
-            )
-        }
-    },
-    'ports_archive': {
-        'default': 'http://ports.ubuntu.com/ubuntu-ports',
-        'form': forms.URLField,
-        'form_kwargs': {
-            'label': "Ports archive",
-            'error_messages': {'invalid': INVALID_URL_MESSAGE},
-            'help_text': (
-                "Archive used by nodes to retrieve packages for non-Intel "
-                "architectures. "
-                "E.g. http://ports.ubuntu.com/ubuntu-ports."
-            )
-        }
-    },
     'maas_name': {
         'default': gethostname(),
         'form': forms.CharField,

@@ -37,8 +37,6 @@ def get_default_config():
     """
     return {
         # Ubuntu section configuration.
-        'main_archive': 'http://archive.ubuntu.com/ubuntu',
-        'ports_archive': 'http://ports.ubuntu.com/ubuntu-ports',
         'commissioning_osystem': DEFAULT_OS.name,
         'commissioning_distro_series':
         DEFAULT_OS.get_default_commissioning_release(),

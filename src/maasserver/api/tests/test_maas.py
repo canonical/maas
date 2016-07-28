@@ -12,6 +12,7 @@ from operator import itemgetter
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.forms_settings import CONFIG_ITEMS_KEYS
+from maasserver.models import PackageRepository
 from maasserver.models.config import (
     Config,
     DEFAULT_CONFIG,
@@ -189,3 +190,91 @@ class MAASHandlerAPITest(APITestCase.ForUser):
         self.assertThat(
             Config.objects.get_config("ntp_servers"),
             Equals(ntp_servers))
+
+    def test_get_main_archive_overrides_to_package_repository(self):
+        main_url = factory.make_url(scheme='http')
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
+        response = self.client.get(
+            reverse('maas_handler'), {
+                "op": "get_config",
+                "name": "main_archive",
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(status_code=Equals(http.client.OK)),
+                # with a JSON body,
+                AfterPreprocessing(
+                    itemgetter("Content-Type"),
+                    Equals("application/json")),
+                # containing the main_archive setting.
+                AfterPreprocessing(
+                    lambda response: json.loads(
+                        response.content.decode(settings.DEFAULT_CHARSET)),
+                    Equals(main_url)),
+            ))
+
+    def test_get_ports_archive_overrides_to_package_repository(self):
+        ports_url = factory.make_url(scheme='http')
+        factory.make_PackageRepository(
+            url=ports_url, default=True, arches=['arm64', 'armhf', 'powerpc'])
+        response = self.client.get(
+            reverse('maas_handler'), {
+                "op": "get_config",
+                "name": "ports_archive",
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(status_code=Equals(http.client.OK)),
+                # with a JSON body,
+                AfterPreprocessing(
+                    itemgetter("Content-Type"),
+                    Equals("application/json")),
+                # containing the main_archive setting.
+                AfterPreprocessing(
+                    lambda response: json.loads(
+                        response.content.decode(settings.DEFAULT_CHARSET)),
+                    Equals(ports_url)),
+            ))
+
+    def test_set_main_archive_overrides_to_package_repository(self):
+        self.become_admin()
+        main_archive = factory.make_url(scheme="http")
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "main_archive",
+                "value": main_archive,
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(
+                    status_code=Equals(http.client.OK),
+                    content=Equals(b"OK")),
+            ))
+        self.assertThat(
+            PackageRepository.get_main_archive(),
+            Equals(main_archive))
+
+    def test_set_ports_archive_overrides_to_package_repository(self):
+        self.become_admin()
+        ports_archive = factory.make_url(scheme="http")
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "ports_archive",
+                "value": ports_archive,
+            })
+        self.assertThat(
+            response, MatchesAll(
+                # An HTTP 200 response,
+                MatchesStructure(
+                    status_code=Equals(http.client.OK),
+                    content=Equals(b"OK")),
+            ))
+        self.assertThat(
+            PackageRepository.get_ports_archive(),
+            Equals(ports_archive))

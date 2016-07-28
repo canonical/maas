@@ -94,7 +94,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
         self.assertEqual(
-            ["Name contains disallowed characters (e.g. space or quotes)."],
+            ["Name contains disallowed characters, e.g. space or quotes."],
             form._errors['content'])
 
     def test_rejects_quotes_in_name(self):
@@ -104,5 +104,5 @@ class TestCommissioningScriptForm(MAASServerTestCase):
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
         self.assertEqual(
-            ["Name contains disallowed characters (e.g. space or quotes)."],
+            ["Name contains disallowed characters, e.g. space or quotes."],
             form._errors['content'])

@@ -15,6 +15,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
 )
+from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
@@ -57,9 +58,9 @@ def get_system_info():
                     "arches": ["i386", "amd64"],
                     "search": {
                         "primary": [
-                            Config.objects.get_config("main_archive")],
+                            PackageRepository.get_main_archive()],
                         "security": [
-                            Config.objects.get_config("main_archive")],
+                            PackageRepository.get_main_archive()],
                     },
                     "failsafe": {
                         "primary": "http://archive.ubuntu.com/ubuntu",
@@ -70,9 +71,9 @@ def get_system_info():
                     "arches": ["default"],
                     "search": {
                         "primary": [
-                            Config.objects.get_config("ports_archive")],
+                            PackageRepository.get_ports_archive()],
                         "security": [
-                            Config.objects.get_config("ports_archive")],
+                            PackageRepository.get_ports_archive()],
                     },
                     "failsafe": {
                         "primary": "http://ports.ubuntu.com/ubuntu-ports",

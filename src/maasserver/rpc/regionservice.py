@@ -47,6 +47,7 @@ from maasserver.rpc import (
     events,
     leases,
     nodes,
+    packagerepository,
     rackcontrollers,
 )
 from maasserver.rpc.nodes import (
@@ -245,7 +246,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetArchiveMirrors`.
         """
-        d = deferToDatabase(configuration.get_archive_mirrors)
+        d = deferToDatabase(packagerepository.get_archive_mirrors)
         return d
 
     @region.GetProxies.responder

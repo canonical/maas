@@ -13,6 +13,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
 )
+from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
@@ -49,9 +50,9 @@ class TestComposePreseed(MAASServerTestCase):
                         "arches": Equals(["i386", "amd64"]),
                         "search": MatchesDict({
                             "primary": Equals(
-                                [Config.objects.get_config("main_archive")]),
+                                [PackageRepository.get_main_archive()]),
                             "security": Equals(
-                                [Config.objects.get_config("main_archive")]),
+                                [PackageRepository.get_main_archive()]),
                             }),
                         "failsafe": MatchesDict({
                             "primary": Equals(
@@ -64,9 +65,9 @@ class TestComposePreseed(MAASServerTestCase):
                         "arches": Equals(["default"]),
                         "search": MatchesDict({
                             "primary": Equals(
-                                [Config.objects.get_config("ports_archive")]),
+                                [PackageRepository.get_ports_archive()]),
                             "security": Equals(
-                                [Config.objects.get_config("ports_archive")]),
+                                [PackageRepository.get_ports_archive()]),
                             }),
                         "failsafe": MatchesDict({
                             "primary": Equals(

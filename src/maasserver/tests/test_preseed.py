@@ -27,6 +27,7 @@ from maasserver.exceptions import (
 from maasserver.models import (
     BootResource,
     Config,
+    PackageRepository,
 )
 from maasserver.preseed import (
     compose_curtin_kernel_preseed,
@@ -424,6 +425,22 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
 class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
+    def add_main_archive(self, url, arches=PackageRepository.MAIN_ARCHES):
+        PackageRepository.objects.create(
+            name=factory.make_name(),
+            description=factory.make_string(),
+            url=url,
+            arches=arches,
+            default=True)
+
+    def add_ports_archive(self, url, arches=PackageRepository.PORTS_ARCHES):
+        PackageRepository.objects.create(
+            name=factory.make_name(),
+            description=factory.make_string(),
+            url=url,
+            arches=arches,
+            default=True)
+
     def test_get_preseed_context_contains_keys(self):
         context = get_preseed_context()
         self.assertItemsEqual(
@@ -436,10 +453,12 @@ class TestPreseedContext(MAASServerTestCase):
     def test_get_preseed_context_archive_refs(self):
         # urlparse lowercases the hostnames. That should not have any
         # impact but for testing, create lower-case hostnames.
-        main_archive = factory.make_url(netloc="main-archive.example.com")
-        ports_archive = factory.make_url(netloc="ports-archive.example.com")
-        Config.objects.set_config('main_archive', main_archive)
-        Config.objects.set_config('ports_archive', ports_archive)
+        main_archive = factory.make_url(
+            scheme="http", netloc="main-archive.example.com")
+        ports_archive = factory.make_url(
+            scheme="http", netloc="ports-archive.example.com")
+        self.add_main_archive(main_archive)
+        self.add_ports_archive(ports_archive)
         context = get_preseed_context()
         parsed_main_archive = urlparse(main_archive)
         parsed_ports_archive = urlparse(ports_archive)
@@ -887,7 +906,7 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
-            self.summarise_url(Config.objects.get_config('main_archive')),
+            self.summarise_url(PackageRepository.get_main_archive()),
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_config_uses_main_archive_for_amd64(self):
@@ -895,7 +914,7 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
-            self.summarise_url(Config.objects.get_config('main_archive')),
+            self.summarise_url(PackageRepository.get_main_archive()),
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_config_uses_ports_archive_for_other_arch(self):
@@ -903,7 +922,7 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
-            self.summarise_url(Config.objects.get_config('ports_archive')),
+            self.summarise_url(PackageRepository.get_ports_archive()),
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_context(self):

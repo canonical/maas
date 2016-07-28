@@ -109,6 +109,7 @@ from maasserver.models import (
     LicenseKey,
     Machine,
     Node,
+    PackageRepository,
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
@@ -170,8 +171,6 @@ maaslog = get_maas_logger()
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
-
-SUBNET_MASK_HELP = "e.g. 255.255.255.0 (defaults to 64-bit netmask for IPv6)."
 
 
 def _make_network_from_subnet(ip, subnet):
@@ -437,7 +436,7 @@ def find_osystem_and_release_from_release_name(name):
             elif (osystem['name'] != "ubuntu" and
                   release['name'].startswith(name)):
                 # Check if the given name is a shortened version of a known
-                # name. e.g centos7 for centos70.  We don't allow short names
+                # name, e.g. centos7 for centos70.  We don't allow short names
                 # for Ubuntu releases
                 possible_short_names.append({
                     'osystem': osystem,
@@ -445,7 +444,7 @@ def find_osystem_and_release_from_release_name(name):
     if len(possible_short_names) > 0:
         # Do a reverse sort of all the possibilities and pick the top one.
         # This allows a user to do a short hand with versioning to pick the
-        # latest release. e.g we have centos70, centos71 given centos7 this
+        # latest release, e.g. we have centos70, centos71 given centos7 this
         # will pick centos71
         sorted_list = sorted(
             possible_short_names,
@@ -1281,7 +1280,7 @@ class ConfigForm(Form):
         This implementation of `save` does not support the `commit` argument.
 
         :return: Whether or not the content of the fields was valid and hence
-            sucessfully saved into the detabase.
+            sucessfully saved into the database.
         :rtype: boolean
         """
         self.full_clean()
@@ -1390,10 +1389,56 @@ class DeployForm(ConfigForm):
             self, 'default_distro_series', 'default_osystem')
 
 
-class UbuntuForm(ConfigForm):
+class UbuntuForm(Form):
     """Settings page, Ubuntu section."""
-    main_archive = get_config_field('main_archive')
-    ports_archive = get_config_field('ports_archive')
+    main_archive = forms.URLField(
+        label="Main archive", required=True,
+        help_text=(
+            "Archive used by nodes to retrieve packages for Intel "
+            "architectures, e.g. http://archive.ubuntu.com/ubuntu."))
+    ports_archive = forms.URLField(
+        label="Ports archive", required=True,
+        help_text=(
+            "Archive used by nodes to retrieve packages for non-Intel "
+            "architectures, e.g. http://ports.ubuntu.com/ubuntu-ports."))
+
+    def __init__(self, *args, **kwargs):
+        super(UbuntuForm, self).__init__(*args, **kwargs)
+        self._load_initials()
+
+    def _load_initials(self):
+        """Load the initial values for the fields."""
+        self.initial['main_archive'] = PackageRepository.get_main_archive()
+        self.initial['ports_archive'] = PackageRepository.get_ports_archive()
+
+    def save(self, *args, **kwargs):
+        """Save the content of the fields into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+
+        :return: Whether or not the content of the fields was valid and hence
+            sucessfully saved into the database.
+        :rtype: boolean
+        """
+        if self._errors:
+            return False
+        PackageRepository.objects.update_or_create(
+            name='main_archive',
+            defaults={
+                'url': self.cleaned_data['main_archive'],
+                'description': 'main_archive',
+                'arches': PackageRepository.MAIN_ARCHES,
+                'default': True,
+                'enabled': True})
+        PackageRepository.objects.update_or_create(
+            name='ports_archive',
+            defaults={
+                'url': self.cleaned_data['ports_archive'],
+                'description': 'ports_archive',
+                'arches': PackageRepository.PORTS_ARCHES,
+                'default': True,
+                'enabled': True})
+        return True
 
 
 class WindowsForm(ConfigForm):
@@ -1414,13 +1459,12 @@ class BootSourceSettingsForm(ConfigForm):
     boot_source_url = forms.URLField(
         label="Sync URL", required=True,
         help_text=(
-            "URL to sync boot image from. E.g. %s" % (
-                DEFAULT_IMAGES_URL)))
+            "URL to sync boot image from, e.g. %s" % (DEFAULT_IMAGES_URL)))
 
     def __init__(self, *args, **kwargs):
         super(BootSourceSettingsForm, self).__init__(*args, **kwargs)
         self.configure_keyring_filename()
-        self.load_initials()
+        self._load_initials()
 
     def configure_keyring_filename(self):
         """Create the keyring field if the boot source is not using
@@ -1430,10 +1474,10 @@ class BootSourceSettingsForm(ConfigForm):
             self.fields['boot_source_keyring'] = StrippedCharField(
                 label="Keyring Path", required=True,
                 help_text=(
-                    "Path to the keyring to validate the sync URL. E.g. "
+                    "Path to the keyring to validate the sync URL, e.g. "
                     "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"))
 
-    def load_initials(self):
+    def _load_initials(self):
         """Load the initial values for the fields."""
         boot_source = BootSource.objects.first()
         if boot_source is None:
@@ -1447,7 +1491,7 @@ class BootSourceSettingsForm(ConfigForm):
         This implementation of `save` does not support the `commit` argument.
 
         :return: Whether or not the content of the fields was valid and hence
-            sucessfully saved into the detabase.
+            sucessfully saved into the database.
         :rtype: boolean
         """
         super(BootSourceSettingsForm, self).save()
@@ -1516,7 +1560,7 @@ class TagForm(MAASModelForm):
         return definition
 
 
-class CommissioningScriptForm(forms.Form):
+class CommissioningScriptForm(Form):
 
     content = forms.FileField(
         label="Commissioning script", allow_empty_file=False)
@@ -1529,7 +1573,7 @@ class CommissioningScriptForm(forms.Form):
         name = content.name
         if pipes.quote(name) != name:
             raise forms.ValidationError(
-                "Name contains disallowed characters (e.g. space or quotes).")
+                "Name contains disallowed characters, e.g. space or quotes.")
         if CommissioningScript.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 "A script with that name already exists.")
@@ -1630,7 +1674,7 @@ class SetZoneBulkAction:
     display = "Set physical zone"
 
 
-class BulkNodeActionForm(forms.Form):
+class BulkNodeActionForm(Form):
     # system_id is a multiple-choice field so it can actually contain
     # a list of system ids.
     system_id = UnconstrainedMultipleChoiceField()
@@ -1840,7 +1884,7 @@ class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
         return "%s (%s)" % (obj.mac_address, obj.node.hostname)
 
 
-class NetworksListingForm(forms.Form):
+class NetworksListingForm(Form):
     """Form for the networks listing API."""
 
     # Multi-value parameter, but with a name in the singular.  This is going

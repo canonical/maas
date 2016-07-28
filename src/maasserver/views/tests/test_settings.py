@@ -18,6 +18,7 @@ from maasserver.clusterrpc.testing.osystems import (
 from maasserver.models import (
     BootSource,
     Config,
+    PackageRepository,
     UserProfile,
 )
 from maasserver.models.signals import bootsources
@@ -260,8 +261,8 @@ class SettingsTest(MAASServerTestCase):
                 new_ports_archive,
             ),
             (
-                Config.objects.get_config('main_archive'),
-                Config.objects.get_config('ports_archive'),
+                PackageRepository.get_main_archive(),
+                PackageRepository.get_ports_archive(),
             ))
 
     def test_settings_kernelopts_POST(self):

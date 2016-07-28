@@ -18,18 +18,53 @@ from maasserver.api.support import (
 )
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import UbuntuForm
 from maasserver.forms_settings import (
     get_config_doc,
     get_config_form,
     validate_config_name,
 )
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    PackageRepository,
+)
 from piston3.utils import rc
+
+
+class MigratedConfigValue:
+    """ Some settings have been moved out of the Config system. To allow these
+    values to continue to be accessed via this API, the Form and getter method
+    are overridable here."""
+    def __init__(self, form, getter):
+        self.form = form
+        self.getter = getter
+
+
+migrated_config_values = {
+    'main_archive': MigratedConfigValue(
+        UbuntuForm, PackageRepository.get_main_archive),
+    'ports_archive': MigratedConfigValue(
+        UbuntuForm, PackageRepository.get_ports_archive),
+}
 
 
 def rewrite_config_name(name):
     """Rewrite the config name for backwards compatibility."""
     return 'ntp_servers' if name == 'ntp_server' else name
+
+
+def get_maas_form(name, value):
+    """ Get the Form for the provided name. Most names use a ConfigForm, but
+    some names have been moved out of the Config database and now use different
+    forms. The new form is instantiated here and returned to provide continued
+    access to the values when using this API."""
+    if name in migrated_config_values:
+        form = migrated_config_values[name].form(data={})
+        # Copy all initial values to data then set provided value.
+        form.data = form.initial.copy()
+        form.data[name] = value
+        return form
+    return get_config_form(name, {name: value})
 
 
 class MaasHandler(OperationsHandler):
@@ -51,7 +86,7 @@ class MaasHandler(OperationsHandler):
             request.data, 'name', validators.String(min=1))
         name = rewrite_config_name(name)
         value = get_mandatory_param(request.data, 'value')
-        form = get_config_form(name, {name: value})
+        form = get_maas_form(name, value)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         form.save()
@@ -71,8 +106,11 @@ class MaasHandler(OperationsHandler):
         """
         name = get_mandatory_param(request.GET, 'name')
         name = rewrite_config_name(name)
-        validate_config_name(name)
-        value = Config.objects.get_config(name)
+        if name in migrated_config_values:
+            value = migrated_config_values[name].getter()
+        else:
+            validate_config_name(name)
+            value = Config.objects.get_config(name)
         return HttpResponse(json.dumps(value), content_type='application/json')
 
     # Populate the docstring with the dynamically-generated documentation
