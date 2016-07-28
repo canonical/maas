@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Actions for power-related operations.
@@ -17,7 +17,6 @@ import os
 import subprocess
 
 from provisioningserver.utils import (
-    escape_py_literal,
     locate_config,
     ShellTemplate,
 )
@@ -84,7 +83,6 @@ class PowerAction:
     def update_context(self, context):
         """Add and manipulate `context` as necessary."""
         context['config_dir'] = self.get_config_basedir()
-        context['escape_py_literal'] = escape_py_literal
         if 'mac_address' in context:
             mac_address = context['mac_address']
             ip_address = find_ip_via_arp(mac_address)

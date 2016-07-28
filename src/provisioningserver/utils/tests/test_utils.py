@@ -11,22 +11,17 @@ from collections import Iterator
 from copy import deepcopy
 import os
 from textwrap import dedent
-from unittest.mock import (
-    Mock,
-    sentinel,
-)
+from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import provisioningserver
 import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
     classify,
-    escape_py_literal,
     filter_dict,
     flatten,
     in_develop_mode,
@@ -383,26 +378,6 @@ class TestClassify(MAASTestCase):
         self.assertSequenceEqual(
             (['two'], ['one', 'three']),
             classify(is_even, subjects))
-
-
-class TestQuotePyLiteral(MAASTestCase):
-
-    def test_uses_repr(self):
-        string = factory.make_name('string')
-        repr_mock = self.patch(provisioningserver.utils, 'repr')
-        escape_py_literal(string)
-        self.assertThat(repr_mock, MockCalledOnceWith(string))
-
-    def test_decodes_ascii(self):
-        string = factory.make_name('string')
-        output = factory.make_name('output')
-        repr_mock = self.patch(provisioningserver.utils, 'repr')
-        ascii_value = Mock()
-        ascii_value.decode = Mock(return_value=output)
-        repr_mock.return_value = ascii_value
-        value = escape_py_literal(string)
-        self.assertThat(ascii_value.decode, MockCalledOnceWith('ascii'))
-        self.assertEqual(value, output)
 
 
 class TestFlatten(MAASTestCase):
