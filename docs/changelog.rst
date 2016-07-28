@@ -3,6 +3,15 @@ Changelog
 =========
 
 
+2.0.0 (rc4)
+===========
+
+Issues fixed in this release
+----------------------------
+
+LP: #1592666    Mirror URL contains double slash (/) after hostname, impacting proxy cachaility.
+
+
 2.0.0 (rc3)
 ===========
 
