@@ -262,6 +262,35 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(result, Equals('off'))
 
     @inlineCallbacks
+    def test__calls_power_driver_cycle_for_power_driver(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'cycle'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'is_driver_available').return_value = True
+        get_item = self.patch(PowerDriverRegistry, 'get_item')
+        perform_power_driver_query = self.patch(
+            power.query, 'perform_power_driver_query')
+        perform_power_driver_query.return_value = succeed('on')
+        self.patch(power.change, 'power_change_success')
+        yield self.patch_rpc_methods()
+
+        result = yield power.change.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+
+        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(
+            perform_power_driver_query, MockCalledOnceWith(
+                system_id, hostname, power_type, context))
+        self.expectThat(
+            power.change.power_change_success, MockCalledOnceWith(
+                system_id, hostname, 'on'))
+        self.expectThat(result, Equals('on'))
+
+    @inlineCallbacks
     def test__marks_the_node_broken_if_exception_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -283,7 +312,7 @@ class TestChangePowerState(MAASTestCase):
             yield power.change.change_power_state(
                 system_id, hostname, power_type, power_change, context)
 
-        error_message = "Node could not be powered on: %s" % (
+        error_message = "Power on for the node failed: %s" % (
             get_driver_error_message(exception))
         self.expectThat(
             markNodeBroken, MockCalledOnceWith(
@@ -323,7 +352,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -343,7 +372,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -361,7 +390,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -395,7 +424,8 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        current_power_change = power_change = random.choice(['on', 'off'])
+        current_power_change = power_change = (
+            random.choice(['on', 'off', 'cycle']))
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -413,7 +443,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -434,7 +464,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
@@ -456,7 +486,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = sentinel.context
 
         logger = self.useFixture(TwistedLoggerFixture())
@@ -467,7 +497,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         self.assertNotIn(system_id, power.power_action_registry)
         self.assertDocTestMatches(
             """\
-            %s: Power could not be turned %s.
+            %s: Power %s failed.
             Traceback (most recent call last):
             ...
             %s.TestException: boom
@@ -485,7 +515,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = sentinel.context
 
         logger = self.useFixture(TwistedLoggerFixture())
@@ -501,7 +531,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         self.assertNotIn(system_id, power.power_action_registry)
         self.assertDocTestMatches(
             """\
-            %s: Power could not be turned %s; timed out.
+            %s: Power could not be set to %s; timed out.
             """ % (hostname, power_change),
             logger.dump())
         self.assertThat(
@@ -516,7 +546,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
+        power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }

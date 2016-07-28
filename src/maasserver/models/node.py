@@ -56,6 +56,7 @@ from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.power import (
+    power_cycle,
     power_driver_check,
     power_off_node,
     power_on_node,
@@ -3316,6 +3317,13 @@ class Node(CleanSave, TimestampedModel):
         node = cls.objects.get(system_id=system_id)
         node.status = status
         node.save()
+
+    def _power_cycle(self):
+        """Power cycle the node."""
+        # Request that the node be power cycled post-commit.
+        d = post_commit()
+        return self._power_control_node(
+            d, power_cycle, self.get_effective_power_info())
 
 
 # Piston serializes objects based on the object class.

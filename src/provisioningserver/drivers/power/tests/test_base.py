@@ -62,6 +62,9 @@ class FakePowerDriverBase(PowerDriverBase):
     def off(self, system_id, context):
         raise NotImplementedError
 
+    def cycle(self, system_id, context):
+        raise NotImplementedError
+
     def query(self, system_id, context):
         raise NotImplementedError
 
@@ -129,6 +132,12 @@ class TestFakePowerDriverBase(MAASTestCase):
         self.assertRaises(
             NotImplementedError,
             fake_driver.off, sentinel.system_id, sentinel.context)
+
+    def test_cycle_raises_not_implemented(self):
+        fake_driver = make_power_driver_base()
+        self.assertRaises(
+            NotImplementedError,
+            fake_driver.cycle, sentinel.system_id, sentinel.context)
 
     def test_query_raises_not_implemented(self):
         fake_driver = make_power_driver_base()
@@ -360,6 +369,36 @@ class TestPowerDriverPowerAction(MAASTestCase):
         method = getattr(driver, self.action)
         with ExpectedException(PowerError):
             yield method(system_id, context)
+
+
+class TestPowerDriverCycle(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_cycles_power_when_node_is_powered_on(self):
+        system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
+        driver = make_power_driver()
+        mock_perform_power = self.patch(driver, 'perform_power')
+        self.patch(driver, 'power_query').return_value = 'on'
+        yield driver.cycle(system_id, context)
+        self.assertThat(
+            mock_perform_power, MockCallsMatch(
+                call(driver.power_off, "off", system_id, context),
+                call(driver.power_on, "on", system_id, context)))
+
+    @inlineCallbacks
+    def test_cycles_power_when_node_is_powered_off(self):
+        system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
+        driver = make_power_driver()
+        mock_perform_power = self.patch(driver, 'perform_power')
+        self.patch(driver, 'power_query').return_value = 'off'
+        yield driver.cycle(system_id, context)
+        self.assertThat(
+            mock_perform_power, MockCalledOnceWith(
+                driver.power_on, "on", system_id, context))
 
 
 class TestPowerDriverQuery(MAASTestCase):

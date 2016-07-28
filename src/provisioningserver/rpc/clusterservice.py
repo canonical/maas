@@ -266,6 +266,15 @@ class Cluster(RPCProtocol):
         d.addCallback(lambda _: {})
         return d
 
+    @cluster.PowerCycle.responder
+    def power_cycle(self, system_id, hostname, power_type, context):
+        """Power cycle a node."""
+        d = maybe_change_power_state(
+            system_id, hostname, power_type, power_change='cycle',
+            context=context)
+        d.addCallback(lambda _: {})
+        return d
+
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):
         d = get_power_state(

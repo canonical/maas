@@ -32,7 +32,6 @@ from provisioningserver.utils.twisted import (
     callOut,
     deferred,
     deferWithTimeout,
-    pause,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -57,7 +56,7 @@ CHANGE_POWER_STATE_TIMEOUT = timedelta(minutes=5).total_seconds()
 @inlineCallbacks
 def power_change_failure(system_id, hostname, power_change, message):
     """Report a node that for which power control has failed."""
-    assert power_change in ['on', 'off'], (
+    assert power_change in ['on', 'off', 'cycle'], (
         "Unknown power change: %s" % power_change)
     maaslog.error(
         "Error changing power state (%s) of node: %s (%s)",
@@ -72,6 +71,8 @@ def power_change_failure(system_id, hostname, power_change, message):
         event_type = EVENT_TYPES.NODE_POWER_ON_FAILED
     elif power_change == 'off':
         event_type = EVENT_TYPES.NODE_POWER_OFF_FAILED
+    elif power_change == 'cycle':
+        event_type = EVENT_TYPES.NODE_POWER_CYCLE_FAILED
     yield send_event_node(event_type, system_id, hostname, message)
 
 
@@ -89,9 +90,11 @@ def perform_power_driver_change(
         d = power_driver.on(system_id, context)
     elif power_change == 'off':
         d = power_driver.off(system_id, context)
+    elif power_change == 'cycle':
+        d = power_driver.cycle(system_id, context)
 
     def power_change_failed(failure):
-        message = "Node could not be powered %s: %s" % (
+        message = "Power %s for the node failed: %s" % (
             power_change, get_error_message(failure.value))
         df = power_change_failure(system_id, hostname, power_change, message)
         df.addCallback(lambda _: failure)  # Propagate the original error.
@@ -135,9 +138,9 @@ def power_change_starting(system_id, hostname, power_change):
 
     :param system_id: The system ID for the node.
     :param hostname: The node's hostname, used in messages.
-    :param power_change: "on" or "off".
+    :param power_change: "on", "off", or "cycle".
     """
-    assert power_change in ['on', 'off'], (
+    assert power_change in ['on', 'off', 'cycle'], (
         "Unknown power change: %s" % power_change)
     maaslog.info(
         "Changing power state (%s) of node: %s (%s)",
@@ -147,6 +150,8 @@ def power_change_starting(system_id, hostname, power_change):
         event_type = EVENT_TYPES.NODE_POWER_ON_STARTING
     elif power_change == 'off':
         event_type = EVENT_TYPES.NODE_POWER_OFF_STARTING
+    elif power_change == 'cycle':
+        event_type = EVENT_TYPES.NODE_POWER_CYCLE_STARTING
     yield send_event_node(event_type, system_id, hostname)
 
 
@@ -168,7 +173,7 @@ def maybe_change_power_state(
     :raises: PowerActionAlreadyInProgress if there's already a power
         action in progress for this node.
     """
-    assert power_change in ('on', 'off'), (
+    assert power_change in ('on', 'off', 'cycle'), (
         "Unknown power change: %s" % power_change)
 
     power_driver = power_drivers_by_name.get(power_type)
@@ -207,7 +212,7 @@ def maybe_change_power_state(
         def eb_cancelled(failure):
             failure.trap(CancelledError)
             log.msg(
-                "%s: Power could not be turned %s; timed out."
+                "%s: Power could not be set to %s; timed out."
                 % (hostname, power_change))
             return power_change_failure(
                 system_id, hostname, power_change, "Timed out")
@@ -215,7 +220,7 @@ def maybe_change_power_state(
 
         # Catch-all log.
         d.addErrback(
-            log.err, "%s: Power could not be turned %s." % (
+            log.err, "%s: Power %s failed." % (
                 hostname, power_change))
 
     elif current_power_change == power_change:
@@ -252,10 +257,10 @@ def change_power_state(
         system_id, hostname, power_type, power_change, context)
     if power_type not in power.QUERY_POWER_TYPES:
         returnValue(None)
-    # Wait to let the node some time to change its power state.
-    yield pause(1, clock)
     new_power_state = yield query.perform_power_driver_query(
         system_id, hostname, power_type, context)
     if new_power_state == "unknown" or new_power_state == power_change:
         yield power_change_success(system_id, hostname, power_change)
+    elif new_power_state == 'on' and power_change == 'cycle':
+        yield power_change_success(system_id, hostname, new_power_state)
     returnValue(new_power_state)

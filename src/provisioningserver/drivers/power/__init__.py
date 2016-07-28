@@ -150,6 +150,14 @@ class PowerDriverBase(metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def cycle(self, system_id, context):
+        """Perform the cycle action for `system_id`.
+
+        :param system_id: `Node.system_id`
+        :param context: Power settings for the node.
+        """
+
+    @abstractmethod
     def query(self, system_id, context):
         """Perform the query action for `system_id`.
 
@@ -233,6 +241,18 @@ class PowerDriver(PowerDriverBase):
         reporting.
         """
         return self.perform_power(self.power_off, "off", system_id, context)
+
+    @inlineCallbacks
+    def cycle(self, system_id, context):
+        """Performs the power cycle action for `system_id`.
+
+        Do not override `cycle` method unless you want to provide custom logic
+        on how retries and error detection is handled.
+        """
+        state = yield self.query(system_id, context)
+        if state == 'on':
+            yield self.perform_power(self.power_off, "off", system_id, context)
+        yield self.perform_power(self.power_on, "on", system_id, context)
 
     @inlineCallbacks
     def query(self, system_id, context):

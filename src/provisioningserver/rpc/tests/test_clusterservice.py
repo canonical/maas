@@ -1533,7 +1533,7 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
                 Cluster(), cluster.GetPreseedData, arguments)
 
 
-class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
+class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -1545,6 +1545,10 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         ("power-off", {
             "command": cluster.PowerOff,
             "expected_power_change": "off",
+        }),
+        ("power-cycle", {
+            "command": cluster.PowerCycle,
+            "expected_power_change": "cycle",
         }),
     )
 

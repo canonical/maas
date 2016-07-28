@@ -30,6 +30,7 @@ from maasserver import (
 )
 from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.power import (
+    power_cycle,
     power_off_node,
     power_query,
 )
@@ -4817,6 +4818,35 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
                 system_id=node.system_id,
                 event_type=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
                 event_description=power_error))
+
+
+class TestNode_PowerCycle(MAASServerTestCase):
+    """Tests for Node.power_cycle()."""
+
+    def make_acquired_node_with_interface(
+            self, user, bmc_connected_to=None, power_type="virsh"):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, with_boot_disk=True,
+            bmc_connected_to=bmc_connected_to, power_type=power_type)
+        node.acquire(user)
+        return node
+
+    def patch_post_commit(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        return d
+
+    def test_calls__power_control_node_with_power_cycle(self):
+        d = self.patch_post_commit()
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(admin)
+        mock_power_control = self.patch_autospec(
+            node, "_power_control_node")
+        node._power_cycle()
+        expected_power_info = node.get_effective_power_info()
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(d, power_cycle, expected_power_info))
 
 
 class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):

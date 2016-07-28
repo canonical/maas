@@ -48,10 +48,12 @@ class EVENT_TYPES:
     # Power-related events.
     NODE_POWER_ON_STARTING = 'NODE_POWER_ON_STARTING'
     NODE_POWER_OFF_STARTING = 'NODE_POWER_OFF_STARTING'
+    NODE_POWER_CYCLE_STARTING = 'NODE_POWER_CYCLE_STARTING'
     NODE_POWERED_ON = 'NODE_POWERED_ON'
     NODE_POWERED_OFF = 'NODE_POWERED_OFF'
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
+    NODE_POWER_CYCLE_FAILED = 'NODE_POWER_CYCLE_FAILED'
     NODE_POWER_QUERIED = 'NODE_POWER_QUERIED'
     NODE_POWER_QUERIED_DEBUG = 'NODE_POWER_QUERIED_DEBUG'
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
@@ -102,6 +104,10 @@ EVENT_DETAILS = {
         description="Powering node off",
         level=INFO,
     ),
+    EVENT_TYPES.NODE_POWER_CYCLE_STARTING: EventDetail(
+        description="Power cycling node",
+        level=INFO,
+    ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
         description="Node powered on",
         level=INFO,
@@ -116,6 +122,10 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_POWER_OFF_FAILED: EventDetail(
         description="Failed to power off node",
+        level=ERROR,
+    ),
+    EVENT_TYPES.NODE_POWER_CYCLE_FAILED: EventDetail(
+        description="Failed to power cycle node",
         level=ERROR,
     ),
     EVENT_TYPES.NODE_POWER_QUERIED: EventDetail(

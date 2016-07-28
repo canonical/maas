@@ -12,6 +12,7 @@ from crochet import wait_for
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power import (
     pick_best_power_state,
+    power_cycle,
     power_driver_check,
     power_off_node,
     power_on_node,
@@ -28,6 +29,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.cluster import (
+    PowerCycle,
     PowerDriverCheck,
     PowerOff,
     PowerOn,
@@ -70,6 +72,30 @@ class TestPowerNode(MAASServerTestCase):
             client,
             MockCalledOnceWith(
                 self.command, system_id=node.system_id, hostname=node.hostname,
+                power_type=power_info.power_type,
+                context=power_info.power_parameters,
+            ))
+
+
+class TestPowerCycle(MAASServerTestCase):
+    """Tests for `power_cycle`."""
+
+    def test__power_cycles_single_node(self):
+        node = factory.make_Node()
+        client = Mock()
+
+        # We're not doing any IO via the reactor so we sync with it only so
+        # that this becomes the IO thread, making @asynchronous transparent.
+        with reactor_sync():
+            power_cycle(
+                client, node.system_id, node.hostname,
+                node.get_effective_power_info())
+
+        power_info = node.get_effective_power_info()
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                PowerCycle, system_id=node.system_id, hostname=node.hostname,
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
             ))

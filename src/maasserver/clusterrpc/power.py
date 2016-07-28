@@ -15,6 +15,7 @@ from maasserver.enum import POWER_STATE
 from maasserver.rpc import getAllClients
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
+    PowerCycle,
     PowerDriverCheck,
     PowerOff,
     PowerOn,
@@ -72,6 +73,40 @@ power_off_node = partial(power_node, PowerOff)
 power_on_node = partial(power_node, PowerOn)
 
 
+@asynchronous(timeout=30)
+def power_cycle(client, system_id, hostname, power_info):
+    """Power cycle the node.
+
+    The power call will be directed to the provided `client`.
+
+    :param client: The `rpc.common.Client` of the rack controller to perform
+        the power action.
+    :param system_id: The Node's system_id
+    :param hostname: The Node's hostname
+    :param power_info: A dict containing the power information for the
+        node.
+    :return: A :py:class:`twisted.internet.defer.Deferred` that will
+        fire when the `PowerCycle` call completes.
+
+    """
+    maaslog.debug(
+        "%s: Asking rack controller(s) to power cycle node.", hostname)
+    # We don't strictly care about the result _here_; the outcome of the
+    # deferred gets reported elsewhere. However, PowerCycle can return
+    # UnknownPowerType and NotImplementedError which are worth knowing
+    # about and returning to the caller of this API method, so it's
+    # probably worth changing PowerCycle (or adding another call) to return
+    # after initial validation but then continue with the power-cycle
+    # process. For now we simply return the deferred to the caller so
+    # they can choose to chain onto it, or to "cap it off", so that
+    # result gets consumed (Twisted will complain if an error is not
+    # consumed).
+    return client(
+        PowerCycle, system_id=system_id, hostname=hostname,
+        power_type=power_info.power_type,
+        context=power_info.power_parameters)
+
+
 @asynchronous(timeout=15)
 def power_query(client, system_id, hostname, power_info):
     """Power query the node.
@@ -82,7 +117,7 @@ def power_query(client, system_id, hostname, power_info):
         the power action.
     :param system_id: The Node's system_id
     :param hostname: The Node's hostname
-    :param power-info: A dict containing the power information for the
+    :param power_info: A dict containing the power information for the
         node.
     :return: A :py:class:`twisted.internet.defer.Deferred` that will
         fire when the `PowerQuery` call completes.
@@ -91,11 +126,11 @@ def power_query(client, system_id, hostname, power_info):
     maaslog.debug(
         "%s: Asking rack controller(s) to power query node.", hostname)
     # We don't strictly care about the result _here_; the outcome of the
-    # deferred gets reported elsewhere. However, PowerOn can return
+    # deferred gets reported elsewhere. However, PowerQuery can return
     # UnknownPowerType and NotImplementedError which are worth knowing
     # about and returning to the caller of this API method, so it's
-    # probably worth changing PowerOn (or adding another call) to return
-    # after initial validation but then continue with the powering-on
+    # probably worth changing PowerQuery (or adding another call) to return
+    # after initial validation but then continue with the powering-query
     # process. For now we simply return the deferred to the caller so
     # they can choose to chain onto it, or to "cap it off", so that
     # result gets consumed (Twisted will complain if an error is not

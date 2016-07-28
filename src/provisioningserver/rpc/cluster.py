@@ -19,6 +19,7 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
+    "PowerCycle",
     "PowerDriverCheck",
     "ValidateLicenseKey",
 ]
@@ -272,6 +273,14 @@ class PowerQuery(_Power):
         (b"state", amp.Unicode()),
         (b"error_msg", amp.Unicode(optional=True)),
     ]
+
+
+class PowerCycle(_Power):
+    """Turn a node's power off (if on), then turn a
+    node's power on.
+
+    :since: 2.0
+    """
 
 
 class _ConfigureDHCP(amp.Command):
