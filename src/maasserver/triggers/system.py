@@ -782,6 +782,44 @@ DHCP_SNIPPET_DELETE = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+DHCP_CONFIG_NTP_SERVERS_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_insert()
+    RETURNS trigger as $$
+    BEGIN
+      IF NEW.name = 'ntp_servers' THEN
+        PERFORM sys_dhcp_update_all_vlans();
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.name = 'ntp_servers' OR NEW.name = 'ntp_servers' THEN
+        IF OLD.value != NEW.value THEN
+          PERFORM sys_dhcp_update_all_vlans();
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+DHCP_CONFIG_NTP_SERVERS_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_delete()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.name = 'ntp_servers' THEN
+        PERFORM sys_dhcp_update_all_vlans();
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 # Triggered when a subnet is updated. Increments the zone serial and notifies
 # that DNS needs to be updated. Only watches changes on the cidr and rdns_mode.
 DNS_SUBNET_UPDATE = dedent("""\
@@ -1086,6 +1124,17 @@ def register_system_triggers():
     register_procedure(DHCP_SNIPPET_DELETE)
     register_trigger(
         "maasserver_dhcpsnippet", "sys_dhcp_snippet_delete", "delete")
+
+    # - Config/ntp_servers
+    register_procedure(DHCP_CONFIG_NTP_SERVERS_INSERT)
+    register_trigger(
+        "maasserver_config", "sys_dhcp_config_ntp_servers_insert", "insert")
+    register_procedure(DHCP_CONFIG_NTP_SERVERS_UPDATE)
+    register_trigger(
+        "maasserver_config", "sys_dhcp_config_ntp_servers_update", "update")
+    register_procedure(DHCP_CONFIG_NTP_SERVERS_DELETE)
+    register_trigger(
+        "maasserver_config", "sys_dhcp_config_ntp_servers_delete", "delete")
 
     # DNS
     # The zone serial is used in the 'sys_dns' triggers. Ensure that it exists
