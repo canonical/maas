@@ -10,7 +10,6 @@ __all__ = []
 from collections import Iterator
 from copy import deepcopy
 import os
-from textwrap import dedent
 from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
@@ -22,22 +21,18 @@ import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
     classify,
-    filter_dict,
     flatten,
     in_develop_mode,
     locate_config,
     locate_template,
-    maas_custom_config_markers,
     parse_key_value_file,
     Safe,
     ShellTemplate,
     sorttop,
     sudo,
-    write_custom_config_section,
 )
 from testtools.matchers import (
     DirExists,
-    EndsWith,
     Equals,
     IsInstance,
 )
@@ -100,39 +95,6 @@ class TestLocateTemplate(MAASTestCase):
             locate_template(''))
 
 
-class TestFilterDict(MAASTestCase):
-    """Tests for `filter_dict`."""
-
-    def test_keeps_desired_keys(self):
-        key = factory.make_name('key')
-        value = factory.make_name('value')
-        self.assertEqual({key: value}, filter_dict({key: value}, {key}))
-
-    def test_ignores_undesired_keys(self):
-        items = {factory.make_name('key'): factory.make_name('value')}
-        self.assertEqual({}, filter_dict(items, {factory.make_name('other')}))
-
-    def test_leaves_original_intact(self):
-        desired_key = factory.make_name('key')
-        original = {
-            desired_key: factory.make_name('value'),
-            factory.make_name('otherkey'): factory.make_name('othervalue'),
-        }
-        copy = original.copy()
-
-        result = filter_dict(copy, {desired_key})
-
-        self.assertEqual({desired_key: original[desired_key]}, result)
-        self.assertEqual(original, copy)
-
-    def test_ignores_values_from_second_dict(self):
-        key = factory.make_name('key')
-        items = {key: factory.make_name('value')}
-        keys = {key: factory.make_name('othervalue')}
-
-        self.assertEqual(items, filter_dict(items, keys))
-
-
 class TestSafe(MAASTestCase):
     """Test `Safe`."""
 
@@ -145,159 +107,6 @@ class TestSafe(MAASTestCase):
         string = factory.make_string()
         safe = Safe(string)
         self.assertEqual("<Safe %r>" % string, repr(safe))
-
-
-class WriteCustomConfigSectionTest(MAASTestCase):
-    """Test `write_custom_config_section`."""
-
-    def test_appends_custom_section_initially(self):
-        original = factory.make_name('Original-text')
-        custom_text = factory.make_name('Custom-text')
-        header, footer = maas_custom_config_markers
-        self.assertEqual(
-            [original, header, custom_text, footer],
-            write_custom_config_section(original, custom_text).splitlines())
-
-    def test_custom_section_ends_with_newline(self):
-        self.assertThat(write_custom_config_section("x", "y"), EndsWith('\n'))
-
-    def test_replaces_custom_section_only(self):
-        header, footer = maas_custom_config_markers
-        original = [
-            "Text before custom section.",
-            header,
-            "Old custom section.",
-            footer,
-            "Text after custom section.",
-        ]
-        expected = [
-            "Text before custom section.",
-            header,
-            "New custom section.",
-            footer,
-            "Text after custom section.",
-        ]
-        self.assertEqual(
-            expected,
-            write_custom_config_section(
-                '\n'.join(original), "New custom section.").splitlines())
-
-    def test_ignores_header_without_footer(self):
-        # If the footer of the custom config section is not found,
-        # write_custom_config_section will pretend that the header is not
-        # there and append a new custom section.  This does mean that there
-        # will be two headers and one footer; a subsequent rewrite will
-        # replace everything from the first header to the footer.
-        header, footer = maas_custom_config_markers
-        original = [
-            header,
-            "Old custom section (probably).",
-        ]
-        expected = [
-            header,
-            "Old custom section (probably).",
-            header,
-            "New custom section.",
-            footer,
-        ]
-        self.assertEqual(
-            expected,
-            write_custom_config_section(
-                '\n'.join(original), "New custom section.").splitlines())
-
-    def test_ignores_second_header(self):
-        # If there are two custom-config headers but only one footer,
-        # write_custom_config_section will treat everything between the
-        # first header and the footer as custom config section, which it
-        # will overwrite.
-        header, footer = maas_custom_config_markers
-        original = [
-            header,
-            "Old custom section (probably).",
-            header,
-            "More custom section.",
-            footer,
-        ]
-        expected = [
-            header,
-            "New custom section.",
-            footer,
-        ]
-        self.assertEqual(
-            expected,
-            write_custom_config_section(
-                '\n'.join(original), "New custom section.").splitlines())
-
-    def test_ignores_footer_before_header(self):
-        # Custom-section footers before the custom-section header are
-        # ignored.  You might see this if there was an older custom
-        # config section whose header has been changed or deleted.
-        header, footer = maas_custom_config_markers
-        original = [
-            footer,
-            "Possible old custom section.",
-        ]
-        expected = [
-            footer,
-            "Possible old custom section.",
-            header,
-            "New custom section.",
-            footer,
-        ]
-        self.assertEqual(
-            expected,
-            write_custom_config_section(
-                '\n'.join(original), "New custom section.").splitlines())
-
-    def test_preserves_indentation_in_original(self):
-        indented_text = "   text."
-        self.assertIn(
-            indented_text,
-            write_custom_config_section(indented_text, "Custom section."))
-
-    def test_preserves_indentation_in_custom_section(self):
-        indented_text = "   custom section."
-        self.assertIn(
-            indented_text,
-            write_custom_config_section("Original.", indented_text))
-
-    def test_produces_sensible_text(self):
-        # The other tests mostly operate on lists of lines, because it
-        # eliminates problems with line endings.  This test here
-        # verifies that the actual text you get is sensible, preserves
-        # newlines, and generally looks normal.
-        header, footer = maas_custom_config_markers
-        original = dedent("""\
-            Top.
-
-
-            More.
-            %s
-            Old custom section.
-            %s
-            End.
-
-            """) % (header, footer)
-        new_custom_section = dedent("""\
-            New custom section.
-
-            With blank lines.""")
-        expected = dedent("""\
-            Top.
-
-
-            More.
-            %s
-            New custom section.
-
-            With blank lines.
-            %s
-            End.
-
-            """) % (header, footer)
-        self.assertEqual(
-            expected,
-            write_custom_config_section(original, new_custom_section))
 
 
 class ParseConfigTest(MAASTestCase):

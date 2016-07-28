@@ -18,7 +18,6 @@ __all__ = [
     'IAsynchronous',
     'ISynchronous',
     'LONGTIME',
-    'PageFetcher',
     'pause',
     'reactor_sync',
     'retries',
@@ -59,9 +58,7 @@ from twisted.python import (
     threadpool,
 )
 from twisted.python.failure import Failure
-from twisted.python.reflect import fullyQualifiedName
 from twisted.python.threadable import isInIOThread
-from twisted.web.client import getPage
 from zope import interface
 
 
@@ -693,51 +690,6 @@ class RPCFetcher:
         if len(self.pending[client]) == 0:
             # Prevent leaking of clients that no longer are making any calls.
             del self.pending[client]
-
-
-class PageFetcher:
-    """Fetches pages, coalescing concurrent requests.
-
-    If a request comes in for, say, ``http://example.com/FOO`` then it is
-    dispatched, and a `Deferred` is returned.
-
-    If another request comes in for ``http://example.com/FOO`` before the
-    first has finished then a `Deferred` is still returned, but no new request
-    is dispatched. The second request piggy-backs onto the first.
-
-    If a request comes in for ``http://example.com/BAR`` at a similar time
-    then this is treated as a completely separate request. URLs are compared
-    textually; coalescing does not occur under other circumstances.
-
-    Once the first request for ``http://example.com/FOO`` is complete, all the
-    interested parties are notified, but this object then forgets all about
-    it. A subsequent request is treated as new.
-    """
-
-    def __init__(self, agent=None):
-        super(PageFetcher, self).__init__()
-        self.pending = {}
-        if agent is None:
-            self.agent = fullyQualifiedName(self.__class__)
-        elif isinstance(agent, (bytes, str)):
-            self.agent = agent  # This is fine.
-        else:
-            self.agent = fullyQualifiedName(agent)
-
-    def get(self, url, timeout=90):
-        """Issue an ``HTTP GET`` for the given URL."""
-        if url in self.pending:
-            dvalue = self.pending[url]
-        else:
-            fetch = getPage(url, agent=self.agent, timeout=timeout)
-            fetch.addBoth(callOut, self.pending.pop, url, None)
-            dvalue = self.pending[url] = DeferredValue()
-            dvalue.capture(fetch)
-
-        assert not dvalue.isSet, (
-            "Reference to completed fetch result for %s found." % url)
-
-        return dvalue.get()
 
 
 def deferToNewThread(func, *args, **kwargs):

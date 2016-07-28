@@ -55,7 +55,6 @@ from provisioningserver.utils.twisted import (
     IAsynchronous,
     ISynchronous,
     LONGTIME,
-    PageFetcher,
     pause,
     reactor_sync,
     retries,
@@ -1218,104 +1217,6 @@ class TestRPCFetcher(MAASTestCase):
         self.expectThat(d2, IsUnfiredDeferred())
         client2_d.callback(sentinel.bar)
         self.assertThat(extract_result(d2), Is(sentinel.bar))
-
-
-class TestPageFetcher(MAASTestCase):
-    """Tests for `PageFetcher`."""
-
-    def test__inits_with_default_agent(self):
-        fetcher = PageFetcher()
-        expected = PageFetcher.__module__ + "." + PageFetcher.__name__
-        self.assertThat(fetcher, MatchesStructure.byEquality(
-            pending={}, agent=expected))
-
-    def test__inits_with_custom_agent_string(self):
-        agent = factory.make_name("agent")
-        fetcher = PageFetcher(agent=agent)
-        self.assertThat(fetcher, MatchesStructure.byEquality(
-            pending={}, agent=agent))
-
-    def test__inits_with_custom_agent_object(self):
-        fetcher = PageFetcher(agent=self.__class__)
-        expected = self.__class__.__module__ + "." + self.__class__.__name__
-        self.assertThat(fetcher, MatchesStructure.byEquality(
-            pending={}, agent=expected))
-
-    def test_get_returns_deferred(self):
-        getPage = self.patch(twisted_module, "getPage")
-        getPage.return_value = Deferred()
-
-        url = factory.make_simple_http_url()
-        fetcher = PageFetcher()
-        d = fetcher.get(url)
-
-        self.assertThat(d, IsInstance(Deferred))
-        self.assertThat(getPage, MockCalledOnceWith(
-            url, agent=fetcher.agent, timeout=90))
-
-    def test__deferred_fires_when_getPage_completes(self):
-        getPage = self.patch(twisted_module, "getPage")
-        getPage.return_value = Deferred()
-
-        url = factory.make_simple_http_url()
-        fetcher = PageFetcher()
-        d = fetcher.get(url)
-
-        self.assertThat(d, IsUnfiredDeferred())
-        getPage.return_value.callback(sentinel.content)
-        self.assertThat(d, IsFiredDeferred())
-        self.assertThat(extract_result(d), Is(sentinel.content))
-
-    def test__concurrent_gets_become_related(self):
-        getPage = self.patch(twisted_module, "getPage")
-        getPage.return_value = Deferred()
-
-        url = factory.make_simple_http_url()
-        fetcher = PageFetcher()
-        d1 = fetcher.get(url)
-        d2 = fetcher.get(url)
-
-        self.expectThat(d1, IsUnfiredDeferred())
-        self.expectThat(d2, IsUnfiredDeferred())
-        self.assertThat(d1, Not(Is(d2)))
-
-        getPage.return_value.callback(sentinel.content)
-        self.assertThat(extract_result(d1), Is(sentinel.content))
-        self.assertThat(extract_result(d2), Is(sentinel.content))
-
-    def test__non_concurrent_gets_do_not_become_related(self):
-        getPage_d1, getPage_d2 = Deferred(), Deferred()
-
-        getPage = self.patch(twisted_module, "getPage")
-        getPage.side_effect = [getPage_d1, getPage_d2]
-
-        url = factory.make_simple_http_url()
-        fetcher = PageFetcher()
-
-        d1 = fetcher.get(url)
-        self.expectThat(d1, IsUnfiredDeferred())
-        getPage_d1.callback(sentinel.foo)
-        self.assertThat(extract_result(d1), Is(sentinel.foo))
-
-        d2 = fetcher.get(url)
-        self.expectThat(d2, IsUnfiredDeferred())
-        getPage_d2.callback(sentinel.bar)
-        self.assertThat(extract_result(d2), Is(sentinel.bar))
-
-    def test__errors_are_treated_just_the_same(self):
-        getPage = self.patch(twisted_module, "getPage")
-        getPage.return_value = Deferred()
-
-        url = factory.make_simple_http_url()
-        fetcher = PageFetcher()
-        d1 = fetcher.get(url)
-        d2 = fetcher.get(url)
-
-        exception_type = factory.make_exception_type()
-        getPage.return_value.errback(exception_type())
-
-        self.assertRaises(exception_type, extract_result, d1)
-        self.assertRaises(exception_type, extract_result, d2)
 
 
 class TestDeferToNewThread(MAASTestCase):
