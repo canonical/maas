@@ -4,8 +4,15 @@
 """Test helpers related to DHCP configuration."""
 
 __all__ = [
+    'make_failover_peer_config',
+    'make_global_dhcp_snippets',
+    'make_host',
+    'make_host_dhcp_snippets',
+    'make_shared_network',
     'make_subnet_config',
-    ]
+    'make_subnet_dhcp_snippets',
+    'make_subnet_pool',
+]
 
 import random
 
@@ -27,15 +34,27 @@ def make_subnet_pool(
     }
 
 
-def make_dhcp_snippets(allow_empty=True):
-    # DHCP snippets are optional
-    if allow_empty and factory.pick_bool():
-        return []
-    return [{
-        'name': factory.make_name('name'),
-        'description': factory.make_name('description'),
-        'value': factory.make_name('value'),
-        } for _ in range(3)]
+def _make_snippets(count, template):
+    names = (factory.make_name("name") for _ in range(count))
+    return [
+        {'name': name, 'description': factory.make_name('description'),
+         'value': template % name} for name in names
+    ]
+
+
+def make_global_dhcp_snippets(allow_empty=True):
+    count = random.randrange((0 if allow_empty else 1), 3)
+    return _make_snippets(count, "group { next-server %s; }")
+
+
+def make_subnet_dhcp_snippets(allow_empty=True):
+    count = random.randrange((0 if allow_empty else 1), 3)
+    return _make_snippets(count, "option pop-server %s;")
+
+
+def make_host_dhcp_snippets(allow_empty=True):
+    count = random.randrange((0 if allow_empty else 1), 3)
+    return _make_snippets(count, "option smtp-server %s;")
 
 
 def make_host(
@@ -49,12 +68,9 @@ def make_host(
     if mac_address is None:
         mac_address = factory.make_mac_address()
     if ip is None:
-        if ipv6 is True:
-            ip = str(factory.make_ipv6_address())
-        else:
-            ip = str(factory.make_ipv4_address())
+        ip = factory.make_ip_address(ipv6=ipv6)
     if dhcp_snippets is None:
-        dhcp_snippets = make_dhcp_snippets()
+        dhcp_snippets = make_host_dhcp_snippets()
     return {
         "host": "%s-%s" % (hostname, interface_name),
         "mac": mac_address,
@@ -74,19 +90,27 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
     if pools is None:
         pools = [make_subnet_pool(network)]
     if dhcp_snippets is None:
-        dhcp_snippets = make_dhcp_snippets()
+        dhcp_snippets = make_subnet_dhcp_snippets()
     return {
         'subnet': str(IPAddress(network.first)),
         'subnet_mask': str(network.netmask),
         'subnet_cidr': str(network.cidr),
         'broadcast_ip': str(network.broadcast),
-        'dns_servers': str(factory.pick_ip_in_network(network)),
-        'ntp_servers': str(factory.pick_ip_in_network(network)),
+        'dns_servers': " ".join((
+            factory.pick_ip_in_network(network),
+            factory.pick_ip_in_network(network),
+        )),
+        'ntp_servers': " ".join((
+            # XXX: GavinPanella 2016-07-26 bug=1606499: Only IPv4 NTP servers
+            # are supported; IPv6 addresses result in parse failure in dhcpd.
+            factory.make_ipv4_address(),
+            factory.make_name("ntp.example", "."),
+        )),
         'domain_name': '%s.example.com' % factory.make_name('domain'),
-        'router_ip': str(factory.pick_ip_in_network(network)),
+        'router_ip': factory.pick_ip_in_network(network),
         'pools': pools,
         'dhcp_snippets': dhcp_snippets,
-        }
+    }
 
 
 def make_shared_network(name=None, subnets=None, ipv6=False):
@@ -112,15 +136,19 @@ def make_failover_peer_config(
     if mode is None:
         mode = random.choice(["primary", "secondary"])
     if address is None:
-        address = factory.make_ip_address()
+        # XXX: GavinPanella 2016-07-26 bug=1606508: Only IPv4 peers are
+        # supported. Failover may not actually be necessary for IPv6.
+        address = factory.make_ipv4_address()
     if peer_address is None:
-        peer_address = factory.make_ip_address()
+        # XXX: GavinPanella 2016-07-26 bug=1606508: Only IPv4 peers are
+        # supported. Failover may not actually be necessary for IPv6.
+        peer_address = factory.make_ipv4_address()
     return {
         'name': name,
         'mode': mode,
         'address': address,
         'peer_address': peer_address,
-        }
+    }
 
 
 def make_interface(name=None):

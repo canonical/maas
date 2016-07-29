@@ -9,9 +9,9 @@ option path-prefix code 210 = text; #RFC5071
 # Global DHCP snippets
 #
 {{for global_dhcp_snippet in global_dhcp_snippets}}
-# {{global_dhcp_snippet['name']}}
+# Name: {{global_dhcp_snippet['name']}}
 {{if global_dhcp_snippet['description'] != ''}}
-# {{global_dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+# Description: {{global_dhcp_snippet['description'] | oneline}}
 {{endif}}
 {{global_dhcp_snippet['value']}}
 {{endfor}}
@@ -22,26 +22,6 @@ option path-prefix code 210 = text; #RFC5071
 {{bootloader}}
 
 #
-# Failover Peers
-#
-{{for failover_peer in failover_peers}}
-failover peer "{{failover_peer["name"]}}" {
-   {{failover_peer["mode"]}};
-   address {{failover_peer["address"]}};
-   port 847;
-   peer address {{failover_peer["peer_address"]}};
-   peer port 847;
-   max-response-delay 60;
-   max-unacked-updates 10;
-   load balance max seconds 3;
-   {{if failover_peer["mode"] == "primary"}}
-   mclt 3600;
-   split 255;
-   {{endif}}
-}
-{{endfor}}
-
-#
 # Networks
 #
 {{for shared_network in shared_networks}}
@@ -50,7 +30,7 @@ shared-network {{shared_network["name"]}} {
     subnet6 {{dhcp_subnet['subnet_cidr']}} {
            ignore-client-uids true;
            {{if dhcp_subnet.get('dns_servers')}}
-           option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};
+           option dhcp6.name-servers {{dhcp_subnet['dns_servers'] | commalist}};
            {{endif}}
            option domain-name "{{dhcp_subnet['domain_name']}}";
            # DHCPv6 does not have a router option (although there has been a
@@ -61,7 +41,7 @@ shared-network {{shared_network["name"]}} {
            #
            #option routers {{dhcp_subnet['router_ip']}};
            {{if dhcp_subnet.get('ntp_servers')}}
-           option ntp-servers {{dhcp_subnet['ntp_servers']}};
+           option ntp-servers {{dhcp_subnet['ntp_servers'] | commalist}};
            {{endif}}
            default-lease-time 600;
            max-lease-time 600;
@@ -69,18 +49,15 @@ shared-network {{shared_network["name"]}} {
            # Subnet DHCP snippets
            #
            {{for dhcp_snippet in dhcp_subnet['dhcp_snippets']}}
-           # {{dhcp_snippet['name']}}
+           # Name: {{dhcp_snippet['name']}}
            {{if dhcp_snippet['description'] != ''}}
-           # {{dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+           # Description: {{dhcp_snippet['description'] | oneline}}
            {{endif}}
            {{dhcp_snippet['value']}}
            {{endfor}}
 
            {{for pool in dhcp_subnet['pools']}}
            pool6 {
-              {{if pool.get('failover_peer')}}
-              failover peer "{{pool['failover_peer']}}";
-              {{endif}}
               range6 {{pool['ip_range_low']}} {{pool['ip_range_high']}};
            }
            {{endfor}}
@@ -99,9 +76,9 @@ host {{host['mac'].replace(":", "-")}} {
    # Node DHCP snippets
    #
    {{for dhcp_snippet in host['dhcp_snippets']}}
-   # {{dhcp_snippet['name']}}
+   # Name: {{dhcp_snippet['name']}}
    {{if dhcp_snippet['description'] != ''}}
-   # {{dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+   # Description: {{dhcp_snippet['description'] | oneline}}
    {{endif}}
    {{dhcp_snippet['value']}}
    {{endfor}}

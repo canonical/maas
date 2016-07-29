@@ -26,11 +26,13 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from provisioningserver.dhcp.testing.config import (
-    make_dhcp_snippets,
     make_failover_peer_config,
+    make_global_dhcp_snippets,
     make_host,
+    make_host_dhcp_snippets,
     make_interface,
     make_shared_network,
+    make_subnet_dhcp_snippets,
 )
 from provisioningserver.rpc import (
     dhcp,
@@ -68,7 +70,7 @@ class TestDHCPState(MAASTestCase):
             for _ in range(3)
         ]
         return (omapi_key, failover_peers, shared_networks, hosts, interfaces,
-                make_dhcp_snippets())
+                make_global_dhcp_snippets())
 
     def test_new_sorts_properties(self):
         (omapi_key, failover_peers, shared_networks, hosts, interfaces,
@@ -196,7 +198,8 @@ class TestDHCPState(MAASTestCase):
         state = dhcp.DHCPState(
             omapi_key, failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
-        changed_global_dhcp_snippets = make_dhcp_snippets(allow_empty=False)
+        changed_global_dhcp_snippets = (
+            make_global_dhcp_snippets(allow_empty=False))
         new_state = dhcp.DHCPState(
             omapi_key,
             copy.deepcopy(failover_peers),
@@ -215,7 +218,8 @@ class TestDHCPState(MAASTestCase):
         changed_shared_networks = copy.deepcopy(shared_networks)
         for shared_network in changed_shared_networks:
             for subnet in shared_network['subnets']:
-                subnet['dhcp_snippets'] = make_dhcp_snippets(allow_empty=False)
+                subnet['dhcp_snippets'] = (
+                    make_subnet_dhcp_snippets(allow_empty=False))
         new_state = dhcp.DHCPState(
             omapi_key,
             copy.deepcopy(failover_peers),
@@ -233,7 +237,8 @@ class TestDHCPState(MAASTestCase):
             global_dhcp_snippets)
         changed_hosts = copy.deepcopy(hosts)
         for host in changed_hosts:
-            host['dhcp_snippets'] = make_dhcp_snippets(allow_empty=False)
+            host['dhcp_snippets'] = (
+                make_host_dhcp_snippets(allow_empty=False))
         new_state = dhcp.DHCPState(
             omapi_key,
             copy.deepcopy(failover_peers),
@@ -545,7 +550,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -587,7 +592,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -635,7 +640,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
-        dhcp_snippets = make_dhcp_snippets()
+        dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -689,7 +694,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host(dhcp_snippets=[])
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -752,7 +757,7 @@ class TestConfigureDHCP(MAASTestCase):
             for _ in range(3)
         ]
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -824,7 +829,7 @@ class TestConfigureDHCP(MAASTestCase):
             for _ in range(3)
         ]
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -892,7 +897,7 @@ class TestConfigureDHCP(MAASTestCase):
             yield self.configure(
                 factory.make_name('key'),
                 [make_failover_peer_config()], [make_shared_network()],
-                [make_host()], [make_interface()], make_dhcp_snippets())
+                [make_host()], [make_interface()], make_global_dhcp_snippets())
 
     @inlineCallbacks
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
@@ -902,7 +907,7 @@ class TestConfigureDHCP(MAASTestCase):
             yield self.configure(
                 factory.make_name('key'),
                 [make_failover_peer_config()], [make_shared_network()],
-                [make_host()], [make_interface()], make_dhcp_snippets())
+                [make_host()], [make_interface()], make_global_dhcp_snippets())
 
     @inlineCallbacks
     def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
@@ -944,7 +949,8 @@ class TestConfigureDHCP(MAASTestCase):
                 yield self.configure(
                     factory.make_name('key'),
                     [make_failover_peer_config()], [make_shared_network()],
-                    [make_host()], [make_interface()], make_dhcp_snippets())
+                    [make_host()], [make_interface()],
+                    make_global_dhcp_snippets())
         self.assertDocTestMatches("", logger.output)
 
     @inlineCallbacks
@@ -957,7 +963,8 @@ class TestConfigureDHCP(MAASTestCase):
                 yield self.configure(
                     factory.make_name('key'),
                     [make_failover_peer_config()], [make_shared_network()],
-                    [make_host()], [make_interface()], make_dhcp_snippets())
+                    [make_host()], [make_interface()],
+                    make_global_dhcp_snippets())
         self.assertDocTestMatches(
             "DHCPv... server failed to restart: "
             "DHCP is on strike today", logger.output)
@@ -984,7 +991,7 @@ class TestValidateDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         self.patch(dhcp, 'call_and_check')
 
         self.assertEqual(
@@ -999,7 +1006,7 @@ class TestValidateDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
-        global_dhcp_snippets = make_dhcp_snippets()
+        global_dhcp_snippets = make_global_dhcp_snippets()
         dhcpd_error = (
             'Internet Systems Consortium DHCP Server 4.3.3\n'
             'Copyright 2004-2015 Internet Systems Consortium.\n'

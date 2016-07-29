@@ -304,7 +304,13 @@ class _ConfigureDHCP(amp.Command):
                 (b"subnet_cidr", amp.Unicode()),
                 (b"broadcast_ip", amp.Unicode()),
                 (b"router_ip", amp.Unicode()),
+                # XXX: GavinPanella 2016-07-25 bug=1606264: dns_servers is a
+                # space- or comma-separated list (it's not clear which) of IP
+                # addresses. It should be a list proper.
                 (b"dns_servers", amp.Unicode()),
+                # XXX: GavinPanella 2016-07-25 bug=1606264: ntp_servers is a
+                # space- or comma-separated list (it's not clear which) of IP
+                # addresses and/or hostnames. It should be a list proper.
                 (b"ntp_servers", amp.Unicode()),
                 (b"domain_name", amp.Unicode()),
                 (b"pools", AmpList([

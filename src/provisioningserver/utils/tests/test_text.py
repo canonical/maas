@@ -1,18 +1,23 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for text processing utilities."""
 
 __all__ = []
 
+import string
 from textwrap import dedent
 
+import hypothesis
+import hypothesis.strategies
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.text import (
     make_bullet_list,
+    normalise_to_comma_list,
     normalise_whitespace,
 )
+from testtools.matchers import Equals
 
 
 class TestNormaliseWhitespace(MAASTestCase):
@@ -68,3 +73,31 @@ class TestMakeBulletList(MAASTestCase):
           facilisis mattis, nisi lacus lacinia neque, nec convallis risus
           turpis id metus. Aenean semper sapien sed volutpat volutpat.""")
         self.assertEqual(bullet_list_expected, bullet_list)
+
+
+class TestNormaliseToCommaList(MAASTestCase):
+    """Tests for `normalise_to_comma_list`."""
+
+    delimiters = hypothesis.strategies.text(
+        string.whitespace + ",", min_size=1, max_size=10)
+
+    @hypothesis.given(delimiters)
+    def test__normalises_space_or_comma_list_to_comma_list(self, delimiter):
+        words = [factory.make_name("word") for _ in range(5)]
+        string = delimiter.join(words)
+        self.assertThat(
+            normalise_to_comma_list(string),
+            Equals(", ".join(words)))
+
+    @hypothesis.given(delimiters)
+    def test__normalises_nothing_but_delimiter_to_empty(self, delimiter):
+        self.assertThat(
+            normalise_to_comma_list(delimiter),
+            Equals(""))
+
+    @hypothesis.given(delimiters)
+    def test__eliminates_empty_words(self, delimiter):
+        word = factory.make_name("word")
+        self.assertThat(
+            normalise_to_comma_list(delimiter + word + delimiter),
+            Equals(word))

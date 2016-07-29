@@ -11,7 +11,7 @@ option path-prefix code 210 = text; #RFC5071
 {{for global_dhcp_snippet in global_dhcp_snippets}}
 # Name: {{global_dhcp_snippet['name']}}
 {{if global_dhcp_snippet['description'] != ''}}
-# Description: {{global_dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+# Description: {{global_dhcp_snippet['description'] | oneline}}
 {{endif}}
 {{global_dhcp_snippet['value']}}
 {{endfor}}
@@ -59,14 +59,14 @@ shared-network {{shared_network["name"]}} {
            option subnet-mask {{dhcp_subnet['subnet_mask']}};
            option broadcast-address {{dhcp_subnet['broadcast_ip']}};
            {{if dhcp_subnet.get('dns_servers')}}
-           option domain-name-servers {{dhcp_subnet['dns_servers']}};
+           option domain-name-servers {{dhcp_subnet['dns_servers'] | commalist}};
            {{endif}}
            option domain-name "{{dhcp_subnet['domain_name']}}";
            {{if dhcp_subnet['router_ip'] }}
            option routers {{dhcp_subnet['router_ip']}};
            {{endif}}
            {{if dhcp_subnet.get('ntp_servers')}}
-           option ntp-servers {{dhcp_subnet['ntp_servers']}};
+           option ntp-servers {{dhcp_subnet['ntp_servers'] | commalist}};
            {{endif}}
            default-lease-time 600;
            max-lease-time 600;
@@ -76,7 +76,7 @@ shared-network {{shared_network["name"]}} {
            {{for dhcp_snippet in dhcp_subnet['dhcp_snippets']}}
            # Name: {{dhcp_snippet['name']}}
            {{if dhcp_snippet['description'] != ''}}
-           # Description: {{dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+           # Description: {{dhcp_snippet['description'] | oneline}}
            {{endif}}
            {{dhcp_snippet['value']}}
            {{endfor}}
@@ -106,7 +106,7 @@ host {{host['mac'].replace(":", "-")}} {
    {{for dhcp_snippet in host['dhcp_snippets']}}
    # Name: {{dhcp_snippet['name']}}
    {{if dhcp_snippet['description'] != ''}}
-   # Description: {{dhcp_snippet['description'].replace('\n', ' ').replace('\r', '')}}
+   # Description: {{dhcp_snippet['description'] | oneline}}
    {{endif}}
    {{dhcp_snippet['value']}}
    {{endfor}}

@@ -6,8 +6,10 @@
 __all__ = [
     'make_bullet_list',
     'normalise_whitespace',
-    ]
+    'normalise_to_comma_list',
+]
 
+import re
 from textwrap import TextWrapper
 
 
@@ -28,3 +30,14 @@ def make_bullet_list(messages):
     """
     fill = TextWrapper(72, initial_indent="* ", subsequent_indent="  ").fill
     return "\n".join(fill(message) for message in messages)
+
+
+def normalise_to_comma_list(string):
+    """Take a space- or comma-separated list and return a comma-separated list.
+
+    ISC dhcpd is quite picky about comma-separated lists. When in doubt,
+    normalise using this function.
+    """
+    return ", ".join(
+        part for part in re.split(r'[,\s]+', string)
+        if len(part) != 0)

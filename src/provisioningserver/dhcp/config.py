@@ -8,15 +8,22 @@ __all__ = [
     "get_config",
 ]
 
-
 from itertools import (
     chain,
     repeat,
 )
 from platform import linux_distribution
+from typing import Sequence
 
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.utils import locate_template
+from provisioningserver.utils import (
+    locate_template,
+    typed,
+)
+from provisioningserver.utils.text import (
+    normalise_to_comma_list,
+    normalise_whitespace,
+)
 import tempita
 
 # Used to generate the conditional bootloader behaviour
@@ -71,22 +78,33 @@ def compose_conditional_bootloader():
     return output.strip()
 
 
-def get_config(template_name, **params):
+@typed
+def get_config(
+        template_name: str, global_dhcp_snippets: Sequence[dict],
+        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
+        hosts: Sequence[dict], omapi_key: str) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
     :param template_name: Template file name: `dhcpd.conf.template` for the
         IPv4 template, `dhcpd6.conf.template` for the IPv6 template.
-    :param **params: Variables to be substituted into the template.
-    :return: A full configuration, as unicode text.
+    :return: A full configuration, as a string.
     """
+    bootloader = compose_conditional_bootloader()
+    platform_codename = linux_distribution()[2]
     template_file = locate_template('dhcp', template_name)
-    params['bootloader'] = compose_conditional_bootloader()
-    params['platform_codename'] = linux_distribution()[2]
-    params.setdefault("ntp_servers")
+    template = tempita.Template.from_filename(template_file, encoding="UTF-8")
+    # Helper functions to stuff into the template namespace.
+    helpers = {
+        "oneline": normalise_whitespace,
+        "commalist": normalise_to_comma_list,
+    }
+
     try:
-        template = tempita.Template.from_filename(
-            template_file, encoding="UTF-8")
-        return template.substitute(**params)
+        return template.substitute(
+            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
+            failover_peers=failover_peers, shared_networks=shared_networks,
+            bootloader=bootloader, platform_codename=platform_codename,
+            omapi_key=omapi_key, **helpers)
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
             "Failed to render DHCP configuration.") from error
