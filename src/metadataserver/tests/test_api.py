@@ -319,6 +319,15 @@ class TestMetadataCommon(MAASServerTestCase):
         content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
         self.assertIn('user-data', content.splitlines())
 
+    def test_version_index_does_not_show_user_data_if_in_rescue_mode(self):
+        node = factory.make_Node(status=NODE_STATUS.RESCUE_MODE)
+        NodeUserData.objects.set_user_data(node, b"User data for node")
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-version')
+        url = reverse(view_name, args=['latest'])
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        self.assertNotIn('user-data', content.splitlines())
+
     def test_meta_data_view_lists_fields(self):
         # Some fields only are returned if there is data related to them.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')

@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
@@ -14,6 +16,7 @@ from maasserver.models.service import (
     REGION_SERVICES,
     Service,
 )
+from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -21,8 +24,24 @@ from metadataserver.models.nodekey import NodeKey
 from testtools.matchers import (
     HasLength,
     Is,
+    MatchesStructure,
     Not,
 )
+
+
+class TestNodePreviousStatus(MAASServerTestCase):
+    """Test that `previous_status` is set when the status is changed."""
+
+    def test_changing_status_updates_previous_status(self):
+        node = factory.make_Node()
+        old_status = node.status
+        new_status = random.choice(NODE_TRANSITIONS[node.status])
+        node.status = new_status
+        node.save()
+        self.assertThat(
+            node,
+            MatchesStructure.byEquality(
+                status=new_status, previous_status=old_status))
 
 
 class TestNodeKeyPolicy(MAASServerTestCase):

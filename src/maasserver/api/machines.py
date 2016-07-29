@@ -712,6 +712,44 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             request.user.username)
         return node
 
+    @operation(idempotent=False)
+    def rescue_mode(self, request, system_id):
+        """Begin rescue mode process for a machine.
+
+        A machine in the 'deployed' or 'broken' state may initiate the
+        rescue mode process.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to start the
+        rescue mode process for this machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        machine.start_rescue_mode(request.user)
+        maaslog.info(
+            "%s: User %s started rescue mode.", machine.hostname,
+            request.user.username)
+        return machine
+
+    @operation(idempotent=False)
+    def exit_rescue_mode(self, request, system_id):
+        """Exit rescue mode process for a machine.
+
+        A machine in the 'rescue mode' state may exit the rescue mode
+        process.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to exit the
+        rescue mode process for this machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        machine.stop_rescue_mode(request.user)
+        maaslog.info(
+            "%s: User %s stopped rescue mode.", machine.hostname,
+            request.user.username)
+        return machine
+
 
 def create_machine(request):
     """Service an http request to create a machine.

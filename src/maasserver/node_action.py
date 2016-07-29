@@ -482,6 +482,45 @@ class ImportImages(NodeAction):
             raise NodeActionError(exception)
 
 
+class RescueMode(NodeAction):
+    """Start the rescue mode process."""
+    name = "rescue-mode"
+    display = "Rescue mode"
+    display_sentence = "rescue mode"
+    actionable_statuses = (
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.BROKEN,
+    )
+    permission = NODE_PERMISSION.ADMIN
+    for_type = {NODE_TYPE.MACHINE}
+
+    def execute(self):
+        """See `NodeAction.execute`."""
+        try:
+            self.node.start_rescue_mode(self.user)
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
+            raise NodeActionError(exception)
+
+
+class ExitRescueMode(NodeAction):
+    """Exit the rescue mode process."""
+    name = "exit-rescue-mode"
+    display = "Exit rescue mode"
+    display_sentence = "exit rescue mode"
+    actionable_statuses = (
+        NODE_STATUS.RESCUE_MODE,
+    )
+    permission = NODE_PERMISSION.ADMIN
+    for_type = {NODE_TYPE.MACHINE}
+
+    def execute(self):
+        """See `NodeAction.execute`."""
+        try:
+            self.node.stop_rescue_mode(self.user)
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
+            raise NodeActionError(exception)
+
+
 ACTION_CLASSES = (
     Commission,
     Acquire,
@@ -490,6 +529,8 @@ ACTION_CLASSES = (
     PowerOff,
     Release,
     Abort,
+    RescueMode,
+    ExitRescueMode,
     MarkBroken,
     MarkFixed,
     SetZone,

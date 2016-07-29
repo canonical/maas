@@ -421,7 +421,8 @@ class VersionIndexHandler(MetadataViewHandler):
         """Read the metadata index for this version."""
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        if NodeUserData.objects.has_user_data(node):
+        if (node.status != NODE_STATUS.RESCUE_MODE and
+                NodeUserData.objects.has_user_data(node)):
             shown_fields = self.fields
         else:
             shown_fields = list(self.fields)

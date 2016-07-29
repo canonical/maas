@@ -7,6 +7,7 @@ __all__ = []
 
 from base64 import b64encode
 import http.client
+from random import choice
 from unittest.mock import ANY
 
 from django.conf import settings
@@ -2182,3 +2183,62 @@ class TestMarkFixed(APITestCase.ForUser):
         self.assertThat(
             node_mark_fixed,
             MockCalledOnceWith(self.user, None))
+
+
+class TestRescueMode(APITransactionTestCase.ForUser):
+    """Tests for /api/2.0/machines/<machine>/?op=rescue_mode"""
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test_rescue_mode_requires_admin(self):
+        status = choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        machine = factory.make_Node(status=status)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'rescue_mode'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_rescue_mode_changes_state(self):
+        self.become_admin()
+        status = choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        machine = factory.make_Node(status=status)
+        mock_power_cycle = self.patch(node_module.Machine, "_power_cycle")
+        mock_power_cycle.side_effect = lambda: post_commit()
+
+        with SignalsDisabled("power"):
+            response = self.client.post(
+                self.get_machine_uri(machine), {'op': 'rescue_mode'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.RESCUE_MODE, reload_object(machine).status)
+
+
+class TestExitRescueMode(APITransactionTestCase.ForUser):
+    """Tests for /api/2.0/machines/<machine>/?op=exit_rescue_mode"""
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test_exit_rescue_mode_requires_admin(self):
+        machine = factory.make_Node(status=NODE_STATUS.RESCUE_MODE)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'exit_rescue_mode'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_exit_rescue_mode_changes_state(self):
+        self.become_admin()
+        previous_status = choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        machine = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE, previous_status=previous_status)
+        mock_power_cycle = self.patch(node_module.Machine, "_power_cycle")
+        mock_power_cycle.side_effect = lambda: post_commit()
+        mock__stop = self.patch(node_module.Machine, "_stop")
+        mock__stop.side_effect = lambda user: post_commit()
+
+        with SignalsDisabled("power"):
+            response = self.client.post(
+                self.get_machine_uri(machine), {'op': 'exit_rescue_mode'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(previous_status, reload_object(machine).status)

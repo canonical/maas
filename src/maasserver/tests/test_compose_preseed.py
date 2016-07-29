@@ -171,6 +171,18 @@ class TestComposePreseed(MAASServerTestCase):
             'condition': 'test ! -e /tmp/block-poweroff',
         }, preseed['power_state'])
 
+    def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.RESCUE_MODE)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertTrue('power_state' not in preseed)
+
     def test_compose_preseed_for_disk_erasing_includes_poweroff(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(

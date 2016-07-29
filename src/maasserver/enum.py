@@ -84,6 +84,8 @@ class NODE_STATUS:
     DISK_ERASING = 14
     #: The node failed to erase its disks.
     FAILED_DISK_ERASING = 15
+    #: The node is in rescue mode.
+    RESCUE_MODE = 16
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -105,6 +107,7 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.FAILED_RELEASING, "Releasing failed"),
     (NODE_STATUS.DISK_ERASING, "Disk erasing"),
     (NODE_STATUS.FAILED_DISK_ERASING, "Failed disk erasing"),
+    (NODE_STATUS.RESCUE_MODE, "Rescue mode"),
 )
 
 

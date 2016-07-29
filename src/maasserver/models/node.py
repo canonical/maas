@@ -3325,6 +3325,159 @@ class Node(CleanSave, TimestampedModel):
         return self._power_control_node(
             d, power_cycle, self.get_effective_power_info())
 
+    @transactional
+    def start_rescue_mode(self, user):
+        """Start rescue mode."""
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't enter rescue mode on a node you don't own,
+            # unless you're an admin.
+            raise PermissionDenied()
+        # Power type must be configured.
+        if self.power_type == '':
+            raise UnknownPowerType(
+                "Unconfigured power type. "
+                "Please configure the power type and try again.")
+        # Register event
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_START_RESCUE_MODE,
+            action='start rescue mode')
+        # We need to mark the node as RESCUE_MODE now to avoid a race
+        # when starting multiple nodes. We hang on to old_status just in
+        # case the power action fails.
+        old_status = self.status
+        self.status = NODE_STATUS.RESCUE_MODE
+        self.owner = user
+        self.save()
+
+        try:
+            cycling = self._power_cycle()
+        except Exception as error:
+            self.status = old_status
+            self.save()
+            maaslog.error(
+                "%s: Could not start rescue mode for node: %s",
+                self.hostname, error)
+            # Let the exception bubble up, since the UI or API will have to
+            # deal with it.
+            raise
+        else:
+            # Don't permit naive mocking of cycling(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(cycling, Deferred) or cycling is None
+
+            if cycling is None:
+                cycling = post_commit()
+                # MAAS cannot start the node itself.
+                is_cycling = False
+            else:
+                # MAAS can direct the node to start.
+                is_cycling = True
+
+            cycling.addCallback(
+                callOut, self._start_rescue_mode_async, is_cycling,
+                self.hostname)
+
+            # If there's an error, reset the node's status.
+            cycling.addErrback(
+                callOutToDatabase, Node._set_status, self.system_id,
+                status=old_status)
+
+            def eb_start(failure, hostname):
+                maaslog.error(
+                    "%s: Could not start rescue mode for node: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return cycling.addErrback(eb_start, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _start_rescue_mode_async(cls, is_cycling, hostname):
+        """Start rescue mode, the post-commit bits.
+
+        :param is_cycling: A boolean indicating if MAAS is able to start this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        """
+        if is_cycling:
+            maaslog.info("%s: Rescue mode started", hostname)
+        else:
+            maaslog.warning(
+                "%s: Could not start rescue mode for node; it "
+                "must be started manually", hostname)
+
+    @transactional
+    def stop_rescue_mode(self, user):
+        """Stop rescue mode."""
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't exit rescue mode on a node you don't own,
+            # unless you're an admin.
+            raise PermissionDenied()
+        # Register event
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE,
+            action='stop rescue mode')
+
+        try:
+            if self.previous_status == NODE_STATUS.BROKEN:
+                # Node.stop() has synchronous and asynchronous parts, so catch
+                # exceptions arising synchronously, and chain callbacks to the
+                # Deferred it returns for the asynchronous (post-commit) bits.
+                stopping = self._stop(user)
+            elif self.previous_status == NODE_STATUS.DEPLOYED:
+                stopping = self._power_cycle()
+            else:
+                stopping = None
+        except Exception as error:
+            maaslog.error(
+                "%s: Could not stop rescue mode for node: %s",
+                self.hostname, error)
+            raise
+        else:
+            # Don't permit naive mocking of stop()/power_cycle(); it causes too
+            # much confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(stopping, Deferred) or stopping is None
+
+            if stopping is None:
+                stopping = post_commit()
+                # MAAS cannot stop the node itself.
+                is_stopping = False
+            else:
+                # MAAS can direct the node to stop.
+                is_stopping = True
+
+            stopping.addCallback(
+                callOut, self._stop_rescue_mode_async, is_stopping,
+                self.hostname, self.system_id, self.previous_status)
+
+            def eb_stop(failure, hostname):
+                maaslog.error(
+                    "%s: Could not stop rescue mode for node: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return stopping.addErrback(eb_stop, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _stop_rescue_mode_async(
+            cls, is_stopping, hostname, system_id, previous_status):
+        """Stop rescue mode, the post-commit bits.
+
+        :param is_stopping: A boolean indicating if MAAS is able to stop this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        :param system_id: The system ID for the node.
+        """
+        d = deferToDatabase(cls._set_status, system_id, status=previous_status)
+        if is_stopping:
+            return d.addCallback(
+                callOut, maaslog.info, "%s: Rescue mode stopped", hostname)
+        else:
+            return d.addCallback(
+                callOut, maaslog.warning, "%s: Could not stop rescue mode "
+                "for node; it must be stopped manually", hostname)
+
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are

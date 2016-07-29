@@ -7,7 +7,11 @@ __all__ = [
     "signals",
 ]
 
-from django.db.models.signals import post_save
+from django.db.models.signals import (
+    post_init,
+    post_save,
+    pre_save,
+)
 from maasserver.models import (
     Controller,
     Device,
@@ -31,6 +35,28 @@ NODE_CLASSES = [
 ]
 
 signals = SignalsManager()
+
+
+def post_init_store_previous_status(sender, instance, **kwargs):
+    """Store the pre_save status of the instance."""
+    instance.__previous_status = instance.status
+
+
+for klass in NODE_CLASSES:
+    signals.watch(
+        post_init, post_init_store_previous_status, sender=klass)
+
+
+def pre_save_update_status(sender, instance, **kwargs):
+    """Update node previous_status when node status changes."""
+    if instance.__previous_status != instance.status:
+        # The IP address wasn't modified, update previous status
+        instance.previous_status = instance.__previous_status
+
+
+for klass in NODE_CLASSES:
+    signals.watch(
+        pre_save, pre_save_update_status, sender=klass)
 
 
 def clear_nodekey_when_owner_changes(node, old_values, deleted=False):

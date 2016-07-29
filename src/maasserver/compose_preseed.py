@@ -154,12 +154,13 @@ def compose_commissioning_preseed(node, token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
     apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('metadata', base_url=base_url)
+    poweroff = node.status != NODE_STATUS.RESCUE_MODE
     poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     return _compose_cloud_init_preseed(
         node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy,
-        poweroff=True, poweroff_timeout=int(poweroff_timeout),
+        poweroff=poweroff, poweroff_timeout=int(poweroff_timeout),
         poweroff_condition="test ! -e /tmp/block-poweroff")
 
 
