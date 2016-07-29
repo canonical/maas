@@ -35,7 +35,6 @@ from provisioningserver.rpc.cluster import (
     PowerOn,
     PowerQuery,
 )
-from provisioningserver.utils.twisted import reactor_sync
 from twisted.internet import reactor
 from twisted.internet.defer import (
     fail,
@@ -60,12 +59,9 @@ class TestPowerNode(MAASServerTestCase):
         node = factory.make_Node()
         client = Mock()
 
-        # We're not doing any IO via the reactor so we sync with it only so
-        # that this becomes the IO thread, making @asynchronous transparent.
-        with reactor_sync():
-            self.power_func(
-                client, node.system_id, node.hostname,
-                node.get_effective_power_info())
+        wait_for_reactor(self.power_func)(
+            client, node.system_id, node.hostname,
+            node.get_effective_power_info())
 
         power_info = node.get_effective_power_info()
         self.assertThat(
@@ -84,12 +80,9 @@ class TestPowerCycle(MAASServerTestCase):
         node = factory.make_Node()
         client = Mock()
 
-        # We're not doing any IO via the reactor so we sync with it only so
-        # that this becomes the IO thread, making @asynchronous transparent.
-        with reactor_sync():
-            power_cycle(
-                client, node.system_id, node.hostname,
-                node.get_effective_power_info())
+        wait_for_reactor(power_cycle)(
+            client, node.system_id, node.hostname,
+            node.get_effective_power_info())
 
         power_info = node.get_effective_power_info()
         self.assertThat(
@@ -108,12 +101,9 @@ class TestPowerQuery(MAASServerTestCase):
         node = factory.make_Node()
         client = Mock()
 
-        # We're not doing any IO via the reactor so we sync with it only so
-        # that this becomes the IO thread, making @asynchronous transparent.
-        with reactor_sync():
-            power_query(
-                client, node.system_id, node.hostname,
-                node.get_effective_power_info())
+        wait_for_reactor(power_query)(
+            client, node.system_id, node.hostname,
+            node.get_effective_power_info())
 
         power_info = node.get_effective_power_info()
         self.assertThat(
@@ -133,11 +123,8 @@ class TestPowerDriverCheck(MAASServerTestCase):
         power_info = node.get_effective_power_info()
         client = Mock()
 
-        # We're not doing any IO via the reactor so we sync with it only so
-        # that this becomes the IO thread, making @asynchronous transparent.
-        with reactor_sync():
-            power_driver_check(
-                client, power_info.power_type)
+        wait_for_reactor(power_driver_check)(
+            client, power_info.power_type)
 
         self.assertThat(
             client,
