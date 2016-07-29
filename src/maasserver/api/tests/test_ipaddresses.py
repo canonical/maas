@@ -6,7 +6,6 @@
 __all__ = []
 
 import http.client
-from unittest import skip
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -23,6 +22,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from netaddr import IPAddress
 from testtools.matchers import Equals
 
 
@@ -182,14 +182,10 @@ class TestIPAddressesAPI(APITestCase.ForUser):
                 "The IP address %s is already in use." % ip_in_network).encode(
                 settings.DEFAULT_CHARSET)))
 
-    @skip(
-        "XXX bug=1539248 2015-01-28 blake_r: We need to take into account "
-        "all dynamic ranges inside the subnet.")
     def test_POST_reserve_ip_address_rejects_ip_in_dynamic_range(self):
-        interface = self.make_interface()
-        net = interface.network
-        ip_in_network = interface.ip_range_low
-        response = self.post_reservation_request(net, ip_in_network)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        ip = str(IPAddress(subnet.get_dynamic_maasipset().first))
+        response = self.post_reservation_request(subnet, ip)
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 

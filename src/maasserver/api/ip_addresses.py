@@ -24,6 +24,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
+    MAASAPIForbidden,
     MAASAPIValidationError,
 )
 from maasserver.forms import (
@@ -72,6 +73,12 @@ class IPAddressesHandler(OperationsHandler):
         :type domain: Domain
         :raises StaticIPAddressExhaustion: If no IPs available.
         """
+        dynamic_range = subnet.get_dynamic_maasipset()
+        if ip_address is not None and ip_address in dynamic_range:
+            raise MAASAPIForbidden(
+                "IP address %s belongs to an existing dynamic range. To "
+                "reserve this IP address, a MAC address is required. (Create "
+                "a device instead.)" % ip_address)
         if hostname is not None and hostname.find('.') > 0:
             hostname, domain = hostname.split('.', 1)
             domain = Domain.objects.get_domain_or_404(
