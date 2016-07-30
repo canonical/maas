@@ -11,6 +11,8 @@ Issues fixed in this release
 
 LP: #1592666    Mirror URL contains double slash (/) after hostname, impacting proxy cachaility.
 
+LP: #1604461    [2.0rc2] Static IP address are allowed to be created in a dynamic range.
+
 
 2.0.0 (rc3)
 ===========
