@@ -3424,6 +3424,9 @@ class Node(CleanSave, TimestampedModel):
                 # exceptions arising synchronously, and chain callbacks to the
                 # Deferred it returns for the asynchronous (post-commit) bits.
                 stopping = self._stop(user)
+                if self.owner is not None:
+                    self.owner = None
+                    self.save()
             elif self.previous_status == NODE_STATUS.DEPLOYED:
                 stopping = self._power_cycle()
             else:
