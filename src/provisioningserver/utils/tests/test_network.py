@@ -40,8 +40,10 @@ from provisioningserver.utils.network import (
     get_all_addresses_for_interface,
     get_all_interface_addresses,
     get_all_interfaces_definition,
+    get_interface_children,
     hex_str_to_bytes,
     inet_ntop,
+    interface_children,
     intersect_iprange,
     ip_range_within_network,
     IPRangeStatistics,
@@ -1374,3 +1376,121 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }),
         })
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
+
+
+class TestGetInterfaceChildren(MAASTestCase):
+    """Tests for `get_interface_children()`."""
+
+    def test__calculates_children_from_bond_parents(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+            },
+            'eth1': {
+                'parents': [],
+            },
+            'bond0': {
+                'parents': ['eth0', 'eth1'],
+            },
+        }
+        children_map = get_interface_children(interfaces)
+        self.assertThat(children_map, Equals({
+            'eth0': {'bond0'},
+            'eth1': {'bond0'},
+        }))
+
+    def test__calculates_children_from_vlan_parents(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+            },
+            'eth1': {
+                'parents': [],
+            },
+            'eth0.100': {
+                'parents': ['eth0'],
+            },
+            'eth1.100': {
+                'parents': ['eth1'],
+            },
+        }
+        children_map = get_interface_children(interfaces)
+        self.assertThat(children_map, Equals({
+            'eth0': {'eth0.100'},
+            'eth1': {'eth1.100'},
+        }))
+
+    def test__calculates_children_from_bond_and_vlan_parents(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+            },
+            'eth1': {
+                'parents': [],
+            },
+            'eth0.100': {
+                'parents': ['eth0'],
+            },
+            'eth1.100': {
+                'parents': ['eth1'],
+            },
+            'bond0': {
+                'parents': ['eth0', 'eth1'],
+            },
+        }
+        children_map = get_interface_children(interfaces)
+        self.assertThat(children_map, Equals({
+            'eth0': {'eth0.100', 'bond0'},
+            'eth1': {'eth1.100', 'bond0'},
+        }))
+
+
+class TestInterfaceChildren(MAASTestCase):
+    """Tests for `interface_children()`."""
+
+    def test__yields_each_child(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+            },
+            'eth1': {
+                'parents': [],
+            },
+            'eth0.100': {
+                'parents': ['eth0'],
+            },
+            'eth1.100': {
+                'parents': ['eth1'],
+            },
+            'bond0': {
+                'parents': ['eth0', 'eth1'],
+            },
+        }
+        children_map = get_interface_children(interfaces)
+        eth0_children = list(
+            interface_children('eth0', interfaces, children_map))
+        self.assertItemsEqual(eth0_children, [
+            ('eth0.100', {'parents': ['eth0']}),
+            ('bond0', {'parents': ['eth0', 'eth1']}),
+        ])
+        eth1_children = list(
+            interface_children('eth1', interfaces, children_map))
+        self.assertItemsEqual(eth1_children, [
+            ('eth1.100', {'parents': ['eth1']}),
+            ('bond0', {'parents': ['eth0', 'eth1']}),
+        ])
+
+    def test__returns_namedtuple(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+            },
+            'eth0.100': {
+                'parents': ['eth0'],
+            },
+        }
+        children_map = get_interface_children(interfaces)
+        eth0_children = list(
+            interface_children('eth0', interfaces, children_map))
+        self.assertThat(eth0_children[0].name, Equals("eth0.100"))
+        self.assertThat(eth0_children[0].data, Equals({'parents': ['eth0']}))

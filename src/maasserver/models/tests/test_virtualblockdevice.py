@@ -62,7 +62,9 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
         # Update the size of all block devices to change the size of the
         # filesystem group.
-        new_size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        # The hard-coded size is due to this random ValidationError:
+        # {'size': ['Ensure this value is greater than or equal to 4194304.']}
+        new_size = random.randint(4194304, 1000 * 1000 * 1000)
         for filesystem in filesystem_group.filesystems.all():
             filesystem.block_device.size = new_size
             filesystem.block_device.save()
@@ -83,7 +85,9 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         # Update the size of the backing device to change the size of the
         # filesystem group.
-        new_size = random.randint(4000 * 1000, 1000 * 1000 * 1000)
+        # The hard-coded size is due to this random ValidationError:
+        # {'size': ['Ensure this value is greater than or equal to 4194304.']}
+        new_size = random.randint(4194304, 1000 * 1000 * 1000)
         backing_filesystem = filesystem_group.get_bcache_backing_filesystem()
         backing_filesystem.block_device.size = new_size
         backing_filesystem.block_device.save()

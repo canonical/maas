@@ -17,6 +17,7 @@ __all__ = [
 
 
 import codecs
+from collections import namedtuple
 from operator import attrgetter
 from socket import (
     AF_INET,
@@ -829,6 +830,45 @@ def fix_link_gateways(links, iproute_info):
         elif ("default" in iproute_info and
                 IPAddress(iproute_info["default"]["via"]) in ip_addr):
             link["gateway"] = iproute_info["default"]["via"]
+
+
+def get_interface_children(interfaces: dict) -> dict:
+    """Map each parent interface to a set of its children.
+
+    Interfaces with no children will not be present in the resulting
+    dictionary.
+
+    :param interfaces: The output of `get_all_interfaces_definition()`
+    :return: dict
+    """
+    children_map = {}
+    for ifname in interfaces:
+        for parent in interfaces[ifname]['parents']:
+            if parent in children_map:
+                children_map[parent].add(ifname)
+            else:
+                children_map[parent] = {ifname}
+    return children_map
+
+
+InterfaceChild = namedtuple('InterfaceChild', ('name', 'data'))
+
+
+def interface_children(ifname: str, interfaces: dict, children_map: dict):
+    """Yields each child interface for `ifname` given the specified data.
+
+    Each resul will be in the format of a single-item dictionary mapping
+    the child interface name to its data in the `interfaces` structure.
+
+    :param ifname: The interface whose children to yield.
+    :param interfaces: The output of `get_all_interfaces_definition()`.
+    :param children_map: The output of `get_interface_children()`.
+    :return: a `namedtuple` with each child's `name` and its `data`.
+    """
+    if ifname in children_map:
+        children = children_map[ifname]
+        for child in children:
+            yield InterfaceChild._make((child, interfaces[child]))
 
 
 def get_all_interfaces_definition():
