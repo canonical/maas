@@ -6,26 +6,34 @@
 __all__ = []
 
 import builtins
+from itertools import repeat
 import os
 import sys
 from unittest.mock import call
 
-from fixtures import EnvironmentVariableFixture
+from fixtures import EnvironmentVariable
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
     ImportErrorFixture,
+    MAASRootFixture,
     ProxiesDisabledFixture,
     TempDirectory,
     TempWDFixture,
 )
-from maastesting.matchers import MockCallsMatch
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from testtools.matchers import (
     Equals,
     Is,
     Not,
+    PathExists,
+    SamePath,
 )
 from testtools.testcase import ExpectedException
 
@@ -62,7 +70,7 @@ class TestProxiedDisabledFixture(MAASTestCase):
 
     def test_removes_http_proxy_from_environment(self):
         http_proxy = factory.make_name("http-proxy")
-        initial = EnvironmentVariableFixture("http_proxy", http_proxy)
+        initial = EnvironmentVariable("http_proxy", http_proxy)
         self.useFixture(initial)
         # On entry, http_proxy is removed from the environment.
         with ProxiesDisabledFixture():
@@ -72,7 +80,7 @@ class TestProxiedDisabledFixture(MAASTestCase):
 
     def test_removes_https_proxy_from_environment(self):
         https_proxy = factory.make_name("https-proxy")
-        initial = EnvironmentVariableFixture("https_proxy", https_proxy)
+        initial = EnvironmentVariable("https_proxy", https_proxy)
         self.useFixture(initial)
         # On entry, https_proxy is removed from the environment.
         with ProxiesDisabledFixture():
@@ -230,3 +238,52 @@ class TestCaptureStandardIO(MAASTestCase):
                 TypeError, sys.stderr.write, sample_binary_data)
         self.assertDocTestMatches(
             "write() argument must be str, not bytes", str(error))
+
+
+def listdirs(start):
+    """Recursively generate paths for all directories and files in `start`.
+
+    Paths generated are relative to `start`. Symbolic links are followed.
+    """
+    for dirpath, dirnames, filenames in os.walk(start, followlinks=True):
+        dirpath = os.path.relpath(dirpath, start)
+        yield from map(os.path.join, repeat(dirpath), dirnames)
+        yield from map(os.path.join, repeat(dirpath), filenames)
+
+
+class TestMAASRootFixture(MAASTestCase):
+    """Tests for `MAASRootFixture`."""
+
+    def setUp(self):
+        super(TestMAASRootFixture, self).setUp()
+        self.maasroot = os.path.join(root, "run")
+        self.useFixture(EnvironmentVariable("MAAS_ROOT", self.maasroot))
+
+    def test_creates_populates_and_removes_new_directory(self):
+        fixture = MAASRootFixture()
+        with fixture:
+            self.assertThat(fixture.path, PathExists())
+            self.assertThat(fixture.path, Not(SamePath(self.maasroot)))
+            files_expected = set(listdirs(self.maasroot))
+            files_observed = set(listdirs(fixture.path))
+            self.assertThat(files_observed, Equals(files_expected))
+        self.assertThat(fixture.path, Not(PathExists()))
+
+    def test_updates_MAAS_ROOT_in_the_environment(self):
+        self.assertThat(os.environ["MAAS_ROOT"], SamePath(self.maasroot))
+        with MAASRootFixture() as fixture:
+            self.assertThat(os.environ["MAAS_ROOT"], SamePath(fixture.path))
+        self.assertThat(os.environ["MAAS_ROOT"], SamePath(self.maasroot))
+
+    def test_breaks_when_MAAS_ROOT_is_not_defined(self):
+        fixture = MAASRootFixture()
+        del os.environ["MAAS_ROOT"]
+        error = self.assertRaises(NotADirectoryError, fixture._setUp)
+        self.assertThat(str(error), Equals("MAAS_ROOT is not defined."))
+
+    def test_breaks_when_MAAS_ROOT_is_not_a_directory(self):
+        fixture = MAASRootFixture()
+        os.environ["MAAS_ROOT"] = self.make_file()
+        error = self.assertRaises(NotADirectoryError, fixture._setUp)
+        self.assertThat(str(error), DocTestMatches(
+            "MAAS_ROOT (...) is not a directory."))

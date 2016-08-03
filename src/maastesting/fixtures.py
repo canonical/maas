@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Miscellaneous fixtures, here until they find a better home."""
@@ -24,21 +24,20 @@ import logging
 import os
 from subprocess import (
     CalledProcessError,
+    check_output,
+    DEVNULL,
     PIPE,
     Popen,
 )
 import sys
 
 import fixtures
-from fixtures import (
-    EnvironmentVariableFixture,
-    Fixture,
-)
+from fixtures import EnvironmentVariable
 from testtools.monkey import MonkeyPatcher
 from twisted.python.reflect import namedObject
 
 
-class ImportErrorFixture(Fixture):
+class ImportErrorFixture(fixtures.Fixture):
     """Fixture to generate an artificial ImportError when the
     interpreter would otherwise successfully import the given module.
 
@@ -76,7 +75,7 @@ class ImportErrorFixture(Fixture):
         self.addCleanup(setattr, builtins, "__import__", self.__real_import)
 
 
-class LoggerSilencerFixture(Fixture):
+class LoggerSilencerFixture(fixtures.Fixture):
     """Fixture to change the log level of loggers.
 
     All the loggers with names self.logger_names will have their log level
@@ -96,7 +95,7 @@ class LoggerSilencerFixture(Fixture):
             logger.setLevel(self.level)
 
 
-class DisplayFixture(Fixture):
+class DisplayFixture(fixtures.Fixture):
     """Fixture to create a virtual display with `xvfb-run`.
 
     This will set the ``DISPLAY`` environment variable once it's up and
@@ -142,7 +141,7 @@ class DisplayFixture(Fixture):
         self.display = self.process.stdout.readline().decode("ascii").strip()
         if not self.display or self.process.poll() is not None:
             raise CalledProcessError(self.process.returncode, self.command)
-        self.useFixture(EnvironmentVariableFixture("DISPLAY", self.display))
+        self.useFixture(EnvironmentVariable("DISPLAY", self.display))
         self.addCleanup(self.shutdown)
 
     def shutdown(self):
@@ -151,7 +150,7 @@ class DisplayFixture(Fixture):
             raise CalledProcessError(self.process.returncode, self.command)
 
 
-class SeleniumFixture(Fixture):
+class SeleniumFixture(fixtures.Fixture):
     """Set-up a JavaScript-enabled testing browser instance."""
 
     # browser-name -> (driver-name, driver-args)
@@ -188,13 +187,13 @@ class SeleniumFixture(Fixture):
         self.addCleanup(self.browser.quit)
 
 
-class ProxiesDisabledFixture(Fixture):
+class ProxiesDisabledFixture(fixtures.Fixture):
     """Disables all HTTP/HTTPS proxies set in the environment."""
 
     def setUp(self):
         super(ProxiesDisabledFixture, self).setUp()
-        self.useFixture(EnvironmentVariableFixture("http_proxy"))
-        self.useFixture(EnvironmentVariableFixture("https_proxy"))
+        self.useFixture(EnvironmentVariable("http_proxy"))
+        self.useFixture(EnvironmentVariable("https_proxy"))
 
 
 class TempDirectory(fixtures.TempDir):
@@ -220,7 +219,7 @@ class TempWDFixture(TempDirectory):
         os.chdir(self.path)
 
 
-class ChromiumWebDriverFixture(Fixture):
+class ChromiumWebDriverFixture(fixtures.Fixture):
     """Starts and starts the selenium Chromium webdriver."""
 
     def setUp(self):
@@ -232,7 +231,7 @@ class ChromiumWebDriverFixture(Fixture):
 
         # Set the LD_LIBRARY_PATH so the chrome driver can find the required
         # libraries.
-        self.useFixture(EnvironmentVariableFixture(
+        self.useFixture(EnvironmentVariable(
             "LD_LIBRARY_PATH", "/usr/lib/chromium-browser/libs"))
         service.start()
 
@@ -240,7 +239,7 @@ class ChromiumWebDriverFixture(Fixture):
         self.addCleanup(service.stop)
 
 
-class CaptureStandardIO(Fixture):
+class CaptureStandardIO(fixtures.Fixture):
     """Capture stdin, stdout, and stderr.
 
     Reading from `sys.stdin` will yield *unicode* strings, much like the
@@ -402,3 +401,26 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
                 "* %s --> %s" % (fd, desc)
                 for (fd, desc) in fds_new.items())
             raise AssertionError("\n".join(message))
+
+
+class MAASRootFixture(fixtures.Fixture):
+    """Copy an existing `MAAS_ROOT` to a new temporary location.
+
+    Also updates `MAAS_ROOT` in the environment to point to this new location.
+    """
+
+    def _setUp(self):
+        super(MAASRootFixture, self)._setUp()
+        maasroot = os.environ.get("MAAS_ROOT")
+        if maasroot is None:
+            raise NotADirectoryError("MAAS_ROOT is not defined.")
+        elif os.path.isdir(maasroot):
+            self.path = self.useFixture(TempDirectory()).join("run")
+            # Neither shutil.copytree nor /bin/cp deal with relative symlinks,
+            # but /bin/cp is much faster at copying dereferenced files.
+            command = "/bin/cp", "-r", "--dereference", maasroot, self.path
+            check_output(command, stdin=DEVNULL, stderr=PIPE)
+            self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
+        else:
+            raise NotADirectoryError(
+                "MAAS_ROOT (%r) is not a directory." % maasroot)
