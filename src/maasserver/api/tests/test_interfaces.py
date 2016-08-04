@@ -493,6 +493,82 @@ class TestInterfacesAPI(APITestCase.ForUser):
             "parent": ["A VLAN interface must have exactly one parent."],
             }, json_load_bytes(response.content))
 
+    def test_create_bridge(self):
+        self.become_admin()
+        name = factory.make_name("br")
+        node = factory.make_Node()
+        untagged_vlan = factory.make_VLAN()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            "name": name,
+            "vlan": untagged_vlan.id,
+            "parent": parent_iface.id,
+            "tags": ",".join(tags),
+            })
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertThat(parsed_interface, ContainsDict({
+            "name": Equals(name),
+            "mac_address": Equals("%s" % parent_iface.mac_address),
+            "vlan": ContainsDict({
+                "id": Equals(untagged_vlan.id),
+                }),
+            "type": Equals("bridge"),
+            "parents": Equals([parent_iface.name]),
+            "tags": MatchesSetwise(*map(Equals, tags)),
+            }))
+
+    def test_create_bridge_404_on_device(self):
+        parent = factory.make_Node()
+        device = factory.make_Node(
+            owner=self.user, parent=parent,
+            node_type=NODE_TYPE.DEVICE)
+        uri = get_interfaces_uri(device)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            })
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
+    def test_create_bridge_requires_admin(self):
+        node = factory.make_Node()
+        untagged_vlan = factory.make_VLAN()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            "vlan": untagged_vlan.vid,
+            "parent": parent_iface.id,
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_bridge_requires_name_and_parent(self):
+        self.become_admin()
+        node = factory.make_Node()
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            })
+
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
+            "name": ["This field is required."],
+            "parent": ["A bridge interface must have exactly one parent."],
+            "mac_address": ["This field cannot be blank."],
+            }, json_load_bytes(response.content))
+
 
 class TestInterfacesAPIForControllers(APITestCase.ForUser):
 

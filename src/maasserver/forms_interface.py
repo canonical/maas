@@ -471,12 +471,38 @@ class BondInterfaceForm(ChildInterfaceForm):
 class BridgeInterfaceForm(ChildInterfaceForm):
     """Form used to create/edit a bridge interface."""
 
+    bridge_stp = forms.NullBooleanField(initial=False, required=False)
+
+    bridge_fd = forms.IntegerField(min_value=0, initial=15, required=False)
+
     class Meta:
         model = BridgeInterface
         fields = InterfaceForm.Meta.fields + (
             'mac_address',
             'name',
         )
+
+    def clean_parents(self):
+        parents = self.get_clean_parents()
+        if parents is None:
+            return
+        if len(parents) != 1:
+            raise ValidationError(
+                "A bridge interface must have exactly one parent.")
+        if parents[0].type == INTERFACE_TYPE.BRIDGE:
+            raise ValidationError(
+                "A bridge interface can't have another bridge interface as "
+                "parent.")
+        instance_id = None if self.instance is None else self.instance.id
+        bond_or_bridge = {INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE}
+        parent_has_bad_children = any(
+            rel.child.type in bond_or_bridge and rel.child.id != instance_id
+            for rel in parents[0].children_relationships.all())
+        if parent_has_bad_children:
+            raise ValidationError(
+                "A bridge interface can't have a parent that is already "
+                "in a bond or a bridge.")
+        return parents
 
     def clean(self):
         cleaned_data = super().clean()
@@ -489,6 +515,28 @@ class BridgeInterfaceForm(ChildInterfaceForm):
                 self._validate_parental_fidelity(parents)
                 self._set_default_vlan(parents)
         return cleaned_data
+
+    def set_extra_parameters(self, interface, created):
+        """Set the bridge parameters as well."""
+        super().set_extra_parameters(interface, created)
+        # Set all the bridge_* parameters.
+        bridge_fields = [
+            field_name
+            for field_name in self.fields
+            if field_name.startswith("bridge_")
+        ]
+        for bridge_field in bridge_fields:
+            value = self.cleaned_data.get(bridge_field)
+            if (value is not None and
+                    isinstance(value, str) and
+                    len(value) > 0 and not value.isspace()):
+                interface.params[bridge_field] = value
+            elif (value is not None and
+                    not isinstance(value, str)):
+                interface.params[bridge_field] = value
+            elif created:
+                interface.params[bridge_field] = (
+                    self.fields[bridge_field].initial)
 
 INTERFACE_FORM_MAPPING = {
     INTERFACE_TYPE.PHYSICAL: PhysicalInterfaceForm,

@@ -79,8 +79,8 @@ class CurtinNetworkGenerator:
                 self.operations["vlan"].append(interface)
             elif interface.type == INTERFACE_TYPE.BOND:
                 self.operations["bond"].append(interface)
-            # elif interface.type == INTERFACE_TYPE.BRIDGE:
-            #     self.operations["bridge"].append(interface)
+            elif interface.type == INTERFACE_TYPE.BRIDGE:
+                self.operations["bridge"].append(interface)
             else:
                 raise ValueError("Unknown interface type: %d" % (
                     interface.type))
@@ -104,8 +104,10 @@ class CurtinNetworkGenerator:
         params = {}
         if interface.params:
             for key, value in interface.params.items():
-                # Don't include bond parameters.
-                if not key.startswith("bond_") and key != 'mtu':
+                # Don't include bond or bridge parameters.
+                if (not key.startswith("bond_") and
+                        not key.startswith("bridge_") and
+                        key != 'mtu'):
                     params[key] = self._get_param_value(value)
         params['mtu'] = interface.get_effective_mtu()
         return params
@@ -114,10 +116,21 @@ class CurtinNetworkGenerator:
         params = {}
         if interface.params:
             for key, value in interface.params.items():
-                # Don't include bond parameters.
+                # Only include bond parameters.
                 if key.startswith("bond_"):
+                    # Bond parameters are seperated with '-' instead of '_'
+                    # which MAAS uses to keep consistent with bridges.
                     params[key.replace("bond_", "bond-")] = (
                         self._get_param_value(value))
+        return params
+
+    def _get_bridge_params(self, interface):
+        params = {}
+        if interface.params:
+            for key, value in interface.params.items():
+                # Only include bridge parameters.
+                if key.startswith("bridge_"):
+                    params[key] = self._get_param_value(value)
         return params
 
     def _generate_physical_operations(self):
@@ -294,7 +307,8 @@ class CurtinNetworkGenerator:
             "name": iface.get_name(),
             "mac_address": str(iface.mac_address),
             "bridge_interfaces": [parent.get_name() for parent in
-                                  iface.parents.order_by('id')]
+                                  iface.parents.order_by('id')],
+            "params": self._get_bridge_params(iface),
         })
         if addrs:
             bridge_operation["subnets"] = addrs

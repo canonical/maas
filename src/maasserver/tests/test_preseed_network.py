@@ -116,7 +116,9 @@ class AssertNetworkConfigMixin:
         def set_interface_params(iface, ret):
             if iface.params:
                 for key, value in iface.params.items():
-                    if not key.startswith("bond_") and key != 'mtu':
+                    if (not key.startswith("bond_") and
+                            not key.startswith("bridge_") and
+                            key != 'mtu'):
                         ret += "  %s: %s\n" % (key, get_param_value(value))
             ret += "  mtu: %s\n" % iface.get_effective_mtu()
             return ret
@@ -133,14 +135,20 @@ class AssertNetworkConfigMixin:
 
         ret = ""
         for iface in interfaces:
-            self.assertIn(iface.type, ["physical", "bond", "vlan"])
+            self.assertIn(iface.type, ["physical", "bond", "vlan", "bridge"])
             fmt_dict = {"name": iface.name, "mac": str(iface.mac_address)}
             if iface.type == "physical":
                 ret += self.IFACE_CONFIG % fmt_dict
             elif iface.type == "bridge":
                 ret += self.BRIDGE_CONFIG % fmt_dict
                 for parent in iface.parents.order_by('id'):
-                    ret += "  - %s" % parent.name
+                    ret += "  - %s\n" % parent.name
+                ret += "  params:\n"
+                if iface.params:
+                    for key, value in iface.params.items():
+                        if key.startswith("bridge_"):
+                            ret += "    %s: %s\n" % (
+                                key, get_param_value(value))
             elif iface.type == "bond":
                 ret += self.BOND_CONFIG % fmt_dict
                 for parent in iface.parents.order_by('id'):
@@ -321,3 +329,28 @@ class TestDHCPNetworkLayout(MAASServerTestCase,
             config_yaml['network']['config'][0]['subnets'][0]['type'],
             Equals('dhcp' + str(IPNetwork(subnet.cidr).version))
         )
+
+
+class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        boot_interface = node.get_boot_interface()
+        vlan = boot_interface.vlan
+        mac_address = factory.make_mac_address()
+        bridge_iface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan,
+            parents=[boot_interface], mac_address=mac_address)
+        bridge_iface.params = {
+            "bridge_fd": 0,
+            "bridge_stp": True,
+        }
+        bridge_iface.save()
+        factory.make_StaticIPAddress(
+            interface=bridge_iface, alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=bridge_iface.vlan.subnet_set.first())
+        net_config = self.collect_interface_config(node, filter="physical")
+        net_config += self.collect_interface_config(node, filter="bridge")
+        net_config += self.collectDNSConfig(node)
+        config = compose_curtin_network_config(node)
+        self.assertNetworkConfig(net_config, config)

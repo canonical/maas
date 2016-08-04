@@ -23,6 +23,7 @@ from maasserver.exceptions import (
 )
 from maasserver.forms_interface import (
     BondInterfaceForm,
+    BridgeInterfaceForm,
     ControllerInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
@@ -252,6 +253,47 @@ class InterfacesHandler(OperationsHandler):
                 form.errors['parent'] = form.errors.pop('parents')
             raise MAASAPIValidationError(form.errors)
 
+    @operation(idempotent=False)
+    def create_bridge(self, request, system_id):
+        """Create a bridge interface on a machine.
+
+        :param name: Name of the interface.
+        :param mac_address: MAC address of the interface.
+        :param tags: Tags for the interface.
+        :param vlan: VLAN the interface is connected to.
+        :param parent: Parent interface for this bridge interface.
+
+        Following are parameters specific to bridges:
+
+        :param bridge_stp: Turn spanning tree protocol on or off.
+            (Default: False).
+        :param bridge_fd: Set bridge forward delay to time seconds.
+            (Default: 15).
+
+        Following are extra parameters that can be set on the interface:
+
+        :param mtu: Maximum transmission unit.
+        :param accept_ra: Accept router advertisements. (IPv6 only)
+        :param autoconf: Perform stateless autoconfiguration. (IPv6 only)
+
+        Returns 404 if the node is not found.
+        """
+        machine = Machine.objects.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.ADMIN)
+        # Cast parent to parents to make it easier on the user and to make it
+        # work with the form.
+        request.data = request.data.copy()
+        if 'parent' in request.data:
+            request.data['parents'] = request.data['parent']
+        form = BridgeInterfaceForm(node=machine, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            # Replace parents with parent so it matches the API parameter.
+            if 'parents' in form.errors:
+                form.errors['parent'] = form.errors.pop('parents')
+            raise MAASAPIValidationError(form.errors)
+
 
 class InterfaceHandler(OperationsHandler):
     """Manage a node's or device's interface."""
@@ -327,14 +369,21 @@ class InterfaceHandler(OperationsHandler):
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
         :param tags: Tags for the interface.
-        :param vlan: Tagged VLAN the interface is connected to.  If not set
+        :param vlan: Untagged VLAN the interface is connected to.  If not set
         then the interface is considered disconnected.
         :param parents: Parent interfaces that make this bond.
 
         Fields for VLAN interface:
         :param tags: Tags for the interface.
-        :param vlan: VLAN the interface is connected to.
+        :param vlan: Tagged VLAN the interface is connected to.
         :param parent: Parent interface for this VLAN interface.
+
+        Fields for bridge interface:
+        :param name: Name of the interface.
+        :param mac_address: MAC address of the interface.
+        :param tags: Tags for the interface.
+        :param vlan: VLAN the interface is connected to.
+        :param parent: Parent interface for this bridge interface.
 
         Following are extra parameters that can be set on all interface types:
 
@@ -386,6 +435,13 @@ class InterfaceHandler(OperationsHandler):
         receive load balancing (rlb) for IPV4 traffic, and does not require any
         special switch support.  The receive load balancing is achieved by
         ARP negotiation.
+
+        Following are parameters specific to bridges:
+
+        :param bridge_stp: Turn spanning tree protocol on or off.
+            (Default: False).
+        :param bridge_fd: Set bridge forward delay to time seconds.
+            (Default: 15).
 
         Returns 404 if the node or interface is not found.
         """

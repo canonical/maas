@@ -1098,15 +1098,13 @@ class BondInterfaceFormTest(MAASServerTestCase):
 class BridgeInterfaceFormTest(MAASServerTestCase):
 
     def test__creates_bridge_interface(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
-            node=parent1.node,
+            node=parent.node,
             data={
                 'name': interface_name,
-                'parents': [parent1.id, parent2.id],
+                'parents': [parent.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
@@ -1114,58 +1112,48 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 name=interface_name, type=INTERFACE_TYPE.BRIDGE))
-        self.assertIn(
-            interface.mac_address, [parent1.mac_address, parent2.mac_address])
-        self.assertItemsEqual([parent1, parent2], interface.parents.all())
+        self.assertEqual(interface.mac_address, parent.mac_address)
+        self.assertItemsEqual([parent], interface.parents.all())
 
     def test__create_removes_parent_links_and_sets_link_up_on_bridge(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent1.ensure_link_up()
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
-        parent2.ensure_link_up()
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent.ensure_link_up()
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
-            node=parent1.node,
+            node=parent.node,
             data={
                 'name': interface_name,
-                'parents': [parent1.id, parent2.id],
+                'parents': [parent.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         self.assertEqual(
             0,
-            parent1.ip_addresses.exclude(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED).count())
-        self.assertEqual(
-            0,
-            parent2.ip_addresses.exclude(
+            parent.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED).count())
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY))
 
     def test__creates_bridge_interface_with_parent_mac_address(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
-            node=parent1.node,
+            node=parent.node,
             data={
                 'name': interface_name,
-                'parents': [parent1.id, parent2.id],
-                'mac_address': parent1.mac_address,
+                'parents': [parent.id],
+                'mac_address': parent.mac_address,
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
-                name=interface_name, mac_address=parent1.mac_address,
+                name=interface_name, mac_address=parent.mac_address,
                 type=INTERFACE_TYPE.BRIDGE))
-        self.assertItemsEqual([parent1, parent2], interface.parents.all())
+        self.assertItemsEqual([parent], interface.parents.all())
 
-    def test__rejects_no_parents(self):
+    def test__rejects_no_parent(self):
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
             node=factory.make_Node(),
@@ -1175,47 +1163,95 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
         self.assertIn(
-            "A bridge interface must have one or more parents.",
+            "A bridge interface must have exactly one parent.",
             form.errors['parents'][0])
 
-    def test__rejects_when_parents_already_have_children(self):
+    def test__rejects_when_parent_already_have_children(self):
         node = factory.make_Node()
-        parent1 = factory.make_Interface(
+        parent = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
-        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent1])
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1", vlan=parent1.vlan)
-        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent2])
+        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
             node=node,
             data={
                 'name': interface_name,
-                'parents': [parent1.id, parent2.id]
+                'parents': [parent.id]
             })
         self.assertFalse(form.is_valid(), form.errors)
         self.assertIn(
-            "Interfaces already in-use: eth0, eth1.",
+            "Interfaces already in-use: eth0.",
+            form.errors['parents'][0])
+
+    def test__rejects_when_parent_is_bridge(self):
+        node = factory.make_Node()
+        bridge = factory.make_Interface(INTERFACE_TYPE.BRIDGE, node=node)
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'parents': [bridge.id]
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn(
+            "A bridge interface can't have another bridge interface as "
+            "parent.",
+            form.errors['parents'][0])
+
+    def test__rejects_when_parent_is_already_in_a_bridge(self):
+        node = factory.make_Node()
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[parent])
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'parents': [parent.id]
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn(
+            "A bridge interface can't have a parent that is already "
+            "in a bond or a bridge.",
+            form.errors['parents'][0])
+
+    def test__rejects_when_parent_is_already_in_a_bond(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[parent1, parent2])
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'parents': [parent1.id]
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertIn(
+            "A bridge interface can't have a parent that is already "
+            "in a bond or a bridge.",
             form.errors['parents'][0])
 
     def test__edits_interface(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
-            parents=[parent1, parent2])
+            parents=[parent])
         new_fabric = factory.make_Fabric()
         new_vlan = new_fabric.get_default_vlan()
         new_name = factory.make_name()
         new_parent = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+            INTERFACE_TYPE.PHYSICAL, node=parent.node, vlan=parent.vlan)
         form = BridgeInterfaceForm(
             instance=interface,
             data={
                 'vlan': new_vlan.id,
                 'name': new_name,
-                'parents': [parent1.id, parent2.id, new_parent.id],
+                'parents': [new_parent.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
@@ -1225,15 +1261,13 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 mac_address=interface.mac_address, name=new_name,
                 vlan=new_vlan, type=INTERFACE_TYPE.BRIDGE))
         self.assertItemsEqual(
-            [parent1, parent2, new_parent], interface.parents.all())
+            [new_parent], interface.parents.all())
 
     def test__edits_interface_allows_disconnected(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
-            parents=[parent1, parent2])
+            parents=[parent])
         form = BridgeInterfaceForm(
             instance=interface,
             data={
@@ -1247,55 +1281,82 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 mac_address=interface.mac_address,
                 vlan=None, type=INTERFACE_TYPE.BRIDGE))
 
-    def test__edits_interface_removes_parents(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
-        parent3 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+    def test__edit_doesnt_overwrite_params(self):
+        """Check that updating parameters that are not bridge specific do not
+        overwrite the bridge specific parameters."""
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.BRIDGE,
-            parents=[parent1, parent2, parent3])
+            INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 1000)
+        interface.params = {
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
+        }
+        interface.save()
         new_name = factory.make_name()
         form = BridgeInterfaceForm(
             instance=interface,
             data={
                 'name': new_name,
-                'parents': [parent1.id, parent2.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                mac_address=interface.mac_address, name=new_name,
-                type=INTERFACE_TYPE.BRIDGE))
-        self.assertItemsEqual(
-            [parent1, parent2], interface.parents.all())
+        self.assertEqual({
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
+            }, interface.params)
 
-    def test__edits_interface_updates_mac_address_when_parent_removed(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
-        parent3 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+    def test__edit_does_overwrite_params(self):
+        """Check that updating specific bridge parameters that do actually
+        update the parameters."""
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.BRIDGE, mac_address=parent3.mac_address,
-            parents=[parent1, parent2, parent3])
-        new_name = factory.make_name()
+            INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 1000)
+        interface.params = {
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
+        }
+        interface.save()
+        new_bridge_stp = factory.pick_bool()
+        new_bridge_fd = random.randint(0, 1000)
         form = BridgeInterfaceForm(
             instance=interface,
             data={
-                'name': new_name,
-                'parents': [parent1.id, parent2.id],
+                'bridge_stp': new_bridge_stp,
+                'bridge_fd': new_bridge_fd,
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                name=new_name, type=INTERFACE_TYPE.BRIDGE))
-        self.assertItemsEqual(
-            [parent1, parent2], interface.parents.all())
-        self.assertIn(
-            interface.mac_address, [parent1.mac_address, parent2.mac_address])
+        self.assertEqual({
+            "bridge_stp": new_bridge_stp,
+            "bridge_fd": new_bridge_fd,
+            }, interface.params)
+
+    def test__edit_allows_zero_params(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge_stp = True
+        bridge_fd = random.randint(1, 1000)
+        interface.params = {
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
+        }
+        interface.save()
+        new_bridge_stp = False
+        new_bridge_fd = 0
+        form = BridgeInterfaceForm(
+            instance=interface,
+            data={
+                'bridge_stp': new_bridge_stp,
+                'bridge_fd': new_bridge_fd,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertEqual({
+            'bridge_stp': new_bridge_stp,
+            'bridge_fd': new_bridge_fd,
+            }, interface.params)
