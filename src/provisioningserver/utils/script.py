@@ -24,6 +24,14 @@ from provisioningserver.utils.fs import (
 )
 
 
+class ActionScriptError(ValueError):
+    """Exception which should be printed to `stderr` if raised."""
+
+    def __init__(self, message, returncode=1):
+        self.returncode = returncode
+        super().__init__(message)
+
+
 class ActionScript:
     """A command-line script that follows a command+verb pattern."""
 
@@ -87,6 +95,9 @@ class ActionScript:
         try:
             self.setup()
             self.execute(argv)
+        except ActionScriptError as error:
+            print(str(error), file=sys.stderr)
+            raise SystemExit(error.returncode)
         except CalledProcessError as error:
             # Print error.cmd and error.output too?
             raise SystemExit(error.returncode)

@@ -5,20 +5,26 @@
 
 __all__ = []
 
+from argparse import ArgumentParser
 from datetime import datetime
 import io
 import json
+from tempfile import NamedTemporaryFile
 from textwrap import dedent
 import time
+from unittest.mock import Mock
 
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     EUI,
     IPAddress,
 )
+from provisioningserver.utils import arp as arp_module
 from provisioningserver.utils.arp import (
+    add_arguments,
     ARP,
     ARP_OPERATION,
+    run,
     SEEN_AGAIN_THRESHOLD,
     update_and_print_bindings,
     update_bindings_and_get_event,
@@ -28,10 +34,12 @@ from provisioningserver.utils.network import (
     hex_str_to_bytes,
     ipv4_to_bytes,
 )
+from provisioningserver.utils.script import ActionScriptError
 from testtools.matchers import (
     Equals,
     HasLength,
 )
+from testtools.testcase import ExpectedException
 
 
 def make_arp_packet(
@@ -361,3 +369,111 @@ class TestUpdateAndPrintBindings(MAASTestCase):
             "event": "REFRESHED",
             "vid": None
         }))
+
+# Test data expected from an input PCAP file.
+test_input = (
+    b'\xd4\xc3\xb2\xa1\x02\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    b'@\x00\x00\x00\x01\x00\x00\x00*\xdc\xa0W\x9e+\x03\x00<\x00\x00\x00'
+    b'<\x00\x00\x00\x80\xfa[\x0cFN\x00$\xa5\xaf$\x85\x08\x06\x00\x01'
+    b'\x08\x00\x06\x04\x00\x01\x00$\xa5\xaf$\x85\xac\x10*\x01\x00\x00\x00\x00'
+    b'\x00\x00\xac\x10*m\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    b'\x00\x00\x00\x00\x00\x00\x00\x00*\xdc\xa0W\xbb+\x03\x00*\x00\x00\x00'
+    b'*\x00\x00\x00\x00$\xa5\xaf$\x85\x80\xfa[\x0cFN\x08\x06\x00\x01'
+    b'\x08\x00\x06\x04\x00\x02\x80\xfa[\x0cFN\xac\x10*m\x00$\xa5\xaf'
+    b'$\x85\xac\x10*\x01'
+)
+
+
+class TestObserveARPCommand(MAASTestCase):
+    """Tests for `maas-rack observe-arp`."""
+
+    def test__requires_input_file(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args([])
+        with ExpectedException(
+                ActionScriptError, '.*Required argument: interface.*'):
+            run(args)
+
+    def test__calls_subprocess_for_interface(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['eth0'])
+        popen = self.patch(arp_module.subprocess, 'Popen')
+        popen.return_value.poll = Mock()
+        popen.return_value.poll.return_value = None
+        popen.return_value.stdout = io.BytesIO(test_input)
+        output = io.StringIO()
+        run(args, output=output)
+        self.assertThat(popen.call_count, Equals(1))
+
+    def test__checks_for_pipe(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['--input-file', '-'])
+        output = io.StringIO()
+        stdin = self.patch(arp_module.sys, 'stdin')
+        stdin.return_value.fileno = Mock()
+        fstat = self.patch(arp_module.os, 'fstat')
+        fstat.return_value.st_mode = None
+        stat = self.patch(arp_module.stat, 'S_ISFIFO')
+        stat.return_value = False
+        with ExpectedException(
+                ActionScriptError, 'Expected stdin to be a pipe'):
+            run(args, output=output)
+
+    def test__allows_pipe_input(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['--input-file', '-'])
+        output = io.StringIO()
+        stdin = self.patch(arp_module.sys, 'stdin')
+        stdin.return_value.fileno = Mock()
+        fstat = self.patch(arp_module.os, 'fstat')
+        fstat.return_value.st_mode = None
+        stat = self.patch(arp_module.stat, 'S_ISFIFO')
+        stat.return_value = True
+        stdin_buffer = io.BytesIO(test_input)
+        run(args, output=output, stdin_buffer=stdin_buffer)
+
+    def test__allows_file_input(self):
+        with NamedTemporaryFile('wb') as f:
+            parser = ArgumentParser()
+            add_arguments(parser)
+            f.write(test_input)
+            f.flush()
+            args = parser.parse_args(['--input-file', f.name])
+            output = io.StringIO()
+            run(args, output=output)
+
+    def test__raises_systemexit_observe_arp_return_code(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['eth0'])
+        popen = self.patch(arp_module.subprocess, 'Popen')
+        popen.return_value.poll = Mock()
+        popen.return_value.poll.return_value = None
+        popen.return_value.stdout = io.BytesIO(test_input)
+        output = io.StringIO()
+        observe_arp_packets = self.patch(arp_module, 'observe_arp_packets')
+        observe_arp_packets.return_value = 37
+        with ExpectedException(
+                SystemExit, '.*37.*'):
+            run(args, output=output)
+
+    def test__raises_systemexit_poll_result(self):
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['eth0'])
+        popen = self.patch(arp_module.subprocess, 'Popen')
+        popen.return_value.poll = Mock()
+        popen.return_value.poll.return_value = None
+        popen.return_value.stdout = io.BytesIO(test_input)
+        output = io.StringIO()
+        observe_arp_packets = self.patch(arp_module, 'observe_arp_packets')
+        observe_arp_packets.return_value = None
+        popen.return_value.poll = Mock()
+        popen.return_value.poll.return_value = 42
+        with ExpectedException(
+                SystemExit, '.*42.*'):
+            run(args, output=output)

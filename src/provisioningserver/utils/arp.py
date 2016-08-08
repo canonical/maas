@@ -4,7 +4,9 @@
 """Utilities for working with ARP packets."""
 
 __all__ = [
-    "ARP"
+    "ARP",
+    "add_arguments",
+    "run"
 ]
 
 from collections import namedtuple
@@ -13,7 +15,9 @@ import json
 import os
 import stat
 import struct
+import subprocess
 import sys
+from textwrap import dedent
 
 from netaddr import (
     EUI,
@@ -31,6 +35,7 @@ from provisioningserver.utils.pcap import (
     PCAP,
     PCAPError,
 )
+from provisioningserver.utils.script import ActionScriptError
 
 # The SEEN_AGAIN_THRESHOLD is a time (in seconds) that determines how often
 # to report (IP, MAC) bindings that have been seen again (or "REFRESHED").
@@ -282,7 +287,8 @@ def update_and_print_bindings(bindings, arp, out=sys.stdout):
 
 
 def observe_arp_packets(
-        verbose=False, bindings=False, input=sys.stdin.buffer):
+        verbose=False, bindings=False, input=sys.stdin.buffer,
+        output=sys.stdout):
     """Read stdin and look for tcpdump binary ARP output.
     :param verbose: Output text-based ARP packet details.
     :type verbose: bool
@@ -290,6 +296,8 @@ def observe_arp_packets(
     :type bindings: bool
     :param input: Stream to read PCAP data from.
     :type input: a file or stream supporting `read(int)`
+    :param output: Stream to write JSON data to.
+    :type input: a file or stream supporting `write(str)` and `flush()`.
     """
     if bindings:
         bindings = dict()
@@ -317,7 +325,7 @@ def observe_arp_packets(
                 dst_mac=ethernet.dst_mac, vid=ethernet.vid,
                 time=ethernet.time)
             if bindings is not None:
-                update_and_print_bindings(bindings, arp)
+                update_and_print_bindings(bindings, arp, output)
             if verbose:
                 arp.write()
     except EOFError:
@@ -328,44 +336,60 @@ def observe_arp_packets(
     except PCAPError:
         # Capture aborted due to an I/O error.
         return 2
+    return None
 
 
-def main(argv, err=sys.stderr):
-    """Main entry point. Ensure stdin is a pipe, then check command-line
-    arguments and run the ARP observation loop.
+def add_arguments(parser):
+    """Add this command's options to the `ArgumentParser`.
 
-    Assuming you are in the 'src' directory, this file can be tested
-    interactively by invoking as follows:
-
-    sudo tcpdump -i eth0 -U --immediate-mode -s 64 -n -w - arp \
-        | python3 -m provisioningserver.utils.arp -v -b
-
-    (Use the name of an Ethernet interface in place of 'eth0' in the above
-    command.)
-
-    :param argv: The contents of sys.argv.
-    :param err: Output stream for errors.
+    Specified by the `ActionScript` interface.
     """
-    mode = os.fstat(sys.stdin.fileno()).st_mode
-    if not stat.S_ISFIFO(mode):
-        err.write("Usage:\n")
-        err.write("    sudo tcpdump -i eth0 -U --immediate-mode -s 64 -n -w - "
-                  "arp 2> /dev/null | %s [args]\n" % (argv[0]))
-        err.write("\n")
-        err.write("Arguments:\n")
-        err.write("    -v --verbose  Print each ARP packet.\n")
-        err.write("    -b --bindings Track each (MAC,IP) binding and print\n"
-                  "                  new or changed bindings to stdout.\n")
-        return 1
-    verbose = False
-    bindings = False
-    if '-v' in argv or '--verbose' in argv:
-        verbose = True
-    if '-b' in argv or '--bindings' in argv:
-        bindings = True
-    return observe_arp_packets(
-        verbose=verbose, bindings=bindings)
+    parser.description = dedent("""\
+        Observes the traffic on the specified interface, looking for ARP
+        traffic. Outputs JSON objects (one per line) for each NEW, REFRESHED,
+        or MOVED binding.
+
+        Reports on REFRESHED bindings at most once every ten minutes.
+        """)
+    parser.add_argument(
+        '-v', '--verbose', action='store_true', required=False,
+        help='Print verbose packet information.')
+    parser.add_argument(
+        'interface', type=str, nargs='?',
+        help="Ethernet interface from which to capture traffic. Optional if "
+             "an input file is specified.")
+    parser.add_argument(
+        '-i', '--input-file', type=str, required=False,
+        help="File to read PCAP output from. Use - for stdin. Default is to "
+             "call `sudo /usr/lib/maas/maas-network-monitor` to get input.")
 
 
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+def run(args, output=sys.stdout, stdin=sys.stdin,
+        stdin_buffer=sys.stdin.buffer):
+    """Observe an Ethernet interface and print ARP bindings."""
+    network_monitor = None
+    if args.input_file is None:
+        if args.interface is None:
+            raise ActionScriptError("Required argument: interface")
+        network_monitor = subprocess.Popen(
+            ["sudo", "--non-interactive", "/usr/lib/maas/maas-network-monitor",
+             args.interface], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL
+        )
+        infile = network_monitor.stdout
+    else:
+        if args.input_file == '-':
+            mode = os.fstat(stdin.fileno()).st_mode
+            if not stat.S_ISFIFO(mode):
+                raise ActionScriptError("Expected stdin to be a pipe.")
+            infile = stdin_buffer
+        else:
+            infile = open(args.input_file, "rb")
+    return_code = observe_arp_packets(
+        bindings=True, verbose=args.verbose, input=infile, output=output)
+    if return_code is not None:
+        raise SystemExit(return_code)
+    if network_monitor is not None:
+        return_code = network_monitor.poll()
+        if return_code is not None:
+            raise SystemExit(return_code)

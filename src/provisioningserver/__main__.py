@@ -11,6 +11,7 @@ import provisioningserver.cluster_config_command
 import provisioningserver.register_command
 import provisioningserver.support_dump
 import provisioningserver.upgrade_cluster
+import provisioningserver.utils.arp
 from provisioningserver.utils.script import (
     AtomicDeleteScript,
     AtomicWriteScript,
@@ -25,6 +26,7 @@ script_commands = {
     'config': provisioningserver.cluster_config_command,
     'install-shared-secret': security.InstallSharedSecretScript,
     'install-uefi-config': provisioningserver.boot.install_grub,
+    'observe-arp': provisioningserver.utils.arp,
     'register': provisioningserver.register_command,
     'support-dump': provisioningserver.support_dump,
     'upgrade-cluster': provisioningserver.upgrade_cluster,

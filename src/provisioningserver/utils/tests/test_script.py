@@ -30,13 +30,19 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 import provisioningserver.utils
+from provisioningserver.utils import script as script_module
 from provisioningserver.utils.script import (
     ActionScript,
+    ActionScriptError,
     AtomicDeleteScript,
     AtomicWriteScript,
 )
 from provisioningserver.utils.shell import select_c_utf8_locale
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Equals,
+    MatchesStructure,
+)
+from testtools.testcase import ExpectedException
 
 
 class TestActionScript(MAASTestCase):
@@ -146,6 +152,24 @@ class TestActionScript(MAASTestCase):
         script.register("smash", handler)
         error = self.assertRaises(SystemExit, script, ["smash"])
         self.assertEqual(1, error.code)
+
+    def test_call_with_actionscripterror(self):
+        # ActionScriptError is converted into SystemExit, with  the
+        # specified exit code. (And the message is printed to stderr.)
+
+        def raise_exception():
+            raise ActionScriptError("Towel.", returncode=42)
+
+        handler = types.ModuleType("handler")
+        handler.add_arguments = lambda parser: None
+        handler.run = lambda args: raise_exception()
+        script = self.factory("Description")
+        script.register("smash", handler)
+        with ExpectedException(SystemExit, '.*42.*'):
+            # This needs to be a no-op.
+            self.patch(script_module.ActionScript, 'setup')
+            script(['smash'])
+        self.assertThat(self.stdio.getError(), Equals("Towel.\n"))
 
 
 class TestAtomicWriteScript(MAASTestCase):
