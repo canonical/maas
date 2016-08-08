@@ -31,6 +31,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceState,
     ServiceUnknownError,
 )
+from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -43,7 +44,6 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.task import deferLater
-from twisted.internet.threads import deferToThread
 
 
 def make_fake_service(expected_state=None, status_info=None):
@@ -410,29 +410,18 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (b"", b"")
-        yield deferToThread(
-            service_monitor._execServiceAction, service_name, action)
-        self.assertEqual(
-            ["sudo", "systemctl", action, service_name],
-            mock_popen.call_args[0][0])
+        mock_getProcessOutputAndValue = self.patch(
+            service_monitor_module, "getProcessOutputAndValue")
+        mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
+        yield service_monitor._execServiceAction(service_name, action)
+        cmd = "sudo", "--non-interactive", "systemctl", action, service_name
+        self.assertThat(
+            mock_getProcessOutputAndValue, MockCalledOnceWith(
+                # The environment contains LC_ALL and LANG too.
+                cmd[0], cmd[1:], env=select_c_utf8_bytes_locale()))
 
     @inlineCallbacks
-    def test___execServiceAction_calls_service_with_LC_ALL_in_env(self):
-        service_monitor = self.make_service_monitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (b"", b"")
-        yield deferToThread(
-            service_monitor._execServiceAction, service_name, action)
-        self.assertEqual(
-            "C.UTF-8",
-            mock_popen.call_args[1]['env']['LC_ALL'])
-
-    @inlineCallbacks
-    def test___execServiceAction_decodes_stdout(self):
+    def test___execServiceAction_decodes_stdout_and_stderr(self):
         # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
         example_text = (
             '\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf '
@@ -441,34 +430,32 @@ class TestServiceMonitor(MAASTestCase):
             '\u16b1\u16a6\u16b9\u16d6\u16aa\u16b1\u16de\u16a2\u16d7 '
             '\u16b9\u16c1\u16a6 \u16a6\u16aa \u16b9\u16d6\u16e5\u16ab'
         )
+        example_stdout = example_text[:len(example_text) // 2]
+        example_stderr = example_text[len(example_text) // 2:]
         service_monitor = self.make_service_monitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (
-            example_text.encode("utf-8"), b"")
-        _, output = yield deferToThread(
-            service_monitor._execServiceAction, service_name, action)
-        self.assertThat(output, Equals(example_text))
+        mock_getProcessOutputAndValue = self.patch(
+            service_monitor_module, "getProcessOutputAndValue")
+        mock_getProcessOutputAndValue.return_value = succeed((
+            example_stdout.encode("utf-8"), example_stderr.encode("utf-8"), 0))
+        _, stdout, stderr = yield service_monitor._execServiceAction(
+            factory.make_name("service"), factory.make_name("action"))
+        self.assertThat(stdout, Equals(example_stdout))
+        self.assertThat(stderr, Equals(example_stderr))
 
     @inlineCallbacks
     def test___performServiceAction_holds_lock_calls__execServiceAction(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
-        service_lock = Mock()
-        service_lock.acquire.return_value = succeed(service_lock)
-        self.patch(
-            service_monitor,
-            "_getServiceLock").return_value = service_lock
+        service_locks = service_monitor._serviceLocks
+        service_lock = service_locks[service.name]
+        service_lock = service_locks[service.name] = Mock(wraps=service_lock)
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (0, "")
+        mock_execServiceAction.return_value = (0, "", "")
         action = factory.make_name("action")
         yield service_monitor._performServiceAction(service, action)
-        self.assertThat(
-            service_lock.acquire, MockCalledOnceWith())
-        self.assertThat(
-            service_lock.release, MockCalledOnceWith())
+        self.assertThat(service_lock.run, MockCalledOnceWith(
+            service_monitor._execServiceAction, service.service_name, action))
         self.assertThat(
             mock_execServiceAction,
             MockCalledOnceWith(service.service_name, action))
@@ -479,7 +466,7 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor()
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (1, "")
+        mock_execServiceAction.return_value = (1, "", "")
         action = factory.make_name("action")
         with ExpectedException(ServiceActionError):
             yield service_monitor._performServiceAction(service, action)
@@ -491,7 +478,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
         error_output = factory.make_name("error")
-        mock_execServiceAction.return_value = (1, error_output)
+        mock_execServiceAction.return_value = (1, "", error_output)
         action = factory.make_name("action")
         with FakeLogger(
                 "maas.service_monitor", level=logging.ERROR) as maaslog:
@@ -530,7 +517,7 @@ class TestServiceMonitor(MAASTestCase):
 
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (3, systemd_status_output)
+        mock_execServiceAction.return_value = (3, systemd_status_output, "")
         with ExpectedException(ServiceUnknownError):
             yield service_monitor._loadServiceState(service)
 
@@ -547,7 +534,7 @@ class TestServiceMonitor(MAASTestCase):
 
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (3, systemd_status_output)
+        mock_execServiceAction.return_value = (3, systemd_status_output, "")
         active_state, process_state = yield (
             service_monitor._loadServiceState(service))
         self.assertEqual(SERVICE_STATE.OFF, active_state)
@@ -566,7 +553,7 @@ class TestServiceMonitor(MAASTestCase):
 
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (3, systemd_status_output)
+        mock_execServiceAction.return_value = (3, systemd_status_output, "")
         active_state, process_state = yield (
             service_monitor._loadServiceState(service))
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
@@ -584,7 +571,7 @@ class TestServiceMonitor(MAASTestCase):
 
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (0, systemd_status_output)
+        mock_execServiceAction.return_value = (0, systemd_status_output, "")
         active_state, process_state = yield (
             service_monitor._loadServiceState(service))
         self.assertEqual(SERVICE_STATE.ON, active_state)
@@ -604,7 +591,7 @@ class TestServiceMonitor(MAASTestCase):
 
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (0, systemd_status_output)
+        mock_execServiceAction.return_value = (0, systemd_status_output, "")
         active_state, process_state = yield (
             service_monitor._loadServiceState(service))
         self.assertEqual(SERVICE_STATE.ON, active_state)
@@ -624,7 +611,7 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor()
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
-        mock_execServiceAction.return_value = (0, systemd_status_output)
+        mock_execServiceAction.return_value = (0, systemd_status_output, "")
 
         with ExpectedException(ServiceParsingError):
             yield service_monitor._loadServiceState(service)
@@ -636,7 +623,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
         mock_execServiceAction.return_value = (
-            3, factory.make_name("invalid"))
+            3, factory.make_name("invalid"), "")
 
         with ExpectedException(ServiceParsingError):
             yield service_monitor._loadServiceState(service)

@@ -125,8 +125,8 @@ def make_RackControllerService(postgresListener, advertisingService):
 
 
 def make_ServiceMonitorService(advertisingService):
-    from maasserver.service_monitor import ServiceMonitorService
-    return ServiceMonitorService(advertisingService)
+    from maasserver.regiondservices import service_monitor_service
+    return service_monitor_service.ServiceMonitorService(advertisingService)
 
 
 def make_NetworksMonitoringService():

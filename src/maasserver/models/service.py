@@ -21,14 +21,17 @@ from maasserver.enum import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
-# Services that run on the region controller.
+# Services that run on the region controller. NOTE that this needs to include
+# services overseen by the region's ServiceMonitor.
 REGION_SERVICES = [
     "regiond",
     "bind9",
+    "ntp",
     "proxy",
 ]
 
-# Services that run on the rack controller.
+# Services that run on the rack controller. NOTE that this needs to include
+# services overseen by the rack's ServiceMonitor.
 RACK_SERVICES = [
     "rackd",
     "http",
@@ -38,7 +41,8 @@ RACK_SERVICES = [
     "dhcpd6",
 ]
 
-# Statuses that should be set on each service when node is marked dead.
+# Statuses that should be set on each service when node is marked dead. NOTE
+# that this needs to include services overseen by the rack's ServiceMonitor.
 DEAD_STATUSES = {
     "regiond": SERVICE_STATUS.DEAD,
     "bind9": SERVICE_STATUS.UNKNOWN,
@@ -49,6 +53,7 @@ DEAD_STATUSES = {
     "tgt": SERVICE_STATUS.UNKNOWN,
     "dhcpd": SERVICE_STATUS.DEAD,
     "dhcpd6": SERVICE_STATUS.DEAD,
+    "ntp": SERVICE_STATUS.DEAD,
 }
 
 

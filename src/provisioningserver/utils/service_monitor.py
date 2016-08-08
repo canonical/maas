@@ -3,9 +3,15 @@
 
 """Services monitor ensures services are in their expected state."""
 
-
 __all__ = [
-    "service_monitor",
+    "AlwaysOnService",
+    "Service",
+    "SERVICE_STATE",
+    "ServiceActionError",
+    "ServiceMonitor",
+    "ServiceNotOnError",
+    "ServiceParsingError",
+    "ServiceUnknownError",
 ]
 
 from abc import (
@@ -17,18 +23,10 @@ from collections import (
     defaultdict,
     namedtuple,
 )
-from subprocess import (
-    PIPE,
-    Popen,
-    STDOUT,
-)
 
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.utils.shell import select_c_utf8_locale
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    synchronous,
-)
+from provisioningserver.utils.shell import select_c_utf8_bytes_locale
+from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import (
     DeferredList,
     DeferredLock,
@@ -36,7 +34,7 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
 )
-from twisted.internet.threads import deferToThread
+from twisted.internet.utils import getProcessOutputAndValue
 
 
 maaslog = get_maas_logger("service_monitor")
@@ -60,6 +58,8 @@ ServiceStateBase = namedtuple(
 
 class ServiceState(ServiceStateBase):
     """Holds the current state of a service."""
+
+    __slots__ = ()
 
     def __new__(cls, active_state=None, process_state=None):
         if active_state is None:
@@ -306,43 +306,42 @@ class ServiceMonitor:
             raise ServiceActionError(error_msg)
         yield self._performServiceAction(service, "reload")
 
-    @synchronous
+    @asynchronous
     def _execServiceAction(self, service_name, action):
         """Perform the action with the service command.
 
-        :return: tuple (exit code, output)
+        :return: tuple (exit code, std-output, std-error)
         """
-        process = Popen(
-            ["sudo", "systemctl", action, service_name],
-            stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True,
-            env=select_c_utf8_locale())
-        output, _ = process.communicate()
-        return process.wait(), output.decode("utf-8").strip()
+        env = select_c_utf8_bytes_locale()
+        cmd = "sudo", "--non-interactive", "systemctl", action, service_name
+
+        def decode(result):
+            out, err, code = result
+            return code, out.decode("utf-8"), err.decode("utf-8")
+
+        d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
+        return d.addCallback(decode)
 
     @inlineCallbacks
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
         lock = self._getServiceLock(service.name)
-        yield lock.acquire()
-        try:
-            exit_code, output = yield deferToThread(
-                self._execServiceAction, service.service_name, action)
-        finally:
-            lock.release()
+        exit_code, output, error = yield lock.run(
+            self._execServiceAction, service.service_name, action)
         if exit_code != 0:
             error_msg = (
                 "Service '%s' failed to %s: %s" % (
-                    service.service_name, action, output))
+                    service.service_name, action, error))
             maaslog.error(error_msg)
             raise ServiceActionError(error_msg)
 
     @inlineCallbacks
     def _loadServiceState(self, service):
         """Return service status from systemd."""
-        exit_code, output = yield deferToThread(
-            self._execServiceAction, service.service_name, "status")
-        # Ignore the exit_code because systemd will return none 0 for anything
+        # Ignore the exit_code because systemd will return 0 for anything
         # other than a active service.
+        exit_code, output, error = (
+            yield self._execServiceAction(service.service_name, "status"))
 
         # Parse the output of the command to determine the active status and
         # the current state of the service.
@@ -454,7 +453,3 @@ class ServiceMonitor:
                     "Service '%s' has been %s and is '%s'." % (
                         service.service_name, log_action, state.process_state))
         returnValue(state)
-
-
-# Global service monitor.
-service_monitor = ServiceMonitor()

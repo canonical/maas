@@ -61,7 +61,8 @@ class TGTService(AlwaysOnService):
     service_name = "tgt"
 
 
-# Global service monitor for rackd.
+# Global service monitor for rackd. NOTE that changes to this need to be
+# mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),

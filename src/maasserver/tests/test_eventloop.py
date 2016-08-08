@@ -16,11 +16,11 @@ from maasserver import (
     nonces_cleanup,
     rack_controller,
     region_controller,
-    service_monitor,
     status_monitor,
     webapp,
 )
 from maasserver.eventloop import DEFAULT_PORT
+from maasserver.regiondservices import service_monitor_service
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.listener import FakePostgresListenerService
@@ -295,7 +295,7 @@ class TestFactories(MAASTestCase):
         service = eventloop.make_ServiceMonitorService(
             sentinel.rpc_advertise)
         self.assertThat(service, IsInstance(
-            service_monitor.ServiceMonitorService))
+            service_monitor_service.ServiceMonitorService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_ServiceMonitorService,
