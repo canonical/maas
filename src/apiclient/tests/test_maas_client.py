@@ -352,6 +352,19 @@ class TestMAASClient(MAASTestCase):
         self.assertTrue(request["request_url"].endswith('?op=%s' % (method,)))
         self.assertEqual({'param': param, 'list_param': list_param}, content)
 
+    def test_post_without_op(self):
+        path = make_path()
+        param = factory.make_string()
+        method = None
+        client = make_client()
+
+        client.post(path, method, parameter=param)
+        request = client.dispatcher.last_call
+        post, _ = parse_headers_and_body_with_django(
+            request["headers"], request["data"])
+        self.assertTrue(request["request_url"].endswith(path))
+        self.assertEqual({"parameter": [param]}, post)
+
     def test_put_dispatches_to_resource(self):
         path = make_path()
         client = make_client()
