@@ -240,7 +240,8 @@ class MAASClient:
             POST it as application/json
         :return: The result of the dispatch_query call on the dispatcher.
         """
-        kwargs['op'] = op
+        if op:
+            kwargs['op'] = op
         url, headers, body = self._formulate_change(
             path, kwargs, as_json=as_json)
         return self.dispatcher.dispatch_query(
