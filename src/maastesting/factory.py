@@ -43,6 +43,9 @@ from netaddr import (
 NO_VALUE = object()
 
 
+EMPTY_SET = frozenset()
+
+
 class TooManyRandomRetries(Exception):
     """Something that relies on luck did not get lucky.
 
@@ -162,7 +165,7 @@ class Factory:
         """Return an arbitrary Boolean value (`True` or `False`)."""
         return random.choice((True, False))
 
-    def pick_enum(self, enum, but_not=None):
+    def pick_enum(self, enum, *, but_not=EMPTY_SET):
         """Pick a random item from an enumeration class.
 
         :param enum: An enumeration class such as `NODE_STATUS`.
@@ -170,11 +173,8 @@ class Factory:
         :param but_not: A list of choices' IDs to exclude.
         :type but_not: Sequence.
         """
-        if but_not is None:
-            but_not = ()
         return random.choice([
-            value
-            for key, value in vars(enum).items()
+            value for key, value in vars(enum).items()
             if not key.startswith('_') and value not in but_not
         ])
 
@@ -182,7 +182,7 @@ class Factory:
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
 
-    def make_vlan_tag(self, allow_none=False, but_not=None):
+    def make_vlan_tag(self, allow_none=False, *, but_not=EMPTY_SET):
         """Create a random VLAN tag.
 
         :param allow_none: Whether `None` ("no VLAN") can be allowed as an
@@ -190,11 +190,9 @@ class Factory:
             results with a deliberately over-represented probability, in order
             to help trip up bugs that might only show up once in about 4094
             calls otherwise.
-        :param but_not: A list of tags that should not be returned.  Any zero
+        :param but_not: A set of tags that should not be returned.  Any zero
             or `None` entries will be ignored.
         """
-        if but_not is None:
-            but_not = []
         if allow_none and self.pick_bool():
             return None
         else:
@@ -240,7 +238,7 @@ class Factory:
         return str(uuid1())
 
     def _make_random_network(
-            self, slash=None, but_not=None, disjoint_from=None,
+            self, slash=None, but_not=EMPTY_SET, disjoint_from=None,
             random_address_factory=None):
         """Generate a random IP network.
 
@@ -258,8 +256,6 @@ class Factory:
         :return: A network spanning at least 8 IP addresses (at most 29 bits).
         :rtype: :class:`IPNetwork`
         """
-        if but_not is None:
-            but_not = []
         but_not = frozenset(but_not)
         if disjoint_from is None:
             disjoint_from = []
@@ -277,7 +273,8 @@ class Factory:
                 return network
         raise TooManyRandomRetries("Could not find available network")
 
-    def make_ipv4_network(self, slash=None, but_not=None, disjoint_from=None):
+    def make_ipv4_network(
+            self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None):
         """Generate a random IPv4 network.
 
         :param slash: Netmask or bit width of the network, e.g. 24 or
@@ -297,7 +294,8 @@ class Factory:
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv4_address)
 
-    def make_ipv6_network(self, slash=None, but_not=None, disjoint_from=None):
+    def make_ipv6_network(
+            self, slash=None, *, but_not=EMPTY_SET, disjoint_from=None):
         """Generate a random IPv6 network.
 
         :param slash: Netmask or bit width of the network. If not
@@ -332,12 +330,10 @@ class Factory:
                 slash = 128 - host_bits
             return self.make_ipv6_network(slash=slash)
 
-    def pick_ip_in_dynamic_range(self, ngi, but_not=None):
-        if but_not is None:
-            but_not = []
+    def pick_ip_in_dynamic_range(self, ngi, *, but_not=EMPTY_SET):
         first = ngi.get_dynamic_ip_range().first
         last = ngi.get_dynamic_ip_range().last
-        but_not = [IPAddress(but) for but in but_not if but is not None]
+        but_not = {IPAddress(but) for but in but_not if but is not None}
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
@@ -345,12 +341,10 @@ class Factory:
         raise TooManyRandomRetries(
             "Could not find available IP in static range")
 
-    def pick_ip_in_static_range(self, ngi, but_not=None):
-        if but_not is None:
-            but_not = []
+    def pick_ip_in_static_range(self, ngi, *, but_not=EMPTY_SET):
         first = ngi.get_static_ip_range().first
         last = ngi.get_static_ip_range().last
-        but_not = [IPAddress(but) for but in but_not if but is not None]
+        but_not = {IPAddress(but) for but in but_not if but is not None}
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
@@ -358,28 +352,28 @@ class Factory:
         raise TooManyRandomRetries(
             "Could not find available IP in static range")
 
-    def pick_ip_in_network(self, network, but_not=None):
-        if but_not is None:
-            but_not = []
-        but_not = [IPAddress(but) for but in but_not if but is not None]
+    def pick_ip_in_network(self, network, *, but_not=EMPTY_SET):
+        but_not = {IPAddress(but) for but in but_not if but is not None}
+        if network.version == 6:
+            first, last = network.first + 1, network.last
+        else:
+            first, last = network.first, network.last
         for _ in range(100):
-            address = IPAddress(random.randint(network.first, network.last))
+            address = IPAddress(random.randint(first, last))
             if address not in but_not:
                 return str(address)
         raise TooManyRandomRetries("Could not find available IP in network")
 
-    def make_ipv4_range(self, network=None, but_not=None):
-        """Return a pair of IPv4 addresses.
+    def make_ip_range(self, network, *, but_not=None):
+        """Return a pair of IP addresses from the given network.
 
         :param network: Return IP addresses within this network.
         :param but_not: A pair of addresses that should not be returned.
         :return: A pair of `IPAddress`.
         """
-        if network is None:
-            network = self.make_ipv4_network()
         if but_not is not None:
             low, high = but_not
-            but_not = (IPAddress(low), IPAddress(high))
+            but_not = IPAddress(low), IPAddress(high)
         for _ in range(100):
             ip_range = tuple(sorted(
                 IPAddress(factory.pick_ip_in_network(network))
@@ -389,9 +383,18 @@ class Factory:
                 return ip_range
         raise TooManyRandomRetries("Could not find available IP range")
 
-    make_ip_range = make_ipv4_range  # DEPRECATED.
+    def make_ipv4_range(self, network=None, *, but_not=None):
+        """Return a pair of IPv4 addresses.
 
-    def make_ipv6_range(self, network=None, but_not=None):
+        :param network: Return IP addresses within this network.
+        :param but_not: A pair of addresses that should not be returned.
+        :return: A pair of `IPAddress`.
+        """
+        if network is None:
+            network = self.make_ipv4_network()
+        return self.make_ip_range(network=network, but_not=but_not)
+
+    def make_ipv6_range(self, network=None, *, but_not=None):
         """Return a pair of IPv6 addresses.
 
         :param network: Return IP addresses within this network.

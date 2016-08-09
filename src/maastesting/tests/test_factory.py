@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -11,12 +11,17 @@ import os.path
 import random
 from random import randint
 import subprocess
+from unittest.mock import sentinel
 
 from maastesting.factory import (
     factory,
     TooManyRandomRetries,
 )
-from maastesting.matchers import FileContains
+from maastesting.matchers import (
+    FileContains,
+    Matches,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import FakeRandInt
 from netaddr import (
@@ -27,7 +32,10 @@ from testtools.matchers import (
     Contains,
     EndsWith,
     FileExists,
+    Is,
+    IsInstance,
     MatchesAll,
+    MatchesStructure,
     Not,
     StartsWith,
 )
@@ -142,38 +150,19 @@ class TestFactory(MAASTestCase):
         self.assertNotIn(new_network, existing_network)
         self.assertNotIn(existing_network, new_network)
 
-    def test_pick_ip_in_network(self):
-        network = factory.make_ipv4_network()
+    def test_pick_ip_in_network_for_ipv4(self):
+        network = factory.make_ipv4_network(slash=31)
         ip = factory.pick_ip_in_network(network)
         self.assertTrue(
             network.first <= IPAddress(ip).value <= network.last)
 
-    def test_make_ip_range_returns_IPs(self):
-        low, high = factory.make_ip_range()
-        self.assertIsInstance(low, IPAddress)
-        self.assertIsInstance(high, IPAddress)
-        self.assertLess(low, high)
-
-    def test_make_ip_range_obeys_network(self):
-        network = factory.make_ipv4_network()
-        low, high = factory.make_ip_range(network)
-        self.assertIn(low, network)
-        self.assertIn(high, network)
-
-    def test_make_ip_range_returns_low_and_high(self):
-        # Make a very very small network, to maximise the chances of exposure
-        # if the method gets this wrong e.g. by returning identical addresses.
-        low, high = factory.make_ip_range(factory.make_ipv4_network(slash=31))
-        self.assertLess(low, high)
-
-    def test_make_ip_range_obeys_but_not(self):
-        # Make a very very small network, to maximise the chances of exposure
-        # if the method gets this wrong.
-        network = factory.make_ipv4_network(slash=30)
-        first_low, first_high = factory.make_ip_range(network)
-        second_low, second_high = factory.make_ip_range(
-            network, but_not=(first_low, first_high))
-        self.assertNotEqual((first_low, first_high), (second_low, second_high))
+    def test_pick_ip_in_network_for_ipv6(self):
+        # For IPv6, pick_ip_in_network will not consider the very first
+        # address in a network because this is reserved for routers.
+        network = factory.make_ipv6_network(slash=126)
+        ip = factory.pick_ip_in_network(network)
+        self.assertTrue(
+            network.first < IPAddress(ip).value <= network.last)
 
     def test_make_date_returns_datetime(self):
         self.assertIsInstance(factory.make_date(), datetime)
@@ -356,3 +345,83 @@ class TestFactory(MAASTestCase):
                                 factory.pick_port())
             factory.make_parsed_url(netloc=netloc,
                                     port=True)
+
+
+class TestMakeIPRange(MAASTestCase):
+    """Tests for `factory.make_ip_range`.
+
+    Tests specialised factory methods `make_ipv4_range` and `make_ipv6_range`
+    too, which are each a thin wrapper around `make_ip_range`.
+    """
+
+    scenarios = (
+        ("ipv4", {
+            "version": 4,
+            "make_network": factory.make_ipv4_network,
+            "make_range": factory.make_ipv4_range,
+        }),
+        ("ipv6", {
+            "version": 6,
+            "make_network": factory.make_ipv6_network,
+            "make_range": factory.make_ipv6_range,
+        }),
+    )
+
+    def test_make_ip_range_returns_IPs(self):
+        network = self.make_network()
+        low, high = factory.make_ip_range(network)
+        self.assertIsInstance(low, IPAddress)
+        self.assertIsInstance(high, IPAddress)
+        self.assertEqual(self.version, low.version)
+        self.assertEqual(self.version, high.version)
+        self.assertLess(low, high)
+
+    def test_make_ip_range_obeys_network(self):
+        network = self.make_network()
+        low, high = factory.make_ip_range(network)
+        self.assertIn(low, network)
+        self.assertIn(high, network)
+
+    def test_make_ip_range_returns_low_and_high(self):
+        # Make a very very small network, to maximise the chances of exposure
+        # if the method gets this wrong e.g. by returning identical addresses.
+        low, high = factory.make_ip_range(
+            self.make_network(slash=(31 if self.version == 4 else 126)))
+        self.assertLess(low, high)
+
+    def test_make_ip_range_obeys_but_not(self):
+        # Make a very very small network, to maximise the chances of exposure
+        # if the method gets this wrong.
+        network = self.make_network(slash=(30 if self.version == 4 else 126))
+        first_low, first_high = factory.make_ip_range(network)
+        second_low, second_high = factory.make_ip_range(
+            network, but_not=(first_low, first_high))
+        self.assertNotEqual((first_low, first_high), (second_low, second_high))
+
+    def test_make_ipvN_range_calls_make_ip_range(self):
+        self.patch_autospec(factory, "make_ip_range")
+        factory.make_ip_range.return_value = sentinel.ip_range
+        network = self.make_network()
+        ip_range = self.make_range(network, but_not=sentinel.but_not)
+        self.assertThat(ip_range, Is(sentinel.ip_range))
+        self.assertThat(factory.make_ip_range, MockCalledOnceWith(
+            network=network, but_not=sentinel.but_not))
+
+    def test_make_ipvN_range_creates_random_network_if_not_supplied(self):
+        self.patch_autospec(factory, "make_ip_range")
+        factory.make_ip_range.return_value = sentinel.ip_range
+        ip_range = self.make_range(but_not=sentinel.but_not)
+        self.assertThat(ip_range, Is(sentinel.ip_range))
+        self.assertThat(
+            factory.make_ip_range,
+            MockCalledOnceWith(
+                network=Matches(
+                    MatchesAll(
+                        IsInstance(IPNetwork),
+                        MatchesStructure.byEquality(version=self.version),
+                        first_only=True,
+                    ),
+                ),
+                but_not=sentinel.but_not,
+            ),
+        )
