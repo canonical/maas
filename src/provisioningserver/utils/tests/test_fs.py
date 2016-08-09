@@ -299,21 +299,30 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             get_maas_provision_command())
 
 
+def patch_popen(test, returncode=0):
+    process = test.patch_autospec(fs_module, 'Popen').return_value
+    process.communicate.return_value = 'output', 'error output'
+    process.returncode = returncode
+    return process
+
+
+def patch_sudo(test):
+    # Ensure that the `sudo` function always prepends a call to `sudo -n`
+    # to the command; is_develoo_mode and is_dev_environment will
+    # otherwise influence it.
+    sudo = test.patch_autospec(fs_module, "sudo")
+    sudo.side_effect = lambda command: ["sudo", "-n", *command]
+
+
 class TestSudoWriteFile(MAASTestCase):
     """Testing for `sudo_write_file`."""
 
-    def patch_popen(self, return_value=0):
-        process = Mock()
-        process.returncode = return_value
-        process.communicate = Mock(return_value=(b'output', b'error output'))
-        self.patch(fs_module, 'Popen', Mock(return_value=process))
-        return process
-
     def test_calls_atomic_write(self):
-        self.patch_popen()
+        patch_popen(self)
+        patch_sudo(self)
+
         path = os.path.join(self.make_dir(), factory.make_name('file'))
         contents = factory.make_bytes()
-
         sudo_write_file(path, contents)
 
         self.assertThat(fs_module.Popen, MockCalledOnceWith(
@@ -326,7 +335,7 @@ class TestSudoWriteFile(MAASTestCase):
             factory.make_string())
 
     def test_catches_failures(self):
-        self.patch_popen(1)
+        patch_popen(self, 1)
         self.assertRaises(
             CalledProcessError,
             sudo_write_file, self.make_file(), factory.make_bytes())
@@ -335,17 +344,11 @@ class TestSudoWriteFile(MAASTestCase):
 class TestSudoDeleteFile(MAASTestCase):
     """Testing for `sudo_delete_file`."""
 
-    def patch_popen(self, return_value=0):
-        process = Mock()
-        process.returncode = return_value
-        process.communicate = Mock(return_value=('output', 'error output'))
-        self.patch(fs_module, 'Popen', Mock(return_value=process))
-        return process
-
     def test_calls_atomic_delete(self):
-        self.patch_popen()
-        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        patch_popen(self)
+        patch_sudo(self)
 
+        path = os.path.join(self.make_dir(), factory.make_name('file'))
         sudo_delete_file(path)
 
         self.assertThat(fs_module.Popen, MockCalledOnceWith(
@@ -353,13 +356,14 @@ class TestSudoDeleteFile(MAASTestCase):
              '--filename', path]))
 
     def test_catches_failures(self):
-        self.patch_popen(1)
+        patch_popen(self, 1)
         self.assertRaises(
             CalledProcessError,
             sudo_delete_file, self.make_file())
 
 
 class TestTempDir(MAASTestCase):
+
     def test_creates_real_fresh_directory(self):
         stored_text = factory.make_string()
         filename = factory.make_name('test-file')

@@ -17,6 +17,7 @@ from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver
+import provisioningserver.config
 import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
@@ -239,14 +240,36 @@ class TestInDebugMode(MAASTestCase):
 
 class TestSudo(MAASTestCase):
 
+    def set_in_develop_mode(self, value):
+        self.patch(provisioningserver.utils, 'in_develop_mode')
+        provisioningserver.utils.in_develop_mode.return_value = value
+
+    def set_is_dev_environment(self, value):
+        self.patch(provisioningserver.config, 'is_dev_environment')
+        provisioningserver.config.is_dev_environment.return_value = value
+
     def test_returns_same_command_when_in_develop_mode(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
-        self.patch(
-            provisioningserver.utils, 'in_develop_mode').return_value = True
+        self.set_in_develop_mode(True)
+        self.set_is_dev_environment(False)
         self.assertEqual(cmd, sudo(cmd))
 
-    def test_returns_command_with_sudo_prepended_not_in_develop_mode(self):
+    def test_returns_same_command_when_is_dev_environment(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
+        self.set_in_develop_mode(False)
+        self.set_is_dev_environment(True)
+        self.assertEqual(cmd, sudo(cmd))
+
+    def test_returns_same_command_when_in_develop_mode_or_is_dev_env(self):
+        cmd = [factory.make_name('cmd') for _ in range(3)]
+        self.set_in_develop_mode(True)
+        self.set_is_dev_environment(True)
+        self.assertEqual(cmd, sudo(cmd))
+
+    def test_returns_sudo_cmd_when_not_in_dev_mode_and_is_not_dev_env(self):
+        cmd = [factory.make_name('cmd') for _ in range(3)]
+        self.set_in_develop_mode(False)
+        self.set_is_dev_environment(False)
         self.assertEqual(['sudo', '-n'] + cmd, sudo(cmd))
 
 
