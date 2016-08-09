@@ -13,6 +13,8 @@ LP: #1592666    Mirror URL contains double slash (/) after hostname, impacting p
 
 LP: #1604461    [2.0rc2] Static IP address are allowed to be created in a dynamic range.
 
+LP: #1610397    When juju adds containers to MAAS, ensure they inherit the parent machine domain name, if none is passed by Juju.
+
 
 2.0.0 (rc3)
 ===========

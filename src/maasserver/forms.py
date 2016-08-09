@@ -788,6 +788,14 @@ class DeviceForm(NodeForm):
         if self.new_node:
             # Set the owner: devices are owned by their creator.
             device.owner = self.request.user
+
+        # If the device has a parent and no domain was provided,
+        # inherit the parent's domain.
+        if device.parent:
+            if (not self.cleaned_data.get('domain', None) and
+                    device.parent.domain):
+                device.domain = device.parent.domain
+
         device.save()
         return device
 

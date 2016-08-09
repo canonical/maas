@@ -101,3 +101,45 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertThat(iface.node, Equals(device))
         iface = get_one(Interface.objects.filter(mac_address=mac2))
         self.assertThat(iface.node, Equals(device))
+
+    def test_creates_device_with_parent_inherits_parents_domain(self):
+        parent = factory.make_Node()
+        hostname = factory.make_name("device")
+        mac1 = factory.make_mac_address()
+        mac2 = factory.make_mac_address()
+        form = DeviceWithMACsForm(data=get_QueryDict({
+            "hostname": hostname,
+            "mac_addresses": [mac1, mac2],
+            "parent": parent.system_id,
+        }), request=self.make_request())
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        form.save()
+        device = get_one(Device.objects.filter(hostname=hostname))
+        self.assertThat(device.hostname, Equals(hostname))
+        self.assertThat(device.domain, Equals(parent.domain))
+        iface = get_one(Interface.objects.filter(mac_address=mac1))
+        self.assertThat(iface.node, Equals(device))
+        iface = get_one(Interface.objects.filter(mac_address=mac2))
+        self.assertThat(iface.node, Equals(device))
+
+    def test_creates_device_with_domain_and_parent(self):
+        parent = factory.make_Node()
+        hostname = factory.make_name("device")
+        mac1 = factory.make_mac_address()
+        mac2 = factory.make_mac_address()
+        domain = factory.make_Domain()
+        form = DeviceWithMACsForm(data=get_QueryDict({
+            "hostname": hostname,
+            "mac_addresses": [mac1, mac2],
+            "parent": parent.system_id,
+            "domain": domain.name,
+        }), request=self.make_request())
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        form.save()
+        device = get_one(Device.objects.filter(hostname=hostname))
+        self.assertThat(device.hostname, Equals(hostname))
+        self.assertThat(device.domain, Equals(domain))
+        iface = get_one(Interface.objects.filter(mac_address=mac1))
+        self.assertThat(iface.node, Equals(device))
+        iface = get_one(Interface.objects.filter(mac_address=mac2))
+        self.assertThat(iface.node, Equals(device))
