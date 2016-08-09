@@ -7,7 +7,10 @@ __all__ = [
     'AccountHandler',
     ]
 
+import http.client
+import json
 
+from django.http import HttpResponse
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -34,10 +37,14 @@ class AccountHandler(OperationsHandler):
         """
         profile = request.user.userprofile
         consumer, token = profile.create_authorisation_token()
-        return {
+        auth_info = {
             'token_key': token.key, 'token_secret': token.secret,
             'consumer_key': consumer.key,
             }
+        return HttpResponse(
+            json.dumps(auth_info),
+            content_type='application/json; charset=utf-8',
+            status=int(http.client.OK))
 
     @operation(idempotent=False)
     def delete_authorisation_token(self, request):

@@ -177,8 +177,10 @@ class AccountAPITest(APITestCase.ForUser):
         # with the consumer_key, the token_key and the token_secret in it.
         response = self.client.post(
             reverse('account_handler'), {'op': 'create_authorisation_token'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            'application/json; charset=utf-8', response["content-type"])
         parsed_result = json_load_bytes(response.content)
-
         self.assertEqual(
             ['consumer_key', 'token_key', 'token_secret'],
             sorted(parsed_result))

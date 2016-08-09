@@ -27,7 +27,7 @@
                 <ul class="no-bullets">
                     {% for token in user.userprofile.get_authorisation_tokens %}
                     <li class="bundle">
-                        <a href="#" class="delete-link icon right">
+                        <a href="#" class="u-margin--top-tiny delete-link icon right">
                             <img title="Delete MAAS key" class="left" src="{{ STATIC_URL }}img/delete.png" />
                         </a>
                         <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />

@@ -15,6 +15,8 @@ LP: #1604461    [2.0rc2] Static IP address are allowed to be created in a dynami
 
 LP: #1610397    When juju adds containers to MAAS, ensure they inherit the parent machine domain name, if none is passed by Juju.
 
+LP: #1611342    UI error while generating a MAAS key (token).
+
 
 2.0.0 (rc3)
 ===========
