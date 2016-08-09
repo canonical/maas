@@ -17,6 +17,8 @@ LP: #1610397    When juju adds containers to MAAS, ensure they inherit the paren
 
 LP: #1611342    UI error while generating a MAAS key (token).
 
+LP: #1610414    apiclient.maas_client.MAASClient.post() always sets an op in the query string
+
 
 2.0.0 (rc3)
 ===========
