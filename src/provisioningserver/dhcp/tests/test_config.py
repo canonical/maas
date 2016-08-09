@@ -184,10 +184,13 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
                     count(1), configuration.splitlines(keepends=True))))))
         # Call `dhcpd` via `aa-exec --profile unconfined`. The latter is
         # needed so that `dhcpd` can open the configuration file from /tmp.
+        # Xenial lxcs don't support using different apparmor profiles:
+        # everything runs with the container profile.
+        cmd = "dhcpd", ("-6" if ipv6 else "-4"), "-t", "-cf", conffile.name
+        if subprocess.check_output(["systemd-detect-virt"]).strip() != b'lxc':
+            cmd = "aa-exec", "--profile", "unconfined", *cmd
         process = subprocess.Popen(
-            ("aa-exec", "--profile", "unconfined", "dhcpd",
-             ("-6" if ipv6 else "-4"), "-t", "-cf", conffile.name),
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             env=select_c_utf8_locale())
         command = " ".join(map(pipes.quote, process.args))
         output, _ = process.communicate()
