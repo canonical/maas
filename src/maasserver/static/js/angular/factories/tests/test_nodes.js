@@ -422,38 +422,6 @@ describe("NodesManager", function() {
         });
     });
 
-    describe("updateDiskTags", function() {
-
-        it("calls machine.update_disk_tags", function(done) {
-            var fakemachine = makemachine();
-            webSocket.returnData.push(makeFakeResponse(null));
-            MachinesManager.updateDiskTags(
-                    fakemachine, makeName("block_id"),
-                    [ makeName("tag") ]).then(function() {
-                var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("machine.update_disk_tags");
-                done();
-            });
-        });
-
-        it("calls machine.update_disk_tags with params", function(done) {
-            var fakemachine = makemachine();
-            var block_id = makeName("block_id");
-            var tags = [ makeName("tag") ];
-            webSocket.returnData.push(makeFakeResponse(null));
-            MachinesManager.updateDiskTags(
-                    fakemachine, block_id, tags).then(
-                        function() {
-                var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("machine.update_disk_tags");
-                expect(sentObject.params.system_id).toBe(fakemachine.system_id);
-                expect(sentObject.params.block_id).toBe(block_id);
-                expect(sentObject.params.tags[0]).toBe(tags[0]);
-                done();
-            });
-        });
-    });
-
     describe("deleteDisk", function() {
 
         it("calls machine.delete_disk with correct params",

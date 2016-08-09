@@ -543,7 +543,7 @@
                                 </li>
                             </ul>
                         </div>
-                        <div class="table margin-bottom">
+                        <div class="table table--hover margin-bottom">
                             <header class="table__head">
                                 <div class="table__row">
                                     <div class="table__header table-col--3"></div>
@@ -987,19 +987,12 @@
                     <section class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table-col--3">
-                                    <input type="checkbox" class="checkbox" id="filesystem-check-all"
-                                        data-ng-hide="isAllStorageDisabled()"
-                                        data-ng-checked="filesystemAllSelected"
-                                        data-ng-click="toggleFilesystemAllSelect()"
-                                        data-ng-disabled="isFilesystemsDisabled()" />
-                                    <label for="filesystem-check-all"></label>
-                                </div>
-                                <div class="table__header table-col--20">Name</div>
-                                <div class="table__header table-col--15">Size</div>
-                                <div class="table__header table-col--15">File system</div>
-                                <div class="table__header table-col--15">Mount point</div>
-                                <div class="table__header table-col--32">Mount options</div>
+                                <div class="table__header table-col--3"></div>
+                                <div class="table__header table-col--15">Name</div>
+                                <div class="table__header table-col--10">Size</div>
+                                <div class="table__header table-col--10">File system</div>
+                                <div class="table__header table-col--32">Mount point</div>
+                                <div class="table__header table-col--20">Mount options</div>
                             </div>
                         </header>
                         <main class="table__body">
@@ -1011,19 +1004,12 @@
                             <div data-ng-repeat="filesystem in filesystems">
                                 <div class="table__row"
                                     data-ng-class="{ active: filesystem.$selected }">
-                                    <div class="table__data table-col--3">
-                                        <input type="checkbox" class="checkbox" id="{$ filesystem.name $}"
-                                            data-ng-hide="isAllStorageDisabled()"
-                                            data-ng-checked="filesystem.$selected"
-                                            data-ng-click="toggleFilesystemSelect(filesystem)"
-                                            data-ng-disabled="isFilesystemsDisabled()" />
-                                        <label for="{$ filesystem.name $}" ></label>
-                                    </div>
-                                    <div class="table__data table-col--20">{$ filesystem.name $}</div>
-                                    <div class="table__data table-col--15">{$ filesystem.size_human $}</div>
-                                    <div class="table__data table-col--15">{$ filesystem.fstype $}</div>
-                                    <div class="table__data table-col--15">{$ filesystem.mount_point $}</div>
-                                    <div class="table__data table-col--22">{$ filesystem.mount_options $}</div>
+                                    <div class="table__data table-col--3"></div>
+                                    <div class="table__data table-col--15">{$ filesystem.name $}</div>
+                                    <div class="table__data table-col--10">{$ filesystem.size_human $}</div>
+                                    <div class="table__data table-col--10">{$ filesystem.fstype $}</div>
+                                    <div class="table__data table-col--32">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table-col--20">{$ filesystem.mount_options $}</div>
                                     <div class="table__data table-col--10">
                                         <div class="table__controls">
                                             <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
@@ -1034,15 +1020,6 @@
                                     </div>
                                     <div class="table__dropdown">
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: filesystemMode !== null && filesystemMode !== 'multi' }">
-                                            <div class="ng-hide" data-ng-show="filesystemMode === 'single'">
-                                                <div class="table__data left">
-                                                    <button class="cta-ubuntu secondary margin-right"
-                                                        data-ng-show="usesStorage(filesystem.fstype)"
-                                                        data-ng-click="filesystemUnmount()">Unmount</button>
-                                                    <a class="link-cta-ubuntu text-button"
-                                                       data-ng-click="filesystemDelete()">Remove {$ getRemoveTypeText(filesystem) $}</a>
-                                                </div>
-                                            </div>
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'unmount'">
                                                 <div class="table__data left margin-top--five">
                                                     <p><span class="icon warning margin-right--ten"></span> Are you sure you want to unmount this filesystem?</p>
@@ -1057,7 +1034,7 @@
                                                     <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this {$ getRemoveTypeText(filesystem) $}?</p>
                                                 </div>
                                                 <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="filesystemCancel()">Cancel</a>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="filesystemCancel(filesystem)">Cancel</a>
                                                     <button class="cta-ubuntu" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
                                                 </div>
                                             </div>
@@ -1126,14 +1103,7 @@
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table-col--3">
-                                    <input type="checkbox" class="checkbox" id="cachesets-check-all"
-                                        data-ng-hide="isAllStorageDisabled()"
-                                        data-ng-checked="cachesetsAllSelected"
-                                        data-ng-click="toggleCacheSetAllSelect()"
-                                        data-ng-hide="isCacheSetsDisabled()" />
-                                    <label for="cachesets-check-all"></label>
-                                </div>
+                                <div class="table__header table-col--3"></div>
                                 <div class="table__header table-col--15">Name</div>
                                 <div class="table__header table-col--27">Size</div>
                                 <div class="table__header table-col--55">Used by</div>
@@ -1143,14 +1113,7 @@
                             <div data-ng-repeat="cacheset in cachesets">
                                 <div class="table__row"
                                     data-ng-class="{ active: cacheset.$selected }">
-                                    <div class="table__data table-col--3">
-                                        <input type="checkbox" class="checkbox" id="{$ cacheset.name $}"
-                                            data-ng-hide="isAllStorageDisabled()"
-                                            data-ng-checked="cacheset.$selected"
-                                            data-ng-click="toggleCacheSetSelect(cacheset)"
-                                            data-ng-hide="isCacheSetsDisabled()" />
-                                        <label for="{$ cacheset.name $}" ></label>
-                                    </div>
+                                    <div class="table__data table-col--3"></div>
                                     <div class="table__data table-col--15">{$ cacheset.name $}</div>
                                     <div class="table__data table-col--27">{$ cacheset.size_human $}</div>
                                     <div class="table__data table-col--45">{$ cacheset.used_by $}</div>
@@ -1209,9 +1172,9 @@
                                 <div class="table__header table-col--4">Boot</div>
                                 <div class="table__header table-col--15">Size</div>
                                 <div class="table__header table-col--15">Device Type</div>
-                                <div class="table__header table-col--15">File system</div>
+                                <div class="table__header table-col--10">Filesystem</div>
                                 <div class="table__header table-col--25">Tags</div>
-                                <div class="table__header table-col--7"></div>
+                                <div class="table__header table-col--12"></div>
                             </div>
                         </header>
                         <main class="table__body">
@@ -1232,10 +1195,10 @@
                                         <label for="{$ item.name $}" ></label>
                                     </div>
                                     <div class="table__data table-col--16" data-ng-show="column === 'name'">
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.name $}</span>
                                         <input type="text" class="table__input"
                                             data-ng-model="item.name"
-                                            data-maas-enter-blur
-                                            data-ng-blur="saveAvailableName(item)"
+                                            data-ng-show="availableMode === 'edit' && item.$selected"
                                             data-ng-class="{ invalid: isNameInvalid(item) }"
                                             data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
                                             data-ng-change="nameHasChanged(item)">
@@ -1243,192 +1206,267 @@
                                     <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table-col--4">
-                                        <input class="align-center" type="radio"
-                                            data-ng-click="setAsBootDisk(item)"
-                                            data-ng-checked="item.is_boot"
-                                            data-ng-if="item.type === 'physical'"
-                                            data-ng-disabled="isBootDiskDisabled(item, 'available')">
-                                    </div>
-                                    <div class="table__data table-col--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
-                                    <div class="table__data table-col--15">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table-col--15">
-                                        {$ item.fstype $}
-                                        <span class="table__controls table__controls--secondary">
-                                            <a data-ng-show="canFormatAndMount(item)"
-                                                data-ng-click="availableQuickFormatAndMount(item)"
-                                                data-ng-class="{ 'margin-left--ten': item.fstype }">{$ getFormatAndMountButtonText (item) $}</a>
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">
+                                            <input class="align-center" type="radio"
+                                                data-ng-click="setAsBootDisk(item)"
+                                                data-ng-checked="item.is_boot"
+                                                data-ng-if="item.type === 'physical'"
+                                                data-ng-disabled="isBootDiskDisabled(item, 'available')">
                                         </span>
+                                    </div>
+                                    <div class="table__data table-col--15">
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">
+                                            {$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span>
+                                        </span>
+                                    </div>
+                                    <div class="table__data table-col--15">
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ getDeviceType(item) $}</span>
+                                    </div>
+                                    <div class="table__data table-col--10">
+                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.fstype $}</span>
                                     </div>
                                     <div class="table__data table__tags table-col--25">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
-                                        <tags-input ng-model="item.$options.tags" data-ng-show="item.$options.editingTags" allow-tags-pattern="[\w-]+"></tags-input>
-                                        <a class="table__controls table__controls--secondary"
-                                            data-ng-hide="!canEditTags(item) || item.$options.editingTags"
-                                            data-ng-click="availableEditTags(item)"><span class="icon tags tooltip" data-tooltip="Tags">edit</span></a>
-                                        <button class="cta-ubuntu margin-left--ten"
-                                            data-ng-show="item.$options.editingTags"
-                                            data-ng-click="availableSaveTags(item)">Save</button>
                                     </div>
-                                    <div class="table__data table-col--7">
+                                    <div class="table__data table-col--12">
                                         <div class="table__controls">
+                                            <a class="icon add tooltip ng-hide"
+                                                data-tooltip="Add logical volume"
+                                                data-ng-show="canAddLogicalVolume(item)"
+                                                data-ng-click="availableLogicalVolume(item)">Add logical volume</a>
                                             <a class="icon partition tooltip ng-hide"
                                                 data-tooltip="Partition"
                                                 data-ng-show="canAddPartition(item)"
                                                 data-ng-click="availableQuickPartition(item)">Partition</a>
-                                            <a class="icon unmount tooltip ng-hide"
-                                                data-tooltip="Unformat"
-                                                data-ng-show="hasUnmountedFilesystem(item)"
-                                                data-ng-click="availableQuickUnformat(item)">Unformat</a>
-                                            <a class="icon delete tooltip ng-hide"
+                                            <a class="icon edit tooltip ng-hide"
+                                                data-tooltip="Edit"
+                                                data-ng-show="canEdit(item)"
+                                                data-ng-click="availableQuickEdit(item)">
+                                                >Edit</a>
+                                            <a class="icon delete tooltip ng-hide u-margin--left"
                                                 data-tooltip="Remove"
                                                 data-ng-show="canDelete(item)"
                                                 data-ng-click="availableQuickDelete(item)">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
-                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'partition' }">
-                                            <div data-ng-show="availableMode === 'partition'">
-                                                <div class="table__data table-col--3"></div>
-                                                <div class="table__data table-col--20">
-                                                    {$ getAddPartitionName(item) $}
+                                        <div class="table__row form padding-top--ten padding-right--ten padding-left--ten box-sizing" data-ng-class="{ active: availableMode === 'edit' }">
+                                            <div data-ng-show="availableMode === 'edit'" class="table__row--indent">
+                                                <div class="six-col no-margin-bottom">
+                                                    <dl>
+                                                        <dt class="two-col">Size</dt>
+                                                            <dd class="four-col last-col">{$ item.size_human $}</dd>
+                                                        <dt class="two-col ng-hide" data-ng-show="showFreeSpace(item)">Free space</dt>
+                                                            <dd class="four-col last-col ng-hide" data-ng-show="showFreeSpace(item)">{$ item.available_size_human $}</dd>
+                                                        <dt class="two-col">Type</dt>
+                                                            <dd class="four-col last-col">{$ getDeviceType(item) $}</dd>
+                                                        <dt class="two-col" data-ng-show="item.$options.editingTags">Tags</dt>
+                                                            <dd class="four-col last-col">
+                                                                <tags-input ng-model="item.$options.tags" data-ng-show="item.$options.editingTags" allow-tags-pattern="[\w-]+" class="three-col"></tags-input>
+                                                            </dd>
+                                                    </dl>
                                                 </div>
-                                                <div class="table__data table-col--15">
-                                                    <input type="text" class="six-col table__input margin-right"
-                                                        ng-model="item.$options.size"
-                                                        ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
-                                                    <select name="size-units" class="five-col table__input"
-                                                        ng-model="item.$options.sizeUnits"
-                                                        ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
-                                                        <option value="MB">MB</option>
-                                                        <option value="GB">GB</option>
-                                                        <option value="TB">TB</option>
-                                                    </select>
+                                                <div class="six-col last-col no-margin-bottom" data-ng-show="item.$options.editingFilesystem">
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="filesys" class="two-col">Filesystem</label>
+                                                        <select name="filesys" class="three-col"
+                                                            ng-model="item.$options.fstype"
+                                                            data-ng-change="fstypeChanged(item.$options)"
+                                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                            <option value="" selected="selected">Unformatted</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="mount-point" class="two-col">Mount point</label>
+                                                        <input type="text" id="mount-point" class="three-col"
+                                                            placeholder="Absolute path"
+                                                            ng-model="item.$options.mountPoint"
+                                                            ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                            ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="mount-options" class="two-col">Mount options</label>
+                                                        <input class="three-col"
+                                                            type="text" id="mount-options"
+                                                            placeholder="Separated by commas, no spaces"
+                                                            data-ng-model="item.$options.mountOptions"
+                                                            data-ng-disabled="item.$options.fstype === null">
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--15">
-                                                    Partition
-                                                </div>
-                                                <div class="table__data table-col--15">
-                                                    <select class="table__input"
-                                                        name="filesys"
-                                                        data-ng-model="item.$options.fstype"
-                                                        data-ng-change="fstypeChanged(item.$options)"
-                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
-                                                        <option value="">Unformatted</option>
-                                                    </select>
-                                                </div>
-                                                <div class="table__data table-col--15">
-                                                    <input class="table__input"
-                                                        type="text" id="mount-point"
-                                                        placeholder="Mount point"
-                                                        data-ng-model="item.$options.mountPoint"
-                                                        data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                        data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
-                                                </div>
-                                                <div class="table__data table-col--15">
-                                                    <input class="table__input"
-                                                        type="text" id="mount-options"
-                                                        placeholder="Mount options"
-                                                        data-ng-model="item.$options.mountOptions"
-                                                        data-ng-disabled="item.$options.fstype === null">
-                                                </div>
-                                                <div class="table__data table-col--2"></div>
+
                                             </div>
                                         </div>
-                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'format-mount' }">
-                                            <div data-ng-show="availableMode === 'format-mount'">
-                                                <div class="table__data table-col--3"></div>
-                                                <div class="table__data table-col--15">
-                                                    <label for="filesys">Filesystem</label>
-                                                    <select name="filesys"
-                                                        ng-model="item.$options.fstype"
-                                                        data-ng-change="fstypeChanged(item.$options)"
-                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
-                                                    </select>
+                                        <div class="table__row form padding-top--ten padding-right--ten padding-left--ten box-sizing" data-ng-class="{ active: availableMode === 'format-mount' }">
+                                            <div data-ng-show="availableMode === 'format-mount'" class="table__row--indent">
+                                                <div class="six-col no-margin-bottom">
+                                                    <dl>
+                                                        <dt class="two-col">Size</dt>
+                                                            <dd class="four-col last-col">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></dd>
+                                                        <dt class="two-col">Type</dt>
+                                                            <dd class="four-col last-col">{$ getDeviceType(item) $}</dd>
+                                                    </dl>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="tags" class="two-col">Tags</label>
+                                                        <input type="text" class="table__input three-col">
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--30">
-                                                    <label for="mount-point">Mount point</label>
-                                                    <input type="text" id="mount-point"
-                                                        ng-model="item.$options.mountPoint"
-                                                        ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                        ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                <div class="six-col last-col no-margin-bottom">
+                                                    <div>
+                                                        <div class="form__group form__group--inline">
+                                                            <label for="filesys" class="two-col">Filesystem</label>
+                                                            <select name="filesys" class="three-col"
+                                                                ng-model="item.$options.fstype"
+                                                                data-ng-change="fstypeChanged(item.$options)"
+                                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                                <option value="">Unformatted</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="form__group form__group--inline">
+                                                            <label for="mount-point" class="two-col">Mount point</label>
+                                                            <input type="text" id="mount-point" class="three-col"
+                                                                placeholder="Absolute path"
+                                                                ng-model="item.$options.mountPoint"
+                                                                ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                                ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                        </div>
+                                                        <div class="form__group form__group--inline">
+                                                            <label for="mount-options" class="two-col">Mount options</label>
+                                                            <input class="three-col"
+                                                                type="text" id="mount-options"
+                                                                placeholder="Separated by commas, no spaces"
+                                                                data-ng-model="item.$options.mountOptions"
+                                                                data-ng-disabled="item.$options.fstype === null">
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--30">
-                                                    <label for="mount-options">Mount options</label>
-                                                    <input type="text" id="mount-options"
-                                                        ng-model="item.$options.mountOptions">
-                                                </div>
-                                                <div class="table__data table-col--22"></div>
                                             </div>
                                         </div>
-                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'logical-volume' }">
-                                            <div data-ng-show="availableMode === 'logical-volume'">
-                                                <div class="table__data table-col--3"></div>
-                                                <div class="table__data table-col--20">
-                                                    <input type="text" class="table__input"
-                                                        data-ng-class="{ invalid: isLogicalVolumeNameInvalid(item) }"
-                                                        data-ng-change="newLogicalVolumeNameChanged(item)"
-                                                        data-ng-model="item.$options.name">
+                                        <div class="table__row form padding-top--ten padding-right--ten padding-left--ten box-sizing" data-ng-class="{ active: availableMode === 'partition' }">
+                                            <div data-ng-show="availableMode === 'partition'" class="table__row--indent">
+                                                <div class="six-col no-margin-bottom">
+                                                    <dl>
+                                                        <dt class="two-col">Name</dt>
+                                                            <dd class="four-col last-col">{$ getAddPartitionName(item) $}</dd>
+                                                        <dt class="two-col">Type</dt>
+                                                            <dd class="four-col last-col">Partition</dd>
+                                                    </dl>
+                                                    <div class="form__group form__group--inline">
+                                                        <label class="two-col" for="filesys">Size</label>
+                                                        <input type="text" class="two-col table__input margin-right"
+                                                            ng-model="item.$options.size"
+                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                        <select name="size-units" class="one-col last-col table__input"
+                                                            ng-model="item.$options.sizeUnits"
+                                                            ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
+                                                            <option value="MB">MB</option>
+                                                            <option value="GB">GB</option>
+                                                            <option value="TB">TB</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--15">
-                                                    <input type="text" id="mount-point" class="six-col table__input margin-right"
-                                                        ng-model="item.$options.size"
-                                                        ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
-                                                    <select name="size-units" class="five-col table__input"
-                                                        ng-model="item.$options.sizeUnits"
-                                                        ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
-                                                        <option value="MB">MB</option>
-                                                        <option value="GB">GB</option>
-                                                        <option value="TB">TB</option>
-                                                    </select>
+                                                <div class="six-col last-col no-margin-bottom">
+                                                    <div class="form__group form__group--inline">
+                                                        <label class="two-col" for="filesys">Filesystem</label>
+                                                        <select class="table__input three-col"
+                                                            name="filesys"
+                                                            data-ng-model="item.$options.fstype"
+                                                            data-ng-change="fstypeChanged(item.$options)"
+                                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                            <option value="">Unformatted</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label class="two-col" for="mount-point">Mount point</label>
+                                                        <input class="table__input three-col"
+                                                            type="text" id="mount-point"
+                                                            placeholder="Absolute path"
+                                                            data-ng-model="item.$options.mountPoint"
+                                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                            data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label class="two-col" for="">Mount options</label>
+                                                        <input class="table__input three-col"
+                                                            type="text" id="mount-options"
+                                                            placeholder="Separated by commas, no spaces"
+                                                            data-ng-model="item.$options.mountOptions"
+                                                            data-ng-disabled="item.$options.fstype === null">
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--15">
-                                                    Logical volume
+                                            </div>
+                                        </div>
+                                        <div class="table__row form padding-top--ten padding-right--ten padding-left--ten box-sizing" data-ng-class="{ active: availableMode === 'logical-volume' }">
+                                            <div data-ng-show="availableMode === 'logical-volume'" class="table__row--indent">
+                                                <div class="six-col no-margin-bottom">
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="name" class="two-col">Name</label>
+                                                        <input type="text" class="table__input three-col"
+                                                            data-ng-class="{ invalid: isLogicalVolumeNameInvalid(item) }"
+                                                            data-ng-change="newLogicalVolumeNameChanged(item)"
+                                                            data-ng-model="item.$options.name">
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="size" class="two-col">Size</label>
+                                                        <input type="text" id="size" class="two-col table__input margin-right"
+                                                            ng-model="item.$options.size"
+                                                            ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
+                                                        <select name="size-units" class="table__input one-col"
+                                                            ng-model="item.$options.sizeUnits"
+                                                            ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
+                                                            <option value="MB">MB</option>
+                                                            <option value="GB">GB</option>
+                                                            <option value="TB">TB</option>
+                                                        </select>
+                                                    </div>
+                                                    <dl>
+                                                        <dt class="two-col">Type</dt>
+                                                            <dd class="four-col last-col">Logical volume</dd>
+                                                        <dt class="two-col">Tags</dt>
+                                                            <dd class="four-col last-col">
+                                                                <tags-input ng-model="item.$options.tags" allow-tags-pattern="[\w-]+" class="three-col"></tags-input>
+                                                            </dd>
+                                                    </dl>
                                                 </div>
-                                                <div class="table__data table-col--15">
-                                                    <select name="filesys"
-                                                        class="table__input"
-                                                        data-ng-model="item.$options.fstype"
-                                                        data-ng-change="fstypeChanged(item.$options)"
-                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
-                                                        <option value="">Unformatted</option>
-                                                    </select>
+                                                <div class="six-col last-col no-margin-bottom">
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="filesys" class="two-col">Filesystem</label>
+                                                        <select name="filesys"
+                                                            class="table__input three-col"
+                                                            data-ng-model="item.$options.fstype"
+                                                            data-ng-change="fstypeChanged(item.$options)"
+                                                            data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                            <option value="">Unformatted</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="mount-point" class="two-col">Mount point</label>
+                                                        <input type="text" id="mount-point"
+                                                            class="table__input three-col"
+                                                            placeholder="Absolute path"
+                                                            data-ng-model="item.$options.mountPoint"
+                                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                            data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                    </div>
+                                                    <div class="form__group form__group--inline">
+                                                        <label for="mount-options" class="two-col">Mount options</label>
+                                                        <input class="table__input three-col"
+                                                            type="text" id="mount-options"
+                                                            placeholder="Separated by commas, no spaces"
+                                                            data-ng-model="item.$options.mountOptions"
+                                                            data-ng-disabled="item.$options.fstype === null">
+                                                    </div>
                                                 </div>
-                                                <div class="table__data table-col--30">
-                                                    <input type="text" id="mount-point"
-                                                        class="table__input"
-                                                        placeholder="Mount point"
-                                                        data-ng-model="item.$options.mountPoint"
-                                                        data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                        data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
-                                                </div>
-                                                <div class="table__data table-col--30">
-                                                    <input type="text" id="mount-options"
-                                                        class="table__input"
-                                                        placeholder="Mount options"
-                                                        data-ng-model="item.$options.mountOptions"
-                                                        data-ng-disabled="item.$options.fstype === null">
-                                                </div>
-                                                <div class="table__data table-col--2"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode !== null && activeMode !== 'multi' }">
-                                            <div data-ng-show="availableMode === 'unformat'">
-                                                <div class="table__data left margin-top--five">
-                                                    <p><span class="icon warning margin-right--ten"></span> Are you sure you want to unformat this '{$ item.fstype $}' filesystem?</p>
-                                                </div>
+                                            <div data-ng-show="availableMode === 'edit'">
                                                 <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
-                                                    <button class="cta-ubuntu" data-ng-click="availableConfirmUnformat(item)">Unformat</button>
-                                                </div>
-                                            </div>
-                                            <div data-ng-show="availableMode === 'format-mount'">
-                                                <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel(item)">Cancel</a>
                                                     <button class="cta-ubuntu"
-                                                        data-ng-disabled="isMountPointInvalid(item.$options.mountPoint)"
-                                                        data-ng-click="availableConfirmFormatAndMount(item)">{$ getAvailableFormatSubmitText(item) $}</button>
+                                                        data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
+                                                        data-ng-click="availableConfirmEdit(item)">Save</button>
                                                 </div>
                                             </div>
                                             <div data-ng-show="availableMode === 'delete'">
@@ -1436,13 +1474,13 @@
                                                     <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this {$ getRemoveTypeText(item) $}?</p>
                                                 </div>
                                                 <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel(item)">Cancel</a>
                                                     <button class="cta-ubuntu" data-ng-click="availableConfirmDelete(item)">Remove</button>
                                                 </div>
                                             </div>
                                             <div data-ng-show="availableMode === 'partition'">
                                                 <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel(item)">Cancel</a>
                                                     <button class="cta-ubuntu"
                                                         data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmPartition(item)">Add partition</button>
@@ -1450,71 +1488,13 @@
                                             </div>
                                             <div data-ng-show="availableMode === 'logical-volume'">
                                                 <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel()">Cancel</a>
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="availableCancel(item)">Cancel</a>
                                                     <button class="cta-ubuntu"
                                                         data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
                                                 </div>
                                             </div>
-                                            <div data-ng-show="availableMode === 'single'">
-                                                <div class="table__data left margin-left--thirty">
-                                                    <button class="cta-ubuntu secondary margin-right"
-                                                        data-ng-show="canFormatAndMount(item)"
-                                                        data-ng-click="availableFormatAndMount(item)">{$ getFormatAndMountButtonText (item) $}</button>
-                                                    <button class="cta-ubuntu secondary margin-right"
-                                                        data-ng-show="canAddPartition(item)"
-                                                        data-ng-click="availablePartition(item)">{$ getPartitionButtonText(item) $}</button>
-                                                    <button class="cta-ubuntu secondary margin-right"
-                                                        data-ng-show="canAddLogicalVolume(item)"
-                                                        data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
-                                                    <button class="cta-ubuntu secondary margin-right"
-                                                        data-ng-show="hasUnmountedFilesystem(item)"
-                                                        data-ng-click="availableUnformat()">Unformat</button>
-                                                    <a class="link-cta-ubuntu text-button"
-                                                        data-ng-show="canDelete(item)"
-                                                        data-ng-click="availableDelete()">Remove {$ getRemoveTypeText(item) $}</a>
-                                                </div>
-                                            </div>
                                         </div>
-                                        <!--
-                                        // New mount and filesystem dropdown, adds new form for mount options and added a
-                                        // None edit alternative for when a swap filesystem has been selected.
-                                        <div class="table__row active form padding-top--ten padding-right--ten padding-left--ten box-sizing">
-                                            <div class="six-col no-margin-bottom">
-                                                <div class="form__group form__group--inline">
-                                                    <label class="two-col" for="filesys">Filesystem</label>
-                                                    <select name="filesys" id="filesys" class="table__input three-col">
-                                                        <option value="" disabled="disabled">Unselected</option>
-                                                        <option value="">EXT2</option>
-                                                        <option value="">EXT4</option>
-                                                        <option value="">FAT32</option>
-                                                        <option value="">VFAT</option>
-                                                        <option value="" selected="selected">Swap</option>
-                                                    </select>
-                                                </div>
-                                                <div class="form__group form__group--inline">
-                                                    <label for="mount-options" class="two-col">Mount options</label>
-                                                    <input type="text" id="mount-options" class="table__input three-col" placeholder="Seperate by comma, no spaces">
-                                                </div>
-                                            </div>
-                                            <div class="six-col no-margin-bottom last-col">
-                                                <div class="form__group form__group--inline">
-                                                    <label class="two-col" for="mount-point">Mount point</label>
-                                                    <input type="text" id="mount-point" class="table__input three-col" placeholder="/">
-                                                </div>
-                                                <dl class="ng-hide">
-                                                    <dt class="two-col">Mount point</dt>
-                                                        <dd class="four-col last-col">Swap</dd>
-                                                </dl>
-                                            </div>
-                                        </div>
-                                        <div class="table__row active">
-                                            <div class="table__data right">
-                                                <a class="link-cta-ubuntu text-button">Cancel</a>
-                                                <button class="cta-ubuntu ng-binding">Mount</button>
-                                            </div>
-                                        </div>
-                                        -->
                                     </div>
                                 </div>
                             </div>
@@ -1528,67 +1508,83 @@
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table-col--15">{$ availableNew.device.size_human $}</div>
-                                <div class="table__data table-col--15">Bcache</div>
+                                <div class="table__data table-col--15"></div>
+                                <div class="table__data table-col--15"></div>
                                 <div class="table__data table-col--45"></div>
                                 <div class="table__data table-col--7"></div>
                                 <div class="table__dropdown">
-                                    <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table-col--3"></div>
-                                        <div class="table__data table-col--15">
-                                            <label for="type">Cache set</label>
-                                            <select name="cache-set" id="cache-set"
-                                                data-ng-model="availableNew.cacheset"
-                                                data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
-                                            </select>
+                                    <div class="table__row form active padding-top--ten padding-right--ten padding-left--ten box-sizing">
+                                        <div class="table__row--indent">
+                                            <div class="six-col no-margin-bottom">
+                                                <dl>
+                                                  <dt class="two-col">Size</dt>
+                                                      <dd class="four-col last-col">{$ availableNew.device.size_human $}</dd>
+                                                  <dt class="two-col">Type</dt>
+                                                      <dd class="four-col last-col">Bcache</dd>
+                                                  <dt class="two-col">Tags</dt>
+                                                      <dd class="four-col last-col">
+                                                          <tags-input ng-model="availableNew.tags" allow-tags-pattern="[\w-]+" class="three-col"></tags-input>
+                                                      </dd>
+                                                </dl>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="type" class="two-col">Cache set</label>
+                                                    <select name="cache-set" id="cache-set"
+                                                        class="table__input three-col"
+                                                        data-ng-model="availableNew.cacheset"
+                                                        data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
+                                                    </select>
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="type" class="two-col">Cache mode</label>
+                                                    <select name="cache-mode" id="cache-mode" class="three-col"
+                                                        data-ng-model="availableNew.cacheMode">
+                                                        <option value="writeback">writeback</option>
+                                                        <option value="writethrough">writethrough</option>
+                                                        <option value="writearound">writearound</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="six-col last-col">
+                                                <div class="form__group form__group--inline">
+                                                    <label for="type" class="two-col">Filesystem</label>
+                                                    <select name="filesys" class="three-col"
+                                                        data-ng-model="availableNew.fstype"
+                                                        data-ng-change="fstypeChanged(availableNew)"
+                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                        <option value="">Unformatted</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="mount-point" class="two-col">Mount point</label>
+                                                    <input type="text" id="mount-point" class="three-col"
+                                                        placeholder="Absolute path"
+                                                        data-ng-model="availableNew.mountPoint"
+                                                        data-ng-disabled="!usesMountPoint(availableNew.fstype)"
+                                                        data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="mount-options" class="two-col">Mount options</label>
+                                                    <input type="text" id="mount-options" class="three-col"
+                                                        placeholder="Separated by commas, no spaces"
+                                                        data-ng-model="availableNew.mountOptions"
+                                                        data-ng-disabled="availableNew.fstype === null">
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="table__data table-col--15">
-                                            <label for="type">Cache mode</label>
-                                            <select name="cache-mode" id="cache-mode"
-                                                data-ng-model="availableNew.cacheMode">
-                                                <option value="writeback">writeback</option>
-                                                <option value="writethrough">writethrough</option>
-                                                <option value="writearound">writearound</option>
-                                            </select>
-                                        </div>
-                                        <div class="table__data table-col--15">
-                                            <label for="type">File system</label>
-                                            <select name="filesys"
-                                                data-ng-model="availableNew.fstype"
-                                                data-ng-change="fstypeChanged(availableNew)"
-                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
-                                                <option value="">Unformatted</option>
-                                            </select>
-                                        </div>
-                                        <div class="table__data table-col--30">
-                                            <label for="mount-point">Mount point</label>
-                                            <input type="text" id="mount-point"
-                                                data-ng-model="availableNew.mountPoint"
-                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)"
-                                                data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
-                                        </div>
-                                        <div class="table__data table-col--30">
-                                            <label for="mount-options">Mount options</label>
-                                            <input type="text" id="mount-options"
-                                                data-ng-model="availableNew.mountOptions"
-                                                data-ng-disabled="availableNew.fstype === null">
-                                        </div>
-                                        <div class="table__data table-col--15"></div>
-                                        <div class="table__data table-col--7"></div>
                                     </div>
-                                    <div class="table__row table__dropdown-row table__dropdown-row--head active">
-                                        <div class="table__header table-col--5"></div>
-                                        <div class="table__header table-col--15">Name</div>
-                                        <div class="table__header table-col--15">Size</div>
-                                        <div class="table__header table-col--15">Device type</div>
-                                        <div class="table__header table-col--40"></div>
-                                    </div>
-                                    <div class="table__row table__dropdown-row no-border active">
-                                        <div class="table__data no-padding-top table-col--5"></div>
-                                        <div class="table__data no-padding-top table-col--15">{$ availableNew.device.name $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ availableNew.device.size_human $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(availableNew.device) $}</div>
-                                        <div class="table__data no-padding-top table-col--40"></div>
+                                    <div class="table__row--indent">
+                                        <div class="table__row table__dropdown-row table__dropdown-row--head active">
+                                            <div class="table__header table-col--15">Name</div>
+                                            <div class="table__header table-col--15">Size</div>
+                                            <div class="table__header table-col--15">Device type</div>
+                                            <div class="table__header table-col--45"></div>
+                                        </div>
+                                        <div class="table__row table__dropdown-row no-border active">
+                                            <div class="table__data no-padding-top table-col--15">{$ availableNew.device.name $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ availableNew.device.size_human $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ getDeviceType(availableNew.device) $}</div>
+                                            <div class="table__data no-padding-top table-col--45"></div>
+                                        </div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
@@ -1601,7 +1597,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="table__row active" data-ng-show="availableMode === 'raid'">
+                            <div class="table__row table__row--panel active" data-ng-show="availableMode === 'raid'">
                                 <div class="table__data table-col--3">
                                     <input type="checkbox" class="checkbox" id="raid-create" disabled="disabled" checked />
                                     <label for="raid-create"></label>
@@ -1611,77 +1607,88 @@
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table-col--15">{$ getNewRAIDSize() $}</div>
-                                <div class="table__data table-col--15">{$ availableNew.mode.title $}</div>
-                                <div class="table__data table-col--45"></div>
-                                <div class="table__data table-col--7"></div>
+                                <div class="table__data table-col--82"></div>
                                 <div class="table__dropdown">
-                                    <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table-col--3"></div>
-                                        <div class="table__data table-col--15">
-                                            <label for="type">RAID type</label>
-                                            <select name="type" id="type"
-                                                data-ng-model="availableNew.mode"
-                                                data-ng-change="RAIDModeChanged()"
-                                                data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
-                                            </select>
+                                    <div class="table__row form active padding-top--ten padding-right--ten padding-left--ten box-sizing">
+                                        <div class="table__row--indent">
+                                            <div class="six-col no-margin-bottom">
+                                                <dl>
+                                                    <dt class="two-col">Size</dt>
+                                                        <dd class="four-col last-col">{$ getNewRAIDSize() $}</dd>
+                                                </dl>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="type" class="two-col">RAID type</label>
+                                                    <select name="type" id="type" class="three-col"
+                                                        data-ng-model="availableNew.mode"
+                                                        data-ng-change="RAIDModeChanged()"
+                                                        data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
+                                                    </select>
+                                                </div>
+                                                <dl>
+                                                <dt class="two-col">Tags</dt>
+                                                    <dd class="four-col last-col">
+                                                        <tags-input ng-model="availableNew.tags" allow-tags-pattern="[\w-]+" class="three-col"></tags-input>
+                                                    </dd>
+                                              </dl>
+                                            </div>
+                                            <div class="six-col last-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label for="type" class="two-col">File system</label>
+                                                    <select name="filesys" class="three-col"
+                                                        data-ng-model="availableNew.fstype"
+                                                        data-ng-change="fstypeChanged(availableNew)"
+                                                        data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
+                                                        <option value="">Unformatted</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="mount-point" class="two-col">Mount point</label>
+                                                    <input type="text" id="mount-point" class="three-col"
+                                                        placeholder="Absolute path"
+                                                        data-ng-model="availableNew.mountPoint"
+                                                        data-ng-disabled="!usesMountPoint(availableNew.fstype)"
+                                                        data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="mount-options" class="two-col">Mount options</label>
+                                                    <input type="text" id="mount-options" class="three-col"
+                                                        placeholder="Separated by commas, no spaces"
+                                                        data-ng-model="availableNew.mountOptions"
+                                                        data-ng-disabled="availableNew.fstype === null">
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="table__data table-col--15">
-                                            <label for="type">File system</label>
-                                            <select name="filesys"
-                                                data-ng-model="availableNew.fstype"
-                                                data-ng-change="fstypeChanged(availableNew)"
-                                                data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
-                                                <option value="">Unformatted</option>
-                                            </select>
-                                        </div>
-                                        <div class="table__data table-col--30">
-                                            <label for="mount-point">Mount point</label>
-                                            <input type="text" id="mount-point"
-                                                data-ng-model="availableNew.mountPoint"
-                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)"
-                                                data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
-                                        </div>
-                                        <div class="table__data table-col--30">
-                                            <label for="mount-options">Mount options</label>
-                                            <input type="text" id="mount-options"
-                                                data-ng-model="availableNew.mountOptions"
-                                                data-ng-disabled="availableNew.fstype === null">
-                                        </div>
-                                        <div class="table__data table-col--15"></div>
-                                        <div class="table__data table-col--15"></div>
-                                        <div class="table__data table-col--7"></div>
                                     </div>
-                                    <div class="table__row table__dropdown-row table__dropdown-row--head active">
-                                        <div class="table__header table-col--5"></div>
-                                        <div class="table__header table-col--15">Name</div>
-                                        <div class="table__header table-col--15">Size</div>
-                                        <div class="table__header table-col--15">Device type</div>
-                                        <div class="table__header table-col--10">Active</div>
-                                        <div class="table__header table-col--15">
-                                            <span data-ng-show="showSparesColumn()">Spare (Maximum {$ getTotalNumberOfAvailableSpares() $})</span>
+                                    <div class="table__row--indent">
+                                        <div class="table__row table__dropdown-row table__dropdown-row--head active">
+                                            <div class="table__header table-col--15">Name</div>
+                                            <div class="table__header table-col--15">Size</div>
+                                            <div class="table__header table-col--15">Device type</div>
+                                            <div class="table__header table-col--10">Active</div>
+                                            <div class="table__header table-col--15">
+                                                <span data-ng-show="showSparesColumn()">Spare (Maximum {$ getTotalNumberOfAvailableSpares() $})</span>
+                                            </div>
+                                            <div class="table__header table-col--30"></div>
                                         </div>
-                                        <div class="table__header table-col--25"></div>
-                                    </div>
-                                    <div class="table__row table__dropdown-row no-border active"
-                                        data-ng-repeat="device in availableNew.devices">
-                                        <div class="table__data no-padding-top table-col--5"></div>
-                                        <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
-                                        <div class="table__data no-padding-top table-col--10">
-                                            <input type="radio"
-                                                data-ng-checked="isActiveRAIDMember(device)"
-                                                data-ng-click="setAsActiveRAIDMember(device)">
+                                        <div class="table__row table__dropdown-row no-border active"
+                                            data-ng-repeat="device in availableNew.devices">
+                                            <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
+                                            <div class="table__data no-padding-top table-col--10">
+                                                <input type="radio"
+                                                    data-ng-checked="isActiveRAIDMember(device)"
+                                                    data-ng-click="setAsActiveRAIDMember(device)">
+                                            </div>
+                                            <div class="table__data no-padding-top table-col--15">
+                                                <input type="radio"
+                                                    data-ng-show="showSparesColumn()"
+                                                    data-ng-checked="isSpareRAIDMember(device)"
+                                                    data-ng-click="setAsSpareRAIDMember(device)"
+                                                    data-ng-disabled="getNumberOfRemainingSpares() <= 0">
+                                            </div>
+                                            <div class="table__data no-padding-top table-col--30"></div>
                                         </div>
-                                        <div class="table__data no-padding-top table-col--15">
-                                            <input type="radio"
-                                                data-ng-show="showSparesColumn()"
-                                                data-ng-checked="isSpareRAIDMember(device)"
-                                                data-ng-click="setAsSpareRAIDMember(device)"
-                                                data-ng-disabled="getNumberOfRemainingSpares() <= 0">
-                                        </div>
-                                        <div class="table__data no-padding-top table-col--25"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
@@ -1704,25 +1711,34 @@
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table-col--15">{$ getNewVolumeGroupSize() $}</div>
-                                <div class="table__data table-col--15">Volume group</div>
-                                <div class="table__data table-col--45"></div>
-                                <div class="table__data table-col--7"></div>
+                                <div class="table__data table-col--82"></div>
                                 <div class="table__dropdown">
-                                    <div class="table__row table__dropdown-row active table__dropdown-row--head">
-                                        <div class="table__header table-col--5"></div>
-                                        <div class="table__header table-col--15">Name</div>
-                                        <div class="table__header table-col--15">Size</div>
-                                        <div class="table__header table-col--15">Device type</div>
-                                        <div class="table__header table-col--50"></div>
+                                    <div class="table__row form active padding-top--ten padding-right--ten padding-left--ten box-sizing">
+                                        <div class="table__row--indent">
+                                            <div class="six-col no-margin-bottom">
+                                                <dl>
+                                                    <dt class="two-col">Size</dt>
+                                                        <dd class="four-col last-col">{$ getNewVolumeGroupSize() $}</dd>
+                                                    <dt class="two-col">Type</dt>
+                                                        <dd class="four-col last-col">Volume group</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="table__row table__dropdown-row active no-border"
-                                        data-ng-repeat="device in availableNew.devices">
-                                        <div class="table__data no-padding-top table-col--5"></div>
-                                        <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
-                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
-                                        <div class="table__data no-padding-top table-col--50"></div>
+                                    <div class="table__row--indent">
+                                        <div class="table__row table__dropdown-row active table__dropdown-row--head">
+                                            <div class="table__header table-col--15">Name</div>
+                                            <div class="table__header table-col--15">Size</div>
+                                            <div class="table__header table-col--15">Device type</div>
+                                            <div class="table__header table-col--55"></div>
+                                        </div>
+                                        <div class="table__row table__dropdown-row active no-border"
+                                            data-ng-repeat="device in availableNew.devices">
+                                            <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
+                                            <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
+                                            <div class="table__data no-padding-top table-col--55"></div>
+                                        </div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">

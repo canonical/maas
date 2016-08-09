@@ -259,17 +259,6 @@ $success:               #38b44a;
       &:hover {
         background-color: $white;
 
-        // Show input / select styles when on hover over a parent .table__row
-        .table__input {
-          background-color: $white;
-          border-color: $alto-grey;
-          background-position: right 10px top 16px;
-
-          &[disabled] {
-            border-color: transparent;
-          }
-        }
-
         // Set controls z-index and opacity so it is visible
         .table__controls {
           z-index: 1;
@@ -285,12 +274,6 @@ $success:               #38b44a;
       // Active state on .table__row
       &.active {
         background-color: $white;
-
-        .table__input {
-          background-color: $white;
-          border-color: $alto-grey;
-          background-position: right 10px top 16px;
-        }
 
         .table__controls {
           z-index: 1;
@@ -367,6 +350,29 @@ $success:               #38b44a;
       display: table-footer-group;
     }
 
+    &.table--hover {
+
+      .table__row {
+
+        .table__input {
+          display: inline-block;
+          margin: -7px 0 -8px -10px;
+          background-color: transparent;
+          border-color: transparent;
+          background-position: -9999px -9999px
+        }
+
+        &:hover {
+
+          .table__input {
+            background-color: #fff;
+            border-color: #d2d2d2;
+            background-position: right 10px top 16px
+          }
+        }
+      }
+    }
+
     // Table label style used as secondary information with in a table cell. Can
     // also be used as a toggle.
     //
@@ -387,7 +393,8 @@ $success:               #38b44a;
     .table__label {
       clear: both;
       display: block;
-      margin-top: 11px;
+      margin-top: 5px;
+      line-height: 16px;
       color: $pale-grey;
 
       a {
@@ -466,9 +473,9 @@ $success:               #38b44a;
     .table__input {
       display: inline-block;
       margin: -7px 0 -7px -14px;
-      background-color: transparent;
-      border-color: transparent;
-      background-position: -9999px -9999px;
+      background-color: $white;
+      border-color: $alto-grey;
+      background-position: right 10px top 16px;
 
       &[disabled] {
         background-color: transparent;
@@ -515,6 +522,13 @@ $success:               #38b44a;
         border-bottom: 0;
         display: none;
         position: relative;
+
+        &--indent {
+          padding-left: 41px !important;
+          float: left;
+          width: 100%;
+          box-sizing: border-box;
+        }
 
         &:before {
           display: block;

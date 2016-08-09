@@ -103,7 +103,6 @@ class MachineHandler(NodeHandler):
             'mount_special',
             'unmount_special',
             'update_filesystem',
-            'update_disk_tags',
             'update_disk',
             'delete_disk',
             'delete_partition',
@@ -384,7 +383,7 @@ class MachineHandler(NodeHandler):
         if not fstype:
             if fs:
                 fs.delete()
-                return
+            return
         if fs is None or fstype != fs.fstype:
             form = FormatBlockDeviceForm(blockdevice, {'fstype': fstype})
             if not form.is_valid():
@@ -432,12 +431,10 @@ class MachineHandler(NodeHandler):
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
 
-    def update_disk_tags(self, params):
-        """Update all the tags on all disks."""
-        node = self.get_object(params)
-        disk_obj = BlockDevice.objects.get(id=params['block_id'], node=node)
-        disk_obj.tags = params['tags']
-        disk_obj.save(update_fields=['tags'])
+    def _update_disk_tags(self, disk_obj, params):
+        if 'tags' in params:
+            disk_obj.tags = params['tags']
+            disk_obj.save(update_fields=['tags'])
 
     def update_disk(self, params):
         """Update disk information."""
@@ -460,7 +457,13 @@ class MachineHandler(NodeHandler):
         if not form.is_valid():
             raise HandlerError(form.errors)
         else:
-            form.save()
+            disk_obj = form.save()
+            self._update_disk_tags(disk_obj, params)
+            if 'fstype' in params:
+                self.update_blockdevice_filesystem(
+                    node, disk_obj.id, params['fstype'],
+                    params.get('mount_point', ''),
+                    params.get('mount_options', ''))
 
     def delete_disk(self, params):
         # Only admin users can perform delete.
@@ -588,6 +591,7 @@ class MachineHandler(NodeHandler):
         else:
             bcache = form.save()
 
+        self._update_disk_tags(bcache.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, bcache.virtual_device.id, params.get("fstype"),
@@ -606,6 +610,7 @@ class MachineHandler(NodeHandler):
         else:
             raid = form.save()
 
+        self._update_disk_tags(raid.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, raid.virtual_device.id, params.get("fstype"),
@@ -644,6 +649,7 @@ class MachineHandler(NodeHandler):
         else:
             logical_volume = form.save()
 
+        self._update_disk_tags(logical_volume, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, logical_volume.id, params.get("fstype"),

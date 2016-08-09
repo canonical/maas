@@ -36,7 +36,6 @@ from maasserver.exceptions import (
     NodeStateViolation,
 )
 from maasserver.forms import AdminMachineWithMACAddressesForm
-from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.filesystem import Filesystem
@@ -1404,12 +1403,53 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         new_name = factory.make_name("new")
+        new_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.update_disk({
             'system_id': node.system_id,
             'block_id': block_device.id,
             'name': new_name,
+            'tags': new_tags,
             })
-        self.assertEqual(new_name, reload_object(block_device).name)
+        block_device = reload_object(block_device)
+        self.assertEqual(new_name, block_device.name)
+        self.assertItemsEqual(new_tags, block_device.tags)
+
+    def test_update_disk_for_block_device_with_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        new_name = factory.make_name("new")
+        new_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        new_fstype = factory.pick_filesystem_type()
+        new_mount_point = factory.make_absolute_path()
+        new_mount_options = factory.make_name("options")
+        handler.update_disk({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'name': new_name,
+            'tags': new_tags,
+            'fstype': new_fstype,
+            'mount_point': new_mount_point,
+            'mount_options': new_mount_options,
+            })
+        block_device = reload_object(block_device)
+        self.assertEqual(new_name, block_device.name)
+        self.assertItemsEqual(new_tags, block_device.tags)
+        efs = block_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=new_fstype, mount_point=new_mount_point,
+            mount_options=new_mount_options))
 
     def test_update_disk_for_virtual_block_device(self):
         user = factory.make_admin()
@@ -1421,12 +1461,19 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_VirtualBlockDevice(node=node)
         new_name = factory.make_name("new")
+        new_tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.update_disk({
             'system_id': node.system_id,
             'block_id': block_device.id,
             'name': new_name,
+            'tags': new_tags,
             })
-        self.assertEqual(new_name, reload_object(block_device).name)
+        block_device = reload_object(block_device)
+        self.assertEqual(new_name, block_device.name)
+        self.assertItemsEqual(new_tags, block_device.tags)
 
     def test_delete_disk(self):
         user = factory.make_admin()
@@ -1590,6 +1637,10 @@ class TestMachineHandler(MAASServerTestCase):
         name = factory.make_name("bcache")
         cache_set = factory.make_CacheSet(node=node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.create_bcache({
             'system_id': node.system_id,
             'partition_id': partition.id,
@@ -1597,6 +1648,7 @@ class TestMachineHandler(MAASServerTestCase):
             'name': name,
             'cache_set': cache_set.id,
             'cache_mode': cache_mode,
+            'tags': tags,
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
@@ -1605,6 +1657,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(cache_mode, bcache.cache_mode)
         self.assertEqual(
             partition, bcache.get_bcache_backing_filesystem().partition)
+        self.assertItemsEqual(tags, bcache.virtual_device.tags)
 
     def test_create_bcache_for_partition_with_filesystem(self):
         user = factory.make_admin()
@@ -1650,12 +1703,17 @@ class TestMachineHandler(MAASServerTestCase):
         name = factory.make_name("bcache")
         cache_set = factory.make_CacheSet(node=node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.create_bcache({
             'system_id': node.system_id,
             'block_id': block_device.id,
             'name': name,
             'cache_set': cache_set.id,
             'cache_mode': cache_mode,
+            'tags': tags,
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
@@ -1665,6 +1723,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             block_device.id,
             bcache.get_bcache_backing_filesystem().block_device.id)
+        self.assertItemsEqual(tags, bcache.virtual_device.tags)
 
     def test_create_bcache_for_block_device_with_filesystem(self):
         user = factory.make_admin()
@@ -1711,17 +1770,23 @@ class TestMachineHandler(MAASServerTestCase):
         disk2 = factory.make_PhysicalBlockDevice(node=node)
         spare_disk = factory.make_PhysicalBlockDevice(node=node)
         name = factory.make_name("md")
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.create_raid({
             'system_id': node.system_id,
             'name': name,
             'level': 'raid-5',
             'block_devices': [disk0.id, disk1.id, disk2.id],
             'spare_devices': [spare_disk.id],
+            'tags': tags,
             })
         raid = RAID.objects.filter_by_node(node).first()
         self.assertIsNotNone(raid)
         self.assertEqual(name, raid.name)
         self.assertEqual("raid-5", raid.group_type)
+        self.assertItemsEqual(tags, raid.virtual_device.tags)
 
     def test_create_raid_with_filesystem(self):
         user = factory.make_admin()
@@ -1782,17 +1847,23 @@ class TestMachineHandler(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
         name = factory.make_name("lv")
         size = volume_group.get_lvm_free_space()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         handler.create_logical_volume({
             'system_id': node.system_id,
             'name': name,
             'volume_group_id': volume_group.id,
             'size': size,
+            'tags': tags,
             })
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
         self.assertEqual(
             "%s-%s" % (volume_group.name, name), logical_volume.get_name())
         self.assertEqual(size, logical_volume.size)
+        self.assertItemsEqual(tags, logical_volume.tags)
 
     def test_create_logical_volume_with_filesystem(self):
         user = factory.make_admin()
@@ -1859,26 +1930,6 @@ class TestMachineHandler(MAASServerTestCase):
         node_data = self.dehydrate_node(node, handler)
         node_data["tags"].append(tag.name)
         self.assertRaises(HandlerError, handler.update, node_data)
-
-    def test_update_tags_on_block_device(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        tags = [
-            factory.make_name("tag")
-            for _ in range(3)
-            ]
-        handler.update_disk_tags({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'tags': tags
-            })
-        # Refresh the block_device to check that the values were updated
-        block_device = BlockDevice.objects.get(id=block_device.id)
-        self.assertItemsEqual(
-            tags, block_device.tags)
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()

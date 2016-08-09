@@ -64,6 +64,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             MUTLI: "multi",
             UNMOUNT: "unmount",
             UNFORMAT: "unformat",
+            EDIT: "edit",
             DELETE: "delete",
             FORMAT_AND_MOUNT: "format-mount",
             PARTITION: "partition",
@@ -138,6 +139,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availableAllSelected = false;
         $scope.availableNew = {};
         $scope.used = [];
+        $scope.showMembers = [];
 
         // Give $parent which is the NodeDetailsController access to this scope
         // it will call `nodeLoaded` once the node has been fully loaded.
@@ -444,6 +446,11 @@ angular.module('MAAS').controller('NodeStorageController', [
             var used = [];
             angular.forEach($scope.node.disks, function(disk) {
                 if(isInUse(disk) && disk.type !== "cache-set") {
+                    var has_partitions = false;
+                    if(angular.isArray(disk.partitions) &&
+                        disk.partitions.length > 0) {
+                        has_partitions = true;
+                    }
                     var data = {
                         "name": disk.name,
                         "type": disk.type,
@@ -451,7 +458,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "serial": disk.serial,
                         "tags": getTags(disk),
                         "used_for": disk.used_for,
-                        "is_boot": disk.is_boot
+                        "is_boot": disk.is_boot,
+                        "has_partitions": has_partitions
                     };
                     if(disk.type === "virtual") {
                         data.parent_type = disk.parent.type;
@@ -866,15 +874,6 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         };
 
-        // Return the text for the format and mount button.
-        $scope.getFormatAndMountButtonText = function(disk) {
-            if($scope.hasUnmountedFilesystem(disk)) {
-                return "Mount";
-            } else {
-                return "Format";
-            }
-        };
-
         // Return the text for the partition button.
         $scope.getPartitionButtonText = function(disk) {
             if(disk.has_partitions) {
@@ -930,22 +929,6 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         };
 
-        // Save the new name of the disk if it changed.
-        $scope.saveAvailableName = function(disk) {
-            if(disk.name === "") {
-                disk.name = disk.original.name;
-            } else if(disk.name !== disk.original.name) {
-                var name = disk.name;
-                if(isLogicalVolume(disk)){
-                    var parentName = disk.original.name.split("-")[0] + "-";
-                    name = name.slice(parentName.length);
-                }
-                MachinesManager.updateDisk($scope.node, disk.block_id, {
-                    name: name
-                });
-            }
-        };
-
         // Prevent logical volumes from changing the volume group prefix.
         $scope.nameHasChanged = function(disk) {
             if(isLogicalVolume(disk)) {
@@ -958,98 +941,9 @@ angular.module('MAAS').controller('NodeStorageController', [
         };
 
         // Cancel the current available operation.
-        $scope.availableCancel = function() {
+        $scope.availableCancel = function(disk) {
             $scope.updateAvailableSelection(true);
             $scope.availableNew = {};
-        };
-
-        // Enter unformat mode.
-        $scope.availableUnformat = function() {
-            $scope.availableMode = SELECTION_MODE.UNFORMAT;
-        };
-
-        // Confirm the unformat action.
-        $scope.availableConfirmUnformat = function(disk) {
-            MachinesManager.updateFilesystem(
-                $scope.node,
-                disk.block_id, disk.partition_id,
-                null, null, null);
-
-            // Clear the fstype.
-            disk.fstype = null;
-            $scope.updateAvailableSelection(true);
-        };
-
-        // Enter format and mount mode.
-        $scope.availableFormatAndMount = function(disk) {
-            disk.$options = {
-                fstype: disk.fstype || "ext4",
-                mountPoint: disk.mount_point || "",
-                mountOptions: disk.mount_options || ""
-            };
-            $scope.availableMode = SELECTION_MODE.FORMAT_AND_MOUNT;
-            // The filesystem type hasn't actually changed, but we call
-            // fstypeChanged() to update the mount point and mount
-            // options fields to reflect the chosen filesystem.
-            $scope.fstypeChanged(disk.$options);
-        };
-
-        // Quickly enter the format and mount mode.
-        $scope.availableQuickFormatAndMount = function(disk) {
-            deselectAll($scope.available);
-            disk.$selected = true;
-            $scope.updateAvailableSelection(true);
-            $scope.availableFormatAndMount(disk);
-        };
-
-        // Return the text for the submit button in the format and mount mode.
-        $scope.getAvailableFormatSubmitText = function(disk) {
-            if(angular.isString(disk.$options.mountPoint) &&
-                disk.$options.mountPoint !== "") {
-                return "Mount";
-            } else {
-                return "Format";
-            }
-        };
-
-        // Confirm the format and mount action.
-        $scope.availableConfirmFormatAndMount = function(disk) {
-            // Do nothing if its invalid.
-            if($scope.isMountPointInvalid(disk.$options.mountPoint)) {
-                return;
-            }
-
-            // Update the filesystem.
-            MachinesManager.updateFilesystem(
-                $scope.node, disk.block_id, disk.partition_id,
-                disk.$options.fstype, disk.$options.mountPoint,
-                disk.$options.mountOptions);
-
-            // Set the options on the object so no flicker occurs while waiting
-            // for the new object to be received.
-            disk.fstype = disk.$options.fstype;
-            disk.mount_point = disk.$options.mountPoint;
-            disk.mount_options = disk.$options.mountOptions;
-            $scope.updateAvailableSelection(true);
-
-            // If the mount_point is set the we need to transition this to
-            // the filesystem section.
-            if(angular.isString(disk.mount_point) && disk.mount_point !== "") {
-                $scope.filesystems.push({
-                    "name": disk.name,
-                    "size_human": disk.size_human,
-                    "fstype": disk.fstype,
-                    "mount_point": disk.mount_point,
-                    "mount_options": disk.mount_options,
-                    "block_id": disk.block_id,
-                    "partition_id": disk.partition_id
-                });
-
-                // Remove the selected disk from available.
-                var idx = $scope.available.indexOf(disk);
-                $scope.available.splice(idx, 1);
-                $scope.updateAvailableSelection(true);
-            }
         };
 
         // Return true if the filesystem can be mounted at a directory.
@@ -1083,26 +977,13 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the disk can be deleted.
         $scope.canDelete = function(disk) {
-            if(!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+            if (!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
                 return false;
             } else if(disk.type === "lvm-vg") {
                 return disk.original.used_size === 0;
             } else {
                 return !disk.has_partitions;
             }
-        };
-
-        // Enter unformat mode.
-        $scope.availableUnformat = function() {
-            $scope.availableMode = SELECTION_MODE.UNFORMAT;
-        };
-
-        // Quickly enter unformat mode.
-        $scope.availableQuickUnformat = function(disk) {
-            deselectAll($scope.available);
-            disk.$selected = true;
-            $scope.updateAvailableSelection(true);
-            $scope.availableUnformat();
         };
 
         // Enter delete mode.
@@ -1116,6 +997,123 @@ angular.module('MAAS').controller('NodeStorageController', [
             disk.$selected = true;
             $scope.updateAvailableSelection(true);
             $scope.availableDelete();
+        };
+
+        // Return true if it can be edited.
+        $scope.canEdit = function(disk) {
+          if (!$scope.isSuperUser() || $scope.isAllStorageDisabled()) {
+              return false;
+          } else {
+              return true;
+          }
+        };
+
+        // Enter Edit mode, disable certain fields based on disk type
+        $scope.availableEdit = function(disk) {
+            $scope.availableMode = SELECTION_MODE.EDIT;
+
+            if (disk.type === "lvm-vg") {
+                disk.$options = {
+                    editingTags: false,
+                    editingFilesystem: false
+                };
+            } else if (disk.type === "partition") {
+                disk.$options = {
+                    editingTags: false,
+                    editingFilesystem: true,
+                    fstype: disk.fstype
+                };
+            } else {
+                disk.$options = {
+                    editingFilesystem: true,
+                    editingTags: true,
+                    tags: angular.copy(disk.tags),
+                    fstype: disk.fstype
+                };
+                if (!$scope.canFormatAndMount(disk)) {
+                    disk.$options.editingFilesystem = false;
+                }
+            }
+        };
+
+        // Quickly enter Edit mode
+        $scope.availableQuickEdit = function(disk) {
+            deselectAll($scope.available);
+            disk.$selected = true;
+            $scope.updateAvailableSelection(true);
+            $scope.availableEdit(disk);
+        };
+
+        // Save the disk which is in Edit mode
+        $scope.availableConfirmEdit = function(disk) {
+            var params = {
+                name: disk.name
+            };
+
+            // Do nothing if not valid.
+            if($scope.isNameInvalid(disk) ||
+                $scope.isMountPointInvalid(disk.$options.mountPoint)) {
+                return;
+            }
+
+            // Reset the name if its blank.
+            if(disk.name === "") {
+                disk.name = disk.original.name;
+            }
+
+            // Ensure logical volume has parent prefix in its name.
+            if(isLogicalVolume(disk)){
+                var parentName = disk.original.name.split("-")[0] + "-";
+                params.name = disk.name.slice(parentName.length);
+            }
+
+            // Set filesystem options so formatting and mounting is performed.
+            if(angular.isDefined(disk.$options.fstype)) {
+                params.fstype = disk.$options.fstype;
+                params.mount_point = disk.$options.mountPoint || '';
+                params.mount_options = disk.$options.mountOptions || '';
+            }
+
+            // Update the tags for the disk.
+            if(angular.isArray(disk.$options.tags)) {
+                params.tags = disk.$options.tags.map(
+                    function(tag) { return tag.text; });
+            }
+
+            // Save the options.
+            MachinesManager.updateDisk($scope.node, disk.block_id, params);
+
+            // Set the options on the object so no flicker occurs while waiting
+            // for the new object to be received.
+            disk.fstype = disk.$options.fstype;
+            disk.mount_point = disk.$options.mountPoint;
+            disk.mount_options = disk.$options.mountOptions;
+            disk.tags = disk.$options.tags;
+            disk.$options = {};
+
+            // If the mount_point is set the we need to transition this to
+            // the filesystem section.
+            if(angular.isString(disk.mount_point) && disk.mount_point !== "") {
+                $scope.filesystems.push({
+                    "name": disk.name,
+                    "size_human": disk.size_human,
+                    "fstype": disk.fstype,
+                    "mount_point": disk.mount_point,
+                    "mount_options": disk.mount_options,
+                    "block_id": disk.block_id,
+                    "partition_id": disk.partition_id
+                });
+
+                // Remove the selected disk from available.
+                var idx = $scope.available.indexOf(disk);
+                $scope.available.splice(idx, 1);
+            }
+
+            // Deselect the disk after saving
+            disk.$selected = false;
+
+            // Update the current selections.
+            $scope.updateAvailableSelection(true);
         };
 
         // Return the text for remove confirmation message.
@@ -1350,6 +1348,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Cancel the current cache set operation.
         $scope.cacheSetCancel = function() {
+            deselectAll($scope.cachesets);
             $scope.updateCacheSetsSelection(true);
         };
 
@@ -1471,7 +1470,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 cacheMode: "writeback",
                 fstype: null,
                 mountPoint: "",
-                mountOptions: ""
+                mountOptions: "",
+                tags: []
             };
         };
 
@@ -1561,6 +1561,11 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_options = $scope.availableNew.mountOptions;
                 }
             }
+            if(angular.isArray($scope.availableNew.tags)
+                && $scope.availableNew.tags.length > 0) {
+                params.tags = $scope.availableNew.tags.map(
+                    function(tag) { return tag.text; });
+            }
             MachinesManager.createBcache($scope.node, params);
 
             // Remove device from available.
@@ -1606,7 +1611,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 spares: [],
                 fstype: null,
                 mountPoint: "",
-                mountOptions: ""
+                mountOptions: "",
+                tags: []
             };
             $scope.availableNew.mode = $scope.getAvailableRAIDModes()[0];
         };
@@ -1767,6 +1773,11 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_options = $scope.availableNew.mountOptions;
                 }
             }
+            if(angular.isArray($scope.availableNew.tags)
+                && $scope.availableNew.tags.length > 0) {
+                params.tags = $scope.availableNew.tags.map(
+                    function(tag) { return tag.text; });
+            }
             MachinesManager.createRAID($scope.node, params);
 
             // Remove devices from available.
@@ -1877,13 +1888,16 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Enter logical volume mode.
         $scope.availableLogicalVolume = function(disk) {
             $scope.availableMode = SELECTION_MODE.LOGICAL_VOLUME;
+            disk.$selected = true;
             // Set starting size to the maximum available space.
             var size_and_units = disk.available_size_human.split(" ");
             var namePrefix = disk.name + "-lv";
             disk.$options = {
                 name: getNextName(namePrefix),
                 size: size_and_units[0],
-                sizeUnits: size_and_units[1]
+                sizeUnits: size_and_units[1],
+                fstype: null,
+                tags: []
             };
         };
 
@@ -1961,6 +1975,11 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_options = disk.$options.mountOptions;
                 }
             }
+            if(angular.isArray(disk.$options.tags)
+                && disk.$options.tags.length > 0) {
+                params.tags = disk.$options.tags.map(
+                    function(tag) { return tag.text; });
+            }
             MachinesManager.createLogicalVolume(
                 $scope.node, disk.block_id, name, bytes, params);
 
@@ -1970,39 +1989,6 @@ angular.module('MAAS').controller('NodeStorageController', [
                 $scope.available.splice(idx, 1);
             }
             $scope.updateAvailableSelection(true);
-        };
-
-        // Return true when tags can be edited.
-        $scope.canEditTags = function(disk) {
-            return (disk.type !== "partition" &&
-                    disk.type !== "lvm-vg" &&
-                    !$scope.isAllStorageDisabled() &&
-                    $scope.isSuperUser());
-        };
-
-        // Called to enter tag editing mode
-        $scope.availableEditTags = function(disk) {
-            disk.$options = {
-                editingTags: true,
-                tags: angular.copy(disk.tags)
-            };
-        };
-
-        // Called to cancel editing tags.
-        $scope.availableCancelTags = function(disk) {
-            disk.$options = {};
-        };
-
-        // Called to save the tag changes.
-        $scope.availableSaveTags = function(disk) {
-            var tags = [];
-            angular.forEach(disk.$options.tags, function(tag) {
-                tags.push(tag.text);
-            });
-            MachinesManager.updateDiskTags(
-                $scope.node, disk.block_id, tags);
-            disk.tags = disk.$options.tags;
-            disk.$options = {};
         };
 
         // Returns true if storage cannot be edited.

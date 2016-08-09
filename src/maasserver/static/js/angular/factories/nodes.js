@@ -157,19 +157,6 @@ angular.module('MAAS').service(
                 return RegionConnection.callMethod(method, params);
             };
 
-        // Update the tags on a disk.
-        NodesManager.prototype.updateDiskTags = function(
-            node, block_id, tags) {
-                var self = this;
-                var method = this._handler + ".update_disk_tags";
-                var params = {
-                    system_id: node.system_id,
-                    block_id: block_id,
-                    tags: tags
-                };
-                return RegionConnection.callMethod(method, params);
-            };
-
         // Delete the disk.
         NodesManager.prototype.deleteDisk = function(
             node, block_id) {
