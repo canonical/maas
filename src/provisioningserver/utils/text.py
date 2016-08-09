@@ -7,6 +7,7 @@ __all__ = [
     'make_bullet_list',
     'normalise_whitespace',
     'normalise_to_comma_list',
+    'split_string_list',
 ]
 
 import re
@@ -38,6 +39,9 @@ def normalise_to_comma_list(string):
     ISC dhcpd is quite picky about comma-separated lists. When in doubt,
     normalise using this function.
     """
-    return ", ".join(
-        part for part in re.split(r'[,\s]+', string)
-        if len(part) != 0)
+    return ", ".join(split_string_list(string))
+
+
+def split_string_list(string):
+    """Take a space- or comma-separated list and generate the parts."""
+    return (part for part in re.split(r'[,\s]+', string) if len(part) != 0)

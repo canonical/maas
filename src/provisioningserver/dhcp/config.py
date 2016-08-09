@@ -13,6 +13,7 @@ from itertools import (
     repeat,
 )
 from platform import linux_distribution
+import socket
 from typing import Sequence
 
 from provisioningserver.boot import BootMethodRegistry
@@ -23,7 +24,9 @@ from provisioningserver.utils import (
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
     normalise_whitespace,
+    split_string_list,
 )
+from provisioningserver.utils.twisted import synchronous
 import tempita
 
 # Used to generate the conditional bootloader behaviour
@@ -78,6 +81,45 @@ def compose_conditional_bootloader():
     return output.strip()
 
 
+@synchronous
+def gen_addresses(hostname):
+    """Yield IPv4 and IPv6 addresses for `hostname`.
+
+    Yields (ip-version, address) tuples, where ip-version is either 4 or 6.
+
+    Internally this uses `socket.getaddrinfo` and limits resolution to UDP
+    datagram sockets.
+    """
+    for family, _, _, _, addr in socket.getaddrinfo(
+            hostname, 0, 0, socket.SOCK_DGRAM, socket.IPPROTO_UDP):
+        if family == socket.AF_INET:
+            ipaddr, _ = addr
+            yield 4, ipaddr
+        elif family == socket.AF_INET6:
+            ipaddr, _, _, _ = addr
+            yield 6, ipaddr
+
+
+def get_addresses(*hostnames):
+    """Resolve and collate addresses for the given hostnames.
+
+    :return: A tuple of two lists. The first contains all IPv4 addresses
+    discovered, the second all IPv6 addresses.
+    """
+    ipv4, ipv6 = [], []
+    for hostname in hostnames:
+        for ipver, addr in gen_addresses(hostname):
+            if ipver == 4:
+                ipv4.append(addr)
+            elif ipver == 6:
+                ipv6.append(addr)
+            else:
+                raise AssertionError(
+                    "IP version %r for address %r is not recognised."
+                    % (ipver, addr))
+    return ipv4, ipv6
+
+
 @typed
 def get_config(
         template_name: str, global_dhcp_snippets: Sequence[dict],
@@ -98,6 +140,13 @@ def get_config(
         "oneline": normalise_whitespace,
         "commalist": normalise_to_comma_list,
     }
+
+    for shared_network in shared_networks:
+        for subnet in shared_network["subnets"]:
+            ntp_servers = split_string_list(subnet.get("ntp_servers", ""))
+            ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
+            subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
+            subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
 
     try:
         return template.substitute(

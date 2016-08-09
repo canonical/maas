@@ -26,6 +26,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from provisioningserver.dhcp.testing.config import (
+    DHCPConfigNameResolutionDisabled,
     make_failover_peer_config,
     make_global_dhcp_snippets,
     make_host,
@@ -460,12 +461,11 @@ class TestConfigureDHCP(MAASTestCase):
         # it monitors, and tests must leave them as they found them.
         self.addCleanup(dhcp.service_monitor.getServiceByName("dhcpd").off)
         self.addCleanup(dhcp.service_monitor.getServiceByName("dhcpd6").off)
-        # The dhcp server states are also global so we clean them after each
-        # test.
-
-        def reset_server_states():
-            dhcp._current_server_state = {}
-        self.addCleanup(reset_server_states)
+        # The dhcp server states are global so we clean them after each test.
+        self.addCleanup(dhcp._current_server_state.clear)
+        # Temporarily prevent hostname resolution when generating DHCP
+        # configuration. This is tested elsewhere.
+        self.useFixture(DHCPConfigNameResolutionDisabled())
 
     def configure(
             self, omapi_key, failover_peers, shared_networks,
@@ -976,6 +976,12 @@ class TestValidateDHCP(MAASTestCase):
         ("DHCPv4", {"server": dhcp.DHCPv4Server}),
         ("DHCPv6", {"server": dhcp.DHCPv6Server}),
     )
+
+    def setUp(self):
+        super(TestValidateDHCP, self).setUp()
+        # Temporarily prevent hostname resolution when generating DHCP
+        # configuration. This is tested elsewhere.
+        self.useFixture(DHCPConfigNameResolutionDisabled())
 
     def validate(
             self, omapi_key, failover_peers, shared_networks,

@@ -48,6 +48,7 @@ from provisioningserver import (
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import (
+    DHCPConfigNameResolutionDisabled,
     make_failover_peer_config,
     make_host,
     make_interface,
@@ -1822,6 +1823,12 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
     )
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super(TestClusterProtocol_ValidateDHCP, self).setUp()
+        # Temporarily prevent hostname resolution when generating DHCP
+        # configuration. This is tested elsewhere.
+        self.useFixture(DHCPConfigNameResolutionDisabled())
 
     def test__is_registered(self):
         self.assertIsNotNone(

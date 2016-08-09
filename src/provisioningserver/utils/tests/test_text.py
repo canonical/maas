@@ -16,6 +16,7 @@ from provisioningserver.utils.text import (
     make_bullet_list,
     normalise_to_comma_list,
     normalise_whitespace,
+    split_string_list,
 )
 from testtools.matchers import Equals
 
@@ -101,3 +102,31 @@ class TestNormaliseToCommaList(MAASTestCase):
         self.assertThat(
             normalise_to_comma_list(delimiter + word + delimiter),
             Equals(word))
+
+
+class TestSplitStringList(MAASTestCase):
+    """Tests for `split_string_list`."""
+
+    delimiters = hypothesis.strategies.text(
+        string.whitespace + ",", min_size=1, max_size=10)
+
+    @hypothesis.given(delimiters)
+    def test__splits_at_delimiters(self, delimiter):
+        words = [factory.make_name("word") for _ in range(5)]
+        string = delimiter.join(words)
+        self.assertThat(
+            list(split_string_list(string)),
+            Equals(words))
+
+    @hypothesis.given(delimiters)
+    def test__normalises_nothing_but_delimiter_to_empty_list(self, delimiter):
+        self.assertThat(
+            list(split_string_list(delimiter)),
+            Equals([]))
+
+    @hypothesis.given(delimiters)
+    def test__eliminates_empty_words(self, delimiter):
+        word = factory.make_name("word")
+        self.assertThat(
+            list(split_string_list(delimiter + word + delimiter)),
+            Equals([word]))

@@ -4,6 +4,7 @@
 """Test helpers related to DHCP configuration."""
 
 __all__ = [
+    'DHCPConfigNameResolutionDisabled',
     'make_failover_peer_config',
     'make_global_dhcp_snippets',
     'make_host',
@@ -16,8 +17,11 @@ __all__ = [
 
 import random
 
+from fixtures import Fixture
 from maastesting.factory import factory
 from netaddr import IPAddress
+from provisioningserver.dhcp import config
+from testtools.monkey import patch
 
 
 def make_subnet_pool(
@@ -101,10 +105,9 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
             factory.pick_ip_in_network(network),
         )),
         'ntp_servers': " ".join((
-            # XXX: GavinPanella 2016-07-26 bug=1606499: Only IPv4 NTP servers
-            # are supported; IPv6 addresses result in parse failure in dhcpd.
             factory.make_ipv4_address(),
-            factory.make_name("ntp.example", "."),
+            factory.make_ipv6_address(),
+            factory.make_name("ntp-server"),
         )),
         'domain_name': '%s.example.com' % factory.make_name('domain'),
         'router_ip': factory.pick_ip_in_network(network),
@@ -157,3 +160,18 @@ def make_interface(name=None):
     return {
         'name': name,
     }
+
+
+class DHCPConfigNameResolutionDisabled(Fixture):
+    """Prevent hostname resolution when generating DHCP configuration."""
+
+    def _setUp(self):
+        assert hasattr(config, "gen_addresses")
+        restore = patch(config, "gen_addresses", self._genRandomAddresses)
+        self.addCleanup(restore)
+
+    def _genRandomAddresses(self, hostname):
+        # Mimic config.gen_addresses by yielding a random IPv4 address and a
+        # random IPv6 address.
+        yield 4, factory.make_ipv4_address()
+        yield 6, factory.make_ipv6_address()

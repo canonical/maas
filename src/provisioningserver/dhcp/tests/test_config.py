@@ -7,16 +7,21 @@ __all__ = []
 
 from base64 import b64encode
 from itertools import count
+import os
 import pipes
 import random
 import re
+import shutil
+from socket import gethostbyname
 import subprocess
 import tempfile
 from textwrap import dedent
 import traceback
 
+from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import GreaterThanOrEqual
+import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import (
@@ -25,6 +30,7 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_shared_network,
 )
+from provisioningserver.testing.network import does_HOSTALIASES_work_here
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import select_c_utf8_locale
 import tempita
@@ -74,8 +80,50 @@ sample_template = dedent("""\
 """)
 
 
-def make_sample_params(ipv6=False):
-    """Return a dict of arbitrary DHCP configuration parameters."""
+def is_ip_address(string):
+    """Does `string` look like an IP address?"""
+    try:
+        netaddr.IPAddress(string)
+    except netaddr.AddrFormatError:
+        return False
+    else:
+        return True
+
+
+def update_HOSTALIASES(test, hostaliases):
+    """Configure HOSTALIASES; see gethostbyname(3).
+
+    :param test: An instance of `maastesting.testcase.TestCase`.
+    :param hostaliases: An iterable yielding (alias, address) tuples.
+    """
+    hostaliases_path = test.make_file("hostaliases")
+
+    # Collect any existing host aliases.
+    if "HOSTALIASES" in os.environ:
+        shutil.copy(os.environ["HOSTALIASES"], hostaliases_path)
+        with open(hostaliases_path, "a", encoding="ascii") as fd:
+            fd.write("\n#----------------------\n")
+
+    # Spew the given aliases out to the HOSTALIASES file.
+    with open(hostaliases_path, "w", encoding="ascii") as fd:
+        for alias, address in hostaliases:
+            print(alias, address, file=fd)
+
+    # Temporarily update HOSTALIASES in the environment.
+    test.useFixture(EnvironmentVariable("HOSTALIASES", hostaliases_path))
+
+
+def make_sample_params(test, ipv6=False):
+    """Return a dict of arbitrary DHCP configuration parameters.
+
+    :param test: An instance of `maastesting.testcase.TestCase`.
+    :param ipv6: When true, prepare configuration for a DHCPv6 server,
+        otherwise prepare configuration for a DHCPv4 server.
+    :return: A dictionary of sample configuration.
+    """
+    if not does_HOSTALIASES_work_here():
+        test.skipTest("HOSTALIASES is not fully supported")
+
     failover_peers = [
         make_failover_peer_config()
         for _ in range(3)
@@ -93,6 +141,18 @@ def make_sample_params(ipv6=False):
                 peer = random.choice(failover_peers)
                 pool["failover_peer"] = peer["name"]
 
+    # So that get_config can resolve the configuration, collect hostnames from
+    # the sample configuration that need to resolve then configure HOSTALIASES
+    # to give each an address somewhere in the local 127.0.0.0/8 network.
+    hostaddresses = netaddr.IPRange("127.1.0.1", "127.1.255.254")
+    hostnames = (
+        name for shared_network in shared_networks
+        for subnet in shared_network["subnets"]
+        for name in subnet["ntp_servers"].split()
+        if not is_ip_address(name)
+    )
+    update_HOSTALIASES(test, zip(hostnames, hostaddresses))
+
     return {
         'omapi_key': b64encode(factory.make_bytes()).decode("ascii"),
         'failover_peers': failover_peers,
@@ -103,7 +163,12 @@ def make_sample_params(ipv6=False):
 
 
 def validate_dhcpd_configuration(test, configuration, ipv6):
-    """Validate `configuration` using `dhcpd` itself."""
+    """Validate `configuration` using `dhcpd` itself.
+
+    :param test: An instance of `maastesting.testcase.TestCase`.
+    :param configuration: The contents of the configuration file as a string.
+    :param ipv6: When true validate as DHCPv6, otherwise validate as DHCPv4.
+    """
     with tempfile.NamedTemporaryFile(
             "w", encoding="ascii", prefix="dhcpd.",
             suffix=".conf") as conffile:
@@ -160,7 +225,7 @@ class TestGetConfig(PservTestCase):
     def test__substitutes_parameters(self):
         template_name = factory.make_name('template')
         template = self.patch_template(name=template_name)
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         self.assertEqual(
             template.substitute(params.copy()),
             config.get_config(template_name, **params))
@@ -170,10 +235,10 @@ class TestGetConfig(PservTestCase):
         # instantiate those templates without any hackery.
         self.assertIsNotNone(
             config.get_config(
-                self.template, **make_sample_params(ipv6=self.ipv6)))
+                self.template, **make_sample_params(self, ipv6=self.ipv6)))
 
     def test__complains_if_too_few_parameters(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         del params['hosts'][0]['mac']
 
         e = self.assertRaises(
@@ -201,14 +266,14 @@ class TestGetConfig(PservTestCase):
         )
 
     def test__includes_compose_conditional_bootloader(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         bootloader = config.compose_conditional_bootloader()
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertThat(rendered, Contains(bootloader))
 
     def test__renders_dns_servers_as_comma_separated_list(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         dns_servers_expected = [
@@ -222,7 +287,7 @@ class TestGetConfig(PservTestCase):
         self.assertEqual(dns_servers_expected, dns_servers_observed)
 
     def test__renders_without_dns_servers_set(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
                 subnet['dns_servers'] = ""
@@ -232,19 +297,24 @@ class TestGetConfig(PservTestCase):
         self.assertNotIn("domain-name-servers", rendered)  # IPv4
 
     def test__renders_ntp_servers_as_comma_separated_list(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         ntp_servers_expected = [
-            ", ".join(subnet["ntp_servers"].split())
+            server if is_ip_address(server) else gethostbyname(server)
             for network in params['shared_networks']
             for subnet in network['subnets']
+            for server in subnet["ntp_servers"].split()
         ]
-        ntp_servers_observed = re.findall(r"\bntp-servers\s+(.+);", rendered)
-        self.assertEqual(ntp_servers_expected, ntp_servers_observed)
+        ntp_servers_observed = [
+            server for server_line in re.findall(
+                r"\b(?:ntp-servers|dhcp6[.]sntp-servers)\s+(.+);", rendered)
+            for server in server_line.split(", ")
+        ]
+        self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
 
     def test__renders_without_ntp_servers_set(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
                 subnet['ntp_servers'] = ""
@@ -253,7 +323,7 @@ class TestGetConfig(PservTestCase):
         self.assertNotIn("ntp-servers", rendered)
 
     def test__renders_router_ip_if_present(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         router_ip = factory.make_ipv4_address()
         params['shared_networks'][0]['subnets'][0]['router_ip'] = router_ip
         rendered = config.get_config(self.template, **params)
@@ -261,7 +331,7 @@ class TestGetConfig(PservTestCase):
         self.assertThat(rendered, Contains(router_ip))
 
     def test__renders_with_empty_string_router_ip(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
                 subnet['router_ip'] = ''
@@ -274,7 +344,7 @@ class TestGetConfig(PservTestCase):
         self.assertNotIn("option routers", rendered)
 
     def test__renders_with_hosts(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         self.assertThat(
             params["hosts"], AfterPreprocessing(
                 len, GreaterThanOrEqual(1)))
@@ -300,7 +370,7 @@ class TestGetConfig(PservTestCase):
             ]))
 
     def test__renders_global_dhcp_snippets(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         self.assertThat(
@@ -311,7 +381,7 @@ class TestGetConfig(PservTestCase):
             ]))
 
     def test__renders_subnet_dhcp_snippets(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         for shared_network in params['shared_networks']:
@@ -324,7 +394,7 @@ class TestGetConfig(PservTestCase):
                     ]))
 
     def test__renders_node_dhcp_snippets(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         for host in params['hosts']:
@@ -336,7 +406,7 @@ class TestGetConfig(PservTestCase):
                 ]))
 
     def test__renders_subnet_cidr(self):
-        params = make_sample_params(ipv6=self.ipv6)
+        params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         for shared_network in params['shared_networks']:

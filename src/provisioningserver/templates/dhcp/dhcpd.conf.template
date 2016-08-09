@@ -65,9 +65,14 @@ shared-network {{shared_network["name"]}} {
            {{if dhcp_subnet['router_ip'] }}
            option routers {{dhcp_subnet['router_ip']}};
            {{endif}}
-           {{if dhcp_subnet.get('ntp_servers')}}
-           option ntp-servers {{dhcp_subnet['ntp_servers'] | commalist}};
+
+           {{if dhcp_subnet['ntp_servers_ipv4']}}
+           option ntp-servers {{dhcp_subnet['ntp_servers_ipv4']}};
            {{endif}}
+           {{if dhcp_subnet['ntp_servers_ipv6']}}
+           option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
+           {{endif}}
+
            default-lease-time 600;
            max-lease-time 600;
            #
