@@ -1304,7 +1304,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # IPv6 addresses, link-local addresses and loopback are excluded, and
         # thus not advertised.
         self.assertItemsEqual(
-            [(addr, example_port) for addr in example_ipv4_addrs],
+            [(addr, example_port)
+                for addr in example_ipv4_addrs.union(example_ipv6_addrs)],
             service._getAddresses().wait(2.0))
 
         self.assertThat(
@@ -1334,7 +1335,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         # Only IPv4 loopback is exposed.
         self.assertItemsEqual(
-            [(ipv4_loopback, example_port)],
+            [(addr, example_port) for addr in example_loopback_addrs],
             service._getAddresses().wait(2.0))
 
         self.assertThat(

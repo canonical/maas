@@ -236,7 +236,9 @@ class TestRunImport(PservTestCase):
     def test__run_import_sets_proxy_for_loopback(self):
         fake = self.patch_boot_resources_function()
         _run_import(sources=[])
-        self.assertEqual(fake.env['no_proxy'], "localhost,127.0.0.1,::1")
+        self.assertEqual(
+            fake.env['no_proxy'],
+            "localhost,::ffff:127.0.0.1,127.0.0.1,::1")
 
     def test__run_import_sets_proxy_for_source_host(self):
         host = factory.make_name("host").lower()
@@ -247,7 +249,7 @@ class TestRunImport(PservTestCase):
         _run_import(sources=sources)
         self.assertItemsEqual(
             fake.env['no_proxy'].split(','),
-            ["localhost", "127.0.0.1", "::1"] + [host])
+            ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1"] + [host])
 
     def test__run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')

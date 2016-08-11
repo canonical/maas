@@ -9,14 +9,20 @@ __all__ = [
 
 from functools import partial
 import json
+from operator import itemgetter
 from os import urandom
 import random
 import re
-from socket import gethostname
+from socket import (
+    AF_INET,
+    AF_INET6,
+    gethostname,
+)
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
+from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import (
@@ -70,7 +76,10 @@ from provisioningserver.utils.env import (
     set_maas_id,
 )
 from provisioningserver.utils.fs import NamedLock
-from provisioningserver.utils.network import get_all_interfaces_definition
+from provisioningserver.utils.network import (
+    get_all_interfaces_definition,
+    resolve_hostname,
+)
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
@@ -83,11 +92,12 @@ from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     inlineCallbacks,
+    maybeDeferred,
     returnValue,
 )
 from twisted.internet.endpoints import (
     connectProtocol,
-    TCP4ClientEndpoint,
+    TCP6ClientEndpoint,
 )
 from twisted.internet.error import (
     ConnectError,
@@ -729,7 +739,7 @@ class ClusterClientService(TimerService, object):
 
     def __init__(self, reactor):
         super(ClusterClientService, self).__init__(
-            self._calculate_interval(None, None), self.update)
+            self._calculate_interval(None, None), self._tryUpdate)
         self.connections = {}
         self.clock = reactor
 
@@ -762,6 +772,16 @@ class ClusterClientService(TimerService, object):
         else:
             return common.Client(random.choice(conns))
 
+    def _tryUpdate(self):
+        """Attempt to refresh outgoing connections.
+
+        This simply wraps self.update in a deferred to log errors and keep us
+        from dying if an exception is raised in update.
+        """
+        d = maybeDeferred(self.update)
+        d.addErrback(log.err, "Cluster client update failed.")
+        return d
+
     @inlineCallbacks
     def update(self):
         """Refresh outgoing connections.
@@ -769,31 +789,61 @@ class ClusterClientService(TimerService, object):
         This obtains a list of endpoints from the region then connects
         to new ones and drops connections to those no longer used.
         """
-        try:
-            info_url = self._get_rpc_info_url()
-            info = yield self._fetch_rpc_info(info_url)
-            eventloops = info["eventloops"]
-            if eventloops is None:
-                # This means that the region process we've just asked about
-                # RPC event-loop endpoints is not running the RPC advertising
-                # service. It could be just starting up for example.
-                log.msg("Region is not advertising RPC endpoints.")
+        info_url_base = urlparse(self._get_rpc_info_url()).decode()
+
+        info_url_addresses = yield resolve_hostname(
+            info_url_base.hostname, ip_version=None, port=info_url_base.port,
+            address_only=False)
+        # Prefer AF_INET6 addresses
+        info_url_addresses.sort(key=itemgetter(0), reverse=True)
+        eventloops = None
+        for family, _, _, _, sockaddr in info_url_addresses:
+            addr, port, *_ = sockaddr
+            # We could use compose_URL (from provisioningserver.utils.url), but
+            # that just calls url._replace itself, and returns a url literal,
+            # rather than a url structure.  So we use _replace() here as well.
+            # What we are actually doing here is replacing the given host:port
+            # in the URL with the answer we got from socket.getaddrinfo().
+            if family in {AF_INET, AF_INET6}:
+                if port == 0:
+                    netloc = "[%s]" % IPAddress(addr).ipv6()
+                else:
+                    netloc = "[%s]:%d" % (IPAddress(addr).ipv6(), port)
             else:
-                yield self._update_connections(eventloops)
-        except ConnectError as error:
-            self._update_interval(None, len(self.connections))
-            log.msg(
-                "Region not available: %s (While requesting RPC info at %s)."
-                % (error, info_url))
-        except:
-            self._update_interval(None, len(self.connections))
-            log.err()
-        else:
-            if eventloops is None:
+                continue
+            info_url = info_url_base._replace(netloc=netloc)
+            info_url = ascii_url(info_url.geturl())
+            try:
+                info = yield self._fetch_rpc_info(info_url)
+                eventloops = info["eventloops"]
+                if eventloops is None:
+                    # This means that the region process we've just asked about
+                    # RPC event-loop endpoints is not running the RPC
+                    # advertising service. It could be just starting up for
+                    # example.
+                    log.msg(
+                        "Region is not advertising RPC endpoints."
+                        " (While requesting RPC info at %s)" %
+                        info_url)
+                else:
+                    yield self._update_connections(eventloops)
+            except ConnectError as error:
+                log.msg(
+                    "Region not available: %s "
+                    "(While requesting RPC info at %s)."
+                    % (error, info_url))
+            except:
+                log.err(
+                    None, "Failed to contact region: %s "
+                    "(While requesting RPC info at %s)."
+                    % (error, info_url))
+            else:
                 # The advertising service on the region was not running yet.
-                self._update_interval(None, len(self.connections))
-            else:
-                self._update_interval(len(eventloops), len(self.connections))
+                break
+
+        self._update_interval(
+            None if eventloops is None else len(eventloops),
+            len(self.connections))
 
     @staticmethod
     def _get_rpc_info_url():
@@ -881,10 +931,19 @@ class ClusterClientService(TimerService, object):
         it's still in the list of event-loops to which this cluster
         should connect. If not, immediately drop the connection.
         """
+        def map_to_ipv6(address_port_tuple):
+            ipaddr, port = address_port_tuple
+            ipaddr = IPAddress(ipaddr).ipv6()
+            return str(ipaddr), port
+
         # Ensure that the event-loop addresses are tuples so that
         # they'll work as dictionary keys.
         eventloops = {
-            name: [tuple(address) for address in addresses]
+            name: [
+                map_to_ipv6(address)
+                for address in addresses
+                if map_to_ipv6(address)
+            ]
             for name, addresses in eventloops.items()
         }
         # Drop connections to event-loops that no longer include one of
@@ -927,7 +986,8 @@ class ClusterClientService(TimerService, object):
 
     def _make_connection(self, eventloop, address):
         """Connect to `eventloop` at `address`."""
-        endpoint = TCP4ClientEndpoint(self.clock, *address)
+        # Force everything to use AF_INET6 sockets.
+        endpoint = TCP6ClientEndpoint(self.clock, *address)
         protocol = ClusterClient(address, eventloop, self)
         return connectProtocol(endpoint, protocol)
 

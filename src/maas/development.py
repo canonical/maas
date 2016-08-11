@@ -76,7 +76,7 @@ INSTALLED_APPS += (
 # change `propagate` which is set (once) by `configure_root_logger`.
 LOGGING["loggers"]["maas"] = {"propagate": 1}
 
-INTERNAL_IPS = ('127.0.0.1',)
+INTERNAL_IPS = ('127.0.0.1', '::1')
 
 # Make all nodes' metadata visible.  This is not safe; do not enable it
 # on a production MAAS.

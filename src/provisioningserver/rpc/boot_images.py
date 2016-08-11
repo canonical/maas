@@ -109,7 +109,7 @@ def _run_import(sources, http_proxy=None, https_proxy=None):
     if https_proxy is not None:
         variables['https_proxy'] = https_proxy
     # Communication to the sources and loopback should not go through proxy.
-    no_proxy_hosts = ["localhost", "127.0.0.1", "::1"]
+    no_proxy_hosts = ["localhost", "::ffff:127.0.0.1", "127.0.0.1", "::1"]
     no_proxy_hosts += list(get_hosts_from_sources(sources))
     variables['no_proxy'] = ','.join(no_proxy_hosts)
     with environment_variables(variables):

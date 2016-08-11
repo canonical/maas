@@ -5,16 +5,21 @@
 
 __all__ = []
 
+import socket
 from socket import (
     EAI_BADFLAGS,
     EAI_NODATA,
     EAI_NONAME,
     gaierror,
+    IPPROTO_TCP,
 )
 from unittest import mock
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
@@ -47,12 +52,14 @@ from provisioningserver.utils.network import (
     intersect_iprange,
     ip_range_within_network,
     IPRangeStatistics,
+    is_loopback_address,
     MAASIPRange,
     MAASIPSet,
     make_iprange,
     make_network,
     parse_integer,
     resolve_hostname,
+    resolves_to_loopback_address,
 )
 from provisioningserver.utils.shell import call_and_check
 from testtools.matchers import (
@@ -472,7 +479,9 @@ class TestResolveHostname(MAASTestCase):
         result = resolve_hostname(hostname, 4)
         self.assertIsInstance(result, set)
         self.assertEqual({IPAddress(ip)}, result)
-        self.assertThat(fake, MockCalledOnceWith(hostname, mock.ANY, AF_INET))
+        self.assertThat(
+            fake, MockCalledOnceWith(
+                hostname, None, family=AF_INET, proto=IPPROTO_TCP))
 
     def test__resolves_IPv6_address(self):
         ip = factory.make_ipv6_address()
@@ -481,7 +490,9 @@ class TestResolveHostname(MAASTestCase):
         result = resolve_hostname(hostname, 6)
         self.assertIsInstance(result, set)
         self.assertEqual({IPAddress(ip)}, result)
-        self.assertThat(fake, MockCalledOnceWith(hostname, mock.ANY, AF_INET6))
+        self.assertThat(
+            fake, MockCalledOnceWith(
+                hostname, None, family=AF_INET6, proto=IPPROTO_TCP))
 
     def test__returns_empty_if_address_does_not_resolve(self):
         self.patch_getaddrinfo_fail(
@@ -504,6 +515,18 @@ class TestResolveHostname(MAASTestCase):
         self.assertRaises(
             KeyError,
             resolve_hostname, factory.make_hostname(), 4)
+
+    def test_returns_full_return_when_requested(self):
+        ip = factory.make_ipv4_address()
+        fake = self.patch_getaddrinfo(ip)
+        hostname = factory.make_hostname()
+        result = resolve_hostname(hostname, 4, address_only=False)
+        self.assertIsInstance(result, list)
+        self.assertEqual(
+            [(None, None, None, None, (ip, None))], result)
+        self.assertThat(
+            fake, MockCalledOnceWith(
+                hostname, None, family=AF_INET, proto=IPPROTO_TCP))
 
 
 class TestIntersectIPRange(MAASTestCase):
@@ -1494,3 +1517,74 @@ class TestInterfaceChildren(MAASTestCase):
             interface_children('eth0', interfaces, children_map))
         self.assertThat(eth0_children[0].name, Equals("eth0.100"))
         self.assertThat(eth0_children[0].data, Equals({'parents': ['eth0']}))
+
+
+class TestIsLoopbackAddress(MAASTestCase):
+    def test_handles_ipv4_loopback(self):
+        network = IPNetwork('127.0.0.0/8')
+        address = factory.pick_ip_in_network(network)
+        self.assertEqual(is_loopback_address(address), True)
+
+    def test_handles_ipv6_loopback(self):
+        address = '::1'
+        self.assertEqual(is_loopback_address(address), True)
+
+    def test_handles_random_ipv4_address(self):
+        address = factory.make_ipv4_address()
+        self.assertEqual(
+            is_loopback_address(address), IPAddress(address).is_loopback())
+
+    def test_handles_random_ipv6_address(self):
+        address = factory.make_ipv6_address()
+        self.assertEqual(
+            is_loopback_address(address), IPAddress(address).is_loopback())
+
+    def test_handles_ipv6_format_ipv4_loopback(self):
+        network = IPNetwork('127.0.0.0/8')
+        address = factory.pick_ip_in_network(network)
+        self.assertEqual(is_loopback_address("::ffff:%s" % address), True)
+
+    def test_handles_ipv6_format_ipv4_nonloopback(self):
+        address = factory.make_ipv4_address()
+        self.assertEqual(
+            is_loopback_address("::ffff:%s" % address),
+            IPAddress(address).is_loopback())
+
+    def test_does_not_resolve_hostnames(self):
+        gai = self.patch(socket, 'getaddrinfo')
+        gai.return_value = ((
+            socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+            ('::1', None, 0, 1)),)
+        name = factory.make_name('name')
+        self.assertEqual(is_loopback_address(name), False)
+        self.assertThat(gai, MockNotCalled())
+
+    def test_handles_localhost(self):
+        gai = self.patch(socket, 'getaddrinfo')
+        gai.return_value = ((
+            socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+            ('2001:db8::1', None, 0, 1)),)
+        self.assertEqual(is_loopback_address('localhost'), True)
+        self.assertThat(gai, MockNotCalled())
+
+
+class TestResolvesToLoopbackAddress(MAASTestCase):
+    def test_resolves_hostnames(self):
+        gai = self.patch(socket, 'getaddrinfo')
+        gai.return_value = ((
+            socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+            ('::1', None, 0, 1)),)
+        name = factory.make_name('name')
+        self.assertEqual(resolves_to_loopback_address(name), True)
+        self.assertThat(
+            gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
+
+    def test_resolves_hostnames_non_loopback(self):
+        gai = self.patch(socket, 'getaddrinfo')
+        gai.return_value = ((
+            socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, '',
+            ('2001:db8::1', None, 0, 1)),)
+        name = factory.make_name('name')
+        self.assertEqual(resolves_to_loopback_address(name), False)
+        self.assertThat(
+            gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))

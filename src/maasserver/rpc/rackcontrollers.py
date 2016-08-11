@@ -70,7 +70,9 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 @with_connection
 @synchronised(locks.rack_registration)
 @transactional
-def register(system_id=None, hostname='', interfaces=None, url=None):
+def register(
+        system_id=None, hostname='', interfaces=None,
+        url=None, is_loopback=None):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
@@ -79,6 +81,8 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
     create a new rack controller. After the rack controller has been
     registered and successfully connected we will refresh all commissioning
     data.
+
+    The parameter ``is_loopback`` is only referenced if ``url`` is not None.
 
     :return: A ``rack-controller``.
     """
@@ -105,14 +109,20 @@ def register(system_id=None, hostname='', interfaces=None, url=None):
 
     rackcontroller = typecast_node(node, RackController)
 
-    # Update `rackcontroller.url` from the given URL, but only when the
-    # hostname is not 'localhost' (i.e. the default value used when the master
-    # cluster connects).
+    # Update `rackcontroller.url` from the given URL, if it has changed.
     update_fields = []
-    if url is not None and url.hostname != "localhost":
-        if rackcontroller.url != url.geturl():
+    if url is not None:
+        if is_loopback and rackcontroller.url != '':
+            # There used to be a URL, and now it's localhost, set it to None.
+            rackcontroller.url = ''
+            update_fields.append("url")
+        elif not is_loopback and rackcontroller.url != url.geturl():
+            # There is a non-loopback URL, and it's different than what the
+            # database has.  Change it.
             rackcontroller.url = url.geturl()
             update_fields.append("url")
+        # else:
+        # The URL is already the correct value, no need to change anything.
     if rackcontroller.owner is None:
         rackcontroller.owner = worker_user.get_worker_user()
         update_fields.append("owner")

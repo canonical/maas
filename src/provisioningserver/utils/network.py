@@ -9,8 +9,10 @@ __all__ = [
     'find_mac_via_arp',
     'get_all_addresses_for_interface',
     'get_all_interface_addresses',
+    'is_loopback_address',
     'make_network',
     'resolve_hostname',
+    'resolves_to_loopback_address',
     'intersect_iprange',
     'ip_range_within_network',
     ]
@@ -19,6 +21,7 @@ __all__ = [
 import codecs
 from collections import namedtuple
 from operator import attrgetter
+import socket
 from socket import (
     AF_INET,
     AF_INET6,
@@ -26,6 +29,7 @@ from socket import (
     EAI_NONAME,
     gaierror,
     getaddrinfo,
+    IPPROTO_TCP,
 )
 
 from netaddr import (
@@ -33,12 +37,14 @@ from netaddr import (
     IPNetwork,
     IPRange,
 )
+from netaddr.core import AddrFormatError
 import netifaces
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.twisted import synchronous
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -641,24 +647,32 @@ def get_all_interface_addresses():
             yield address
 
 
-def resolve_hostname(hostname, ip_version=4):
+def resolve_hostname(
+        hostname, ip_version=4, address_only=True, port=None,
+        proto=IPPROTO_TCP):
     """Wrapper around `getaddrinfo`: return addresses for `hostname`.
 
     :param hostname: Host name (or IP address).
     :param ip_version: Look for addresses of this IP version only: 4 for IPv4,
-        or 6 for IPv6.
+        or 6 for IPv6, None for both. (Default: 4)
+    :param address_only: Only return the addresss, not the full getaddrinfo
+        tuple. (Default: true)
+    :param port: port number, if any specified.
     :return: A set of `IPAddress`.  Empty if `hostname` does not resolve for
         the requested IP version.
     """
     addr_families = {
         4: AF_INET,
         6: AF_INET6,
+        None: None,
         }
     assert ip_version in addr_families
-    # Arbitrary non-privileged port, on which we can call getaddrinfo.
-    port = 33360
     try:
-        address_info = getaddrinfo(hostname, port, addr_families[ip_version])
+        if ip_version is None:
+            address_info = getaddrinfo(hostname, port, proto=proto)
+        else:
+            address_info = getaddrinfo(
+                hostname, port, family=addr_families[ip_version], proto=proto)
     except gaierror as e:
         if e.errno in (EAI_NONAME, EAI_NODATA):
             # Name does not resolve.
@@ -669,10 +683,12 @@ def resolve_hostname(hostname, ip_version=4):
     # The contents of sockaddr differ for IPv6 and IPv4, but the
     # first element is always the address, and that's all we care
     # about.
-    return {
-        IPAddress(sockaddr[0])
-        for family, socktype, proto, canonname, sockaddr in address_info
-        }
+    if address_only:
+        return {
+            IPAddress(sockaddr[0])
+            for family, socktype, proto, canonname, sockaddr in address_info}
+    else:
+        return address_info
 
 
 def intersect_iprange(network, iprange):
@@ -945,3 +961,42 @@ def get_all_interfaces_definition():
         interfaces[name] = interface
 
     return interfaces
+
+
+def is_loopback_address(hostname):
+    """Determine if the given hostname appears to be a loopback address.
+
+    :param hostname: either a hostname or an IP address.  No resolution is
+        done, but 'localhost' is considered to be loopback.
+    :type hostname: str
+
+    :return: True if the address is a loopback address.
+    """
+
+    try:
+        ip = IPAddress(hostname)
+    except AddrFormatError:
+        return hostname.lower() in {"localhost", "localhost."}
+    return ip.is_loopback() or (
+        ip.is_ipv4_mapped() and ip.ipv4().is_loopback())
+
+
+@synchronous
+def resolves_to_loopback_address(hostname):
+    """Determine if the given hostname appears to be a loopback address.
+
+    :param hostname: either a hostname or an IP address, which will be
+        resolved.  If any of the returned addresses are loopback addresses,
+        then it is considered loopback.
+    :type hostname: str
+
+    :return: True if the hostname appears to be a loopback address.
+    """
+    try:
+        addrinfo = socket.getaddrinfo(hostname, None, proto=IPPROTO_TCP)
+    except socket.gaierror:
+        return hostname.lower() in {"localhost", "localhost."}
+    else:
+        return any(
+            is_loopback_address(sockaddr[0])
+            for _, _, _, _, sockaddr in addrinfo)

@@ -63,7 +63,10 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from netaddr import IPAddress
+from netaddr import (
+    AddrConversionError,
+    IPAddress,
+)
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -75,7 +78,10 @@ from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.network import (
+    get_all_interface_addresses,
+    resolves_to_loopback_address,
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     call,
@@ -104,10 +110,11 @@ from twisted.internet.defer import (
     returnValue,
     succeed,
 )
-from twisted.internet.endpoints import TCP4ServerEndpoint
+from twisted.internet.endpoints import TCP6ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
+from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
@@ -459,6 +466,17 @@ def registerConnection(region_id, rack_controller, host):
     region = RegionController.objects.get(system_id=region_id)
     process = RegionControllerProcess.objects.get(
         region=region, pid=os.getpid())
+    # We need to handle the incoming name being an IPv6-form IPv4 address.
+    # Assume that's the case, and ignore the error if it is not.
+    try:
+        # Convert the hostname to an IPAddress, and then coerce that to dotted
+        # quad form, and from thence to a string.  If it works, we had an IPv4
+        # address.  We want the dotted quad form, since that is what the region
+        # advertises.
+        host.host = str(IPAddress(host.host).ipv4())
+    except AddrConversionError:
+        # If we got an AddressConversionError, it's not one we need to convert.
+        pass
     endpoint = RegionControllerProcessEndpoint.objects.get(
         process=process, address=host.host, port=host.port)
     connection, created = RegionRackRPCConnection.objects.get_or_create(
@@ -537,9 +555,22 @@ class RegionServer(Region):
 
         try:
             # Register, which includes updating interfaces.
+            if url is not None:
+                if url.hostname is not None:
+                    is_loopback = yield deferToThread(
+                        resolves_to_loopback_address, url.hostname)
+                else:
+                    # Empty URL == localhost.
+                    is_loopback = True
+            else:
+                # We need to pass is_loopback in, but it is only checked if url
+                # is not None.  None is the "I don't know and you won't ask"
+                # state for this boolean.
+                is_loopback = None
             rack_controller = yield deferToDatabase(
                 rackcontrollers.register, system_id=system_id,
-                hostname=hostname, interfaces=interfaces, url=url)
+                hostname=hostname, interfaces=interfaces, url=url,
+                is_loopback=is_loopback)
 
             # Check for upgrade.
             if nodegroup_uuid is not None:
@@ -659,7 +690,7 @@ class RegionService(service.Service, object):
     def __init__(self):
         super(RegionService, self).__init__()
         self.endpoints = [
-            [TCP4ServerEndpoint(reactor, port)
+            [TCP6ServerEndpoint(reactor, port)
              for port in range(5250, 5260)],
         ]
         self.connections = defaultdict(set)
@@ -827,7 +858,7 @@ class RegionService(service.Service, object):
         Returns `None` if the port has not yet been opened.
         """
         try:
-            # Look for the first AF_INET port.
+            # Look for the first AF_INET{,6} port.
             port = next(
                 port for port in self.ports
                 if port.addressFamily in [AF_INET, AF_INET6])
@@ -843,7 +874,9 @@ class RegionService(service.Service, object):
             # connection.
             return None
 
-        host, port = socket.getsockname()
+        # IPv6 addreses have 4 elements, IPv4 addresses have 2.  We only care
+        # about host and port, which are the first 2 elements either way.
+        host, port = socket.getsockname()[:2]
         return port
 
     @asynchronous(timeout=FOREVER)
@@ -1091,8 +1124,7 @@ class RegionAdvertisingService(service.Service):
         interfaces may have the same link-local address. Loopback addresses
         are also excluded unless no other addresses are available.
 
-        This also excludes IPv6 addresses because `RegionServer` only supports
-        IPv4. However, this will probably change in the near future.
+        This includes both IPv4 and IPv6 addresses, since we now support both.
 
         :rtype: set
         """
@@ -1111,8 +1143,6 @@ class RegionAdvertisingService(service.Service):
                     ipaddr = IPAddress(addr)
                     if ipaddr.is_link_local():
                         continue  # Don't advertise link-local addresses.
-                    if ipaddr.version != 4:
-                        continue  # Only advertise IPv4 for now.
                     if ipaddr.is_loopback():
                         loopback_addresses.add((addr, port))
                     else:

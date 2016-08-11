@@ -141,16 +141,27 @@ class ExtendedURL(formencode.validators.URL):
     This validator extends formencode.validators.URL by adding support
     for the general case of hostnames (i.e. hostnames containing numeric
     digits, hyphens, and hostnames of length 1), and ipv6 addresses with
-    or without brackets.
+    brackets.  (Brackets are required, because we allow ":port".)
     """
 
+    # 2016-08-09 lamont There is a small over-acceptance here:  if there is a
+    # :: in the ipv6 address, then it's possible to have more than 8 overall
+    # groupings.  We'll catch that later on when we cannot convert it to an
+    # ipv6 address, rather than individually handling all of the possible
+    # combinations for ::-containing addresses.
     url_re = re.compile(r'''
         ^(http|https)://
         (?:[%:\w]*@)?                              # authenticator
         (?:                                        # ip or domain
         (?P<ip>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}
             (?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|
-        (?P<ipv6>\[?(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}\]?)|
+        (?P<ipv6>\[(?:
+            ::ffff:(?:[0-9]+\.){3}(?:[0-9]+)|      # ipv6 form of ipv4 addr
+            (?:(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4})|
+            (?:(?:[a-fA-F0-9]{1,4}:){1,6}:
+               (?:[a-fA-F0-9]{1,4}:){0,5}[a-fA-F0-9]{1,4})|
+            ::[a-fA-F0-9]{1,4}|
+            [a-fA-F0-9]{1,4}::)\])|
         (?P<domain>[a-z0-9][a-z0-9\-]{,62}\.)*     # subdomain
         (?P<tld>[a-zA-Z0-9]{1,63}|
             [a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])  # tld or hostname

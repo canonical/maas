@@ -5,9 +5,11 @@
 
 __all__ = []
 
+import formencode.api
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from testtools.testcase import ExpectedException
 
 
 class TestRegionConfiguration(MAASTestCase):
@@ -40,13 +42,12 @@ class TestRegionConfiguration(MAASTestCase):
         self.assertEqual(example_url, config.maas_url)
         self.assertEqual({"maas_url": example_url}, config.store)
 
-    def test_set_maas_url_accepts_ipv6_addresses(self):
+    def test_set_maas_url_rejects_bare_ipv6_addresses(self):
         config = RegionConfiguration({})
         example_url = factory.make_simple_http_url(
             netloc=factory.make_ipv6_address())
-        config.maas_url = example_url
-        self.assertEqual(example_url, config.maas_url)
-        self.assertEqual({"maas_url": example_url}, config.store)
+        with ExpectedException(formencode.api.Invalid):
+            config.maas_url = example_url
 
     def test_set_maas_url_accepts_ipv6_addresses_with_brackets(self):
         config = RegionConfiguration({})

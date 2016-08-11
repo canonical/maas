@@ -273,3 +273,44 @@ class TestExtendedURL(MAASTestCase):
         with ExpectedException(formencode.Invalid, 'That is not a valid URL'):
             self.assertEqual(url, self.validator.to_python(url),
                              "url: %s" % url)
+
+    def test_requires_brackets_on_ipv6_address(self):
+        name = "[%s]" % factory.make_ipv6_address()
+        url = factory.make_simple_http_url(
+            netloc=name, port=factory.pick_bool())
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+        # rejects bare ipv6 address
+        name = "%s" % factory.make_ipv6_address()
+        url = factory.make_simple_http_url(netloc=name)
+        with ExpectedException(formencode.Invalid, 'That is not a valid URL'):
+            self.assertEqual(
+                url, self.validator.to_python(url), "url: %s" % url)
+
+    def test_allows_ipv4_addresses(self):
+        name = "%s" % factory.make_ipv4_address()
+        url = factory.make_simple_http_url(
+            netloc=name, port=factory.pick_bool())
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+    def test_allows_ipv4_addresses_in_ipv6_format(self):
+        name = "[::ffff:%s]" % factory.make_ipv4_address()
+        url = factory.make_simple_http_url(
+            netloc=name, port=factory.pick_bool())
+        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
+
+    def test_allows_trailing_and_starting_double_colon(self):
+        # we get random network addresses above, but lets play with a few that
+        # we know need to work.
+        addrs = ['::1', '::f', 'fe80::', 'fe80::1', 'fe80:37::3:1']
+        for addr in addrs:
+            # lower case
+            url = factory.make_simple_http_url(
+                netloc="[%s]" % addr, port=factory.pick_bool())
+            self.assertEqual(
+                url, self.validator.to_python(url), "url: %s" % url)
+            # upper case
+            url = factory.make_simple_http_url(
+                netloc="[%s]" % addr.upper(), port=factory.pick_bool())
+            self.assertEqual(
+                url, self.validator.to_python(url), "url: %s" % url)

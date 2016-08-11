@@ -18,11 +18,9 @@ from abc import (
 import collections
 import itertools
 from os import path
-from unittest.mock import (
-    Mock,
-    sentinel,
-)
+from unittest.mock import Mock
 
+from apiclient.utils import ascii_url
 import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
@@ -251,7 +249,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
 
         Returns a dummy value.
         """
-        return sentinel.url
+        return ascii_url("http://localhost/MAAS")
 
     def _fetch_rpc_info(self, url):
         """Patch-in for `ClusterClientService._fetch_rpc_info`.

@@ -13,6 +13,7 @@ import os.path
 import platform
 import random
 from random import randint
+import socket
 from unittest.mock import (
     ANY,
     call,
@@ -22,6 +23,7 @@ from unittest.mock import (
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
+from apiclient.utils import ascii_url
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsUnfiredDeferred,
@@ -123,7 +125,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
-from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
 from twisted.protocols import amp
@@ -478,15 +480,30 @@ class TestClusterClientService(MAASTestCase):
 
         service = ClusterClientService(Clock())
         _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = sentinel.rpc_info_url
+        _get_rpc_info_url.return_value = ascii_url("http://localhost/MAAS")
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
         self.assertThat(getPage, MockCalledOnceWith(
-            sentinel.rpc_info_url, agent=ANY))
+            ascii_url('http://[::ffff:127.0.0.1]/MAAS'), agent=ANY))
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
+
+    def test_failed_update_is_logged(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        update = self.patch(service, "update")
+        update.side_effect = error.ConnectionRefusedError()
+
+        # Starting the service causes the first update to be performed, which
+        # will fail because of above.
+        service.startService()
+        self.assertThat(update, MockCalledOnceWith())
+
+        dump = logger.dump()
+        self.assertIn('Connection was refused by other side.', dump)
 
     def test_update_connect_error_is_logged_tersely(self):
         getPage = self.patch(clusterservice, "getPage")
@@ -496,19 +513,18 @@ class TestClusterClientService(MAASTestCase):
 
         service = ClusterClientService(Clock())
         _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = sentinel.rpc_info_url
+        _get_rpc_info_url.return_value = ascii_url("http://localhost/MAAS")
 
         # Starting the service causes the first update to be performed.
         service.startService()
 
         self.assertThat(getPage, MockCalledOnceWith(
-            sentinel.rpc_info_url, agent=ANY))
+            ascii_url('http://[::ffff:127.0.0.1]/MAAS'), agent=ANY))
         dump = logger.dump()
         self.assertIn(
             "Region not available: Connection was refused by other side.",
             dump)
-        self.assertIn(
-            "While requesting RPC info at %s" % sentinel.rpc_info_url, dump)
+        self.assertIn("While requesting RPC info at", dump)
 
     def test__get_rpc_info_accepts_IPv6_url(self):
         connect_tcp = self.patch_autospec(reactor, 'connectTCP')
@@ -525,27 +541,28 @@ class TestClusterClientService(MAASTestCase):
             # An event-loop in pid 1001 on host1. This host has two
             # configured IP addresses, 1.1.1.1 and 1.1.1.2.
             "host1:pid=1001": [
-                ("1.1.1.1", 1111),
-                ("1.1.1.2", 2222),
+                ("::ffff:1.1.1.1", 1111),
+                ("::ffff:1.1.1.2", 2222),
             ],
             # An event-loop in pid 2002 on host1. This host has two
             # configured IP addresses, 1.1.1.1 and 1.1.1.2.
             "host1:pid=2002": [
-                ("1.1.1.1", 3333),
-                ("1.1.1.2", 4444),
+                ("::ffff:1.1.1.1", 3333),
+                ("::ffff:1.1.1.2", 4444),
             ],
             # An event-loop in pid 3003 on host2. This host has one
             # configured IP address, 2.2.2.2.
             "host2:pid=3003": [
-                ("2.2.2.2", 5555),
+                ("::ffff:2.2.2.2", 5555),
             ],
         },
     }).encode("ascii")
 
     def test_update_calls__update_connections(self):
-        maas_url = "http://%s/%s/" % (
-            factory.make_hostname(), factory.make_name("path"))
+        maas_url = "http://localhost/%s/" % factory.make_name("path")
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
+        self.patch_autospec(socket, 'getaddrinfo').return_value = (
+            None, None, None, None, ('::ffff:127.0.0.1', 80, 0, 1))
         getPage = self.patch(clusterservice, "getPage")
         getPage.return_value = succeed(self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
@@ -553,15 +570,15 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         self.assertThat(_update_connections, MockCalledOnceWith({
             "host2:pid=3003": [
-                ["2.2.2.2", 5555],
+                ["::ffff:2.2.2.2", 5555],
             ],
             "host1:pid=2002": [
-                ["1.1.1.1", 3333],
-                ["1.1.1.2", 4444],
+                ["::ffff:1.1.1.1", 3333],
+                ["::ffff:1.1.1.2", 4444],
             ],
             "host1:pid=1001": [
-                ["1.1.1.1", 1111],
-                ["1.1.1.2", 2222],
+                ["::ffff:1.1.1.1", 1111],
+                ["::ffff:1.1.1.2", 2222],
             ],
         }))
 
@@ -575,9 +592,9 @@ class TestClusterClientService(MAASTestCase):
         yield service._update_connections(info["eventloops"])
 
         _make_connection_expected = [
-            call("host1:pid=1001", ("1.1.1.1", 1111)),
-            call("host1:pid=2002", ("1.1.1.1", 3333)),
-            call("host2:pid=3003", ("2.2.2.2", 5555)),
+            call("host1:pid=1001", ("::ffff:1.1.1.1", 1111)),
+            call("host1:pid=2002", ("::ffff:1.1.1.1", 3333)),
+            call("host2:pid=3003", ("::ffff:2.2.2.2", 5555)),
         ]
         self.assertItemsEqual(
             _make_connection_expected,
@@ -593,15 +610,15 @@ class TestClusterClientService(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        eventloops = {"an-event-loop": [("hostname", 1234)]}
+        eventloops = {"an-event-loop": [("127.0.0.1", 1234)]}
         yield service._update_connections(eventloops)
 
         self.assertThat(
             _make_connection,
-            MockCalledOnceWith("an-event-loop", ("hostname", 1234)))
+            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)))
 
         self.assertEqual(
-            "Event-loop an-event-loop (hostname:1234): Connection "
+            "Event-loop an-event-loop (::ffff:127.0.0.1:1234): Connection "
             "was refused by other side.", logger.dump())
 
     @inlineCallbacks
@@ -612,12 +629,12 @@ class TestClusterClientService(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        eventloops = {"an-event-loop": [("hostname", 1234)]}
+        eventloops = {"an-event-loop": [("127.0.0.1", 1234)]}
         yield service._update_connections(eventloops)
 
         self.assertThat(
             _make_connection,
-            MockCalledOnceWith("an-event-loop", ("hostname", 1234)))
+            MockCalledOnceWith("an-event-loop", ("::ffff:127.0.0.1", 1234)))
 
         self.assertDocTestMatches(
             """\
@@ -634,11 +651,11 @@ class TestClusterClientService(MAASTestCase):
         _drop_connection = self.patch(service, "_drop_connection")
 
         host1client = ClusterClient(
-            ("1.1.1.1", 1111), "host1:pid=1", service)
+            ("::ffff:1.1.1.1", 1111), "host1:pid=1", service)
         host2client = ClusterClient(
-            ("2.2.2.2", 2222), "host2:pid=2", service)
+            ("::ffff:2.2.2.2", 2222), "host2:pid=2", service)
         host3client = ClusterClient(
-            ("3.3.3.3", 3333), "host3:pid=3", service)
+            ("::ffff:3.3.3.3", 3333), "host3:pid=3", service)
 
         # Fake some connections.
         service.connections = {
@@ -672,6 +689,8 @@ class TestClusterClientService(MAASTestCase):
         self.patch_autospec(service, "_update_connections")
         # Return a token from _get_rpc_info_url.
         service._get_rpc_info_url.return_value = sentinel.info_url
+        service._get_rpc_info_url.return_value = (
+            ascii_url("http://localhost/MAAS"))
         # Return None instead of a list of event-loop endpoints. This is the
         # response that the region will give when the advertising service is
         # not running.
@@ -686,7 +705,8 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service._update_connections, MockNotCalled())
         self.assertThat(service.step, Equals(service.INTERVAL_LOW))
         self.assertEqual(
-            "Region is not advertising RPC endpoints.", logger.dump())
+            "Region is not advertising RPC endpoints. (While requesting RPC"
+            " info at b'http://[::ffff:127.0.0.1]/MAAS')", logger.dump())
 
     def test__make_connection(self):
         service = ClusterClientService(Clock())
@@ -699,7 +719,7 @@ class TestClusterClientService(MAASTestCase):
                 # First argument is an IPv4 TCP client endpoint
                 # specification.
                 MatchesAll(
-                    IsInstance(TCP4ClientEndpoint),
+                    IsInstance(TCP6ClientEndpoint),
                     MatchesStructure.byEquality(
                         _reactor=service.clock,
                         _host="a.example.com",

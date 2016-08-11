@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 from unittest.mock import sentinel
+from urllib.parse import urlparse
 
 from fixtures import FakeLogger
 from maasserver import (
@@ -275,6 +276,27 @@ class TestRegisterRackController(MAASServerTestCase):
         register()
 
         self.assertEqual([True], lock_status)
+
+    def test_sets_url(self):
+        rack_controller = factory.make_RackController()
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        url = 'http://%s/MAAS' % factory.make_name('host')
+        rack_registered = register(
+            rack_controller.system_id, interfaces=interfaces,
+            url=urlparse(url), is_loopback=False)
+        self.assertEqual(url, rack_registered.url)
+        rack_registered = register(
+            rack_controller.system_id, interfaces=interfaces,
+            url=urlparse('http://localhost/MAAS/'), is_loopback=True)
+        self.assertEqual('', rack_registered.url)
 
 
 class TestUpdateForeignDHCP(MAASServerTestCase):
