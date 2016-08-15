@@ -4628,6 +4628,12 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             """Mock function to return the IP address of the rack based on the
             given address family.
             """
+            if ip_version == 0:
+                if rack_v4:
+                    return {IPAddress(rack_v4)}
+                if rack_v6:
+                    return {IPAddress(rack_v6)}
+                return set()
             if ip_version == 4:
                 return {IPAddress(rack_v4)} if rack_v4 else set()
             elif ip_version == 6:

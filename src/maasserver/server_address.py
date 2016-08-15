@@ -13,10 +13,6 @@ from urllib.parse import urlparse
 
 from maasserver.config import RegionConfiguration
 from maasserver.exceptions import UnresolvableHost
-from netaddr import (
-    valid_ipv4,
-    valid_ipv6,
-)
 from provisioningserver.utils.network import resolve_hostname
 
 
@@ -47,8 +43,12 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
     will be sorted and the first IP address in the sorted set will be
     returned.  IPv4 addresses will be sorted before IPv6 addresses, so
     this prefers IPv4 addresses over IPv6 addresses.  It also prefers global
-    IPv6 addresses over link-local IPv6 addresses or IPv6-mapped IPv4
-    addresses.
+    IPv6 addresses over link-local IPv6 addresses.  Note, this is sorted:
+        105.181.232.64
+        ::ffff:101.1.1.1
+        2001:db8::1
+        fdd7:30::3
+        fe80::1
 
     :param rack_controller: The rack controller from the point of view of
         which the server address should be computed.
@@ -61,18 +61,11 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
 
     """
     hostname = get_maas_facing_server_host(rack_controller)
-    addresses = set()
-    if valid_ipv6(hostname):
-        if ipv6:
-            addresses.add(hostname)
-    elif valid_ipv4(hostname):
-        if ipv4:
-            addresses.add(hostname)
+    if ipv6 or ipv4:
+        addresses = resolve_hostname(
+            hostname, 0 if (ipv6 and ipv4) else 4 if ipv4 else 6)
     else:
-        if ipv4:
-            addresses = addresses.union(resolve_hostname(hostname, 4))
-        if ipv6:
-            addresses = addresses.union(resolve_hostname(hostname, 6))
+        addresses = set()
     if len(addresses) == 0:
         raise UnresolvableHost("No address found for host %s." % hostname)
     return min(addresses).format()

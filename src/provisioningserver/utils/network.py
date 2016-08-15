@@ -11,6 +11,7 @@ __all__ = [
     'get_all_interface_addresses',
     'is_loopback_address',
     'make_network',
+    'resolve_host_to_addrinfo',
     'resolve_hostname',
     'resolves_to_loopback_address',
     'intersect_iprange',
@@ -647,48 +648,52 @@ def get_all_interface_addresses():
             yield address
 
 
-def resolve_hostname(
-        hostname, ip_version=4, address_only=True, port=None,
-        proto=IPPROTO_TCP):
-    """Wrapper around `getaddrinfo`: return addresses for `hostname`.
+def resolve_host_to_addrinfo(hostname, ip_version=4, port=0,
+                             proto=IPPROTO_TCP):
+    """Wrapper around `getaddrinfo`: return address information for `hostname`.
 
     :param hostname: Host name (or IP address).
     :param ip_version: Look for addresses of this IP version only: 4 for IPv4,
-        or 6 for IPv6, None for both. (Default: 4)
-    :param address_only: Only return the addresss, not the full getaddrinfo
-        tuple. (Default: true)
-    :param port: port number, if any specified.
-    :return: A set of `IPAddress`.  Empty if `hostname` does not resolve for
-        the requested IP version.
+        6 for IPv6, or 0 for both. (Default: 4)
+    :param port: port number, if any specified. (Default: 0)
+    :return: a list of 5-tuples (family, type, proto, canonname, sockaddr)
+        suitable for creating sockets and connecting.  If `hostname` does not
+        resolve (for that `ip_version`), then the list is empty.
     """
     addr_families = {
         4: AF_INET,
         6: AF_INET6,
-        None: None,
+        0: 0,
         }
     assert ip_version in addr_families
     try:
-        if ip_version is None:
-            address_info = getaddrinfo(hostname, port, proto=proto)
-        else:
-            address_info = getaddrinfo(
-                hostname, port, family=addr_families[ip_version], proto=proto)
+        address_info = getaddrinfo(
+            hostname, port, family=addr_families[ip_version], proto=proto)
     except gaierror as e:
         if e.errno in (EAI_NONAME, EAI_NODATA):
             # Name does not resolve.
             address_info = []
         else:
             raise
+    return address_info
 
+
+def resolve_hostname(hostname, ip_version=4):
+    """Wrapper around `resolve_host_to_addrinfo`: return just the addresses.
+
+    :param hostname: Host name (or IP address).
+    :param ip_version: Look for addresses of this IP version only: 4 for IPv4,
+        or 6 for IPv6, 0 for both. (Default: 4)
+    :return: A set of `IPAddress`.  Empty if `hostname` does not resolve for
+        the requested IP version.
+    """
+    address_info = resolve_host_to_addrinfo(hostname, ip_version)
     # The contents of sockaddr differ for IPv6 and IPv4, but the
     # first element is always the address, and that's all we care
     # about.
-    if address_only:
-        return {
-            IPAddress(sockaddr[0])
-            for family, socktype, proto, canonname, sockaddr in address_info}
-    else:
-        return address_info
+    return {
+        IPAddress(sockaddr[0])
+        for family, socktype, proto, canonname, sockaddr in address_info}
 
 
 def intersect_iprange(network, iprange):

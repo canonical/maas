@@ -78,7 +78,7 @@ from provisioningserver.utils.env import (
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import (
     get_all_interfaces_definition,
-    resolve_hostname,
+    resolve_host_to_addrinfo,
 )
 from provisioningserver.utils.shell import (
     call_and_check,
@@ -791,9 +791,8 @@ class ClusterClientService(TimerService, object):
         """
         info_url_base = urlparse(self._get_rpc_info_url()).decode()
 
-        info_url_addresses = yield resolve_hostname(
-            info_url_base.hostname, ip_version=None, port=info_url_base.port,
-            address_only=False)
+        info_url_addresses = yield resolve_host_to_addrinfo(
+            info_url_base.hostname, ip_version=0, port=info_url_base.port)
         # Prefer AF_INET6 addresses
         info_url_addresses.sort(key=itemgetter(0), reverse=True)
         eventloops = None

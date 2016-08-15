@@ -58,6 +58,7 @@ from provisioningserver.utils.network import (
     make_iprange,
     make_network,
     parse_integer,
+    resolve_host_to_addrinfo,
     resolve_hostname,
     resolves_to_loopback_address,
 )
@@ -444,13 +445,13 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
             clean_up_netifaces_address('%s%%%s' % (ip, interface), interface))
 
 
-class TestResolveHostname(MAASTestCase):
+class TestResolveHostToAddrs(MAASTestCase):
     """Tests for `resolve_hostname`."""
 
     def patch_getaddrinfo(self, *addrs):
         fake = self.patch(network_module, 'getaddrinfo')
         fake.return_value = [
-            (None, None, None, None, (str(address), None))
+            (None, None, None, None, (str(address), 0))
             for address in addrs
             ]
         return fake
@@ -481,7 +482,7 @@ class TestResolveHostname(MAASTestCase):
         self.assertEqual({IPAddress(ip)}, result)
         self.assertThat(
             fake, MockCalledOnceWith(
-                hostname, None, family=AF_INET, proto=IPPROTO_TCP))
+                hostname, 0, family=AF_INET, proto=IPPROTO_TCP))
 
     def test__resolves_IPv6_address(self):
         ip = factory.make_ipv6_address()
@@ -492,17 +493,19 @@ class TestResolveHostname(MAASTestCase):
         self.assertEqual({IPAddress(ip)}, result)
         self.assertThat(
             fake, MockCalledOnceWith(
-                hostname, None, family=AF_INET6, proto=IPPROTO_TCP))
+                hostname, 0, family=AF_INET6, proto=IPPROTO_TCP))
 
     def test__returns_empty_if_address_does_not_resolve(self):
         self.patch_getaddrinfo_fail(
             gaierror(EAI_NONAME, "Name or service not known"))
-        self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
+        self.assertEqual(
+            set(), resolve_hostname(factory.make_hostname(), 4))
 
     def test__returns_empty_if_address_resolves_to_no_data(self):
         self.patch_getaddrinfo_fail(
             gaierror(EAI_NODATA, "No data returned"))
-        self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
+        self.assertEqual(
+            set(), resolve_hostname(factory.make_hostname(), 4))
 
     def test__propagates_other_gaierrors(self):
         self.patch_getaddrinfo_fail(gaierror(EAI_BADFLAGS, "Bad parameters"))
@@ -516,17 +519,17 @@ class TestResolveHostname(MAASTestCase):
             KeyError,
             resolve_hostname, factory.make_hostname(), 4)
 
-    def test_returns_full_return_when_requested(self):
+    def test_resolve_host_to_addrinfo_returns_full_information(self):
         ip = factory.make_ipv4_address()
         fake = self.patch_getaddrinfo(ip)
         hostname = factory.make_hostname()
-        result = resolve_hostname(hostname, 4, address_only=False)
+        result = resolve_host_to_addrinfo(hostname, 4)
         self.assertIsInstance(result, list)
         self.assertEqual(
-            [(None, None, None, None, (ip, None))], result)
+            [(None, None, None, None, (ip, 0))], result)
         self.assertThat(
             fake, MockCalledOnceWith(
-                hostname, None, family=AF_INET, proto=IPPROTO_TCP))
+                hostname, 0, family=AF_INET, proto=IPPROTO_TCP))
 
 
 class TestIntersectIPRange(MAASTestCase):

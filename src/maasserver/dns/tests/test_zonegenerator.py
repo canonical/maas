@@ -79,8 +79,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         hostname = urlparse(url).hostname
         result = get_dns_server_address()
         self.assertEqual(ip, result)
-        self.expectThat(resolver, MockAnyCall(hostname, 4))
-        self.expectThat(resolver, MockAnyCall(hostname, 6))
+        self.expectThat(resolver, MockAnyCall(hostname, 0))
 
     def test_get_dns_server_address_passes_on_IPv4_IPv6_selection(self):
         ipv4 = factory.pick_bool()
@@ -119,8 +118,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         rack_controller = factory.make_RackController(url=maas_url)
         result = get_dns_server_address(rack_controller)
         self.expectThat(ip, Equals(result))
-        self.expectThat(resolver, MockAnyCall(hostname, 4))
-        self.expectThat(resolver, MockAnyCall(hostname, 6))
+        self.expectThat(resolver, MockAnyCall(hostname, 0))
 
 
 class TestGetDNSSearchPaths(MAASServerTestCase):

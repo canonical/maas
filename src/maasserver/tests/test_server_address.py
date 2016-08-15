@@ -78,9 +78,10 @@ class FakeResolveHostname:
         for addr in addresses:
             addr = IPAddress(addr)
             self.results_by_ip_version[addr.version].add(addr)
+            self.results_by_ip_version[0].add(addr)
 
     def __call__(self, hostname, ip_version):
-        assert ip_version in (4, 6)
+        assert ip_version in (0, 4, 6)
         self.hostname = hostname
         return self.results_by_ip_version[ip_version]
 
@@ -114,38 +115,6 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         self.assertEqual(
             str(ip),
             server_address.get_maas_facing_server_host(rack))
-
-    def test__uses_IPv4_hostname_directly_if_ipv4_set(self):
-        ip = factory.make_ipv4_address()
-        self.patch_get_maas_facing_server_host(ip)
-        fake_resolve = self.patch_resolve_hostname()
-        result = get_maas_facing_server_address(ipv4=True)
-        self.assertEqual(ip, result)
-        self.assertIsNone(fake_resolve.hostname)
-
-    def test__rejects_IPv4_hostname_if_ipv4_not_set(self):
-        self.patch_get_maas_facing_server_host(factory.make_ipv4_address())
-        fake_resolve = self.patch_resolve_hostname()
-        self.assertRaises(
-            UnresolvableHost,
-            get_maas_facing_server_address, ipv4=False)
-        self.assertIsNone(fake_resolve.hostname)
-
-    def test__uses_IPv6_hostname_directly_if_ipv6_set(self):
-        ip = factory.make_ipv6_address()
-        self.patch_get_maas_facing_server_host(ip)
-        fake_resolve = self.patch_resolve_hostname()
-        result = get_maas_facing_server_address(ipv6=True)
-        self.assertEqual(ip, result)
-        self.assertIsNone(fake_resolve.hostname)
-
-    def test__rejects_IPv6_hostname_if_ipv6_not_set(self):
-        self.patch_get_maas_facing_server_host(factory.make_ipv6_address())
-        fake_resolve = self.patch_resolve_hostname()
-        self.assertRaises(
-            UnresolvableHost,
-            get_maas_facing_server_address, ipv6=False)
-        self.assertIsNone(fake_resolve.hostname)
 
     def test__resolves_hostname(self):
         hostname = make_hostname()
