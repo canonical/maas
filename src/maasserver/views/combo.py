@@ -52,6 +52,7 @@ MERGE_VIEWS = {
         "files": [
             "js/angular/maas.js",
             "js/angular/factories/dhcpsnippets.js",
+            "js/angular/factories/packagerepositories.js",
             "js/angular/factories/region.js",
             "js/angular/factories/nodes.js",
             "js/angular/factories/devices.js",

@@ -71,6 +71,7 @@ Setting up a MAAS server
    proxy
    devices
    dhcpsnippets
+   packagerepositories
    power-driver-capabilities
 
 

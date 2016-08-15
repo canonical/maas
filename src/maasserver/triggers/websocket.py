@@ -1536,6 +1536,29 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_dhcpsnippet", "dhcpsnippet_delete_notify", "delete")
 
+    # PackageRepository table
+    register_procedure(
+        render_notification_procedure(
+            'packagerepository_create_notify', 'packagerepository_create',
+            'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'packagerepository_update_notify', 'packagerepository_update',
+            'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'packagerepository_delete_notify', 'packagerepository_delete',
+            'OLD.id'))
+    register_trigger(
+        "maasserver_packagerepository", "packagerepository_create_notify",
+        "insert")
+    register_trigger(
+        "maasserver_packagerepository", "packagerepository_update_notify",
+        "update")
+    register_trigger(
+        "maasserver_packagerepository", "packagerepository_delete_notify",
+        "delete")
+
     register_procedure(node_type_change())
     register_trigger(
         "maasserver_node", "node_type_change_notify", "update")

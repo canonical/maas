@@ -53,6 +53,10 @@ from maasserver.api.dhcpsnippets import (
     DHCPSnippetHandler,
     DHCPSnippetsHandler,
 )
+from maasserver.api.packagerepositories import (
+    PackageRepositoryHandler,
+    PackageRepositoriesHandler,
+)
 from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordHandler,
     DNSResourceRecordsHandler,
@@ -199,6 +203,10 @@ dhcp_snippet_handler = RestrictedResource(
     DHCPSnippetHandler, authentication=api_auth)
 dhcp_snippets_handler = RestrictedResource(
     DHCPSnippetsHandler, authentication=api_auth)
+package_repository_handler = RestrictedResource(
+    PackageRepositoryHandler, authentication=api_auth)
+package_repositories_handler = RestrictedResource(
+    PackageRepositoriesHandler, authentication=api_auth)
 dnsresourcerecord_handler = RestrictedResource(
     DNSResourceRecordHandler, authentication=api_auth)
 dnsresourcerecords_handler = RestrictedResource(
@@ -447,6 +455,12 @@ urlpatterns += patterns(
         r'^boot-resources/(?P<id>[^/]+)/upload/(?P<file_id>[^/]+)/$',
         boot_resource_file_upload_handler,
         name='boot_resource_file_upload_handler'),
+    url(
+        r'^package-repositories/$',
+        package_repositories_handler, name='package_repositories_handler'),
+    url(
+        r'^package-repositories/(?P<package_repository_id>[^/]+)/$',
+        package_repository_handler, name='package_repository_handler'),
     url(
         r'^dhcp-snippets/$',
         dhcp_snippets_handler, name='dhcp_snippets_handler'),

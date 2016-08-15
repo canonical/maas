@@ -1721,13 +1721,22 @@ class Factory(maastesting.factory.Factory):
     def make_PackageRepository(
             self, name=None, url=None, arches=None, default=False):
         if name is None:
-            name = self.make_name("package_repository")
+            name = self.make_name("name")
+        description = self.make_name("description")
         if url is None:
-            url = self.make_parsed_url(scheme='http')
+            url = self.make_url(scheme='http')
+        distributions = [self.make_name(
+            "distribution%d" % i) for i in range(3)]
+        disabled_pockets = [self.make_name(
+            "disabled_pocket%d" % i) for i in range(3)]
+        components = [self.make_name("component%d" % i) for i in range(3)]
         if arches is None:
             arches = [self.make_name("arch%d" % i) for i in range(3)]
+        key = self.make_name("key")
         return PackageRepository.objects.create(
-            name=name, url=url, arches=arches, default=default)
+            name=name, description=description, url=url,
+            distributions=distributions, disabled_pockets=disabled_pockets,
+            components=components, arches=arches, key=key, default=default)
 
 
 # Create factory singleton.

@@ -12,16 +12,61 @@ from django.db.models import (
     BooleanField,
     CharField,
     Manager,
+    QuerySet,
     TextField,
     URLField,
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 
 
-class PackageRepositoryManager(Manager):
+class PackageRepositoryQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'id': "__id",
+            'name': "__name",
+        }
+        return super(PackageRepositoryQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class PackageRepositoryQuerySet(QuerySet, PackageRepositoryQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    this object. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager.
+    """
+
+
+class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
     """Manager for `PackageRepository` class."""
+
+    def get_queryset(self):
+        return PackageRepositoryQuerySet(self.model, using=self._db)
+
+    def get_object_or_404(self, specifiers):
+        """Fetch a `PackageRepository` by its id. Raise exceptions if no
+        `PackageRepository` with its id exists, or if the provided user does
+        not have the required permission on this `PackageRepository`.
+
+        :param specifiers: The interface specifier.
+        :type specifiers: str
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        return self.get_object_by_specifiers_or_raise(specifiers)
 
 
 class PackageRepository(CleanSave, TimestampedModel):
@@ -41,15 +86,17 @@ class PackageRepository(CleanSave, TimestampedModel):
 
     url = URLField(blank=False, help_text="The URL of the PackageRepository.")
 
-    distro = CharField(max_length=41, default='ubuntu', editable=False)
+    distributions = ArrayField(
+        TextField(), blank=True, null=True, default=list)
 
-    pockets = ArrayField(TextField(), blank=True, null=True, default=list)
+    disabled_pockets = ArrayField(
+        TextField(), blank=True, null=True, default=list)
 
     components = ArrayField(TextField(), blank=True, null=True, default=list)
 
     arches = ArrayField(TextField(), blank=True, null=True, default=list)
 
-    key = TextField(default='', editable=False)
+    key = TextField(blank=True, default='')
 
     default = BooleanField(default=False)
 
@@ -62,7 +109,6 @@ class PackageRepository(CleanSave, TimestampedModel):
     def get_main_archive(cls):
         repo = cls.objects.filter(
             arches__overlap=PackageRepository.MAIN_ARCHES,
-            distro='ubuntu',
             enabled=True,
             default=True).first()
         if repo is None:
@@ -74,7 +120,6 @@ class PackageRepository(CleanSave, TimestampedModel):
     def get_ports_archive(cls):
         repo = cls.objects.filter(
             arches__overlap=PackageRepository.PORTS_ARCHES,
-            distro='ubuntu',
             enabled=True,
             default=True).first()
         if repo is None:

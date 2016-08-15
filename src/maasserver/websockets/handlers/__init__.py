@@ -34,6 +34,9 @@ from maasserver.websockets.handlers.fabric import FabricHandler
 from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 from maasserver.websockets.handlers.machine import MachineHandler
+from maasserver.websockets.handlers.packagerepository import (
+    PackageRepositoryHandler,
+)
 from maasserver.websockets.handlers.service import ServiceHandler
 from maasserver.websockets.handlers.space import SpaceHandler
 from maasserver.websockets.handlers.subnet import SubnetHandler
@@ -52,6 +55,7 @@ ignore_unused(FabricHandler)
 ignore_unused(GeneralHandler)
 ignore_unused(IPRangeHandler)
 ignore_unused(MachineHandler)
+ignore_unused(PackageRepositoryHandler)
 ignore_unused(ServiceHandler)
 ignore_unused(SpaceHandler)
 ignore_unused(SubnetHandler)

@@ -31,6 +31,7 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -595,6 +596,21 @@ class TransactionalHelpersMixin:
     def delete_dhcp_snippet(self, id):
         dhcp_snippet = DHCPSnippet.objects.get(id=id)
         dhcp_snippet.delete()
+
+    @transactional
+    def create_package_repository(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_PackageRepository(**params)
+
+    @transactional
+    def update_package_repository(self, id, params):
+        return apply_update_to_model(PackageRepository, id, params)
+
+    @transactional
+    def delete_package_repository(self, id):
+        package_repository = PackageRepository.objects.get(id=id)
+        package_repository.delete()
 
     @transactional
     def create_region_controller_process(self, params=None):
