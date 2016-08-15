@@ -541,6 +541,53 @@ class TestRegionControllerManager(MAASServerTestCase):
             RegionController.DoesNotExist,
             RegionController.objects.get_running_controller)
 
+    def make_endpoints(self, region):
+        process = factory.make_RegionControllerProcess(region)
+        return [
+            factory.make_RegionControllerProcessEndpoint(process)
+            for _ in range(3)
+        ]
+
+    def set_maas_id(self):
+        maas_id_fixture = MAASIDFixture(factory.make_name("maas-id"))
+        return self.useFixture(maas_id_fixture).system_id
+
+    def test_get_active_peer_addresses_returns_frozenset_of_frozensets(self):
+        self.set_maas_id()
+
+        # Populate the database with example peers.
+        region_one = factory.make_RegionController()
+        region_two = factory.make_RegionController()
+        endpoints_one = self.make_endpoints(region_one)
+        endpoints_two = self.make_endpoints(region_two)
+
+        observed = RegionController.objects.get_active_peer_addresses()
+        expected = frozenset({
+            frozenset(endpoint.address for endpoint in endpoints_one),
+            frozenset(endpoint.address for endpoint in endpoints_two),
+        })
+
+        self.assertThat(observed, IsInstance(frozenset))
+        self.assertThat(observed, Equals(expected))
+
+    def test_get_active_peer_addresses_excludes_this_host(self):
+        # Populate the database with example peers.
+        region_this = factory.make_RegionController()
+        endpoints_this = self.make_endpoints(region_this)  # noqa
+        region_other = factory.make_RegionController()
+        endpoints_other = self.make_endpoints(region_other)
+
+        region_this.system_id = self.set_maas_id()
+        region_this.save()
+
+        observed = RegionController.objects.get_active_peer_addresses()
+        expected = frozenset({
+            frozenset(endpoint.address for endpoint in endpoints_other)
+        })
+
+        self.assertThat(observed, IsInstance(frozenset))
+        self.assertThat(observed, Equals(expected))
+
 
 class TestRegionControllerManagerGetOrCreateRunningController(
         MAASServerTestCase):

@@ -12,18 +12,22 @@ __all__ = [
     "RegionController",
     ]
 
-
 from collections import (
     defaultdict,
     namedtuple,
 )
 from datetime import timedelta
 from functools import partial
-from operator import attrgetter
+from itertools import groupby
+from operator import (
+    attrgetter,
+    itemgetter,
+)
 import random
 import re
 import socket
 from socket import gethostname
+from textwrap import dedent
 from urllib.parse import urlparse
 
 from crochet import TimeoutError
@@ -753,6 +757,31 @@ class RegionControllerManager(ControllerManager):
         upgraded to a region+rack controller later if necessary.
         """
         return self.create(owner=get_worker_user(), hostname=gethostname())
+
+    _sql_active_peers = dedent("""\
+    SELECT rcp.region_id, rcpe.address
+      FROM maasserver_regioncontrollerprocessendpoint AS rcpe
+      JOIN maasserver_regioncontrollerprocess AS rcp
+        ON rcpe.process_id = rcp.id
+      JOIN maasserver_node AS rc
+        ON rcp.region_id = rc.id
+     WHERE rc.system_id != %s
+     ORDER BY rcp.region_id
+    """)
+
+    def get_active_peer_addresses(self):
+        """Return addresses of peer region controllers.
+
+        Excludes addresses belonging to the host on which this function is
+        called.
+
+        :return: An immutable set of sets of peer IP addresses.
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(self._sql_active_peers, [get_maas_id()])
+            return frozenset(
+                frozenset(address for _, address in addresses)
+                for _, addresses in groupby(cursor, itemgetter(0)))
 
 
 def get_default_domain():

@@ -16,6 +16,7 @@ libpq-dev
 postgresql
 python3-all
 python3-apt
+python3-attr
 python3-bson
 python3-convoy
 python3-crochet
