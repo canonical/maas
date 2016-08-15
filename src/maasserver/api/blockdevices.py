@@ -267,7 +267,7 @@ class BlockDeviceHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @operation(idempotent=True)
+    @operation(idempotent=False)
     def add_tag(self, request, system_id, device_id):
         """Add a tag to block device on a machine.
 
@@ -283,11 +283,11 @@ class BlockDeviceHandler(OperationsHandler):
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot update block device because the machine is not Ready.")
-        device.add_tag(get_mandatory_param(request.GET, 'tag'))
+        device.add_tag(get_mandatory_param(request.POST, 'tag'))
         device.save()
         return device
 
-    @operation(idempotent=True)
+    @operation(idempotent=False)
     def remove_tag(self, request, system_id, device_id):
         """Remove a tag from block device on a machine.
 
@@ -303,7 +303,7 @@ class BlockDeviceHandler(OperationsHandler):
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot update block device because the machine is not Ready.")
-        device.remove_tag(get_mandatory_param(request.GET, 'tag'))
+        device.remove_tag(get_mandatory_param(request.POST, 'tag'))
         device.save()
         return device
 
