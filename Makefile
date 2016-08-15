@@ -584,7 +584,7 @@ source-package-rebuild: source-package-clean source-package
 source-package-dev-rebuild: source-package-clean source-package-dev
 
 # To clean built packages away:
-package-clean: patterns := *.deb *.dsc *.build *.changes
+package-clean: patterns := *.deb *.udeb *.dsc *.build *.changes
 package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 package-clean:
 	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
