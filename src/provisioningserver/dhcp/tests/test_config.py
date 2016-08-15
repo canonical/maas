@@ -32,6 +32,7 @@ from provisioningserver.dhcp.testing.config import (
 )
 from provisioningserver.testing.network import does_HOSTALIASES_work_here
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import select_c_utf8_locale
 import tempita
 from testtools.content import (
@@ -187,7 +188,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
         # Xenial lxcs don't support using different apparmor profiles:
         # everything runs with the container profile.
         cmd = "dhcpd", ("-6" if ipv6 else "-4"), "-t", "-cf", conffile.name
-        if subprocess.check_output(["systemd-detect-virt"]).strip() != b'lxc':
+        if not running_in_container():
             cmd = "aa-exec", "--profile", "unconfined", *cmd
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
