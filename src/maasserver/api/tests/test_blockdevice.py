@@ -422,7 +422,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
     def test_add_tag_returns_403_when_not_admin(self):
         block_device = factory.make_PhysicalBlockDevice()
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
@@ -432,7 +432,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         block_device = factory.make_PhysicalBlockDevice()
         other_node = factory.make_Node()
         uri = get_blockdevice_uri(block_device, node=other_node)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -443,7 +443,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
         block_device = factory.make_VirtualBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
             http.client.CONFLICT, response.status_code, response.content)
@@ -454,7 +454,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         block_device = factory.make_PhysicalBlockDevice(node=node)
         tag_to_be_added = factory.make_name('tag')
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'add_tag', 'tag': tag_to_be_added})
 
         self.assertEqual(
@@ -467,7 +467,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
     def test_remove_tag_returns_403_when_not_admin(self):
         block_device = factory.make_PhysicalBlockDevice()
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
@@ -478,7 +478,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         block_device = factory.make_PhysicalBlockDevice()
         other_node = factory.make_Node()
         uri = get_blockdevice_uri(block_device, node=other_node)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
@@ -490,7 +490,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             status=factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.READY]))
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
@@ -502,7 +502,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         block_device = factory.make_PhysicalBlockDevice(node=node)
         tag_to_be_removed = block_device.tags[0]
         uri = get_blockdevice_uri(block_device)
-        response = self.client.get(
+        response = self.client.post(
             uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
 
         self.assertEqual(
