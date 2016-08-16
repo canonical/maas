@@ -30,6 +30,7 @@ from maasserver.models import (
     PackageRepository,
 )
 from maasserver.preseed import (
+    compose_curtin_archive_config,
     compose_curtin_kernel_preseed,
     compose_curtin_maas_reporter,
     compose_curtin_swap_preseed,
@@ -38,6 +39,7 @@ from maasserver.preseed import (
     compose_preseed_url,
     curtin_maas_reporter,
     GENERIC_FILENAME,
+    get_archive_config,
     get_curtin_config,
     get_curtin_context,
     get_curtin_image,
@@ -775,6 +777,9 @@ class TestGetCurtinUserData(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
+        main_url = PackageRepository.get_main_archive()
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config")
@@ -883,15 +888,25 @@ class TestCurtinUtilities(
         return node
 
     def extract_archive_setting(self, userdata):
-        """Extract the `ubuntu_archive` setting from `userdata`."""
+        """Extract the `uri` setting from `userdata` for both, the
+        primary and security archives. This has replaced the
+        `ubuntu_archive` setting"""
         userdata_lines = []
         for line in userdata.splitlines():
             line = line.strip()
-            if line.startswith('ubuntu_archive'):
+            if line.startswith('uri'):
                 userdata_lines.append(line)
-        self.assertThat(userdata_lines, HasLength(1))
-        [userdata_line] = userdata_lines
-        key, value = userdata_line.split(':', 1)
+        # We check for two. The uri for primary and security:
+        # apt:
+        #  preserve_sources_list: false
+        #  primary:
+        #  - arches: [default]
+        #    uri: http://us.archive.ubuntu.com/ubuntu
+        #  security:
+        #  - arches: [default]
+        #    uri: http://us.archive.ubuntu.com/ubuntu
+        self.assertThat(userdata_lines, HasLength(2))
+        key, value = userdata_lines[0].split(':', 1)
         return value.strip()
 
     def summarise_url(self, url):
@@ -902,29 +917,107 @@ class TestCurtinUtilities(
         parsed_result = urlparse(url)
         return parsed_result.netloc, parsed_result.path.strip('/')
 
-    def test_get_curtin_config_uses_main_archive_for_i386(self):
+    def test_compose_curtin_archive_config_uses_main_archive_for_i386(self):
         node = self.make_fastpath_node('i386')
+        node.osystem = 'ubuntu'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        userdata = get_curtin_config(node)
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
         self.assertEqual(
-            self.summarise_url(PackageRepository.get_main_archive()),
-            self.summarise_url(self.extract_archive_setting(userdata)))
+            archive.url,
+            self.extract_archive_setting(userdata[0]))
 
-    def test_get_curtin_config_uses_main_archive_for_amd64(self):
+    def test_compose_curtin_archive_config_uses_main_archive_for_amd64(self):
         node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        userdata = get_curtin_config(node)
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
         self.assertEqual(
-            self.summarise_url(PackageRepository.get_main_archive()),
-            self.summarise_url(self.extract_archive_setting(userdata)))
+            archive.url,
+            self.extract_archive_setting(userdata[0]))
 
-    def test_get_curtin_config_uses_ports_archive_for_other_arch(self):
-        node = self.make_fastpath_node()
+    def test_compose_curtin_archive_config_uses_main_archive_key(self):
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        key = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: SKS 1.1.5
+Comment: Hostname: keyserver.ubuntu.com
+
+mQINBFXVlyMBEACqM3iz2EGJE0iE3/AAbNCnbBB25m3AWaSxJk+GJfkAAYWGqAKiuWceCcet
+dNKNTKd8frSZFsRB7IceZr0u5sWpSYur6uoMNHzS8Y5cGdyAVrnEZtbdak652x13jlX7nrcE
+9g//lD0w254XW1Loyy5YOGWfUmJkGImndFWtkqd1J7SCVMMW5l/nS4LwsOx/wTxL5m/cFQLi
+67JyJGqszKXS88oHT1YFBWPyl1VcXifFwecH/32fRr6WGpEAaxGF4dO45WGvJIQs2yiT5f9h
+a3tuJCbzI58t9BxiR1MMZ9AAPjdNO6JZkX2q+/uqgJg9IWNcJ4E+fCgl/hvoB3AURXHmaagH
+7nMb/6OA/QFSbiR3eciSJ89cEkK+7d0br+p2+shO/dOV6lUrbidVVjiiTdmYlyXzuPcvPWVY
+mXjDzsOi0sSZZNMq8G3/pAavjyGUvZtb781V1j9/8l3o5ScAPzzamT2W4rF+nCh1iHYz7+wP
+2XDNifE/oK7fLNb0ig1G5S4PCqZHUp95LUaJrFczYCPwlERUxIC3B9a+UC3SdZmRuuSENWNs
+YxKUlbU07GCrjxtcDhQHGQDVJDUGbqqkA4B/iKrwW3reA5fHo3yocQMX7YR6C2/Qn+wn/EoE
+PIB1wkzAQvarnNCCdwjD5AB1VhANEFwUKMWHDEsofKOSTBYvgQARAQABtBZMYXVuY2hwYWQg
+UFBBIGZvciBNQUFTiQI4BBMBAgAiBQJV1ZcjAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIX
+gAAKCRAE5/3FaE1KHDH8D/9Mdc+4tw8foj6lILCgfBRi9S37tOyV2m5YvD+qRzefUYgFKXYx
+leO+H9cjFH2XyHIBwa15dD/Yg+DkcAKb9f/a1llHNTzLkHiNVQl4tl8qeJPj2Obm53Hsjhaz
+Igh0L208GRGJxO4HSBbrBTo8FNF00Cl52josZdG1mPCSDuJm1AkeY9q4WeAOnekquz2qjUa+
+L8J8z+HVPC9rUryENXdwCyh3TE0G0occjUAsb5oOu3bcKSbVraq+trhjp9sz7o7O4lc4+cT2
+gFIWl1Rp1djzXH8flU/s3U1vl0RcIFEZbuqsuDWukpxozq4M5y7VKq4y5dq7Y0PbMuJ0Dvgn
+Bn4fbboMji4LYfgn++vosZv/MXkPIg6wubxdejVdrEoFRFxCcYqW4wObY8vxrvDrMjp4HrQ2
+guN8OJDUYnLdVv9P1MMKDAMrDjRdy3NsBpd7GuA9hXRXBPZ8y74nIwCRjEDnIz5jsws9PxZI
+VabieoCI6RibJMw8qpuicM97Ss2Uq5vURvTBQ3f6wYjCMsdtyqjz6TVJ3zwK9NPfMhXGVrrs
+xBOxO382r6XXuUbTcXZTDjAkoMsBqfjidlGDGTb3Un0LkZJfpXrmZehyvO/GlsoYiFDhGf+E
+XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
+=QeWQ
+-----END PGP PUBLIC KEY BLOCK-----"""
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'], key=key)
         self.configure_get_boot_images_for_node(node, 'xinstall')
-        userdata = get_curtin_config(node)
+        # compose_curtin_archive_config returns a list.
+        userdata = get_archive_config(node)
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
         self.assertEqual(
-            self.summarise_url(PackageRepository.get_ports_archive()),
-            self.summarise_url(self.extract_archive_setting(userdata)))
+            userdata['apt']['sources']['archive_key']['key'],
+            archive.key)
+
+    def test_compose_curtin_archive_config_ports_archive_for_other_arch(self):
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        main_url = PackageRepository.get_ports_archive()
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
+        self.assertEqual(
+            archive.url,
+            self.extract_archive_setting(userdata[0]))
+
+    def test_compose_curtin_archive_config_main_archive_for_custom_os(self):
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'custom'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
+        self.assertEqual(
+            archive.url,
+            self.extract_archive_setting(userdata[0]))
 
     def test_get_curtin_context(self):
         node = factory.make_Node_with_Interface_on_Subnet(

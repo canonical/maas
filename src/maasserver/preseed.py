@@ -152,6 +152,43 @@ def compose_curtin_maas_reporter(node):
     return [yaml.safe_dump(reporter)]
 
 
+def get_archive_config(node):
+    arch = node.split_arch()[0]
+    archive = PackageRepository.objects.get_default_archive(arch)
+    archives = {
+        'apt': {
+            'preserve_sources_list': False,
+            'primary': [
+                {
+                    'arches': ['default'],
+                    'uri': archive.url
+                },
+            ],
+            'security': [
+                {
+                    'arches': ['default'],
+                    'uri': archive.url
+                },
+            ],
+        },
+    }
+    if archive.key:
+        archives["apt"]["sources"] = {
+            'archive_key': {
+                "key": archive.key,
+            }
+        }
+
+    return archives
+
+
+def compose_curtin_archive_config(node):
+    if node.osystem in ['ubuntu', 'custom']:
+        archives = get_archive_config(node)
+        return [yaml.safe_dump(archives)]
+    return []
+
+
 def compose_curtin_swap_preseed(node):
     """Return the curtin preseed for configuring a node's swap space.
 
@@ -212,6 +249,7 @@ def compose_curtin_verbose_preseed():
 def get_curtin_yaml_config(node):
     """Return the curtin configration for the node."""
     main_config = get_curtin_config(node)
+    archive_config = compose_curtin_archive_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
     swap_config = compose_curtin_swap_preseed(node)
     kernel_config = compose_curtin_kernel_preseed(node)
@@ -240,8 +278,8 @@ def get_curtin_yaml_config(node):
         storage_config = []
 
     return (
-        storage_config + [main_config] + reporter_config + network_config +
-        swap_config + kernel_config + verbose_config)
+        storage_config + [main_config] + archive_config + reporter_config +
+        network_config + swap_config + kernel_config + verbose_config)
 
 
 def get_curtin_merged_config(node):

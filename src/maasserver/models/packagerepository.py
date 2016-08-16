@@ -68,6 +68,18 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
         """
         return self.get_object_by_specifiers_or_raise(specifiers)
 
+    def get_default_archive(self, arch):
+        return PackageRepository.objects.filter(
+            arches__contains=[arch],
+            enabled=True,
+            default=True).first()
+
+    def get_additional_repositories(self, arch):
+        return PackageRepository.objects.filter(
+            arches__contains=[arch],
+            enabled=True,
+            default=False).all()
+
 
 class PackageRepository(CleanSave, TimestampedModel):
     """A `PackageRepository`."""
