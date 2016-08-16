@@ -18,6 +18,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.fixtures import MAASRootFixture
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -65,6 +66,7 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         super(TestRegionNetworkTimeProtocolService, self).setUp()
         maas_id_fixture = MAASIDFixture(factory.make_name("maas-id"))
         self.maas_id = self.useFixture(maas_id_fixture).system_id
+        self.useFixture(MAASRootFixture())
 
     @transactional
     def make_example_configuration(self):
@@ -80,20 +82,20 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__tryUpdate_tries_to_update_ntp_server(self):
+    def test__tryUpdate_updates_ntp_server(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         configuration = yield deferToDatabase(self.make_example_configuration)
-        self.patch_autospec(service, "_applyConfiguration")
+        self.patch_autospec(ntp, "configure")
         yield service._tryUpdate()
         self.assertThat(
-            service._applyConfiguration,
-            MockCalledOnceWith(configuration))
+            ntp.configure, MockCalledOnceWith(
+                configuration.references, configuration.peers))
         # If the configuration has not changed then a second call to
         # _tryUpdate does not result in another call to _applyConfiguration.
         yield service._tryUpdate()
         self.assertThat(
-            service._applyConfiguration,
-            MockCalledOnceWith(configuration))
+            ntp.configure, MockCalledOnceWith(
+                configuration.references, configuration.peers))
 
 
 class TestRegionNetworkTimeProtocolService_Errors(
@@ -114,6 +116,7 @@ class TestRegionNetworkTimeProtocolService_Errors(
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
 
+        self.useFixture(MAASRootFixture())
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 

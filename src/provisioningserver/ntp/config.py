@@ -21,7 +21,7 @@ _ntp_conf_name = "ntp.conf"
 _ntp_maas_conf_name = "ntp.maas.conf"
 
 
-def configure(servers):
+def configure(servers, peers):
     """Configure the local NTP server with the given time references.
 
     This writes new ``ntp.conf`` and ``ntp.maas.conf`` files, using ``sudo``
@@ -30,7 +30,7 @@ def configure(servers):
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
         -- to use as time references.
     """
-    ntp_maas_conf = _render_ntp_maas_conf(servers).encode("ascii")
+    ntp_maas_conf = _render_ntp_maas_conf(servers, peers).encode("ascii")
     ntp_maas_conf_path = get_path("etc", _ntp_maas_conf_name)
     sudo_write_file(ntp_maas_conf_path, ntp_maas_conf, mode=0o644)
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path).encode("ascii")
@@ -62,7 +62,7 @@ def _render_ntp_conf_from_source(lines, includefile):
     yield "includefile %s\n" % includefile
 
 
-def _render_ntp_maas_conf(servers):
+def _render_ntp_maas_conf(servers, peers):
     """Render ``ntp.maas.conf`` for the given time references.
 
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
@@ -70,6 +70,7 @@ def _render_ntp_maas_conf(servers):
     """
     lines = ["# MAAS NTP configuration."]
     lines.extend("server " + server for server in servers)
+    lines.extend("peer " + peer for peer in peers)
     return "\n".join(lines)
 
 

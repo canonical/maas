@@ -29,6 +29,12 @@ def extract_servers_and_pools(configuration):
         re.VERBOSE | re.MULTILINE)
 
 
+def extract_peers(configuration):
+    return re.findall(
+        r" ^ \s* peer \s+ (.+) $ ", configuration,
+        re.VERBOSE | re.MULTILINE)
+
+
 def extract_included_files(configuration):
     return re.findall(
         r" ^ \s* includefile \s+ (.*) $ ", configuration,
@@ -48,7 +54,12 @@ class TestConfigure(MAASTestCase):
             factory.make_ipv6_address(),
             factory.make_hostname(),
         ]
-        config.configure(servers)
+        peers = [
+            factory.make_ipv4_address(),
+            factory.make_ipv6_address(),
+            factory.make_hostname(),
+        ]
+        config.configure(servers, peers)
         ntp_conf_path = get_path("etc", config._ntp_conf_name)
         ntp_maas_conf_path = get_path("etc", config._ntp_maas_conf_name)
         ntp_conf = read_configuration(ntp_conf_path)
@@ -60,6 +71,8 @@ class TestConfigure(MAASTestCase):
         ntp_maas_conf = read_configuration(ntp_maas_conf_path)
         self.assertThat(
             extract_servers_and_pools(ntp_maas_conf), Equals(servers))
+        self.assertThat(
+            extract_peers(ntp_maas_conf), Equals(peers))
 
 
 class TestRenderNTPConfFromSource(MAASTestCase):
@@ -138,11 +151,23 @@ class TestRenderNTPMAASConf(MAASTestCase):
             factory.make_ipv6_address(),
             factory.make_hostname(),
         ]
-        ntp_maas_conf = config._render_ntp_maas_conf(servers)
+        ntp_maas_conf = config._render_ntp_maas_conf(servers, [])
         self.assertThat(ntp_maas_conf, StartsWith(
             '# MAAS NTP configuration.\n'))
         servers_or_pools = extract_servers_and_pools(ntp_maas_conf)
         self.assertThat(servers_or_pools, Equals(servers))
+
+    def test_renders_the_given_peers(self):
+        peers = [
+            factory.make_ipv4_address(),
+            factory.make_ipv6_address(),
+            factory.make_hostname(),
+        ]
+        ntp_maas_conf = config._render_ntp_maas_conf([], peers)
+        self.assertThat(ntp_maas_conf, StartsWith(
+            '# MAAS NTP configuration.\n'))
+        observed_peers = extract_peers(ntp_maas_conf)
+        self.assertThat(observed_peers, Equals(peers))
 
 
 example_ntp_conf = """\

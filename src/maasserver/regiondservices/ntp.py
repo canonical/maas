@@ -14,6 +14,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.ntp.config import configure
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import (
     callOut,
@@ -21,6 +22,7 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import maybeDeferred
+from twisted.internet.threads import deferToThread
 from twisted.python import log
 
 
@@ -83,7 +85,8 @@ class RegionNetworkTimeProtocolService(TimerService):
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
         """
-        # TODO.
+        return deferToThread(
+            configure, configuration.references, configuration.peers)
 
     def _configurationApplied(self, configuration):
         """Record the currently applied NTP server configuration.
