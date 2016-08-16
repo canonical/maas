@@ -7,6 +7,7 @@ __all__ = []
 
 from urllib.parse import urlparse
 
+from maasserver.models import PackageRepository
 from maasserver.rpc.packagerepository import get_archive_mirrors
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -15,6 +16,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestGetArchiveMirrors(MAASServerTestCase):
 
     def test_returns_populated_dict_when_main_and_port_is_set(self):
+        PackageRepository.objects.all().delete()
         main_url = factory.make_url(scheme='http')
         ports_url = factory.make_url(scheme='http')
         factory.make_PackageRepository(

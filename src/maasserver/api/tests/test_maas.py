@@ -192,6 +192,7 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             Equals(ntp_servers))
 
     def test_get_main_archive_overrides_to_package_repository(self):
+        PackageRepository.objects.all().delete()
         main_url = factory.make_url(scheme='http')
         factory.make_PackageRepository(
             url=main_url, default=True, arches=['i386', 'amd64'])
@@ -216,6 +217,7 @@ class MAASHandlerAPITest(APITestCase.ForUser):
             ))
 
     def test_get_ports_archive_overrides_to_package_repository(self):
+        PackageRepository.objects.all().delete()
         ports_url = factory.make_url(scheme='http')
         factory.make_PackageRepository(
             url=ports_url, default=True, arches=['arm64', 'armhf', 'powerpc'])

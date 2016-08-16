@@ -36,6 +36,7 @@ from django.db.utils import (
 from fixtures import Fixture
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import PackageRepositoryFixture
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils.orm import (
@@ -77,6 +78,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         from maasserver.clusterrpc.testing import power_parameters
         self.useFixture(power_parameters.StaticPowerTypesFixture())
+        self.useFixture(PackageRepositoryFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
         # Disconnect the status transition event to speed up tests.

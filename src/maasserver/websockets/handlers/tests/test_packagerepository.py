@@ -43,6 +43,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         }
 
     def test_list(self):
+        PackageRepository.objects.all().delete()
         user = factory.make_User()
         handler = PackageRepositoryHandler(user, {})
         expected_package_repositories = [

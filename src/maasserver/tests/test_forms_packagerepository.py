@@ -74,6 +74,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertTrue(package_repository.enabled)
 
     def test__fail_validation_on_create_cleans_url(self):
+        PackageRepository.objects.all().delete()
         repo = factory.make_PackageRepository()
         params = self.make_valid_repo_params(repo)
         params['url'] = factory.make_string()

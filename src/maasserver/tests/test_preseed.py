@@ -451,6 +451,7 @@ class TestPreseedContext(MAASServerTestCase):
             context)
 
     def test_get_preseed_context_archive_refs(self):
+        PackageRepository.objects.all().delete()
         # urlparse lowercases the hostnames. That should not have any
         # impact but for testing, create lower-case hostnames.
         main_archive = factory.make_url(

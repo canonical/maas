@@ -400,13 +400,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_port_archive_default(self):
-        yield deferToDatabase(
-            self.add_main_archive, "http://archive.ubuntu.com/ubuntu")
-        yield deferToDatabase(
-            self.add_ports_archive, "http://ports.ubuntu.com/ubuntu-ports")
-
         response = yield call_responder(Region(), GetArchiveMirrors, {})
-
         self.assertEqual(
             {"main": urlparse("http://archive.ubuntu.com/ubuntu"),
              "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
@@ -415,6 +409,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_set(self):
+        yield deferToDatabase(lambda: PackageRepository.objects.all().delete())
         url = factory.make_parsed_url(scheme='http')
         yield deferToDatabase(self.add_main_archive, url.geturl())
 
@@ -428,6 +423,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_ports_archive_set(self):
+        yield deferToDatabase(lambda: PackageRepository.objects.all().delete())
         url = factory.make_parsed_url(scheme='http')
         yield deferToDatabase(self.add_ports_archive, url.geturl())
 

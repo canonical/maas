@@ -1718,6 +1718,14 @@ class Factory(maastesting.factory.Factory):
             name=name, value=value, description=description, enabled=enabled,
             node=node, subnet=subnet)
 
+    def make_default_PackageRepositories(self):
+        factory.make_PackageRepository(
+            name='main_archive', url='http://archive.ubuntu.com/ubuntu',
+            default=True, arches=PackageRepository.MAIN_ARCHES)
+        factory.make_PackageRepository(
+            name='ports_archive', url='http://ports.ubuntu.com/ubuntu-ports',
+            default=True, arches=PackageRepository.PORTS_ARCHES)
+
     def make_PackageRepository(
             self, name=None, url=None, arches=None, default=False):
         if name is None:
