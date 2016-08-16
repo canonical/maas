@@ -18,6 +18,7 @@ from maasserver.models.interface import (
     Interface,
     PhysicalInterface,
 )
+from maasserver.node_status import NODE_STATUS
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -53,6 +54,7 @@ def event_log_pxe_request(machine, purpose):
     """Log PXE request to machines's event log."""
     options = {
         'commissioning': "commissioning",
+        'rescue': "rescue mode",
         'xinstall': "installation",
         'local': "local boot",
         'poweroff': "power off",
@@ -120,7 +122,11 @@ def get_config(
         purpose = machine.get_boot_purpose()
 
         # Log the request into the event log for that machine.
-        event_log_pxe_request(machine, purpose)
+        if (machine.status == NODE_STATUS.ENTERING_RESCUE_MODE and
+                purpose == 'commissioning'):
+            event_log_pxe_request(machine, 'rescue')
+        else:
+            event_log_pxe_request(machine, purpose)
 
         # Get the correct operating system and series based on the purpose
         # of the booting machine.

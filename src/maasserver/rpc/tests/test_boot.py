@@ -310,6 +310,20 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual('commissioning', observed_config['purpose'])
 
+    def test__uses_rescue_mode_boot_purpose(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ENTERING_RESCUE_MODE)
+        mac = node.get_boot_interface().mac_address
+        event_log_pxe_request = self.patch_autospec(
+            boot_module, 'event_log_pxe_request')
+        get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertThat(
+            event_log_pxe_request, MockCalledOnceWith(node, 'rescue'))
+
     def test__calls_event_log_pxe_request(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
@@ -327,6 +341,7 @@ class TestGetConfig(MAASServerTestCase):
     def test_event_log_pxe_request_for_known_boot_purpose(self):
         purposes = [
             ("commissioning", "commissioning"),
+            ("rescue", "rescue mode"),
             ("xinstall", "installation"),
             ("local", "local boot"),
             ("poweroff", "power off")]
