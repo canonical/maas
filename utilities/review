@@ -1,0 +1,60 @@
+#!/bin/bash
+
+function get_branch {
+    echo $1 | tr '/' '\n' | tail -1
+}
+
+function die {
+    echo "$@"
+    exit 1
+}
+
+if [ "$MAAS_HOME" == "" ]; then
+    MAAS_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
+fi
+
+SANDBOX="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+
+if [ "$1" == "" ]; then
+    echo "Usage: $0 <branch-to-review> [branch-to-merge-into]"
+    echo ""
+    echo "    branch-to-review: a string in the format: lp:~user/project/branch"
+    echo "                      (or a local directory, such as $SANDBOX)"
+    echo "                      When reviewing a local directory, changes must be committed."
+    echo "    branch-to-merge-into: a branch sandbox in $MAAS_HOME (\$MAAS_HOME)"
+    die
+fi
+
+test -d $MAAS_HOME || die "Could not find MAAS_HOME (tried: $MAAS_HOME)"
+
+cd "$MAAS_HOME" || die "Failed to change directory to $MAAS_HOME"
+
+target_branch=trunk
+if [ "$2" != "" ]; then
+    target_branch="$2"
+fi
+source_branch=$(get_branch $1)
+review_branch=$target_branch-$source_branch
+if [ -x "$review_branch" ]; then
+    echo "$review_branch: already exists: press <enter> to confirm (and delete); ^C to cancel"
+    read
+fi
+rm -rf $review_branch
+if [ ! -d $1 ]; then
+    if [ -x "$source_branch" ]; then
+        echo "$source_branch: already exists: press <enter> to confirm (and delete); ^C to cancel"
+        read
+    fi
+    rm -rf $source_branch
+    bzr branch "$1" || die "Failed to find review branch"
+fi
+bzr branch "$target_branch" "$review_branch" || die "Failed to branch merge target: $target_branch"
+cd $review_branch || die "$review_branch: directory not found"
+bzr merge ../$source_branch && merged=1 || merged=0
+if [ $merged -eq 1 ]; then
+    echo "Merged into: $review_branch"
+    bzr qdiff > /dev/null 2>&1 &
+else
+    die "Merge failed: $review_branch"
+fi
+
