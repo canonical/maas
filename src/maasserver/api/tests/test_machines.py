@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import json
 import random
+from unittest.mock import ANY
 
 from django.conf import settings
 from django.core.urlresolvers import reverse

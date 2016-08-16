@@ -539,6 +539,16 @@ class InterfaceTest(MAASServerTestCase):
             name=name, node=node, mac_address=mac,
             type=INTERFACE_TYPE.PHYSICAL, vlan=None))
 
+    def test_doesnt_allow_acquired_to_be_true(self):
+        name = factory.make_name('name')
+        node = factory.make_Node()
+        mac = factory.make_MAC()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name=name, node=node, mac_address=mac, disconnected=True)
+        interface.acquired = True
+        self.assertRaises(ValueError, interface.save)
+
     def test_string_representation_contains_essential_data(self):
         name = factory.make_name('name')
         node = factory.make_Node()
@@ -565,6 +575,27 @@ class InterfaceTest(MAASServerTestCase):
         # Should now all be deleted.
         self.assertIsNone(reload_object(bond), "Bond was not deleted.")
         self.assertIsNone(reload_object(vlan), "VLAN was not deleted.")
+
+    def test_is_configured_returns_False_when_disabled(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, enabled=False)
+        self.assertFalse(nic1.is_configured())
+
+    def test_is_configured_returns_False_when_no_links(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, enabled=False)
+        nic1.ip_addresses.clear()
+        self.assertFalse(nic1.is_configured())
+
+    def test_is_configured_returns_False_when_only_link_up(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        nic1.ensure_link_up()
+        self.assertFalse(nic1.is_configured())
+
+    def test_is_configured_returns_True_when_other_link(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        nic1.ensure_link_up()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=nic1)
+        self.assertTrue(nic1.is_configured())
 
     def test_get_effective_mtu_returns_interface_mtu(self):
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1125,6 +1156,13 @@ class BridgeInterfaceTest(MAASServerTestCase):
             "mac_address": ["This field cannot be blank."]
             }, error.message_dict)
 
+    def test_allows_acquired_to_be_true(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge.acquired = True
+        bridge.save()
+
     def test_parent_interfaces_must_belong_to_same_node(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1652,6 +1690,18 @@ class TestEnsureLinkUp(MAASServerTestCase):
         self.assertEqual(
             0, interface.ip_addresses.count(),
             "Should only have no IP address assigned.")
+
+    def test__removes_other_link_ups_if_other_link_exists(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        link_ups = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY, ip="", interface=interface)
+            for _ in range(3)
+        ]
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=interface)
+        interface.ensure_link_up()
+        self.assertItemsEqual([], reload_objects(StaticIPAddress, link_ups))
 
     def test__creates_link_up_to_discovered_subnet_on_same_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2234,6 +2284,101 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
                 alloc_type=IPADDRESS_TYPE.AUTO).order_by('id')
         self.assertEqual(
             IPAddress(auto_ips[0].ip) + 1, IPAddress(auto_ips[1].ip))
+
+
+class TestCreateAcquiredBridge(MAASServerTestCase):
+    """Tests for `Interface.create_acquired_bridge`."""
+
+    def test__raises_ValueError_for_bridge(self):
+        bridge = factory.make_Interface(INTERFACE_TYPE.BRIDGE)
+        self.assertRaises(ValueError, bridge.create_acquired_bridge)
+
+    def test__creates_acquired_bridge_with_default_options(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        bridge = parent.create_acquired_bridge()
+        self.assertThat(bridge, MatchesStructure(
+            name=Equals("br-%s" % parent.get_name()),
+            mac_address=Equals(parent.mac_address),
+            node=Equals(parent.node),
+            vlan=Equals(parent.vlan),
+            enabled=Equals(True),
+            acquired=Equals(True),
+            params=MatchesDict({
+                "bridge_stp": Equals(False),
+                "bridge_fd": Equals(15),
+            })
+        ))
+        self.assertEquals(
+            [parent.id], [p.id for p in bridge.parents.all()])
+
+    def test__creates_acquired_bridge_with_passed_options(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 500)
+        bridge = parent.create_acquired_bridge(
+            bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+        self.assertThat(bridge, MatchesStructure(
+            name=Equals("br-%s" % parent.get_name()),
+            mac_address=Equals(parent.mac_address),
+            node=Equals(parent.node),
+            vlan=Equals(parent.vlan),
+            enabled=Equals(True),
+            acquired=Equals(True),
+            params=MatchesDict({
+                "bridge_stp": Equals(bridge_stp),
+                "bridge_fd": Equals(bridge_fd),
+            })
+        ))
+        self.assertEquals(
+            [parent.id], [p.id for p in bridge.parents.all()])
+
+    def test__creates_acquired_bridge_copies_mtu(self):
+        mtu = random.randint(600, 1000)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent.params = {'mtu': mtu}
+        parent.save()
+        bridge = parent.create_acquired_bridge()
+        self.assertThat(bridge, MatchesStructure(
+            name=Equals("br-%s" % parent.get_name()),
+            mac_address=Equals(parent.mac_address),
+            node=Equals(parent.node),
+            vlan=Equals(parent.vlan),
+            enabled=Equals(True),
+            acquired=Equals(True),
+            params=MatchesDict({
+                "bridge_stp": Equals(False),
+                "bridge_fd": Equals(15),
+                "mtu": Equals(mtu),
+            })
+        ))
+        self.assertEquals(
+            [parent.id], [p.id for p in bridge.parents.all()])
+
+    def test__creates_acquired_bridge_moves_links_from_parent_to_bridge(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=parent)
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=parent)
+        bridge = parent.create_acquired_bridge()
+        self.assertThat(bridge, MatchesStructure(
+            name=Equals("br-%s" % parent.get_name()),
+            mac_address=Equals(parent.mac_address),
+            node=Equals(parent.node),
+            vlan=Equals(parent.vlan),
+            enabled=Equals(True),
+            acquired=Equals(True),
+            params=MatchesDict({
+                "bridge_stp": Equals(False),
+                "bridge_fd": Equals(15),
+            })
+        ))
+        self.assertEquals(
+            [parent.id], [p.id for p in bridge.parents.all()])
+        self.assertEquals(
+            [bridge.id], [nic.id for nic in auto_ip.interface_set.all()])
+        self.assertEquals(
+            [bridge.id], [nic.id for nic in static_ip.interface_set.all()])
 
 
 class TestReleaseAutoIPs(MAASServerTestCase):

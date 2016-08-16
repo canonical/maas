@@ -1365,6 +1365,22 @@ class TestNode(MAASServerTestCase):
             user, EVENT_TYPES.REQUEST_NODE_ACQUIRE, action='acquire',
             comment=None))
 
+    def test_acquire_calls__create_acquired_bridges(self):
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
+        user = factory.make_User()
+        token = create_auth_token(user)
+        agent_name = factory.make_name('agent-name')
+        mock_create_acquired_bridges = self.patch_autospec(
+            node, "_create_acquired_bridges")
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 500)
+        node.acquire(
+            user, token, agent_name,
+            bridge_all=True, bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+        self.assertThat(
+            mock_create_acquired_bridges,
+            MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
+
     def test_set_default_storage_layout_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
         mock_set_storage_layout = self.patch(node, "set_storage_layout")
@@ -2053,38 +2069,39 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertThat(node_stop, MockNotCalled())
 
-    def test_release_calls_release_ips_when_node_is_off(self):
-        """Releasing a powered down node calls `release_auto_ips`."""
+    def test_release_calls_release_interface_config_when_node_is_off(self):
+        """Releasing a powered down node calls `release_interface_config`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.OFF)
-        release_auto_ips = self.patch_autospec(
-            node, "release_auto_ips")
+        release_interface_config = self.patch_autospec(
+            node, "release_interface_config")
         self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
-        self.assertThat(release_auto_ips, MockCalledOnceWith())
+        self.assertThat(release_interface_config, MockCalledOnceWith())
 
-    def test_release_calls_release_ips_when_node_cant_be_queried(self):
-        """Releasing a node that can't be queried calls `release_auto_ips`."""
+    def test_release_calls_release_interface_config_when_cant_be_queried(self):
+        """Releasing a node that can't be queried calls
+        `release_interface_config`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='manual')
-        release_auto_ips = self.patch_autospec(
-            node, "release_auto_ips")
+        release_interface_config = self.patch_autospec(
+            node, "release_interface_config")
         self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
-        self.assertThat(release_auto_ips, MockCalledOnceWith())
+        self.assertThat(release_interface_config, MockCalledOnceWith())
 
-    def test_release_doesnt_release_auto_ips_when_node_releasing(self):
+    def test_release_doesnt_release_interface_config_when_node_releasing(self):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='virsh')
-        release = self.patch_autospec(node, "release_auto_ips")
+        release = self.patch_autospec(node, "release_interface_config")
         self.patch_autospec(node, '_stop')
         self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
@@ -2838,19 +2855,19 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
 
-    def test_update_power_state_release_auto_ips_if_releasing(self):
+    def test_update_power_state_release_interface_config_if_releasing(self):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
-        release = self.patch_autospec(node, 'release_auto_ips')
+        release = self.patch_autospec(node, 'release_interface_config')
         self.patch(Node, '_clear_status_expires')
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(release, MockCalledOnceWith())
 
-    def test_update_power_state_doesnt_release_auto_ips_if_not_off(self):
+    def test_update_power_state_doesnt_release_interface_config_if_on(self):
         node = factory.make_Node(
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
-        release = self.patch_autospec(node, 'release_auto_ips')
+        release = self.patch_autospec(node, 'release_interface_config')
         node.update_power_state(POWER_STATE.ON)
         self.assertThat(release, MockNotCalled())
 
@@ -4148,6 +4165,48 @@ class TestNodeParentRelationShip(MAASServerTestCase):
 class TestNodeNetworking(MAASServerTestCase):
     """Tests for methods on the `Node` related to networking."""
 
+    def test__create_acquired_bridges_doesnt_call_on_bridge(self):
+        mock_create_acquired_bridge = self.patch(
+            Interface, "create_acquired_bridge")
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[interface])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=bridge)
+        node._create_acquired_bridges()
+        self.assertThat(
+            mock_create_acquired_bridge, MockNotCalled())
+
+    def test__create_acquired_bridges_calls_configured_interface(self):
+        mock_create_acquired_bridge = self.patch(
+            Interface, "create_acquired_bridge")
+        node = factory.make_Node()
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=interface)
+        node._create_acquired_bridges()
+        self.assertThat(
+            mock_create_acquired_bridge,
+            MockCalledOnceWith(bridge_stp=None, bridge_fd=None))
+
+    def test__create_acquired_bridges_passes_options(self):
+        mock_create_acquired_bridge = self.patch(
+            Interface, "create_acquired_bridge")
+        node = factory.make_Node()
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, interface=interface)
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 500)
+        node._create_acquired_bridges(
+            bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+        self.assertThat(
+            mock_create_acquired_bridge,
+            MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
+
     def test_claim_auto_ips_works_with_multiple_auto_on_the_same_subnet(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
@@ -4190,7 +4249,7 @@ class TestNodeNetworking(MAASServerTestCase):
         ]
         self.assertItemsEqual(interfaces, observed_interfaces)
 
-    def test_release_auto_ips_calls_release_auto_ips_on_all_interfaces(self):
+    def test_release_interface_config_calls_release_auto_ips_on_all(self):
         node = factory.make_Node()
         interfaces = [
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -4198,7 +4257,7 @@ class TestNodeNetworking(MAASServerTestCase):
         ]
         mock_release_auto_ips = self.patch_autospec(
             Interface, "release_auto_ips")
-        node.release_auto_ips()
+        node.release_interface_config()
         # Since the interfaces are not ordered, which they dont need to be
         # we extract the passed interface to each call.
         observed_interfaces = [
@@ -4206,6 +4265,28 @@ class TestNodeNetworking(MAASServerTestCase):
             for call in mock_release_auto_ips.call_args_list
         ]
         self.assertItemsEqual(interfaces, observed_interfaces)
+
+    def test_release_interface_config_handles_acquired_bridge(self):
+        node = factory.make_Node()
+        interfaces = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(3)
+        ]
+        parent = interfaces[0]
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent])
+        bridge.acquired = True
+        bridge.save()
+        subnet = factory.make_Subnet(vlan=parent.vlan)
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet), subnet=subnet,
+            interface=bridge)
+        node.release_interface_config()
+        self.assertIsNone(reload_object(bridge))
+        self.assertEqual(
+            [parent.id],
+            [nic.id for nic in static_ip.interface_set.all()])
 
     def test__clear_networking_configuration(self):
         node = factory.make_Node()
@@ -4920,7 +5001,7 @@ class TestNode_Start(MAASServerTestCase):
             post_commit_defer.addErrback, MockCallsMatch(
                 call(callOutToDatabase, node._set_status,
                      node.system_id, status=old_status),
-                call(callOutToDatabase, node.release_auto_ips)))
+                call(callOutToDatabase, node.release_interface_config)))
 
     def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
         node = factory.make_Node(

@@ -731,7 +731,9 @@ class TestMachineAPI(APITestCase.ForUser):
             {'op': 'allocate', 'comment': comment})
         self.assertThat(
             machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY, comment=comment))
+                ANY, ANY, agent_name=ANY,
+                bridge_all=False, bridge_fd=False,
+                bridge_stp=False, comment=comment))
 
     def test_POST_allocate_handles_missing_comment(self):
         factory.make_Node(
@@ -742,7 +744,9 @@ class TestMachineAPI(APITestCase.ForUser):
             reverse('machines_handler'), {'op': 'allocate'})
         self.assertThat(
             machine_method, MockCalledOnceWith(
-                ANY, ANY, agent_name=ANY, comment=None))
+                ANY, ANY, agent_name=ANY,
+                bridge_all=False, bridge_fd=False,
+                bridge_stp=False, comment=None))
 
     def test_POST_release_frees_hwe_kernel(self):
         self.patch(node_module.Machine, '_stop')

@@ -2119,7 +2119,8 @@ class Node(CleanSave, TimestampedModel):
                     "s" if len(missing_packages) > 1 else ""))
 
     def acquire(
-            self, user, token=None, agent_name='', comment=None):
+            self, user, token=None, agent_name='', comment=None,
+            bridge_all=False, bridge_stp=None, bridge_fd=None):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
@@ -2132,6 +2133,9 @@ class Node(CleanSave, TimestampedModel):
         self.owner = user
         self.agent_name = agent_name
         self.token = token
+        if bridge_all:
+            self._create_acquired_bridges(
+                bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.save()
         maaslog.info("%s: allocated to user %s", self.hostname, user.username)
 
@@ -2412,7 +2416,7 @@ class Node(CleanSave, TimestampedModel):
         final power-down. This method should be the absolute last method
         called.
         """
-        self.release_auto_ips()
+        self.release_interface_config()
         self.status = NODE_STATUS.READY
         self.owner = None
         self.save()
@@ -2625,6 +2629,15 @@ class Node(CleanSave, TimestampedModel):
             acquired=True)
         filesystems.delete()
 
+    def _create_acquired_bridges(self, bridge_stp=None, bridge_fd=None):
+        """Create an acquired bridge on all configured interfaces."""
+        interfaces = self.interface_set.exclude(type=INTERFACE_TYPE.BRIDGE)
+        interfaces = interfaces.prefetch_related('ip_addresses')
+        for interface in interfaces:
+            if interface.is_configured():
+                interface.create_acquired_bridge(
+                    bridge_stp=bridge_stp, bridge_fd=bridge_fd)
+
     def claim_auto_ips(self):
         """Assign IP addresses to all interface links set to AUTO."""
         exclude_addresses = set()
@@ -2635,10 +2648,20 @@ class Node(CleanSave, TimestampedModel):
                 exclude_addresses.add(str(ip.ip))
 
     @transactional
-    def release_auto_ips(self):
-        """Release IP addresses on all interface links set to AUTO."""
+    def release_interface_config(self):
+        """Release IP addresses on all interface links set to AUTO and
+        remove all acquired bridge interfaces."""
         for interface in self.interface_set.all():
             interface.release_auto_ips()
+            if interface.type == INTERFACE_TYPE.BRIDGE and interface.acquired:
+                # Move all IP addresses assigned to an acquired bridge to the
+                # parent of the bridge.
+                parent = interface.parents.first()
+                for sip in interface.ip_addresses.all():
+                    sip.interface_set.remove(interface)
+                    sip.interface_set.add(parent)
+                # Delete the acquired bridge interface.
+                interface.delete()
 
     def _clear_networking_configuration(self):
         """Clear the networking configuration for this node.
@@ -3140,7 +3163,7 @@ class Node(CleanSave, TimestampedModel):
         # If any part of this processes fails be sure to release the grabbed
         # auto IP addresses.
         if claimed_ips:
-            d.addErrback(callOutToDatabase, self.release_auto_ips)
+            d.addErrback(callOutToDatabase, self.release_interface_config)
         return d
 
     @transactional

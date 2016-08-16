@@ -22,6 +22,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
 )
 from maasserver.forms_interface import (
+    AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
     BridgeInterfaceForm,
     ControllerInterfaceForm,
@@ -68,12 +69,15 @@ DISPLAYED_INTERFACE_FIELDS = (
     'effective_mtu',
 )
 
+ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.BROKEN)
+
 
 def raise_error_for_invalid_state_on_allocated_operations(
         node, user, operation):
-    if node.status not in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+    if node.status not in ALLOWED_STATES:
         raise NodeStateViolation(
-            "Cannot %s interface because the node is not Ready." % operation)
+            "Cannot %s interface because the machine is not Ready or "
+            "Broken." % operation)
 
 
 def raise_error_if_controller(node, operation):
@@ -239,6 +243,8 @@ class InterfacesHandler(OperationsHandler):
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
+        raise_error_for_invalid_state_on_allocated_operations(
+            machine, request.user, "create VLAN")
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
@@ -279,13 +285,27 @@ class InterfacesHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         machine = Machine.objects.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        if machine.status not in (
+                NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.ALLOCATED):
+            raise NodeStateViolation(
+                "Cannot create bridge interface because the machine is not "
+                "Ready, Broken, or Allocated.")
+        if (not request.user.is_superuser and
+                machine.status in ALLOWED_STATES):
+            raise NodeStateViolation(
+                "Machine must be alloacted to '%s' to allow bridge "
+                "creation." % request.user.username)
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
         if 'parent' in request.data:
             request.data['parents'] = request.data['parent']
-        form = BridgeInterfaceForm(node=machine, data=request.data)
+        if machine.status == NODE_STATUS.ALLOCATED:
+            form = AcquiredBridgeInterfaceForm(
+                node=machine, data=request.data)
+        else:
+            form = BridgeInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:

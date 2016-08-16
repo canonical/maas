@@ -26,6 +26,7 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
     MatchesDict,
+    MatchesListwise,
     MatchesSetwise,
 )
 
@@ -421,7 +422,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_vlan(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -464,7 +465,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_vlan_requires_admin(self):
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -480,7 +481,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_vlan_requires_vlan_and_parent(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_vlan",
@@ -496,7 +497,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
     def test_create_bridge(self):
         self.become_admin()
         name = factory.make_name("br")
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -540,7 +541,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_bridge_requires_admin(self):
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         untagged_vlan = factory.make_VLAN()
         parent_iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
@@ -555,7 +556,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bridge_requires_name_and_parent(self):
         self.become_admin()
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_bridge",
@@ -568,6 +569,71 @@ class TestInterfacesAPI(APITestCase.ForUser):
             "parent": ["A bridge interface must have exactly one parent."],
             "mac_address": ["This field cannot be blank."],
             }, json_load_bytes(response.content))
+
+    def test_create_acquired_bridge(self):
+        name = factory.make_name("br")
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        parent_fabric = factory.make_Fabric()
+        parent_vlan = parent_fabric.get_default_vlan()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=parent_vlan)
+        parent_subnet = factory.make_Subnet(vlan=parent_vlan)
+        parent_sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(parent_subnet),
+            subnet=parent_subnet, interface=parent_iface)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            "name": name,
+            "parent": parent_iface.id,
+            "tags": ",".join(tags),
+            })
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertThat(parsed_interface, ContainsDict({
+            "name": Equals(name),
+            "mac_address": Equals("%s" % parent_iface.mac_address),
+            "vlan": ContainsDict({
+                "id": Equals(parent_vlan.id),
+                }),
+            "type": Equals("bridge"),
+            "parents": Equals([parent_iface.name]),
+            "tags": MatchesSetwise(*map(Equals, tags)),
+            "links": MatchesListwise([
+                ContainsDict({
+                    "id": Equals(parent_sip.id),
+                    "ip_address": Equals(parent_sip.ip),
+                    "subnet": ContainsDict({
+                        "cidr": Equals(parent_subnet.cidr),
+                        })
+                    })
+                ])
+            }))
+
+    def test_create_acquired_bridge_not_allowed_in_ready(self):
+        name = factory.make_name("br")
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        parent_fabric = factory.make_Fabric()
+        parent_vlan = parent_fabric.get_default_vlan()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=parent_vlan)
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bridge",
+            "name": name,
+            "parent": parent_iface.id,
+            })
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
 
 
 class TestInterfacesAPIForControllers(APITestCase.ForUser):

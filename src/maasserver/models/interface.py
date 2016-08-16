@@ -66,6 +66,9 @@ maaslog = get_maas_logger("interface")
 # will happen at the form level based on the interface type.
 INTERFACE_NAME_REGEXP = '^[\w\-_.:]+$'
 
+# Default value for bridge_fd.
+DEFAULT_BRIDGE_FD = 15
+
 
 def get_subnet_family(subnet):
     """Return the IPADDRESS_FAMILY for the `subnet`."""
@@ -388,6 +391,11 @@ class Interface(CleanSave, TimestampedModel):
 
     enabled = BooleanField(default=True)
 
+    # Set only on a BridgeInterface when it is created by a standard user
+    # when a machine is acquired. Once the machine is released the bridge
+    # interface is removed.
+    acquired = BooleanField(default=False, editable=False)
+
     def __init__(self, *args, **kwargs):
         type = kwargs.get('type', self.get_type())
         kwargs['type'] = type
@@ -506,6 +514,22 @@ class Interface(CleanSave, TimestampedModel):
             for ip in ip_addresses
         )
         return link_modes == set([INTERFACE_LINK_TYPE.LINK_UP])
+
+    def is_configured(self):
+        """Return True if the interface is enabled and has at least one link
+        that is not a LINK_UP."""
+        if not self.is_enabled():
+            return False
+        # We do the removal of DISCOVERED here instead of in a query so that
+        # prefetch_related can be used on the interface query.
+        link_modes = set(
+            ip.get_interface_link_type()
+            for ip in self.ip_addresses.all()
+            if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED
+        )
+        return (
+            len(link_modes) != 0 and
+            link_modes != set([INTERFACE_LINK_TYPE.LINK_UP]))
 
     def update_ip_addresses(self, cidr_list):
         """Update the IP addresses linked to this interface.
@@ -761,11 +785,21 @@ class Interface(CleanSave, TimestampedModel):
     def ensure_link_up(self):
         """Ensure that if no subnet links exists that at least a LINK_UP
         exists."""
-        has_links = self.ip_addresses.exclude(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).count() > 0
-        if has_links:
-            # Nothing to do, already has links.
-            return
+        links = list(
+            self.ip_addresses.exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED))
+        if len(links) > 0:
+            # Ensure that LINK_UP only exists if no other links already exists.
+            link_ups = []
+            others = []
+            for link in links:
+                if link.alloc_type == IPADDRESS_TYPE.STICKY and (
+                        link.ip is None or link.ip == ""):
+                    link_ups.append(link)
+                else:
+                    others.append(link)
+            if len(link_ups) > 0 and len(others) > 0:
+                for link in link_ups:
+                    link.delete()
         elif self.vlan is not None:
             # Use an associated subnet if it exists and its on the same VLAN
             # the interface is currently connected, else it will just be a
@@ -942,6 +976,40 @@ class Interface(CleanSave, TimestampedModel):
         auto_ip.save()
         return subnet, auto_ip
 
+    def create_acquired_bridge(self, bridge_stp=None, bridge_fd=None):
+        """Create an acquired bridge on top of this interface.
+
+        Cannot be called on a `BridgeInterface`.
+        """
+        if bridge_stp is None:
+            bridge_stp = False
+        if bridge_fd is None:
+            bridge_fd = DEFAULT_BRIDGE_FD
+        if self.type == INTERFACE_TYPE.BRIDGE:
+            raise ValueError(
+                "Cannot create an acquired bridge on a bridge interface.")
+        params = {
+            'bridge_stp': bridge_stp,
+            'bridge_fd': bridge_fd,
+        }
+        if 'mtu' in self.params:
+            params['mtu'] = self.params['mtu']
+        bridge = BridgeInterface(
+            name="br-%s" % self.get_name(), node=self.node,
+            mac_address=self.mac_address, vlan=self.vlan,
+            enabled=True, acquired=True, params=params)
+        bridge.save()
+        # The order in which the creating and linkage between child and parent
+        # is important. The IP addresses must first be moved from this
+        # interface to the created bridge before the parent can be set on the
+        # bridge.
+        for sip in self.ip_addresses.all():
+            if sip.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                bridge.ip_addresses.add(sip)
+                self.ip_addresses.remove(sip)
+        InterfaceRelationship(child=bridge, parent=self).save()
+        return bridge
+
     def get_ancestors(self):
         """Returns all the ancestors of the interface (that is, including each
         parent's parents, and so on.)
@@ -971,6 +1039,14 @@ class Interface(CleanSave, TimestampedModel):
         for ancestor in ancestors:
             all_related |= ancestor.get_successors()
         return all_related
+
+    def clean(self):
+        super(Interface, self).clean()
+        # Acquired can only be set on bridge interface types and the node
+        # must be in an allocated state.
+        if self.acquired and self.type != INTERFACE_TYPE.BRIDGE:
+            raise ValueError(
+                "acquired cannot be True on interface type '%s'" % self.type)
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to

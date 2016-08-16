@@ -19,7 +19,10 @@ from django.http import (
     HttpResponseNotFound,
 )
 from formencode import validators
-from formencode.validators import StringBool
+from formencode.validators import (
+    Int,
+    StringBool,
+)
 from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
@@ -1178,6 +1181,18 @@ class MachinesHandler(NodesHandler, PowersMixin):
         :type agent_name: unicode
         :param comment: Optional comment for the event log.
         :type comment: unicode
+        :param bridge_all: Optionally create a bridge interface for every
+            configured interface on the machine. The created bridges will be
+            removed once the machine is released.
+            (Default: False)
+        :type bridge_all: boolean
+        :param bridge_stp: Optionally turn spanning tree protocol on or off
+            for the bridges created on every configured interface.
+            (Default: off)
+        :type bridge_stp: boolean
+        :param bridge_fd: Optionally adjust the forward delay to time seconds.
+            (Default: 15)
+        :type bridge_fd: integer
         :param dry_run: Optional boolean to indicate that the machine should
             not actually be acquired (this is for support/troubleshooting, or
             users who want to see which machine would match a constraint,
@@ -1197,6 +1212,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         maaslog.info(
             "Request from user %s to acquire a machine with constraints %s",
             request.user.username, request.data)
+        bridge_all = get_optional_param(
+            request.POST, 'bridge_all', default=False, validator=StringBool)
+        bridge_stp = get_optional_param(
+            request.POST, 'bridge_stp', default=False, validator=StringBool)
+        bridge_fd = get_optional_param(
+            request.POST, 'bridge_fd', default=False, validator=Int)
         verbose = get_optional_param(
             request.POST, 'verbose', default=False, validator=StringBool)
         dry_run = get_optional_param(
@@ -1229,7 +1250,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
             if not dry_run:
                 machine.acquire(
                     request.user, get_oauth_token(request),
-                    agent_name=agent_name, comment=comment)
+                    agent_name=agent_name, comment=comment,
+                    bridge_all=bridge_all, bridge_stp=bridge_stp,
+                    bridge_fd=bridge_fd)
             machine.constraint_map = storage.get(machine.id, {})
             machine.constraints_by_type = {}
             # Need to get the interface constraints map into the proper format

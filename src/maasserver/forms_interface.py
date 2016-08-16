@@ -17,6 +17,7 @@ from maasserver.enum import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_TYPE,
 )
 from maasserver.forms import (
@@ -27,6 +28,7 @@ from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,
     build_vlan_interface_name,
+    DEFAULT_BRIDGE_FD,
     Interface,
     InterfaceRelationship,
     PhysicalInterface,
@@ -473,7 +475,8 @@ class BridgeInterfaceForm(ChildInterfaceForm):
 
     bridge_stp = forms.NullBooleanField(initial=False, required=False)
 
-    bridge_fd = forms.IntegerField(min_value=0, initial=15, required=False)
+    bridge_fd = forms.IntegerField(
+        min_value=0, initial=DEFAULT_BRIDGE_FD, required=False)
 
     class Meta:
         model = BridgeInterface
@@ -537,6 +540,51 @@ class BridgeInterfaceForm(ChildInterfaceForm):
             elif created:
                 interface.params[bridge_field] = (
                     self.fields[bridge_field].initial)
+
+
+class AcquiredBridgeInterfaceForm(BridgeInterfaceForm):
+    """Form used to create a bridge interface when its node is acquired."""
+
+    class Meta(BridgeInterfaceForm.Meta):
+        pass
+
+    def clean(self):
+        # Remove vlan from data so that a user cannot set it in this form. It
+        # will be set to the parent's VLAN which is all that is allowed with
+        # this form.
+        if 'vlan' in self.data:
+            del self.data['vlan']
+        return super().clean()
+
+    def save(self, *args, **kwargs):
+        """Persist the interface into the database and move the IP links."""
+        # When the bridge interface is created it resets the IP links on the
+        # parent automatically. This is correct for all other interfaces, but
+        # when creating a acquired bridge we want those links to move to the
+        # new bridge.
+        saved_ipaddrs = []
+        parent = self.get_clean_parents()[0]
+        for sip in parent.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+            saved_ipaddrs.append(sip)
+            parent.ip_addresses.remove(sip)
+
+        # Create the interface which will reset all of the parent IP addresses.
+        interface = super().save(*args, **kwargs)
+
+        # Mark the bridge as an acquire bridge.
+        interface.acquired = True
+        interface.save()
+
+        # Set the IP addresses from the parent on the bridge.
+        for sip in saved_ipaddrs:
+            interface.ip_addresses.add(sip)
+
+        # When no IP address has been assigned to the parent we ensure that
+        # its at least in LINK_UP mode.
+        interface.ensure_link_up()
+        return Interface.objects.get(id=interface.id)
+
 
 INTERFACE_FORM_MAPPING = {
     INTERFACE_TYPE.PHYSICAL: PhysicalInterfaceForm,
