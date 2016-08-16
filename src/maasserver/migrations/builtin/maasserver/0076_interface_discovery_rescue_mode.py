@@ -9,10 +9,15 @@ import maasserver.models.cleansave
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0076_add_acquired_to_interface_model'),
+        ('maasserver', '0075_modify_packagerepository'),
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='interface',
+            name='acquired',
+            field=models.BooleanField(default=False, editable=False),
+        ),
         migrations.CreateModel(
             name='MDNS',
             fields=[
