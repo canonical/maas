@@ -29,6 +29,8 @@ from maasserver.exceptions import (
 from maasserver.models import (
     Fabric,
     interface as interface_module,
+    MDNS,
+    Neighbour,
     Space,
     StaticIPAddress,
     Subnet,
@@ -784,6 +786,192 @@ class InterfaceTest(MAASServerTestCase):
         tag = factory.make_name('tag')
         #: Test is this doesn't raise an exception
         interface.remove_tag(tag)
+
+
+class InterfaceUpdateNeighbourTest(MAASServerTestCase):
+    """Tests for `Interface.update_neighbour`."""
+
+    def make_neighbour_json(self, ip=None, mac=None, time=None, **kwargs):
+        """Returns a dictionary in the same JSON format that the region
+        expects to receive from the rack.
+        """
+        if ip is None:
+            ip = factory.make_ip_address(ipv6=False)
+        if mac is None:
+            mac = factory.make_mac_address()
+        if time is None:
+            time = random.randint(0, 200000000)
+        if 'vid' not in kwargs:
+            has_vid = random.choice([True, False])
+            if has_vid:
+                vid = random.randint(1, 4094)
+            else:
+                vid = None
+        return {
+            'ip': ip,
+            'mac': mac,
+            'time': time,
+            'vid': vid,
+        }
+
+    def test__ignores_updates_if_neighbour_discovery_state_is_false(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.update_neighbour(self.make_neighbour_json())
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+
+    def test___adds_new_neighbour_if_neighbour_discovery_state_is_true(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        iface.update_neighbour(self.make_neighbour_json())
+        self.assertThat(Neighbour.objects.count(), Equals(1))
+
+    def test___updates_existing_neighbour(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        json = self.make_neighbour_json()
+        iface.update_neighbour(json)
+        json['time'] += 1
+        iface.update_neighbour(json)
+        self.assertThat(Neighbour.objects.count(), Equals(1))
+        self.assertThat(
+            list(Neighbour.objects.all())[0].time, Equals(json['time']))
+        # This is the second time we saw this neighbour.
+        self.assertThat(
+            list(Neighbour.objects.all())[0].count, Equals(2))
+
+    def test__replaces_obsolete_neighbour(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        json = self.make_neighbour_json()
+        iface.update_neighbour(json)
+        # Have a different MAC address claim ownership of the IP.
+        json['time'] += 1
+        json['mac'] = factory.make_mac_address()
+        iface.update_neighbour(json)
+        self.assertThat(Neighbour.objects.count(), Equals(1))
+        self.assertThat(
+            list(Neighbour.objects.all())[0].mac_address, Equals(json['mac']))
+        # This is the first time we saw this neighbour, because the original
+        # binding was deleted.
+        self.assertThat(
+            list(Neighbour.objects.all())[0].count, Equals(1))
+
+    def test__logs_new_binding(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        json = self.make_neighbour_json()
+        with FakeLogger("maas.interface") as maaslog:
+            iface.update_neighbour(json)
+        self.assertDocTestMatches(
+            "...: New MAC, IP binding observed...",
+            maaslog.output)
+
+    def test__logs_moved_binding(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        json = self.make_neighbour_json()
+        iface.update_neighbour(json)
+        # Have a different MAC address claim ownership of the IP.
+        json['time'] += 1
+        json['mac'] = factory.make_mac_address()
+        with FakeLogger("maas.neighbour") as maaslog:
+            iface.update_neighbour(json)
+        self.assertDocTestMatches(
+            "...: IP address...moved from...to...",
+            maaslog.output)
+
+
+class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
+    """Tests for `Interface.update_mdns_entry`."""
+
+    def make_mdns_entry_json(self, ip=None, hostname=None):
+        """Returns a dictionary in the same JSON format that the region
+        expects to receive from the rack.
+        """
+        if ip is None:
+            ip = factory.make_ip_address(ipv6=False)
+        if hostname is None:
+            hostname = factory.make_hostname()
+        return {
+            'ip': ip,
+            'hostname': hostname,
+        }
+
+    def test__ignores_updates_if_mdns_discovery_state_is_false(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.update_neighbour(self.make_mdns_entry_json())
+        self.assertThat(MDNS.objects.count(), Equals(0))
+
+    def test___adds_new_entry_if_mdns_discovery_state_is_true(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        iface.update_mdns_entry(self.make_mdns_entry_json())
+        self.assertThat(MDNS.objects.count(), Equals(1))
+
+    def test___updates_existing_entry(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        json = self.make_mdns_entry_json()
+        iface.update_mdns_entry(json)
+        # First time we saw the entry.
+        self.assertThat(list(MDNS.objects.all())[0].count, Equals(1))
+        self.assertThat(MDNS.objects.count(), Equals(1))
+        iface.update_mdns_entry(json)
+        self.assertThat(list(MDNS.objects.all())[0].ip, Equals(json['ip']))
+        self.assertThat(
+            list(MDNS.objects.all())[0].hostname, Equals(json['hostname']))
+        # This is the second time we saw this entry.
+        self.assertThat(list(MDNS.objects.all())[0].count, Equals(2))
+
+    def test__replaces_obsolete_entry(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        json = self.make_mdns_entry_json()
+        iface.update_mdns_entry(json)
+        # Have a different IP address claim ownership of the hostname.
+        json['ip'] = factory.make_ip_address(ipv6=False)
+        iface.update_mdns_entry(json)
+        self.assertThat(MDNS.objects.count(), Equals(1))
+        self.assertThat(list(MDNS.objects.all())[0].ip, Equals(json['ip']))
+        # This is the first time we saw this neighbour, because the original
+        # binding was deleted.
+        self.assertThat(list(MDNS.objects.all())[0].count, Equals(1))
+
+    def test__logs_new_entry(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        json = self.make_mdns_entry_json()
+        with FakeLogger("maas.interface") as maaslog:
+            iface.update_mdns_entry(json)
+        self.assertDocTestMatches(
+            "...: New mDNS hostname observed for...",
+            maaslog.output)
+
+    def test__logs_moved_entry(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        json = self.make_mdns_entry_json()
+        iface.update_mdns_entry(json)
+        # Have a different IP address claim ownership of the hostma,e.
+        json['ip'] = factory.make_ip_address(ipv6=False)
+        with FakeLogger("maas.mDNS") as maaslog:
+            iface.update_mdns_entry(json)
+        self.assertDocTestMatches(
+            "...: Hostname...moved from...to...",
+            maaslog.output)
+
+    def test__logs_updated_entry(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.mdns_discovery_state = True
+        json = self.make_mdns_entry_json()
+        iface.update_mdns_entry(json)
+        # Assign a different hostname to the IP.
+        json['hostname'] = factory.make_hostname()
+        with FakeLogger("maas.mDNS") as maaslog:
+            iface.update_mdns_entry(json)
+        self.assertDocTestMatches(
+            "...: Hostname for...updated from...to...",
+            maaslog.output)
 
 
 class PhysicalInterfaceTest(MAASServerTestCase):

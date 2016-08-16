@@ -434,7 +434,10 @@ def extract(node):
                 yield alias.name
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                yield "%s.%s" % (node.module, alias.name)
+                # Note that `node.module is None` if the import in the format:
+                #     from . import <thing>
+                module = '.' if node.module is None else node.module
+                yield "%s.%s" % (module, alias.name)
         else:
             pass  # Not an import.
 

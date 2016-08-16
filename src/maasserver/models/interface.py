@@ -389,7 +389,48 @@ class Interface(CleanSave, TimestampedModel):
     tags = ArrayField(
         TextField(), blank=True, null=True, default=list)
 
+    # Indicates if this interface should be configured or not. For child
+    # interfaces, one must check the status of all parent interfaces to
+    # determine if it should be enabled. (To do so, use the `is_enabled()`
+    # method rather than checking this value directly.)
     enabled = BooleanField(default=True)
+
+    # Indicates if mDNS discovery should occur on this interface.
+    # Only meaningful for interfaces that belong to controllers.
+    # If this value is True for any interface on a controller, an
+    # `avahi-browse` process will be spawned in order to observe the state
+    # of mDNS (hostname, ip) bindings on the network. If this value is False
+    # for a particular interface, it will be ignored (even if a hostname is
+    # gathered by `avahi-browse`).
+    mdns_discovery_state = BooleanField(default=False, editable=False)
+
+    # Indicates if neighbour discovery should occur on this interface.
+    # Only meaningful for interfaces that belong to controllers.
+    # This value is only meaningful for physical interfaces which are not in
+    # a bond, bond interfaces, and bridge interfaces without any parent
+    # interfaces (virtual bridges).
+    neighbour_discovery_state = BooleanField(default=False, editable=False)
+
+    # Indicates if active discovery should occur on this interface.
+    # Only meaningful for interfaces that belong to controllers.
+    # If this value is True, it instructs MAAS that it is permissible for the
+    # controller to send packets out on this interface for the purpose of
+    # enhancing discovery results. Active discovery is a generic term that
+    # includes multicast beaconing, host discovery via ARP and/or ICMP
+    # requests, and whatever other mechanisms might come about in the future
+    # which require sending packets. (DHCP discovery is currently excluded from
+    # this, since it was a pre-existing active discovery service, but it should
+    # eventually be refactored to honor this flag.)
+    active_discovery_state = BooleanField(default=False, editable=False)
+
+    # Additional parameters for active discovery. As of this writing, active
+    # discovery parameters are undefined, but it is envisioned that they will
+    # be passed to controllers in JSON format. This field might specify
+    # configuration such as which subnets to scan, the allowed scanning speed,
+    # types of active scanning that are allowed, etc.
+    # Only meaningful if `active_discovery_state` is True.
+    active_discovery_params = JSONObjectField(
+        blank=True, default="", editable=False)
 
     # Set only on a BridgeInterface when it is created by a standard user
     # when a machine is acquired. Once the machine is released the bridge
@@ -1067,6 +1108,66 @@ class Interface(CleanSave, TimestampedModel):
         """Remove tag from interface."""
         if tag in self.tags:
             self.tags.remove(tag)
+
+    def update_neighbour(self, neighbour_json: dict):
+        """Updates the neighbour table for this interface.
+
+        Input is expected to be the neighbour JSON from the controller.
+        """
+        # Circular imports
+        from maasserver.models.neighbour import Neighbour
+        if self.neighbour_discovery_state is False:
+            return None
+        ip = neighbour_json['ip']
+        mac = neighbour_json['mac']
+        time = neighbour_json['time']
+        vid = neighbour_json.get('vid', None)
+        deleted = Neighbour.objects.delete_and_log_obsolete_neighbours(
+            ip, mac, interface=self, vid=vid)
+        neighbour = Neighbour.objects.get_current_binding(
+            ip, mac, interface=self, vid=vid)
+        if neighbour is None:
+            neighbour = Neighbour.objects.create(
+                interface=self, ip=ip, vid=vid, mac_address=mac, time=time)
+            # If we deleted a previous neighbour, then we have already
+            # generated a log statement about this neighbour.
+            if not deleted:
+                maaslog.info("%s: New MAC, IP binding observed%s: %s, %s" % (
+                    self.get_log_string(),
+                    Neighbour.objects.get_vid_log_snippet(vid), mac, ip))
+        else:
+            neighbour.time = time
+            neighbour.count += 1
+            neighbour.save(update_fields=['time', 'count'])
+        return neighbour
+
+    def update_mdns_entry(self, avahi_json: dict):
+        """Updates an mDNS entry observed on this interface.
+
+        Input is expected to be the mDNS JSON from the controller.
+        """
+        # Circular imports
+        from maasserver.models.mdns import MDNS
+        if self.mdns_discovery_state is False:
+            return None
+        ip = avahi_json['ip']
+        hostname = avahi_json['hostname']
+        deleted = MDNS.objects.delete_and_log_obsolete_mdns_entries(
+            hostname, ip, interface=self)
+        binding = MDNS.objects.get_current_entry(
+            hostname, ip, interface=self)
+        if binding is None:
+            binding = MDNS.objects.create(
+                interface=self, ip=ip, hostname=hostname)
+            # If we deleted a previous mDNS entry, then we have already
+            # generated a log statement about this mDNS entry.
+            if not deleted:
+                maaslog.info("%s: New mDNS hostname observed for %s: '%s'." % (
+                    self.get_log_string(), ip, hostname))
+        else:
+            binding.count += 1
+            binding.save(update_fields=['count'])
+        return binding
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
