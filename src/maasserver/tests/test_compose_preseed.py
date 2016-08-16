@@ -174,7 +174,7 @@ class TestComposePreseed(MAASServerTestCase):
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.RESCUE_MODE)
+            interface=True, status=NODE_STATUS.ENTERING_RESCUE_MODE)
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller

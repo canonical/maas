@@ -929,7 +929,7 @@ class TestExitRescueModeAction(MAASServerTestCase):
         node = factory.make_Node()
         self.assertFalse(ExitRescueMode(node, user).is_permitted())
 
-    def test_rescue_mode_for_deployed_node(self):
+    def test_exit_rescue_mode_for_deployed_node(self):
         user = factory.make_admin()
         node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
         node_stop_rescue_mode = self.patch_autospec(node, 'stop_rescue_mode')
@@ -1027,9 +1027,14 @@ class TestActionsErrorHandling(MAASServerTestCase):
             get_error_message_for_exception(action.node._stop.side_effect),
             str(exception))
 
-    def test_RescueMode_handles_rpc_errors(self):
+    def test_RescueMode_handles_rpc_errors_for_entering_rescue_mode(self):
         action = self.make_action(
-            RescueMode, choice([NODE_STATUS.DEPLOYED, NODE_STATUS.BROKEN]))
+            RescueMode, choice(
+                [
+                    NODE_STATUS.BROKEN,
+                    NODE_STATUS.DEPLOYED,
+                    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+                ]))
         self.patch(action.node, 'start_rescue_mode').side_effect = (
             self.make_exception())
         exception = self.assertRaises(NodeActionError, action.execute)
@@ -1038,18 +1043,15 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 action.node.start_rescue_mode.side_effect),
             str(exception))
 
-    def test_ExitRescueMode_handles_rpc_errors_for_broken_node(self):
-        action = self.make_action(ExitRescueMode, NODE_STATUS.BROKEN)
-        self.patch(action.node, 'stop_rescue_mode').side_effect = (
-            self.make_exception())
-        exception = self.assertRaises(NodeActionError, action.execute)
-        self.assertEqual(
-            get_error_message_for_exception(
-                action.node.stop_rescue_mode.side_effect),
-            str(exception))
-
-    def test_ExitRescueMode_handles_rpc_errors_for_deployed_node(self):
-        action = self.make_action(ExitRescueMode, NODE_STATUS.DEPLOYED)
+    def test_ExitRescueMode_handles_rpc_errors_for_exiting_rescue_mode(self):
+        action = self.make_action(
+            ExitRescueMode, choice(
+                [
+                    NODE_STATUS.RESCUE_MODE,
+                    NODE_STATUS.ENTERING_RESCUE_MODE,
+                    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+                    NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+                ]))
         self.patch(action.node, 'stop_rescue_mode').side_effect = (
             self.make_exception())
         exception = self.assertRaises(NodeActionError, action.execute)

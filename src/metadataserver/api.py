@@ -170,6 +170,11 @@ def add_event_to_node_event_log(
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT
         else:
             type_name = EVENT_TYPES.NODE_INSTALL_EVENT_FAILED
+    elif node.status == NODE_STATUS.ENTERING_RESCUE_MODE:
+        if result in ['SUCCESS', None]:
+            type_name = EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT
+        else:
+            type_name = EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT_FAILED
     elif node.node_type in [
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
@@ -390,8 +395,8 @@ class VersionIndexHandler(MetadataViewHandler):
     fields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
 
     # States in which a node is allowed to signal
-    # commissioning/installing status.
-    # (Only in Commissioning/Deploying state, however,
+    # commissioning/installing/entering-rescue-mode status.
+    # (Only in Commissioning/Deploying/EnteringRescueMode state, however,
     # will it have any effect.)
     signalable_states = [
         NODE_STATUS.BROKEN,
@@ -401,12 +406,15 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.READY,
         NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
         ]
 
     effective_signalable_states = [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.ENTERING_RESCUE_MODE,
     ]
 
     # Statuses that a commissioning node may signal, and the respective
@@ -421,8 +429,7 @@ class VersionIndexHandler(MetadataViewHandler):
         """Read the metadata index for this version."""
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
-        if (node.status != NODE_STATUS.RESCUE_MODE and
-                NodeUserData.objects.has_user_data(node)):
+        if NodeUserData.objects.has_user_data(node):
             shown_fields = self.fields
         else:
             shown_fields = list(self.fields)
@@ -453,19 +460,24 @@ class VersionIndexHandler(MetadataViewHandler):
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
-        """Signal commissioning/installation status.
+        """Signal commissioning/installation/entering-rescue-mode status.
 
-        A commissioning/installing node can call this to report progress of
-        the commissioning/installation process to the metadata server.
+        A commissioning/installing/entering-rescue-mode node can call this
+        to report progress of the
+        commissioning/installation/entering-rescue-mode process to the
+        metadata server.
 
         Calling this from a node that is not Allocated, Commissioning, Ready,
-        or Failed Tests is an error. Signaling completion more than once is
-        not an error; all but the first successful call are ignored.
+        Broken, Deployed, or Failed Tests is an error. Signaling
+        completion more than once is not an error; all but the first
+        successful call are ignored.
 
-        :param status: A commissioning/installation status code. This can be
-            "OK" (to signal that commissioning/installation has completed
-            successfully), or "FAILED" (to signal failure), or "WORKING" (for
-            progress reports).
+        :param status: A commissioning/installation/entering-rescue-mode
+            status code.
+            This can be "OK" (to signal that
+            commissioning/installation/entering-rescue-mode has completed
+            successfully), or "FAILED" (to signal failure), or
+            "WORKING" (for progress reports).
         :param script_result: If this call uploads files, this parameter must
             be provided and will be stored as the return value for the script
             which produced these files.
@@ -479,15 +491,16 @@ class VersionIndexHandler(MetadataViewHandler):
         if (node.status not in self.signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
             raise NodeStateViolation(
-                "Machine wasn't commissioning/installing (status is %s)"
-                % NODE_STATUS_CHOICES_DICT[node.status])
+                "Machine wasn't commissioning/installing/entering-rescue-mode "
+                "(status is %s)" % NODE_STATUS_CHOICES_DICT[node.status])
 
         # These statuses are acceptable for commissioning, disk erasing,
-        # and deploying.
+        # entering rescue mode and deploying.
         if (status not in self.signaling_statuses and
                 node.node_type == NODE_TYPE.MACHINE):
             raise MAASAPIBadRequest(
-                "Unknown commissioning/installation status: '%s'" % status)
+                "Unknown commissioning/installation/entering-rescue-mode "
+                "status: '%s'" % status)
 
         if (node.status not in self.effective_signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
@@ -548,7 +561,13 @@ class VersionIndexHandler(MetadataViewHandler):
             elif status == SIGNAL_STATUS.FAILED:
                 node.mark_failed(comment="Failed to erase disks.")
             target_status = None
-
+        elif node.status == NODE_STATUS.ENTERING_RESCUE_MODE:
+            if status == SIGNAL_STATUS.OK:
+                # entering rescue mode completed, set status
+                target_status = NODE_STATUS.RESCUE_MODE
+            elif status == SIGNAL_STATUS.FAILED:
+                node.mark_failed(comment="Failed to enter rescue mode.")
+                target_status = None
         if target_status in (None, node.status):
             # No status change.  Nothing to be done.
             return rc.ALL_OK

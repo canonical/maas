@@ -319,15 +319,6 @@ class TestMetadataCommon(MAASServerTestCase):
         content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
         self.assertIn('user-data', content.splitlines())
 
-    def test_version_index_does_not_show_user_data_if_in_rescue_mode(self):
-        node = factory.make_Node(status=NODE_STATUS.RESCUE_MODE)
-        NodeUserData.objects.set_user_data(node, b"User data for node")
-        client = make_node_client(node)
-        view_name = self.get_metadata_name('-version')
-        url = reverse(view_name, args=['latest'])
-        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
-        self.assertNotIn('user-data', content.splitlines())
-
     def test_meta_data_view_lists_fields(self):
         # Some fields only are returned if there is data related to them.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
@@ -712,7 +703,9 @@ class TestCommissioningAPI(MAASServerTestCase):
             Equals(http.client.CONFLICT))
         self.expectThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals("Machine wasn't commissioning/installing (status is New)"))
+            Equals(
+                "Machine wasn't commissioning/installing/entering-rescue-mode"
+                " (status is New)"))
 
     def test_signaling_accepts_non_machine_results(self):
         node = factory.make_Node(
@@ -1164,6 +1157,34 @@ class TestDiskErasingAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RELEASING, reload_object(node).status)
+
+
+class TestRescueModeAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestRescueModeAPI, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
+
+    def test_signaling_rescue_mode_failure_makes_failed_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+            reload_object(node).status)
+
+    def test_signaling_entering_rescue_mode_ok_changes_status(self):
+        self.patch(Node, "_stop")
+        node = factory.make_Node(
+            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
+            power_state=POWER_STATE.ON, power_type="virsh")
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.RESCUE_MODE, reload_object(node).status)
 
 
 class TestByMACMetadataAPI(MAASServerTestCase):

@@ -2215,7 +2215,7 @@ class TestRescueMode(APITransactionTestCase.ForUser):
                 self.get_machine_uri(machine), {'op': 'rescue_mode'})
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            NODE_STATUS.RESCUE_MODE, reload_object(machine).status)
+            NODE_STATUS.ENTERING_RESCUE_MODE, reload_object(machine).status)
 
 
 class TestExitRescueMode(APITransactionTestCase.ForUser):
@@ -2245,4 +2245,5 @@ class TestExitRescueMode(APITransactionTestCase.ForUser):
             response = self.client.post(
                 self.get_machine_uri(machine), {'op': 'exit_rescue_mode'})
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(previous_status, reload_object(machine).status)
+        self.assertEqual(
+            NODE_STATUS.EXITING_RESCUE_MODE, reload_object(machine).status)

@@ -86,6 +86,14 @@ class NODE_STATUS:
     FAILED_DISK_ERASING = 15
     #: The node is in rescue mode.
     RESCUE_MODE = 16
+    #: The node is entering rescue mode.
+    ENTERING_RESCUE_MODE = 17
+    #: The node failed to enter rescue mode.
+    FAILED_ENTERING_RESCUE_MODE = 18
+    #: The node is exiting rescue mode.
+    EXITING_RESCUE_MODE = 19
+    #: The node failed to exit rescue mode.
+    FAILED_EXITING_RESCUE_MODE = 20
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -108,13 +116,17 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.DISK_ERASING, "Disk erasing"),
     (NODE_STATUS.FAILED_DISK_ERASING, "Failed disk erasing"),
     (NODE_STATUS.RESCUE_MODE, "Rescue mode"),
+    (NODE_STATUS.ENTERING_RESCUE_MODE, "Entering rescue mode"),
+    (NODE_STATUS.FAILED_ENTERING_RESCUE_MODE, "Failed to enter rescue mode"),
+    (NODE_STATUS.EXITING_RESCUE_MODE, "Exiting rescue mode"),
+    (NODE_STATUS.FAILED_EXITING_RESCUE_MODE, "Failed to exit rescue mode"),
 )
 
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
 
 
-# NODE_STATUS when the node is owned by an owner and its is not commissioning.
+# NODE_STATUS when the node is owned by an owner and it is not commissioning.
 ALLOCATED_NODE_STATUSES = [
     NODE_STATUS.ALLOCATED,
     NODE_STATUS.DEPLOYING,
@@ -124,6 +136,11 @@ ALLOCATED_NODE_STATUSES = [
     NODE_STATUS.FAILED_RELEASING,
     NODE_STATUS.DISK_ERASING,
     NODE_STATUS.FAILED_DISK_ERASING,
+    NODE_STATUS.RESCUE_MODE,
+    NODE_STATUS.ENTERING_RESCUE_MODE,
+    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+    NODE_STATUS.EXITING_RESCUE_MODE,
+    NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
 ]
 
 

@@ -31,6 +31,29 @@ from testtools.matchers import (
 )
 
 
+STATUSES = (
+    NODE_STATUS.NEW,
+    NODE_STATUS.COMMISSIONING,
+    NODE_STATUS.FAILED_COMMISSIONING,
+    NODE_STATUS.MISSING,
+    NODE_STATUS.RESERVED,
+    NODE_STATUS.ALLOCATED,
+    NODE_STATUS.DEPLOYING,
+    NODE_STATUS.DEPLOYED,
+    NODE_STATUS.RETIRED,
+    NODE_STATUS.FAILED_DEPLOYMENT,
+    NODE_STATUS.RELEASING,
+    NODE_STATUS.FAILED_RELEASING,
+    NODE_STATUS.DISK_ERASING,
+    NODE_STATUS.FAILED_DISK_ERASING,
+    NODE_STATUS.ENTERING_RESCUE_MODE,
+    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+    NODE_STATUS.RESCUE_MODE,
+    NODE_STATUS.EXITING_RESCUE_MODE,
+    NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+)
+
+
 def get_interfaces_uri(node):
     """Return a interfaces URI on the API."""
     return reverse(
@@ -228,22 +251,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
@@ -370,22 +378,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_bond_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(status=status)
             vlan = factory.make_VLAN()
             parent_1_iface = factory.make_Interface(
@@ -969,22 +962,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_read_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
@@ -1040,22 +1018,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_delete_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1152,22 +1115,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_link_subnet_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1246,22 +1194,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_unlink_subnet_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)
@@ -1343,22 +1276,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_set_default_gateway_409_when_not_ready_or_broken(self):
         self.become_admin()
-        for status in (
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.FAILED_COMMISSIONING,
-                NODE_STATUS.MISSING,
-                NODE_STATUS.RESERVED,
-                NODE_STATUS.ALLOCATED,
-                NODE_STATUS.DEPLOYING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RETIRED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.FAILED_RELEASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING
-        ):
+        for status in STATUSES:
             node = factory.make_Node(interface=True, status=status)
             interface = node.get_boot_interface()
             uri = get_interface_uri(interface)

@@ -12,6 +12,7 @@ from django.db.models.signals import (
     post_save,
     pre_save,
 )
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Controller,
     Device,
@@ -49,8 +50,13 @@ for klass in NODE_CLASSES:
 
 def pre_save_update_status(sender, instance, **kwargs):
     """Update node previous_status when node status changes."""
-    if instance.__previous_status != instance.status:
-        # The IP address wasn't modified, update previous status
+    if (instance.__previous_status != instance.status and
+            instance.__previous_status not in (
+                NODE_STATUS.RESCUE_MODE,
+                NODE_STATUS.ENTERING_RESCUE_MODE,
+                NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+                NODE_STATUS.EXITING_RESCUE_MODE,
+                NODE_STATUS.FAILED_EXITING_RESCUE_MODE)):
         instance.previous_status = instance.__previous_status
 
 

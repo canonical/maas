@@ -488,8 +488,9 @@ class RescueMode(NodeAction):
     display = "Rescue mode"
     display_sentence = "rescue mode"
     actionable_statuses = (
-        NODE_STATUS.DEPLOYED,
         NODE_STATUS.BROKEN,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
@@ -509,6 +510,9 @@ class ExitRescueMode(NodeAction):
     display_sentence = "exit rescue mode"
     actionable_statuses = (
         NODE_STATUS.RESCUE_MODE,
+        NODE_STATUS.ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
