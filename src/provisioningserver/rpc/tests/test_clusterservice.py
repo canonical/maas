@@ -480,7 +480,8 @@ class TestClusterClientService(MAASTestCase):
 
         service = ClusterClientService(Clock())
         _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = ascii_url("http://localhost/MAAS")
+        _get_rpc_info_url.return_value = ascii_url(
+            "http://[::ffff:127.0.0.1]/MAAS")
 
         # Starting the service causes the first update to be performed.
         service.startService()
@@ -513,7 +514,8 @@ class TestClusterClientService(MAASTestCase):
 
         service = ClusterClientService(Clock())
         _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
-        _get_rpc_info_url.return_value = ascii_url("http://localhost/MAAS")
+        _get_rpc_info_url.return_value = ascii_url(
+            "http://[::ffff:127.0.0.1]/MAAS")
 
         # Starting the service causes the first update to be performed.
         service.startService()
@@ -688,9 +690,8 @@ class TestClusterClientService(MAASTestCase):
         self.patch_autospec(service, "_fetch_rpc_info")
         self.patch_autospec(service, "_update_connections")
         # Return a token from _get_rpc_info_url.
-        service._get_rpc_info_url.return_value = sentinel.info_url
         service._get_rpc_info_url.return_value = (
-            ascii_url("http://localhost/MAAS"))
+            ascii_url("http://[::ffff:127.0.0.1]/MAAS"))
         # Return None instead of a list of event-loop endpoints. This is the
         # response that the region will give when the advertising service is
         # not running.

@@ -13,6 +13,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestPackageRepositoryManager(MAASServerTestCase):
 
     def test_get_default_archive(self):
+        PackageRepository.objects.all().delete()
         arch = 'amd64'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
         archive = factory.make_PackageRepository(

@@ -1727,7 +1727,7 @@ class Factory(maastesting.factory.Factory):
             default=True, arches=PackageRepository.PORTS_ARCHES)
 
     def make_PackageRepository(
-            self, name=None, url=None, arches=None, default=False):
+            self, name=None, url=None, arches=None, default=False, key=None):
         if name is None:
             name = self.make_name("name")
         description = self.make_name("description")
@@ -1740,7 +1740,8 @@ class Factory(maastesting.factory.Factory):
         components = [self.make_name("component%d" % i) for i in range(3)]
         if arches is None:
             arches = [self.make_name("arch%d" % i) for i in range(3)]
-        key = self.make_name("key")
+        if key is None:
+            key = factory.make_name("key")
         return PackageRepository.objects.create(
             name=name, description=description, url=url,
             distributions=distributions, disabled_pockets=disabled_pockets,
