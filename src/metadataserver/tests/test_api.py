@@ -1176,7 +1176,6 @@ class TestRescueModeAPI(MAASServerTestCase):
             reload_object(node).status)
 
     def test_signaling_entering_rescue_mode_ok_changes_status(self):
-        self.patch(Node, "_stop")
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
             power_state=POWER_STATE.ON, power_type="virsh")
@@ -1185,6 +1184,14 @@ class TestRescueModeAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RESCUE_MODE, reload_object(node).status)
+
+    def test_signaling_entering_rescue_mode_does_not_set_owner_to_None(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertIsNotNone(reload_object(node).owner)
 
 
 class TestByMACMetadataAPI(MAASServerTestCase):

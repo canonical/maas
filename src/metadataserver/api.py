@@ -574,8 +574,10 @@ class VersionIndexHandler(MetadataViewHandler):
 
         if node.node_type == NODE_TYPE.MACHINE:
             node.status = target_status
-            # When moving to a terminal state, remove the allocation.
-            node.owner = None
+            # When moving to a terminal state, remove the allocation
+            # if not in rescue mode.
+            if node.status != NODE_STATUS.ENTERING_RESCUE_MODE:
+                node.owner = None
         node.error = request.POST.get('error', '')
 
         # Done.
