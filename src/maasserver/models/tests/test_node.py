@@ -82,6 +82,7 @@ from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
 )
+import maasserver.models.interface as interface_module
 from maasserver.models.event import Event
 from maasserver.models.node import (
     generate_node_system_id,
@@ -5467,6 +5468,44 @@ class TestController(MAASServerTestCase):
 
     def test__was_probably_machine_false(self):
         self.assertFalse(factory.make_RackController()._was_probably_machine())
+
+
+class TestReportNeighbours(MAASServerTestCase):
+    """Tests for `Controller.report_neighbours()."""
+
+    def test__calls_update_neighbour_for_each_neighbour(self):
+        rack = factory.make_RackController()
+        factory.make_Interface(name='eth0', node=rack)
+        factory.make_Interface(name='eth1', node=rack)
+        update_neighbour = self.patch(
+            interface_module.Interface, 'update_neighbour')
+        neighbours = [
+            {'interface': 'eth0', 'mac': factory.make_mac_address()},
+            {'interface': 'eth1', 'mac': factory.make_mac_address()},
+        ]
+        rack.report_neighbours(neighbours)
+        self.assertThat(update_neighbour, MockCallsMatch(
+            *[call(neighbour) for neighbour in neighbours]
+        ))
+
+
+class TestReportMDNSEntries(MAASServerTestCase):
+    """Tests for `Controller.report_mdns_entries()."""
+
+    def test__calls_update_mdns_entry_for_each_entry(self):
+        rack = factory.make_RackController()
+        factory.make_Interface(name='eth0', node=rack)
+        factory.make_Interface(name='eth1', node=rack)
+        update_mdns_entry = self.patch(
+            interface_module.Interface, 'update_mdns_entry')
+        entries = [
+            {'interface': 'eth0', 'hostname': factory.make_name('eth0')},
+            {'interface': 'eth1', 'hostname': factory.make_name('eth1')},
+        ]
+        rack.report_mdns_entries(entries)
+        self.assertThat(update_mdns_entry, MockCallsMatch(
+            *[call(entry) for entry in entries]
+        ))
 
 
 class TestUpdateInterfaces(MAASServerTestCase):

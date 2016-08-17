@@ -3994,6 +3994,38 @@ class Controller(Node):
 
         return updated_ip_addresses
 
+    def report_neighbours(self, neighbours):
+        """Update the neighbour table for this controller.
+
+        :param neighbours: A list of dictionaries containing neighbour data.
+            Neighbour data is gathered directly from the ARP monitoring process
+            running on each rack interface.
+        """
+        # Determine which interfaces' neighbours need updating.
+        interface_set = {neighbour['interface'] for neighbour in neighbours}
+        interfaces = Interface.objects.get_interface_dict_for_node(
+            self, names=interface_set)
+        for neighbour in neighbours:
+            interface = interfaces.get(neighbour['interface'], None)
+            if interface is not None:
+                interface.update_neighbour(neighbour)
+
+    def report_mdns_entries(self, entries):
+        """Update the mDNS entries on this controller.
+
+        :param entries: A list of dictionaries containing discovered mDNS
+            entries. mDNS data is gathered from an `avahi-browse` process
+            running on each rack interface.
+        """
+        # Determine which interfaces' entries need updating.
+        interface_set = {entry['interface'] for entry in entries}
+        interfaces = Interface.objects.get_interface_dict_for_node(
+            self, names=interface_set)
+        for entry in entries:
+            interface = interfaces.get(entry['interface'], None)
+            if interface is not None:
+                interface.update_mdns_entry(entry)
+
     def update_interfaces(self, interfaces):
         """Update the interfaces attached to the controller.
 
