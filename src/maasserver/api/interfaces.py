@@ -384,7 +384,7 @@ class InterfaceHandler(OperationsHandler):
         :param mac_address: MAC address of the interface.
         :param tags: Tags for the interface.
         :param vlan: Untagged VLAN the interface is connected to.  If not set
-        then the interface is considered disconnected.
+            then the interface is considered disconnected.
 
         Fields for bond interface:
 
@@ -392,7 +392,7 @@ class InterfaceHandler(OperationsHandler):
         :param mac_address: MAC address of the interface.
         :param tags: Tags for the interface.
         :param vlan: Untagged VLAN the interface is connected to.  If not set
-        then the interface is considered disconnected.
+            then the interface is considered disconnected.
         :param parents: Parent interfaces that make this bond.
 
         Fields for VLAN interface:
