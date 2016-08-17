@@ -214,7 +214,7 @@ test+lxd: lxd $(strip $(test-scripts))
 test: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) coverage.data
-	@echo $^ | xargs --verbose -n1 env
+	@echo -n $^ | xargs --verbose -d" " -I{} -n1 env {} --with-xunit
 
 test+coverage: export NOSE_WITH_COVERAGE = 1
 test+coverage: test
