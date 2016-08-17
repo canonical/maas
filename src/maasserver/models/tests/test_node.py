@@ -82,8 +82,8 @@ from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
 )
-import maasserver.models.interface as interface_module
 from maasserver.models.event import Event
+import maasserver.models.interface as interface_module
 from maasserver.models.node import (
     generate_node_system_id,
     PowerInfo,
