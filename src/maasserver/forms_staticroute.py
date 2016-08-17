@@ -1,0 +1,47 @@
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Static route form."""
+
+__all__ = [
+    "StaticRouteForm",
+]
+
+from maasserver.fields import SpecifierOrModelChoiceField
+from maasserver.forms import MAASModelForm
+from maasserver.models.staticroute import StaticRoute
+from maasserver.models.subnet import Subnet
+
+
+class StaticRouteForm(MAASModelForm):
+    """Static route creation/edition form."""
+
+    source = SpecifierOrModelChoiceField(
+        label="Source", queryset=Subnet.objects.all(), required=True,
+        help_text="The source subnet for the route.")
+
+    destination = SpecifierOrModelChoiceField(
+        label="Destination", queryset=Subnet.objects.all(), required=True,
+        help_text="The destination subnet for the route.")
+
+    class Meta:
+        model = StaticRoute
+        fields = (
+            'source',
+            'destination',
+            'gateway_ip',
+            'metric',
+            )
+
+    def __init__(self, *args, **kwargs):
+        super(StaticRouteForm, self).__init__(*args, **kwargs)
+        # Metric field is not a required field, but is required in the model.
+        self.fields['metric'].required = False
+
+    def save(self):
+        static_route = super().save(commit=False)
+        if static_route.metric is None:
+            # Set the initial value for the model.
+            static_route.metric = 0
+        static_route.save()
+        return static_route

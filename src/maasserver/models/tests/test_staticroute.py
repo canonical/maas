@@ -5,9 +5,65 @@
 
 __all__ = []
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from maasserver.enum import NODE_PERMISSION
+from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestStaticRouteManagerGetStaticRouteOr404(MAASServerTestCase):
+
+    def test__user_view_returns_staticroute(self):
+        user = factory.make_User()
+        route = factory.make_StaticRoute()
+        self.assertEqual(
+            route,
+            StaticRoute.objects.get_staticroute_or_404(
+                route.id, user, NODE_PERMISSION.VIEW))
+
+    def test__user_edit_raises_PermissionError(self):
+        user = factory.make_User()
+        route = factory.make_StaticRoute()
+        self.assertRaises(
+            PermissionDenied,
+            StaticRoute.objects.get_staticroute_or_404,
+            route.id, user, NODE_PERMISSION.EDIT)
+
+    def test__user_admin_raises_PermissionError(self):
+        user = factory.make_User()
+        route = factory.make_StaticRoute()
+        self.assertRaises(
+            PermissionDenied,
+            StaticRoute.objects.get_staticroute_or_404,
+            route.id, user, NODE_PERMISSION.ADMIN)
+
+    def test__admin_view_returns_fabric(self):
+        admin = factory.make_admin()
+        route = factory.make_StaticRoute()
+        self.assertEqual(
+            route,
+            StaticRoute.objects.get_staticroute_or_404(
+                route.id, admin, NODE_PERMISSION.VIEW))
+
+    def test__admin_edit_returns_fabric(self):
+        admin = factory.make_admin()
+        route = factory.make_StaticRoute()
+        self.assertEqual(
+            route,
+            StaticRoute.objects.get_staticroute_or_404(
+                route.id, admin, NODE_PERMISSION.EDIT))
+
+    def test__admin_admin_returns_fabric(self):
+        admin = factory.make_admin()
+        route = factory.make_StaticRoute()
+        self.assertEqual(
+            route,
+            StaticRoute.objects.get_staticroute_or_404(
+                route.id, admin, NODE_PERMISSION.ADMIN))
 
 
 class TestStaticRoute(MAASServerTestCase):

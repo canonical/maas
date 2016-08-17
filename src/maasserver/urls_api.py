@@ -78,6 +78,10 @@ from maasserver.api.fabrics import (
     FabricHandler,
     FabricsHandler,
 )
+from maasserver.api.staticroutes import (
+    StaticRouteHandler,
+    StaticRoutesHandler,
+)
 from maasserver.api.fannetworks import (
     FanNetworkHandler,
     FanNetworksHandler,
@@ -272,6 +276,10 @@ subnet_handler = RestrictedResource(SubnetHandler, authentication=api_auth)
 subnets_handler = RestrictedResource(SubnetsHandler, authentication=api_auth)
 iprange_handler = RestrictedResource(IPRangeHandler, authentication=api_auth)
 ipranges_handler = RestrictedResource(IPRangesHandler, authentication=api_auth)
+staticroute_handler = RestrictedResource(
+    StaticRouteHandler, authentication=api_auth)
+staticroutes_handler = RestrictedResource(
+    StaticRoutesHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -431,6 +439,12 @@ urlpatterns += patterns(
     url(
         r'^ipranges/(?P<iprange_id>[^/]+)/$',
         iprange_handler, name='iprange_handler'),
+    url(
+        r'^static-routes/$',
+        staticroutes_handler, name='staticroutes_handler'),
+    url(
+        r'^static-routes/(?P<staticroute_id>[^/]+)/$',
+        staticroute_handler, name='staticroute_handler'),
     url(
         r'^dnsresourcerecords/$', dnsresourcerecords_handler,
         name='dnsresourcerecords_handler'),
