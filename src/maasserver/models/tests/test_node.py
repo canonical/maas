@@ -5582,6 +5582,118 @@ class TestUpdateInterfaces(MAASServerTestCase):
             observed_vlans,
             Contains(Fabric.objects.get_default_fabric().get_default_vlan()))
 
+    def test__sets_discovery_parameters(self):
+        controller = self.create_empty_controller()
+        eth0_mac = factory.make_mac_address()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": eth0_mac,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+                "monitored": True
+            },
+            "eth0.100": {
+                "type": "vlan",
+                "mac_address": eth0_mac,
+                "parents": ['eth0'],
+                "vid": 100,
+                "links": [],
+                "enabled": True,
+                "monitored": False
+            },
+        }
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertThat(
+            eth0, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.PHYSICAL,
+                name="eth0",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+                neighbour_discovery_state=True,
+                mdns_discovery_state=True
+            ))
+        self.assertThat(list(eth0.parents.all()), Equals([]))
+        eth0_vlan = Interface.objects.get(name="eth0.100", node=controller)
+        self.assertThat(
+            eth0_vlan, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="eth0.100",
+                mac_address=interfaces["eth0.100"]["mac_address"],
+                enabled=True,
+                neighbour_discovery_state=False,
+                mdns_discovery_state=True
+            ))
+
+    def test__clears_discovery_parameters(self):
+        controller = self.create_empty_controller()
+        eth0_mac = factory.make_mac_address()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": eth0_mac,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+                "monitored": True
+            },
+            "eth0.100": {
+                "type": "vlan",
+                "mac_address": eth0_mac,
+                "parents": ['eth0'],
+                "vid": 100,
+                "links": [],
+                "enabled": True,
+                "monitored": False
+            },
+        }
+        controller.update_interfaces(interfaces)
+        # Disable the interfaces so that we can make sure neighbour discovery
+        # is properly disabled on update.
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": eth0_mac,
+                "parents": [],
+                "links": [],
+                "enabled": False,
+                "monitored": False
+            },
+            "eth0.100": {
+                "type": "vlan",
+                "mac_address": eth0_mac,
+                "parents": ['eth0'],
+                "vid": 100,
+                "links": [],
+                "enabled": False,
+                "monitored": False
+            },
+        }
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertThat(
+            eth0, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.PHYSICAL,
+                name="eth0",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=False,
+                neighbour_discovery_state=False,
+                mdns_discovery_state=True
+            ))
+        self.assertThat(list(eth0.parents.all()), Equals([]))
+        eth0_vlan = Interface.objects.get(name="eth0.100", node=controller)
+        self.assertThat(
+            eth0_vlan, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="eth0.100",
+                mac_address=interfaces["eth0.100"]["mac_address"],
+                enabled=False,
+                neighbour_discovery_state=False,
+                mdns_discovery_state=True
+            ))
+
     def test__new_physical_with_new_subnet_link(self):
         controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()

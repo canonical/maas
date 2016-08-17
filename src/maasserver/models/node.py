@@ -4024,6 +4024,21 @@ class Controller(Node):
         ]
         for name in flatten(process_order):
             interface = self._update_interface(name, interfaces[name])
+            # For now, just use the default set of monitored interfaces
+            # calculated by the controller. In the future, when we support
+            # granular configuration for neighbour discovery, this will need
+            # to be computed based on any global settings and/or fabric, VLAN,
+            # or subnet based settings.
+            if interfaces[name].get('monitored', False):
+                interface.neighbour_discovery_state = True
+            else:
+                interface.neighbour_discovery_state = False
+            # The 'monitored' flag only applies to neighbour discovery.
+            # mDNS discovery can happen on any interface on the controller.
+            interface.mdns_discovery_state = True
+            interface.save(
+                update_fields=[
+                    'neighbour_discovery_state', 'mdns_discovery_state'])
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
 

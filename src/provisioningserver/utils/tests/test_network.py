@@ -36,6 +36,7 @@ from netifaces import (
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
+    annotate_with_default_monitored_interfaces,
     bytes_to_hex,
     bytes_to_int,
     clean_up_netifaces_address,
@@ -45,6 +46,7 @@ from provisioningserver.utils.network import (
     get_all_addresses_for_interface,
     get_all_interface_addresses,
     get_all_interfaces_definition,
+    get_default_monitored_interfaces,
     get_interface_children,
     hex_str_to_bytes,
     inet_ntop,
@@ -1050,7 +1052,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             network_module, "get_dhclient_info").return_value = dhclient_info
         self.patch(
             network_module, "running_in_container").return_value = in_container
-        observed_result = get_all_interfaces_definition()
+        observed_result = get_all_interfaces_definition(
+            annotate_with_monitored=False)
         self.assertThat(observed_result, expected_results)
 
     def test__ignores_loopback(self):
@@ -1520,6 +1523,147 @@ class TestInterfaceChildren(MAASTestCase):
             interface_children('eth0', interfaces, children_map))
         self.assertThat(eth0_children[0].name, Equals("eth0.100"))
         self.assertThat(eth0_children[0].data, Equals({'parents': ['eth0']}))
+
+
+class TestGetDefaultMonitoredInterfaces(MAASTestCase):
+    """Tests for `get_default_monitored_interfaces()`."""
+
+    def test__returns_enabled_physical_interfaces(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': False,
+            },
+            'eth1': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True
+            },
+        }
+        self.assertItemsEqual(
+            get_default_monitored_interfaces(interfaces),
+            ['eth1']
+        )
+
+    def test__returns_enabled_bond_interfaces_instead_of_physical(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True,
+            },
+            'eth1': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True
+            },
+            'eth2': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True,
+            },
+            'eth3': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True
+            },
+            'bond0': {
+                'parents': ['eth0', 'eth1'],
+                'type': 'bond',
+                'enabled': True,
+            },
+            'bond1': {
+                'parents': ['eth2', 'eth3'],
+                'type': 'bond',
+                'enabled': False
+            },
+
+        }
+        self.assertItemsEqual(
+            get_default_monitored_interfaces(interfaces),
+            ['bond0']
+        )
+
+    def test__monitors_virtual_bridges_but_not_physical_bridges(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True,
+            },
+            'eth1': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True
+            },
+            'br0': {
+                'parents': ['eth0'],
+                'type': 'bridge',
+                'enabled': True
+            },
+            'virbr0': {
+                'parents': [],
+                'type': 'bridge',
+                'enabled': True
+            },
+        }
+        self.assertItemsEqual(
+            get_default_monitored_interfaces(interfaces),
+            ['eth0', 'eth1', 'virbr0']
+        )
+
+    def test__monitors_physical_interfaces_but_not_child_vlans(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True,
+            },
+            'eth0.100': {
+                'parents': ['eth0'],
+                'type': 'vlan',
+                'enabled': True
+            },
+        }
+        self.assertItemsEqual(
+            get_default_monitored_interfaces(interfaces),
+            ['eth0']
+        )
+
+
+class TestAnnotateWithDefaultMonitoredInterfaces(MAASTestCase):
+    """Tests for `get_default_monitored_interfaces()`."""
+
+    def test__adds_monitored_bool_to_interfaces_dictionary(self):
+        interfaces = {
+            'eth0': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': False,
+            },
+            'eth1': {
+                'parents': [],
+                'type': 'physical',
+                'enabled': True
+            },
+        }
+        annotate_with_default_monitored_interfaces(interfaces)
+        self.assertEqual(
+            interfaces, {
+                'eth0': {
+                    'parents': [],
+                    'type': 'physical',
+                    'enabled': False,
+                    'monitored': False
+                },
+                'eth1': {
+                    'parents': [],
+                    'type': 'physical',
+                    'enabled': True,
+                    'monitored': True
+                }
+            })
 
 
 class TestIsLoopbackAddress(MAASTestCase):

@@ -892,13 +892,72 @@ def interface_children(ifname: str, interfaces: dict, children_map: dict):
             yield InterfaceChild._make((child, interfaces[child]))
 
 
-def get_all_interfaces_definition():
+def get_default_monitored_interfaces(interfaces: dict) -> list:
+    """Return a list of interfaces that should be monitored by default.
+
+    This function takes the interface map and filters out VLANs,
+    bond parents, and disabled interfaces.
+    """
+    children_map = get_interface_children(interfaces)
+    monitored_interfaces = []
+    # By default, monitor physical interfaces (without children that are
+    # bonds), bond interfaces, and bridge interfaces without parents.
+    for ifname in interfaces:
+        interface = interfaces[ifname]
+        if not interface['enabled']:
+            # Skip interfaces which are not link-up.
+            continue
+        iftype = interface.get("type", None)
+        if iftype == "physical":
+            should_monitor = True
+            for child in interface_children(ifname, interfaces, children_map):
+                if child.data['type'] == 'bond':
+                    # This interface is a bond member. Skip it, since would
+                    # rather just monitor the bond interface.
+                    should_monitor = False
+                    break
+            if should_monitor:
+                monitored_interfaces.append(ifname)
+        elif iftype == "bond":
+            monitored_interfaces.append(ifname)
+        elif iftype == "bridge":
+            # If the bridge has parents, that means a physical, bond, or
+            # VLAN interface on the host is a member of the bridge. (Which
+            # means we're already monitoring the fabric by virtue of the
+            # fact that we are monitoring the parent.) Only bridges that
+            # stand alone (are not connected to any interfaces MAAS cares
+            # about) should therefore be monitored. (In other words, if
+            # the bridge has zero parents, it is a virtual network, which
+            # MAAS may be managing virtual machines on.)
+            if len(interface['parents']) == 0:
+                monitored_interfaces.append(ifname)
+    return monitored_interfaces
+
+
+def annotate_with_default_monitored_interfaces(interfaces: dict) -> None:
+    """Annotates the given interfaces definition dictionary with
+    the set of interfaces that should be monitored by default.
+
+    For each interface in the dictionary, sets a `monitored` bool to
+    True if it should be monitored by default; False otherwise.
+    """
+    # Annotate each interface with whether or not it should be monitored
+    # by default.
+    monitored = set(get_default_monitored_interfaces(interfaces))
+    for interface in interfaces:
+        interfaces[interface]['monitored'] = interface in monitored
+
+
+def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     """Return interfaces definition by parsing "ip addr" and the running
     "dhclient" processes on the machine.
 
     The interfaces definition is defined as a contract between the region and
     the rack controller. The region controller processes this resulting
     dictionary to update the interfaces model for the rack controller.
+
+    :param annotate_with_monitored: If True, annotates the given interfaces
+        with whether or not they should be monitored. (Default: True)
     """
     interfaces = {}
     dhclient_info = get_dhclient_info()
@@ -964,6 +1023,9 @@ def get_all_interfaces_definition():
         fix_link_addresses(interface["links"])
         fix_link_gateways(interface["links"], iproute_info)
         interfaces[name] = interface
+
+        if annotate_with_monitored:
+            annotate_with_default_monitored_interfaces(interfaces)
 
     return interfaces
 
