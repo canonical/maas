@@ -42,6 +42,7 @@ from maasserver.fields import (
     MAASIPAddressField,
 )
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.staticroute import StaticRoute
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from netaddr import (
@@ -469,6 +470,10 @@ class Subnet(CleanSave, TimestampedModel):
                     for server in self.dns_servers
                     if server in ipnetwork
                 )
+            for static_route in StaticRoute.objects.filter(source=self):
+                ranges |= {
+                    make_iprange(
+                        static_route.gateway_ip, purpose="gateway-ip")}
             ranges |= self._get_ranges_for_allocated_ips(
                 ipnetwork, ignore_discovered_ips)
             ranges |= set(

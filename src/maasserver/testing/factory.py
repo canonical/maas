@@ -87,6 +87,7 @@ from maasserver.models import (
     SSHKey,
     SSLKey,
     StaticIPAddress,
+    StaticRoute,
     Subnet,
     Tag,
     VersionedTextFile,
@@ -826,6 +827,23 @@ class Factory(maastesting.factory.Factory):
             allow_proxy=allow_proxy)
         subnet.save()
         return subnet
+
+    def make_StaticRoute(
+            self, source=None, gateway_ip=None, destination=None, metric=None):
+        if source is None:
+            source = factory.make_Subnet()
+        version = source.get_ipnetwork().version
+        if destination is None:
+            destination = factory.make_Subnet(version=version)
+        if gateway_ip is None:
+            gateway_ip = factory.pick_ip_in_Subnet(source)
+        if metric is None:
+            metric = random.randint(0, 500)
+        route = StaticRoute(
+            source=source, destination=destination, gateway_ip=gateway_ip,
+            metric=metric)
+        route.save()
+        return route
 
     def pick_ip_in_Subnet(self, subnet, but_not=[]):
         # Exclude all addresses currently in use

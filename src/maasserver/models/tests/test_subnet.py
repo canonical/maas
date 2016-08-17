@@ -695,6 +695,18 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Contains(static_range_low))
         self.assertThat(s, Contains(static_range_high))
 
+    def test__get_iprange_usage_includes_static_route_gateway_ip(self):
+        subnet = factory.make_Subnet(
+            gateway_ip='', dns_servers=[], host_bits=8)
+        gateway_ip_1 = factory.pick_ip_in_Subnet(subnet)
+        gateway_ip_2 = factory.pick_ip_in_Subnet(
+            subnet, but_not=[gateway_ip_1])
+        factory.make_StaticRoute(source=subnet, gateway_ip=gateway_ip_1)
+        factory.make_StaticRoute(source=subnet, gateway_ip=gateway_ip_2)
+        s = subnet.get_iprange_usage()
+        self.assertThat(s, Contains(gateway_ip_1))
+        self.assertThat(s, Contains(gateway_ip_2))
+
 
 class TestRenderJSONForRelatedIPs(MAASServerTestCase):
 

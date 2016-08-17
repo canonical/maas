@@ -59,6 +59,7 @@ __all__ = [
     'SSHKey',
     'SSLKey',
     'StaticIPAddress',
+    'StaticRoute',
     'Subnet',
     'Tag',
     'Template',
@@ -150,6 +151,7 @@ from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.template import Template
