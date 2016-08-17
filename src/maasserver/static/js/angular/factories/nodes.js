@@ -94,6 +94,17 @@ angular.module('MAAS').service(
                     this._handler + ".create_bond", params);
             };
 
+        // Create the bridge interface on the node.
+        NodesManager.prototype.createBridgeInterface = function(
+            node, params) {
+                if(!angular.isObject(params)) {
+                    params = {};
+                }
+                params.system_id = node.system_id;
+                return RegionConnection.callMethod(
+                    this._handler + ".create_bridge", params);
+            };
+
         // Update the interface for the node.
         NodesManager.prototype.updateInterface = function(
             node, interface_id, params) {

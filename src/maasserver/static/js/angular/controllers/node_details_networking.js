@@ -166,7 +166,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             DELETE: "delete",
             ADD: "add",
             CREATE_BOND: "create-bond",
-            CREATE_PHYSICAL: "create-physical"
+            CREATE_BRIDGE: "create-bridge",
+            CREATE_PHYSICAL: "create-physical",
+            EDIT: "edit"
         };
 
         // Set the initial values for this scope.
@@ -181,12 +183,12 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.interfaceLinksMap = {};
         $scope.interfaceErrorsByLinkId = {};
         $scope.originalInterfaces = {};
-        $scope.showingMembers = [];
-        $scope.focusInterface = null;
         $scope.selectedInterfaces = [];
         $scope.selectedMode = null;
         $scope.newInterface = {};
         $scope.newBondInterface = {};
+        $scope.newBridgeInterface = {};
+        $scope.editInterface = null;
         $scope.bondOptions = GeneralManager.getData("bond_options");
         $scope.modes = [
             {
@@ -237,21 +239,23 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             var addedVlans = {};
 
             angular.forEach($scope.node.interfaces, function(nic) {
-                // When a interface has a child that is a bond. Then that
-                // interface is not included in the interface list. Parent
-                // interface with a bond child can only have one child.
+                // When a interface has a child that is a bond or bridge.
+                // Then that interface is not included in the interface list.
+                // Parent interface with a bond or bridge child can only have
+                // one child.
                 if(nic.children.length === 1) {
                     var child = $scope.originalInterfaces[nic.children[0]];
                     if(child.type === INTERFACE_TYPE.BOND ||
                        child.type === INTERFACE_TYPE.BRIDGE) {
                         // This parent now has a bond or bridge for a child.
-                        // If this was the focusInterface, then the focus needs
-                        // to be removed. We only need to check the "id" (not
+                        // If this was the editInterface, then it needs to be
+                        // unset. We only need to check the "id" (not
                         // the "link_id"), because if this interface did have
                         // aliases they have now been removed.
-                        if(angular.isObject($scope.focusInterface) &&
-                            $scope.focusInterface.id === nic.id) {
-                            $scope.focusInterface = null;
+                        if(angular.isObject($scope.editInterface) &&
+                            $scope.editInterface.id === nic.id) {
+                            $scope.editInterface = null;
+                            $scope.selectedMode = SELECTION_MODE.NONE;
                         }
                         return;
                     }
@@ -266,6 +270,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                         nic.members.push(
                             angular.copy($scope.originalInterfaces[parent]));
                     });
+                }
+
+                // Format the tags when they have not already been formatted.
+                if(angular.isArray(nic.tags) &&
+                    nic.tags.length > 0 &&
+                    !angular.isString(nic.tags[0].text)) {
+                    nic.tags = formatTags(nic.tags);
                 }
 
                 nic.vlan = VLANsManager.getItemFromList(nic.vlan_id);
@@ -362,16 +373,18 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 linkMaps[nic.link_id] = nic;
             });
 
-            // Clear the focusInterface if it no longer exists in the
+            // Clear the editInterface if it no longer exists in the
             // interfaceLinksMap.
-            if(angular.isObject($scope.focusInterface)) {
-                var links = $scope.interfaceLinksMap[$scope.focusInterface.id];
+            if(angular.isObject($scope.editInterface)) {
+                var links = $scope.interfaceLinksMap[$scope.editInterface.id];
                 if(angular.isUndefined(links)) {
-                    $scope.focusInterface = null;
+                    $scope.editInterface = null;
+                    $scope.selectedMode = SELECTION_MODE.NONE;
                 } else {
-                    var link = links[$scope.focusInterface.link_id];
+                    var link = links[$scope.editInterface.link_id];
                     if(angular.isUndefined(link)) {
-                        $scope.focusInterface = null;
+                        $scope.editInterface = null;
+                        $scope.selectedMode = SELECTION_MODE.NONE;
                     }
                 }
             }
@@ -503,6 +516,15 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return prefix + idx;
         }
 
+        // Return the tags formatted for ngTagInput.
+        function formatTags(tags) {
+            var formatted = [];
+            angular.forEach(tags, function(tag) {
+                formatted.push({ text: tag });
+            });
+            return formatted;
+        }
+
         // Called by $parent when the node has been loaded.
         $scope.nodeLoaded = function() {
             $scope.$watch("node.interfaces", updateInterfaces);
@@ -632,76 +654,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return SubnetsManager.getItemFromList(subnetId);
         };
 
-        // Toggle showing or hiding the members of the interface.
-        $scope.toggleMembers = function(nic) {
-            var idx = $scope.showingMembers.indexOf(nic.id);
-            if(idx === -1) {
-                $scope.showingMembers.push(nic.id);
-            } else {
-                $scope.showingMembers.splice(idx, 1);
-            }
-        };
-
-        // Return True when the interface is showing its members section.
-        $scope.isShowingMembers = function(nic) {
-            return $scope.showingMembers.indexOf(nic.id) > -1;
-        };
-
-        // Save the following interface on the node. This will only save if
-        // the interface has changed.
-        $scope.saveInterface = function(nic) {
-            var originalInteface = $scope.originalInterfaces[nic.id];
-            if($scope.isInterfaceNameInvalid(nic)) {
-                nic.name = originalInteface.name;
-            } else if(originalInteface.name !== nic.name ||
-                (originalInteface.vlan_id === null && nic.vlan !== null) ||
-                (originalInteface.vlan_id !== null && nic.vlan === null) ||
-                originalInteface.vlan_id !== nic.vlan.id) {
-                var params = {
-                    "name": nic.name
-                };
-                if(nic.vlan !== null) {
-                    params.vlan = nic.vlan.id;
-                } else {
-                    params.vlan = null;
-                }
-                $scope.$parent.nodesManager.updateInterface(
-                    $scope.node, nic.id, params).then(null, function(error) {
-                        // XXX blake_r: Just log the error in the console, but
-                        // we need to expose this as a better message to the
-                        // user.
-                        console.log(error);
-
-                        // Update the interfaces so it is back to the way it
-                        // was before the user changed it.
-                        updateInterfaces();
-                    });
-            }
-        };
-
-        // Set the focus to this interface.
-        $scope.setFocusInterface = function(nic) {
-            $scope.focusInterface = nic;
-        };
-
-        // Clear the current focused interface. This will save the interface
-        // if it has changed.
-        $scope.clearFocusInterface = function(nic) {
-            if(angular.isUndefined(nic)) {
-                if($scope.focusInterface.type !== INTERFACE_TYPE.ALIAS) {
-                    $scope.saveInterface($scope.focusInterface);
-                }
-                $scope.saveInterfaceIPAddress($scope.focusInterface);
-                $scope.focusInterface = null;
-            } else if($scope.focusInterface === nic) {
-                if($scope.focusInterface.type !== INTERFACE_TYPE.ALIAS) {
-                    $scope.saveInterface($scope.focusInterface);
-                }
-                $scope.saveInterfaceIPAddress($scope.focusInterface);
-                $scope.focusInterface = null;
-            }
-        };
-
         // Return True if the interface name that the user typed is invalid.
         $scope.isInterfaceNameInvalid = function(nic) {
             if(!angular.isString(nic.name) || nic.name.length === 0) {
@@ -718,24 +670,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return false;
         };
 
-        // Called when the fabric dropdown is changed.
-        $scope.fabricChanged = function(nic) {
-            // Update the VLAN on the node to be the default VLAN for that
-            // fabric. The first VLAN for the fabric is the default.
-            if(nic.fabric !== null) {
-                nic.vlan = getDefaultVLAN(nic.fabric);
-            } else {
-                nic.vlan = null;
-            }
-            $scope.saveInterface(nic);
-        };
-
         // Return True if the link mode select should be disabled.
         $scope.isLinkModeDisabled = function(nic) {
             // This is only disabled when a subnet has not been selected.
             return !angular.isObject(nic.subnet);
         };
 
+        // Return the interface errors.
         $scope.getInterfaceError = function(nic) {
             if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
                 return $scope.interfaceErrorsByLinkId[nic.link_id];
@@ -743,87 +684,16 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return null;
         };
 
-        // Called when the link mode for this interface and link has been
-        // changed.
-        $scope.saveInterfaceLink = function(nic) {
-            var params = {
-                "mode": nic.mode
-            };
-            if(angular.isObject(nic.subnet)) {
-                params.subnet = nic.subnet.id;
-            }
-            if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
-                params.link_id = nic.link_id;
-                delete $scope.interfaceErrorsByLinkId[nic.link_id];
-            }
-            if(nic.mode === LINK_MODE.STATIC && nic.ip_address.length > 0) {
-                params.ip_address = nic.ip_address;
-            }
-            return $scope.$parent.nodesManager.linkSubnet(
-                $scope.node, nic.id, params).then(null, function(error) {
-                    console.log(error);
-                    if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
-                        $scope.interfaceErrorsByLinkId[nic.link_id] = error;
-                    }
-                    // Update the interfaces so it is back to the way it
-                    // was before the user changed it.
-                    updateInterfaces();
-                });
-        };
-
-        // Called when the user changes the subnet.
-        $scope.subnetChanged = function(nic) {
-            if(!angular.isObject(nic.subnet)) {
-                // Set to 'Unconfigured' so the link mode should be set to
-                // 'link_up'.
-                nic.mode = LINK_MODE.LINK_UP;
-            }
-            // Clear the IP address so a new one on the subnet is assigned.
-            nic.ip_address = "";
-            $scope.saveInterfaceLink(nic);
-        };
-
-        // Return True when the IP address input field should be shown.
-        $scope.shouldShowIPAddress = function(nic) {
-            if(nic.mode === LINK_MODE.STATIC) {
-                // Check that the original has an IP address if it doesn't then
-                // it should not be shown as the IP address still has not been
-                // loaded over the websocket. If the subnets have been switched
-                // then the IP address has been clear, don't show the IP
-                // address until the original subnet and nic subnet match.
-                var originalLink = mapNICToOriginalLink(nic);
-                return (
-                    angular.isObject(originalLink) &&
-                    angular.isString(originalLink.ip_address) &&
-                    originalLink.ip_address.length > 0 &&
-                    angular.isObject(nic.subnet) &&
-                    nic.subnet.id === originalLink.subnet_id);
-            } else if(angular.isString(nic.ip_address) &&
-                nic.ip_address.length > 0) {
-                return true;
-            } else {
-                return false;
-            }
-        };
-
         // Return True if the interface IP address that the user typed is
         // invalid.
         $scope.isIPAddressInvalid = function(nic) {
-            return (!angular.isString(nic.ip_address) ||
-                nic.ip_address.length === 0 ||
-                !ValidationService.validateIP(nic.ip_address) ||
-                !ValidationService.validateIPInNetwork(
-                    nic.ip_address, nic.subnet.cidr));
-        };
-
-        // Save the interface IP address.
-        $scope.saveInterfaceIPAddress = function(nic) {
-            var originalLink = mapNICToOriginalLink(nic);
-            var prevIPAddress = originalLink.ip_address;
-            if($scope.isIPAddressInvalid(nic)) {
-                nic.ip_address = prevIPAddress;
-            } else if(nic.ip_address !== prevIPAddress) {
-                $scope.saveInterfaceLink(nic);
+            if(angular.isString(nic.ip_address) && nic.mode === 'static') {
+                return (
+                    !ValidationService.validateIP(nic.ip_address) ||
+                    !ValidationService.validateIPInNetwork(
+                        nic.ip_address, nic.subnet.cidr));
+            } else {
+                return false;
             }
         };
 
@@ -872,9 +742,155 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Return true if the interface options is being shown.
-        $scope.isShowingInterfaceOptions = function() {
-            return $scope.selectedMode === SELECTION_MODE.SINGLE;
+        // Return true if in editing mode for the interface.
+        $scope.isEditing = function(nic) {
+            if($scope.selectedMode !== SELECTION_MODE.EDIT) {
+                return false;
+            } else {
+                return $scope.editInterface.id === nic.id;
+            }
+        };
+
+        // Start editing this interface.
+        $scope.edit = function(nic) {
+            $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
+            $scope.selectedMode = SELECTION_MODE.EDIT;
+            $scope.editInterface = {
+                id: nic.id,
+                name: nic.name,
+                mac_address: nic.mac_address,
+                tags: angular.copy(nic.tags),
+                fabric: nic.fabric,
+                vlan: nic.vlan,
+                subnet: nic.subnet,
+                mode: nic.mode,
+                ip_address: nic.ip_address,
+                link_id: nic.link_id
+            };
+        };
+
+        // Called when the fabric is changed.
+        $scope.fabricChanged = function(nic) {
+            // Update the VLAN on the node to be the default VLAN for that
+            // fabric. The first VLAN for the fabric is the default.
+            if(nic.fabric !== null) {
+                nic.vlan = getDefaultVLAN(nic.fabric);
+            } else {
+                nic.vlan = null;
+            }
+            $scope.vlanChanged(nic);
+        };
+
+        // Called when the VLAN is changed.
+        $scope.vlanChanged = function(nic) {
+            nic.subnet = null;
+            $scope.subnetChanged(nic);
+        };
+
+        // Called when the subnet is changed.
+        $scope.subnetChanged = function(nic) {
+            if(!angular.isObject(nic.subnet)) {
+                // Set to 'Unconfigured' so the link mode should be set to
+                // 'link_up'.
+                nic.mode = LINK_MODE.LINK_UP;
+            }
+            $scope.modeChanged(nic);
+        };
+
+        // Called when the mode is changed.
+        $scope.modeChanged = function(nic) {
+            // Clear the IP address when the mode is changed.
+            nic.ip_address = "";
+            if(nic.mode === 'static') {
+                var originalLink = mapNICToOriginalLink(nic);
+                if(angular.isObject(originalLink) &&
+                    nic.subnet.id === originalLink.subnet_id) {
+                    // Set the original IP address if same subnet.
+                    nic.ip_address = originalLink.ip_address;
+                }
+            }
+        };
+
+        // Called to cancel edit mode.
+        $scope.editCancel = function(nic) {
+            $scope.selectedInterfaces = [];
+            $scope.selectedMode = SELECTION_MODE.NONE;
+            $scope.editInterface = null;
+        };
+
+        // Save the following interface on the node.
+        $scope.saveInterface = function(nic) {
+            var params = {
+                "name": nic.name,
+                "mac_address": nic.mac_address,
+                "tags": nic.tags.map(
+                    function(tag) { return tag.text; })
+            };
+            if(nic.vlan !== null) {
+                params.vlan = nic.vlan.id;
+            } else {
+                params.vlan = null;
+            }
+            return $scope.$parent.nodesManager.updateInterface(
+                $scope.node, nic.id, params).then(null, function(error) {
+                    // XXX blake_r: Just log the error in the console, but
+                    // we need to expose this as a better message to the
+                    // user.
+                    console.log(error);
+
+                    // Update the interfaces so it is back to the way it
+                    // was before the user changed it.
+                    updateInterfaces();
+                });
+        };
+
+        // Save the following link on the node.
+        $scope.saveInterfaceLink = function(nic) {
+            var params = {
+                "mode": nic.mode
+            };
+            if(angular.isObject(nic.subnet)) {
+                params.subnet = nic.subnet.id;
+            }
+            if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
+                params.link_id = nic.link_id;
+                delete $scope.interfaceErrorsByLinkId[nic.link_id];
+            }
+            if(nic.mode === LINK_MODE.STATIC &&
+                angular.isString(nic.ip_address) &&
+                nic.ip_address.length > 0) {
+                params.ip_address = nic.ip_address;
+            }
+            return $scope.$parent.nodesManager.linkSubnet(
+                $scope.node, nic.id, params).then(null, function(error) {
+                    console.log(error);
+                    if(angular.isDefined(nic.link_id) && nic.link_id >= 0) {
+                        $scope.interfaceErrorsByLinkId[nic.link_id] = error;
+                    }
+                    // Update the interfaces so it is back to the way it
+                    // was before the user changed it.
+                    updateInterfaces();
+                    throw error;
+                });
+        };
+
+        // Called to save the interface.
+        $scope.editSave = function() {
+            // Only save if its valid.
+            if($scope.isInterfaceNameInvalid($scope.editInterface) ||
+                $scope.isIPAddressInvalid($scope.editInterface) ||
+                $scope.isMACAddressInvalid(
+                    $scope.editInterface.mac_address, true)) {
+                return;
+            }
+
+            // Make a copy so a change after clicking save is not saved.
+            var nic = angular.copy($scope.editInterface);
+            $scope.saveInterface(nic).then(function() {
+                $scope.saveInterfaceLink(nic).then(function() {
+                    $scope.editCancel();
+                });
+            });
         };
 
         // Return true if the interface delete confirm is being shown.
@@ -949,6 +965,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.cancel = function() {
             $scope.newInterface = {};
             $scope.newBondInterface = {};
+            $scope.newBridgeInterface = {};
             if($scope.selectedMode === SELECTION_MODE.CREATE_BOND) {
                 $scope.selectedMode = SELECTION_MODE.MULTI;
             } else if($scope.selectedMode === SELECTION_MODE.CREATE_PHYSICAL) {
@@ -1009,7 +1026,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 vlan: defaultVLAN,
                 subnet: defaultSubnet,
                 mode: defaultMode,
-                parent: nic
+                parent: nic,
+                tags: []
             };
             $scope.selectedMode = SELECTION_MODE.ADD;
         };
@@ -1055,18 +1073,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Called when the VLAN is changed.
-        $scope.addVLANChanged = function() {
-            $scope.newInterface.subnet = null;
-        };
-
-        // Called when the subnet is changed.
-        $scope.addSubnetChanged = function() {
-            if(!angular.isObject($scope.newInterface.subnet)) {
-                $scope.newInterface.mode = LINK_MODE.LINK_UP;
-            }
-        };
-
         // Perform the add action over the websocket.
         $scope.addInterface = function(type) {
             if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
@@ -1075,17 +1081,20 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     id: $scope.newInterface.parent.id,
                     mode: $scope.newInterface.mode,
                     subnet: $scope.newInterface.subnet,
-                    ip_address: ""
+                    ip_address: $scope.newInterface.ip_address
                 };
                 $scope.saveInterfaceLink(nic);
             } else if($scope.newInterface.type === INTERFACE_TYPE.VLAN) {
                 var params = {
                     parent: $scope.newInterface.parent.id,
                     vlan: $scope.newInterface.vlan.id,
-                    mode: $scope.newInterface.mode
+                    mode: $scope.newInterface.mode,
+                    tags: $scope.newInterface.tags.map(
+                        function(tag) { return tag.text; })
                 };
                 if(angular.isObject($scope.newInterface.subnet)) {
                     params.subnet = $scope.newInterface.subnet.id;
+                    params.ip_address = $scope.newInterface.ip_address;
                 }
                 $scope.$parent.nodesManager.createVLANInterface(
                     $scope.node, params).then(null, function(error) {
@@ -1156,6 +1165,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 var parents = getSelectedInterfaces();
                 $scope.newBondInterface = {
                     name: getNextName("bond"),
+                    tags: [],
                     parents: parents,
                     primary: parents[0],
                     macAddress: "",
@@ -1166,15 +1176,14 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         };
 
-        // Return true if the new bond interface has a parent that is a boot
-        // interface.
-        $scope.getBondIsBootInterface = function() {
-            if(!angular.isArray($scope.newBondInterface.parents)) {
+        // Return true if the interface has a parent that is a boot interface.
+        $scope.hasBootInterface = function(nic) {
+            if(!angular.isArray(nic.parents)) {
                 return false;
             }
             var i;
-            for(i = 0; i < $scope.newBondInterface.parents.length; i++) {
-                if($scope.newBondInterface.parents[i].is_boot) {
+            for(i = 0; i < nic.parents.length; i++) {
+                if(nic.parents[i].is_boot) {
                     return true;
                 }
             }
@@ -1183,11 +1192,11 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return the MAC address that should be shown as a placeholder. This
         // this is the MAC address of the primary interface.
-        $scope.getBondPlaceholderMACAddress = function() {
-            if(!angular.isObject($scope.newBondInterface.primary)) {
+        $scope.getInterfacePlaceholderMACAddress = function(nic) {
+            if(!angular.isObject(nic.primary)) {
                 return "";
             } else {
-                return $scope.newBondInterface.primary.mac_address;
+                return nic.primary.mac_address;
             }
         };
 
@@ -1238,6 +1247,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             var params = {
                 name: $scope.newBondInterface.name,
                 mac_address: macAddress,
+                tags: $scope.newBondInterface.tags.map(
+                    function(tag) { return tag.text; }),
                 parents: parents,
                 vlan: $scope.newBondInterface.primary.vlan.id,
                 bond_mode: $scope.newBondInterface.mode,
@@ -1266,6 +1277,95 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.selectedMode = SELECTION_MODE.NONE;
         };
 
+        // Return true when a bridge can be created based on the current
+        // selection. Only can be done if no aliases are selected and only
+        // one interface is selected.
+        $scope.canCreateBridge = function() {
+            if($scope.selectedMode !== SELECTION_MODE.SINGLE) {
+                return false;
+            }
+            var nic = getSelectedInterfaces()[0];
+            if(nic.type === INTERFACE_TYPE.ALIAS ||
+                nic.type === INTERFACE_TYPE.BRIDGE) {
+                return false;
+            }
+            return true;
+        };
+
+        // Return true when the create bridge view is being shown.
+        $scope.isShowingCreateBridge = function() {
+            return $scope.selectedMode === SELECTION_MODE.CREATE_BRIDGE;
+        };
+
+        // Show the create bridge view.
+        $scope.showCreateBridge = function() {
+            if($scope.selectedMode === SELECTION_MODE.SINGLE &&
+                $scope.canCreateBridge()) {
+                $scope.selectedMode = SELECTION_MODE.CREATE_BRIDGE;
+
+                var parents = getSelectedInterfaces();
+                $scope.newBridgeInterface = {
+                    name: getNextName("br"),
+                    tags: [],
+                    parents: parents,
+                    primary: parents[0],
+                    macAddress: "",
+                    bridge_stp: false,
+                    bridge_fd: 15
+                };
+            }
+        };
+
+        // Return true if cannot add the bridge.
+        $scope.cannotAddBridge = function() {
+            return (
+                $scope.isInterfaceNameInvalid($scope.newBridgeInterface) ||
+                $scope.isMACAddressInvalid(
+                    $scope.newBridgeInterface.macAddress));
+        };
+
+        // Actually add the bridge.
+        $scope.addBridge = function() {
+            if($scope.cannotAddBridge()) {
+               return;
+            }
+
+            var parents = [$scope.newBridgeInterface.primary.id];
+            var macAddress = $scope.newBridgeInterface.macAddress;
+            if(macAddress === "") {
+                macAddress = $scope.newBridgeInterface.primary.mac_address;
+            }
+            var params = {
+                name: $scope.newBridgeInterface.name,
+                mac_address: macAddress,
+                tags: $scope.newBridgeInterface.tags.map(
+                    function(tag) { return tag.text; }),
+                parents: parents,
+                vlan: $scope.newBridgeInterface.primary.vlan.id,
+                bridge_stp: $scope.newBridgeInterface.bridge_stp,
+                bridge_fd: $scope.newBridgeInterface.bridge_fd
+            };
+            $scope.$parent.nodesManager.createBridgeInterface(
+                $scope.node, params).then(null, function(error) {
+                    // Should do something better but for now just log
+                    // the error.
+                    console.log(error);
+                });
+
+            // Remove the parent interface so that they don't show up
+            // in the listing unti the new bond appears.
+            var idx = $scope.interfaces.indexOf(
+                $scope.newBridgeInterface.primary);
+            if(idx > -1) {
+                $scope.interfaces.splice(idx, 1);
+            }
+
+            // Clear the bridge interface and reset the mode.
+            $scope.newBridgeInterface = {};
+            $scope.selectedInterfaces = [];
+            $scope.selectedMode = SELECTION_MODE.NONE;
+        };
+
         // Return true when the create physical interface view is being shown.
         $scope.isShowingCreatePhysical = function() {
             return $scope.selectedMode === SELECTION_MODE.CREATE_PHYSICAL;
@@ -1279,27 +1379,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     name: getNextName("eth"),
                     macAddress: "",
                     macError: false,
+                    tags: [],
                     errorMsg: null,
                     fabric: $scope.fabrics[0],
                     vlan: getDefaultVLAN($scope.fabrics[0]),
                     subnet: null,
                     mode: LINK_MODE.LINK_UP
                 };
-            }
-        };
-
-        // Called when the fabric changes on the new interface.
-        $scope.newPhysicalFabricChanged = function() {
-            $scope.newInterface.vlan = getDefaultVLAN(
-                $scope.newInterface.fabric);
-            $scope.newInterface.subnet = null;
-            $scope.newInterface.mode = LINK_MODE.LINK_UP;
-        };
-
-        // Called when the subnet changes on the new interface.
-        $scope.newPhysicalSubnetChanged = function() {
-            if(!angular.isObject($scope.newInterface.subnet)) {
-                $scope.newInterface.mode = LINK_MODE.LINK_UP;
             }
         };
 
@@ -1319,6 +1405,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             var params = {
                 name: $scope.newInterface.name,
+                tags: $scope.newInterface.tags.map(
+                    function(tag) { return tag.text; }),
                 mac_address: $scope.newInterface.macAddress,
                 vlan: $scope.newInterface.vlan.id,
                 mode: $scope.newInterface.mode

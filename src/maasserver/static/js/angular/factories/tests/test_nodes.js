@@ -252,6 +252,45 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("createBridgeInterface", function() {
+
+        it("calls machine.create_bridge with system_id without params",
+            function(done) {
+                var machine = makemachine();
+                webSocket.returnData.push(makeFakeResponse("created"));
+                MachinesManager.createBridgeInterface(machine).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "machine.create_bridge");
+                        expect(sentObject.params.system_id).toBe(
+                            machine.system_id);
+                        done();
+                    });
+            });
+
+        it("calls machine.create_bridge with params",
+            function(done) {
+                var machine = makemachine();
+                var params = {
+                    vlan: makeInteger(0, 100)
+                };
+                webSocket.returnData.push(makeFakeResponse("created"));
+                MachinesManager.createBridgeInterface(machine, params).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "machine.create_bridge");
+                        expect(sentObject.params.system_id).toBe(
+                            machine.system_id);
+                        expect(sentObject.params.vlan).toBe(params.vlan);
+                        done();
+                    });
+            });
+    });
+
     describe("updateInterface", function() {
 
         it("calls machine.update_interface with system_id and interface_id",

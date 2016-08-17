@@ -42,7 +42,9 @@ from maasserver.forms_filesystem import (
     UnmountNonStorageFilesystemForm,
 )
 from maasserver.forms_interface import (
+    AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
+    BridgeInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -96,6 +98,7 @@ class MachineHandler(NodeHandler):
             'create_physical',
             'create_vlan',
             'create_bond',
+            'create_bridge',
             'update_interface',
             'delete_interface',
             'link_subnet',
@@ -431,10 +434,10 @@ class MachineHandler(NodeHandler):
             tag_obj.node_set.add(node_obj)
             tag_obj.save()
 
-    def _update_disk_tags(self, disk_obj, params):
+    def _update_obj_tags(self, obj, params):
         if 'tags' in params:
-            disk_obj.tags = params['tags']
-            disk_obj.save(update_fields=['tags'])
+            obj.tags = params['tags']
+            obj.save(update_fields=['tags'])
 
     def update_disk(self, params):
         """Update disk information."""
@@ -458,7 +461,7 @@ class MachineHandler(NodeHandler):
             raise HandlerError(form.errors)
         else:
             disk_obj = form.save()
-            self._update_disk_tags(disk_obj, params)
+            self._update_obj_tags(disk_obj, params)
             if 'fstype' in params:
                 self.update_blockdevice_filesystem(
                     node, disk_obj.id, params['fstype'],
@@ -591,7 +594,7 @@ class MachineHandler(NodeHandler):
         else:
             bcache = form.save()
 
-        self._update_disk_tags(bcache.virtual_device, params)
+        self._update_obj_tags(bcache.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, bcache.virtual_device.id, params.get("fstype"),
@@ -610,7 +613,7 @@ class MachineHandler(NodeHandler):
         else:
             raid = form.save()
 
-        self._update_disk_tags(raid.virtual_device, params)
+        self._update_obj_tags(raid.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, raid.virtual_device.id, params.get("fstype"),
@@ -649,7 +652,7 @@ class MachineHandler(NodeHandler):
         else:
             logical_volume = form.save()
 
-        self._update_disk_tags(logical_volume, params)
+        self._update_obj_tags(logical_volume, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
                 node, logical_volume.id, params.get("fstype"),
@@ -709,6 +712,7 @@ class MachineHandler(NodeHandler):
         form = PhysicalInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
+            self._update_obj_tags(interface, params)
             self._create_link_on_interface(interface, params)
         else:
             raise ValidationError(form.errors)
@@ -724,6 +728,7 @@ class MachineHandler(NodeHandler):
         form = VLANInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
+            self._update_obj_tags(interface, params)
             self._create_link_on_interface(interface, params)
         else:
             raise ValidationError(form.errors)
@@ -738,6 +743,25 @@ class MachineHandler(NodeHandler):
         form = BondInterfaceForm(node=node, data=params)
         if form.is_valid():
             interface = form.save()
+            self._update_obj_tags(interface, params)
+            self._create_link_on_interface(interface, params)
+        else:
+            raise ValidationError(form.errors)
+
+    def create_bridge(self, params):
+        """Create bridge interface."""
+        # Only admin users can perform create.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        node = self.get_object(params)
+        if node.status == NODE_STATUS.ALLOCATED:
+            form = AcquiredBridgeInterfaceForm(node=node, data=params)
+        else:
+            form = BridgeInterfaceForm(node=node, data=params)
+        if form.is_valid():
+            interface = form.save()
+            self._update_obj_tags(interface, params)
             self._create_link_on_interface(interface, params)
         else:
             raise ValidationError(form.errors)
@@ -753,7 +777,8 @@ class MachineHandler(NodeHandler):
         interface_form = InterfaceForm.get_interface_form(interface.type)
         form = interface_form(instance=interface, data=params)
         if form.is_valid():
-            form.save()
+            interface = form.save()
+            self._update_obj_tags(interface, params)
         else:
             raise ValidationError(form.errors)
 

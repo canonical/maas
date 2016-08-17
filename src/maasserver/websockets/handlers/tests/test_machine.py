@@ -560,6 +560,7 @@ class TestMachineHandler(MAASServerTestCase):
             "type": interface.type,
             "name": interface.get_name(),
             "enabled": interface.is_enabled(),
+            "tags": interface.tags,
             "is_boot": True,
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
@@ -579,6 +580,7 @@ class TestMachineHandler(MAASServerTestCase):
             "type": interface2.type,
             "name": interface2.get_name(),
             "enabled": interface2.is_enabled(),
+            "tags": interface2.tags,
             "is_boot": False,
             "mac_address": "%s" % interface2.mac_address,
             "vlan_id": interface2.vlan_id,
@@ -608,6 +610,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
@@ -646,6 +649,7 @@ class TestMachineHandler(MAASServerTestCase):
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
+            "tags": interface.tags,
             "enabled": interface.is_enabled(),
             "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
@@ -2183,6 +2187,42 @@ class TestMachineHandler(MAASServerTestCase):
             handler.create_bond({
                 "system_id": node.system_id,
                 "parents": [nic1.id, nic2.id],
+                })
+
+    def test_create_bridge_creates_bridge(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = MachineHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        name = factory.make_name("br")
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 15)
+        handler.create_bridge({
+            "system_id": node.system_id,
+            "name": name,
+            "parents": [nic1.id],
+            "mac_address": "%s" % nic1.mac_address,
+            "vlan": nic1.vlan.id,
+            "bridge_stp": bridge_stp,
+            "bridge_fd": bridge_fd,
+            })
+        bridge_interface = get_one(
+            Interface.objects.filter(
+                node=node, type=INTERFACE_TYPE.BRIDGE, parents=nic1,
+                name=name, vlan=nic1.vlan))
+        self.assertIsNotNone(bridge_interface)
+        self.assertEqual(bridge_stp, bridge_interface.params["bridge_stp"])
+        self.assertEqual(bridge_fd, bridge_interface.params["bridge_fd"])
+
+    def test_create_bridge_raises_ValidationError(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = MachineHandler(user, {})
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        with ExpectedException(ValidationError):
+            handler.create_bridge({
+                "system_id": node.system_id,
+                "parents": [nic1.id],
                 })
 
     def test_update_interface(self):

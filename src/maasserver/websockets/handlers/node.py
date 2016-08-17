@@ -346,6 +346,7 @@ class NodeHandler(TimestampedModelHandler):
             "type": interface.type,
             "name": interface.get_name(),
             "enabled": interface.is_enabled(),
+            "tags": interface.tags,
             "is_boot": interface == obj.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
