@@ -156,6 +156,54 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertFalse(created)
         self.assertEquals(interface, retrieved_interface)
 
+    def test__get_interface_dict_for_node(self):
+        node1 = factory.make_Node()
+        node1_eth0 = factory.make_Interface(node=node1, name='eth0')
+        node1_eth1 = factory.make_Interface(node=node1, name='eth1')
+        node2 = factory.make_Node()
+        node2_eth0 = factory.make_Interface(node=node2, name='eth0')
+        node2_eth1 = factory.make_Interface(node=node2, name='eth1')
+        self.assertThat(
+            Interface.objects.get_interface_dict_for_node(node1),
+            Equals({
+                'eth0': node1_eth0,
+                'eth1': node1_eth1,
+            }))
+        self.assertThat(
+            Interface.objects.get_interface_dict_for_node(node2),
+            Equals({
+                'eth0': node2_eth0,
+                'eth1': node2_eth1,
+            }))
+
+    def test__get_interface_dict_for_node_by_names(self):
+        node1 = factory.make_Node()
+        node1_eth0 = factory.make_Interface(node=node1, name='eth0')
+        node1_eth1 = factory.make_Interface(node=node1, name='eth1')
+        node2 = factory.make_Node()
+        node2_eth0 = factory.make_Interface(node=node2, name='eth0')
+        node2_eth1 = factory.make_Interface(node=node2, name='eth1')
+        self.assertThat(
+            Interface.objects.get_interface_dict_for_node(
+                node1, names=('eth0',)),
+            Equals({
+                'eth0': node1_eth0
+            }))
+        self.assertThat(
+            Interface.objects.get_interface_dict_for_node(
+                node1, names=('eth0', 'eth1')),
+            Equals({
+                'eth0': node1_eth0,
+                'eth1': node1_eth1,
+            }))
+        self.assertThat(
+            Interface.objects.get_interface_dict_for_node(
+                node2, names=('eth0', 'eth1')),
+            Equals({
+                'eth0': node2_eth0,
+                'eth1': node2_eth1,
+            }))
+
     def test_filter_by_ip(self):
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

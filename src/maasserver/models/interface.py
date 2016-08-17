@@ -219,6 +219,21 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """
         return list(self.filter(node=node, name__in=interface_names))
 
+    def get_interface_dict_for_node(self, node, names=None):
+        """Returns a list of Inteface objects on the specified node whose
+        names match the specified list of interface names.
+        """
+        if names is None:
+            return {
+                interface.name: interface
+                for interface in self.filter(node=node)
+            }
+        else:
+            return {
+                interface.name: interface
+                for interface in self.filter(node=node, name__in=names)
+            }
+
     def filter_by_ip(self, static_ip_address):
         """Given the specified StaticIPAddress, (or string containing an IP
         address) return the Interface it is on.
