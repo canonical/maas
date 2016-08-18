@@ -537,13 +537,10 @@ class BootResourceStore(ObjectStore):
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
         # object store contains additional data that should not be stored into
-        # the database. If kpackage and/or di_version exist in the product then
-        # we store those values to expose in the simplestreams endpoint on the
-        # region.
+        # the database. If kpackage exist in the product then we store those
+        # values to expose in the simplestreams endpoint on the region.
         if 'kpackage' in product:
             rfile.extra['kpackage'] = product['kpackage']
-        if 'di_version' in product:
-            rfile.extra['di_version'] = product['di_version']
 
         # Don't save rfile here, because if new then largefile is None which
         # will cause a ValidationError. The setting of largefile and saving of
@@ -582,6 +579,14 @@ class BootResourceStore(ObjectStore):
             resource, product)
         rfile = self.get_or_create_boot_resource_file(
             resource_set, product)
+
+        # A ROOT_IMAGE may already be downloaded for the release if the stream
+        # switched from one not containg SquashFS images to one that does. We
+        # want to use the SquashFS image but if both are available TGT will
+        # fail to start because both images will be shared with the same name.
+        if product['ftype'] == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE:
+            resource_set.files.filter(
+                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE).delete()
 
         checksums = sutil.item_checksums(product)
         sha256 = checksums['sha256']

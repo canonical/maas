@@ -582,13 +582,16 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
             AssertConnectionWrapper.connection.connection)
 
 
-def make_product():
+def make_product(ftype=None):
     """Make product dictionary that is just like the one provided
     from simplsetreams."""
+    if ftype is None:
+        ftype = factory.pick_choice(BOOT_RESOURCE_FILE_TYPE_CHOICES)
     subarch = factory.make_name('subarch')
     subarches = [factory.make_name('subarch') for _ in range(3)]
     subarches.insert(0, subarch)
     subarches = ','.join(subarches)
+    name = factory.make_name('name')
     product = {
         'os': factory.make_name('os'),
         'arch': factory.make_name('arch'),
@@ -598,9 +601,10 @@ def make_product():
         'subarches': subarches,
         'version_name': factory.make_name('version'),
         'label': factory.make_name('label'),
-        'ftype': factory.pick_choice(BOOT_RESOURCE_FILE_TYPE_CHOICES),
+        'ftype': ftype,
         'kpackage': factory.make_name('kpackage'),
-        'di_version': factory.make_name('di_version'),
+        'item_name': name,
+        'path': '/path/to/%s' % name,
         }
     name = '%s/%s' % (product['os'], product['release'])
     architecture = '%s/%s' % (product['arch'], product['subarch'])
@@ -764,7 +768,6 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(product['ftype'], rfile.filename)
         self.assertEqual(product['ftype'], rfile.filetype)
         self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
-        self.assertEqual(product['di_version'], rfile.extra['di_version'])
 
     def test_get_or_create_boot_resource_file_gets_resource_file(self):
         name, architecture, product = make_product()
@@ -776,7 +779,6 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(expected, rfile)
         self.assertEqual(product['ftype'], rfile.filetype)
         self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
-        self.assertEqual(product['di_version'], rfile.extra['di_version'])
 
     def test_get_resource_file_log_identifier_returns_valid_ident(self):
         os = factory.make_name('os')
@@ -918,6 +920,30 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.assertFalse(
             LargeFile.objects.filter(id=delete_largefile.id).exists())
         self.assertEqual(largefile, reload_object(rfile).largefile)
+        self.assertThat(mock_save_later, MockNotCalled())
+
+    def test_insert_deletes_root_image_if_squashfs_available(self):
+        self.useFixture(SignalsDisabled("largefiles"))
+        name, architecture, product = make_product(
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
+        with transaction.atomic():
+            product, resource = make_boot_resource_group_from_product(product)
+            squashfs = factory.make_LargeFile()
+        product['ftype'] = BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+        product['sha256'] = squashfs.sha256
+        product['size'] = squashfs.total_size
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        brs = resource.get_latest_set()
+        self.assertThat(
+            brs.files.filter(
+                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE).count(),
+            Equals(0))
+        self.assertThat(
+            brs.files.filter(
+                filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE).count(),
+            Equals(1))
         self.assertThat(mock_save_later, MockNotCalled())
 
     def test_insert_prints_warning_if_mismatch_largefile(self):
