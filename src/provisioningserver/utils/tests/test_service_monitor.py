@@ -16,10 +16,8 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.runtest import MAASTwistedRunTest
+from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import service_monitor as service_monitor_module
 from provisioningserver.utils.service_monitor import (
     Service,
@@ -67,6 +65,8 @@ def make_fake_service(expected_state=None, status_info=None):
 
 class TestServiceState(MAASTestCase):
     """Tests for `ServiceState`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
     def test_get_status_and_status_info_for_returns_unknown_for_unknown(self):

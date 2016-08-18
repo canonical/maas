@@ -2529,6 +2529,8 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(

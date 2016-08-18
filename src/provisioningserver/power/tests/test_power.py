@@ -10,6 +10,7 @@ from unittest.mock import ANY
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver import power
@@ -19,6 +20,8 @@ from testtools.matchers import Equals
 
 
 class TestPowerHelpers(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())

@@ -57,6 +57,8 @@ from twisted.internet.task import Clock
 
 class TestPowerHelpers(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def setUp(self):
         super(TestPowerHelpers, self).setUp()
         self.useFixture(EventTypesAllRegistered())

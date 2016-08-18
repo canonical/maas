@@ -37,7 +37,6 @@ from twisted.internet.task import (
     LoopingCall,
 )
 from twisted.internet.threads import blockingCallFromThread
-from twisted.python.threadable import isInIOThread
 
 
 def DelayedCall_bytes(call, __str__=DelayedCall.__str__):
@@ -82,13 +81,13 @@ def check_for_generator(result):
 
 
 def check_for_deferred(result):
-    if isinstance(result, Deferred) and not isInIOThread():
+    if isinstance(result, Deferred):
         raise InvalidTest(
-            "Test returned a Deferred but this is not the IO/reactor thread. "
-            "When the reactor is being managed by crochet the test method "
-            "needs to be decorated with `crochet.wait_for`. In other cases "
-            "the test class needs to define `run_tests_with` with a runner "
-            "that understands Twisted, such as `MAASTwistedRunTest`.")
+            "Test returned a Deferred. When the reactor is being "
+            "managed by crochet the test method needs to be decorated "
+            "with `crochet.wait_for`. In other cases the test class needs "
+            "to define `run_tests_with` with a runner that understands "
+            "Twisted, such as `MAASTwistedRunTest`.")
     else:
         return result
 

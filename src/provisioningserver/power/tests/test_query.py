@@ -20,10 +20,8 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
 )
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-)
+from maastesting.runtest import MAASTwistedRunTest
+from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
     extract_result,
@@ -62,6 +60,8 @@ def suppress_reporting(test):
 
 
 class TestPowerHelpers(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestPowerHelpers, self).setUp()
@@ -109,6 +109,8 @@ class TestPowerHelpers(MAASTestCase):
 
 
 class TestPowerQuery(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestPowerQuery, self).setUp()
