@@ -6,12 +6,15 @@
 __all__ = [
     ]
 
+from operator import attrgetter
+
 from maasserver.dns.zonegenerator import get_dns_search_paths
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
+from maasserver.models.staticroute import StaticRoute
 import yaml
 
 
@@ -22,6 +25,7 @@ class CurtinNetworkGenerator:
         self.node = node
         self.gateways = node.get_default_gateways()
         self.dns_servers = node.get_default_dns_servers()
+        self.routes = StaticRoute.objects.all()
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
         self.operations = {
@@ -29,6 +33,7 @@ class CurtinNetworkGenerator:
             "vlan": [],
             "bond": [],
             "bridge": [],
+            "route": set(),
         }
 
     def generate(self):
@@ -43,6 +48,7 @@ class CurtinNetworkGenerator:
         self._generate_vlan_operations()
         self._generate_bond_operations()
         self._generate_bridge_operations()
+        self._generate_route_operations()
 
         # Order the network_config where dependencies come first.
         self._order_config_dependency()
@@ -218,6 +224,14 @@ class CurtinNetworkGenerator:
                 return True
         return False
 
+    def _get_matching_routes(self, source):
+        """Return all route objects matching `source`."""
+        return {
+            route
+            for route in self.routes
+            if route.source == source
+        }
+
     def _generate_addresses(self, iface):
         """Generate the various addresses needed for this interface."""
         addrs = []
@@ -244,6 +258,8 @@ class CurtinNetworkGenerator:
                         subnet_operation["dns_nameservers"] = (
                             subnet.dns_servers)
                     addrs.append(subnet_operation)
+                    self.operations['route'].update(
+                        self._get_matching_routes(subnet))
             if dhcp_type:
                 addrs.append(
                     {"type": dhcp_type}
@@ -314,6 +330,22 @@ class CurtinNetworkGenerator:
             bridge_operation["subnets"] = addrs
         self.network_config.append(bridge_operation)
 
+    def _generate_route_operations(self):
+        """Generate all route operations."""
+        for route in sorted(self.operations["route"], key=attrgetter("id")):
+            self._generate_route_operation(route)
+
+    def _generate_route_operation(self, route):
+        """Generate route operation place in `network_config`."""
+        route_operation = {
+            "id": route.id,
+            "type": "route",
+            "source": route.source.cidr,
+            "destination": route.destination.cidr,
+            "metric": route.metric,
+        }
+        self.network_config.append(route_operation)
+
     def _order_config_dependency(self):
         """Re-order the network config so dependencies appear before
         dependents."""
@@ -323,7 +355,7 @@ class CurtinNetworkGenerator:
             ids_above = []
             for operation in list(self.network_config):
                 operation_type = operation["type"]
-                if operation_type == "physical":
+                if operation_type in ["physical", "route"]:
                     # Doesn't depend on anything.
                     pass
                 elif operation_type == "vlan":

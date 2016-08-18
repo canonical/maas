@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from operator import attrgetter
 import random
 from textwrap import dedent
 
@@ -14,6 +15,7 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
+from maasserver.models.staticroute import StaticRoute
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -59,6 +61,14 @@ class AssertNetworkConfigMixin:
           type: vlan
           vlan_link: %(parent)s
           vlan_id: %(vlan_id)s
+        """)
+
+    ROUTE_CONFIG = dedent("""\
+        - id: %(id)s
+          type: route
+          source: %(source)s
+          destination: %(destination)s
+          metric: %(metric)s
         """)
 
     def assertNetworkConfig(self, expected, output):
@@ -206,6 +216,31 @@ class AssertNetworkConfigMixin:
                     ret += "  - type: dhcp6\n"
         return ret
 
+    def collectRoutesConfig(self, node):
+        routes = set()
+        interfaces = node.interface_set.filter(enabled=True).order_by('id')
+        for iface in interfaces:
+            addresses = iface.ip_addresses.exclude(
+                alloc_type__in=[
+                    IPADDRESS_TYPE.DISCOVERED,
+                    IPADDRESS_TYPE.DHCP,
+                ]).order_by('id')
+            for address in addresses:
+                subnet = address.subnet
+                if subnet is not None:
+                    routes.update(
+                        StaticRoute.objects.filter(
+                            source=subnet).order_by('id'))
+        config = ""
+        for route in sorted(routes, key=attrgetter('id')):
+            config += self.ROUTE_CONFIG % {
+                'id': route.id,
+                'source': route.source.cidr,
+                'destination': route.destination.cidr,
+                'metric': route.metric,
+            }
+        return config
+
     def collectDNSConfig(self, node):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
             repr(node.get_default_dns_servers()))
@@ -351,6 +386,24 @@ class TestBridgeNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             subnet=bridge_iface.vlan.subnet_set.first())
         net_config = self.collect_interface_config(node, filter="physical")
         net_config += self.collect_interface_config(node, filter="bridge")
+        net_config += self.collectDNSConfig(node)
+        config = compose_curtin_network_config(node)
+        self.assertNetworkConfig(net_config, config)
+
+
+class TestNetworkLayoutWithRoutes(
+        MAASServerTestCase, AssertNetworkConfigMixin):
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2)
+        for iface in node.interface_set.filter(enabled=True):
+            subnet = iface.vlan.subnet_set.first()
+            factory.make_StaticRoute(source=subnet)
+            factory.make_StaticIPAddress(
+                interface=iface, subnet=subnet)
+        net_config = self.collect_interface_config(node)
+        net_config += self.collectRoutesConfig(node)
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
