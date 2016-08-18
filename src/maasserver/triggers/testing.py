@@ -44,6 +44,7 @@ from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
@@ -565,6 +566,21 @@ class TransactionalHelpersMixin:
     @transactional
     def delete_iprange(self, id):
         ipr = IPRange.objects.get(id=id)
+        ipr.delete()
+
+    @transactional
+    def create_staticroute(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_StaticRoute(**params)
+
+    @transactional
+    def update_staticroute(self, id, params):
+        return apply_update_to_model(StaticRoute, id, params)
+
+    @transactional
+    def delete_staticroute(self, id):
+        ipr = StaticRoute.objects.get(id=id)
         ipr.delete()
 
     @transactional

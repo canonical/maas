@@ -15,13 +15,13 @@ from django.core.exceptions import (
 from django.db.models import (
     ForeignKey,
     Manager,
-    Model,
     PositiveIntegerField,
 )
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.timestampedmodel import TimestampedModel
 
 
 class StaticRouteManager(Manager):
@@ -51,7 +51,7 @@ class StaticRouteManager(Manager):
             raise PermissionDenied()
 
 
-class StaticRoute(CleanSave, Model):
+class StaticRoute(CleanSave, TimestampedModel):
     """Static route between two subnets using a gateway."""
 
     class Meta(DefaultMeta):

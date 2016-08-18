@@ -24,6 +24,8 @@ class Migration(migrations.Migration):
                 ('metric', models.PositiveIntegerField()),
                 ('destination', models.ForeignKey(related_name='+', to='maasserver.Subnet')),
                 ('source', models.ForeignKey(related_name='+', to='maasserver.Subnet')),
+                ('created', models.DateTimeField(editable=False)),
+                ('updated', models.DateTimeField(editable=False)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),

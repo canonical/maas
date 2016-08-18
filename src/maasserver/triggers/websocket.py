@@ -972,6 +972,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_iprange", "iprange_delete_notify", "delete")
 
+    # StaticRoute table
+    register_procedure(
+        render_notification_procedure(
+            'staticroute_create_notify', 'staticroute_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'staticroute_update_notify', 'staticroute_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'staticroute_delete_notify', 'staticroute_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_staticroute", "staticroute_create_notify", "insert")
+    register_trigger(
+        "maasserver_staticroute", "staticroute_update_notify", "update")
+    register_trigger(
+        "maasserver_staticroute", "staticroute_delete_notify", "delete")
+
     # Fabric table
     register_procedure(
         render_notification_procedure(

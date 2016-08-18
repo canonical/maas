@@ -1268,6 +1268,65 @@ class TestIPRangeListener(
             yield listener.stopService()
 
 
+class TestStaticRouteListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("staticroute", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            staticroute = yield deferToDatabase(
+                self.create_staticroute)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % staticroute.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("staticroute", lambda *args: dv.set(args))
+        staticroute = yield deferToDatabase(
+            self.create_staticroute)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticroute,
+                staticroute.id,
+                {'metric': random.randint(0, 500)})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % staticroute.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("staticroute", lambda *args: dv.set(args))
+        staticroute = yield deferToDatabase(
+            self.create_staticroute)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_staticroute, staticroute.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % staticroute.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
 class TestDomainListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster

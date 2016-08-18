@@ -65,6 +65,7 @@ MERGE_VIEWS = {
             "js/angular/factories/services.js",
             "js/angular/factories/tags.js",
             "js/angular/factories/ipranges.js",
+            "js/angular/factories/staticroutes.js",
             "js/angular/factories/subnets.js",
             "js/angular/factories/domains.js",
             "js/angular/factories/spaces.js",
