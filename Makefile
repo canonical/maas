@@ -217,8 +217,23 @@ test: $(strip $(test-scripts))
 	$(foreach test,$^,$(test-template);)
 	@test ! -f .failed
 
+test-failed: $(strip $(test-scripts))
+	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
+	@$(RM) coverage.data .failed
+	$(foreach test,$^,$(test-template-failed);)
+	@test ! -f .failed
+
+clean-failed:
+	$(RM) .noseids
+
 define test-template
 $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml || touch .failed
+endef
+
+define test-template-failed
+  $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml --failed || \
+  $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml --failed || \
+  touch .failed
 endef
 
 test+coverage: export NOSE_WITH_COVERAGE = 1
@@ -331,7 +346,7 @@ $(scss_output): $(scss_inputs)
 clean-styles:
 	$(RM) $(scss_output)
 
-clean: stop clean-run
+clean: stop clean-run clean-failed
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -392,6 +407,7 @@ define phony_targets
   check
   clean
   clean+db
+  clean-failed
   clean-run
   clean-styles
   configure-buildout
@@ -419,6 +435,7 @@ define phony_targets
   styles
   syncdb
   test
+  test-failed
   test-migrations
   test+coverage
   test+lxd
