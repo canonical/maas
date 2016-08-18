@@ -21,7 +21,7 @@ class DHCPService(Service):
         super(DHCPService, self).__init__()
         self.expected_state = SERVICE_STATE.OFF
 
-    def get_expected_state(self):
+    def getExpectedState(self):
         """Return a the expected state for the dhcp service.
 
         The dhcp service always starts as off. Once the rackd starts dhcp

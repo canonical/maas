@@ -42,10 +42,10 @@ class ProxyService(Service):
     name = "proxy"
     service_name = "maas-proxy"
 
-    def get_expected_state(self):
+    def getExpectedState(self):
 
         @transactional
-        def db_get_expected_state():
+        def db_getExpectedState():
             # Avoid recursive import.
             from maasserver import proxyconfig
             if (Config.objects.get_config("enable_http_proxy") and
@@ -57,7 +57,7 @@ class ProxyService(Service):
             else:
                 return (SERVICE_STATUS.ON, None)
 
-        return deferToDatabase(db_get_expected_state)
+        return deferToDatabase(db_getExpectedState)
 
 
 # Global service monitor for regiond. NOTE that changes to this need to be

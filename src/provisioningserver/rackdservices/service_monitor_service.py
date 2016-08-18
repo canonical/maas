@@ -100,8 +100,7 @@ class ServiceMonitorService(TimerService, object):
         msg_services = list(self.ALWAYS_RUNNING_SERVICES)
         for name, state in services.items():
             service = service_monitor.getServiceByName(name)
-            status, status_info = yield state.get_status_and_status_info_for(
-                service)
+            status, status_info = yield state.getStatusInfo(service)
             msg_services.append({
                 "name": name,
                 "status": status,

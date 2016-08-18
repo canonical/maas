@@ -44,6 +44,19 @@ from twisted.internet.defer import (
 from twisted.internet.task import deferLater
 
 
+EMPTY_SET = frozenset()
+
+
+def pick_observed_state(*, but_not=EMPTY_SET):
+    return factory.pick_enum(
+        SERVICE_STATE, but_not={SERVICE_STATE.ANY, *but_not})
+
+
+def pick_expected_state(*, but_not=EMPTY_SET):
+    return factory.pick_enum(
+        SERVICE_STATE, but_not={SERVICE_STATE.UNKNOWN, *but_not})
+
+
 def make_fake_service(expected_state=None, status_info=None):
     fake_name = factory.make_name("name")
     fake_service_name = factory.make_name("service")
@@ -57,7 +70,7 @@ def make_fake_service(expected_state=None, status_info=None):
         name = fake_name
         service_name = fake_service_name
 
-        def get_expected_state(self):
+        def getExpectedState(self):
             return succeed((expected_state, status_info))
 
     return FakeService()
@@ -69,63 +82,57 @@ class TestServiceState(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_unknown_for_unknown(self):
+    def test_getStatusInfo_returns_unknown_for_unknown(self):
         service = make_fake_service()
         state = ServiceState(SERVICE_STATE.UNKNOWN, None)
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         self.assertEquals(
             ("unknown", ""), observed_status)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_running_for_on(self):
+    def test_getStatusInfo_returns_running_for_on(self):
         service = make_fake_service()
         state = ServiceState(SERVICE_STATE.ON, "running")
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         self.assertEquals(
             ("running", ""), observed_status)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_dead_when_stopped(self):
+    def test_getStatusInfo_returns_dead_when_stopped(self):
         service = make_fake_service(SERVICE_STATE.ON)
         state = ServiceState(SERVICE_STATE.OFF, "")
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         self.assertEquals(
             ("dead", "%s is currently stopped." % service.service_name),
             observed_status)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_dead_when_failed(self):
+    def test_getStatusInfo_returns_dead_when_failed(self):
         service = make_fake_service(SERVICE_STATE.ON)
         process_state = factory.make_name("failed")
         state = ServiceState(SERVICE_STATE.DEAD, process_state)
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         self.assertEquals(
             ("dead", "%s failed to start, process result: (%s)" % (
                 service.service_name, process_state)),
             observed_status)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_off_when_off(self):
+    def test_getStatusInfo_returns_off_when_off(self):
         service = make_fake_service(SERVICE_STATE.OFF)
         state = ServiceState(SERVICE_STATE.OFF, None)
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         self.assertEquals(
             ("off", ""), observed_status)
 
     @inlineCallbacks
-    def test_get_status_and_status_info_for_returns_service_service_info(self):
+    def test_getStatusInfo_returns_service_service_info(self):
         # Make sure any service_info given by a service gets passed through.
         status_info = factory.make_string(60, True)
-        active_state = factory.pick_enum(SERVICE_STATE)
+        active_state = pick_expected_state()
         service = make_fake_service(active_state, status_info)
         state = ServiceState(active_state, None)
-        observed_status = yield state.get_status_and_status_info_for(
-            service)
+        observed_status = yield state.getStatusInfo(service)
         # Only check status_info - tests above have tested state.
         self.assertEquals(status_info, observed_status[1])
 
@@ -167,7 +174,7 @@ class TestServiceMonitor(MAASTestCase):
     def test__updateServiceState_updates_stored_service_state(self):
         service_monitor = self.make_service_monitor()
         name = factory.make_name("service")
-        active_state = factory.pick_enum(SERVICE_STATE)
+        active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
         observed_state = yield service_monitor._updateServiceState(
             name, active_state, process_state)
@@ -182,7 +189,7 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor()
         service_lock = self.patch(service_monitor, "_getServiceLock")
         name = factory.make_name("service")
-        active_state = factory.pick_enum(SERVICE_STATE)
+        active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
         yield service_monitor._updateServiceState(
             name, active_state, process_state)
@@ -193,7 +200,7 @@ class TestServiceMonitor(MAASTestCase):
     def test__getServiceState_with_now_True(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
-        active_state = factory.pick_enum(SERVICE_STATE)
+        active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
         mock_loadServiceState = self.patch(
             service_monitor, "_loadServiceState")
@@ -233,7 +240,7 @@ class TestServiceMonitor(MAASTestCase):
         ]
         expected_states = {}
         for service in fake_services:
-            active_state = factory.pick_enum(SERVICE_STATE)
+            active_state = pick_observed_state()
             process_state = random.choice(["running", "dead"])
             expected_states[service.name] = ServiceState(
                 active_state, process_state)
@@ -250,7 +257,7 @@ class TestServiceMonitor(MAASTestCase):
         # Plant some states into the monitor's memory.
         service_states = {
             service.name: ServiceState(
-                factory.pick_enum(SERVICE_STATE),
+                pick_observed_state(),
                 random.choice(["running", "dead"]))
             for service in services
         }
@@ -282,10 +289,10 @@ class TestServiceMonitor(MAASTestCase):
                 "%s broke" % (service.name, service.name)))
 
     @inlineCallbacks
-    def test__ensureService_calls__ensureService(self):
+    def test__ensureServices_calls__ensureService(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
-        active_state = factory.pick_enum(SERVICE_STATE)
+        active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
         service_state = ServiceState(active_state, process_state)
         mock_ensureService = self.patch(service_monitor, "_ensureService")
@@ -327,8 +334,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_performServiceAction = self.patch(
             service_monitor, "_performServiceAction")
         mock_performServiceAction.return_value = succeed(None)
-        active_state = factory.pick_enum(
-            SERVICE_STATE, but_not=[SERVICE_STATE.ON])
+        active_state = pick_observed_state(but_not={SERVICE_STATE.ON})
         service_state = ServiceState(active_state, "dead")
         mock_getServiceState = self.patch(service_monitor, "getServiceState")
         mock_getServiceState.return_value = succeed(service_state)
@@ -793,3 +799,21 @@ class TestServiceMonitor(MAASTestCase):
             Service '%s' is not on, it will be started.
             Service '%s' failed to start. Its current state is '%s' and '%s'.
             """ % lint_sucks, maaslog.output)
+
+    @inlineCallbacks
+    def test__ensureService_does_nothing_when_any_state_expected(self):
+        service = make_fake_service(SERVICE_STATE.ANY)
+        service_monitor = self.make_service_monitor([service])
+
+        self.patch_autospec(service_monitor, "getServiceState")
+        self.patch_autospec(service_monitor, "_performServiceAction")
+
+        self.assertThat(
+            (yield service_monitor._ensureService(service)),
+            Equals(SERVICE_STATE.UNKNOWN))
+        self.assertThat(
+            service_monitor.getServiceState,
+            MockNotCalled())
+        self.assertThat(
+            service_monitor._performServiceAction,
+            MockNotCalled())

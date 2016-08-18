@@ -47,7 +47,7 @@ class TestProxyService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_expected_state_returns_on_for_proxy_off_and_unset(self):
+    def test_getExpectedState_returns_on_for_proxy_off_and_unset(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -60,15 +60,15 @@ class TestProxyService(MAASTransactionServerTestCase):
             transactional(Config.objects.set_config),
             "http_proxy", "")
         self.patch(proxyconfig, "is_config_present").return_value = True
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_expected_state_returns_off_for_no_config(self):
+    def test_getExpectedState_returns_off_for_no_config(self):
         service = self.make_proxy_service()
         os.environ['MAAS_PROXY_CONFIG_DIR'] = "/tmp/%s" % factory.make_name()
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
             (SERVICE_STATUS.OFF, "No configuration file present."),
             expected_state)
@@ -76,7 +76,7 @@ class TestProxyService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_expected_state_returns_on_for_proxy_off_and_set(self):
+    def test_getExpectedState_returns_on_for_proxy_off_and_set(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -89,12 +89,12 @@ class TestProxyService(MAASTransactionServerTestCase):
             transactional(Config.objects.set_config),
             "http_proxy", factory.make_url())
         self.patch(proxyconfig, "is_config_present").return_value = True
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_expected_state_returns_on_for_proxy_on_but_unset(self):
+    def test_getExpectedState_returns_on_for_proxy_on_but_unset(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -107,12 +107,12 @@ class TestProxyService(MAASTransactionServerTestCase):
             transactional(Config.objects.set_config),
             "http_proxy", "")
         self.patch(proxyconfig, "is_config_present").return_value = True
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_expected_state_returns_off_for_proxy_on_and_set(self):
+    def test_getExpectedState_returns_off_for_proxy_on_and_set(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -125,7 +125,7 @@ class TestProxyService(MAASTransactionServerTestCase):
             transactional(Config.objects.set_config),
             "http_proxy", factory.make_url())
         self.patch(proxyconfig, "is_config_present").return_value = True
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
             (SERVICE_STATUS.OFF,
              'disabled, alternate proxy is configured in settings.'),

@@ -23,6 +23,7 @@ from collections import (
     defaultdict,
     namedtuple,
 )
+import enum
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.utils.shell import select_c_utf8_bytes_locale
@@ -40,16 +41,40 @@ from twisted.internet.utils import getProcessOutputAndValue
 maaslog = get_maas_logger("service_monitor")
 
 
-class SERVICE_STATE:
-    """The vocabulary of a service expected state."""
-    #: Service is unknown
-    UNKNOWN = 'unknown'
+@enum.unique
+class SERVICE_STATE(enum.Enum):
+    """The vocabulary of a service state as observed."""
+
     #: Service is on
     ON = 'on'
+
     #: Service is off
     OFF = 'off'
+
     #: Service is dead
     DEAD = 'dead'
+
+    #: Service is unknown. This is only relevant as an observed state, not as
+    # an expected state.
+    UNKNOWN = 'unknown'
+
+    #: Don't care about the service state. This is only relevant as an
+    # expected state, not as an observed state.
+    ANY = 'any'
+
+
+def _check_service_state_observed(state):
+    if state not in {
+            SERVICE_STATE.ON, SERVICE_STATE.OFF, SERVICE_STATE.DEAD,
+            SERVICE_STATE.UNKNOWN}:
+        raise AssertionError("Observed state should not be %r." % (state,))
+
+
+def _check_service_state_expected(state):
+    if state not in {
+            SERVICE_STATE.ON, SERVICE_STATE.OFF, SERVICE_STATE.DEAD,
+            SERVICE_STATE.ANY}:
+        raise AssertionError("Expected state should not be %r." % (state,))
 
 
 ServiceStateBase = namedtuple(
@@ -61,36 +86,47 @@ class ServiceState(ServiceStateBase):
 
     __slots__ = ()
 
-    def __new__(cls, active_state=None, process_state=None):
+    def __new__(cls, active_state: SERVICE_STATE=None, process_state=None):
         if active_state is None:
             active_state = SERVICE_STATE.UNKNOWN
+        _check_service_state_observed(active_state)
         return ServiceStateBase.__new__(
             cls, active_state=active_state, process_state=process_state)
 
     @asynchronous
-    @inlineCallbacks
-    def get_status_and_status_info_for(self, service):
-        """Return the status and status_info for the state of `service`."""
-        status = "off"
-        status_info = ""
-        expected_state, service_status_info = yield maybeDeferred(
-            service.get_expected_state)
-        if self.active_state == SERVICE_STATE.UNKNOWN:
-            status = "unknown"
-        elif self.active_state == SERVICE_STATE.ON:
-            status = "running"
-        elif expected_state == SERVICE_STATE.ON:
-            status = "dead"
-            if self.active_state == SERVICE_STATE.OFF:
-                status_info = "%s is currently stopped." % (
-                    service.service_name)
+    def getStatusInfo(self, service):
+        """Return the status and status_info for the state of `service`.
+
+        :return: A 2-tuple. The first element is a string describing the
+            status of the service, one of "off", "unknown", "running" or
+            "dead". This is NOT directly comparable with the `SERVICE_STATE`
+            enum. The second element is a human-readable description of the
+            status.
+        """
+        def deriveStatusInfo(expected_state_and_info, service):
+            expected_state, status_info = expected_state_and_info
+            _check_service_state_observed(expected_state)
+            if status_info is None:
+                status_info = ""
+            if self.active_state == SERVICE_STATE.UNKNOWN:
+                return "unknown", status_info
+            elif self.active_state == SERVICE_STATE.ON:
+                return "running", status_info
+            elif expected_state == SERVICE_STATE.ON:
+                if self.active_state == SERVICE_STATE.OFF:
+                    return (
+                        "dead", "%s is currently stopped."
+                        % (service.service_name,))
+                else:
+                    return (
+                        "dead", "%s failed to start, process result: (%s)"
+                        % (service.service_name, self.process_state))
             else:
-                status_info = (
-                    "%s failed to start, process result: (%s)" % (
-                        service.service_name, self.process_state))
-        returnValue((
-            status,
-            service_status_info if service_status_info else status_info))
+                return "off", status_info
+
+        d = maybeDeferred(service.getExpectedState)
+        d.addCallback(deriveStatusInfo, service)
+        return d
 
 
 class Service(metaclass=ABCMeta):
@@ -105,14 +141,14 @@ class Service(metaclass=ABCMeta):
         """Name of the service for upstart or systemd."""
 
     @abstractmethod
-    def get_expected_state(self):
+    def getExpectedState(self):
         """Returns (expected state, status_info) for the service."""
 
 
 class AlwaysOnService(Service):
     """Service that should always be on."""
 
-    def get_expected_state(self):
+    def getExpectedState(self):
         """AlwaysOnService should always be on."""
         return (SERVICE_STATE.ON, None)
 
@@ -194,6 +230,7 @@ class ServiceMonitor:
         service = self.getServiceByName(name)
         if now:
             active_state, process_state = yield self._loadServiceState(service)
+            _check_service_state_observed(active_state)
             state = self._updateServiceState(name, active_state, process_state)
         else:
             state = self._serviceStates[name]
@@ -251,7 +288,8 @@ class ServiceMonitor:
         services expected state is not ON.
         """
         service = self.getServiceByName(name)
-        expected_state, _ = yield maybeDeferred(service.get_expected_state)
+        expected_state, _ = yield maybeDeferred(service.getExpectedState)
+        _check_service_state_expected(expected_state)
         if expected_state != SERVICE_STATE.ON:
             raise ServiceNotOnError(
                 "Service '%s' is not expected to be on, unable to restart." % (
@@ -287,7 +325,8 @@ class ServiceMonitor:
         services expected state is not ON.
         """
         service = self.getServiceByName(name)
-        expected_state, _ = yield maybeDeferred(service.get_expected_state)
+        expected_state, _ = yield maybeDeferred(service.getExpectedState)
+        _check_service_state_expected(expected_state)
         if expected_state != SERVICE_STATE.ON:
             if if_on is True:
                 return
@@ -401,10 +440,14 @@ class ServiceMonitor:
         reach its expected process state based on the service's current
         active state.
         """
-        expected_state, _ = yield maybeDeferred(service.get_expected_state)
+        expected_state, _ = yield maybeDeferred(service.getExpectedState)
+        _check_service_state_expected(expected_state)
         if expected_state == SERVICE_STATE.OFF:
             # Service that should be off can also be dead.
             expected_states = [SERVICE_STATE.OFF, SERVICE_STATE.DEAD]
+        elif expected_state == SERVICE_STATE.ANY:
+            # This service is (temporarily) not being monitored.
+            returnValue(SERVICE_STATE.UNKNOWN)
         else:
             expected_states = [expected_state]
 
@@ -432,7 +475,7 @@ class ServiceMonitor:
                 action, log_action = ("stop", "stopped")
             maaslog.info(
                 "Service '%s' is not %s, it will be %s.",
-                service.service_name, expected_state, log_action)
+                service.service_name, expected_state.value, log_action)
 
             # Perform the required action to get the service to reach
             # its target state.
