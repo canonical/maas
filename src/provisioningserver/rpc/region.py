@@ -8,18 +8,19 @@ These are commands that a region controller ought to respond to.
 
 __all__ = [
     "Authenticate",
-    "CreateNode",
     "CommissionNode",
+    "CreateNode",
     "GetArchiveMirrors",
     "GetBootConfig",
     "GetBootSources",
     "GetBootSourcesV2",
+    "GetControllerType",
     "GetProxies",
     "Identify",
     "ListNodePowerParameters",
     "MarkNodeFailed",
-    "RegisterRackController",
     "RegisterEventType",
+    "RegisterRackController",
     "ReportBootImages",
     "ReportForeignDHCPServer",
     "RequestNodeInfoByMACAddress",
@@ -493,3 +494,21 @@ class RequestRackRefresh(amp.Command):
     ]
     response = []
     errors = []
+
+
+class GetControllerType(amp.Command):
+    """Get the node type for a given system identifier.
+
+    :since: 2.1
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = [
+        (b"is_region", amp.Boolean()),
+        (b"is_rack", amp.Boolean()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }

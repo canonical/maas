@@ -455,6 +455,15 @@ class Region(RPCProtocol):
         d.addCallback(lambda _: {})
         return d
 
+    @region.GetControllerType.responder
+    def get_controller_type(self, system_id):
+        """Get the type of the node specified by its system identifier.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.RequestRackRefresh`.
+        """
+        return deferToDatabase(nodes.get_controller_type, system_id)
+
 
 @transactional
 def registerConnection(region_id, rack_controller, host):

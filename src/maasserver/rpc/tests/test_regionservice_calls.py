@@ -43,6 +43,7 @@ from maasserver.rpc import (
     leases as leases_module,
     regionservice,
 )
+from maasserver.rpc.nodes import get_controller_type
 from maasserver.rpc.regionservice import Region
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
@@ -75,6 +76,7 @@ from provisioningserver.rpc.region import (
     GetBootConfig,
     GetBootSources,
     GetBootSourcesV2,
+    GetControllerType,
     GetProxies,
     Identify,
     ListNodePowerParameters,
@@ -1261,3 +1263,34 @@ class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
         self.assertIsNotNone(response)
 
         self.assertThat(mock_refresh, MockCalledOnce())
+
+
+class TestRegionProtocol_GetControllerType(MAASTransactionServerTestCase):
+
+    def test_get_controller_type_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetControllerType.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_get_controller_type(self):
+        example_response = {
+            "is_region": factory.pick_bool(),
+            "is_rack": factory.pick_bool(),
+        }
+        deferToDatabase = self.patch(regionservice, 'deferToDatabase')
+        deferToDatabase.return_value = succeed(example_response)
+        system_id = factory.make_name("id")
+        response = yield call_responder(
+            Region(), GetControllerType, {'system_id': system_id})
+        self.assertThat(response, Equals(example_response))
+        self.assertThat(deferToDatabase, MockCalledOnceWith(
+            get_controller_type, system_id))
+
+    @wait_for_reactor
+    def test_raises_NoSuchNode_when_node_does_not_exist(self):
+        arguments = {"system_id": factory.make_name("id")}
+        d = call_responder(Region(), GetControllerType, arguments)
+        return assert_fails_with(d, NoSuchNode)

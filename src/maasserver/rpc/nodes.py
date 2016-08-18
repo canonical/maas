@@ -264,3 +264,22 @@ def request_node_info_by_mac_address(mac_address):
     except PhysicalInterface.DoesNotExist:
         raise NoSuchNode.from_mac_address(mac_address)
     return (node, node.get_boot_purpose())
+
+
+@synchronous
+@transactional
+def get_controller_type(system_id):
+    """Get the type of the node specified by its system identifier.
+
+    :param system_id: system_id of node to commission.
+    :return: See `GetControllerType`.
+    """
+    try:
+        node = Node.objects.get(system_id=system_id)
+    except Node.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+    else:
+        return {
+            "is_region": node.is_region_controller,
+            "is_rack": node.is_rack_controller,
+        }

@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.models.node import Node
@@ -23,6 +24,7 @@ from maasserver.models.timestampedmodel import now
 from maasserver.rpc.nodes import (
     commission_node,
     create_node,
+    get_controller_type,
     list_cluster_nodes_power_parameters,
     mark_node_failed,
     request_node_info_by_mac_address,
@@ -55,6 +57,7 @@ from provisioningserver.rpc.exceptions import (
 )
 from testtools import ExpectedException
 from testtools.matchers import (
+    Equals,
     GreaterThan,
     Is,
     LessThan,
@@ -520,3 +523,43 @@ class TestUpdateNodePowerState(MAASServerTestCase):
         node = factory.make_Node(power_state=POWER_STATE.OFF)
         update_node_power_state(node.system_id, POWER_STATE.ON)
         self.assertEqual(reload_object(node).power_state, POWER_STATE.ON)
+
+
+class TestGetControllerType(MAASServerTestCase):
+    """Tests for `get_controller_type`."""
+
+    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchNode, get_controller_type,
+            factory.make_name('system_id'))
+
+
+class TestGetControllerType_Scenarios(MAASServerTestCase):
+    """Scenario tests for `get_controller_type`."""
+
+    scenarios = (
+        ("rack", dict(
+            node_type=NODE_TYPE.RACK_CONTROLLER,
+            is_region=False, is_rack=True,
+        )),
+        ("region", dict(
+            node_type=NODE_TYPE.REGION_CONTROLLER,
+            is_region=True, is_rack=False,
+        )),
+        ("region+rack", dict(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            is_region=True, is_rack=True,
+        )),
+        ("machine", dict(
+            node_type=NODE_TYPE.MACHINE,
+            is_region=False, is_rack=False,
+        )),
+    )
+
+    def test__returns_node_type(self):
+        node = factory.make_Node(node_type=self.node_type)
+        self.assertThat(
+            get_controller_type(node.system_id), Equals({
+                "is_region": self.is_region,
+                "is_rack": self.is_rack,
+            }))
