@@ -26,6 +26,7 @@ from collections import (
 import enum
 
 from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.utils import typed
 from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import (
@@ -86,6 +87,7 @@ class ServiceState(ServiceStateBase):
 
     __slots__ = ()
 
+    @typed
     def __new__(cls, active_state: SERVICE_STATE=None, process_state=None):
         if active_state is None:
             active_state = SERVICE_STATE.UNKNOWN
