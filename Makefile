@@ -213,8 +213,13 @@ test+lxd: lxd $(strip $(test-scripts))
 
 test: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@$(RM) coverage.data
-	@echo -n $^ | xargs --verbose -d" " -I{} -n1 env {} --with-xunit
+	@$(RM) coverage.data .failed
+	$(foreach test,$^,$(test-template);)
+	@test ! -f .failed
+
+define test-template
+$(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml || touch .failed
+endef
 
 test+coverage: export NOSE_WITH_COVERAGE = 1
 test+coverage: test
@@ -347,6 +352,8 @@ clean: stop clean-run
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
+	$(RM) xunit.*.xml
+	$(RM) .failed
 
 # Be selective about what to remove from run and run-e2e.
 define clean-run-template

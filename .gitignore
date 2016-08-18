@@ -3,6 +3,7 @@
 *.egg-info
 *.log
 /.db.lock
+/.failed
 /.hypothesis
 /.idea
 /.idea/scopes
@@ -41,6 +42,7 @@
 /src/maasserver/static/js/enums.js
 /TAGS
 /tags
+/xunit.*.xml
 dropin.cache
 /src/**/*.pyc
 /etc/**/*.pyc
