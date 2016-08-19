@@ -791,6 +791,24 @@ class TestClusterClientService(MAASTestCase):
             exceptions.NoConnectionsAvailable,
             service.getClient)
 
+    def test_getAllClients(self):
+        service = ClusterClientService(Clock())
+        uuid1 = factory.make_UUID()
+        c1 = DummyConnection()
+        service.connections[uuid1] = c1
+        uuid2 = factory.make_UUID()
+        c2 = DummyConnection()
+        service.connections[uuid2] = c2
+        clients = service.getAllClients()
+        self.assertItemsEqual(clients, {
+            common.Client(c1), common.Client(c2),
+        })
+
+    def test_getAllClients_when_there_are_no_connections(self):
+        service = ClusterClientService(Clock())
+        service.connections = {}
+        self.assertThat(service.getAllClients(), Equals([]))
+
 
 class TestClusterClientServiceIntervals(MAASTestCase):
 

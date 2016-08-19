@@ -3,7 +3,10 @@
 
 """Interfaces for the RPC implementation."""
 
-__all__ = []
+__all__ = [
+    "IConnection",
+    "IConnectionToRegion",
+]
 
 from zope import interface
 
@@ -11,7 +14,7 @@ from zope import interface
 class IConnection(interface.Interface):
 
     ident = interface.Attribute(
-        "ident", "An identifier far end of the connection.")
+        "ident", "An identifier for the far end of the connection.")
 
     hostCertificate = interface.Attribute(
         "hostCertificate", "The certificate used locally for TLS.")
@@ -21,3 +24,12 @@ class IConnection(interface.Interface):
 
     def callRemote(cmd, **arguments):
         """Call a remote method with the given arguments."""
+
+
+class IConnectionToRegion(IConnection):
+
+    localIdent = interface.Attribute(
+        "ident", "An identifier for this end of the connection.")
+
+    address = interface.Attribute(
+        "address", "The address of the far end of the connection.")

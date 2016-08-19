@@ -58,7 +58,7 @@ from provisioningserver.rpc.boot_images import (
     list_boot_images,
 )
 from provisioningserver.rpc.common import RPCProtocol
-from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
     get_os_release_title,
@@ -483,7 +483,7 @@ class Cluster(RPCProtocol):
         return {}
 
 
-@implementer(IConnection)
+@implementer(IConnectionToRegion)
 class ClusterClient(Cluster):
     """The RPC protocol supported by a cluster controller, client version.
 
@@ -771,6 +771,10 @@ class ClusterClientService(TimerService, object):
             raise exceptions.NoConnectionsAvailable()
         else:
             return common.Client(random.choice(conns))
+
+    def getAllClients(self):
+        """Return a list of all connected :class:`common.Client`s."""
+        return [common.Client(conn) for conn in self.connections.values()]
 
     def _tryUpdate(self):
         """Attempt to refresh outgoing connections.

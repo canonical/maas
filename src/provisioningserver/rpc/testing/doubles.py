@@ -5,12 +5,22 @@
 
 __all__ = [
     "DummyConnection",
+    "FakeConnection",
+    "FakeConnectionToRegion",
     "StubOS",
 ]
 
+from unittest.mock import sentinel
+
+import attr
 from provisioningserver.drivers.osystem import OperatingSystem
-from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.interfaces import (
+    IConnection,
+    IConnectionToRegion,
+)
+from twisted.internet.defer import succeed
 from zope.interface import implementer
+from zope.interface.verify import verifyObject
 
 
 @implementer(IConnection)
@@ -19,6 +29,38 @@ class DummyConnection:
 
     Implements `IConnection`.
     """
+
+
+@attr.s(cmp=False)
+@implementer(IConnection)
+class FakeConnection:
+    "A fake `IConnection`."""
+
+    ident = attr.ib(default=sentinel.ident)
+    hostCertificate = attr.ib(default=sentinel.hostCertificate)
+    peerCertificate = attr.ib(default=sentinel.peerCertificate)
+
+    def callRemote(self, cmd, **arguments):
+        return succeed(sentinel.response)
+
+verifyObject(IConnection, FakeConnection())
+
+
+@attr.s(cmp=False)
+@implementer(IConnectionToRegion)
+class FakeConnectionToRegion:
+    "A fake `IConnectionToRegion`."""
+
+    ident = attr.ib(default=sentinel.ident)
+    localIdent = attr.ib(default=sentinel.localIdent)
+    address = attr.ib(default=(sentinel.host, sentinel.port))
+    hostCertificate = attr.ib(default=sentinel.hostCertificate)
+    peerCertificate = attr.ib(default=sentinel.peerCertificate)
+
+    def callRemote(self, cmd, **arguments):
+        return succeed(sentinel.response)
+
+verifyObject(IConnectionToRegion, FakeConnectionToRegion())
 
 
 class StubOS(OperatingSystem):

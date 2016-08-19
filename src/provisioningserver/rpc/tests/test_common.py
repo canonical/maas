@@ -7,10 +7,7 @@ __all__ = []
 
 import random
 import re
-from unittest.mock import (
-    create_autospec,
-    sentinel,
-)
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -25,8 +22,11 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver.rpc import common
-from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.rpc.testing.doubles import (
+    DummyConnection,
+    FakeConnection,
+    FakeConnectionToRegion,
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -38,7 +38,6 @@ from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransport
-from zope.interface import alsoProvides
 
 
 class TestClient(MAASTestCase):
@@ -49,10 +48,7 @@ class TestClient(MAASTestCase):
         self.assertThat(client._conn, Is(conn))
 
     def make_connection_and_client(self):
-        conn = create_autospec(common.RPCProtocol())
-        # Stop the mock from returning more mocks, so alsoProvides() can work.
-        conn.__provides__ = conn.__providedBy__ = None
-        alsoProvides(conn, IConnection)
+        conn = FakeConnectionToRegion()
         client = common.Client(conn)
         return conn, client
 
@@ -66,8 +62,28 @@ class TestClient(MAASTestCase):
         conn.localIdent = self.getUniqueString()
         self.assertThat(client.localIdent, Equals(conn.localIdent))
 
+    def test_localIdent_for_IConnection(self):
+        conn = FakeConnection()
+        client = common.Client(conn)
+        with ExpectedException(
+                NotImplementedError, ".* only available in the rack\\b"):
+            client.localIdent
+
+    def test_address(self):
+        conn, client = self.make_connection_and_client()
+        conn.address = self.getUniqueString()
+        self.assertThat(client.address, Equals(conn.address))
+
+    def test_address_for_IConnection(self):
+        conn = FakeConnection()
+        client = common.Client(conn)
+        with ExpectedException(
+                NotImplementedError, ".* only available in the rack\\b"):
+            client.address
+
     def test_call(self):
         conn, client = self.make_connection_and_client()
+        self.patch_autospec(conn, "callRemote")
         conn.callRemote.return_value = sentinel.response
         response = client(sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
         self.assertThat(response, Is(sentinel.response))

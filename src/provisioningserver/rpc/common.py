@@ -13,7 +13,10 @@ __all__ = [
 from os import getpid
 from socket import gethostname
 
-from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.interfaces import (
+    IConnection,
+    IConnectionToRegion,
+)
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
@@ -90,7 +93,28 @@ class Client:
     @property
     def localIdent(self):
         """Something that identifies this end of the connection."""
-        return self._conn.localIdent
+        # Testing the interface here is a wart. There should be a separate
+        # client for the rack, but that's too much like work right now. Well,
+        # it's complicated: ideally the client in the region should actually
+        # provide the same interface, and have a `localIdent` property.
+        if IConnectionToRegion.providedBy(self._conn):
+            return self._conn.localIdent
+        else:
+            raise NotImplementedError(
+                "Client localIdent is only available in the rack.")
+
+    @property
+    def address(self):
+        """Return the address of the far end of the connection."""
+        # Testing the interface here is a wart. There should be a separate
+        # client for the rack, but that's too much like work right now. Well,
+        # it's complicated: ideally the client in the region should actually
+        # provide the same interface, and have an `address` property.
+        if IConnectionToRegion.providedBy(self._conn):
+            return self._conn.address
+        else:
+            raise NotImplementedError(
+                "Client address is only available in the rack.")
 
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
