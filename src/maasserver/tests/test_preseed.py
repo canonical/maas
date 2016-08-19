@@ -431,7 +431,6 @@ class TestPreseedContext(MAASServerTestCase):
     def add_main_archive(self, url, arches=PackageRepository.MAIN_ARCHES):
         PackageRepository.objects.create(
             name=factory.make_name(),
-            description=factory.make_string(),
             url=url,
             arches=arches,
             default=True)
@@ -439,7 +438,6 @@ class TestPreseedContext(MAASServerTestCase):
     def add_ports_archive(self, url, arches=PackageRepository.PORTS_ARCHES):
         PackageRepository.objects.create(
             name=factory.make_name(),
-            description=factory.make_string(),
             url=url,
             arches=arches,
             default=True)

@@ -22,7 +22,6 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             repo = factory.make_PackageRepository()
         name = factory.make_name('name')
         url = factory.make_url(scheme='http')
-        description = factory.make_string()
         comp = factory.make_name('comp')
         comp2 = factory.make_name('comp')
         arch = factory.make_name('arch')
@@ -31,7 +30,6 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         params = {
             'name': name,
             'url': url,
-            'description': description,
             'components': [comp, comp2],
             'arches': [arch, arch2],
             'enabled': enabled,
@@ -100,15 +98,6 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         package_repository = form.save()
         self.assertEqual(url, package_repository.url)
-
-    def test__updates_description(self):
-        package_repository = factory.make_PackageRepository()
-        description = factory.make_string()
-        form = PackageRepositoryForm(
-            instance=package_repository, data={'description': description})
-        self.assertTrue(form.is_valid(), form.errors)
-        package_repository = form.save()
-        self.assertEqual(description, package_repository.description)
 
     def test__updates_enabled(self):
         package_repository = factory.make_PackageRepository()

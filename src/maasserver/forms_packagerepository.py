@@ -23,7 +23,6 @@ class PackageRepositoryForm(MAASModelForm):
         model = PackageRepository
         fields = (
             'name',
-            'description',
             'url',
             'distributions',
             'disabled_pockets',
@@ -36,10 +35,6 @@ class PackageRepositoryForm(MAASModelForm):
     name = forms.CharField(
         label="Name", required=True, help_text=(
             "The name of the Package Repository."))
-
-    description = forms.CharField(
-        label="Description", required=False, help_text=(
-            "The description of the Package Repository."))
 
     url = forms.URLField(
         label="Package Repository URL",

@@ -20,10 +20,12 @@ describe("SettingsController", function() {
 
     // Load the required dependencies for the SettingsController and
     // mock the websocket connection.
-    var DHCPSnippetsManager, SubnetsManager, MachinesManager;
+    var DHCPSnippetsManager, SubnetsManager, MachinesManager, GeneralManager;
     var DevicesManager, ControllersManager, ManagerHelperService;
-    var RegionConnection, webSocket;
+    var PackageRepositoriesManager, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
+        PackageRepositoriesManager = $injector.get(
+            "PackageRepositoriesManager");
         DHCPSnippetsManager = $injector.get("DHCPSnippetsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         MachinesManager = $injector.get("MachinesManager");
@@ -31,6 +33,7 @@ describe("SettingsController", function() {
         ControllersManager = $injector.get("ControllersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         RegionConnection = $injector.get("RegionConnection");
+        GeneralManager = $injector.get("GeneralManager");
 
         // Mock buildSocket so an actual connection is not made.
         webSocket = new MockWebSocket();
@@ -54,6 +57,21 @@ describe("SettingsController", function() {
         };
     }
 
+    // Make a fake repository.
+    var _nextRepoId = 0;
+    function makeRepo() {
+        return {
+            id: _nextRepoId++,
+            name: makeName("repo"),
+            enabled: true,
+            url: makeName("url"),
+            key: makeName("key"),
+            arches: [makeName("arch"), makeName("arch")],
+            distributions: [makeName("dist"), makeName("dist")],
+            components: [makeName("comp"), makeName("comp")]
+        };
+    }
+
     // Makes the SettingsController
     function makeController(loadManagersDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
@@ -67,11 +85,13 @@ describe("SettingsController", function() {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
+            PackageRepositoriesManager: PackageRepositoriesManager,
             DHCPSnippetsManager: DHCPSnippetsManager,
             SubnetsManager: SubnetsManager,
             MachinesManager: MachinesManager,
             DevicesManager: DevicesManager,
             ControllersManager: ControllersManager,
+            GeneralManager: GeneralManager,
             ManagerHelperService: ManagerHelperService
         });
     }
@@ -84,13 +104,12 @@ describe("SettingsController", function() {
 
     it("sets the values for 'dhcp' section", function() {
         $routeParams.section = "dhcp";
-        var controller = makeController();
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $scope.$digest();
         expect($scope.loading).toBe(false);
         expect($scope.title).toBe("DHCP snippets");
-    });
-
-    it("initialized default values", function() {
-        var controller = makeController();
         expect($scope.snippets).toBe(DHCPSnippetsManager.getItems());
         expect($scope.subnets).toBe(SubnetsManager.getItems());
         expect($scope.machines).toBe(MachinesManager.getItems());
@@ -100,11 +119,29 @@ describe("SettingsController", function() {
         expect($scope.newSnippet).toBeNull();
     });
 
+    it("sets the values for 'repositories' section", function() {
+        $routeParams.section = "repositories";
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $scope.$digest();
+        expect($scope.loading).toBe(false);
+        expect($scope.title).toBe("Package Repositories");
+        expect($scope.known_architectures).toEqual([]);
+        expect($scope.pockets_to_disable).toEqual([]);
+    });
+
+    it("initialized default values", function() {
+        var controller = makeController();
+        expect($scope.loading).toBe(true);
+    });
+
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            DHCPSnippetsManager, MachinesManager, DevicesManager,
-            ControllersManager, SubnetsManager]);
+            PackageRepositoriesManager, DHCPSnippetsManager, MachinesManager,
+            DevicesManager, ControllersManager, SubnetsManager,
+            GeneralManager]);
     });
 
     it("sets loading to false", function() {
@@ -118,7 +155,11 @@ describe("SettingsController", function() {
     describe("getSnippetOptions", function() {
 
         it("returns always same object", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             expect(options).toEqual({});
@@ -129,6 +170,7 @@ describe("SettingsController", function() {
     describe("getSubnetName", function() {
 
         it("calls SubnetsManager.getName", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var subnet = {};
             var subnetsName = {};
@@ -141,6 +183,7 @@ describe("SettingsController", function() {
     describe("getSnippetTypeText", function() {
 
         it("returns 'Node'", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             snippet.node = makeName("system_id");
@@ -148,6 +191,7 @@ describe("SettingsController", function() {
         });
 
         it("returns 'Subnet'", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             snippet.subnet = makeInteger();
@@ -155,6 +199,7 @@ describe("SettingsController", function() {
         });
 
         it("returns 'Global'", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             expect($scope.getSnippetTypeText(snippet)).toBe("Global");
@@ -164,6 +209,7 @@ describe("SettingsController", function() {
     describe("getSnippetAppliesToObject", function() {
 
         it("returns node from MachinesManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var system_id = makeName("system_id");
             var node = {
@@ -176,6 +222,7 @@ describe("SettingsController", function() {
         });
 
         it("returns device from DevicesManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var system_id = makeName("system_id");
             var device = {
@@ -188,6 +235,7 @@ describe("SettingsController", function() {
         });
 
         it("returns controller from ControllersManager", function() {
+            $routeParams.section = "dhcp";
             var c = makeController();
             var system_id = makeName("system_id");
             var controller = {
@@ -200,6 +248,7 @@ describe("SettingsController", function() {
         });
 
         it("returns subnet from SubnetsManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var subnet_id = makeInteger(0, 100);
             var subnet = {
@@ -215,6 +264,7 @@ describe("SettingsController", function() {
     describe("getSnippetAppliesToText", function() {
 
         it("returns node.fqdn from MachinesManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
@@ -229,6 +279,7 @@ describe("SettingsController", function() {
         });
 
         it("returns device.fqdn from DevicesManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
@@ -243,6 +294,7 @@ describe("SettingsController", function() {
         });
 
         it("returns controller.fqdn from ControllersManager", function() {
+            $routeParams.section = "dhcp";
             var c = makeController();
             var system_id = makeName("system_id");
             var fqdn = makeName("fqdn");
@@ -257,6 +309,7 @@ describe("SettingsController", function() {
         });
 
         it("returns subnet from SubnetsManager", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var subnet_id = makeInteger(0, 100);
             var cidr = makeName("cidr");
@@ -273,16 +326,24 @@ describe("SettingsController", function() {
 
     describe("snippetEnterRemove", function() {
 
-        it("calls snippetExitEdit", function() {
-            var controller = makeController();
+        it("calls closeAllSnippets", function() {
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
-            spyOn($scope, "snippetExitEdit");
+            spyOn($scope, "closeAllSnippets");
             $scope.snippetEnterRemove(snippet);
-            expect($scope.snippetExitEdit).toHaveBeenCalledWith(snippet);
+            expect($scope.closeAllSnippets).toHaveBeenCalled();
         });
 
         it("sets removing to true", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             $scope.snippetEnterRemove(snippet);
             expect($scope.getSnippetOptions(snippet).removing).toBe(true);
@@ -292,7 +353,11 @@ describe("SettingsController", function() {
     describe("snippetExitRemove", function() {
 
         it("sets removing to false", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             $scope.snippetExitRemove(snippet);
             expect($scope.getSnippetOptions(snippet).removing).toBe(false);
@@ -302,7 +367,11 @@ describe("SettingsController", function() {
     describe("snippetExitRemove", function() {
 
         it("sets removing to false", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             $scope.snippetExitRemove(snippet);
             expect($scope.getSnippetOptions(snippet).removing).toBe(false);
@@ -312,6 +381,7 @@ describe("SettingsController", function() {
     describe("snippetConfirmRemove", function() {
 
         it("calls deleteItem and then snippetExitRemove", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             var defer = $q.defer();
@@ -329,16 +399,24 @@ describe("SettingsController", function() {
 
     describe("snippetEnterEdit", function() {
 
-        it("calls snippetExitRemove", function() {
-            var controller = makeController();
+        it("calls closeAllSnippets", function() {
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
-            spyOn($scope, "snippetExitRemove");
+            spyOn($scope, "closeAllSnippets");
             $scope.snippetEnterEdit(snippet);
-            expect($scope.snippetExitRemove).toHaveBeenCalledWith(snippet);
+            expect($scope.closeAllSnippets).toHaveBeenCalled();
         });
 
         it("sets options", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             snippet.node = "";
             var subnet = {
@@ -362,7 +440,11 @@ describe("SettingsController", function() {
     describe("snippetExitEdit", function() {
 
         it("does nothing when saving without force", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.saving = true;
@@ -373,7 +455,11 @@ describe("SettingsController", function() {
         });
 
         it("clears editing with saving and force", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.saving = true;
@@ -384,7 +470,11 @@ describe("SettingsController", function() {
         });
 
         it("clears all required fields", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.saving = true;
@@ -405,6 +495,7 @@ describe("SettingsController", function() {
     describe("isFieldEmpty", function() {
 
         it("true when not a string", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             var fieldName = makeName("field");
@@ -412,6 +503,7 @@ describe("SettingsController", function() {
         });
 
         it("true when empty string", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             var fieldName = makeName("field");
@@ -420,32 +512,7 @@ describe("SettingsController", function() {
         });
 
         it("false when empty string", function() {
-            var controller = makeController();
-            var snippet = makeSnippet();
-            var fieldName = makeName("field");
-            snippet[fieldName] = makeName("value");
-            expect($scope.isFieldEmpty(snippet, fieldName)).toBe(false);
-        });
-    });
-
-    describe("isFieldEmpty", function() {
-
-        it("true when not a string", function() {
-            var controller = makeController();
-            var snippet = makeSnippet();
-            var fieldName = makeName("field");
-            expect($scope.isFieldEmpty(snippet, fieldName)).toBe(true);
-        });
-
-        it("true when empty string", function() {
-            var controller = makeController();
-            var snippet = makeSnippet();
-            var fieldName = makeName("field");
-            snippet[fieldName] = "";
-            expect($scope.isFieldEmpty(snippet, fieldName)).toBe(true);
-        });
-
-        it("false when empty string", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var snippet = makeSnippet();
             var fieldName = makeName("field");
@@ -457,7 +524,11 @@ describe("SettingsController", function() {
     describe("hasValidOptions", function() {
 
         it("false when no name", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.data = {
@@ -467,7 +538,11 @@ describe("SettingsController", function() {
         });
 
         it("false when no value", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.data = {
@@ -478,7 +553,11 @@ describe("SettingsController", function() {
         });
 
         it("false when no node set", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Node";
@@ -490,7 +569,11 @@ describe("SettingsController", function() {
         });
 
         it("false when no subnet set", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Subnet";
@@ -502,7 +585,11 @@ describe("SettingsController", function() {
         });
 
         it("true when node is set", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Node";
@@ -515,7 +602,11 @@ describe("SettingsController", function() {
         });
 
         it("true when subnet is set", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Subnet";
@@ -533,7 +624,11 @@ describe("SettingsController", function() {
     describe("snippetCanBeSaved", function() {
 
         it("calls hasValidOptions with options", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             var returnValue = {};
@@ -546,7 +641,11 @@ describe("SettingsController", function() {
     describe("snippetSave", function() {
 
         it("does nothing if snippet cannot be saved", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.data = {};
@@ -556,7 +655,11 @@ describe("SettingsController", function() {
         });
 
         it("calls updateItem for global", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Global";
@@ -576,7 +679,11 @@ describe("SettingsController", function() {
         });
 
         it("calls updateItem for node", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Node";
@@ -598,7 +705,11 @@ describe("SettingsController", function() {
         });
 
         it("calls updateItem for subnet", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Subnet";
@@ -622,7 +733,11 @@ describe("SettingsController", function() {
         });
 
         it("sets saving and calls snippetExitEdit", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Global";
@@ -631,7 +746,6 @@ describe("SettingsController", function() {
                 value: makeName("value"),
                 enabled: true
             };
-            var defer = $q.defer();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
                 defer.promise);
             spyOn($scope, "snippetExitEdit");
@@ -643,7 +757,11 @@ describe("SettingsController", function() {
         });
 
         it("handles setting error", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             options.type = "Global";
@@ -652,14 +770,15 @@ describe("SettingsController", function() {
                 value: makeName("value"),
                 enabled: true
             };
-            var defer = $q.defer();
+            defer = $q.defer();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
                 defer.promise);
             var error = {};
             $scope.snippetSave(snippet);
             defer.reject(error);
             $scope.$digest();
-            expect(options.error).toBe(error);
+            expect(options.error).toBe(
+                    ManagerHelperService.parseValidationError(error));
             expect(options.saving).toBe(false);
         });
     });
@@ -667,7 +786,11 @@ describe("SettingsController", function() {
     describe("snippetToggle", function() {
 
         it("calls updateItem", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
@@ -677,10 +800,13 @@ describe("SettingsController", function() {
         });
 
         it("updateItem resolve clears toggling", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
-            var defer = $q.defer();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
                 defer.promise);
             $scope.snippetToggle(snippet);
@@ -690,10 +816,14 @@ describe("SettingsController", function() {
         });
 
         it("updateItem reject resets enabled", function() {
-            var controller = makeController();
+            $routeParams.section = "dhcp";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
             var snippet = makeSnippet();
             var options = $scope.getSnippetOptions(snippet);
-            var defer = $q.defer();
+            defer = $q.defer();
             spyOn(DHCPSnippetsManager, "updateItem").and.returnValue(
                 defer.promise);
             $scope.snippetToggle(snippet);
@@ -707,6 +837,7 @@ describe("SettingsController", function() {
     describe("snippetAdd", function() {
 
         it("sets newSnippet", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             $scope.snippetAdd();
             expect($scope.newSnippet).toEqual({
@@ -723,6 +854,7 @@ describe("SettingsController", function() {
     describe("snippetAddCancel", function() {
 
         it("newSnippet gets cleared", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             $scope.newSnippet = {};
             $scope.snippetAddCancel();
@@ -733,6 +865,7 @@ describe("SettingsController", function() {
     describe("snippetAddCanBeSaved", function() {
 
         it("calls hasValidOptions with newSnippet", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var returnValue = {};
             $scope.newSnippet = {};
@@ -746,6 +879,7 @@ describe("SettingsController", function() {
     describe("snippetAddSave", function() {
 
         it("does nothing if snippet cannot be saved", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             $scope.snippetAdd();
             $scope.snippetAddSave();
@@ -756,6 +890,7 @@ describe("SettingsController", function() {
         });
 
         it("calls create for global", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var defer = $q.defer();
             $scope.snippetAdd();
@@ -777,6 +912,7 @@ describe("SettingsController", function() {
         });
 
         it("calls create for node", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var defer = $q.defer();
             $scope.snippetAdd();
@@ -800,6 +936,7 @@ describe("SettingsController", function() {
         });
 
         it("calls create for subnet", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var defer = $q.defer();
             $scope.snippetAdd();
@@ -825,6 +962,7 @@ describe("SettingsController", function() {
         });
 
         it("handles setting error", function() {
+            $routeParams.section = "dhcp";
             var controller = makeController();
             var defer = $q.defer();
             var error = {
@@ -845,8 +983,498 @@ describe("SettingsController", function() {
             });
             defer.reject(error);
             $scope.$digest();
-            expect($scope.newSnippet.error).toBe(error.error);
+            expect($scope.newSnippet.error).toBe(
+                    ManagerHelperService.parseValidationError(error.error));
             expect($scope.newSnippet.saving).toBe(false);
+        });
+    });
+
+
+///   REPOS
+
+
+    describe("getRepositoryOptions", function() {
+
+        it("returns always same object", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            expect(options).toEqual({});
+            expect($scope.getRepositoryOptions(repository)).toBe(options);
+        });
+    });
+
+    describe("repositoryEnterRemove", function() {
+
+        it("calls closeAllRepos", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            spyOn($scope, "closeAllRepos");
+            $scope.repositoryEnterRemove(repository);
+            expect($scope.closeAllRepos).toHaveBeenCalled();
+        });
+
+        it("sets removing to true", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            $scope.repositoryEnterRemove(repository);
+            expect($scope.getRepositoryOptions(repository).removing).toBe(
+                true);
+        });
+    });
+
+    describe("repositoryExitRemove", function() {
+
+        it("sets removing to false", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            $scope.repositoryExitRemove(repository);
+            expect($scope.getRepositoryOptions(repository).removing).toBe(
+                false);
+        });
+    });
+
+    describe("repositoryExitRemove", function() {
+
+        it("sets removing to false", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            $scope.repositoryExitRemove(repository);
+            expect($scope.getRepositoryOptions(repository).removing).toBe(
+                false);
+        });
+    });
+
+    describe("repositoryConfirmRemove", function() {
+
+        it("calls deleteItem and then repositoryExitRemove", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            var repository = makeRepo();
+            var defer = $q.defer();
+            spyOn(PackageRepositoriesManager, "deleteItem").and.returnValue(
+                defer.promise);
+            spyOn($scope, "repositoryExitRemove");
+            $scope.repositoryConfirmRemove(repository);
+            expect(PackageRepositoriesManager.deleteItem).toHaveBeenCalledWith(
+                repository);
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.repositoryExitRemove).toHaveBeenCalledWith(
+                repository);
+        });
+    });
+
+    describe("repositoryEnterEdit", function() {
+
+        it("calls closeAllRepos", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            spyOn($scope, "closeAllRepos");
+            $scope.repositoryEnterEdit(repository);
+            expect($scope.closeAllRepos).toHaveBeenCalled();
+        });
+
+        it("sets options", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            repository.node = "";
+            var subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.repositoryEnterEdit(repository);
+
+            var options = $scope.getRepositoryOptions(repository);
+            expect(options.editing).toBe(true);
+            expect(options.saving).toBe(false);
+            expect(options.error).toBeNull();
+            expect(options.data).toEqual(repository);
+            expect(options.data).not.toBe(repository);
+        });
+    });
+
+    describe("repositoryExitEdit", function() {
+
+        it("does nothing when saving without force", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.saving = true;
+            options.editing = true;
+
+            $scope.repositoryExitEdit(repository);
+            expect(options.editing).toBe(true);
+        });
+
+        it("clears editing with saving and force", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.saving = true;
+            options.editing = true;
+
+            $scope.repositoryExitEdit(repository, true);
+            expect(options.editing).toBe(false);
+        });
+
+        it("clears all required fields", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.saving = true;
+            options.editing = true;
+            options.error = {};
+            options.type = {};
+            options.data = {};
+
+            $scope.repositoryExitEdit(repository, true);
+            expect(options.saving).toBe(false);
+            expect(options.editing).toBe(false);
+            expect(options.error).toBeNull();
+            expect(options.data).toBeUndefined();
+        });
+    });
+
+    describe("repoHasValidOptions", function() {
+
+        it("false when no data", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = null;
+            expect($scope.repoHasValidOptions(options)).toBe(false);
+        });
+
+        it("false when no name and url", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = {
+                name: "",
+                url: ""
+            };
+            expect($scope.repoHasValidOptions(options)).toBe(false);
+        });
+
+    });
+
+    describe("repositoryCanBeSaved", function() {
+
+        it("calls repoHasValidOptions with options", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            var returnValue = {};
+            spyOn($scope, "repoHasValidOptions").and.returnValue(returnValue);
+            expect($scope.repositoryCanBeSaved(repository)).toBe(returnValue);
+            expect($scope.repoHasValidOptions).toHaveBeenCalledWith(options);
+        });
+    });
+
+    describe("repositorySave", function() {
+
+        it("does nothing if repository cannot be saved", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = {};
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            $scope.repositorySave(repository);
+        });
+
+        it("calls updateItem for global", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = {
+                name: makeName("name"),
+                url: makeName("url"),
+                enabled: true
+            };
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            $scope.repositorySave(repository);
+            expect(PackageRepositoriesManager.updateItem).toHaveBeenCalledWith({
+                name: options.data.name,
+                enabled: true,
+                url: options.data.url,
+                distributions: [],
+                components: []
+            });
+        });
+
+        it("sets saving and calls repositoryExitEdit", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = {
+                name: makeName("name"),
+                url: makeName("url"),
+                enabled: true
+            };
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                defer.promise);
+            spyOn($scope, "repositoryExitEdit");
+            $scope.repositorySave(repository);
+            expect(options.saving).toBe(true);
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.repositoryExitEdit).toHaveBeenCalledWith(
+                repository, true);
+        });
+
+        it("handles setting error", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            options.data = {
+                name: makeName("name"),
+                url: makeName("url"),
+                enabled: true
+            };
+            defer = $q.defer();
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                defer.promise);
+            var error = {};
+            $scope.repositorySave(repository);
+            defer.reject(error);
+            $scope.$digest();
+            expect(options.error).toBe(
+                    ManagerHelperService.parseValidationError(error));
+            expect(options.saving).toBe(false);
+        });
+    });
+
+    describe("repositoryToggle", function() {
+
+        it("calls updateItem", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            $scope.repositoryToggle(repository);
+            expect(options.toggling).toBe(true);
+        });
+
+        it("updateItem resolve clears toggling", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                defer.promise);
+            $scope.repositoryToggle(repository);
+            defer.resolve();
+            $scope.$digest();
+            expect(options.toggling).toBe(false);
+        });
+
+        it("updateItem reject resets enabled", function() {
+            $routeParams.section = "repositories";
+            var defer = $q.defer();
+            var controller = makeController(defer);
+            defer.resolve();
+            $scope.$digest();
+            var repository = makeRepo();
+            var options = $scope.getRepositoryOptions(repository);
+            defer = $q.defer();
+            spyOn(PackageRepositoriesManager, "updateItem").and.returnValue(
+                defer.promise);
+            $scope.repositoryToggle(repository);
+            defer.reject();
+            $scope.$digest();
+            expect(repository.enabled).toBe(false);
+            expect(options.toggling).toBe(false);
+        });
+    });
+
+    describe("repositoryAdd", function() {
+
+        it("sets newRepository", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            $scope.repositoryAdd();
+            expect($scope.newRepository).toEqual({
+                saving: false,
+                data: {
+                    name: "",
+                    enabled: true,
+                    url: "",
+                    key: "",
+                    arches: ["i386", "amd64"],
+                    distributions: [],
+                    components: []
+                }
+            });
+        });
+    });
+
+    describe("repositoryAddCancel", function() {
+
+        it("newRepository gets cleared", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            $scope.newRepository = {};
+            $scope.repositoryAddCancel();
+            expect($scope.newRepository).toBeNull();
+        });
+    });
+
+    describe("repositoryAddCanBeSaved", function() {
+
+        it("calls repoHasValidOptions with newRepository", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            var returnValue = {};
+            $scope.newRepository = {};
+            spyOn($scope, "repoHasValidOptions").and.returnValue(returnValue);
+            expect($scope.repositoryAddCanBeSaved()).toBe(returnValue);
+            expect($scope.repoHasValidOptions).toHaveBeenCalledWith(
+                $scope.newRepository);
+        });
+    });
+
+    describe("repositoryAddSave", function() {
+
+        it("does nothing if repository cannot be saved", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            $scope.repositoryAdd();
+            $scope.repositoryAddSave();
+            spyOn(PackageRepositoriesManager, "create").and.returnValue(
+                $q.defer().promise);
+            $scope.repositoryAddSave();
+            expect(PackageRepositoriesManager.create).not.toHaveBeenCalled();
+        });
+
+        it("calls create for global", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            var defer = $q.defer();
+            $scope.repositoryAdd();
+            $scope.newRepository.data.name = makeName("name");
+            $scope.newRepository.data.url = makeName("url");
+            spyOn(PackageRepositoriesManager, "create").and.returnValue(
+                defer.promise);
+            $scope.repositoryAddSave();
+            expect(PackageRepositoriesManager.create).toHaveBeenCalledWith({
+                name: $scope.newRepository.data.name,
+                enabled: true,
+                url: $scope.newRepository.data.url,
+                key: "",
+                arches: ["i386", "amd64"],
+                distributions: [],
+                components: []
+            });
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.newRepository).toBeNull();
+        });
+
+        it("handles setting error", function() {
+            $routeParams.section = "repositories";
+            var controller = makeController();
+            var defer = $q.defer();
+            var error = {
+                error: {}
+            };
+            $scope.repositoryAdd();
+            $scope.newRepository.data.name = makeName("name");
+            $scope.newRepository.data.url = makeName("url");
+            spyOn(PackageRepositoriesManager, "create").and.returnValue(
+                defer.promise);
+            $scope.repositoryAddSave();
+            expect(PackageRepositoriesManager.create).toHaveBeenCalledWith({
+                name: $scope.newRepository.data.name,
+                enabled: true,
+                url: $scope.newRepository.data.url,
+                key: "",
+                arches: ["i386", "amd64"],
+                distributions: [],
+                components: []
+            });
+            defer.reject(error);
+            $scope.$digest();
+            expect($scope.newRepository.error).toBe(
+                    ManagerHelperService.parseValidationError(error.error));
+            expect($scope.newRepository.saving).toBe(false);
         });
     });
 });

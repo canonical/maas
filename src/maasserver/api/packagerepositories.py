@@ -19,14 +19,12 @@ from piston3.utils import rc
 DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
     'id',
     'name',
-    'description',
     'url',
     'distributions',
     'disabled_pockets',
     'components',
     'arches',
     'key',
-    'default',
     'enabled',
 )
 
@@ -65,9 +63,6 @@ class PackageRepositoryHandler(OperationsHandler):
         :param name: The name of the Package Repository.
         :type name: unicode
 
-        :param description: A description of the Package Repository.
-        :type description: unicode
-
         :param url: The url of the Package Repository.
         :type url: unicode
 
@@ -82,12 +77,6 @@ class PackageRepositoryHandler(OperationsHandler):
 
         :param key: The authentication key to use with the repository.
         :type key: unicode
-
-        :param default: Whether or not the repository is the default
-            repository. This repository will be the one accessed by
-            legacy api calls, previously knowns as 'main_archive' and
-            'ports_archive' depending on the architectures.
-        :type default: boolean
 
         :param enabled: Whether or not the repository is enabled.
         :type enabled: boolean
@@ -135,9 +124,6 @@ class PackageRepositoriesHandler(OperationsHandler):
         :param name: The name of the Package Repository.
         :type name: unicode
 
-        :param description: A description of the Package Repository.
-        :type description: unicode
-
         :param url: The url of the Package Repository.
         :type url: unicode
 
@@ -152,12 +138,6 @@ class PackageRepositoriesHandler(OperationsHandler):
 
         :param key: The authentication key to use with the repository.
         :type key: unicode
-
-        :param default: Whether or not the repository is the default
-            repository. This repository will be the one accessed by
-            legacy api calls, previously knowns as 'main_archive' and
-            'ports_archive' depending on the architectures.
-        :type default: boolean
 
         :param enabled: Whether or not the repository is enabled.
         :type enabled: boolean

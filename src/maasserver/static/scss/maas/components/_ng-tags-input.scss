@@ -9,12 +9,18 @@
 
 tags-input {
   outline: none;
+  width: 100%;
+
+  .host {
+    width: 100%;
+  }
 
   .host:focus {
     outline: none;
   }
 
   .tags {
+    width: 100%;
 
     &:focus,
     &.focused {
@@ -144,16 +150,4 @@ tags-input {
 
 .table__data {
 
-  tags-input {
-
-    .tags {
-      margin-top: -10px;
-
-      input {
-        margin-left: 0;
-        width: 50% !important;
-        float: left;
-      }
-    }
-  }
 }

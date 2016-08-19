@@ -31,3 +31,13 @@ class TestPackageRepositoryManager(MAASServerTestCase):
             archive,
             PackageRepository.objects.get_additional_repositories(
                 arch).first())
+
+    def test_get_known_architectures(self):
+        self.assertEqual(
+            PackageRepository.objects.get_known_architectures(),
+            PackageRepository.MAIN_ARCHES + PackageRepository.PORTS_ARCHES)
+
+    def test_get_pockets_to_disable(self):
+        self.assertEqual(
+            PackageRepository.objects.get_pockets_to_disable(),
+            PackageRepository.POCKETS_TO_DISABLE)

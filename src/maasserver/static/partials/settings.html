@@ -5,9 +5,13 @@
             <span class="page-header__title--identicator">
                 <a href="settings/">General</a>
                 <span class="divide"></span>
-                <a href="" class="active"
+                <a href="#/settings/dhcp"
                     data-ng-class="{ active: currentpage === 'dhcp' }"
-                    data-ng-click="toggleTab('dhcp')">DHCP Snippets</a>
+                    data-ng-click="toggleTab('dhcp')">DHCP snippets</a>
+                <span class="divide"></span>
+                <a href="#/settings/repositories"
+                    data-ng-class="{ active: currentpage === 'repositories' }"
+                    data-ng-click="toggleTab('dhcp')">Package repositories</a>
                 <span class="power-status--power" data-ng-show="loading">
                     <span class="loader"></span>
                     Loading...
@@ -16,14 +20,14 @@
         </h1>
     </div>
 </header>
-<div data-ng-show="!loading">
+<div data-ng-show="!loading && currentpage === 'dhcp'">
     <section class="row no-padding-top">
         <div class="inner-wrapper">
             <div>
                 <div class="twelve-col">
                     <div class="equal-height">
                         <div class="eight-col">
-                            <h2 class="no-margin">DHCP Snippets</h2>
+                            <h2 class="no-margin">DHCP snippets</h2>
                         </div>
                         <!--
                         XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
@@ -239,8 +243,9 @@
                     </div>
                 </div>
                 <a href="" class="link-cta-ubuntu secondary"
+                    data-ng-disabled="editing"
                     data-ng-if="!newSnippet"
-                    data-ng-click="snippetAdd()">Add custom snippet</a>
+                    data-ng-click="editing || snippetAdd()">Add custom snippet</a>
             </div>
             <!--
             XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
@@ -282,6 +287,294 @@
                 </div>
             </div>
             -->
+        </div>
+    </section>
+</div>
+<div data-ng-show="!loading && currentpage === 'repositories'">
+    <section class="row no-padding-top">
+        <div class="inner-wrapper">
+            <div>
+                <div class="twelve-col">
+                    <div class="equal-height">
+                        <div class="eight-col">
+                            <h2 class="no-margin">Package repositories</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="twelve-col">
+                    <div class="table margin-bottom">
+                        <div class="table__head">
+                            <div class="table__row">
+                                <div class="table__header table-col--20">Name</div>
+                                <div class="table__header table-col--55">URL</div>
+                                <div class="table__header table-col--10">Enabled</div>
+                                <div class="table__header table-col--15"></div>
+                            </div>
+                        </div>
+                        <div class="table__body">
+                            <div class="table__row" data-ng-hide="repositories.length">
+                                <div class="table__header table-col--100">
+                                    No package repositories.
+                                </div>
+                            </div>
+                            <div class="table__row"
+                                data-ng-repeat="repository in repositories track by repository.id"
+                                data-ng-class="{ active: getRepositoryOptions(repository).editing || getRepositoryOptions(repository).removing }">
+                                <div class="table__data table-col--20">
+                                    <span data-ng-if="isMirror(repository) || !getRepositoryOptions(repository).editing">
+                                        <span data-ng-if="repository.name === 'main_archive'">
+                                            Ubuntu archive
+                                        </span>
+                                        <span data-ng-if="repository.name === 'ports_archive'">
+                                            Ubuntu extra architectures
+                                        </span>
+                                        <span data-ng-if="repository.name !== 'main_archive' && repository.name !== 'ports_archive'">
+                                            {$ repository.name $}
+                                        </span>
+                                    </span>
+                                    <input type="text" class="table__input no-margin" placeholder="Name"
+                                        data-ng-if="!isMirror(repository) && getRepositoryOptions(repository).editing"
+                                        data-ng-disabled="getRepositoryOptions(repository).saving"
+                                        data-ng-model="getRepositoryOptions(repository).data.name"
+                                        data-ng-class="{ invalid: isFieldEmpty(getRepositoryOptions(repository).data, 'name') }">
+                                </div>
+                                <div class="table__data table-col--55">
+                                    <span data-ng-if="!getRepositoryOptions(repository).editing">{$ repository.url $}</span>
+                                    <input type="text" class="table__input no-margin" placeholder="URL"
+                                        data-ng-if="getRepositoryOptions(repository).editing"
+                                        data-ng-disabled="getRepositoryOptions(repository).saving"
+                                        data-ng-model="getRepositoryOptions(repository).data.url"
+                                        data-ng-class="{ invalid: isFieldEmpty(getRepositoryOptions(repository).data, 'url') }">
+                                </div>
+                                <div class="table__data table-col--10">
+                                    <div class="onoffswitch"
+                                        data-ng-if="!getRepositoryOptions(repository).editing && !isMirror(repository)"
+                                        data-ng-disabled="getRepositoryOptions(repository).saving">
+                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
+                                            data-ng-model="repository.enabled"
+                                            data-ng-change="repositoryEnabledToggle(repository)">
+                                        <label class="onoffswitch-label" for="enabled-repo-{$ repository.id $}">
+                                            <span class="onoffswitch-inner"></span>
+                                            <span class="onoffswitch-switch"></span>
+                                        </label>
+                                    </div>
+                                    <div class="onoffswitch tooltip"
+                                        disabled="disabled"
+                                        data-tooltip="Default Ubuntu repositories cannot be disabled"
+                                        data-ng-if="isMirror(repository)">
+                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
+                                            data-ng-model="repository.enabled">
+                                        <label class="onoffswitch-label" for="enabled-repo-{$ repository.id $}">
+                                            <span class="onoffswitch-inner"></span>
+                                            <span class="onoffswitch-switch"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="table__data table-col--15">
+                                    <div class="table__controls">
+                                        <a class="icon delete tooltip margin-right" data-tooltip="Remove"
+                                            data-ng-if="!isMirror(repository)"
+                                            data-ng-disabled="getRepositoryOptions(repository).saving"
+                                            data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                        <a class="icon open tooltip" data-tooltip="Edit row"
+                                            data-ng-click="repositoryEnterEdit(repository)"
+                                            data-ng-if="!getRepositoryOptions(repository).editing">Edit</a>
+                                        <a class="icon close tooltip" data-tooltip="Close"
+                                            data-ng-click="repositoryExitEdit(repository)"
+                                            data-ng-if="getRepositoryOptions(repository).editing">Close</a>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown form">
+                                    <div data-ng-if="getRepositoryOptions(repository).editing" class="table__row active">
+                                        <div class="table__data table-col--100">
+                                            <div class="six-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label for="key" class="form__group-label two-col">Key</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <textarea name="key" rows="4" placeholder="Key"
+                                                            data-ng-class="{ invalid: isFieldEmpty(getRepositoryOptions(repository).data, 'key') }"
+                                                            data-ng-disabled="getRepositoryOptions(repository).saving"
+                                                            data-ng-model="getRepositoryOptions(repository).data.key"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="six-col last-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label class="form__group-label two-col">Architectures</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <div id="arches" class="three-col" ng-repeat="arch in known_architectures">
+                                                            <input id="{$ arch $}" type="checkbox" class="checkbox" value="{$ arch $}"
+                                                                data-ng-disabled="isMirror(getRepositoryOptions(repository).data) || getRepositoryOptions(repository).saving"
+                                                                ng-checked="getRepositoryOptions(repository).data.arches.indexOf(arch) > -1"
+                                                                ng-click="toggleCheckboxSelection(getRepositoryOptions(repository), 'arches', arch)">
+                                                            <label for="{$ arch $}" class="checkbox-label">{$ arch $}</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form__group form__group--inline"
+                                                    data-ng-if="!isMirror(getRepositoryOptions(repository).data) && !isPPA(getRepositoryOptions(repository).data)">
+                                                    <label class="form__group-label two-col">Distributions</label>
+                                                    <div class="form__group-input four-col last-col">
+                                                        <tags-input id="distributions" class="three-col"
+                                                            placeholder="Add a distribution"
+                                                            data-ng-model="getRepositoryOptions(repository).data.distributions"
+                                                            data-ng-disabled="getRepositoryOptions(repository).saving"
+                                                            allow-tags-pattern="[\w-]+"></tags-input>
+                                                    </div>
+                                                </div>
+                                                <div class="form__group form__group--inline"
+                                                    data-ng-if="!isMirror(getRepositoryOptions(repository).data) && !isPPA(getRepositoryOptions(repository).data)">
+                                                    <label class="form__group-label two-col">Components</label>
+                                                    <div class="form__group-input four-col last-col">
+                                                        <tags-input id="components" class="three-col"
+                                                            placeholder="Add a component"
+                                                            data-ng-model="getRepositoryOptions(repository).data.components"
+                                                            data-ng-disabled="getRepositoryOptions(repository).saving"
+                                                            allow-tags-pattern="[\w-]+"></tags-input>
+                                                    </div>
+                                                </div>
+                                                <div class="form__group form__group--inline"
+                                                    data-ng-if="isMirror(getRepositoryOptions(repository).data) && !isPPA(getRepositoryOptions(repository).data)">
+                                                    <label class="form__group-label two-col">Disabled Pockets</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <div id="disabled_pockets" class="three-col" ng-repeat="pocket in pockets_to_disable">
+                                                            <input id="{$ pocket $}" type="checkbox" class="checkbox" value="{$ pocket $}"
+                                                                data-ng-disabled="getRepositoryOptions(repository).saving"
+                                                                ng-checked="getRepositoryOptions(repository).data.disabled_pockets.indexOf(pocket) > -1"
+                                                                ng-click="toggleCheckboxSelection(getRepositoryOptions(repository), 'disabled_pockets', pocket)">
+                                                            <label for="{$ pocket $}" class="checkbox-label">{$ pocket $}</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="table__row active">
+                                            <div class="table__data left">
+                                                <p class="margin-top--five" data-ng-if="getRepositoryOptions(repository).error"><i class="icon error margin-right--ten"></i> {$ getRepositoryOptions(repository).error $}</p>
+                                            </div>
+                                            <div class="table__data right">
+                                                <a class="link-cta-ubuntu text-button"
+                                                    data-ng-click="repositoryExitEdit(repository)"
+                                                    data-ng-disabled="getRepositoryOptions(repository).saving">Cancel</a>
+                                                <button class="cta-ubuntu ng-binding"
+                                                    data-ng-click="repositorySave(repository)"
+                                                    data-ng-disabled="!repositoryCanBeSaved(repository) || getRepositoryOptions(repository).saving">Save repository</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="getRepositoryOptions(repository).removing">
+                                    <div class="table__row active">
+                                        <div class="table__data left margin-top--five">
+                                              <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this repository?</p>
+                                        </div>
+                                        <div class="table__data right">
+                                              <a class="link-cta-ubuntu text-button" data-ng-click="repositoryExitRemove(repository)">Cancel</a>
+                                              <button class="cta-ubuntu" data-ng-click="repositoryConfirmRemove(repository)">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row active" data-ng-if="newRepository">
+                                <div class="table__data table-col--20">
+                                    <input type="text" class="table__input no-margin" placeholder="Name"
+                                        data-ng-disabled="newRepository.saving"
+                                        data-ng-model="newRepository.data.name"
+                                        data-ng-class="{ invalid: isFieldEmpty(newRepository.data, 'name') }">
+                                </div>
+                                <div class="table__data table-col--55">
+                                    <input type="text" class="table__input no-margin" placeholder="URL"
+                                        data-ng-disabled="newRepository.saving"
+                                        data-ng-model="newRepository.data.url"
+                                        data-ng-class="{ invalid: isFieldEmpty(newRepository.data, 'url') }">
+                                </div>
+                                <div class="table__data table-col--10">
+                                    <div class="onoffswitch">
+                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
+                                            data-ng-model="newRepository.data.enabled"
+                                            data-ng-disabled="newRepository.saving" checked>
+                                        <label class="onoffswitch-label" for="newEnabled">
+                                            <span class="onoffswitch-inner"></span>
+                                            <span class="onoffswitch-switch"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown form">
+                                    <div class="table__row active">
+                                        <div class="table__data table-col--100">
+                                            <div class="six-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label for="key" class="form__group-label two-col">Key</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <textarea name="key" rows="2" placeholder="Key"
+                                                            data-ng-class="{ invalid: isFieldEmpty(newRepository.data, 'key') }"
+                                                            data-ng-disabled="newRepository.saving"
+                                                            data-ng-model="newRepository.data.key"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="six-col last-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label class="form__group-label two-col">Architectures</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <div id="arches" class="three-col" ng-repeat="arch in known_architectures">
+                                                            <input id="{$ arch $}" type="checkbox" class="checkbox" value="{$ arch $}"
+                                                                data-ng-disabled="newRepository.saving"
+                                                                ng-checked="newRepository.data.arches.indexOf(arch) > -1"
+                                                                ng-click="toggleCheckboxSelection(newRepository, 'arches', arch)">
+                                                            <label for="{$ arch $}" class="checkbox-label">{$ arch $}</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form__group form__group--inline" data-ng-if="!isPPA(newRepository.data)">
+                                                    <label class="form__group-label two-col">Distributions</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <tags-input id="distributions" class="three-col"
+                                                            placeholder="Add a distribution"
+                                                            data-ng-model="newRepository.data.distributions"
+                                                            data-ng-disabled="newRepository.saving"
+                                                            allow-tags-pattern="[\w-]+"></tags-input>
+                                                    </div>
+                                                </div>
+                                                <div class="form__group form__group--inline" data-ng-if="!isPPA(newRepository.data)">
+                                                    <label class="form__group-label two-col">Components</label>
+                                                    <div class="form__group-input three-col last-col">
+                                                        <tags-input id="components" class="three-col"
+                                                            placeholder="Add a component"
+                                                            data-ng-model="newRepository.data.components"
+                                                            data-ng-disabled="newRepository.saving"
+                                                            allow-tags-pattern="[\w-]+"></tags-input>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="table__row active">
+                                        <div class="table__data left">
+                                            <p class="margin-top--five" data-ng-if="newRepository.error"><i class="icon error margin-right--ten"></i> {$ newRepository.error $}</p>
+                                        </div>
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button"
+                                                data-ng-click="repositoryAddCancel()">Cancel</a>
+                                            <button class="cta-ubuntu ng-binding"
+                                                data-ng-disabled="!repositoryAddCanBeSaved()"
+                                                data-ng-click="repositoryAddSave()">Add repository</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <a href="" class="link-cta-ubuntu secondary"
+                    data-ng-disabled="editing"
+                    data-ng-if="!newRepository"
+                    data-ng-click="editing || repositoryAdd(true)">Add PPA</a>
+                <a href="" class="link-cta-ubuntu secondary"
+                    data-ng-disabled="editing"
+                    data-ng-if="!newRepository"
+                    data-ng-click="editing || repositoryAdd(false)">Add repository</a>
+            </div>
         </div>
     </section>
 </div>

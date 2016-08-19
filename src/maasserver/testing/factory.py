@@ -1749,7 +1749,6 @@ class Factory(maastesting.factory.Factory):
             distributions=None, components=None):
         if name is None:
             name = self.make_name("name")
-        description = self.make_name("description")
         if url is None:
             url = self.make_url(scheme='http')
         disabled_pockets = [self.make_name(
@@ -1759,7 +1758,7 @@ class Factory(maastesting.factory.Factory):
         if key is None:
             key = factory.make_name("key")
         return PackageRepository.objects.create(
-            name=name, description=description, url=url,
+            name=name, url=url,
             distributions=distributions, disabled_pockets=disabled_pockets,
             components=components, arches=arches, key=key, default=default)
 

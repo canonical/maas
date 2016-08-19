@@ -68,6 +68,12 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
         """
         return self.get_object_by_specifiers_or_raise(specifiers)
 
+    def get_known_architectures(self):
+        return PackageRepository.MAIN_ARCHES + PackageRepository.PORTS_ARCHES
+
+    def get_pockets_to_disable(self):
+        return PackageRepository.POCKETS_TO_DISABLE
+
     def get_default_archive(self, arch):
         return PackageRepository.objects.filter(
             arches__contains=[arch],
@@ -85,7 +91,8 @@ class PackageRepository(CleanSave, TimestampedModel):
     """A `PackageRepository`."""
 
     MAIN_ARCHES = ['amd64', 'i386']
-    PORTS_ARCHES = ['armhf', 'arm64', 'powerpc', 'ppc64el']
+    PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el']
+    POCKETS_TO_DISABLE = ['updates', 'security', 'backports']
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
@@ -93,8 +100,6 @@ class PackageRepository(CleanSave, TimestampedModel):
     objects = PackageRepositoryManager()
 
     name = CharField(max_length=41, unique=True, default='')
-
-    description = TextField(blank=True, default='')
 
     url = URLField(blank=False, help_text="The URL of the PackageRepository.")
 

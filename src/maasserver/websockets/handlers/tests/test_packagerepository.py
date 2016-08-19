@@ -29,7 +29,6 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         return {
             'id': package_repository.id,
             'name': package_repository.name,
-            'description': package_repository.description,
             'url': package_repository.url,
             'distributions': package_repository.distributions,
             'disabled_pockets': package_repository.disabled_pockets,

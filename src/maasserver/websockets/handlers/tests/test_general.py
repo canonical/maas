@@ -16,6 +16,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models.config import Config
+from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
@@ -48,6 +49,18 @@ class TestGeneralHandler(MAASServerTestCase):
             factory.make_usable_boot_resource(architecture=arch)
         handler = GeneralHandler(factory.make_User(), {})
         self.assertEqual(sorted(arches), handler.architectures({}))
+
+    def test_known_architectures(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertEqual(
+            PackageRepository.objects.get_known_architectures(),
+            handler.known_architectures({}))
+
+    def test_pockets_to_disable(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertEqual(
+            PackageRepository.objects.get_pockets_to_disable(),
+            handler.pockets_to_disable({}))
 
     def test_hwe_kernels(self):
         ubuntu_releases = UbuntuDistroInfo()

@@ -52,8 +52,9 @@ describe("GeneralManager", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
             ["machine_actions", "device_actions", "region_controller_actions",
             "rack_controller_actions", "region_and_rack_controller_actions",
-            "architectures", "hwe_kernels", "default_min_hwe_kernel", "osinfo",
-            "bond_options", "version", "power_types", "release_options"]);
+            "architectures", "known_architectures", "pockets_to_disable",
+            "hwe_kernels", "default_min_hwe_kernel", "osinfo", "bond_options",
+            "version", "power_types", "release_options"]);
     });
 
     it("_data.machine_actions has correct data", function() {
@@ -114,6 +115,24 @@ describe("GeneralManager", function() {
         expect(architectures.loaded).toBe(false);
         expect(architectures.polling).toBe(false);
         expect(architectures.nextPromise).toBeNull();
+    });
+
+    it("_data.known_architectures has correct data", function() {
+        var ka = GeneralManager._data.known_architectures;
+        expect(ka.method).toBe("general.known_architectures");
+        expect(ka.data).toEqual([]);
+        expect(ka.loaded).toBe(false);
+        expect(ka.polling).toBe(false);
+        expect(ka.nextPromise).toBeNull();
+    });
+
+    it("_data.pockets_to_disable has correct data", function() {
+        var ptd = GeneralManager._data.pockets_to_disable;
+        expect(ptd.method).toBe("general.pockets_to_disable");
+        expect(ptd.data).toEqual([]);
+        expect(ptd.loaded).toBe(false);
+        expect(ptd.polling).toBe(false);
+        expect(ptd.nextPromise).toBeNull();
     });
 
     it("_data.hwe_kernels has correct data", function() {
@@ -280,6 +299,8 @@ describe("GeneralManager", function() {
             GeneralManager._data.region_and_rack_controller_actions.loaded =
                 true;
             GeneralManager._data.architectures.loaded = true;
+            GeneralManager._data.known_architectures.loaded = true;
+            GeneralManager._data.pockets_to_disable.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
             GeneralManager._data.bond_options.loaded = true;
@@ -297,6 +318,8 @@ describe("GeneralManager", function() {
             GeneralManager._data.region_and_rack_controller_actions.loaded =
                 true;
             GeneralManager._data.architectures.loaded = true;
+            GeneralManager._data.known_architectures.loaded = true;
+            GeneralManager._data.pockets_to_disable.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.default_min_hwe_kernel.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
@@ -326,6 +349,8 @@ describe("GeneralManager", function() {
         it("returns true if one true", function() {
             GeneralManager._data.machine_actions.polling = true;
             GeneralManager._data.architectures.polling = false;
+            GeneralManager._data.known_architectures.polling = false;
+            GeneralManager._data.pockets_to_disable.polling = false;
             GeneralManager._data.hwe_kernels.polling = false;
             GeneralManager._data.osinfo.polling = false;
             expect(GeneralManager.isPolling()).toBe(true);
@@ -334,6 +359,8 @@ describe("GeneralManager", function() {
         it("returns true if all true", function() {
             GeneralManager._data.machine_actions.polling = true;
             GeneralManager._data.architectures.polling = true;
+            GeneralManager._data.known_architectures.polling = true;
+            GeneralManager._data.pockets_to_disable.polling = true;
             GeneralManager._data.hwe_kernels.polling = true;
             GeneralManager._data.osinfo.polling = true;
             expect(GeneralManager.isPolling()).toBe(true);
@@ -557,11 +584,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(13);
+            expect(GeneralManager._loadData.calls.count()).toBe(15);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

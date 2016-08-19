@@ -554,6 +554,10 @@ select {
         float: none;
         font-size: 16px;
       }
+
+      .checkbox+label:before {
+        top: 12px;
+      }
     }
 
     &.form__group--subtle {
@@ -624,6 +628,15 @@ select {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+
+  &[disabled] {
+
+    .onoffswitch-checkbox,
+    .onoffswitch-label {
+      opacity: .5;
+      pointer-events: none;
+    }
+  }
 }
 
 .onoffswitch-checkbox {

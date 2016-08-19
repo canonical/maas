@@ -75,7 +75,6 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.become_admin()
         package_repository = factory.make_PackageRepository()
         new_values = {
-            'description': factory.make_string(50),
             'url': factory.make_url(scheme='http'),
             'distributions': [
                 factory.make_name("distribution%d" % i) for i in range(3)],
@@ -160,12 +159,10 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
         self.become_admin()
         name = factory.make_name('name')
         url = factory.make_url(scheme='http')
-        description = factory.make_string()
         enabled = factory.pick_bool()
         params = {
             'name': name,
             'url': url,
-            'description': description,
             'enabled': enabled,
         }
         response = self.client.post(

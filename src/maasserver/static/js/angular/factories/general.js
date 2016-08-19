@@ -63,6 +63,20 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
+                known_architectures: {
+                    method: "general.known_architectures",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
+                pockets_to_disable: {
+                    method: "general.pockets_to_disable",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
                 hwe_kernels: {
                     method: "general.hwe_kernels",
                     data: [],

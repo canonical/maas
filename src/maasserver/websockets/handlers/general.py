@@ -22,6 +22,7 @@ from maasserver.enum import (
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
 from maasserver.models.node import Node
+from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
@@ -42,6 +43,8 @@ class GeneralHandler(Handler):
     class Meta:
         allowed_methods = [
             'architectures',
+            'known_architectures',
+            'pockets_to_disable',
             'hwe_kernels',
             'default_min_hwe_kernel',
             'osinfo',
@@ -58,8 +61,16 @@ class GeneralHandler(Handler):
             ]
 
     def architectures(self, params):
-        """Return all supported architectures."""
+        """Return all usable architectures."""
         return BootResource.objects.get_usable_architectures()
+
+    def known_architectures(self, params):
+        """Return all known architectures, usable or not."""
+        return PackageRepository.objects.get_known_architectures()
+
+    def pockets_to_disable(self, params):
+        """Return pockets that can be disabled."""
+        return PackageRepository.objects.get_pockets_to_disable()
 
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
