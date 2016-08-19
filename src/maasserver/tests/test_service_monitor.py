@@ -9,7 +9,6 @@ import os
 
 from crochet import wait_for
 from maasserver import proxyconfig
-from maasserver.enum import SERVICE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.service_monitor import (
@@ -21,6 +20,7 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.service_monitor import SERVICE_STATE
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
@@ -61,7 +61,7 @@ class TestProxyService(MAASTransactionServerTestCase):
             "http_proxy", "")
         self.patch(proxyconfig, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
-        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+        self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -70,7 +70,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         os.environ['MAAS_PROXY_CONFIG_DIR'] = "/tmp/%s" % factory.make_name()
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
-            (SERVICE_STATUS.OFF, "No configuration file present."),
+            (SERVICE_STATE.OFF, "No configuration file present."),
             expected_state)
         del os.environ['MAAS_PROXY_CONFIG_DIR']
 
@@ -90,7 +90,7 @@ class TestProxyService(MAASTransactionServerTestCase):
             "http_proxy", factory.make_url())
         self.patch(proxyconfig, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
-        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+        self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -108,7 +108,7 @@ class TestProxyService(MAASTransactionServerTestCase):
             "http_proxy", "")
         self.patch(proxyconfig, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
-        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+        self.assertEqual((SERVICE_STATE.ON, None), expected_state)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -127,6 +127,6 @@ class TestProxyService(MAASTransactionServerTestCase):
         self.patch(proxyconfig, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
-            (SERVICE_STATUS.OFF,
+            (SERVICE_STATE.OFF,
              'disabled, alternate proxy is configured in settings.'),
             expected_state)

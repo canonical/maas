@@ -106,7 +106,8 @@ bin/maas-region bin/twistd.region: \
 	@touch --no-create $@
 
 bin/test.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
+    bin/maas-region bin/maas-rack
 	$(buildout) install region-test
 	@touch --no-create $@
 

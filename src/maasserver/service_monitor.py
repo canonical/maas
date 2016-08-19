@@ -7,7 +7,6 @@ __all__ = [
     "service_monitor",
 ]
 
-from maasserver.enum import SERVICE_STATUS
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -15,6 +14,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
     Service,
+    SERVICE_STATE,
     ServiceMonitor,
 )
 
@@ -50,12 +50,12 @@ class ProxyService(Service):
             from maasserver import proxyconfig
             if (Config.objects.get_config("enable_http_proxy") and
                     Config.objects.get_config("http_proxy")):
-                return (SERVICE_STATUS.OFF,
+                return (SERVICE_STATE.OFF,
                         "disabled, alternate proxy is configured in settings.")
             elif proxyconfig.is_config_present() is False:
-                return (SERVICE_STATUS.OFF, "No configuration file present.")
+                return (SERVICE_STATE.OFF, "No configuration file present.")
             else:
-                return (SERVICE_STATUS.ON, None)
+                return (SERVICE_STATE.ON, None)
 
         return deferToDatabase(db_getExpectedState)
 
