@@ -107,7 +107,7 @@ class ServiceState(ServiceStateBase):
         """
         def deriveStatusInfo(expected_state_and_info, service):
             expected_state, status_info = expected_state_and_info
-            _check_service_state_observed(expected_state)
+            _check_service_state_expected(expected_state)
             if status_info is None:
                 status_info = ""
             if self.active_state == SERVICE_STATE.UNKNOWN:

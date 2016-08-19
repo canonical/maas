@@ -10,6 +10,7 @@ __all__ = [
     ]
 
 import datetime
+from enum import Enum
 from functools import partial
 import http.client
 import io
@@ -168,15 +169,22 @@ class Factory:
     def pick_enum(self, enum, *, but_not=EMPTY_SET):
         """Pick a random item from an enumeration class.
 
-        :param enum: An enumeration class such as `NODE_STATUS`.
+        :param enum: An enumeration class such as `NODE_STATUS`. Can also be
+            an `enum.Enum` subclass.
         :return: The value of one of its items.
         :param but_not: A list of choices' IDs to exclude.
         :type but_not: Sequence.
         """
-        return random.choice([
-            value for key, value in vars(enum).items()
-            if not key.startswith('_') and value not in but_not
-        ])
+        if issubclass(enum, Enum):
+            return random.choice([
+                value for value in enum
+                if value not in but_not
+            ])
+        else:
+            return random.choice([
+                value for key, value in vars(enum).items()
+                if not key.startswith('_') and value not in but_not
+            ])
 
     def pick_port(self, port_min=1024, port_max=65535):
         assert port_min >= 0 and port_max <= 65535

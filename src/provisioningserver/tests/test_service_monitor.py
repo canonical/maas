@@ -8,15 +8,24 @@ __all__ = []
 from unittest.mock import sentinel
 
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
+from provisioningserver.rackdservices.testing import (
+    prepareRegionForGetControllerType,
+)
 from provisioningserver.service_monitor import (
     DHCPService,
     DHCPv4Service,
     DHCPv6Service,
+    NTPService,
     service_monitor,
     TGTService,
 )
 from provisioningserver.utils.service_monitor import SERVICE_STATE
+from testtools.matchers import Equals
+from twisted.internet.defer import inlineCallbacks
 
 
 class TestDHCPService(MAASTestCase):
@@ -99,8 +108,53 @@ class TestTGTService(MAASTestCase):
         self.assertEqual((SERVICE_STATE.ON, None), tgt.getExpectedState())
 
 
+class TestNTPService(MAASTestCase):
+
+    def test_name_and_service_name(self):
+        ntp = NTPService()
+        self.assertEqual("ntp", ntp.service_name)
+        self.assertEqual("ntp", ntp.name)
+
+
+class TestNTPService_Scenarios(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("rack", dict(
+            is_region=False, is_rack=True,
+            expected_state=SERVICE_STATE.ON,
+        )),
+        ("region", dict(
+            is_region=True, is_rack=False,
+            expected_state=SERVICE_STATE.ANY,
+        )),
+        ("region+rack", dict(
+            is_region=True, is_rack=True,
+            expected_state=SERVICE_STATE.ANY,
+        )),
+        ("machine", dict(
+            is_region=False, is_rack=False,
+            expected_state=SERVICE_STATE.ANY,
+        )),
+    )
+
+    def setUp(self):
+        super(TestNTPService_Scenarios, self).setUp()
+        return prepareRegionForGetControllerType(
+            self, is_region=self.is_region, is_rack=self.is_rack)
+
+    @inlineCallbacks
+    def test_getExpectedState(self):
+        ntp = NTPService()
+        self.assertThat(
+            (yield ntp.getExpectedState()),
+            Equals((self.expected_state, None)))
+
+
 class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcpd", "dhcpd6", "tgt"], service_monitor._services.keys())
+            ["dhcpd", "dhcpd6", "ntp", "tgt"],
+            service_monitor._services)

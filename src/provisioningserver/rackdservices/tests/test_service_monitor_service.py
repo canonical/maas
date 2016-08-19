@@ -30,6 +30,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.service_monitor import (
+    AlwaysOnService,
     SERVICE_STATE,
     ServiceState,
 )
@@ -111,7 +112,14 @@ class TestServiceMonitorService(MAASTestCase):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
-        service = self.pick_service()
+        class ExampleService(AlwaysOnService):
+            name = service_name = factory.make_name("service")
+
+        service = ExampleService()
+        # Inveigle this new service into the service monitor.
+        self.addCleanup(service_monitor._services.pop, service.name)
+        service_monitor._services[service.name] = service
+
         state = ServiceState(SERVICE_STATE.ON, "running")
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         mock_ensureServices.return_value = succeed({

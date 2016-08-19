@@ -6,6 +6,9 @@
 __all__ = [
     ]
 
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.region import GetControllerType
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
     Service,
@@ -61,10 +64,34 @@ class TGTService(AlwaysOnService):
     service_name = "tgt"
 
 
+class NTPService(Service):
+    """Monitored NTP service."""
+
+    name = "ntp"
+    service_name = "ntp"
+
+    def getExpectedState(self):
+        try:
+            client = getRegionClient()
+        except NoConnectionsAvailable:
+            return SERVICE_STATE.ANY, None
+        else:
+            d = client(GetControllerType, system_id=client.localIdent)
+            d.addCallback(self._getExpectedStateForControllerType)
+            return d
+
+    def _getExpectedStateForControllerType(self, controller_type):
+        if controller_type["is_rack"] and not controller_type["is_region"]:
+            return SERVICE_STATE.ON, None
+        else:
+            return SERVICE_STATE.ANY, None
+
+
 # Global service monitor for rackd. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),
+    NTPService(),
     TGTService(),
 )

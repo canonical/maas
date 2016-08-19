@@ -150,6 +150,12 @@ class ProvisioningServiceMaker:
         service_monitor.setName("service_monitor")
         return service_monitor
 
+    def _makeNetworkTimeProtocolService(self, rpc_service):
+        from provisioningserver.rackdservices import ntp
+        ntp_service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
+        ntp_service.setName("ntp")
+        return ntp_service
+
     def _makeServices(self, tftp_root, tftp_port):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
@@ -160,12 +166,11 @@ class ProvisioningServiceMaker:
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
-        yield self._makeImageDownloadService(
-            rpc_service, tftp_root)
+        yield self._makeImageDownloadService(rpc_service, tftp_root)
+        yield self._makeNetworkTimeProtocolService(rpc_service)
         # The following are network-accessible services.
         yield self._makeImageService(tftp_root)
-        yield self._makeTFTPService(
-            tftp_root, tftp_port, rpc_service)
+        yield self._makeTFTPService(tftp_root, tftp_port, rpc_service)
 
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.

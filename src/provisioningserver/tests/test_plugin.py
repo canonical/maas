@@ -99,7 +99,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "networks_monitor", "image_download",
-            "lease_socket_service", "node_monitor", "rpc", "tftp",
+            "lease_socket_service", "node_monitor", "ntp", "rpc", "tftp",
             "image_service", "service_monitor",
             ]
         self.assertItemsEqual(expected_services, service.namedServices)
