@@ -1745,17 +1745,15 @@ class Factory(maastesting.factory.Factory):
             default=True, arches=PackageRepository.PORTS_ARCHES)
 
     def make_PackageRepository(
-            self, name=None, url=None, arches=None, default=False, key=None):
+            self, name=None, url=None, arches=None, default=False, key=None,
+            distributions=None, components=None):
         if name is None:
             name = self.make_name("name")
         description = self.make_name("description")
         if url is None:
             url = self.make_url(scheme='http')
-        distributions = [self.make_name(
-            "distribution%d" % i) for i in range(3)]
         disabled_pockets = [self.make_name(
             "disabled_pocket%d" % i) for i in range(3)]
-        components = [self.make_name("component%d" % i) for i in range(3)]
         if arches is None:
             arches = [self.make_name("arch%d" % i) for i in range(3)]
         if key is None:

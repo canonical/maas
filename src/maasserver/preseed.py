@@ -155,6 +155,9 @@ def compose_curtin_maas_reporter(node):
 def get_archive_config(node):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
+    repositories = PackageRepository.objects.get_additional_repositories(arch)
+
+    # Process the default Ubuntu Archives or Mirror.
     archives = {
         'apt': {
             'preserve_sources_list': False,
@@ -173,16 +176,60 @@ def get_archive_config(node):
         },
     }
     if archive.key:
-        archives["apt"]["sources"] = {
+        archives['apt']['sources'] = {
             'archive_key': {
-                "key": archive.key,
+                'key': archive.key
             }
         }
+
+    # Process addtional repositories, including PPA's and custom.
+    for repo in repositories:
+        if repo.url.startswith('ppa:'):
+            url = repo.url
+        elif 'ppa.launchpad.net' in repo.url:
+            url = 'deb %s %s main' % (repo.url, node.distro_series)
+        else:
+            components = ''
+            if not repo.components:
+                components = 'main'
+            else:
+                for component in repo.components:
+                    components += '%s ' % component
+            components = components.strip()
+
+            if not repo.distributions:
+                url = 'deb %s %s %s' % (
+                    repo.url, node.distro_series, components)
+            else:
+                url = ''
+                for dist in repo.distributions:
+                    url += 'deb %s %s %s\n' % (repo.url, dist, components)
+
+        if 'sources' not in archives['apt'].keys():
+            archives['apt']['sources'] = {}
+
+        repo_name = make_clean_repo_name(repo)
+
+        if repo.key:
+            archives['apt']['sources'][repo_name] = {
+                'key': repo.key,
+                'source': url
+            }
+        else:
+            archives['apt']['sources'][repo_name] = {
+                'source': url
+            }
 
     return archives
 
 
 def compose_curtin_archive_config(node):
+    """Return the curtin preseed for configuring a node's apt sources.
+
+    If a node's deployed OS is Ubuntu (or a Custom Ubuntu), we pass this
+    configuration along, provided that repositories are only available
+    for Ubuntu.
+    """
     if node.osystem in ['ubuntu', 'custom']:
         archives = get_archive_config(node)
         return [yaml.safe_dump(archives)]
@@ -517,6 +564,14 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
         elements.pop()
     if default:
         yield GENERIC_FILENAME
+
+
+def make_clean_repo_name(repo):
+    # Removeeany special characters
+    repo_name = "%s_%s" % (
+        repo.name.translate({ord(c): None for c in '\'!@#$[]{}'}), repo.id)
+    # Create a repo name that will be used as file name for the apt list
+    return repo_name.strip().replace(' ', '_').lower()
 
 
 def split_subarch(architecture):

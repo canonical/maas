@@ -37,6 +37,7 @@ from maasserver.preseed import (
     compose_curtin_verbose_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
+    make_clean_repo_name,
     curtin_maas_reporter,
     GENERIC_FILENAME,
     get_archive_config,
@@ -989,12 +990,164 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             userdata['apt']['sources']['archive_key']['key'],
             archive.key)
 
-    def test_compose_curtin_archive_config_ports_archive_for_other_arch(self):
+    def test_compose_curtin_archive_config_has_ppa(self):
+        node = self.make_fastpath_node('i386')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        ppa_url = 'http://ppa.launchpad.net/maas/next/ubuntu'
+        factory.make_PackageRepository(
+            name='MAAS PPA', url=ppa_url, default=False,
+            arches=['i386', 'amd64'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        ppa = PackageRepository.objects.get_additional_repositories(
+            node.split_arch()[0]).first()
+        preseed = yaml.load(userdata[0])
+        # cleanup the name for the PPA file
+        repo_name = make_clean_repo_name(ppa)
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['key'],
+            ContainsAll(ppa.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['source'],
+            ContainsAll("deb %s %s main" % (ppa.url, node.distro_series))
+            )
+
+    def test_compose_curtin_archive_config_uses_multiple_ppa(self):
         node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        # Create first PPA
+        ppa_first = factory.make_PackageRepository(
+            url='http://ppa.launchpad.net/maas/next/ubuntu',
+            name='Curtin PPA', default=False, arches=['i386', 'amd64'])
+        # Create second PPA
+        ppa_second = factory.make_PackageRepository(
+            url='http://ppa.launchpad.net/juju/devel/ubuntu',
+            name='Juju PPA', default=False, arches=['i386', 'amd64'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        ppas = PackageRepository.objects.get_additional_repositories(
+            node.split_arch()[0])
+        preseed = yaml.load(userdata[0])
+        # Assert that get_additional_repositories returns 2 PPAs.
+        self.assertItemsEqual(ppas, [ppa_first, ppa_second])
+        # Clean up PPA name
+        ppa_name = make_clean_repo_name(ppa_first)
+        self.assertThat(
+            preseed['apt']['sources'][ppa_name]['key'],
+            ContainsAll(ppa_first.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][ppa_name]['source'],
+            ContainsAll("deb %s %s main" % (ppa_first.url, node.distro_series))
+            )
+        # Clean up PPA name
+        ppa_name = make_clean_repo_name(ppa_second)
+        self.assertThat(
+            preseed['apt']['sources'][ppa_name]['key'],
+            ContainsAll(ppa_second.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][ppa_name]['source'],
+            ContainsAll("deb %s %s main" % (
+                ppa_second.url, node.distro_series)))
+
+    def test_compose_curtin_archive_config_has_custom_repository(self):
+        node = self.make_fastpath_node('i386')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        factory.make_PackageRepository(
+            url='http://custom.repository/ubuntu',
+            name='Custom Contrail Repository', default=False,
+            arches=['i386', 'amd64'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        repository = PackageRepository.objects.get_additional_repositories(
+            node.split_arch()[0]).first()
+        preseed = yaml.load(userdata[0])
+        # cleanup the name for the PPA file
+        repo_name = make_clean_repo_name(repository)
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['key'],
+            ContainsAll(repository.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['source'],
+            ContainsAll("deb %s %s main" % (
+                repository.url, node.distro_series)))
+
+    def test_compose_curtin_archive_config_custom_repo_with_components(self):
+        node = self.make_fastpath_node('i386')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        factory.make_PackageRepository(
+            url='http://custom.repository/ubuntu',
+            name='Custom Contrail Repository', default=False,
+            arches=['i386', 'amd64'],
+            components=['main', 'universe'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        repository = PackageRepository.objects.get_additional_repositories(
+            node.split_arch()[0]).first()
+        preseed = yaml.load(userdata[0])
+        # cleanup the name for the PPA file
+        repo_name = make_clean_repo_name(repository)
+        components = ''
+        for component in repository.components:
+            components += '%s ' % component
+        components = components.strip()
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['key'],
+            ContainsAll(repository.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['source'],
+            ContainsAll("deb %s %s %s" % (
+                repository.url, node.distro_series, components)))
+
+    def test_compose_curtin_archive_config_custom_repo_components_dists(self):
+        node = self.make_fastpath_node('i386')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        factory.make_PackageRepository(
+            url='http://custom.repository/ubuntu',
+            name='Custom Contrail Repository', default=False,
+            arches=['i386', 'amd64'],
+            distributions=['contrail'],
+            components=['main', 'universe'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        repository = PackageRepository.objects.get_additional_repositories(
+            node.split_arch()[0]).first()
+        preseed = yaml.load(userdata[0])
+        # cleanup the name for the PPA file
+        repo_name = make_clean_repo_name(repository)
+        components = ''
+        for component in repository.components:
+            components += '%s ' % component
+        components = components.strip()
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['key'],
+            ContainsAll(repository.key)
+            )
+        self.assertThat(
+            preseed['apt']['sources'][repo_name]['source'],
+            ContainsAll("deb %s %s %s" % (
+                repository.url, repository.distributions[0], components)))
+
+    def test_compose_curtin_archive_config_ports_archive_for_other_arch(self):
+        node = self.make_fastpath_node('ppc64el')
         node.osystem = 'ubuntu'
         main_url = PackageRepository.get_ports_archive()
         factory.make_PackageRepository(
-            url=main_url, default=True, arches=['i386', 'amd64'])
+            url=main_url, default=True, arches=['ppc64el', 'arm64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(node)
