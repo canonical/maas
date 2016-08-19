@@ -70,12 +70,13 @@ describe("SubnetDetailsController", function() {
     }));
 
     // Load any injected managers and services.
-    var SubnetsManager, IPRangesManager, SpacesManager, VLANsManager;
-    var FabricsManager, UsersManager, HelperService, ErrorService;
-    var ConverterService;
+    var SubnetsManager, IPRangesManager, StaticRoutesManager, SpacesManager;
+    var VLANsManager, FabricsManager, UsersManager, HelperService;
+    var ErrorService, ConverterService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         IPRangesManager = $injector.get("IPRangesManager");
+        StaticRoutesManager = $injector.get("StaticRoutesManager");
         SpacesManager = $injector.get("SpacesManager");
         VLANsManager = $injector.get("VLANsManager");
         FabricsManager = $injector.get("FabricsManager");
@@ -615,5 +616,166 @@ describe("SubnetDetailsController", function() {
 
             expect($scope.deleteIPRange).toBeNull();
         });
+    });
+
+    describe("addStaticRoute", function() {
+
+        it("set newStaticRoute", function() {
+            var controller = makeController();
+            $scope.subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.addStaticRoute();
+            expect($scope.newStaticRoute).toEqual({
+                source: $scope.subnet.id,
+                gateway_ip: "",
+                destination: null,
+                metric: 0
+            });
+        });
+
+        it("clear editStaticRoute", function() {
+            var controller = makeController();
+            $scope.subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.editStaticRoute = {};
+            $scope.addStaticRoute();
+            expect($scope.editStaticRoute).toBeNull();
+        });
+
+        it("clear deleteStaticRoute", function() {
+            var controller = makeController();
+            $scope.subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.deleteStaticRoute = {};
+            $scope.addStaticRoute();
+            expect($scope.deleteStaticRoute).toBeNull();
+        });
+    });
+
+    describe("cancelAddStaticRoute", function() {
+
+        it("clears newStaticRoute", function() {
+            var controller = makeController();
+            $scope.newStaticRoute = {};
+            $scope.cancelAddStaticRoute();
+            expect($scope.newStaticRoute).toBeNull();
+        });
+    });
+
+    describe("isStaticRouteInEditMode", function() {
+
+        it("returns true when editStaticRoute", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.editStaticRoute = route;
+            expect($scope.isStaticRouteInEditMode(route)).toBe(true);
+        });
+
+        it("returns false when editIPRange", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.editStaticRoute = route;
+            expect($scope.isStaticRouteInEditMode({})).toBe(false);
+        });
+    });
+
+    describe("staticRouteToggleEditMode", function() {
+
+        it("clears newStaticRoute", function() {
+            var controller = makeController();
+            $scope.newStaticRoute = {};
+            $scope.staticRouteToggleEditMode({});
+            expect($scope.newStaticRoute).toBeNull();
+        });
+
+        it("clears deleteStaticRoute", function() {
+            var controller = makeController();
+            $scope.deleteStaticRoute = {};
+            $scope.staticRouteToggleEditMode({});
+            expect($scope.deleteStaticRoute).toBeNull();
+        });
+
+        it("clears editStaticRoute when already set", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.editStaticRoute = route;
+            $scope.staticRouteToggleEditMode(route);
+            expect($scope.editStaticRoute).toBeNull();
+        });
+
+        it("sets editStaticRoute when different range", function() {
+            var controller = makeController();
+            var route = {};
+            var otherRoute = {};
+            $scope.editStaticRoute = otherRoute;
+            $scope.staticRouteToggleEditMode(route);
+            expect($scope.editStaticRoute).toBe(route);
+        });
+    });
+
+    describe("isStaticRouteInDeleteMode", function() {
+
+        it("return true when deleteStaticRoute is same", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.deleteStaticRoute = route;
+            expect($scope.isStaticRouteInDeleteMode(route)).toBe(true);
+        });
+
+        it("return false when deleteIPRange is different", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.deleteStaticRoute = route;
+            expect($scope.isStaticRouteInDeleteMode({})).toBe(false);
+        });
+    });
+
+    describe("staticRouteEnterDeleteMode", function() {
+
+        it("clears edit and new and sets deleteStaticRoute", function() {
+            var controller = makeController();
+            var route = {};
+            $scope.newStaticRoute = {};
+            $scope.editStaticRoute = {};
+            $scope.staticRouteEnterDeleteMode(route);
+            expect($scope.newStaticRoute).toBeNull();
+            expect($scope.editStaticRoute).toBeNull();
+            expect($scope.deleteStaticRoute).toBe(route);
+        });
+    });
+
+    describe("staticRouteCancelDelete", function() {
+
+        it("clears deleteStaticRoute", function() {
+            var controller = makeController();
+            $scope.deleteStaticRoute = {};
+            $scope.staticRouteCancelDelete();
+            expect($scope.deleteStaticRoute).toBeNull();
+        });
+    });
+
+    describe("staticRouteConfirmDelete", function() {
+
+        it("calls deleteItem and clears deleteStaticRoute on resolve",
+          function() {
+              var controller = makeController();
+              var route = {};
+              $scope.deleteStaticRoute = route;
+
+              var defer = $q.defer();
+              spyOn(StaticRoutesManager, "deleteItem").and.returnValue(
+                  defer.promise);
+              $scope.staticRouteConfirmDelete();
+
+              expect(StaticRoutesManager.deleteItem).toHaveBeenCalledWith(
+                  route);
+              defer.resolve();
+              $scope.$digest();
+
+              expect($scope.deleteStaticRoute).toBeNull();
+          });
     });
 });

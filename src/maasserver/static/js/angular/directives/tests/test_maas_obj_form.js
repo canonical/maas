@@ -662,30 +662,6 @@ describe("maasObjForm", function() {
             expect(
                 field.parent("div").hasClass("form__group-input")).toBe(true);
         });
-
-        it("doesn't add form__group classes", function() {
-            $scope.obj = {
-                key: makeName("key")
-            };
-            $scope.manager = {};
-            var html = [
-                '<maas-obj-form obj="obj" manager="manager" ',
-                    'table-form="true">',
-                    '<maas-obj-field type="text" key="key" label="Key" ',
-                        'placeholder="Placeholder" label-width="two" ',
-                        'input-width="three"></maas-obj-field>',
-                '</maas-obj-form>'
-                ].join('');
-            var directive = compileDirective(html);
-            var group = angular.element(
-                directive.find('maas-obj-field[key="key"]'));
-            var field = angular.element(directive.find("#key"));
-            expect(group.hasClass("form__group")).toBe(false);
-            expect(group.hasClass("form__group--inline")).toBe(false);
-            expect(group.hasClass("form__group--subtle")).toBe(false);
-            expect(
-                field.parent("div").hasClass("form__group-input")).toBe(false);
-        });
     });
 
     describe("form mode", function() {
@@ -791,6 +767,50 @@ describe("maasObjForm", function() {
             // Error is placed on the input and in the global section.
             expect(getFieldErrorList(field)).toEqual([keyError]);
             expect(getErrorList(errors)).toEqual([error]);
+        });
+    });
+
+    describe("disableLabel", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'disable-label="true"></maas-obj-field>',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("label is not added", function() {
+            var label = directive.find("label");
+            expect(label.length).toBe(0);
+        });
+    });
+
+    describe("inputClass", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'input-class="new-class"></maas-obj-field>',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("input-class is added", function() {
+            var input = angular.element(directive.find("input"));
+            expect(input.hasClass("new-class")).toBe(true);
         });
     });
 });

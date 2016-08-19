@@ -209,6 +209,20 @@ def populate(seed="sampledata"):
         cidr="2001:db8:42::/64", gateway_ip="",
         vlan=fabric1_vlan42, space=space_ipv6_testbed)
 
+    # Static routes on subnets.
+    factory.make_StaticRoute(source=subnet_1, destination=subnet_2)
+    factory.make_StaticRoute(source=subnet_1, destination=subnet_3)
+    factory.make_StaticRoute(source=subnet_1, destination=subnet_4)
+    factory.make_StaticRoute(source=subnet_2, destination=subnet_1)
+    factory.make_StaticRoute(source=subnet_2, destination=subnet_3)
+    factory.make_StaticRoute(source=subnet_2, destination=subnet_4)
+    factory.make_StaticRoute(source=subnet_3, destination=subnet_1)
+    factory.make_StaticRoute(source=subnet_3, destination=subnet_2)
+    factory.make_StaticRoute(source=subnet_3, destination=subnet_4)
+    factory.make_StaticRoute(source=subnet_4, destination=subnet_1)
+    factory.make_StaticRoute(source=subnet_4, destination=subnet_2)
+    factory.make_StaticRoute(source=subnet_4, destination=subnet_3)
+
     hostname = gethostname()
     region_rack = get_one(Node.objects.filter(
         node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER, hostname=hostname))

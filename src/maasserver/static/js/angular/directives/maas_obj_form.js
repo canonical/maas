@@ -429,25 +429,27 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         " are required on maas-obj-field.");
                 }
 
-                // Set element to the transcluded div.
-                element = element.find("div");
+                // Remove transcluded element.
+                element.find("div").remove();
 
                 // Render the label.
                 var label = attrs.label || attrs.key;
-                var labelElement = angular.element(
-                    '<label for="' + attrs.key + '">' + label + '</label>');
-                if(attrs.labelWidth) {
-                    labelElement.addClass(attrs.labelWidth + "-col");
-                } else {
-                    labelElement.addClass("u-margin--right");
+                if(attrs.disableLabel !== "true") {
+                    var labelElement = angular.element('<label/>');
+                    labelElement.attr('for', attrs.key);
+                    labelElement.text(label);
+                    labelElement.addClass('form__group-label');
+                    if(attrs.labelWidth) {
+                        labelElement.addClass(attrs.labelWidth + "-col");
+                    } else {
+                        labelElement.addClass("u-margin--right");
+                    }
+                    element.append(labelElement);
                 }
-                element.append(labelElement);
 
                 // Add the wrapper for the input.
                 var inputWrapper = angular.element('<div></div>');
-                if(!controller.isTableForm()) {
-                    inputWrapper.addClass("form__group-input");
-                }
+                inputWrapper.addClass("form__group-input");
                 if(attrs.inputWidth) {
                     inputWrapper.addClass(attrs.inputWidth + "-col");
                     inputWrapper.addClass("last-col");
@@ -565,6 +567,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 } else {
                     throw new Error(
                         "Unknown type on maas-obj-field: " + attrs.type);
+                }
+
+                // Copy input class to the input element.
+                if(attrs.inputClass) {
+                    inputElement.addClass(attrs.inputClass);
                 }
                 inputWrapper.append(inputElement);
 

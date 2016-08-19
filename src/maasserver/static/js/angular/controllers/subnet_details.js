@@ -4,15 +4,30 @@
  * MAAS Subnet Details Controller
  */
 
+angular.module('MAAS').filter('filterSource', ['ValidationService',
+    function() {
+        return function(subnets, source) {
+            var filtered = [];
+            angular.forEach(subnets, function(subnet) {
+                if(subnet.id !== source.id &&
+                    subnet.version === source.version) {
+                    filtered.push(subnet);
+                }
+            });
+            return filtered;
+        };
+    }]);
+
 angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'SubnetsManager', 'IPRangesManager', 'SpacesManager', 'VLANsManager',
-    'UsersManager', 'FabricsManager', 'ManagerHelperService', 'ErrorService',
-    'ConverterService',
+    'UsersManager', 'FabricsManager', 'StaticRoutesManager',
+    'ManagerHelperService', 'ErrorService', 'ConverterService',
     function(
         $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
         IPRangesManager, SpacesManager, VLANsManager, UsersManager,
-        FabricsManager, ManagerHelperService, ErrorService, ConverterService) {
+        FabricsManager, StaticRoutesManager,
+        ManagerHelperService, ErrorService, ConverterService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -24,9 +39,12 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
+        $scope.subnets = SubnetsManager.getItems();
         $scope.subnetManager = SubnetsManager;
         $scope.ipranges = IPRangesManager.getItems();
         $scope.iprangeManager = IPRangesManager;
+        $scope.staticRoutes = StaticRoutesManager.getItems();
+        $scope.staticRoutesManager = StaticRoutesManager;
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.fabrics = FabricsManager.getItems();
@@ -34,6 +52,9 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.newRange = null;
         $scope.editIPRange = null;
         $scope.deleteIPRange = null;
+        $scope.newStaticRoute = null;
+        $scope.editStaticRoute = null;
+        $scope.deleteStaticRoute = null;
 
         // Alloc type mapping.
         var ALLOC_TYPES = {
@@ -94,6 +115,10 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             } else {
                 return "Unknown";
             }
+        };
+
+        $scope.getSubnetCIDR = function(destId) {
+            return SubnetsManager.getItemFromList(destId).cidr;
         };
 
         // Sort based on the name of the allocation type.
@@ -247,6 +272,64 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             });
         };
 
+        // Called to start adding a new static route.
+        $scope.addStaticRoute = function() {
+            $scope.editStaticRoute = null;
+            $scope.deleteStaticRoute = null;
+            $scope.newStaticRoute = {
+                source: $scope.subnet.id,
+                gateway_ip: "",
+                destination: null,
+                metric: 0
+            };
+        };
+
+        // Cancel adding the new static route.
+        $scope.cancelAddStaticRoute = function() {
+            $scope.newStaticRoute = null;
+        };
+
+        // Return true if the static route is in edit mode.
+        $scope.isStaticRouteInEditMode = function(route) {
+            return $scope.editStaticRoute === route;
+        };
+
+        // Toggle edit mode for the static route.
+        $scope.staticRouteToggleEditMode = function(route) {
+            $scope.newStaticRoute = null;
+            $scope.deleteStaticRoute = null;
+            if($scope.isStaticRouteInEditMode(route)) {
+                $scope.editStaticRoute  = null;
+            } else {
+                $scope.editStaticRoute = route;
+            }
+        };
+
+        // Return true if the static route is in delete mode.
+        $scope.isStaticRouteInDeleteMode = function(route) {
+            return $scope.deleteStaticRoute === route;
+        };
+
+        // Enter delete mode for the static route.
+        $scope.staticRouteEnterDeleteMode = function(route) {
+            $scope.newStaticRoute = null;
+            $scope.editStaticRoute = null;
+            $scope.deleteStaticRoute = route;
+        };
+
+        // Exit delete mode for the statc route.
+        $scope.staticRouteCancelDelete = function() {
+            $scope.deleteStaticRoute = null;
+        };
+
+        // Perform the delete operation on the static route.
+        $scope.staticRouteConfirmDelete = function() {
+            StaticRoutesManager.deleteItem($scope.deleteStaticRoute).then(
+                function() {
+                    $scope.deleteStaticRoute = null;
+                });
+        };
+
         // Called when the subnet has been loaded.
         function subnetLoaded(subnet) {
             $scope.subnet = subnet;
@@ -270,7 +353,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
-            UsersManager, FabricsManager
+            UsersManager, FabricsManager, StaticRoutesManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not

@@ -66,8 +66,8 @@ class AssertNetworkConfigMixin:
     ROUTE_CONFIG = dedent("""\
         - id: %(id)s
           type: route
-          source: %(source)s
           destination: %(destination)s
+          gateway: %(gateway)s
           metric: %(metric)s
         """)
 
@@ -235,8 +235,8 @@ class AssertNetworkConfigMixin:
         for route in sorted(routes, key=attrgetter('id')):
             config += self.ROUTE_CONFIG % {
                 'id': route.id,
-                'source': route.source.cidr,
                 'destination': route.destination.cidr,
+                'gateway': route.gateway_ip,
                 'metric': route.metric,
             }
         return config

@@ -83,6 +83,7 @@ class StaticRoute(CleanSave, TimestampedModel):
             if source_version != destination_version:
                 raise ValidationError(
                     "source and destination must be the same IP version.")
-            if self.gateway_ip not in source_network:
+            if (self.gateway_ip is not None and
+                    self.gateway_ip not in source_network):
                 raise ValidationError(
                     "gateway_ip must be with in the source subnet.")

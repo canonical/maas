@@ -74,6 +74,136 @@
     <section class="row">
         <div class="inner-wrapper">
             <div class="twelve-col">
+                <h2>Static Routes</h2>
+            </div>
+            <div class="twelve-col padding-bottom">
+                <div class="table margin-bottom">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table-col--30">Gateway IP</div>
+                            <div class="table__header table-col--50">Destination</div>
+                            <div class="table__header table-col--20">Metric</div>
+                        </div>
+                    </header>
+                    <main class="table__body">
+                        <div class="table__row"
+                            data-ng-repeat="staticRoute in (subnetStaticRoutes = staticRoutes | filterBySubnet:subnet:'source' | orderBy:'gateway_ip')"
+                            data-ng-class="{active: isStaticRouteInEditMode(staticRoute) || isStaticRouteInDeleteMode(staticRoute)}">
+                            <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
+                                save-on-blur="false" after-save="staticRouteToggleEditMode(staticRoute)">
+                                <div class="table__data table-col--30">
+                                    <span data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.gateway_ip $}</span>
+                                    <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP"
+                                        disable-label="true" input-class="table__input no-margin"
+                                        data-ng-if="isStaticRouteInEditMode(staticRoute)"></maas-obj-field>
+                                </div>
+                                <div class="table__data table-col--50">{$ getSubnetCIDR(staticRoute.destination) $}</div>
+                                <div class="table__data table-col--11">{$ staticRoute.metric $}</div>
+                                <div class="table__data table-col--9">
+                                    <div class="table__controls" data-ng-if="isSuperUser()">
+                                      <a class="icon edit tooltip margin-right" data-tooltip="Edit row"
+                                          data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
+                                        <a class="icon delete tooltip" data-tooltip="Remove"
+                                            data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
+                                    <div class="table__row active">
+                                        <div class="table__data left margin-top--five">
+                                              <p><span class="icon warning margin-right--ten"></span>Are you sure you want to remove this static route?</p>
+                                        </div>
+                                        <div class="table__data right">
+                                              <a class="link-cta-ubuntu text-button" data-ng-click="staticRouteCancelDelete()">Cancel</a>
+                                              <button class="cta-ubuntu" data-ng-click="staticRouteConfirmDelete()">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="isStaticRouteInEditMode(staticRoute)">
+                                    <div class="table__row form active">
+                                        <div class="table__data table-col--100">
+                                            <div class="six-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <maas-obj-field class="six-col last-col" type="options" key="destination" label="Destination"
+                                                        label-width="two" input-width="three" placeholder="Choose destination"
+                                                        options="dest.id as dest.cidr for dest in subnets | filterSource:subnet"></maas-obj-field>
+                                                </div>
+                                            </div>
+                                            <div class="six-col last-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <maas-obj-field type="text" key="metric" label="Metric"
+                                                        label-width="two" input-width="three"></maas-obj-field>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="isStaticRouteInEditMode(staticRoute)">
+                                    <div class="table__row table__dropdown-row active">
+                                        <div class="table__data left">
+                                            <maas-obj-errors></maas-obj-errors>
+                                        </div>
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button" data-ng-click="staticRouteToggleEditMode(staticRoute)">Cancel</a>
+                                            <button class="cta-ubuntu" maas-obj-save>Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </maas-obj-form>
+                        </div>
+                        <div class="table__row" data-ng-if="subnetStaticRoutes.length === 0 && !newStaticRoute">
+                            <div class="table__data table-col-100">No static routes have been added to this subnet.</div>
+                        </div>
+                        <div class="table__row active" data-ng-if="newStaticRoute">
+                            <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
+                                table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute()">
+                                <div class="table__data table-col--30">
+                                    <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP" disable-label="true" input-class="table__input no-margin"></maas-obj-field>
+                                </div>
+                                <div class="table__data table-col--70"></div>
+                                <div class="table__dropdown">
+                                    <div class="table__row form active">
+                                        <div class="table__data table-col--100">
+                                            <div class="six-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <maas-obj-field type="options" key="destination" label="Destination"
+                                                        label-width="two" input-width="three" placeholder="Choose destination"
+                                                        options="dest.id as dest.cidr for dest in subnets | filterSource:subnet"></maas-obj-field>
+                                                </div>
+                                            </div>
+                                            <div class="six-col last-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <maas-obj-field type="text" key="metric" label="Metric"
+                                                        label-width="two" input-width="three"></maas-obj-field>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row active">
+                                        <div class="table__data left">
+                                            <maas-obj-errors></maas-obj-errors>
+                                        </div>
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button" data-ng-click="cancelAddStaticRoute()">Cancel</a>
+                                            <button class="cta-ubuntu" maas-obj-save>Add</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </maas-obj-form>
+                        </div>
+                    </main>
+                </div>
+                <div data-ng-if="isSuperUser() && !newStaticRoute">
+                    <a class="link-cta-ubuntu secondary" data-ng-click="addStaticRoute()">Add static route</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
                 <h2>Utilisation</h2>
             </div>
             <div class="equal-height">

@@ -340,8 +340,8 @@ class CurtinNetworkGenerator:
         route_operation = {
             "id": route.id,
             "type": "route",
-            "source": route.source.cidr,
             "destination": route.destination.cidr,
+            "gateway": route.gateway_ip,
             "metric": route.metric,
         }
         self.network_config.append(route_operation)

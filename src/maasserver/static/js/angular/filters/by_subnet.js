@@ -5,7 +5,7 @@
  */
 
 angular.module('MAAS').filter('filterBySubnet', function() {
-    return function(foreign_objects, subnet) {
+    return function(foreign_objects, subnet, key) {
         var filtered = [];
         var id;
         if(angular.isObject(subnet)) {
@@ -15,8 +15,11 @@ angular.module('MAAS').filter('filterBySubnet', function() {
         } else {
             return filtered;
         }
+        if(angular.isUndefined(key)) {
+            key = 'subnet';
+        }
         angular.forEach(foreign_objects, function(obj) {
-            if(obj.subnet === id) {
+            if(obj[key] === id) {
                 filtered.push(obj);
             }
         });

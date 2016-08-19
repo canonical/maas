@@ -11,6 +11,8 @@ from maasserver.fields import SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
+from maasserver.utils.forms import set_form_error
+from netaddr import IPAddress
 
 
 class StaticRouteForm(MAASModelForm):
@@ -37,6 +39,17 @@ class StaticRouteForm(MAASModelForm):
         super(StaticRouteForm, self).__init__(*args, **kwargs)
         # Metric field is not a required field, but is required in the model.
         self.fields['metric'].required = False
+
+    def clean(self):
+        gateway_ip = self.cleaned_data.get('gateway_ip')
+        source = self.cleaned_data.get('source')
+        if gateway_ip:
+            # This will not raise an AddrFormatErorr because it is validated at
+            # the field first and if that fails the gateway_ip will be blank.
+            if IPAddress(gateway_ip) not in source.get_ipnetwork():
+                set_form_error(
+                    self, 'gateway_ip',
+                    'Enter an IP address in %s.' % source.cidr)
 
     def save(self):
         static_route = super().save(commit=False)
