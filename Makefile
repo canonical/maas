@@ -236,6 +236,10 @@ define test-template-failed
   touch .failed
 endef
 
+smoke: lint bin/maas-region bin/test.rack
+	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
+	@bin/test.rack --stop
+
 test+coverage: export NOSE_WITH_COVERAGE = 1
 test+coverage: test
 
@@ -432,13 +436,14 @@ define phony_targets
   man
   print-%
   sampledata
+  smoke
   styles
   syncdb
   test
-  test-failed
-  test-migrations
   test+coverage
   test+lxd
+  test-failed
+  test-migrations
 endef
 
 #
