@@ -23,8 +23,18 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         """Record the interfaces information."""
         return deferToDatabase(self.recordInterfacesIntoDatabase, interfaces)
 
+    def reportNeighbours(self, neighbours):
+        """Record the specified list of neighbours."""
+        return deferToDatabase(self.recordNeighboursIntoDatabase, neighbours)
+
     @transactional
     def recordInterfacesIntoDatabase(self, interfaces):
         """Record the interfaces information."""
         region_controller = RegionController.objects.get_running_controller()
         region_controller.update_interfaces(interfaces)
+
+    @transactional
+    def recordNeighboursIntoDatabase(self, neighbours):
+        """Record the interfaces information."""
+        region_controller = RegionController.objects.get_running_controller()
+        region_controller.report_neighbours(neighbours)

@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for services."""
+from twisted.application.service import MultiService
+
 
 __all__ = []
 
@@ -29,7 +31,6 @@ from testtools.matchers import (
     IsInstance,
     Not,
 )
-from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     DeferredQueue,
@@ -37,6 +38,8 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.python import threadable
+from maastesting.matchers import DocTestMatches
+from maastesting.twisted import TwistedLoggerFixture
 
 
 class StubNetworksMonitoringService(NetworksMonitoringService):
@@ -55,6 +58,9 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
     def recordInterfaces(self, interfaces):
         self.interfaces.append(interfaces)
 
+    def reportNeighbours(self, neighbours):
+        pass
+
 
 class TestNetworksMonitoringService(MAASTestCase):
     """Tests of `NetworksMonitoringService`."""
@@ -68,9 +74,11 @@ class TestNetworksMonitoringService(MAASTestCase):
 
     def test_init(self):
         service = self.makeService()
-        self.assertThat(service, IsInstance(TimerService))
-        self.assertThat(service.step, Equals(service.interval))
-        self.assertThat(service.call, Equals(
+        self.assertThat(service, IsInstance(MultiService))
+        self.assertThat(
+            service.interface_monitor.step,
+            Equals(service.interval))
+        self.assertThat(service.interface_monitor.call, Equals(
             (service.updateInterfaces, (), {})))
 
     @inlineCallbacks
@@ -96,15 +104,15 @@ class TestNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_logs_errors(self):
         service = self.makeService()
-        maaslog = self.patch(services, 'maaslog')
-        error_message = factory.make_string()
-        get_interfaces = self.patch(services, "get_all_interfaces_definition")
-        get_interfaces.side_effect = Exception(error_message)
-        yield service.updateInterfaces()
-        self.assertThat(
-            maaslog.error, MockCalledOnceWith(
-                "Failed to update and/or record network interface "
-                "configuration: %s", error_message))
+        with TwistedLoggerFixture() as logger:
+            error_message = factory.make_string()
+            get_interfaces = self.patch(
+                services, "get_all_interfaces_definition")
+            get_interfaces.side_effect = Exception(error_message)
+            yield service.updateInterfaces()
+        self.assertThat(logger.output, DocTestMatches(
+            "Failed to update and/or record network interface configuration"
+            "..."))
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_nothing_previously_recorded(self):
@@ -156,24 +164,29 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         service = self.makeService()
         recordInterfaces = self.patch(service, "recordInterfaces")
-        recordInterfaces.side_effect = [Exception, None]
+        recordInterfaces.side_effect = [Exception, None, None]
 
-        # recordInterfaces is called the first time, as expected.
-        recordInterfaces.reset_mock()
-        yield service.updateInterfaces()
-        self.assertThat(recordInterfaces, MockCalledOnceWith(sentinel.config))
+        # Using the logger fixture prevents the test case from failing due
+        # to the logged exception.
+        with TwistedLoggerFixture():
+            # recordInterfaces is called the first time, as expected.
+            recordInterfaces.reset_mock()
+            yield service.updateInterfaces()
+            self.assertThat(recordInterfaces, MockCalledOnceWith(
+                sentinel.config))
 
-        # recordInterfaces is called the second time too; the service noted
-        # that it crashed last time and knew to run it again.
-        recordInterfaces.reset_mock()
-        yield service.updateInterfaces()
-        self.assertThat(recordInterfaces, MockCalledOnceWith(sentinel.config))
+            # recordInterfaces is called the second time too; the service noted
+            # that it crashed last time and knew to run it again.
+            recordInterfaces.reset_mock()
+            yield service.updateInterfaces()
+            self.assertThat(recordInterfaces, MockCalledOnceWith(
+                sentinel.config))
 
-        # recordInterfaces is NOT called the third time; the service noted
-        # that the configuration had not changed.
-        recordInterfaces.reset_mock()
-        yield service.updateInterfaces()
-        self.assertThat(recordInterfaces, MockNotCalled())
+            # recordInterfaces is NOT called the third time; the service noted
+            # that the configuration had not changed.
+            recordInterfaces.reset_mock()
+            yield service.updateInterfaces()
+            self.assertThat(recordInterfaces, MockNotCalled())
 
     @inlineCallbacks
     def test_assumes_sole_responsibility_before_updating(self):

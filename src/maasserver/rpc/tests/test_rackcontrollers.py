@@ -30,6 +30,7 @@ from maasserver.rpc import rackcontrollers
 from maasserver.rpc.rackcontrollers import (
     handle_upgrade,
     register,
+    report_neighbours,
     update_foreign_dhcp,
     update_interfaces,
     update_last_image_sync,
@@ -357,6 +358,18 @@ class TestUpdateInterfaces(MAASServerTestCase):
         self.assertThat(
             patched_update_interfaces,
             MockCalledOnceWith(sentinel.interfaces))
+
+
+class TestReportNeighbours(MAASServerTestCase):
+
+    def test__calls_report_neighbours_on_rack_controller(self):
+        rack_controller = factory.make_RackController()
+        patched_report_neighbours = self.patch(
+            RackController, "report_neighbours")
+        report_neighbours(rack_controller.system_id, sentinel.neighbours)
+        self.assertThat(
+            patched_report_neighbours,
+            MockCalledOnceWith(sentinel.neighbours))
 
 
 class TestUpdateLastImageSync(MAASServerTestCase):

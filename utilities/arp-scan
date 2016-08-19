@@ -1,0 +1,22 @@
+#!/bin/bash
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# This script is used for testing neighbour discovery. It allows all the
+# ARP neighbours on an attached subnet to be quickly discovered.
+
+EXTRA_ARGS=""
+if [ "$1" == "--nice" ]; then
+    EXTRA_ARGS="--max-rate 3"
+    shift
+fi
+
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 [--nice] <interface> <cidr> [cidr...]"
+    exit
+fi
+
+INTERFACE=$1
+shift
+
+sudo nmap -e $INTERFACE $EXTRA_ARGS -sn -n -oX - -PR "$@"

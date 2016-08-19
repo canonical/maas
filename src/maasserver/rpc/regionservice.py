@@ -408,6 +408,18 @@ class Region(RPCProtocol):
         d.addCallback(lambda args: {})
         return d
 
+    @region.ReportNeighbours.responder
+    def report_neighbours(self, system_id, neighbours):
+        """report_neighbours()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
+        """
+        d = deferToDatabase(
+            rackcontrollers.report_neighbours, system_id, neighbours)
+        d.addCallback(lambda args: {})
+        return d
+
     @region.RequestNodeInfoByMACAddress.responder
     def request_node_info_by_mac_address(self, mac_address):
         """request_node_info_by_mac_address()

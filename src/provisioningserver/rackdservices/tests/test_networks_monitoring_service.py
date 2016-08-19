@@ -75,3 +75,38 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             protocol.UpdateInterfaces, MockCalledOnceWith(
                 protocol, system_id=rpc_service.getClient().localIdent,
                 interfaces=interfaces))
+
+    @inlineCallbacks
+    def test_reports_neighbours_to_region(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateInterfaces, region.ReportNeighbours)
+        self.addCleanup((yield connecting))
+
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+
+        rpc_service = services.getServiceNamed('rpc')
+        service = RackNetworksMonitoringService(rpc_service, Clock())
+        service.getInterfaces = lambda: succeed(interfaces)
+        # Put something in the cache. This tells recordInterfaces that refresh
+        # has already run but the interfaces have changed thus they need to be
+        # updated.
+        service._interfacesRecorded({})
+        neighbours = [{"ip": factory.make_ip_address()}]
+
+        # yield service.startService()
+        yield service.reportNeighbours(neighbours)
+        # yield service.stopService()
+
+        self.assertThat(
+            protocol.ReportNeighbours, MockCalledOnceWith(
+                protocol, system_id=rpc_service.getClient().localIdent,
+                neighbours=neighbours))

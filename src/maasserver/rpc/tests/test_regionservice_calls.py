@@ -84,6 +84,7 @@ from provisioningserver.rpc.region import (
     RegisterEventType,
     ReportBootImages,
     ReportForeignDHCPServer,
+    ReportNeighbours,
     RequestNodeInfoByMACAddress,
     RequestRackRefresh,
     SendEvent,
@@ -1186,6 +1187,35 @@ class TestRegionProtocol_UpdateInterfaces(MAASTransactionServerTestCase):
             update_interfaces,
             MockCalledOnceWith(
                 params['system_id'], params['interfaces']))
+
+
+class TestRegionProtocol_ReportNeighbours(MAASTestCase):
+
+    def test_report_neighbours_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            ReportNeighbours.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_report_neighbours_function(self):
+        report_neighbours = self.patch(
+            regionservice.rackcontrollers, 'report_neighbours')
+
+        params = {
+            'system_id': factory.make_name('system_id'),
+            'neighbours': [{"ip": "127.0.0.1"}, {"ip": "127.0.0.2"}]
+        }
+
+        response = yield call_responder(
+            Region(), ReportNeighbours, params)
+        self.assertIsNotNone(response)
+
+        self.assertThat(
+            report_neighbours,
+            MockCalledOnceWith(
+                params['system_id'], params['neighbours']))
 
 
 class TestRegionProtocol_RequestNodeInforByMACAddress(

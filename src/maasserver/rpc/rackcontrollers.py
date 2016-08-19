@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to rack controllers."""
+from provisioningserver.rpc.exceptions import NoSuchNode
+
 
 __all__ = [
     "handle_upgrade",
@@ -188,6 +190,18 @@ def update_interfaces(system_id, interfaces):
     """Update the interface definition on the rack controller."""
     rack_controller = RackController.objects.get(system_id=system_id)
     rack_controller.update_interfaces(interfaces)
+
+
+@synchronous
+@transactional
+def report_neighbours(system_id, neighbours):
+    """Report observed neighbours seen on the rack controller."""
+    try:
+        rack_controller = RackController.objects.get(system_id=system_id)
+    except RackController.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+    else:
+        rack_controller.report_neighbours(neighbours)
 
 
 @synchronous

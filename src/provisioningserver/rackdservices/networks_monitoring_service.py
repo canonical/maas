@@ -9,6 +9,7 @@ __all__ = [
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.region import (
+    ReportNeighbours,
     RequestRackRefresh,
     UpdateInterfaces,
 )
@@ -35,3 +36,10 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             return client(
                 UpdateInterfaces, system_id=client.localIdent,
                 interfaces=interfaces)
+
+    def reportNeighbours(self, neighbours):
+        """Report neighbour information."""
+        client = self.clientService.getClient()
+        return client(
+            ReportNeighbours, system_id=client.localIdent,
+            neighbours=neighbours)

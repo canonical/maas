@@ -877,7 +877,7 @@ InterfaceChild = namedtuple('InterfaceChild', ('name', 'data'))
 def interface_children(ifname: str, interfaces: dict, children_map: dict):
     """Yields each child interface for `ifname` given the specified data.
 
-    Each resul will be in the format of a single-item dictionary mapping
+    Each result will be in the format of a single-item dictionary mapping
     the child interface name to its data in the `interfaces` structure.
 
     :param ifname: The interface whose children to yield.
@@ -888,7 +888,7 @@ def interface_children(ifname: str, interfaces: dict, children_map: dict):
     if ifname in children_map:
         children = children_map[ifname]
         for child in children:
-            yield InterfaceChild._make((child, interfaces[child]))
+            yield InterfaceChild(child, interfaces[child])
 
 
 def get_default_monitored_interfaces(interfaces: dict) -> list:
