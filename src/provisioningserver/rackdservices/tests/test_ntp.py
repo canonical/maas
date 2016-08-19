@@ -30,6 +30,7 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing.doubles import FakeConnectionToRegion
+from provisioningserver.service_monitor import service_monitor
 from testtools.matchers import (
     Equals,
     Is,
@@ -113,14 +114,17 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
         rpc_service, _ = yield prepareRegionForGetControllerType(self)
         servers = {c.address[0] for c in rpc_service.getAllClients()}
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
-        self.patch_autospec(ntp, "configure")
+        configure = self.patch_autospec(ntp, "configure")
+        restartService = self.patch_autospec(service_monitor, "restartService")
 
         yield service._tryUpdate()
-        self.assertThat(ntp.configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(restartService, MockCalledOnceWith("ntp"))
         # If the configuration has not changed then a second call to
-        # _tryUpdate does not result in another call to _applyConfiguration.
+        # `_tryUpdate` does not result in another call to `configure`.
         yield service._tryUpdate()
-        self.assertThat(ntp.configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(restartService, MockCalledOnceWith("ntp"))
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_region_is_not_available(self):
@@ -191,6 +195,9 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
+
+        # Ensure that we never actually execute against systemd.
+        self.patch_autospec(service_monitor, "restartService")
 
         self.useFixture(MAASRootFixture())
         with TwistedLoggerFixture() as logger:

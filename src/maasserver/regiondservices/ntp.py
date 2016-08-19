@@ -12,6 +12,7 @@ from datetime import timedelta
 import attr
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
+from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.ntp.config import configure
@@ -85,8 +86,11 @@ class RegionNetworkTimeProtocolService(TimerService):
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
         """
-        return deferToThread(
+        d = deferToThread(
             configure, configuration.references, configuration.peers)
+        d.addCallback(
+            callOut, service_monitor.restartService, "ntp")
+        return d
 
     def _configurationApplied(self, configuration):
         """Record the currently applied NTP server configuration.

@@ -11,6 +11,7 @@ from crochet import wait_for
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.regiondservices import ntp
+from maasserver.service_monitor import service_monitor
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -85,17 +86,19 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
     def test__tryUpdate_updates_ntp_server(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         configuration = yield deferToDatabase(self.make_example_configuration)
-        self.patch_autospec(ntp, "configure")
+        configure = self.patch_autospec(ntp, "configure")
+        restartService = self.patch_autospec(service_monitor, "restartService")
+
         yield service._tryUpdate()
-        self.assertThat(
-            ntp.configure, MockCalledOnceWith(
-                configuration.references, configuration.peers))
+        self.assertThat(configure, MockCalledOnceWith(
+            configuration.references, configuration.peers))
+        self.assertThat(restartService, MockCalledOnceWith("ntp"))
         # If the configuration has not changed then a second call to
-        # _tryUpdate does not result in another call to _applyConfiguration.
+        # `_tryUpdate` does not result in another call to `configure`.
         yield service._tryUpdate()
-        self.assertThat(
-            ntp.configure, MockCalledOnceWith(
-                configuration.references, configuration.peers))
+        self.assertThat(configure, MockCalledOnceWith(
+            configuration.references, configuration.peers))
+        self.assertThat(restartService, MockCalledOnceWith("ntp"))
 
 
 class TestRegionNetworkTimeProtocolService_Errors(
@@ -115,6 +118,9 @@ class TestRegionNetworkTimeProtocolService_Errors(
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         broken_method = self.patch_autospec(service, self.method)
         broken_method.side_effect = factory.make_exception()
+
+        # Ensure that we never actually execute against systemd.
+        self.patch_autospec(service_monitor, "restartService")
 
         self.useFixture(MAASRootFixture())
         with TwistedLoggerFixture() as logger:

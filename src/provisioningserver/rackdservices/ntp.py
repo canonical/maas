@@ -13,6 +13,7 @@ import attr
 from provisioningserver.ntp.config import configure
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.region import GetControllerType
+from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.twisted import callOut
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
@@ -97,7 +98,9 @@ class RackNetworkTimeProtocolService(TimerService):
             `_getConfiguration`.
         """
         if configuration.is_rack and not configuration.is_region:
-            return deferToThread(configure, configuration.references, ())
+            d = deferToThread(configure, configuration.references, ())
+            d.addCallback(callOut, service_monitor.restartService, "ntp")
+            return d
 
     def _configurationApplied(self, configuration):
         """Record the currently applied NTP server configuration.
