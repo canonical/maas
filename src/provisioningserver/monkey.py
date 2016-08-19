@@ -7,7 +7,7 @@ server patching.
 """
 
 __all__ = [
-    "add_term_error_code_to_tftp",
+    "add_patches_to_txtftp",
     "add_patches_to_twisted",
 ]
 
@@ -22,6 +22,99 @@ def add_term_error_code_to_tftp():
     if tftp.datagram.errors.get(8) is None:
         tftp.datagram.errors[8] = (
             "Terminate transfer due to option negotiation")
+
+
+def fix_tftp_requests():
+    """Use intelligence in determining IPv4 vs IPv6 when creatinging a session.
+
+       Specifically, look at addr[0] and pass iface to listenUDP based on that.
+
+       See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/1614581
+    """
+    import tftp.protocol
+
+    from tftp.datagram import (
+        OP_WRQ,
+        ERRORDatagram,
+        ERR_NOT_DEFINED,
+        ERR_ACCESS_VIOLATION,
+        ERR_FILE_EXISTS,
+        ERR_ILLEGAL_OP,
+        OP_RRQ,
+        ERR_FILE_NOT_FOUND
+    )
+    from tftp.bootstrap import (
+        RemoteOriginWriteSession,
+        RemoteOriginReadSession,
+    )
+    from tftp.netascii import NetasciiReceiverProxy, NetasciiSenderProxy
+    from twisted.internet import reactor
+    from twisted.internet.defer import inlineCallbacks, returnValue
+    from twisted.python.context import call
+    from tftp.errors import (
+        FileExists,
+        Unsupported,
+        AccessViolation,
+        BackendError,
+        FileNotFound,
+    )
+    from netaddr import IPAddress
+
+    @inlineCallbacks
+    def new_startSession(self, datagram, addr, mode):
+        # Set up a call context so that we can pass extra arbitrary
+        # information to interested backends without adding extra call
+        # arguments, or switching to using a request object, for example.
+        context = {}
+        if self.transport is not None:
+            # Add the local and remote addresses to the call context.
+            local = self.transport.getHost()
+            context["local"] = local.host, local.port
+            context["remote"] = addr
+        try:
+            if datagram.opcode == OP_WRQ:
+                fs_interface = yield call(
+                    context, self.backend.get_writer, datagram.filename)
+            elif datagram.opcode == OP_RRQ:
+                fs_interface = yield call(
+                    context, self.backend.get_reader, datagram.filename)
+        except Unsupported as e:
+            self.transport.write(ERRORDatagram.from_code(
+                ERR_ILLEGAL_OP,
+                u"{}".format(e).encode("ascii", "replace")).to_wire(), addr)
+        except AccessViolation:
+            self.transport.write(
+                ERRORDatagram.from_code(ERR_ACCESS_VIOLATION).to_wire(), addr)
+        except FileExists:
+            self.transport.write(
+                ERRORDatagram.from_code(ERR_FILE_EXISTS).to_wire(), addr)
+        except FileNotFound:
+            self.transport.write(
+                ERRORDatagram.from_code(ERR_FILE_NOT_FOUND).to_wire(), addr)
+        except BackendError as e:
+            self.transport.write(ERRORDatagram.from_code(
+                ERR_NOT_DEFINED,
+                u"{}".format(e).encode("ascii", "replace")).to_wire(), addr)
+        else:
+            if IPAddress(addr[0]).version == 6:
+                iface = '::'
+            else:
+                iface = ''
+            if datagram.opcode == OP_WRQ:
+                if mode == b'netascii':
+                    fs_interface = NetasciiReceiverProxy(fs_interface)
+                session = RemoteOriginWriteSession(
+                    addr, fs_interface, datagram.options, _clock=self._clock)
+                reactor.listenUDP(0, session, iface)
+                returnValue(session)
+            elif datagram.opcode == OP_RRQ:
+                if mode == b'netascii':
+                    fs_interface = NetasciiSenderProxy(fs_interface)
+                session = RemoteOriginReadSession(
+                    addr, fs_interface, datagram.options, _clock=self._clock)
+                reactor.listenUDP(0, session, iface)
+                returnValue(session)
+    tftp.protocol.TFTP._startSession = new_startSession
 
 
 def fix_twisted_web_client():
@@ -217,6 +310,11 @@ def fix_twisted_internet_tcp():
         return socket.getaddrinfo(ip, port, 0, 0, 0, _NUMERIC_ONLY)[0][4]
 
     twisted.internet.tcp._resolveIPv6 = new_resolveIPv6
+
+
+def add_patches_to_txtftp():
+    add_term_error_code_to_tftp()
+    fix_tftp_requests()
 
 
 def add_patches_to_twisted():

@@ -14,7 +14,7 @@ from socket import error as socket_error
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.monkey import (
     add_patches_to_twisted,
-    add_term_error_code_to_tftp,
+    add_patches_to_txtftp,
 )
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
@@ -186,7 +186,7 @@ class ProvisioningServiceMaker:
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
-        add_term_error_code_to_tftp()
+        add_patches_to_txtftp()
         add_patches_to_twisted()
 
         self._configureCrochet()

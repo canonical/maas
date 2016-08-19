@@ -112,7 +112,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = (
-            self.patch(plugin_module, 'add_term_error_code_to_tftp'))
+            self.patch(plugin_module, 'add_patches_to_txtftp'))
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options)

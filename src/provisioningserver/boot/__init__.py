@@ -137,7 +137,8 @@ class BootMethod(metaclass=ABCMeta):
     """Skeleton for a boot method."""
 
     # Path prefix that is used for the pxelinux.cfg. Used for
-    # the dhcpd.conf that is generated.
+    # the dhcpd.conf that is generated.  Format is "path/to/dir/".
+    # relative to tftpboot directory.
     path_prefix = None
 
     # Arches for which this boot method needs to install boot loaders.
@@ -157,7 +158,7 @@ class BootMethod(metaclass=ABCMeta):
 
     @abstractproperty
     def bootloader_path(self):
-        """Relative path from tftproot to boot loader."""
+        """Relative path from `path_prefix` to boot loader."""
 
     @abstractproperty
     def arch_octet(self):

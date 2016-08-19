@@ -288,7 +288,7 @@ class TestDHCPState(MAASTestCase):
             mock_get_config,
             MockCalledOnceWith(
                 server.template_basename,
-                omapi_key=omapi_key,
+                omapi_key=omapi_key, ipv6=ANY,
                 failover_peers=state.failover_peers,
                 shared_networks=state.shared_networks,
                 hosts=sorted(state.hosts.values(), key=itemgetter("host")),

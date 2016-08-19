@@ -428,10 +428,24 @@ class TestGetConfig(PservTestCase):
 class TestComposeConditionalBootloader(PservTestCase):
     """Tests for `compose_conditional_bootloader`."""
 
-    def test__composes_bootloader_section(self):
-        output = config.compose_conditional_bootloader()
+    def test__composes_bootloader_section_v4(self):
+        output = config.compose_conditional_bootloader(False)
         for name, method in BootMethodRegistry:
             if name == "pxe":
+                self.assertThat(output, Contains("else"))
+                self.assertThat(output, Contains(method.bootloader_path))
+            elif method.arch_octet is not None:
+                self.assertThat(output, Contains(method.arch_octet))
+                self.assertThat(output, Contains(method.bootloader_path))
+            else:
+                # No DHCP configuration is rendered for boot methods that have
+                # no `arch_octet`, with the solitary exception of PXE.
+                pass
+
+    def test__composes_bootloader_section_v6(self):
+        output = config.compose_conditional_bootloader(True)
+        for name, method in BootMethodRegistry:
+            if name == "uefi":
                 self.assertThat(output, Contains("else"))
                 self.assertThat(output, Contains(method.bootloader_path))
             elif method.arch_octet is not None:

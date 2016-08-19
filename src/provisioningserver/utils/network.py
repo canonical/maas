@@ -607,12 +607,12 @@ def find_mac_via_arp(ip):
 def clean_up_netifaces_address(address, interface):
     """Strip extraneous matter from `netifaces` IPv6 address.
 
-    Each IPv6 address we get from `netifaces` has a "zone index": a suffix
-    consisting of a percent sign and a network interface name, e.g. `eth0`
-    in GNU/Linux or `0` in Windows.  These are normally used to disambiguate
-    link-local addresses (which have the same network prefix on each link,
-    but may not actually be connected).  `IPAddress` doesn't parse that
-    suffix, so we strip it off.
+    Each link-local IPv6 address we get from `netifaces` has a "zone index": a
+    suffix consisting of a percent sign and a network interface name, e.g.
+    `eth0` in GNU/Linux or `0` in Windows.  These are normally used to
+    disambiguate link-local addresses (which have the same network prefix on
+    each link, but may not actually be connected).  `IPAddress` doesn't parse
+    that suffix, so we strip it off.
     """
     return address.replace('%' + interface, '')
 
@@ -633,9 +633,8 @@ def get_all_addresses_for_interface(interface):
     if netifaces.AF_INET6 in addresses:
         for inet6_address in addresses[netifaces.AF_INET6]:
             if "addr" in inet6_address:
-                # There's a bug in netifaces which results in the
-                # interface name being appended to the IPv6 address.
-                # Goodness knows why. Anyway, we deal with that
+                # We know the interface name, so we don't care to keep the
+                # interface name on link-local addresses.  Strip those off
                 # here.
                 yield clean_up_netifaces_address(
                     inet6_address["addr"], interface)

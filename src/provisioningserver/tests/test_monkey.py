@@ -11,7 +11,7 @@ import sys
 from unittest.mock import sentinel
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.monkey import add_term_error_code_to_tftp
+from provisioningserver.monkey import add_patches_to_txtftp
 import tftp.datagram
 
 
@@ -27,7 +27,7 @@ class TestAddTermErrorCodeToTFT(MAASTestCase):
 
     def test_adds_error_code_8(self):
         self.patch(tftp.datagram, 'errors', {})
-        add_term_error_code_to_tftp()
+        add_patches_to_txtftp()
         self.assertIn(8, tftp.datagram.errors)
         self.assertEqual(
             "Terminate transfer due to option negotiation",
@@ -35,6 +35,6 @@ class TestAddTermErrorCodeToTFT(MAASTestCase):
 
     def test_skips_adding_error_code_if_already_present(self):
         self.patch(tftp.datagram, 'errors', {8: sentinel.error_8})
-        add_term_error_code_to_tftp()
+        add_patches_to_txtftp()
         self.assertEqual(
             sentinel.error_8, tftp.datagram.errors.get(8))

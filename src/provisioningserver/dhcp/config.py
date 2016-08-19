@@ -16,11 +16,16 @@ from platform import linux_distribution
 import socket
 from typing import Sequence
 
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils import (
     locate_template,
     typed,
 )
+from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
     normalise_whitespace,
@@ -30,37 +35,55 @@ from provisioningserver.utils.twisted import synchronous
 import tempita
 
 # Used to generate the conditional bootloader behaviour
-CONDITIONAL_BOOTLOADER = """
+CONDITIONAL_BOOTLOADER = ("""
+{{if ipv6}}
+           {{behaviour}} client-arch-type = {{arch_octet}} {
+               option dhcp6.bootfile-url \"{{url}}\";
+           }
+{{else}}
 {{behaviour}} option arch = {{arch_octet}} {
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
     {{endif}}
 }
-"""
+{{endif}}
+""")
 
 # Used to generate the PXEBootLoader special case
-PXE_BOOTLOADER = """
+DEFAULT_BOOTLOADER = ("""
+{{if ipv6}}
+            else {
+               option dhcp6.bootfile-url \"{{url}}\";
+           }
+{{else}}
 else {
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
     {{endif}}
 }
-"""
+{{endif}}
+""")
 
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
 
 
-def compose_conditional_bootloader():
+def compose_conditional_bootloader(ipv6, rack_ip=None):
+    default_name = 'uefi' if ipv6 else 'pxe'
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
-        if name != "pxe" and method.arch_octet is not None:
+        if name != default_name and method.arch_octet is not None:
+            url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
+            if method.path_prefix:
+                url += method.path_prefix
+            url += '/%s' % method.bootloader_path
             output += tempita.sub(
                 CONDITIONAL_BOOTLOADER,
+                ipv6=ipv6, rack_ip=rack_ip, url=url,
                 behaviour=next(behaviour),
                 arch_octet=method.arch_octet,
                 bootloader=method.bootloader_path,
@@ -71,12 +94,17 @@ def compose_conditional_bootloader():
     # dhcpd config. This ensures that a booting node that does not
     # provide an architecture octet, or architectures that emulate
     # pxelinux can still boot.
-    pxe_method = BootMethodRegistry.get_item('pxe')
-    if pxe_method is not None:
+    method = BootMethodRegistry.get_item(default_name)
+    if method is not None:
+        url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
+        if method.path_prefix:
+            url += method.path_prefix
+        url += '/%s' % method.bootloader_path
         output += tempita.sub(
-            PXE_BOOTLOADER,
-            bootloader=pxe_method.bootloader_path,
-            path_prefix=pxe_method.path_prefix,
+            DEFAULT_BOOTLOADER,
+            ipv6=ipv6, rack_ip=rack_ip, url=url,
+            bootloader=method.bootloader_path,
+            path_prefix=method.path_prefix,
             ).strip()
     return output.strip()
 
@@ -124,14 +152,36 @@ def get_addresses(*hostnames):
 def get_config(
         template_name: str, global_dhcp_snippets: Sequence[dict],
         failover_peers: Sequence[dict], shared_networks: Sequence[dict],
-        hosts: Sequence[dict], omapi_key: str) -> str:
+        hosts: Sequence[dict], omapi_key: str, ipv6: bool) -> str:
     """Return a DHCP config file based on the supplied parameters.
 
     :param template_name: Template file name: `dhcpd.conf.template` for the
         IPv4 template, `dhcpd6.conf.template` for the IPv6 template.
+    :param ipv6: True if ipv6 configuration should be generated.
     :return: A full configuration, as a string.
     """
-    bootloader = compose_conditional_bootloader()
+    if ipv6:
+        return get_config_v6(
+            template_name, global_dhcp_snippets, failover_peers,
+            shared_networks, hosts, omapi_key)
+    else:
+        return get_config_v4(
+            template_name, global_dhcp_snippets, failover_peers,
+            shared_networks, hosts, omapi_key)
+
+
+@typed
+def get_config_v4(
+        template_name: str, global_dhcp_snippets: Sequence[dict],
+        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
+        hosts: Sequence[dict], omapi_key: str) -> str:
+    """Return a DHCP config file based on the supplied parameters.
+
+    :param template_name: Template file name: `dhcpd.conf.template` for the
+        IPv4 template.
+    :return: A full configuration, as a string.
+    """
+    bootloader = compose_conditional_bootloader(False)
     platform_codename = linux_distribution()[2]
     template_file = locate_template('dhcp', template_name)
     template = tempita.Template.from_filename(template_file, encoding="UTF-8")
@@ -153,6 +203,56 @@ def get_config(
             global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
             failover_peers=failover_peers, shared_networks=shared_networks,
             bootloader=bootloader, platform_codename=platform_codename,
+            omapi_key=omapi_key, **helpers)
+    except (KeyError, NameError) as error:
+        raise DHCPConfigError(
+            "Failed to render DHCP configuration.") from error
+
+
+@typed
+def get_config_v6(
+        template_name: str, global_dhcp_snippets: Sequence[dict],
+        failover_peers: Sequence[dict], shared_networks: Sequence[dict],
+        hosts: Sequence[dict], omapi_key: str) -> str:
+    """Return a DHCP config file based on the supplied parameters.
+
+    :param template_name: Template file name: `dhcpd6.conf.template` for the
+        IPv6 template.
+    :return: A full configuration, as a string.
+    """
+    platform_codename = linux_distribution()[2]
+    template_file = locate_template('dhcp', template_name)
+    template = tempita.Template.from_filename(template_file, encoding="UTF-8")
+    # Helper functions to stuff into the template namespace.
+    helpers = {
+        "oneline": normalise_whitespace,
+        "commalist": normalise_to_comma_list,
+    }
+
+    rack_addrs = [IPAddress(addr) for addr in get_all_interface_addresses()]
+
+    for shared_network in shared_networks:
+        for subnet in shared_network["subnets"]:
+            cidr = IPNetwork(subnet['subnet_cidr'])
+            rack_ip_found = False
+            for rack_addr in rack_addrs:
+                if rack_addr in cidr:
+                    rack_ip = str(rack_addr)
+                    rack_ip_found = True
+                    break
+            if rack_ip_found:
+                subnet["bootloader"] = compose_conditional_bootloader(
+                    True, rack_ip)
+            ntp_servers = split_string_list(subnet.get("ntp_servers", ""))
+            ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
+            subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
+            subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
+
+    try:
+        return template.substitute(
+            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
+            failover_peers=failover_peers, shared_networks=shared_networks,
+            platform_codename=platform_codename,
             omapi_key=omapi_key, **helpers)
     except (KeyError, NameError) as error:
         raise DHCPConfigError(

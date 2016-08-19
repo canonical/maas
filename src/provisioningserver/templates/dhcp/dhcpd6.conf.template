@@ -17,17 +17,16 @@ option path-prefix code 210 = text; #RFC5071
 {{endfor}}
 
 #
-# Bootloaders
-#
-{{bootloader}}
-
-#
 # Networks
 #
 {{for shared_network in shared_networks}}
 shared-network {{shared_network["name"]}} {
     {{for dhcp_subnet in shared_network["subnets"]}}
     subnet6 {{dhcp_subnet['subnet_cidr']}} {
+           # Bootloaders
+           {{if 'bootloader' in dhcp_subnet and dhcp_subnet['bootloader']}}
+           {{dhcp_subnet['bootloader']}}
+           {{endif}}
            ignore-client-uids true;
            {{if dhcp_subnet.get('dns_servers')}}
            option dhcp6.name-servers {{dhcp_subnet['dns_servers'] | commalist}};

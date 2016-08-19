@@ -136,7 +136,7 @@ class DHCPState(DHCPStateBase):
         """Return the configuration for `server`."""
         dhcpd_config = get_config(
             server.template_basename, omapi_key=self.omapi_key,
-            failover_peers=self.failover_peers,
+            failover_peers=self.failover_peers, ipv6=server.ipv6,
             shared_networks=self.shared_networks,
             hosts=sorted(self.hosts.values(), key=itemgetter("host")),
             global_dhcp_snippets=sorted(

@@ -837,9 +837,9 @@ class ClusterClientService(TimerService, object):
                     % (error, info_url))
             except:
                 log.err(
-                    None, "Failed to contact region: %s "
+                    None, "Failed to contact region. "
                     "(While requesting RPC info at %s)."
-                    % (error, info_url))
+                    % (info_url))
             else:
                 # The advertising service on the region was not running yet.
                 break
