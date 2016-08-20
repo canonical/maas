@@ -45,7 +45,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
                 $scope.$watch("controllers", updateVLANs, true);
                 $scope.loaded = true;
                 // Initial table sort order.
-                $scope.predicate = "[vlan_name, vlan.id, subnet_name]";
+                $scope.predicate = "['vlan_name', 'vlan.id', 'subnet_name']";
             }
         }
 
@@ -93,7 +93,9 @@ angular.module('MAAS').controller('FabricDetailsController', [
                 });
             });
             $scope.rows = rows;
-            $scope.racks = racks;
+            $scope.racks = Object.keys(racks).map(function(key) {
+                return racks[key];
+            });
         }
 
         // Return true if the authenticated user is super user.

@@ -198,7 +198,12 @@ angular.module('MAAS').factory(
             url += path + "ws";
 
             // Include the csrftoken in the URL if it's defined.
-            csrftoken = $cookies.csrftoken;
+            var csrftoken;
+            if(angular.isFunction($cookies.get)) {
+                csrftoken = $cookies.get('csrftoken');
+            } else {
+                csrftoken = $cookies.csrftoken;
+            }
             if(angular.isDefined(csrftoken)) {
                 url += '?csrftoken=' + encodeURIComponent(csrftoken);
             }
