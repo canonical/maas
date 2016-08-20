@@ -34,11 +34,15 @@ from socket import (
 )
 
 from netaddr import (
+    EUI,
     IPAddress,
     IPNetwork,
     IPRange,
 )
-from netaddr.core import AddrFormatError
+from netaddr.core import (
+    AddrFormatError,
+    NotRegisteredError,
+)
 import netifaces
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
@@ -786,6 +790,31 @@ def ipv4_to_bytes(ipv4_address):
 def format_eui(eui):
     """Returns the specified netaddr.EUI object formatted in the MAAS style."""
     return str(eui).replace('-', ':').lower()
+
+
+def get_eui_organization(eui):
+    """Returns the registered organization for the specified EUI, if it can be
+    determined. Otherwise, returns None.
+
+    :param eui:A `netaddr.EUI` object.
+    """
+    try:
+        registration = eui.oui.registration()
+        # Note that `registration` is not a dictionary, so we can't use .get().
+        return registration['org']
+    except NotRegisteredError:
+        # This could happen for locally-administered MACs.
+        return None
+
+
+def get_mac_organization(mac):
+    """Returns the registered organization for the specified EUI, if it can be
+    determined. Otherwise, returns None.
+
+    :param mac:String representing a MAC address.
+    :raises:netaddr.core.AddrFormatError if `mac` is invalid.
+    """
+    return get_eui_organization(EUI(mac))
 
 
 def fix_link_addresses(links):

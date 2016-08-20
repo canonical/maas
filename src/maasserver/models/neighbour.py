@@ -1,8 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model definition for Neighbour.
-"""
+"""Model definition for Neighbour."""
 
 __all__ = [
     'Neighbour',
@@ -27,6 +26,7 @@ from maasserver.utils.orm import (
     UniqueViolation,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.network import get_mac_organization
 
 
 maaslog = get_maas_logger("neighbour")
@@ -135,3 +135,7 @@ class Neighbour(CleanSave, TimestampedModel):
         unique=False, null=True, blank=True, editable=False)
 
     objects = NeighbourManager()
+
+    @property
+    def mac_organization(self):
+        return get_mac_organization(str(self.mac_address))

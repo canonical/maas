@@ -47,7 +47,9 @@ from provisioningserver.utils.network import (
     get_all_interface_addresses,
     get_all_interfaces_definition,
     get_default_monitored_interfaces,
+    get_eui_organization,
     get_interface_children,
+    get_mac_organization,
     hex_str_to_bytes,
     inet_ntop,
     interface_children,
@@ -192,6 +194,22 @@ class TestFindIPViaARP(MAASTestCase):
         self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92".upper())
         self.assertEqual("192.168.0.1", ip_address_observed)
+
+
+class TestGetMACOrganization(MAASTestCase):
+    """Tests for `get_mac_organization()` and `get_eui_organization()`."""
+
+    def test_get_mac_organization(self):
+        organization = get_mac_organization("48:51:b7:00:00:00")
+        self.assertThat(organization, Equals("Intel Corporate"))
+
+    def test_get_eui_organization(self):
+        organization = get_eui_organization(EUI("48:51:b7:00:00:00"))
+        self.assertThat(organization, Equals("Intel Corporate"))
+
+    def test_get_eui_organization_returns_none_for_invalid_mac(self):
+        organization = get_eui_organization(EUI("FF:FF:b7:00:00:00"))
+        self.assertThat(organization, Is(None))
 
 
 class TestFindMACViaARP(MAASTestCase):

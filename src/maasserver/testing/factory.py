@@ -71,6 +71,7 @@ from maasserver.models import (
     LargeFile,
     LicenseKey,
     Machine,
+    Neighbour,
     Node,
     OwnerData,
     PackageRepository,
@@ -880,6 +881,28 @@ class Factory(maastesting.factory.Factory):
             host_reserve=host_reserve, bridge=bridge, off=off)
         fannetwork.save()
         return fannetwork
+
+    def make_Neighbour(
+            self, ip=None, time=None, vid=0, count=None, interface=None,
+            mac_address=None):
+        if ip is None:
+            ip = factory.make_ip_address()
+        if time is None:
+            time = random.randint(0, 10000000)
+        # Note that None is a valid value for vid, so we use 0 for the default.
+        if vid == 0:
+            vid = random.randint(1, 4094)
+        if count is None:
+            count = random.randint(1, 2000)
+        if interface is None:
+            interface = factory.make_Interface()
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        neighbour = Neighbour(
+            ip=ip, time=time, vid=vid, count=count, interface=interface,
+            mac_address=mac_address)
+        neighbour.save()
+        return neighbour
 
     def make_Fabric(self, name=None, class_type=None):
         fabric = Fabric(name=name, class_type=class_type)
