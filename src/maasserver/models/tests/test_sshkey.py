@@ -10,6 +10,7 @@ import random
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
+from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import (
     sshkey,
     SSHKey,
@@ -267,26 +268,35 @@ class SSHKeyTest(MAASServerTestCase):
         self.assertIsInstance(display, SafeString)
 
     def test_sshkey_user_and_key_unique_together(self):
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         key_string = get_data('data/test_rsa0.pub')
         user = factory.make_User()
-        key = SSHKey(key=key_string, user=user)
+        key = SSHKey(key=key_string, user=user, keysource=keysource)
         key.save()
-        key2 = SSHKey(key=key_string, user=user)
+        key2 = SSHKey(key=key_string, user=user, keysource=keysource)
         self.assertRaises(
             ValidationError, key2.full_clean)
 
     def test_sshkey_user_and_key_unique_together_db_level(self):
         # Even if we hack our way around model-level checks, uniqueness
         # of the user/key combination is enforced at the database level.
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         key_string = get_data('data/test_rsa0.pub')
         user = factory.make_User()
-        existing_key = SSHKey(key=key_string, user=user)
+        existing_key = SSHKey(key=key_string, user=user, keysource=keysource)
         existing_key.save()
         # The trick to hack around the model-level checks: create a
         # duplicate key for another user, then attach it to the same
         # user as the existing key by updating it directly in the
         # database.
-        redundant_key = SSHKey(key=key_string, user=factory.make_User())
+        redundant_key = SSHKey(
+            key=key_string, user=factory.make_User(), keysource=keysource)
         redundant_key.save()
         self.assertRaises(
             IntegrityError,

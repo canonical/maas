@@ -20,6 +20,7 @@ from django.db.models import (
 from django.utils.safestring import mark_safe
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.keysource import KeySource
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.utils.sshkey import normalise_openssh_public_key
 
@@ -98,7 +99,7 @@ class SSHKey(CleanSave, TimestampedModel):
 
     :ivar user: The user which owns the key.
     :ivar key: The SSH public key.
-
+    :ivar keysource: The KeySource that this SSH key belongs to.
     """
 
     objects = SSHKeyManager()
@@ -108,12 +109,15 @@ class SSHKey(CleanSave, TimestampedModel):
     key = TextField(
         null=False, editable=True, validators=[validate_ssh_public_key])
 
+    keysource = ForeignKey(
+        KeySource, null=True, blank=True, editable=False, on_delete=CASCADE)
+
     class Meta(DefaultMeta):
         verbose_name = "SSH key"
-        unique_together = ('user', 'key')
+        unique_together = ('user', 'key', 'keysource')
 
     def unique_error_message(self, model_class, unique_check):
-        if unique_check == ('user', 'key'):
+        if unique_check == ('user', 'key', 'keysource'):
                 return "This key has already been added for this user."
         return super(
             SSHKey, self).unique_error_message(model_class, unique_check)

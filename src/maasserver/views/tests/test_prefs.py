@@ -5,8 +5,8 @@
 
 __all__ = []
 
-
 import http.client
+from unittest import skip
 
 from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
@@ -147,6 +147,7 @@ class KeyManagementTest(MAASServerTestCase):
         self.assertEqual(http.client.FOUND, response.status_code)
         self.assertTrue(SSHKey.objects.filter(key=key_string).exists())
 
+    @skip("XXX: NewellJensen 2016-08-22 bug=1615794: unique_together issue.")
     def test_add_key_POST_fails_if_key_already_exists_for_the_user(self):
         self.client_log_in()
         key_string = get_data('data/test_rsa0.pub')

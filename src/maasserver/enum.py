@@ -26,6 +26,8 @@ __all__ = [
     'RDNS_MODE_CHOICES',
     'RDNS_MODE_CHOICES_DICT',
     'USERDATA_TYPE',
+    'KEYS_PROTOCOL_TYPE',
+    'KEYS_PROTOCOL_TYPE_CHOICES',
     ]
 
 from collections import OrderedDict
@@ -647,4 +649,19 @@ SERVICE_STATUS_CHOICES = (
     (SERVICE_STATUS.DEGRADED, "Degraded"),
     (SERVICE_STATUS.DEAD, "Dead"),
     (SERVICE_STATUS.OFF, "Off"),
+)
+
+
+class KEYS_PROTOCOL_TYPE:
+    """The vocabulary of possible protocol types for `KeySource`."""
+    #: Launchpad
+    LP = 'launchpad'
+
+    #: Github
+    GH = 'github'
+
+
+KEYS_PROTOCOL_TYPE_CHOICES = (
+    (KEYS_PROTOCOL_TYPE.LP, "launchpad"),
+    (KEYS_PROTOCOL_TYPE.GH, "github"),
 )

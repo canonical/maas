@@ -36,6 +36,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    KEYS_PROTOCOL_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     PARTITION_TABLE_TYPE,
@@ -68,6 +69,7 @@ from maasserver.models import (
     Filesystem,
     FilesystemGroup,
     IPRange,
+    KeySource,
     LargeFile,
     LicenseKey,
     Machine,
@@ -782,10 +784,25 @@ class Factory(maastesting.factory.Factory):
         return User.objects.create_user(
             username=username, password=password, email=email)
 
-    def make_SSHKey(self, user, key_string=None):
+    def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):
+        if protocol is None:
+            protocol = random.choice(
+                [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        if auth_id is None:
+            auth_id = factory.make_name('auth_id')
+        keysource = KeySource(
+            protocol=protocol, auth_id=auth_id, auto_update=auto_update)
+        keysource.save()
+        return keysource
+
+    def make_SSHKey(self, user, key_string=None, keysource=None):
         if key_string is None:
             key_string = get_data('data/test_rsa0.pub')
-        key = SSHKey(key=key_string, user=user)
+        if keysource is None:
+            keysource = self.make_KeySource(
+                protocol=random.choice(
+                    [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
+        key = SSHKey(key=key_string, user=user, keysource=keysource)
         key.save()
         return key
 
