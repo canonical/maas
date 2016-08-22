@@ -157,6 +157,53 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             DNSForwardZoneConfig.get_AAAA_mapping(
                 combined_mapping, ns_ttl, dns_ip))
 
+    def test_handles_slash_32_dynamic_range(self):
+        target_dir = patch_dns_config_path(self)
+        domain = factory.make_string()
+        network = factory.make_ipv4_network()
+        dns_ip = factory.pick_ip_in_network(network)
+        ipv4_hostname = factory.make_name('host')
+        ipv4_ip = factory.pick_ip_in_network(network)
+        range_ip = factory.pick_ip_in_network(network, but_not={ipv4_ip})
+        ipv6_hostname = factory.make_name('host')
+        ipv6_ip = factory.make_ipv6_address()
+        ttl = random.randint(10, 300)
+        mapping = {
+            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
+            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
+        }
+        dynamic_range = IPRange(IPAddress(range_ip), IPAddress(range_ip))
+        expected_generate_directives = (
+            DNSForwardZoneConfig.get_GENERATE_directives(
+                dynamic_range))
+        other_mapping = {ipv4_hostname: HostnameRRsetMapping(
+            None, {(ttl, 'MX', '10 bar')})}
+        dns_zone_config = DNSForwardZoneConfig(
+            domain, serial=random.randint(1, 100),
+            other_mapping=other_mapping, default_ttl=ttl,
+            mapping=mapping, dns_ip=dns_ip,
+            dynamic_ranges=[dynamic_range])
+        dns_zone_config.write_config()
+        self.assertThat(
+            os.path.join(target_dir, 'zone.%s' % domain),
+            FileContains(
+                matcher=ContainsAll(
+                    [
+                        '$TTL %d' % ttl,
+                        '%s %d IN A %s' % (ipv4_hostname, ttl, ipv4_ip),
+                        '%s %d IN AAAA %s' % (ipv6_hostname, ttl, ipv6_ip),
+                        '%s %d IN MX 10 bar' % (ipv4_hostname, ttl),
+                    ] +
+                    [
+                        '$GENERATE %s %s IN A %s' % (
+                            iterator_values, reverse_dns, hostname)
+                        for iterator_values, reverse_dns, hostname in
+                        expected_generate_directives
+                    ]
+                )
+            )
+        )
+
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
         domain = factory.make_string()
