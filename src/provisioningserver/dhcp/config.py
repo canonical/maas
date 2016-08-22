@@ -25,7 +25,7 @@ from provisioningserver.utils import (
     locate_template,
     typed,
 )
-from provisioningserver.utils.network import get_all_interface_addresses
+import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
     normalise_whitespace,
@@ -229,7 +229,9 @@ def get_config_v6(
         "commalist": normalise_to_comma_list,
     }
 
-    rack_addrs = [IPAddress(addr) for addr in get_all_interface_addresses()]
+    rack_addrs = [
+        IPAddress(addr)
+        for addr in net_utils.get_all_interface_addresses()]
 
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:

@@ -32,6 +32,7 @@ from provisioningserver.dhcp.testing.config import (
 )
 from provisioningserver.testing.network import does_HOSTALIASES_work_here
 from provisioningserver.testing.testcase import PservTestCase
+import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import select_c_utf8_locale
 import tempita
@@ -60,6 +61,9 @@ sample_template = dedent("""\
     {{for shared_network in shared_networks}}
         {{shared_network['name']}}
         {{for dhcp_subnet in shared_network['subnets']}}
+            {{if 'bootloader' in dhcp_subnet and dhcp_subnet['bootloader']}}
+            {{dhcp_subnet['bootloader']}}
+            {{endif}}
             {{dhcp_subnet['subnet']}}
             {{dhcp_subnet['subnet_mask']}}
             {{dhcp_subnet['broadcast_ip']}}
@@ -160,6 +164,7 @@ def make_sample_params(test, ipv6=False):
         'shared_networks': shared_networks,
         'hosts': [make_host(ipv6=ipv6) for _ in range(3)],
         'global_dhcp_snippets': make_global_dhcp_snippets(),
+        'ipv6': ipv6,
     }
 
 
@@ -271,7 +276,12 @@ class TestGetConfig(PservTestCase):
 
     def test__includes_compose_conditional_bootloader(self):
         params = make_sample_params(self, ipv6=self.ipv6)
-        bootloader = config.compose_conditional_bootloader()
+        rack_ip = params['shared_networks'][0]['subnets'][0]['router_ip']
+        self.patch(
+            net_utils, 'get_all_interface_addresses'
+            ).return_value = [netaddr.IPAddress(rack_ip)]
+        bootloader = config.compose_conditional_bootloader(
+            ipv6=self.ipv6, rack_ip=rack_ip)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertThat(rendered, Contains(bootloader))
