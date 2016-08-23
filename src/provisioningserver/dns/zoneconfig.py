@@ -75,7 +75,10 @@ def get_details_for_ip_range(ip_range):
     # 256 /24 networks in a /16, so that's the most /24s we're going
     # to have to deal with; this matters later on when we iterate
     # through the /24s within this network.
-    cidr = spanning_cidr(ip_range)
+    if ip_range.size == 1:
+        cidr = IPNetwork(IPAddress(ip_range.first))
+    else:
+        cidr = spanning_cidr(ip_range)
     subnets = cidr.subnet(max(24, cidr.prefixlen))
 
     # Split the spanning network into /24 subnets, then see if they fall

@@ -2,6 +2,14 @@
 Changelog
 =========
 
+2.0.1
+=====
+
+Issues fixed in this release
+----------------------------
+
+LP: #1615686    Single-IP dynamic ranges resulted in internal errors.
+
 2.0.0
 =====
 
@@ -36,8 +44,8 @@ Important announcements
 **API 1.0 has been deprecated, introducing API 2.0**
   Starting from MAAS 2.0, the MAAS REST API version 1.0 has been deprecated.
   MAAS 2.0 drops support for the legacy 1.0 API, in favor of API version 2.0.
-  With the introduction of the new API version, various endpoints have now 
-  been deprecated, and new end-points have been introduced. API users will 
+  With the introduction of the new API version, various endpoints have now
+  been deprecated, and new end-points have been introduced. API users will
   need to update their client tools to reflect the changes.
 
   For more information on API 2.0, refer to :ref:`API documentation <region-controller-api>`.
@@ -398,7 +406,7 @@ Other notable changes
   Host entries are now rendered in the DHCP configuration instead
   of placed in the leases file. This removes any state that previously
   existed in the DHCP lease database on the cluster controller.
-  
+
   Starting with MAAS 2.0, if the dhcpd.leases file is lost (such as during a
   failure scenario in a high availability environment), MAAS will be able to
   reconstruct it.
