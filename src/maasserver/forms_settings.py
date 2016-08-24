@@ -448,7 +448,7 @@ def get_config_doc(indentation=0):
     doc = ["Available configuration items:\n\n"]
     for config_name, config_details in sorted(CONFIG_ITEMS.items()):
         form_details = config_details['form_kwargs']
-        doc.append("- " + config_name + ": " + form_details['label'] + ". ")
+        doc.append(":" + config_name + ": " + form_details['label'] + ". ")
         # Append help text if present.
         help_text = form_details.get('help_text')
         if help_text is not None:
@@ -460,4 +460,4 @@ def get_config_doc(indentation=0):
             doc.append("Available choices are: %s." % choice_descr)
         doc.append("\n")
     full_text = (' ' * indentation).join(doc)
-    return re.sub('\s+$', '', full_text, flags=re.MULTILINE)
+    return re.sub('\ +$', '', full_text, flags=re.MULTILINE)

@@ -315,12 +315,14 @@ class InterfaceHandler(OperationsHandler):
         """Update interface on node.
 
         Fields for physical interface:
+
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
         :param tags: Tags for the interface.
         :param vlan: Untagged VLAN the interface is connected to.
 
         Fields for bond interface:
+
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
         :param tags: Tags for the interface.
@@ -328,6 +330,7 @@ class InterfaceHandler(OperationsHandler):
         :param parents: Parent interfaces that make this bond.
 
         Fields for VLAN interface:
+
         :param tags: Tags for the interface.
         :param vlan: VLAN the interface is connected to.
         :param parent: Parent interface for this VLAN interface.
@@ -355,6 +358,7 @@ class InterfaceHandler(OperationsHandler):
             slave selection in balance-xor, 802.3ad, and tlb modes.
 
         Supported bonding modes (bond-mode):
+
         balance-rr - Transmit packets in sequential order from the first
         available slave through the last.  This mode provides load balancing
         and fault tolerance.

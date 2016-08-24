@@ -138,7 +138,7 @@ def render_api_docs():
         for (http_method, op), function in sorted(exports, key=export_key):
             line("``%s %s``" % (http_method, uri_template), end="")
             if op is not None:
-                line(" ``op=%s``" % op)
+                line(" ``op=%s``" % op, end="")
             line()
             docstring = getdoc(function)
             if docstring is not None:

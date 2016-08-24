@@ -228,6 +228,7 @@ class BlockDeviceHandler(OperationsHandler):
         """Update block device on a machine.
 
         Fields for physical block device:
+
         :param name: Name of the block device.
         :param model: Model of the block device.
         :param serial: Serial number of the block device.
@@ -238,6 +239,7 @@ class BlockDeviceHandler(OperationsHandler):
         :param block_size: Block size of the block device.
 
         Fields for virtual block device:
+
         :param name: Name of the block device.
         :param uuid: UUID of the block device.
         :param size: Size of the block device. (Only allowed for logical \
