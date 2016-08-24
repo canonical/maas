@@ -1189,7 +1189,7 @@ class TestRescueModeAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNotNone(reload_object(node).owner)
 
