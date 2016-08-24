@@ -1,6 +1,15 @@
 {%- extends "basic/layout.html" %}
 {% set css_files = ['https://assets.ubuntu.com/sites/guidelines/css/latest/ubuntu-styles.css', 'https://assets.ubuntu.com/sites/ubuntu/latest/u/css/global.css', '_static/css/main.css'] %}
 
+{% block rootrellink %}
+  <li class="nav-item nav-item-0">
+    <a href="http://maas.io/docs/">Latest documentation</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+  </li>
+  <li class="nav-item nav-item-0">
+    <a href="{{ pathto(master_doc) }}">{{ shorttitle|e }}</a>
+  </li>
+{% endblock %}
+
 {% block sidebarlogo %}
 <a style="border:0" title="MAAS Documentation Homepage" href="{{ pathto('index.html', 1) }}"><img src="{{ pathto('_static/maas-logo-200.png',1) }}" alt="MAAS logo"/></a>
 <h2 style="text-align:center;">MAAS</h2>
