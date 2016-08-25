@@ -6,6 +6,7 @@
 __all__ = [
     ]
 
+from collections import defaultdict
 from operator import attrgetter
 
 from maasserver.dns.zonegenerator import get_dns_search_paths
@@ -15,6 +16,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
 )
 from maasserver.models.staticroute import StaticRoute
+from netaddr import IPAddress
 import yaml
 
 
@@ -24,10 +26,11 @@ class CurtinNetworkGenerator:
     def __init__(self, node):
         self.node = node
         self.gateways = node.get_default_gateways()
-        self.dns_servers = node.get_default_dns_servers()
         self.routes = StaticRoute.objects.all()
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
+        # The default value is False: expected keys are 4 and 6.
+        self.addr_family_present = defaultdict(bool)
         self.operations = {
             "physical": [],
             "vlan": [],
@@ -53,9 +56,15 @@ class CurtinNetworkGenerator:
         # Order the network_config where dependencies come first.
         self._order_config_dependency()
 
+        # If we have no IPv6 addresses present, make sure we claim IPv4, so
+        # that we at least get some address.
+        if not self.addr_family_present[6]:
+            self.addr_family_present[4] = True
+        default_dns_servers = self.node.get_default_dns_servers(
+            ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6])
         self.network_config.append({
             "type": "nameserver",
-            "address": self.dns_servers,
+            "address": default_dns_servers,
             "search": sorted(get_dns_search_paths()),
         })
 
@@ -174,13 +183,19 @@ class CurtinNetworkGenerator:
                 # we allow both families to be DHCP'd.
                 dhcp_types.add(4)
                 dhcp_types.add(6)
+                self.addr_family_present[4] = True
+                self.addr_family_present[6] = True
             else:
                 dhcp_types.add(dhcp_ip.subnet.get_ipnetwork().version)
         if dhcp_types == set([4, 6]):
+            self.addr_family_present[4] = True
+            self.addr_family_present[6] = True
             return "dhcp"
         elif dhcp_types == set([4]):
+            self.addr_family_present[4] = True
             return "dhcp4"
         elif dhcp_types == set([6]):
+            self.addr_family_present[6] = True
             return "dhcp6"
         else:
             return None
@@ -253,6 +268,8 @@ class CurtinNetworkGenerator:
                         "type": "static",
                         "address": "%s/%s" % (str(address.ip), subnet_len)
                     }
+                    self.addr_family_present[
+                        IPAddress(address.ip).version] = True
                     self._set_default_gateway(iface, subnet, subnet_operation)
                     if subnet.dns_servers is not None:
                         subnet_operation["dns_nameservers"] = (

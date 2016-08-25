@@ -241,13 +241,48 @@ class AssertNetworkConfigMixin:
             }
         return config
 
-    def collectDNSConfig(self, node):
+    def collectDNSConfig(self, node, ipv4=True, ipv6=True):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
-            repr(node.get_default_dns_servers()))
+            repr(node.get_default_dns_servers(ipv4=ipv4, ipv6=ipv6)))
         dns_searches = sorted(get_dns_search_paths())
         for dns_name in dns_searches:
             config += "   - %s\n" % dns_name
         return config
+
+
+class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
+
+    scenarios = (
+        ('ipv4', {'version': 4}),
+        ('ipv6', {'version': 6}),
+    )
+
+    def test_renders_expected_output(self):
+        subnet = factory.make_Subnet(version=self.version)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            interface_count=2, subnet=subnet)
+        for iface in node.interface_set.filter(enabled=True):
+            factory.make_StaticIPAddress(
+                interface=iface,
+                subnet=iface.vlan.subnet_set.first())
+            iface.params = {
+                "mtu": random.randint(600, 1400),
+                "accept_ra": factory.pick_bool(),
+                "autoconf": factory.pick_bool(),
+            }
+            iface.save()
+        extra_interface = node.interface_set.all()[1]
+        sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=None, interface=extra_interface)
+        sip.subnet = None
+        sip.save()
+        factory.make_Interface(node=node)
+        net_config = self.collect_interface_config(node)
+        net_config += self.collectDNSConfig(
+            node, ipv4=(self.version == 4), ipv6=(self.version == 6))
+        config = compose_curtin_network_config(node)
+        self.assertNetworkConfig(net_config, config)
 
 
 class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):

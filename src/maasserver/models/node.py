@@ -2879,7 +2879,7 @@ class Node(CleanSave, TimestampedModel):
                 found_gateways, IPADDRESS_FAMILY.IPv6)
         return DefaultGateways._make((gateway_ipv4, gateway_ipv6))
 
-    def get_default_dns_servers(self):
+    def get_default_dns_servers(self, ipv4=True, ipv6=True):
         """Return the default DNS servers for this node."""
         # Circular imports.
         from maasserver.dns.zonegenerator import get_dns_server_address
@@ -2887,13 +2887,13 @@ class Node(CleanSave, TimestampedModel):
         gateways = self.get_default_gateways()
 
         # Try first to use DNS servers from default gateway subnets.
-        if gateways.ipv4 is not None:
+        if ipv4 and gateways.ipv4 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv4.subnet_id)
             if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
                 # An IPv4 subnet is hosting the default gateway and has DNS
                 # servers defined. IPv4 DNS servers take first-priority.
                 return subnet.dns_servers
-        if gateways.ipv6 is not None:
+        if ipv6 and gateways.ipv6 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv6.subnet_id)
             if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
                 # An IPv6 subnet is hosting the default gateway and has DNS
@@ -2906,7 +2906,8 @@ class Node(CleanSave, TimestampedModel):
             # If there are no default gateways, the default is the MAAS
             # region IP address.
             maas_dns_server = get_dns_server_address(
-                rack_controller=self.get_boot_rack_controller())
+                rack_controller=self.get_boot_rack_controller(),
+                ipv4=ipv4, ipv6=ipv6)
         else:
             # Choose an address consistent with the primary address-family
             # in use, as indicated by the presence (or not) of a gateway.
@@ -2915,8 +2916,8 @@ class Node(CleanSave, TimestampedModel):
             # IPv6 address.
             maas_dns_server = get_dns_server_address(
                 rack_controller=self.get_boot_rack_controller(),
-                ipv4=(gateways.ipv4 is not None),
-                ipv6=(gateways.ipv6 is not None))
+                ipv4=(ipv4 and gateways.ipv4 is not None),
+                ipv6=(ipv6 and gateways.ipv6 is not None))
         return [maas_dns_server]
 
     def get_boot_purpose(self):

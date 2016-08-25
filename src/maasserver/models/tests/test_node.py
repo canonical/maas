@@ -4784,6 +4784,18 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_subnet_dns=[ipv6_subnet_dns])
         self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
 
+    def test__uses_rack_ipv6_if_dual_stack_with_no_gateway_and_told(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False)
+        self.assertThat(
+            node.get_default_dns_servers(ipv4=False), Equals([rack_v6]))
+
+    def test__uses_rack_ipv6_if_dual_stack_with_dual_gateway_and_told(self):
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=True)
+        self.assertThat(
+            node.get_default_dns_servers(ipv4=False), Equals([rack_v6]))
+
     def test__uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False)
