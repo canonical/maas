@@ -1,4 +1,5 @@
 archdetect-deb
+avahi-utils
 bash
 build-essential
 bzr
