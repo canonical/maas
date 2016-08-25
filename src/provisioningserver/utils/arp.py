@@ -183,17 +183,20 @@ class ARP:
             # This is an ARP request.
             # We can find a binding in the (source_eui, source_ip)
             source_ip = self.source_ip
-            if int(source_ip) != 0:
+            source_eui = self.source_eui
+            if int(source_ip) != 0 and int(source_eui) != 0:
                 yield (source_ip, self.source_eui)
         elif self.operation == 2:
             # This is an ARP reply.
             # We can find a binding in both the (source_eui, source_ip) and
             # the (target_eui, target_ip).
             source_ip = self.source_ip
+            source_eui = self.source_eui
             target_ip = self.target_ip
-            if int(source_ip) != 0:
+            target_eui = self.target_eui
+            if int(source_ip) != 0 and int(source_eui) != 0:
                 yield (source_ip, self.source_eui)
-            if int(target_ip) != 0:
+            if int(target_ip) != 0 and int(target_eui) != 0:
                 yield (target_ip, self.target_eui)
 
     def write(self, out=sys.stdout):

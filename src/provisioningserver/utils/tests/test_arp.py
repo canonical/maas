@@ -217,6 +217,38 @@ class TestARP(MAASTestCase):
         self.assertItemsEqual(
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))])
 
+    def test__bindings__skips_null_source_eui_for_request(self):
+        pkt_sender_mac = '00:00:00:00:00:00'
+        pkt_sender_ip = '192.168.0.1'
+        pkt_target_ip = '192.168.0.2'
+        pkt_target_mac = '00:00:00:00:00:00'
+        arp = ARP(make_arp_packet(
+            pkt_sender_ip, pkt_sender_mac, pkt_target_ip, pkt_target_mac,
+            op=ARP_OPERATION.REQUEST))
+        self.assertItemsEqual(arp.bindings(), [])
+
+    def test__bindings__skips_null_source_eui_in_reply(self):
+        pkt_sender_mac = '00:00:00:00:00:00'
+        pkt_sender_ip = '192.168.0.1'
+        pkt_target_ip = '192.168.0.2'
+        pkt_target_mac = '02:03:04:05:06:07'
+        arp = ARP(make_arp_packet(
+            pkt_sender_ip, pkt_sender_mac, pkt_target_ip, pkt_target_mac,
+            op=ARP_OPERATION.REPLY))
+        self.assertItemsEqual(
+            arp.bindings(), [(IPAddress(pkt_target_ip), EUI(pkt_target_mac))])
+
+    def test__bindings__skips_null_target_eui_in_reply(self):
+        pkt_sender_mac = '01:02:03:04:05:06'
+        pkt_sender_ip = '192.168.0.1'
+        pkt_target_ip = '192.168.0.2'
+        pkt_target_mac = '00:00:00:00:00:00'
+        arp = ARP(make_arp_packet(
+            pkt_sender_ip, pkt_sender_mac, pkt_target_ip, pkt_target_mac,
+            op=ARP_OPERATION.REPLY))
+        self.assertItemsEqual(
+            arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))])
+
 
 class TestUpdateBindingsAndGetEvent(MAASTestCase):
 
