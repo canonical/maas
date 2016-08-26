@@ -901,7 +901,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Neighbour(
             self, ip=None, time=None, vid=0, count=None, interface=None,
-            mac_address=None):
+            mac_address=None, updated=None):
         if ip is None:
             ip = factory.make_ip_address()
         if time is None:
@@ -912,13 +912,14 @@ class Factory(maastesting.factory.Factory):
         if count is None:
             count = random.randint(1, 2000)
         if interface is None:
-            interface = factory.make_Interface()
+            rack = factory.make_RackController()
+            interface = factory.make_Interface(node=rack)
         if mac_address is None:
             mac_address = factory.make_mac_address()
         neighbour = Neighbour(
             ip=ip, time=time, vid=vid, count=count, interface=interface,
             mac_address=mac_address)
-        neighbour.save()
+        neighbour.save(_updated=updated)
         return neighbour
 
     def make_Fabric(self, name=None, class_type=None):

@@ -98,6 +98,28 @@ class TimestampedModelTest(MAASTransactionServerTestCase):
         transaction.commit()
         self.assertLessEqual(date_now, now())
 
+    def test_updated_allows_override(self):
+        last_year = datetime.now() - timedelta(days=365)
+        # Perform a write database operation.
+        created = make_time_in_the_recent_past()
+        updated = make_time_in_the_recent_past()
+        obj = TimestampedModelTestModel(created=created, updated=updated)
+        obj.save(_updated=last_year)
+        # The created time should be set to last year, since the override value
+        # was less than the creation date.
+        self.assertEqual(last_year, obj.created)
+        self.assertEqual(last_year, obj.updated)
+
+    def test_created_allows_override(self):
+        last_year = datetime.now() - timedelta(days=365)
+        # Perform a write database operation.
+        created = make_time_in_the_recent_past()
+        updated = make_time_in_the_recent_past()
+        obj = TimestampedModelTestModel(created=created, updated=updated)
+        obj.save(_created=last_year)
+        self.assertEqual(last_year, obj.created)
+        self.assertEqual(created, obj.updated)
+
 
 class UtilitiesTest(MAASServerTestCase):
 

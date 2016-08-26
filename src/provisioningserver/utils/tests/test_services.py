@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for services."""
-from twisted.application.service import MultiService
-
 
 __all__ = []
 
@@ -15,6 +13,7 @@ from unittest.mock import (
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    DocTestMatches,
     HasLength,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -24,6 +23,7 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils import services
 from provisioningserver.utils.services import NetworksMonitoringService
 from testtools.matchers import (
@@ -31,6 +31,7 @@ from testtools.matchers import (
     IsInstance,
     Not,
 )
+from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     DeferredQueue,
@@ -38,8 +39,6 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.python import threadable
-from maastesting.matchers import DocTestMatches
-from maastesting.twisted import TwistedLoggerFixture
 
 
 class StubNetworksMonitoringService(NetworksMonitoringService):

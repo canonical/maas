@@ -2,11 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
-from maasserver.api.ipranges import (
-    IPRangeHandler,
-    IPRangesHandler,
-)
-
 
 __all__ = []
 
@@ -53,10 +48,6 @@ from maasserver.api.dhcpsnippets import (
     DHCPSnippetHandler,
     DHCPSnippetsHandler,
 )
-from maasserver.api.packagerepositories import (
-    PackageRepositoryHandler,
-    PackageRepositoriesHandler,
-)
 from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordHandler,
     DNSResourceRecordsHandler,
@@ -78,10 +69,6 @@ from maasserver.api.fabrics import (
     FabricHandler,
     FabricsHandler,
 )
-from maasserver.api.staticroutes import (
-    StaticRouteHandler,
-    StaticRoutesHandler,
-)
 from maasserver.api.fannetworks import (
     FanNetworkHandler,
     FanNetworksHandler,
@@ -95,6 +82,10 @@ from maasserver.api.interfaces import (
     InterfacesHandler,
 )
 from maasserver.api.ip_addresses import IPAddressesHandler
+from maasserver.api.ipranges import (
+    IPRangeHandler,
+    IPRangesHandler,
+)
 from maasserver.api.license_keys import (
     LicenseKeyHandler,
     LicenseKeysHandler,
@@ -103,6 +94,10 @@ from maasserver.api.maas import MaasHandler
 from maasserver.api.machines import (
     MachineHandler,
     MachinesHandler,
+)
+from maasserver.api.neighbours import (
+    NeighbourHandler,
+    NeighboursHandler,
 )
 from maasserver.api.networks import (
     NetworkHandler,
@@ -113,6 +108,10 @@ from maasserver.api.nodes import (
     NodesHandler,
 )
 from maasserver.api.not_found import not_found_handler
+from maasserver.api.packagerepositories import (
+    PackageRepositoriesHandler,
+    PackageRepositoryHandler,
+)
 from maasserver.api.partitions import (
     PartitionHandler,
     PartitionsHandler,
@@ -121,13 +120,13 @@ from maasserver.api.rackcontrollers import (
     RackControllerHandler,
     RackControllersHandler,
 )
-from maasserver.api.regioncontrollers import (
-    RegionControllerHandler,
-    RegionControllersHandler,
-)
 from maasserver.api.raid import (
     RaidHandler,
     RaidsHandler,
+)
+from maasserver.api.regioncontrollers import (
+    RegionControllerHandler,
+    RegionControllersHandler,
 )
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.spaces import (
@@ -141,6 +140,10 @@ from maasserver.api.ssh_keys import (
 from maasserver.api.ssl_keys import (
     SSLKeyHandler,
     SSLKeysHandler,
+)
+from maasserver.api.staticroutes import (
+    StaticRouteHandler,
+    StaticRoutesHandler,
 )
 from maasserver.api.subnets import (
     SubnetHandler,
@@ -187,6 +190,10 @@ files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
 ipaddresses_handler = RestrictedResource(
     IPAddressesHandler, authentication=api_auth)
+neighbour_handler = RestrictedResource(
+    NeighbourHandler, authentication=api_auth)
+neighbours_handler = RestrictedResource(
+    NeighboursHandler, authentication=api_auth)
 network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
@@ -370,6 +377,10 @@ urlpatterns += patterns(
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
     url(r'^events/$', events_handler, name='events_handler'),
+    url(r'^neighbours/$', neighbours_handler, name='neighbours_handler'),
+    url(
+        r'^neighbours/(?P<neighbour_id>[.: \w^]+)/*/$',
+        neighbour_handler, name='neighbour_handler'),
     url(
         r'^networks/(?P<name>[^/]+)/$',
         network_handler, name='network_handler'),

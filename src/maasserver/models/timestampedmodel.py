@@ -42,7 +42,7 @@ class TimestampedModel(Model, object):
     created = DateTimeField(editable=False)
     updated = DateTimeField(editable=False)
 
-    def save(self, *args, **kwargs):
+    def save(self, _created=None, _updated=None, *args, **kwargs):
         """Set `created` and `updated` before saving.
 
         If the record is new (its ``id`` is `None`) then `created` is set to
@@ -60,5 +60,13 @@ class TimestampedModel(Model, object):
         else:
             # Existing record; set updated always.
             self.updated = now()
-
+        # Allow overriding the values before saving, so that these values can
+        # be changed in sample data, unit tests, etc.
+        if _created is not None:
+            self.created = _created
+        if _updated is not None:
+            self.updated = _updated
+            # Ensure consistency.
+            if self.updated < self.created:
+                self.created = self.updated
         return super(TimestampedModel, self).save(*args, **kwargs)

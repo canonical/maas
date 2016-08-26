@@ -13,6 +13,7 @@ from django.db.models import (
     IntegerField,
     Manager,
 )
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.fields import (
     MAASIPAddressField,
@@ -23,6 +24,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import (
     get_one,
+    MAASQueriesMixin,
     UniqueViolation,
 )
 from provisioningserver.logger import get_maas_logger
@@ -32,8 +34,50 @@ from provisioningserver.utils.network import get_mac_organization
 maaslog = get_maas_logger("neighbour")
 
 
-class NeighbourManager(Manager):
+class NeighbourQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'ip': "__ip",
+            'mac': "__mac_address",
+        }
+        return super(NeighbourQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class NeighbourQuerySet(NeighbourQueriesMixin, QuerySet):
+    """Custom QuerySet which mixes in some additional queries specific to
+    subnets. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class NeighbourManager(Manager, NeighbourQueriesMixin):
     """A utility to manage collections of Neighbours."""
+
+    def get_queryset(self):
+        queryset = NeighbourQuerySet(self.model, using=self._db)
+        return queryset
+
+    def get_neighbour_or_404(self, specifiers):
+        """Fetch a `Neighbour` by its ID or specifiers.
+
+        :param specifiers: The neighbour specifiers.
+        :type specifiers: str
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        neighbour = self.get_object_by_specifiers_or_raise(specifiers)
+        return neighbour
 
     @staticmethod
     def get_vid_log_snippet(vid: int) -> str:
@@ -88,6 +132,16 @@ class NeighbourManager(Manager):
         # a UniqueViolation so this operation can be retried.
         return get_one(query, exception_class=UniqueViolation)
 
+    def get_by_updated_with_related_nodes(self):
+        """Returns a `QuerySet` of neighbours, while also selecting related
+        interfaces and nodes.
+
+        This method is intended to be called from the API, which will need
+        data from the interface (and its related node) in order to provide
+        useful, concise information about the neighbour.
+        """
+        return self.select_related('interface__node').order_by('updated')
+
 
 class Neighbour(CleanSave, TimestampedModel):
     """A `Neighbour` represents an (IP, MAC) pair seen from an interface.
@@ -139,3 +193,13 @@ class Neighbour(CleanSave, TimestampedModel):
     @property
     def mac_organization(self):
         return get_mac_organization(str(self.mac_address))
+
+    @property
+    def system_id(self):
+        """Returns the system_id of the rack this neighbour was observed on."""
+        return self.interface.node.system_id
+
+    @property
+    def ifname(self):
+        """Returns the interface name this neighbour was observed on."""
+        return self.interface.name

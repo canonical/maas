@@ -1153,7 +1153,7 @@ class Interface(CleanSave, TimestampedModel):
         else:
             neighbour.time = time
             neighbour.count += 1
-            neighbour.save(update_fields=['time', 'count'])
+            neighbour.save(update_fields=['time', 'count', 'updated'])
         return neighbour
 
     def update_mdns_entry(self, avahi_json: dict):
@@ -1181,7 +1181,7 @@ class Interface(CleanSave, TimestampedModel):
                     self.get_log_string(), ip, hostname))
         else:
             binding.count += 1
-            binding.save(update_fields=['count'])
+            binding.save(update_fields=['count', 'updated'])
         return binding
 
 

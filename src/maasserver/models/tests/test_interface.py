@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import datetime
 import random
 from unittest.mock import call
 
@@ -73,6 +74,7 @@ from testtools.matchers import (
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
+    Not,
 )
 
 
@@ -876,14 +878,24 @@ class InterfaceUpdateNeighbourTest(MAASServerTestCase):
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
         iface.update_neighbour(json)
+        neighbour = get_one(Neighbour.objects.all())
+        # Pretend this was updated one day ago.
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        neighbour.save(_updated=yesterday, update_fields=['updated'])
+        neighbour = reload_object(neighbour)
+        self.assertThat(
+            int(neighbour.updated.timestamp()),
+            Equals(int(yesterday.timestamp())))
         json['time'] += 1
         iface.update_neighbour(json)
+        neighbour = reload_object(neighbour)
         self.assertThat(Neighbour.objects.count(), Equals(1))
-        self.assertThat(
-            list(Neighbour.objects.all())[0].time, Equals(json['time']))
+        self.assertThat(neighbour.time, Equals(json['time']))
         # This is the second time we saw this neighbour.
-        self.assertThat(
-            list(Neighbour.objects.all())[0].count, Equals(2))
+        neighbour = reload_object(neighbour)
+        self.assertThat(neighbour.count, Equals(2))
+        # Make sure the "last seen" time is correct.
+        self.assertThat(neighbour.updated, Not(Equals(yesterday)))
 
     def test__replaces_obsolete_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -959,15 +971,23 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         iface.mdns_discovery_state = True
         json = self.make_mdns_entry_json()
         iface.update_mdns_entry(json)
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        mdns_entry = get_one(MDNS.objects.all())
+        mdns_entry.save(_updated=yesterday, update_fields=['updated'])
+        mdns_entry = reload_object(mdns_entry)
+        self.assertThat(
+            int(mdns_entry.updated.timestamp()),
+            Equals(int(yesterday.timestamp())))
         # First time we saw the entry.
-        self.assertThat(list(MDNS.objects.all())[0].count, Equals(1))
+        self.assertThat(mdns_entry.count, Equals(1))
         self.assertThat(MDNS.objects.count(), Equals(1))
         iface.update_mdns_entry(json)
-        self.assertThat(list(MDNS.objects.all())[0].ip, Equals(json['ip']))
-        self.assertThat(
-            list(MDNS.objects.all())[0].hostname, Equals(json['hostname']))
+        mdns_entry = reload_object(mdns_entry)
+        self.assertThat(mdns_entry.ip, Equals(json['ip']))
+        self.assertThat(mdns_entry.hostname, Equals(json['hostname']))
         # This is the second time we saw this entry.
-        self.assertThat(list(MDNS.objects.all())[0].count, Equals(2))
+        self.assertThat(mdns_entry.count, Equals(2))
+        self.assertThat(mdns_entry.updated, Not(Equals(yesterday)))
 
     def test__replaces_obsolete_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
