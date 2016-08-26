@@ -361,10 +361,10 @@ class NodeHandler(TimestampedModelHandler):
             "links": links,
         }
 
-        # When the node is commissioning display the discovered IP address for
-        # this interface. This will only be shown on interfaces that are
-        # connected to a MAAS managed subnet.
-        if obj.status == NODE_STATUS.COMMISSIONING:
+        # When the node is commissioning or in rescue mode display the
+        # discovered IP address for this interface. This will only be shown on
+        # interfaces that are connected to a MAAS managed subnet.
+        if obj.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.RESCUE_MODE):
             discovereds = interface.get_discovered()
             if discovereds is not None:
                 for discovered in discovereds:
