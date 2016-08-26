@@ -186,7 +186,7 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT: EventDetail(
         description="Node entering rescue mode",
-        level=ERROR,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_ENTERING_RESCUE_MODE_EVENT_FAILED: EventDetail(
         description="Node entering rescue mode failure",
@@ -194,7 +194,7 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_EXITING_RESCUE_MODE_EVENT: EventDetail(
         description="Node exiting rescue mode",
-        level=ERROR,
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_EXITING_RESCUE_MODE_EVENT_FAILED: EventDetail(
         description="Node exiting rescue mode failure",
