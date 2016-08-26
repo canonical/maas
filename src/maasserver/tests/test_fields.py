@@ -26,6 +26,8 @@ from maasserver.fields import (
     MAC,
     NodeChoiceField,
     register_mac_type,
+    URLOrPPAFormField,
+    URLOrPPAValidator,
     validate_mac,
     VerboseRegexField,
     VerboseRegexValidator,
@@ -681,3 +683,123 @@ class TestVersionedTextFileField(MAASServerTestCase):
         new_ver = versioned_text_file_field.clean(data)
         self.assertEquals(data, new_ver.data)
         self.assertEquals(old_ver, new_ver.previous_version)
+
+
+class TestURLOrPPAValidator(MAASServerTestCase):
+
+    def test_URLOrPPAValidator_validates_URL(self):
+        validator = URLOrPPAValidator()
+        self.assertIsNone(validator(factory.make_url(scheme='http')))
+        self.assertIsNone(validator(factory.make_url(scheme='https')))
+
+    def test_URLOrPPAValidator_catches_bad_url(self):
+        validator = URLOrPPAValidator()
+        bad_url = factory.make_name('bad_url')
+        error = self.assertRaises(ValidationError, validator, bad_url)
+        self.assertThat(error.message, Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAValidator_catches_bad_scheme(self):
+        validator = URLOrPPAValidator()
+        bad_url = factory.make_url(scheme='bad_scheme')
+        error = self.assertRaises(ValidationError, validator, bad_url)
+        self.assertThat(error.message, Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAValidator_validates_PPA(self):
+        validator = URLOrPPAValidator()
+        good_ppa = "ppa:%s/%s" % (
+            factory.make_hostname(), factory.make_hostname())
+        self.assertIsNone(validator(good_ppa))
+
+    def test_URLOrPPAValidator_catches_bad_PPA_format(self):
+        validator = URLOrPPAValidator()
+        bad_ppa = "ppa:%s" % factory.make_hostname()
+        error = self.assertRaises(ValidationError, validator, bad_ppa)
+        self.assertThat(error.message, Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAValidator_catches_bad_PPA_hostname(self):
+        validator = URLOrPPAValidator()
+        bad_ppa = "ppa:%s/-%s" % (
+            factory.make_hostname(), factory.make_hostname())
+        error = self.assertRaises(ValidationError, validator, bad_ppa)
+        self.assertThat(error.message, Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+
+class TestURLOrPPAFormField(MAASServerTestCase):
+
+    def test_rejects_none(self):
+        error = self.assertRaises(
+            ValidationError, URLOrPPAFormField().clean, None)
+        self.assertThat(error.message, Equals(
+            'This field is required.'))
+
+    def test_URLOrPPAFormField_validates_URL(self):
+        url = factory.make_url(scheme='http')
+        self.assertEqual(url, URLOrPPAFormField().clean(url))
+
+    def test_URLOrPPAFormField_catches_bad_url(self):
+        bad_url = factory.make_name('bad_url')
+        error = self.assertRaises(
+            ValidationError, URLOrPPAFormField().clean, bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAFormField_catches_bad_scheme(self):
+        bad_url = factory.make_url(scheme='bad_scheme')
+        error = self.assertRaises(
+            ValidationError, URLOrPPAFormField().clean, bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAFormField_validates_PPA(self):
+        url = "ppa:%s/%s" % (
+            factory.make_hostname(), factory.make_hostname())
+        self.assertEqual(url, URLOrPPAFormField().clean(url))
+
+    def test_URLOrPPAFormField_catches_bad_PPA_format(self):
+        bad_url = "ppa:%s" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, URLOrPPAFormField().clean, bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_URLOrPPAFormField_catches_bad_PPA_hostname(self):
+        bad_url = "ppa:%s/-%s" % (
+            factory.make_hostname(), factory.make_hostname())
+        error = self.assertRaises(
+            ValidationError, URLOrPPAFormField().clean, bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+
+class TestURLOrPPAField(MAASServerTestCase):
+
+    def test_create_package_repository_ppa(self):
+        # PackageRepository contains a URLOrPPAField. Make one with PPA.
+        ppa_url = 'ppa:%s/%s' % (
+            factory.make_hostname(), factory.make_hostname())
+        factory.make_PackageRepository(url=ppa_url)
+
+    def test_create_package_repository_url(self):
+        # PackageRepository contains a URLOrPPAField. Make one with URL.
+        url = factory.make_url(scheme='http')
+        factory.make_PackageRepository(url=url)
+
+    def test_cannot_create_package_repository_bad_url(self):
+        # PackageRepository contains a URLOrPPAField. Make one with bad URL.
+        bad_url = factory.make_name('bad_url')
+        error = self.assertRaises(
+            ValidationError, factory.make_PackageRepository, url=bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))
+
+    def test_cannot_create_package_repository_bad_ppa(self):
+        # PackageRepository contains a URLOrPPAField. Make one with bad PPA.
+        bad_url = "ppa:%s" % factory.make_hostname()
+        error = self.assertRaises(
+            ValidationError, factory.make_PackageRepository, url=bad_url)
+        self.assertThat(error.messages[0], Equals(
+            'Enter a valid repository URL or PPA location.'))

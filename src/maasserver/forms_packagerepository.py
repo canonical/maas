@@ -9,6 +9,7 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
+from maasserver.fields import URLOrPPAFormField
 from maasserver.forms import (
     MAASModelForm,
     UnconstrainedMultipleChoiceField,
@@ -36,7 +37,7 @@ class PackageRepositoryForm(MAASModelForm):
         label="Name", required=True, help_text=(
             "The name of the Package Repository."))
 
-    url = forms.URLField(
+    url = URLOrPPAFormField(
         label="Package Repository URL",
         required=True, help_text="The Package Repository URL")
 

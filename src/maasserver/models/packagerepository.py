@@ -14,9 +14,9 @@ from django.db.models import (
     Manager,
     QuerySet,
     TextField,
-    URLField,
 )
 from maasserver import DefaultMeta
+from maasserver.fields import URLOrPPAField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
@@ -101,7 +101,8 @@ class PackageRepository(CleanSave, TimestampedModel):
 
     name = CharField(max_length=41, unique=True, default='')
 
-    url = URLField(blank=False, help_text="The URL of the PackageRepository.")
+    url = URLOrPPAField(
+        blank=False, help_text="The URL of the PackageRepository.")
 
     distributions = ArrayField(
         TextField(), blank=True, null=True, default=list)

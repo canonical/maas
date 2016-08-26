@@ -32,6 +32,26 @@ class TestPackageRepositoryManager(MAASServerTestCase):
             PackageRepository.objects.get_additional_repositories(
                 arch).first())
 
+    def test_get_multiple_with_a_ppa(self):
+        ppa_arch = 'armhf'
+        ppa_url = 'ppa:%s/%s' % (
+            factory.make_hostname(), factory.make_hostname())
+        ppa_archive = factory.make_PackageRepository(
+            url=ppa_url, default=False, arches=[
+                ppa_arch, factory.make_name()])
+        arch = 'i386'
+        url = factory.make_url(scheme='http')
+        archive = factory.make_PackageRepository(
+            url=url, default=False, arches=[arch, factory.make_name()])
+        self.assertEquals(
+            ppa_archive,
+            PackageRepository.objects.get_additional_repositories(
+                ppa_arch).first())
+        self.assertEquals(
+            archive,
+            PackageRepository.objects.get_additional_repositories(
+                arch).first())
+
     def test_get_known_architectures(self):
         self.assertEqual(
             PackageRepository.objects.get_known_architectures(),

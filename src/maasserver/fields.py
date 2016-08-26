@@ -27,7 +27,10 @@ import re
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import (
+    RegexValidator,
+    URLValidator,
+)
 from django.db import connections
 from django.db.models import (
     BinaryField,
@@ -37,9 +40,12 @@ from django.db.models import (
     IntegerField,
     Q,
     SubfieldBase,
+    URLField,
 )
 from django.db.models.fields.subclassing import Creator
+from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
+from django.utils.translation import ugettext_lazy as _
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.dns import (
     validate_domain_name,
@@ -711,3 +717,45 @@ class VersionedTextFileField(forms.ModelChoiceField):
             # Create and return a new VersionedTextFile linked to the previous
             # VersionedTextFile
             return self.initial.update(value)
+
+
+@deconstructible
+class URLOrPPAValidator(URLValidator):
+    message = _('Enter a valid repository URL or PPA location.')
+
+    ppa_re = r'ppa:' + URLValidator.hostname_re + r'/' + \
+        URLValidator.hostname_re
+
+    def __call__(self, value):
+        match = re.search(URLOrPPAValidator.ppa_re, force_text(value))
+        # If we don't have a PPA location, let URLValidator do its job.
+        if not match:
+            super().__call__(value)
+
+
+class URLOrPPAFormField(forms.URLField):
+    widget = forms.URLInput
+    default_error_messages = {
+        'invalid': _('Enter a valid repository URL or PPA location.'),
+    }
+    default_validators = [URLOrPPAValidator()]
+
+    def to_python(self, value):
+        # Call grandparent method (CharField) to get string value.
+        value = super(forms.URLField, self).to_python(value)
+        # If it's a PPA locator, return it, else run URL pythonator.
+        match = re.search(URLOrPPAValidator.ppa_re, value)
+        return value if match else super().to_python(value)
+
+
+class URLOrPPAField(URLField):
+    default_validators = [URLOrPPAValidator()]
+    description = _("URLOrPPAField")
+
+    # Copied from URLField, with modified form_class.
+    def formfield(self, **kwargs):
+        defaults = {
+            'form_class': URLOrPPAFormField,
+        }
+        defaults.update(kwargs)
+        return super(URLField, self).formfield(**defaults)
