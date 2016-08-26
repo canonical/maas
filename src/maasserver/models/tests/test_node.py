@@ -1488,7 +1488,7 @@ class TestNode(MAASServerTestCase):
         # Extract the user_data from the start call.
         user_data = node_start.call_args[0][1]
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
-        user_data_script = parsed_data.get_payload()[1]
+        user_data_script = parsed_data.get_payload()[0]
         self.assertThat(
             base64.b64decode(user_data_script.get_payload()), Contains(
                 b'maas-wipe --secure-erase --quick-erase',
@@ -1510,7 +1510,7 @@ class TestNode(MAASServerTestCase):
         # Extract the user_data from the start call.
         user_data = node_start.call_args[0][1]
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
-        user_data_script = parsed_data.get_payload()[1]
+        user_data_script = parsed_data.get_payload()[0]
         self.assertThat(
             base64.b64decode(user_data_script.get_payload()), Contains(
                 b'maas-wipe --secure-erase --quick-erase',

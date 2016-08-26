@@ -21,6 +21,5 @@ def generate_user_data(node, secure_erase=False, quick_erase=False):
     userdata_dir = get_userdata_template_dir()
     result = _generate_user_data(
         node, userdata_dir, 'user_data_disk_erasing.template',
-        'user_data_config.template',
         {'secure_erase': secure_erase, 'quick_erase': quick_erase})
     return result

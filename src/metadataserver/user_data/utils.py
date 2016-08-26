@@ -3,8 +3,8 @@
 
 """Generate commissioning user-data from template and code snippets.
 
-This combines the `user_data.template` and the snippets of code in the
-`snippets` directory into the main commissioning script.
+This combines the snippets of code in the `snippets` directory into
+the main commissioning script.
 
 Its contents are not customizable.  To inject custom code, use the
 :class:`CommissioningScript` model.
@@ -27,8 +27,7 @@ ENCODING = 'utf-8'
 
 
 def generate_user_data(node, userdata_dir,
-                       userdata_template_name, config_template_name,
-                       extra_context=None):
+                       userdata_template_name, extra_context=None):
     """Produce a user_data script for use by commissioning and other
     operations.
 
@@ -46,12 +45,8 @@ def generate_user_data(node, userdata_dir,
     """
     userdata_template_file = os.path.join(
         userdata_dir, userdata_template_name)
-    config_template_file = os.path.join(
-        userdata_dir, config_template_name)
     userdata_template = tempita.Template.from_filename(
         userdata_template_file, encoding=ENCODING)
-    config_template = tempita.Template.from_filename(
-        config_template_file, encoding=ENCODING)
     # The preseed context is a dict containing various configs that the
     # templates can use.
     preseed_context = get_preseed_context(
@@ -65,17 +60,9 @@ def generate_user_data(node, userdata_dir,
         snippets.update(extra_context)
     userdata = userdata_template.substitute(snippets).encode(ENCODING)
 
-    # Render the config.
-    config = config_template.substitute(preseed_context)
-
-    # Create a MIME multipart message from the config and the userdata.
-    config_part = MIMEText(config, 'cloud-config', ENCODING)
-    config_part.add_header(
-        'Content-Disposition', 'attachment; filename="config"')
     data_part = MIMEText(userdata, 'x-shellscript', ENCODING)
     data_part.add_header(
         'Content-Disposition', 'attachment; filename="user_data.sh"')
     combined = MIMEMultipart()
-    combined.attach(config_part)
     combined.attach(data_part)
     return combined.as_bytes()

@@ -22,16 +22,7 @@ class TestRescueModeUserData(MAASServerTestCase):
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
         self.assertTrue(parsed_data.is_multipart())
 
-        cloud_config = parsed_data.get_payload()[0]
-        self.assertEquals(
-            'text/cloud-config; charset="utf-8"', cloud_config['Content-Type'])
-        self.assertEquals(
-            'base64', cloud_config['Content-Transfer-Encoding'])
-        self.assertEquals(
-            'attachment; filename="config"',
-            cloud_config['Content-Disposition'])
-
-        user_data_script = parsed_data.get_payload()[1]
+        user_data_script = parsed_data.get_payload()[0]
         self.assertEquals(
             'text/x-shellscript; charset="utf-8"',
             user_data_script['Content-Type'])

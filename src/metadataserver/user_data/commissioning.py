@@ -18,6 +18,5 @@ def generate_user_data(node):
     """
     userdata_dir = get_userdata_template_dir()
     result = _generate_user_data(
-        node, userdata_dir, 'user_data.template',
-        'user_data_config.template')
+        node, userdata_dir, 'user_data.template')
     return result
