@@ -27,11 +27,3 @@ late_commands:
 
 power_state:
   mode: reboot
-
-{{if enable_http_proxy}}
-{{if http_proxy }}
-apt_proxy: {{http_proxy}}
-{{else}}
-apt_proxy: http://{{server_host}}:8000/
-{{endif}}
-{{endif}}

@@ -42,6 +42,88 @@ def get_apt_proxy_for_node(node):
         return None
 
 
+def make_clean_repo_name(repo):
+    # Removeeany special characters
+    repo_name = "%s_%s" % (
+        repo.name.translate({ord(c): None for c in '\'!@#$[]{}'}), repo.id)
+    # Create a repo name that will be used as file name for the apt list
+    return repo_name.strip().replace(' ', '_').lower()
+
+
+def get_archive_config(node):
+    arch = node.split_arch()[0]
+    archive = PackageRepository.objects.get_default_archive(arch)
+    repositories = PackageRepository.objects.get_additional_repositories(arch)
+    apt_proxy = get_apt_proxy_for_node(node)
+
+    # Process the default Ubuntu Archives or Mirror.
+    archives = {
+        'apt': {
+            'preserve_sources_list': False,
+            'primary': [
+                {
+                    'arches': ['default'],
+                    'uri': archive.url
+                },
+            ],
+            'security': [
+                {
+                    'arches': ['default'],
+                    'uri': archive.url
+                },
+            ],
+        },
+    }
+    if apt_proxy:
+        archives['apt']['proxy'] = apt_proxy
+    if archive.key:
+        archives['apt']['sources'] = {
+            'archive_key': {
+                'key': archive.key
+            }
+        }
+
+    # Process addtional repositories, including PPA's and custom.
+    for repo in repositories:
+        if repo.url.startswith('ppa:'):
+            url = repo.url
+        elif 'ppa.launchpad.net' in repo.url:
+            url = 'deb %s %s main' % (repo.url, node.distro_series)
+        else:
+            components = ''
+            if not repo.components:
+                components = 'main'
+            else:
+                for component in repo.components:
+                    components += '%s ' % component
+            components = components.strip()
+
+            if not repo.distributions:
+                url = 'deb %s %s %s' % (
+                    repo.url, node.distro_series, components)
+            else:
+                url = ''
+                for dist in repo.distributions:
+                    url += 'deb %s %s %s\n' % (repo.url, dist, components)
+
+        if 'sources' not in archives['apt'].keys():
+            archives['apt']['sources'] = {}
+
+        repo_name = make_clean_repo_name(repo)
+
+        if repo.key:
+            archives['apt']['sources'][repo_name] = {
+                'key': repo.key,
+                'source': url
+            }
+        else:
+            archives['apt']['sources'][repo_name] = {
+                'source': url
+            }
+
+    return archives
+
+
 def get_rsyslog_host_port(node):
     """Return the rsyslog host and port to use."""
     # TODO: In the future, we can make this configurable

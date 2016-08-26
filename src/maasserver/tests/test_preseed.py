@@ -15,6 +15,10 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
+from maasserver.compose_preseed import (
+    get_archive_config,
+    make_clean_repo_name,
+)
 from maasserver.enum import (
     FILESYSTEM_TYPE,
     NODE_STATUS,
@@ -39,7 +43,6 @@ from maasserver.preseed import (
     compose_preseed_url,
     curtin_maas_reporter,
     GENERIC_FILENAME,
-    get_archive_config,
     get_curtin_config,
     get_curtin_context,
     get_curtin_image,
@@ -55,7 +58,6 @@ from maasserver.preseed import (
     get_preseed_template,
     get_preseed_type_for,
     load_preseed_template,
-    make_clean_repo_name,
     PreseedTemplate,
     render_enlistment_preseed,
     render_preseed,

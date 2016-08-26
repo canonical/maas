@@ -32,6 +32,7 @@ from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
+    get_archive_config,
     RSYSLOG_PORT,
 )
 from maasserver.enum import (
@@ -150,77 +151,6 @@ def compose_curtin_maas_reporter(node):
     """
     reporter = curtin_maas_reporter(node, curtin_supports_webhook_events())
     return [yaml.safe_dump(reporter)]
-
-
-def get_archive_config(node):
-    arch = node.split_arch()[0]
-    archive = PackageRepository.objects.get_default_archive(arch)
-    repositories = PackageRepository.objects.get_additional_repositories(arch)
-
-    # Process the default Ubuntu Archives or Mirror.
-    archives = {
-        'apt': {
-            'preserve_sources_list': False,
-            'primary': [
-                {
-                    'arches': ['default'],
-                    'uri': archive.url
-                },
-            ],
-            'security': [
-                {
-                    'arches': ['default'],
-                    'uri': archive.url
-                },
-            ],
-        },
-    }
-    if archive.key:
-        archives['apt']['sources'] = {
-            'archive_key': {
-                'key': archive.key
-            }
-        }
-
-    # Process addtional repositories, including PPA's and custom.
-    for repo in repositories:
-        if repo.url.startswith('ppa:'):
-            url = repo.url
-        elif 'ppa.launchpad.net' in repo.url:
-            url = 'deb %s %s main' % (repo.url, node.distro_series)
-        else:
-            components = ''
-            if not repo.components:
-                components = 'main'
-            else:
-                for component in repo.components:
-                    components += '%s ' % component
-            components = components.strip()
-
-            if not repo.distributions:
-                url = 'deb %s %s %s' % (
-                    repo.url, node.distro_series, components)
-            else:
-                url = ''
-                for dist in repo.distributions:
-                    url += 'deb %s %s %s\n' % (repo.url, dist, components)
-
-        if 'sources' not in archives['apt'].keys():
-            archives['apt']['sources'] = {}
-
-        repo_name = make_clean_repo_name(repo)
-
-        if repo.key:
-            archives['apt']['sources'][repo_name] = {
-                'key': repo.key,
-                'source': url
-            }
-        else:
-            archives['apt']['sources'][repo_name] = {
-                'source': url
-            }
-
-    return archives
 
 
 def compose_curtin_archive_config(node):
@@ -564,14 +494,6 @@ def get_preseed_filenames(node, prefix='', osystem='', release='',
         elements.pop()
     if default:
         yield GENERIC_FILENAME
-
-
-def make_clean_repo_name(repo):
-    # Removeeany special characters
-    repo_name = "%s_%s" % (
-        repo.name.translate({ord(c): None for c in '\'!@#$[]{}'}), repo.id)
-    # Create a repo name that will be used as file name for the apt list
-    return repo_name.strip().replace(' ', '_').lower()
 
 
 def split_subarch(architecture):
