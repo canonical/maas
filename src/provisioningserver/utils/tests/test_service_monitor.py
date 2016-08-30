@@ -30,6 +30,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceUnknownError,
 )
 from provisioningserver.utils.shell import select_c_utf8_bytes_locale
+from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -81,60 +82,77 @@ class TestServiceState(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    @inlineCallbacks
-    def test_getStatusInfo_returns_unknown_for_unknown(self):
-        service = make_fake_service()
-        state = ServiceState(SERVICE_STATE.UNKNOWN, None)
-        observed_status = yield state.getStatusInfo(service)
-        self.assertEquals(
-            ("unknown", ""), observed_status)
+    scenarios_observed = tuple(
+        ("observed=%s" % state.name, dict(state_observed=state))
+        for state in SERVICE_STATE if state != SERVICE_STATE.ANY
+    )
+
+    scenarios_expected = tuple(
+        ("expected=%s" % state.name, dict(state_expected=state))
+        for state in SERVICE_STATE if state != SERVICE_STATE.UNKNOWN
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_observed, scenarios_expected)
+
+    expected_status_strings = {
+        # (state-observed, state-expected): status-string
+
+        (SERVICE_STATE.ON, SERVICE_STATE.ON): "running",
+        (SERVICE_STATE.ON, SERVICE_STATE.OFF): "running",
+        (SERVICE_STATE.ON, SERVICE_STATE.DEAD): "running",
+        (SERVICE_STATE.ON, SERVICE_STATE.ANY): "running",
+
+        (SERVICE_STATE.OFF, SERVICE_STATE.ON): "dead",
+        (SERVICE_STATE.OFF, SERVICE_STATE.OFF): "off",
+        (SERVICE_STATE.OFF, SERVICE_STATE.DEAD): "off",
+        (SERVICE_STATE.OFF, SERVICE_STATE.ANY): "off",
+
+        (SERVICE_STATE.DEAD, SERVICE_STATE.ON): "dead",
+        (SERVICE_STATE.DEAD, SERVICE_STATE.OFF): "off",
+        (SERVICE_STATE.DEAD, SERVICE_STATE.DEAD): "off",
+        (SERVICE_STATE.DEAD, SERVICE_STATE.ANY): "off",
+
+        (SERVICE_STATE.UNKNOWN, SERVICE_STATE.ON): "unknown",
+        (SERVICE_STATE.UNKNOWN, SERVICE_STATE.OFF): "unknown",
+        (SERVICE_STATE.UNKNOWN, SERVICE_STATE.DEAD): "unknown",
+        (SERVICE_STATE.UNKNOWN, SERVICE_STATE.ANY): "unknown",
+    }
 
     @inlineCallbacks
-    def test_getStatusInfo_returns_running_for_on(self):
-        service = make_fake_service()
-        state = ServiceState(SERVICE_STATE.ON, "running")
-        observed_status = yield state.getStatusInfo(service)
-        self.assertEquals(
-            ("running", ""), observed_status)
+    def test__returns_service_status_string(self):
+        # Make sure the short status string makes sense.
+        service = make_fake_service(self.state_expected)
+        state = ServiceState(self.state_observed, None)
+        status_string, status_message = yield state.getStatusInfo(service)
+
+        self.assertThat(status_string, Equals(
+            self.expected_status_strings[
+                self.state_observed, self.state_expected]))
 
     @inlineCallbacks
-    def test_getStatusInfo_returns_dead_when_stopped(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        state = ServiceState(SERVICE_STATE.OFF, "")
-        observed_status = yield state.getStatusInfo(service)
-        self.assertEquals(
-            ("dead", "%s is currently stopped." % service.service_name),
-            observed_status)
+    def test__returns_service_info_message(self):
+        # Make sure any message given by a service gets passed through, except
+        # when the service is dead or off and expected to be on, in which case
+        # a message is manufactured.
+        example_message = factory.make_string(60, spaces=True)
+        example_process_state = factory.make_name("process-state")
+        service = make_fake_service(self.state_expected, example_message)
+        state = ServiceState(self.state_observed, example_process_state)
+        status_string, status_message = yield state.getStatusInfo(service)
 
-    @inlineCallbacks
-    def test_getStatusInfo_returns_dead_when_failed(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        process_state = factory.make_name("failed")
-        state = ServiceState(SERVICE_STATE.DEAD, process_state)
-        observed_status = yield state.getStatusInfo(service)
-        self.assertEquals(
-            ("dead", "%s failed to start, process result: (%s)" % (
-                service.service_name, process_state)),
-            observed_status)
-
-    @inlineCallbacks
-    def test_getStatusInfo_returns_off_when_off(self):
-        service = make_fake_service(SERVICE_STATE.OFF)
-        state = ServiceState(SERVICE_STATE.OFF, None)
-        observed_status = yield state.getStatusInfo(service)
-        self.assertEquals(
-            ("off", ""), observed_status)
-
-    @inlineCallbacks
-    def test_getStatusInfo_returns_service_service_info(self):
-        # Make sure any service_info given by a service gets passed through.
-        status_info = factory.make_string(60, True)
-        active_state = pick_expected_state()
-        service = make_fake_service(active_state, status_info)
-        state = ServiceState(active_state, None)
-        observed_status = yield state.getStatusInfo(service)
-        # Only check status_info - tests above have tested state.
-        self.assertEquals(status_info, observed_status[1])
+        if self.state_expected == SERVICE_STATE.ON:
+            if self.state_observed == SERVICE_STATE.OFF:
+                self.assertThat(status_message, Equals(
+                    service.service_name + " is currently stopped."))
+            elif self.state_observed == SERVICE_STATE.DEAD:
+                self.assertThat(status_message, Equals(
+                    service.service_name + " failed to start, process "
+                    "result: (" + example_process_state + ")"))
+            else:
+                self.assertThat(status_message, Equals(example_message))
+        else:
+            self.assertThat(status_message, Equals(example_message))
 
 
 class TestServiceMonitor(MAASTestCase):

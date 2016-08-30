@@ -44,7 +44,7 @@ maaslog = get_maas_logger("service_monitor")
 
 @enum.unique
 class SERVICE_STATE(enum.Enum):
-    """The vocabulary of a service state as observed."""
+    """The vocabulary of a service state."""
 
     #: Service is on
     ON = 'on'
@@ -97,7 +97,7 @@ class ServiceState(ServiceStateBase):
 
     @asynchronous
     def getStatusInfo(self, service):
-        """Return the status and status_info for the state of `service`.
+        """Return human-readable strings describing the service's status.
 
         :return: A 2-tuple. The first element is a string describing the
             status of the service, one of "off", "unknown", "running" or
