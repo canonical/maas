@@ -449,7 +449,7 @@ class ServiceMonitor:
             expected_states = [SERVICE_STATE.OFF, SERVICE_STATE.DEAD]
         elif expected_state == SERVICE_STATE.ANY:
             # This service is (temporarily) not being monitored.
-            returnValue(SERVICE_STATE.UNKNOWN)
+            returnValue(ServiceState(SERVICE_STATE.UNKNOWN))
         else:
             expected_states = [expected_state]
 

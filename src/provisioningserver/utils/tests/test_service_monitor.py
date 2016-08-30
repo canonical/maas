@@ -828,7 +828,7 @@ class TestServiceMonitor(MAASTestCase):
 
         self.assertThat(
             (yield service_monitor._ensureService(service)),
-            Equals(SERVICE_STATE.UNKNOWN))
+            Equals(ServiceState(SERVICE_STATE.UNKNOWN)))
         self.assertThat(
             service_monitor.getServiceState,
             MockNotCalled())
