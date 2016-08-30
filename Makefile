@@ -528,7 +528,7 @@ services/regiond2/@deps: bin/maas-region
 
 # Old names.
 PACKAGING := $(abspath ../packaging.trunk)
-PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
+PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging-2.0
 
 packaging-tree = $(PACKAGING)
 packaging-branch = $(PACKAGING_BRANCH)
