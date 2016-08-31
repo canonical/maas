@@ -261,6 +261,15 @@ class Command(BaseCommand):
         from maasserver import triggers
         triggers.register_all_triggers()
 
+    @classmethod
+    def _perform_view_installation(cls, database):
+        """Register all PL/pgSQL views.
+
+        :attention: `database` argument is not used!
+        """
+        from maasserver import dbviews
+        dbviews.register_all_views()
+
     def handle(self, *args, **options):
         database = options.get('database')
         always_south = options.get('always_south', False)
@@ -298,9 +307,10 @@ class Command(BaseCommand):
                     "An ongoing transaction may hide changes made "
                     "by external processes.")
 
-            # Install all database functions and triggers. This is idempotent
-            # so we run it at the end of every database upgrade.
+            # Install all database functions, triggers, and views. This is
+            # idempotent, so we run it at the end of every database upgrade.
             self._perform_trigger_installation(database)
+            self._perform_view_installation(database)
         else:
             # Piston has been renamed from piston to piston3.
             piston_tables = self._find_tables(database, "piston")
