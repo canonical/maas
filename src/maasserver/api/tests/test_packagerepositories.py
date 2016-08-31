@@ -81,7 +81,10 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             'disabled_pockets': [
                 factory.make_name("disabled_pocket%d" % i) for i in range(1)],
             'components': [factory.make_name("comp%d" % i) for i in range(4)],
-            'arches': [factory.make_name("arch%d" % i) for i in range(3)],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
         }
         response = self.client.put(
             self.get_package_repository_uri(package_repository), new_values)

@@ -71,5 +71,38 @@ class PackageRepositoryForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if self.instance.default and not cleaned_data['enabled']:
+        if self.instance.default and not cleaned_data.get('enabled', False):
             raise ValidationError("Default repositories may not be disabled.")
+
+    def clean_arches(self):
+        arches = []
+        for value in self.cleaned_data.get('arches', []):
+            arches.extend([s.strip() for s in value.split(',')])
+        known_arches = set(PackageRepository.objects.get_known_architectures())
+        for value in arches:
+            if value not in known_arches:
+                raise ValidationError(
+                    "'%s' is not a valid architecture. Known architectures: "
+                    "%s" % (value, ", ".join(sorted(known_arches))))
+        # If no arches provided, use MAIN_ARCHES.
+        if len(arches) == 0:
+            arches = PackageRepository.MAIN_ARCHES
+        return arches
+
+    def clean_distributions(self):
+        values = []
+        for value in self.cleaned_data.get('distributions', []):
+            values.extend([s.strip() for s in value.split(',')])
+        return values
+
+    def clean_disabled_pockets(self):
+        values = []
+        for value in self.cleaned_data.get('disabled_pockets', []):
+            values.extend([s.strip() for s in value.split(',')])
+        return values
+
+    def clean_components(self):
+        values = []
+        for value in self.cleaned_data.get('components', []):
+            values.extend([s.strip() for s in value.split(',')])
+        return values

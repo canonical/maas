@@ -1795,7 +1795,9 @@ class Factory(maastesting.factory.Factory):
         disabled_pockets = [self.make_name(
             "disabled_pocket%d" % i) for i in range(3)]
         if arches is None:
-            arches = [self.make_name("arch%d" % i) for i in range(3)]
+            arches = random.sample(
+                PackageRepository.KNOWN_ARCHES,
+                random.randint(0, len(PackageRepository.KNOWN_ARCHES)))
         if key is None:
             key = factory.make_name("key")
         return PackageRepository.objects.create(

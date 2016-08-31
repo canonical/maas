@@ -69,7 +69,7 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
         return self.get_object_by_specifiers_or_raise(specifiers)
 
     def get_known_architectures(self):
-        return PackageRepository.MAIN_ARCHES + PackageRepository.PORTS_ARCHES
+        return PackageRepository.KNOWN_ARCHES
 
     def get_pockets_to_disable(self):
         return PackageRepository.POCKETS_TO_DISABLE
@@ -92,6 +92,7 @@ class PackageRepository(CleanSave, TimestampedModel):
 
     MAIN_ARCHES = ['amd64', 'i386']
     PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el']
+    KNOWN_ARCHES = MAIN_ARCHES + PORTS_ARCHES
     POCKETS_TO_DISABLE = ['updates', 'security', 'backports']
 
     class Meta(DefaultMeta):
