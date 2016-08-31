@@ -80,6 +80,26 @@ class TestComposePreseed(MAASServerTestCase):
                 }),
             }))
 
+    def assertAptConfig(self, config, apt_proxy):
+        self.assertThat(config, ContainsDict({
+            'apt': ContainsDict({
+                'preserve_sources_list': Equals(False),
+                'primary': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(PackageRepository.get_main_archive()),
+                    }),
+                ]),
+                'proxy': Equals(apt_proxy),
+                'security': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(PackageRepository.get_main_archive()),
+                    }),
+                ]),
+            })
+        }))
+
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
@@ -124,6 +144,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['rsyslog']['remotes'],
             KeysEqual('maas'))
         self.assertSystemInfo(preseed)
+        self.assertAptConfig(preseed, apt_proxy)
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
         rack_controller = factory.make_RackController()
@@ -244,6 +265,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS']['metadata_url'])
         self.assertEqual(apt_proxy, preseed['apt_proxy'])
         self.assertSystemInfo(preseed)
+        self.assertAptConfig(preseed, apt_proxy)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
         # Disable boot source cache signals.

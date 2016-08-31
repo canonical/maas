@@ -33,7 +33,8 @@ def get_apt_proxy_for_node(node):
     """Return the APT proxy for the `node`."""
     if Config.objects.get_config("enable_http_proxy"):
         http_proxy = Config.objects.get_config("http_proxy")
-        if http_proxy:
+        if (http_proxy is not None and len(http_proxy) > 0 and
+                not http_proxy.isspace()):
             return http_proxy
         else:
             return "http://%s:8000/" % get_maas_facing_server_host(
@@ -50,7 +51,7 @@ def make_clean_repo_name(repo):
     return repo_name.strip().replace(' ', '_').lower()
 
 
-def get_archive_config(node):
+def get_archive_config(node, preserve_sources=False):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
     repositories = PackageRepository.objects.get_additional_repositories(arch)
@@ -59,7 +60,7 @@ def get_archive_config(node):
     # Process the default Ubuntu Archives or Mirror.
     archives = {
         'apt': {
-            'preserve_sources_list': False,
+            'preserve_sources_list': preserve_sources,
             'primary': [
                 {
                     'arches': ['default'],
@@ -204,11 +205,11 @@ def compose_cloud_init_preseed(node, token, base_url=''):
     # Add the system configuration information.
     config.update(get_system_info())
     apt_proxy = get_apt_proxy_for_node(node)
-    use_apt_proxy = (
-        apt_proxy is not None and len(apt_proxy) > 0 and not
-        apt_proxy.isspace())
-    if use_apt_proxy:
+    if apt_proxy:
         config['apt_proxy'] = apt_proxy
+    # Add APT configuration for new cloud-init (>= 0.7.7-17)
+    config.update(get_archive_config(node=node, preserve_sources=False))
+
     local_config_yaml = yaml.safe_dump(config)
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
@@ -234,29 +235,27 @@ def compose_cloud_init_preseed(node, token, base_url=''):
 
 def compose_commissioning_preseed(node, token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
-    apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('metadata', base_url=base_url)
     poweroff = node.status != NODE_STATUS.ENTERING_RESCUE_MODE
     poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy,
+        node, token, metadata_url, base_url=base_url,
         poweroff=poweroff, poweroff_timeout=int(poweroff_timeout),
         poweroff_condition="test ! -e /tmp/block-poweroff")
 
 
 def compose_curtin_preseed(node, token, base_url=''):
     """Compose the preseed value for a node being installed with curtin."""
-    apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy)
+        node, token, metadata_url, base_url=base_url)
 
 
 def _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url, apt_proxy=None,
-        poweroff=False, poweroff_timeout=3600, poweroff_condition=None):
+        node, token, metadata_url, base_url, poweroff=False,
+        poweroff_timeout=3600, poweroff_condition=None):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -287,8 +286,11 @@ def _compose_cloud_init_preseed(
     }
     # Add the system configuration information.
     cloud_config.update(get_system_info())
+    apt_proxy = get_apt_proxy_for_node(node)
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
+    # Add APT configuration for new cloud-init (>= 0.7.7-17)
+    cloud_config.update(get_archive_config(node=node, preserve_sources=False))
     if poweroff:
         cloud_config['power_state'] = {
             'delay': 'now',
