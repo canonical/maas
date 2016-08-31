@@ -3,7 +3,6 @@
 
 """Setuptools installer for MAAS."""
 
-from glob import glob
 from os.path import (
     dirname,
     join,
@@ -50,16 +49,6 @@ setup(
     data_files=[
         ('/etc/maas',
             ['etc/maas/drivers.yaml']),
-        ('/etc/maas/templates/uefi',
-            glob('etc/maas/templates/uefi/*.template')),
-        ('/etc/maas/templates/dns',
-            glob('etc/maas/templates/dns/*.template')),
-        ('/etc/maas/templates/pxe', glob('etc/maas/templates/pxe/*.template')),
-        ('/etc/maas/templates/commissioning-user-data',
-            glob('etc/maas/templates/commissioning-user-data/*.template')),
-        ('/etc/maas/templates/commissioning-user-data/snippets',
-            glob('etc/maas/templates/commissioning-user-data/snippets/*.py') +
-            glob('etc/maas/templates/commissioning-user-data/snippets/*.sh')),
         ('/usr/share/maas',
             ['contrib/maas-rsyslog.conf',
              'contrib/maas-http.conf']),

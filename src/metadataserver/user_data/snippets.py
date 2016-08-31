@@ -17,17 +17,17 @@ __all__ = [
 
 import os
 
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import locate_template
 from provisioningserver.utils.fs import read_text_file
 
 
-USERDATA_BASE_DIR = 'templates/commissioning-user-data'
+USERDATA_BASE_DIR = 'commissioning-user-data'
 
 
 def get_userdata_template_dir():
     """Return the absolute location of the userdata
     template directory."""
-    return locate_config(USERDATA_BASE_DIR)
+    return locate_template(USERDATA_BASE_DIR)
 
 
 def get_snippet_context(snippets_dir=None, encoding='utf-8'):

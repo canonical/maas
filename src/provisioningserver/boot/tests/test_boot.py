@@ -10,7 +10,6 @@ import os
 from unittest import mock
 from urllib.parse import urlparse
 
-from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
@@ -108,22 +107,13 @@ class TestBootMethod(MAASTestCase):
             os.path.join(method.get_template_dir(), filename),
             encoding="UTF-8")
 
-    def make_fake_templates_dir(self, method):
-        """Set up a fake templates dir, and return its path."""
-        fake_root = self.make_dir()
-        fake_etc_maas = os.path.join(fake_root, "etc", "maas")
-        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', fake_root))
-        fake_templates = os.path.join(
-            fake_etc_maas, 'templates/%s' % method.template_subdir)
-        os.makedirs(fake_templates)
-        return fake_templates
-
     def test_get_template_gets_default_if_available(self):
         # If there is no template matching the purpose, arch, and subarch,
         # but there is a completely generic template, then get_pxe_template()
         # falls back to that as the default.
+        templates_dir = self.make_dir()
         method = FakeBootMethod()
-        templates_dir = self.make_fake_templates_dir(method)
+        method.get_template_dir = lambda: templates_dir
         generic_template = factory.make_file(templates_dir, 'config.template')
         purpose = factory.make_name("purpose")
         arch, subarch = factory.make_names("arch", "subarch")
@@ -134,8 +124,9 @@ class TestBootMethod(MAASTestCase):
     def test_get_template_not_found(self):
         # It is a critical and unrecoverable error if the default template
         # is not found.
+        templates_dir = self.make_dir()
         method = FakeBootMethod()
-        self.make_fake_templates_dir(method)
+        method.get_template_dir = lambda: templates_dir
         self.assertRaises(
             AssertionError, method.get_template,
             *factory.make_names("purpose", "arch", "subarch"))

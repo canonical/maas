@@ -177,11 +177,14 @@ RackControllerUtilsInit = files(
     "src/provisioningserver/utils/__init__.py")
 RackControllerUtilsFS = files(
     "src/provisioningserver/utils/fs.py")
+RackControllerCommissioningSnippets = files(
+    "src/provisioningserver/templates/commissioning-user-data/"
+    "snippets/**/*.py")
 RackController = (
     files("src/provisioningserver/**/*.py") -
     files("src/provisioningserver/twisted/**/*.py") -
     RackControllerConfig - RackControllerUtilsInit -
-    RackControllerUtilsFS)
+    RackControllerUtilsFS - RackControllerCommissioningSnippets)
 RackControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.maas_client.*"),
@@ -346,9 +349,24 @@ checks = [
         ),
     ),
     (
+        RackControllerCommissioningSnippets - Tests,
+        RackControllerRule | Rule(
+            Allow("maas_api_helper.**"),
+            Allow("snippets.**"),
+        ),
+    ),
+    (
         RackController & Tests,
         RackControllerRule | Rule(
             Allow("apiclient.testing.credentials.make_api_credentials"),
+            Allow(StandardLibraries),
+            Allow(TestingLibraries),
+        ),
+    ),
+    (
+        RackControllerCommissioningSnippets & Tests,
+        RackControllerRule | Rule(
+            Allow("snippets.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),

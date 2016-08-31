@@ -27,7 +27,7 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import (
-    locate_config,
+    locate_template,
     tftp,
     typed,
 )
@@ -208,7 +208,7 @@ class BootMethod(metaclass=ABCMeta):
 
     def get_template_dir(self):
         """Gets the template directory for the boot method."""
-        return locate_config("templates/%s" % self.template_subdir)
+        return locate_template("%s" % self.template_subdir)
 
     def get_template(self, purpose, arch, subarch):
         """Gets the best avaliable template for the boot method.
