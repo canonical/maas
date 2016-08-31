@@ -131,6 +131,7 @@ class DeviceHandler(NodeHandler):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
+        data["node_type_display"] = obj.get_node_type_display()
 
         boot_interface = obj.get_boot_interface()
         data["primary_mac"] = (

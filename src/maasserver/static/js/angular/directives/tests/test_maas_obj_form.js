@@ -222,6 +222,115 @@ describe("maasObjForm", function() {
         });
     });
 
+    describe("checkboxes", function() {
+
+        var directive, options;
+        beforeEach(function() {
+            $scope.obj = {
+                key: []
+            };
+            $scope.manager = {};
+            $scope.values = ["one", "two", "three"];
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="checkboxes" key="key" label="Key" ',
+                        'label-width="two" input-width="three" ',
+                        'values="values">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates muliple divs with checkboxes", function() {
+            var divs = angular.element(directive.find("div.width--full"));
+            expect(divs.length).toBe(3);
+            angular.forEach($scope.values, function(value, idx) {
+                var div = angular.element(divs[idx]);
+                var input = angular.element(div.find('input'));
+                var label = angular.element(div.find('label'));
+                expect(input.attr('id')).toBe('key_' + value);
+                expect(label.attr('for')).toBe('key_' + value);
+                expect(label.text()).toBe(value);
+            });
+        });
+
+        it("adds label with width", function() {
+            var labelField = angular.element(
+                directive.find('label[for="key"]'));
+            expect(labelField.text()).toBe("Key");
+            expect(labelField.hasClass("two-col")).toBe(true);
+        });
+    });
+
+    describe("tags", function() {
+
+        var directive, options;
+        beforeEach(function() {
+            $scope.obj = {
+                key: []
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="tags" key="key" label="Key" ',
+                        'label-width="two" input-width="three">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates tags-input", function() {
+            var tags = directive.find("tags-input");
+            expect(tags.length).toBe(1);
+        });
+
+        it("adds label with width", function() {
+            var labelField = angular.element(
+                directive.find('label[for="key"]'));
+            expect(labelField.text()).toBe("Key");
+            expect(labelField.hasClass("two-col")).toBe(true);
+        });
+    });
+
+    describe("onoffswitch", function() {
+
+        var directive, options;
+        beforeEach(function() {
+            $scope.obj = {
+                key: false
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="onoffswitch" key="key" label="Key" ',
+                        'label-width="two" input-width="three">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates onoffswitch", function() {
+            var onoff = angular.element(directive.find("div.onoffswitch"));
+            var input = angular.element(
+                onoff.find("input.onoffswitch-checkbox"));
+            var label = angular.element(
+                onoff.find("label.onoffswitch-label"));
+            expect(onoff.length).toBe(1);
+            expect(input.length).toBe(1);
+            expect(label.length).toBe(1);
+        });
+
+        it("adds label with width", function() {
+            var labelField = angular.element(
+                directive.find('label[for="key"]'));
+            expect(labelField.text()).toBe("Key");
+            expect(labelField.hasClass("two-col")).toBe(true);
+        });
+    });
+
     describe("single field", function() {
 
         var directive, updateItemMethod, saveDefer;

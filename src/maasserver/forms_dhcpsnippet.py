@@ -88,11 +88,11 @@ class DHCPSnippetForm(MAASModelForm):
             self.instance.node = None
             cleaned_data['subnet'] = None
             self.instance.subnet = None
-        elif (self.instance.subnet == cleaned_data['subnet'] and
+        elif (self.instance.subnet == cleaned_data.get('subnet') and
               cleaned_data.get('node') is not None):
             cleaned_data['subnet'] = None
             self.instance.subnet = None
-        elif (self.instance.node == cleaned_data['node'] and
+        elif (self.instance.node == cleaned_data.get('node') and
               cleaned_data.get('subnet') is not None):
             cleaned_data['node'] = None
             self.instance.node = None

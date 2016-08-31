@@ -542,9 +542,6 @@ form textarea {
 	padding: 0.6956522em 0.869565em;
 }
 
-form input:focus,
-form textarea:focus { border: 1px solid #dd4814; }
-
 form textarea[readonly='readonly'] { color: #999; }
 
 form input[type="checkbox"], form input[type="radio"] {

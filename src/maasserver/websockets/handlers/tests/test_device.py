@@ -85,6 +85,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "node_type_display": node.get_node_type_display(),
             "id": node.id,
             "primary_mac": (
                 "" if boot_interface is None else
@@ -116,6 +117,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 "primary_mac",
                 "ip_address",
                 "ip_assignment",
+                "node_type_display",
                 ]
             for key in list(data):
                 if key not in allowed_fields:

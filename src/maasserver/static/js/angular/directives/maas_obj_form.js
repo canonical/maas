@@ -15,6 +15,9 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             this.fields = {};
             this.scope = scope;
             this.scope.saving = false;
+            if(angular.isObject(this.scope.obj)) {
+                this.scope.obj.$maasForm = this;
+            }
 
             // Set the managerMethod.
             this.managerMethod = scope.managerMethod;
@@ -26,8 +29,39 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             scope.$watch("obj", function() {
                 // Update the object when it changes.
                 self.obj = scope.obj;
+                if(angular.isObject(self.obj)) {
+                    self.obj.$maasForm = self;
+                }
+            });
+            scope.$on("$destroy", function() {
+                // Remove the $maasForm from the object when directive is
+                // deleted.
+                if(angular.isObject(self.obj)) {
+                    delete self.obj.$maasForm;
+                }
             });
         }
+
+        // Get the current value for a field in the form.
+        MAASFormController.prototype.getValue = function (key) {
+            var field = this.fields[key];
+            if(angular.isObject(field) && angular.isObject(field.scope)) {
+                return field.scope.getValue();
+            }
+        };
+
+        // Clone the current object for this form without the $maasForm
+        // property set.
+        MAASFormController.prototype.cloneObject = function() {
+            if(!angular.isObject(this.obj)) {
+                return this.obj;
+            } else {
+                delete this.obj.$maasForm;
+                var clonedObj = angular.copy(this.obj);
+                this.obj.$maasForm = this;
+                return clonedObj;
+            }
+        };
 
         // Return true if table form.
         MAASFormController.prototype.isTableForm = function () {
@@ -92,7 +126,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             field.scope.clearErrors();
 
             // Copy the object and update the editing field.
-            var updatedObj = angular.copy(this.obj);
+            var updatedObj = this.cloneObject();
             updatedObj[key] = value;
             if(updatedObj[key] === this.obj[key]) {
                 // Nothing changed.
@@ -163,7 +197,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
         // Called when saveOnBlur is false to save the whole form.
         MAASFormController.prototype.saveForm = function () {
             var keys = [];
-            var updatedObj = angular.copy(this.obj);
+            var updatedObj = this.cloneObject();
             angular.forEach(this.fields, function(value, key) {
                 value.scope.clearErrors();
                 var newValue = value.scope.getValue();
@@ -336,7 +370,7 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                 // Copy the object and update the editing fields.
                 var keys = [];
                 var changed = false;
-                var updatedObj = angular.copy(self.formController.obj);
+                var updatedObj = self.formController.cloneObject();
                 angular.forEach(self.fields, function(value, key) {
                     value.scope.clearErrors();
                     var newValue = value.scope.getValue();
@@ -540,9 +574,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     childScope._ngDisabled = scope.ngDisabled;
                     childScope._selectValue = controller.registerField(
                         attrs.key, scope);
-                    childScope._selectNgChange = function(key) {
+                    childScope._selectNgChange = function() {
                         controller.stopEditingField(
-                            key, childScope._selectValue);
+                            attrs.key, childScope._selectValue);
                     };
 
                     // Construct the select.
@@ -550,7 +584,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         '<select id="' + attrs.key + '" ' +
                         'ng-model="_selectValue" ' +
                         'ng-options="' + options + '"' +
-                        'ng-change="_selectNgChange(\'' + attrs.key + '\')"' +
+                        'ng-change="_selectNgChange()"' +
                         'ng-disabled="_ngDisabled()">' +
                         '<option value="" disabled>' + placeholder +
                         '</option></select>')(childScope);
@@ -563,6 +597,123 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     // Called by controller to get the value.
                     scope.getValue = function() {
                         return childScope._selectValue;
+                    };
+                } else if(attrs.type === "checkboxes") {
+                    // Requires the values attribute on the element.
+                    var values = attrs.values;
+                    if(!angular.isString(values) || values.length === 0) {
+                        throw new Error(
+                            "values attribute is required on type " +
+                            "'checkboxes' on maas-obj-field.");
+                    }
+
+                    // Create a child scope of the parent scope for this
+                    // directive. Since this directive is created with an
+                    // isolated scope we need the child to use the parent so
+                    // values can come from the parent scope.
+                    var checkScope = scope.$parent.$new();
+                    checkScope._selectedValues = controller.registerField(
+                        attrs.key, scope);
+                    checkScope._checked = function(val) {
+                        return checkScope._selectedValues.indexOf(val) > -1;
+                    };
+                    checkScope._toggleChecked = function(val) {
+                        var idx = checkScope._selectedValues.indexOf(val);
+                        if(idx > -1) {
+                            // Uncheck.
+                            checkScope._selectedValues.splice(idx, 1);
+                        } else {
+                            // Check.
+                            checkScope._selectedValues.push(val);
+                        }
+                    };
+
+                    // Construct the checkbox list.
+                    inputElement = angular.element([
+                        '<div class="width--full" ',
+                            'ng-repeat="val in ' + values +'">',
+                            '<input id="' + attrs.key + '_' + '{$ val $}',
+                                '" type="checkbox" value="{$ val $}" ',
+                                'class="checkbox" ',
+                                'ng-checked="_checked(val)" ',
+                                'ng-click="_toggleChecked(val)">',
+                            '<label for="' + attrs.key + '_',
+                                '{$ val $}' + '" ',
+                                'class="checkbox-label">{$ val $}</label>',
+                        '</div>'
+                    ].join(''));
+                    inputElement = $compile(inputElement)(checkScope);
+
+                    // Called by controller to update the value.
+                    scope.updateValue = function(newValue) {
+                        checkScope._selectedValues = newValue;
+                    };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return checkScope._selectedValues;
+                    };
+                } else if(attrs.type === "tags") {
+                    var tagsScope = scope.$new();
+                    var tags = controller.registerField(
+                        attrs.key, scope);
+                    tagsScope._tags = tags.map(function(val) {
+                        return {text: val};
+                    });
+
+                    // Construct the tags input.
+                    inputElement = angular.element([
+                        '<tags-input id="' + attrs.key + '" ',
+                            'ng-model="_tags" ',
+                            'placeholder="' + placeholder + '" ',
+                            'allow-tags-pattern="[\\w-]+"></tags-input>'
+                    ].join(''));
+                    inputElement = $compile(inputElement)(tagsScope);
+
+                    // Called by controller to update the value.
+                    scope.updateValue = function(newValue) {
+                        tagsScope._tags = newValue.map(
+                            function(val) {
+                                return {text: val};
+                            });
+                    };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return tagsScope._tags.map(
+                            function(val) {
+                                return val.text;
+                            });
+                    };
+                } else if(attrs.type === "onoffswitch") {
+                    var switchScope = scope.$new();
+                    switchScope._toggle = controller.registerField(
+                        attrs.key, scope);
+
+                    // Construct the on and off toggle.
+                    inputElement = angular.element([
+                        '<div class="onoffswitch">',
+                            '<input type="checkbox" name="' + attrs.key + '" ',
+                                'class="onoffswitch-checkbox" ',
+                                'id="' + attrs.key + '" ',
+                                'ng-model="_toggle">',
+                            '<label class="onoffswitch-label" ',
+                                'for="' + attrs.key + '">',
+                                '<span class="onoffswitch-inner"></span>',
+                                '<span class="onoffswitch-switch"></span>',
+                            '</label>',
+                        '</div>'
+                    ].join(''));
+                    inputElement = $compile(inputElement)(switchScope);
+
+                    // Called by controller to update the value.
+                    scope.updateValue = function(newValue) {
+                        switchScope._toggle = newValue;
+                    };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return switchScope._toggle;
                     };
                 } else {
                     throw new Error(
