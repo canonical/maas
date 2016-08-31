@@ -1165,7 +1165,7 @@ class Interface(CleanSave, TimestampedModel):
         from maasserver.models.mdns import MDNS
         if self.mdns_discovery_state is False:
             return None
-        ip = avahi_json['ip']
+        ip = avahi_json['address']
         hostname = avahi_json['hostname']
         deleted = MDNS.objects.delete_and_log_obsolete_mdns_entries(
             hostname, ip, interface=self)
@@ -1177,8 +1177,8 @@ class Interface(CleanSave, TimestampedModel):
             # If we deleted a previous mDNS entry, then we have already
             # generated a log statement about this mDNS entry.
             if not deleted:
-                maaslog.info("%s: New mDNS hostname observed for %s: '%s'." % (
-                    self.get_log_string(), ip, hostname))
+                maaslog.info("%s: New mDNS entry resolved: '%s' on %s." % (
+                    self.get_log_string(), hostname, ip))
         else:
             binding.count += 1
             binding.save(update_fields=['count', 'updated'])

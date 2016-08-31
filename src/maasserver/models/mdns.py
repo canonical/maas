@@ -27,6 +27,7 @@ from maasserver.utils.orm import (
     get_one,
     UniqueViolation,
 )
+from netaddr import IPAddress
 from provisioningserver.logger import get_maas_logger
 
 
@@ -47,11 +48,16 @@ class MDNSManager(Manager):
         """
         # Check if this hostname was previously assigned to another IP address.
         deleted = False
+        incoming_ip_version = IPAddress(ip).version
         previous_bindings = self.filter(
             hostname=hostname, interface=interface).exclude(ip=ip)
+        # Check if this hostname was previously assigned to a different IP.
         for binding in previous_bindings:
+            if incoming_ip_version != IPAddress(binding.ip).version:
+                # Don't move hostnames between address families.
+                continue
             maaslog.info("%s: Hostname '%s' moved from %s to %s." % (
-                interface.get_log_string(), ip, binding.ip, ip))
+                interface.get_log_string(), hostname, binding.ip, ip))
             binding.delete()
             deleted = True
         # Check if this IP address had a different hostname assigned.

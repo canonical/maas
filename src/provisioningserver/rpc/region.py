@@ -23,6 +23,7 @@ __all__ = [
     "RegisterRackController",
     "ReportBootImages",
     "ReportForeignDHCPServer",
+    "ReportMDNSEntries",
     "ReportNeighbours",
     "RequestNodeInfoByMACAddress",
     "SendEvent",
@@ -365,6 +366,22 @@ class ReportForeignDHCPServer(amp.Command):
     ]
     response = []
     errors = []
+
+
+class ReportMDNSEntries(amp.Command):
+    """Called by a rack controller to report observed mDNS entries.
+
+    :since: 2.1
+    """
+
+    arguments = [
+        (b'system_id', amp.Unicode()),
+        (b'mdns', StructureAsJSON()),
+    ]
+    response = []
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
 
 
 class ReportNeighbours(amp.Command):

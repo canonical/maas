@@ -9,6 +9,7 @@ __all__ = [
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.region import (
+    ReportMDNSEntries,
     ReportNeighbours,
     RequestRackRefresh,
     UpdateInterfaces,
@@ -27,7 +28,7 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
         self.clientService = clientService
 
     def recordInterfaces(self, interfaces):
-        """Record the interfaces information."""
+        """Record the interfaces information to the region."""
         client = self.clientService.getClient()
         # On first run perform a refresh
         if self._recorded is None:
@@ -38,8 +39,14 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
                 interfaces=interfaces)
 
     def reportNeighbours(self, neighbours):
-        """Report neighbour information."""
+        """Report neighbour information to the region."""
         client = self.clientService.getClient()
         return client(
             ReportNeighbours, system_id=client.localIdent,
             neighbours=neighbours)
+
+    def reportMDNSEntries(self, mdns):
+        """Report mDNS entries to the region."""
+        client = self.clientService.getClient()
+        return client(
+            ReportMDNSEntries, system_id=client.localIdent, mdns=mdns)

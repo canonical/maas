@@ -8,6 +8,7 @@ __all__ = []
 import threading
 from unittest.mock import (
     call,
+    Mock,
     sentinel,
 )
 
@@ -15,6 +16,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
     HasLength,
+    IsFiredDeferred,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -25,12 +27,23 @@ from maastesting.testcase import (
 )
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils import services
-from provisioningserver.utils.services import NetworksMonitoringService
+from provisioningserver.utils.services import (
+    JSONPerLineProtocol,
+    MDNSResolverService,
+    NeighbourDiscoveryService,
+    NeighbourObservationProtocol,
+    NetworksMonitoringService,
+    ProcessProtocolService,
+)
+from provisioningserver.utils.twisted import pause
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    Is,
     IsInstance,
     Not,
 )
+from testtools.tests.twistedsupport.test_deferred import extract_result
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -38,7 +51,13 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.error import (
+    ProcessDone,
+    ProcessExitedAlready,
+    ProcessTerminated,
+)
 from twisted.python import threadable
+from twisted.python.failure import Failure
 
 
 class StubNetworksMonitoringService(NetworksMonitoringService):
@@ -58,6 +77,9 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         self.interfaces.append(interfaces)
 
     def reportNeighbours(self, neighbours):
+        pass
+
+    def reportMDNSEntries(self, neighbours):
         pass
 
 
@@ -253,3 +275,236 @@ class TestNetworksMonitoringService(MAASTestCase):
         yield service.updateInterfaces()
         # ... interfaces ARE recorded.
         self.assertThat(service.interfaces, Not(Equals([])))
+
+
+class TestJSONPerLineProtocol(MAASTestCase):
+    """Tests for `JSONPerLineProtocol`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test__propagates_exit_errors(self):
+        proto = JSONPerLineProtocol(callback=lambda json: None)
+        reactor.spawnProcess(proto, b"false", (b"false",))
+        with ExpectedException(ProcessTerminated, ".* exit code 1"):
+            yield proto.done
+
+    def test__parses_only_full_lines(self):
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        # Send an empty JSON dictionary using 3 separate writes.
+        proto.outReceived(b"{")
+        # No callback yet...
+        self.expectThat(callback, MockCallsMatch())
+        proto.outReceived(b"}")
+        # Still no callback...
+        self.expectThat(callback, MockCallsMatch())
+        proto.outReceived(b"\n")
+        # After a newline, we expect the JSON to be parsed and the callback
+        # to receive an empty Python dictionary (which corresponds to the JSON
+        # that was sent.)
+        self.expectThat(callback, MockCallsMatch(call([{}])))
+
+    def test__ignores_interspersed_zero_length_writes(self):
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        proto.outReceived(b"")
+        self.expectThat(callback, MockCallsMatch())
+        proto.outReceived(b"{}\n")
+        self.expectThat(callback, MockCallsMatch(call([{}])))
+        proto.outReceived(b"")
+        self.expectThat(callback, MockCallsMatch(call([{}])))
+        proto.outReceived(b"{}\n")
+        self.expectThat(callback, MockCallsMatch(call([{}]), call([{}])))
+
+    def test__logs_non_json_output(self):
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        with TwistedLoggerFixture() as logger:
+            proto.outReceived(b"{\n")
+        self.assertThat(
+            logger.output, DocTestMatches("Failed to parse JSON: ..."))
+
+    def test__logs_stderr(self):
+        message = factory.make_name("message")
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        with TwistedLoggerFixture() as logger:
+            proto.errReceived((message + "\n").encode("ascii"))
+        self.assertThat(logger.output, Equals(message))
+
+    def test__logs_only_full_lines_from_stderr(self):
+        message = factory.make_name("message")
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        with TwistedLoggerFixture() as logger:
+            proto.errReceived(message.encode("ascii"))
+        self.assertThat(logger.output, Equals(""))
+
+    def test__logs_stderr_at_process_end(self):
+        message = factory.make_name("message")
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        with TwistedLoggerFixture() as logger:
+            proto.errReceived(message.encode("ascii"))
+            self.assertThat(logger.output, Equals(""))
+            proto.processEnded(Failure(ProcessDone(0)))
+        self.assertThat(logger.output, Equals(message))
+
+    def test__propagates_errors_from_command(self):
+        callback = Mock()
+        proto = JSONPerLineProtocol(callback=callback)
+        proto.connectionMade()
+        reason = Failure(ProcessTerminated(1))
+        proto.processEnded(reason)
+        self.assertRaises(ProcessTerminated, extract_result, proto.done)
+
+
+class TestNeighbourObservationProtocol(MAASTestCase):
+    """Tests for `NeighbourObservationProtocol`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_adds_interface(self):
+        callback = Mock()
+        ifname = factory.make_name('eth')
+        proto = NeighbourObservationProtocol(ifname, callback=callback)
+        proto.connectionMade()
+        proto.outReceived(b"{}\n")
+        self.expectThat(
+            callback, MockCallsMatch(call([{"interface": ifname}])))
+
+
+class TrueProcessProtocolService(ProcessProtocolService):
+
+    def getProcessParameters(self):
+        return ["/bin/true"]
+
+
+class FalseProcessProtocolService(ProcessProtocolService):
+
+    def getProcessParameters(self):
+        return ["/bin/false"]
+
+
+class CatProcessProtocolService(ProcessProtocolService):
+
+    def getProcessParameters(self):
+        return ["/bin/cat"]
+
+
+class EchoProcessProtocolService(ProcessProtocolService):
+
+    def getProcessParameters(self):
+        return ["/bin/echo", "{}\n"]
+
+
+class MockJSONProtocol(JSONPerLineProtocol):
+    pass
+
+
+class TestProcessProtocolService(MAASTestCase):
+    """Tests for `JSONPerLineProtocol`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+
+    def test__base_class_cannot_be_used(self):
+        with ExpectedException(TypeError):
+            ProcessProtocolService(
+                description="Mock process", protocol=Mock())
+
+    @inlineCallbacks
+    def test__starts_and_stops_process(self):
+        protocol = MockJSONProtocol()
+        service = CatProcessProtocolService(
+            description="Unit test process", protocol=protocol)
+        mock_callback = Mock()
+        protocol.done.addCallback(mock_callback)
+        service.startService()
+        yield service.stopService()
+        self.assertTrue(mock_callback.called)
+        yield pause(0.0)
+        self.assertThat(protocol.done, IsFiredDeferred())
+        self.assertThat(extract_result(protocol.done), Is(None))
+        with ExpectedException(ProcessExitedAlready):
+            service.process.signalProcess("INT")
+
+    @inlineCallbacks
+    def test__handles_normal_process_exit(self):
+        protocol = MockJSONProtocol()
+        service = TrueProcessProtocolService(
+            description="Unit test process", protocol=protocol)
+        mock_callback = Mock()
+        protocol.done.addCallback(mock_callback)
+        service.startService()
+        yield service.stopService()
+        self.assertTrue(mock_callback.called)
+        yield pause(0.0)
+        self.assertThat(protocol.done, IsFiredDeferred())
+        self.assertThat(extract_result(protocol.done), Is(None))
+
+    @inlineCallbacks
+    def test__handles_abnormal_process_exit(self):
+        protocol = MockJSONProtocol()
+        service = FalseProcessProtocolService(
+            description="Unit test process", protocol=protocol)
+        mock_errback = Mock()
+        mock_callback = Mock()
+        protocol.done.addCallback(mock_callback)
+        protocol.done.addErrback(mock_errback)
+        service.startService()
+        yield service.stopService()
+        self.assertTrue(mock_errback.called)
+        self.assertFalse(mock_callback.called)
+        yield pause(0.0)
+        self.assertThat(protocol.done, IsFiredDeferred())
+        self.assertThat(extract_result(protocol.done), Equals(None))
+
+    @inlineCallbacks
+    def test__calls_protocol_callback(self):
+        callback = Mock()
+        protocol = MockJSONProtocol(callback=callback)
+        service = EchoProcessProtocolService(
+            description="Unit test process", protocol=protocol)
+        service.startService()
+        # Wait for the protocol to finish. (the echo process will stop)
+        yield protocol.done
+        self.assertThat(callback, MockCalledOnceWith([{}]))
+        yield service.stopService()
+        yield pause(0.0)
+        self.assertThat(protocol.done, IsFiredDeferred())
+        self.assertThat(extract_result(protocol.done), Equals(None))
+
+
+class TestNeighbourDiscoveryService(MAASTestCase):
+    """Tests for `NeighbourDiscoveryService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__returns_expected_arguments(self):
+        ifname = factory.make_name('eth')
+        service = NeighbourDiscoveryService(ifname, Mock())
+        args = service.getProcessParameters()
+        self.assertThat(args, HasLength(3))
+        self.assertTrue(args[0].endswith(b'maas-rack'))
+        self.assertTrue(args[1], Equals(b"observe-arp"))
+        self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
+
+
+class TestMDNSResolverService(MAASTestCase):
+    """Tests for `MDNSResolverService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__returns_expected_arguments(self):
+        service = MDNSResolverService(Mock())
+        args = service.getProcessParameters()
+        self.assertThat(args, HasLength(2))
+        self.assertTrue(args[0].endswith(b"maas-rack"))
+        self.assertTrue(args[1], Equals(b"observe-mdns"))

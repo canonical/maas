@@ -194,6 +194,18 @@ def update_interfaces(system_id, interfaces):
 
 @synchronous
 @transactional
+def report_mdns_entries(system_id, mdns):
+    """Report observed neighbours seen on the rack controller."""
+    try:
+        rack_controller = RackController.objects.get(system_id=system_id)
+    except RackController.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+    else:
+        rack_controller.report_mdns_entries(mdns)
+
+
+@synchronous
+@transactional
 def report_neighbours(system_id, neighbours):
     """Report observed neighbours seen on the rack controller."""
     try:

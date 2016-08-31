@@ -951,7 +951,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         if hostname is None:
             hostname = factory.make_hostname()
         return {
-            'ip': ip,
+            'address': ip,
             'hostname': hostname,
         }
 
@@ -983,7 +983,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         self.assertThat(MDNS.objects.count(), Equals(1))
         iface.update_mdns_entry(json)
         mdns_entry = reload_object(mdns_entry)
-        self.assertThat(mdns_entry.ip, Equals(json['ip']))
+        self.assertThat(mdns_entry.ip, Equals(json['address']))
         self.assertThat(mdns_entry.hostname, Equals(json['hostname']))
         # This is the second time we saw this entry.
         self.assertThat(mdns_entry.count, Equals(2))
@@ -995,13 +995,13 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         json = self.make_mdns_entry_json()
         iface.update_mdns_entry(json)
         # Have a different IP address claim ownership of the hostname.
-        json['ip'] = factory.make_ip_address(ipv6=False)
+        json['address'] = factory.make_ip_address(ipv6=False)
         iface.update_mdns_entry(json)
         self.assertThat(MDNS.objects.count(), Equals(1))
-        self.assertThat(list(MDNS.objects.all())[0].ip, Equals(json['ip']))
+        self.assertThat(MDNS.objects.first().ip, Equals(json['address']))
         # This is the first time we saw this neighbour, because the original
         # binding was deleted.
-        self.assertThat(list(MDNS.objects.all())[0].count, Equals(1))
+        self.assertThat(MDNS.objects.count(), Equals(1))
 
     def test__logs_new_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1010,7 +1010,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         with FakeLogger("maas.interface") as maaslog:
             iface.update_mdns_entry(json)
         self.assertDocTestMatches(
-            "...: New mDNS hostname observed for...",
+            "...: New mDNS entry resolved...",
             maaslog.output)
 
     def test__logs_moved_entry(self):
@@ -1019,7 +1019,7 @@ class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
         json = self.make_mdns_entry_json()
         iface.update_mdns_entry(json)
         # Have a different IP address claim ownership of the hostma,e.
-        json['ip'] = factory.make_ip_address(ipv6=False)
+        json['address'] = factory.make_ip_address(ipv6=False)
         with FakeLogger("maas.mDNS") as maaslog:
             iface.update_mdns_entry(json)
         self.assertDocTestMatches(

@@ -13,6 +13,7 @@ from abc import (
 )
 from datetime import timedelta
 import json
+from json.decoder import JSONDecodeError
 import os
 
 from provisioningserver.config import is_dev_environment
@@ -34,34 +35,26 @@ from twisted.internet.defer import (
     Deferred,
     maybeDeferred,
 )
-from twisted.internet.error import (
-    ProcessDone,
-    ProcessExitedAlready,
-)
-from twisted.internet.interfaces import ILoggingContext
+from twisted.internet.error import ProcessDone
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
 from twisted.python import log
-from zope.interface import implementer
 
 
 maaslog = get_maas_logger("networks.monitor")
 
 
-@implementer(ILoggingContext)
-class NeighbourObservationProtocol(ProcessProtocol):
+class JSONPerLineProtocol(ProcessProtocol):
+    """ProcessProtocol which allows easy parsing of a single JSON object per
+    line of text.
+    """
 
-    def __init__(self, interface, prefix=None, callback=None):
+    def __init__(self, callback=None):
         super().__init__()
         self.done = Deferred()
-        self.interface = interface
-        self.prefix = prefix
         self.callback = callback
         self.outbuf = b''
         self.errbuf = b''
-
-    def logPrefix(self):
-        return "-" if self.prefix is None else self.prefix
 
     def connectionMade(self):
         self.outbuf = b''
@@ -93,10 +86,14 @@ class NeighbourObservationProtocol(ProcessProtocol):
 
     def outLineReceived(self, line):
         line = line.decode("utf-8")
-        obj = json.loads(line)
-        obj['interface'] = self.interface
-        # Report one observation at a time for now. (The API is designed to
-        # support multiple, but that will be done in a future branch.)
+        try:
+            obj = json.loads(line)
+        except JSONDecodeError:
+            log.msg("Failed to parse JSON: %r" % line)
+        else:
+            self.objectReceived(obj)
+
+    def objectReceived(self, obj):
         self.callback([obj])
 
     def errLineReceived(self, line):
@@ -112,52 +109,87 @@ class NeighbourObservationProtocol(ProcessProtocol):
             self.done.errback(reason)
 
 
-class NeighbourDiscoveryService(TimerService):
-    """Service to spawn the per-interface device discovery subprocess."""
+class NeighbourObservationProtocol(JSONPerLineProtocol):
 
-    def __init__(self, ifname):
-        super().__init__(60.0, self.observeInterface, ifname)
-        self._ifname = ifname
-        self._process = None
+    def __init__(self, interface, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.interface = interface
+
+    def objectReceived(self, obj):
+        # The only difference between the JSONPerLineProtocol and the
+        # NeighbourObservationProtocol is that the neighbour observation
+        # protocol needs to insert the interface metadata into the resultant
+        # object before the callback.
+        obj['interface'] = self.interface
+        super().objectReceived(obj)
+
+
+class ProcessProtocolService(TimerService, metaclass=ABCMeta):
+
+    def __init__(self, description, protocol, interval=60.0):
+        assert protocol is not None
+        assert description is not None
+        self.description = description
+        self.protocol = protocol
+        self.process = None
+        super().__init__(interval, self.startProcess)
 
     @deferred
-    def observeInterface(self, ifname):
-        """Start a network observation process for the specified interface."""
-        observer_protocol = NeighbourObservationProtocol(
-            ifname, callback=self.parent.reportNeighbours)
+    def startProcess(self):
         env = select_c_utf8_bytes_locale()
-        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
-        self._process = reactor.spawnProcess(
-            observer_protocol, maas_rack_cmd,
-            [maas_rack_cmd, b"observe-arp", ifname.encode("utf-8")],
-            env=env)
-        log.msg("Started neighbour observation on interface: %s" % ifname)
-        return observer_protocol.done.addErrback(
-            log.err,
-            "Neighbour observation process failed for interface: %s" % (
-                self._ifname
-            ))
+        log.msg("%s started." % self.description)
+        args = self.getProcessParameters()
+        self.process = reactor.spawnProcess(
+            self.protocol, args[0], args, env=env)
+        return self.protocol.done.addErrback(
+            log.err, "%s failed." % self.description)
 
-    def stopObservationProcess(self):
-        """Attempts to kill the neighbour observation process gracefully."""
-        if self._process is not None:
-            try:
-                self._process.signalProcess("INT")
-            except ProcessExitedAlready:
-                pass  # Our work here is done.
-            except OSError:
-                log.err(
-                    None,
-                    "Neighbour observation process for %s failed to "
-                    "shut down." % self._ifname)
-            else:
-                return self._process.done
+    @abstractmethod
+    def getProcessParameters(self):
+        """Return the parameters for the subprocess to launch.
+
+        This MUST be overridden in subclasses.
+        """
 
     def stopService(self):
         """Stops the neighbour observation service."""
-        d = super().stopService()
-        d.addCallback(callOut, self.stopObservationProcess)
-        return d
+        if self.process is not None:
+            self.process.loseConnection()
+        return super().stopService()
+
+
+class NeighbourDiscoveryService(ProcessProtocolService):
+    """Service to spawn the per-interface device discovery subprocess."""
+
+    def __init__(self, ifname: str, callback):
+        self.ifname = ifname
+        description = "Neighbour observation process for %s" % ifname
+        protocol = NeighbourObservationProtocol(ifname, callback=callback)
+        super().__init__(description=description, protocol=protocol)
+
+    def getProcessParameters(self):
+        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        return [
+            maas_rack_cmd,
+            b"observe-arp",
+            self.ifname.encode("utf-8")
+        ]
+
+
+class MDNSResolverService(ProcessProtocolService):
+    """Service to spawn the per-interface device discovery subprocess."""
+
+    def __init__(self, callback):
+        protocol = JSONPerLineProtocol(callback=callback)
+        super().__init__(
+            description="mDNS resolver process", protocol=protocol)
+
+    def getProcessParameters(self):
+        maas_rack_cmd = get_maas_provision_command().encode("utf-8")
+        return [
+            maas_rack_cmd,
+            b"observe-mdns",
+        ]
 
 
 class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
@@ -226,6 +258,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     @abstractmethod
     def reportNeighbours(self, neighbours):
+        """Report on new or refreshed neighbours.
+
+        This MUST be overridden in subclasses.
+        """
+
+    @abstractmethod
+    def reportMDNSEntries(self, mdns):
         """Report on new or refreshed neighbours.
 
         This MUST be overridden in subclasses.
@@ -307,9 +346,31 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     def _startNeighbourDiscovery(self, ifname):
         """"Start neighbour discovery service on the specified interface."""
-        service = NeighbourDiscoveryService(ifname)
+        service = NeighbourDiscoveryService(ifname, self.reportNeighbours)
         service.setName("neighbour_discovery:" + ifname)
         service.setServiceParent(self)
+
+    def _startMDNSDiscoveryService(self):
+        """Start resolving mDNS entries on attached networks."""
+        try:
+            self.getServiceNamed("mdns_resolver")
+        except KeyError:
+            # This is an expected exception. (The call inside the `try`
+            # is only necessary to ensure the service doesn't exist.)
+            service = MDNSResolverService(self.reportMDNSEntries)
+            service.setName("mdns_resolver")
+            service.setServiceParent(self)
+
+    def _stopMDNSDiscoveryService(self):
+        """Stop resolving mDNS entries on attached networks."""
+        try:
+            service = self.getServiceNamed("mdns_resolver")
+        except KeyError:
+            # Service doesn't exist, so no need to stop it.
+            pass
+        else:
+            service.disownServiceParent()
+            maaslog.info("Stopped mDNS resolver service.")
 
     def _startNeighbourDiscoveryServices(self, new_interfaces):
         """Start monitoring services for the specified set of interfaces."""
@@ -319,7 +380,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 self.getServiceNamed("neighbour_disovery:" + ifname)
             except KeyError:
                 # This is an expected exception. (The call inside the `try`
-                # is only necessary to ensure the service doesn't exist.
+                # is only necessary to ensure the service doesn't exist.)
                 self._startNeighbourDiscovery(ifname)
 
     def _stopNeighbourDiscoveryServices(self, deleted_interfaces):
@@ -356,6 +417,22 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         deleted_interfaces = self._monitored.difference(monitored_interfaces)
         self._startNeighbourDiscoveryServices(new_interfaces)
         self._stopNeighbourDiscoveryServices(deleted_interfaces)
+        # Determine if we went from monitoring zero interfaces to monitoring
+        # at least one. If so, we need to start mDNS discovery.
+        # XXX Need to get this setting from the region.
+        if len(self._monitored) == 0 and len(monitored_interfaces) > 0:
+            # We weren't currently monitoring any interfaces, but we have been
+            # requested to monitor at least one.
+            self._startMDNSDiscoveryService()
+        elif len(self._monitored) > 0 and len(monitored_interfaces) == 0:
+            # We are currently monitoring at least one interface, but we have
+            # been requested to stop monitoring them all.
+            self._stopMDNSDiscoveryService()
+        else:
+            # No state change. We either still AREN'T monitoring any
+            # interfaces, or we still ARE monitoring them. (Either way, it
+            # doesn't matter for mDNS discovery purposes.)
+            pass
         self._monitored = monitored_interfaces
 
     def _interfacesRecorded(self, interfaces):
