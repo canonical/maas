@@ -476,6 +476,7 @@ class TestMain(MAASTestCase):
         self.assertItemsEqual(
             [
                 'content_id',
+                'kflavor',
                 'path',
                 'product_name',
                 'version_name',

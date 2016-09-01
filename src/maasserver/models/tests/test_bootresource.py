@@ -594,15 +594,30 @@ class TestGetUsableKernels(MAASServerTestCase):
             "arch": "armfh",
             "subarch": "hardbank",
             "kernels": [],
-        }))
+            }),
+        ("ubuntu/xenial", {
+            "name": "ubuntu/xenial",
+            "arch": "amd64",
+            "subarch": "generic",
+            "kernels": ["hwe-16.04", "hwe-16.04-lowlatency"],
+            }),
+        )
 
     def test__returns_usable_kernels(self):
         if self.subarch == "generic":
+            generic_kernels = []
             for i in self.kernels:
+                kernel_parts = i.split("-")
+                if len(kernel_parts) > 2:
+                    kflavor = kernel_parts[2]
+                else:
+                    kflavor = "generic"
+                    generic_kernels.append(i)
                 factory.make_usable_boot_resource(
                     name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                    architecture="%s/%s" % (self.arch, i))
+                    architecture="%s/%s" % (self.arch, i), kflavor=kflavor)
         else:
+            generic_kernels = self.kernels
             factory.make_usable_boot_resource(
                 name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 architecture="%s/%s" % (self.arch, self.subarch))
@@ -612,6 +627,12 @@ class TestGetUsableKernels(MAASServerTestCase):
                 self.name, self.arch),
             "%s should return %s as its usable kernel" % (
                 self.name, self.kernels))
+        self.assertEqual(
+            generic_kernels,
+            BootResource.objects.get_usable_hwe_kernels(
+                self.name, self.arch, 'generic'),
+            "%s should return %s as its usable kernel" % (
+                self.name, generic_kernels))
 
 
 class TestGetKpackageForNode(MAASServerTestCase):

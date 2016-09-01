@@ -212,7 +212,7 @@ describe("NodeDetailsController", function() {
             },
             min_hwe_kernel: {
                 selected: null,
-                options: GeneralManager.getData("hwe_kernels")
+                options: GeneralManager.getData("min_hwe_kernels")
             },
             zone: {
                 selected: null,
@@ -223,7 +223,7 @@ describe("NodeDetailsController", function() {
         expect($scope.summary.architecture.options).toBe(
             GeneralManager.getData("architectures"));
         expect($scope.summary.min_hwe_kernel.options).toBe(
-            GeneralManager.getData("hwe_kernels"));
+            GeneralManager.getData("min_hwe_kernels"));
         expect($scope.summary.zone.options).toBe(
             ZonesManager.getItems());
     });

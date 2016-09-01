@@ -32,6 +32,7 @@ import urllib.parse
 import urllib.request
 from uuid import uuid1
 
+from distro_info import UbuntuDistroInfo
 from maastesting.fixtures import TempDirectory
 from netaddr import (
     IPAddress,
@@ -618,6 +619,31 @@ class Factory:
             returncode=random.randint(1, 10),
             cmd=[self.make_name("command")],
             output=factory.make_bytes())
+
+    def make_kernel_string(
+            self, can_be_release_or_version=False, generic_only=False):
+        ubuntu = UbuntuDistroInfo()
+        # Only select from MAAS supported releases so we don't have to deal
+        # with versions name overlap(e.g Warty and Wily).
+        supported_releases = [
+            release for release in ubuntu._rows
+            if int(release['version'].split('.')[0]) >= 12
+        ]
+        release = random.choice(supported_releases)
+        # Remove 'LTS' from version if it exists
+        version_str = release['version'].split(' ')[0]
+        strings = [
+            "hwe-%s" % release['series'][0], "hwe-%s" % version_str,
+            "hwe-%s-edge" % version_str,
+        ]
+        if not generic_only:
+            strings += [
+                "hwe-%s-lowlatency" % version_str,
+                "hwe-%s-lowlatency-edge" % version_str,
+            ]
+        if can_be_release_or_version:
+            strings += [release['series'], version_str]
+        return random.choice(strings)
 
 # Create factory singleton.
 factory = Factory()

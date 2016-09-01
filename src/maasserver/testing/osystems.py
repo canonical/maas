@@ -14,6 +14,7 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
 )
+from maasserver.models import Node
 from maasserver.testing.factory import factory
 from maasserver.utils import osystems as osystems_module
 
@@ -34,6 +35,10 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
         make_rpc_release(release)
         for release in releases
         ]
+    # If this is being used to test commissioning make sure the default
+    # Ubuntu release is bootable for every known architecture.
+    for node in Node.objects.all():
+        factory.make_default_ubuntu_release_bootable(node.split_arch()[0])
     return make_rpc_osystem(osystem_name, releases=rpc_releases)
 
 

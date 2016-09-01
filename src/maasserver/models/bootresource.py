@@ -220,7 +220,8 @@ class BootResourceManager(Manager):
             return False
         return True
 
-    def get_usable_hwe_kernels(self, name=None, architecture=None):
+    def get_usable_hwe_kernels(
+            self, name=None, architecture=None, kflavor=None):
         """Return the set of usable kernels for architecture and release."""
         if not name:
             name = ''
@@ -229,6 +230,8 @@ class BootResourceManager(Manager):
         kernels = set()
         for resource in self.filter(
                 architecture__startswith=architecture, name__startswith=name):
+            if kflavor is not None and resource.kflavor != kflavor:
+                continue
             resource_set = resource.get_latest_set()
             if(resource_set is None or
                not resource_set.commissionable or
@@ -240,8 +243,22 @@ class BootResourceManager(Manager):
             if "subarches" in resource.extra:
                 for subarch in resource.extra["subarches"].split(","):
                     if subarch.startswith("hwe-"):
-                        kernels.add(subarch)
-        return sorted(kernels)
+                        if kflavor is None:
+                            kernels.add(subarch)
+                        else:
+                            # generic kflavors are not included in the subarch.
+                            if kflavor == 'generic':
+                                kparts = subarch.split('-')
+                                if len(kparts) == 2:
+                                    kernels.add(subarch)
+                            else:
+                                if kflavor in subarch:
+                                    kernels.add(subarch)
+        # Make sure kernels named with a version come after the kernels named
+        # with the first letter of release. This switched in Xenial so this
+        # preserves the chronological order of the kernels.
+        return sorted(
+            kernels, key=lambda k: (k.replace('hwe-', '')[0].isdigit(), k))
 
     def get_kpackage_for_node(self, node):
         """Return the kernel package name for the kernel specified."""
@@ -340,11 +357,13 @@ class BootResource(CleanSave, TimestampedModel):
     architecture = CharField(
         max_length=255, blank=False, validators=[validate_architecture])
 
+    kflavor = CharField(max_length=32, blank=True, null=True)
+
     extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __str__(self):
-        return "<BootResource name=%s, arch=%s>" % (
-            self.name, self.architecture)
+        return "<BootResource name=%s, arch=%s, kflavor=%s>" % (
+            self.name, self.architecture, self.kflavor)
 
     @property
     def display_rtype(self):

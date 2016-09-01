@@ -62,7 +62,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             },
             min_hwe_kernel: {
                 selected: null,
-                options: GeneralManager.getData("hwe_kernels")
+                options: GeneralManager.getData("min_hwe_kernels")
             },
             zone: {
                 selected: null,

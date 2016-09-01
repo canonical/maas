@@ -47,7 +47,6 @@ from maasserver.rpc.nodes import get_controller_type
 from maasserver.rpc.regionservice import Region
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
-from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -1104,7 +1103,7 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
             self.create_node)
 
         params = {
-            'architecture': make_usable_architecture(self),
+            'architecture': factory.make_name('arch'),
             'power_type': factory.make_name('power_type'),
             'power_parameters': dumps({}),
             'mac_addresses': [factory.make_mac_address()],

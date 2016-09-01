@@ -25,7 +25,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import osystems as osystems_module
 from maasserver.utils.osystems import (
     get_distro_series_initial,
+    get_release_from_db,
+    get_release_from_distro_info,
     get_release_requires_key,
+    get_release_version_from_string,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
     list_all_usable_releases,
@@ -35,6 +38,7 @@ from maasserver.utils.osystems import (
     make_hwe_kernel_ui_text,
     release_a_newer_than_b,
     validate_hwe_kernel,
+    validate_min_hwe_kernel,
     validate_osystem_and_distro_series,
 )
 from maastesting.matchers import MockAnyCall
@@ -290,13 +294,10 @@ class TestReleases(MAASServerTestCase):
         self.assertEqual('trusty (hwe-t)', make_hwe_kernel_ui_text('hwe-t'))
 
     def test_make_hwe_kernel_ui_returns_kernel_when_none_found(self):
-        # Since this is testing that our fall final fall back returns just the
-        # kernel name when the release isn't found in BootSourceCache or
-        # UbuntuDistroInfo we patch out UbuntuDistroInfo so nothing is found.
-        self.patch(UbuntuDistroInfo, 'all').value = []
+        unknown_kernel = factory.make_name('kernel')
         self.assertEqual(
-            'hwe-m',
-            make_hwe_kernel_ui_text('hwe-m'))
+            unknown_kernel,
+            make_hwe_kernel_ui_text(unknown_kernel))
 
 
 class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
@@ -339,20 +340,102 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             validate_osystem_and_distro_series(osystem['name'], release + '*'))
 
 
+class TestGetReleaseVersionFromString(MAASServerTestCase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ubuntu = UbuntuDistroInfo()
+        # We can't test with releases older than Precise as they have duplicate
+        # names(e.g Wily and Warty) which will break the old style kernel
+        # tests.
+        valid_releases = [
+            row for row in ubuntu._rows
+            if int(row['version'].split('.')[0]) >= 12
+        ]
+        release = random.choice(valid_releases)
+        # Remove 'LTS' from version if it exists
+        version_str = release['version'].split(' ')[0]
+        # Convert the version into a list of ints
+        version_tuple = tuple([int(seg) for seg in version_str.split('.')])
+
+        self.scenarios = (
+            ("Release name", {
+                "string": release['series'],
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("Release version", {
+                "string": version_str,
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("Old style kernel", {
+                "string": "hwe-%s" % release['series'][0],
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("New style kernel", {
+                "string": "hwe-%s" % version_str,
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("New style edge kernel", {
+                "string": "hwe-%s-edge" % version_str,
+                "expected": version_tuple + tuple([1]),
+            }),
+            ("New style low latency kernel", {
+                "string": "hwe-%s-lowlatency" % version_str,
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("New style edge low latency kernel", {
+                "string": "hwe-%s-lowlatency-edge" % version_str,
+                "expected": version_tuple + tuple([1]),
+            }),
+            ("Rolling kernel", {
+                "string": "hwe-rolling",
+                "expected": tuple([999, 999, 0]),
+            }),
+            ("Rolling edge kernel", {
+                "string": "hwe-rolling-edge",
+                "expected": tuple([999, 999, 1]),
+            }),
+            ("Rolling lowlatency kernel", {
+                "string": "hwe-rolling-lowlatency",
+                "expected": tuple([999, 999, 0]),
+            }),
+            ("Rolling lowlatency edge kernel", {
+                "string": "hwe-rolling-lowlatency-edge",
+                "expected": tuple([999, 999, 1]),
+            }),
+        )
+
+    def test_get_release_version_from_string(self):
+        self.assertEquals(
+            self.expected,
+            get_release_version_from_string(self.string))
+
+
 class TestReleaseANewerThanB(MAASServerTestCase):
 
-    def test_release_a_newer_than_b(self):
-        # Since we wrap around 'p' we want to use 'p' as our starting point
-        alphabet = ([chr(i) for i in range(ord('p'), ord('z') + 1)] +
-                    [chr(i) for i in range(ord('a'), ord('p'))])
-        previous_true = 0
-        for i in alphabet:
-            true_count = 0
-            for j in alphabet:
-                if release_a_newer_than_b('hwe-' + i, j):
-                    true_count += 1
-            previous_true += 1
-            self.assertEqual(previous_true, true_count)
+    def test_a_newer_than_b_true(self):
+        self.assertTrue(
+            release_a_newer_than_b(
+                'hwe-rolling',
+                factory.make_kernel_string(can_be_release_or_version=True)))
+
+    def test_a_equal_to_b_true(self):
+        string = factory.make_kernel_string(can_be_release_or_version=True)
+        self.assertTrue(release_a_newer_than_b(string, string))
+
+    def test_a_less_than_b_false(self):
+        self.assertFalse(
+            release_a_newer_than_b(
+                factory.make_kernel_string(can_be_release_or_version=True),
+                'hwe-rolling'))
+
+    def test_accounts_for_edge(self):
+        self.assertFalse(
+            release_a_newer_than_b('hwe-rolling', 'hwe-rolling-edge'))
+
+    def test_kernel_flavor_doesnt_make_difference(self):
+        self.assertTrue(release_a_newer_than_b(
+            'hwe-rolling', 'hwe-rolling-lowlatency'))
 
 
 class TestValidateHweKernel(MAASServerTestCase):
@@ -474,3 +557,108 @@ class TestValidateHweKernel(MAASServerTestCase):
         self.assertThat(
             mock_get_config, MockAnyCall('commissioning_distro_series'))
         self.assertEqual('hwe-v', kernel)
+
+
+class TestValidateMinHweKernel(MAASServerTestCase):
+
+    def test_validates_kernel(self):
+        kernel = factory.make_kernel_string(generic_only=True)
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = (kernel,)
+        self.assertEquals(kernel, validate_min_hwe_kernel(kernel))
+
+    def test_returns_empty_string_when_none(self):
+        self.assertEquals("", validate_min_hwe_kernel(None))
+
+    def test_raises_exception_when_not_found(self):
+        self.assertRaises(
+            ValidationError,
+            validate_min_hwe_kernel, factory.make_kernel_string())
+
+    def test_raises_exception_when_lowlatency(self):
+        self.assertRaises(
+            ValidationError, validate_min_hwe_kernel, 'hwe-16.04-lowlatency')
+
+
+class TestGetReleaseFromDistroInfo(MAASServerTestCase):
+
+    def pick_release(self):
+        ubuntu = UbuntuDistroInfo()
+        supported_releases = [
+            release for release in ubuntu._rows
+            if int(release['version'].split('.')[0]) >= 12
+        ]
+        return random.choice(supported_releases)
+
+    def test_finds_by_series(self):
+        release = self.pick_release()
+        self.assertItemsEqual(
+            release, get_release_from_distro_info(release['series']))
+
+    def test_finds_by_series_first_letter(self):
+        release = self.pick_release()
+        self.assertItemsEqual(
+            release, get_release_from_distro_info(release['series'][0]))
+
+    def test_finds_by_version(self):
+        release = self.pick_release()
+        self.assertItemsEqual(
+            release, get_release_from_distro_info(release['version']))
+
+    def test_returns_none_when_not_found(self):
+        self.assertIsNone(
+            get_release_from_distro_info(factory.make_name('string')))
+
+
+class TestGetReleaseFromDB(MAASServerTestCase):
+
+    def make_boot_source_cache(self):
+        # Disable boot sources signals otherwise the test fails due to unrun
+        # post-commit tasks at the end of the test.
+        self.useFixture(SignalsDisabled("bootsources"))
+        ubuntu = UbuntuDistroInfo()
+        supported_releases = [
+            release for release in ubuntu._rows
+            if int(release['version'].split('.')[0]) >= 12
+        ]
+        release = random.choice(supported_releases)
+        subarch = "hwe-%s" % release['version'].split(' ')[0]
+        factory.make_BootSourceCache(
+            os='ubuntu',
+            arch=factory.make_name('arch'),
+            subarch=subarch,
+            release=release['series'],
+            release_codename=release['codename'],
+            release_title=release['version'],
+            support_eol=release['eol-server'],
+        )
+        return release
+
+    def test_finds_by_subarch(self):
+        release = self.make_boot_source_cache()
+        self.assertEquals(
+            release['series'],
+            get_release_from_db(release['version'].split(' ')[0])['series'])
+
+    def test_finds_by_release(self):
+        release = self.make_boot_source_cache()
+        self.assertEquals(
+            release['version'],
+            get_release_from_db(release['series'])['version'])
+
+    def test_finds_by_release_first_letter(self):
+        release = self.make_boot_source_cache()
+        self.assertEquals(
+            release['version'],
+            get_release_from_db(release['series'][0])['version'])
+
+    def test_finds_by_version(self):
+        release = self.make_boot_source_cache()
+        self.assertItemsEqual(
+            release['series'],
+            get_release_from_db(release['version'])['series'])
+
+    def test_returns_none_when_not_found(self):
+        self.assertIsNone(
+            get_release_from_db(factory.make_name('string')))

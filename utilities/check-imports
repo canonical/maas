@@ -147,6 +147,7 @@ class Rule:
 StandardLibraries = Pattern(
     map("{0}|{0}.**".format, python_standard_libs))
 TestingLibraries = Pattern(
+    "distro_info.UbuntuDistroInfo",
     "django_nose|django_nose.**",
     "dns|dns.**",
     "fixtures|fixtures.**",

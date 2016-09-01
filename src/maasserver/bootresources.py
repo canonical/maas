@@ -458,8 +458,12 @@ class BootResourceStore(ObjectStore):
         os = get_os_from_product(product)
         series = product['release']
         arch = product['arch']
-        subarch = product['subarch']
         name = '%s/%s' % (os, series)
+        if 'kflavor' in product and product['kflavor'] != 'generic':
+            subarch = "%s-%s" % (product['subarch'], product['kflavor'])
+        else:
+            subarch = product['subarch']
+
         architecture = '%s/%s' % (arch, subarch)
 
         # Allow a generated resource to be replaced by a sycned resource. This
@@ -488,16 +492,14 @@ class BootResourceStore(ObjectStore):
                 # replaced with this synced image.
                 resource.rtype = BOOT_RESOURCE_TYPE.SYNCED
 
+        resource.kflavor = product.get('kflavor')
         # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
         # object store contains additional data that should not be stored into
-        # the database. If kflavor and/or subarches exist in the product then
-        # we store those values to expose in the simplestreams endpoint on the
-        # region.
+        # the database. If subarches exist in the product then we store those
+        # values to expose in the simplestreams endpoint on the region.
         resource.extra = {}
-        if 'kflavor' in product:
-            resource.extra['kflavor'] = product['kflavor']
         if 'subarches' in product:
             resource.extra['subarches'] = product['subarches']
 

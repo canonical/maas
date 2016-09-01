@@ -165,9 +165,14 @@ def cache_boot_sources():
                 BootSourceCache.objects.filter(boot_source=bootsource).delete()
                 if not descriptions.is_empty():
                     for spec, item in descriptions.mapping.items():
+                        kflavor = item.get('kflavor')
+                        if kflavor not in (None, 'generic'):
+                            subarch = "%s-%s" % (spec.subarch, kflavor)
+                        else:
+                            subarch = spec.subarch
                         BootSourceCache.objects.create(
                             boot_source=bootsource, os=spec.os,
-                            arch=spec.arch, subarch=spec.subarch,
+                            arch=spec.arch, subarch=subarch, kflavor=kflavor,
                             release=spec.release, label=spec.label,
                             release_codename=item.get('release_codename'),
                             release_title=item.get('release_title'),

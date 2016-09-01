@@ -234,12 +234,14 @@ class TestBootMerge(MAASTestCase):
 class TestRepoDumper(MAASTestCase):
     """Tests for `RepoDumper`."""
 
-    def make_item(self, os=None, release=None, arch=None,
+    def make_item(self, os=None, release=None, version=None, arch=None,
                   subarch=None, subarches=None, label=None):
         if os is None:
             os = factory.make_name('os')
         if release is None:
             release = factory.make_name('release')
+        if version is None:
+            version = factory.make_name('version')
         if arch is None:
             arch = factory.make_name('arch')
         if subarch is None:
@@ -257,6 +259,7 @@ class TestRepoDumper(MAASTestCase):
             'path': factory.make_name('path'),
             'os': os,
             'release': release,
+            'version': version,
             'arch': arch,
             'subarch': subarch,
             'subarches': ','.join(subarches),
@@ -307,7 +310,7 @@ class TestRepoDumper(MAASTestCase):
             label=item['label'])
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
 
-    def test_insert_item_sets_generic_to_release_item_for_hwe(self):
+    def test_insert_item_sets_generic_to_release_item_for_hwe_letter(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
         os = 'ubuntu'
@@ -318,6 +321,37 @@ class TestRepoDumper(MAASTestCase):
         hwep_subarches = ['generic', 'hwe-p']
         hwes_subarch = 'hwe-s'
         hwes_subarches = ['generic', 'hwe-p', 'hwe-s']
+        hwep_item, compat_item = self.make_item(
+            os=os, release=release,
+            arch=arch, subarch=hwep_subarch,
+            subarches=hwep_subarches, label=label)
+        hwes_item, _ = self.make_item(
+            os=os, release=release,
+            arch=arch, subarch=hwes_subarch,
+            subarches=hwes_subarches, label=label)
+        self.patch(
+            download_descriptions,
+            'products_exdata').side_effect = [hwep_item, hwes_item]
+        for _ in range(2):
+            dumper.insert_item(
+                sentinel.data, sentinel.src, sentinel.target,
+                sentinel.pedigree, sentinel.contentsource)
+        image_spec = make_image_spec(
+            os=os, release=release, arch=arch, subarch='generic',
+            label=label)
+        self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
+
+    def test_insert_item_sets_generic_to_release_item_for_hwe_version(self):
+        boot_images_dict = BootImageMapping()
+        dumper = RepoDumper(boot_images_dict)
+        os = 'ubuntu'
+        release = 'xenial'
+        arch = 'amd64'
+        label = 'release'
+        hwep_subarch = 'hwe-16.04'
+        hwep_subarches = ['generic', 'hwe-16.04', 'hwe-16.10']
+        hwes_subarch = 'hwe-16.10'
+        hwes_subarches = ['generic', 'hwe-16.04', 'hwe-16.10']
         hwep_item, compat_item = self.make_item(
             os=os, release=release,
             arch=arch, subarch=hwep_subarch,

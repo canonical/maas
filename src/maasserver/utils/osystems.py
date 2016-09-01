@@ -5,15 +5,17 @@
 __all__ = [
     'get_distro_series_initial',
     'get_release_requires_key',
+    'get_release_version_from_string',
     'list_all_releases_requiring_keys',
+    'list_all_usable_hwe_kernels',
     'list_all_usable_osystems',
     'list_all_usable_releases',
-    'list_all_usable_hwe_kernels',
+    'list_commissioning_choices',
     'list_hwe_kernel_choices',
     'list_osystem_choices',
     'list_release_choices',
-    'list_commissioning_choices',
     'make_hwe_kernel_ui_text',
+    'release_a_newer_than_b',
     'validate_hwe_kernel',
     ]
 
@@ -21,6 +23,7 @@ from operator import itemgetter
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 from maasserver.models import (
     BootResource,
@@ -85,18 +88,20 @@ def list_all_usable_hwe_kernels(releases):
 def make_hwe_kernel_ui_text(hwe_kernel):
     if not hwe_kernel:
         return hwe_kernel
-    release_letter = hwe_kernel.replace('hwe-', '')
-    boot_sources = BootSourceCache.objects.filter(
-        release__startswith=release_letter,
-        subarch=hwe_kernel)
-    if len(boot_sources) > 0:
-        return "%s (%s)" % (boot_sources[0].release, hwe_kernel)
+    # Fall back on getting it from DistroInfo.
+    kernel_list = hwe_kernel.split('-')
+    if len(kernel_list) >= 2:
+        kernel = kernel_list[1]
     else:
-        ubuntu = UbuntuDistroInfo()
-        for release in ubuntu.all:
-            if release.startswith(release_letter):
-                return "%s (%s)" % (release, hwe_kernel)
-    return hwe_kernel
+        kernel = hwe_kernel
+    # Try to get the release name from the SimpleStream
+    ubuntu_release = get_release_from_db(kernel)
+    if ubuntu_release is None:
+        ubuntu_release = get_release_from_distro_info(kernel)
+    if ubuntu_release is None:
+        return hwe_kernel
+    else:
+        return "%s (%s)" % (ubuntu_release['series'], hwe_kernel)
 
 
 def list_hwe_kernel_choices(hwe_kernels):
@@ -248,32 +253,138 @@ def validate_osystem_and_distro_series(osystem, distro_series):
     return osystem, release
 
 
+def get_release_from_distro_info(string):
+    """Convert an Ubuntu release or version into a release dict.
+
+    This data is pulled from the UbuntuDistroInfo library which contains
+    additional information such as the release, EOL, and code name."""
+    ubuntu = UbuntuDistroInfo()
+    release_found = False
+    # We can only look at release names for 12.04+ as previous versions
+    # have overlapping first letters(e.g Warty and Wily) which break looking
+    # up old style kernels(e.g hwe-w).
+    for row in ubuntu._rows:
+        if (
+                int(row['version'].split('.')[0]) >= 12 and
+                row['series'].startswith(string) or
+                row['version'].startswith(string)):
+            release_found = True
+            break
+    if release_found:
+        return row
+    else:
+        return None
+
+
+def get_release_from_db(string):
+    """Convert an Ubuntu release, version, or subarch into a release dict.
+
+    This does not contain the release, eol, or created dates like
+    get_release_from_distro_info does."""
+    bsc = BootSourceCache.objects.filter(
+        (
+            Q(subarch="hwe-%s" % string) &
+            Q(release_title__startswith=string) | Q(release__startswith=string)
+        ) |
+        Q(release__startswith=string) |
+        Q(release_title__startswith=string)).first()
+    if bsc is None:
+        return None
+    elif None in (bsc.release_title, bsc.release, bsc.release_codename):
+        return None
+    else:
+        return {
+            'version': bsc.release_title,
+            'eol-server': bsc.support_eol,
+            'series': bsc.release,
+            'codename': bsc.release_codename,
+        }
+
+
+def get_release_version_from_string(string):
+    """Convert an Ubuntu release, version, or kernel into a version tuple.
+
+    Takes a string input represneting an Ubuntu release, version, or hwe_kernel
+    and returns a version tuple. The return value is a three integer tuple
+    representing an Ubuntu major, minor values(e.g 16, 4 for Xenial) and a
+    weight. The weight is used to give edge kernels a higher value when
+    compared to a non-edge kernel. Rolling kernels and releases are given a
+    very high value (999, 999) to always be the higher value during comparison.
+
+    Input: xenial, 16.04, hwe-16.04, hwe-16.04-lowlatency
+    Output: (16, 4, 0)
+
+    Input: hwe-16.04-edge
+    Output: (16, 4, 1)
+
+    Input: rolling, hwe-rolling, hwe-rolling-lowlatency
+    Output: (999, 999, 0)
+
+    Input: hwe-rolling-edge, hwe-rolling-lowlatency-edge
+    Output: (999, 999, 1)
+    """
+    parts = string.split('-')
+    parts_len = len(parts)
+    if parts_len == 1:
+        # Just the release name, e.g xenial or 16.04
+        release = string
+        edge = False
+    elif parts_len == 2:
+        # hwe kernel, e.g hwe-x or hwe-16.04
+        release = parts[1]
+        edge = False
+    elif parts_len == 3:
+        # hwe edge or lowlatency kernel,
+        # e.g hwe-16.04-edge or hwe-16.04-lowlatency
+        release = parts[1]
+        if parts[2] == 'edge':
+            edge = True
+        else:
+            edge = False
+    elif parts_len == 4:
+        # hwe edge lowlatency kernel, e.g hwe-16.04-lowlatency-edge
+        release = parts[1]
+        if parts[3] == 'edge':
+            edge = True
+        else:
+            edge = False
+    else:
+        raise ValueError("Unknown release or kernel %s!" % string)
+
+    if release == 'rolling':
+        # Rolling kernels are always the latest
+        version = [999, 999]
+    else:
+        # First try to get release info from the SimpleStream
+        ubuntu_release = get_release_from_db(release)
+        if ubuntu_release is None:
+            # Fall back on using the UbuntuDistroInfo library
+            ubuntu_release = get_release_from_distro_info(release)
+        if ubuntu_release is None:
+            raise ValueError(
+                "%s not found amoungst the known Ubuntu releases!" % string)
+        # Remove 'LTS' from version if it exists
+        version = ubuntu_release['version'].split(' ')[0]
+        # Convert the version into a list of ints
+        version = [int(seg) for seg in version.split('.')]
+    if edge:
+        # Ensure edge kernels are viewed as newer than non-edge
+        version += [1]
+    else:
+        version += [0]
+    return tuple(version)
+
+
 def release_a_newer_than_b(a, b):
     """Compare two Ubuntu releases and return true if a >= b.
 
-    The release names can be the full release name(e.g Precise, Trusty), or
-    a hardware enablement(e.g hwe-p, hwe-t). The function wraps around the
-    letter 'p' as Precise was the first version of Ubuntu MAAS supported
+    The release names can be the full release name(e.g Precise, Trusty),
+    release versions(e.g 12.04, 16.04), or an hwe kernel(e.g hwe-p, hwe-16.04,
+    hwe-rolling-lowlatency-edge).
     """
-    def get_release_num(release):
-        release = release.lower()
-        if 'hwe-' in release:
-            release = release.replace('hwe-', '')
-        return ord(release[0])
-
-    # Compare release versions based off of the first letter of their
-    # release name or the letter in hwe-<letter>. Wrap around the letter
-    # 'p' as that is the first version of Ubuntu MAAS supported.
-    num_a = get_release_num(a)
-    num_b = get_release_num(b)
-    num_wrap = ord('p')
-
-    if((num_a >= num_wrap and num_b >= num_wrap and num_a >= num_b) or
-       (num_a < num_wrap and num_b >= num_wrap and num_a < num_b) or
-       (num_a < num_wrap and num_b < num_wrap and num_a >= num_b)):
-        return True
-    else:
-        return False
+    ver_a = get_release_version_from_string(a)
+    ver_b = get_release_version_from_string(b)
+    return ver_a >= ver_b
 
 
 def validate_hwe_kernel(
@@ -306,10 +417,10 @@ def validate_hwe_kernel(
             subarch)
 
     os_release = osystem + '/' + distro_series
-    usable_kernels = BootResource.objects.get_usable_hwe_kernels(
-        os_release, arch)
 
     if hwe_kernel and hwe_kernel.startswith('hwe-'):
+        usable_kernels = BootResource.objects.get_usable_hwe_kernels(
+            os_release, arch)
         if hwe_kernel not in usable_kernels:
             raise ValidationError(
                 '%s is not available for %s on %s.' %
@@ -324,6 +435,13 @@ def validate_hwe_kernel(
                 (hwe_kernel, min_hwe_kernel))
         return hwe_kernel
     elif(min_hwe_kernel and min_hwe_kernel.startswith('hwe-')):
+        kernel_parts = min_hwe_kernel.split('-')
+        if len(kernel_parts) == 2:
+            kflavor = 'generic'
+        else:
+            kflavor = kernel_parts[2]
+        usable_kernels = BootResource.objects.get_usable_hwe_kernels(
+            os_release, arch, kflavor)
         for i in usable_kernels:
             if(release_a_newer_than_b(i, min_hwe_kernel) and
                release_a_newer_than_b(i, distro_series)):
@@ -331,7 +449,11 @@ def validate_hwe_kernel(
         raise ValidationError(
             '%s has no kernels availible which meet min_hwe_kernel(%s).' %
             (distro_series, min_hwe_kernel))
-    return 'hwe-' + distro_series[0]
+    for kernel in BootResource.objects.get_usable_hwe_kernels(
+            os_release, arch, 'generic'):
+        if release_a_newer_than_b(kernel, distro_series):
+            return kernel
+    raise ValidationError('%s has no kernels available.' % distro_series)
 
 
 def validate_min_hwe_kernel(min_hwe_kernel):
@@ -341,4 +463,5 @@ def validate_min_hwe_kernel(min_hwe_kernel):
     usable_kernels = BootResource.objects.get_usable_hwe_kernels()
     if min_hwe_kernel not in usable_kernels:
         raise ValidationError('%s is not a usable kernel.' % min_hwe_kernel)
-    return min_hwe_kernel
+    else:
+        return min_hwe_kernel

@@ -22,6 +22,7 @@ import time
 from distro_info import UbuntuDistroInfo
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.test.client import RequestFactory
 from django.utils import timezone
 from maasserver.clusterrpc.power_parameters import get_power_types
@@ -56,6 +57,7 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     CacheSet,
+    Config,
     Device,
     DHCPSnippet,
     DNSData,
@@ -112,6 +114,7 @@ from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import reload_object
+from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
@@ -1272,7 +1275,7 @@ class Factory(maastesting.factory.Factory):
     def make_BootSourceCache(self, boot_source=None, os=None, arch=None,
                              subarch=None, release=None, label=None,
                              release_codename=None, release_title=None,
-                             support_eol=None):
+                             support_eol=None, kflavor=None):
         """Create a new `BootSourceCache`."""
         if boot_source is None:
             boot_source = self.make_BootSource()
@@ -1290,7 +1293,7 @@ class Factory(maastesting.factory.Factory):
             boot_source=boot_source, os=os, arch=arch,
             subarch=subarch, release=release, label=label,
             release_codename=release_codename, release_title=release_title,
-            support_eol=support_eol)
+            support_eol=support_eol, kflavor=kflavor)
 
     def make_many_BootSourceCaches(self, number, **kwargs):
         caches = list()
@@ -1404,12 +1407,9 @@ class Factory(maastesting.factory.Factory):
                 self.make_name('key'): self.make_name('value')
                 for _ in range(3)
                 }
-        if kflavor is None:
-            extra['kflavor'] = 'generic'
-        else:
-            extra['kflavor'] = kflavor
         return BootResource.objects.create(
-            rtype=rtype, name=name, architecture=architecture, extra=extra)
+            rtype=rtype, name=name, architecture=architecture, kflavor=kflavor,
+            extra=extra)
 
     def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
@@ -1466,6 +1466,26 @@ class Factory(maastesting.factory.Factory):
             self.make_boot_resource_file_with_content(
                 resource_set, filename=filetype, filetype=filetype)
         return resource
+
+    def make_default_ubuntu_release_bootable(self, arch=None):
+        if arch is None:
+            arch = self.make_name('arch')
+        default_osystem = Config.objects.get_config(
+            name='commissioning_osystem')
+        default_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        default_name = "%s/%s" % (default_osystem, default_series)
+        release = get_release_from_distro_info(default_series)
+        architecture = "%s/hwe-%s" % (arch, release['version'].split()[0])
+        try:
+            return BootResource.objects.get(
+                name=default_name, architecture=architecture,
+                rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        except BootResource.DoesNotExist:
+            with transaction.atomic():
+                return self.make_usable_boot_resource(
+                    name=default_name, architecture=architecture,
+                    kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED)
 
     def make_BlockDevice(
             self, node=None, name=None, id_path=None, size=None,

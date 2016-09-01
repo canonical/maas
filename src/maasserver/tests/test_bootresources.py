@@ -582,11 +582,13 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
             AssertConnectionWrapper.connection.connection)
 
 
-def make_product(ftype=None):
+def make_product(ftype=None, kflavor=None):
     """Make product dictionary that is just like the one provided
     from simplsetreams."""
     if ftype is None:
         ftype = factory.pick_choice(BOOT_RESOURCE_FILE_TYPE_CHOICES)
+    if kflavor is None:
+        kflavor = 'generic'
     subarch = factory.make_name('subarch')
     subarches = [factory.make_name('subarch') for _ in range(3)]
     subarches.insert(0, subarch)
@@ -597,7 +599,7 @@ def make_product(ftype=None):
         'arch': factory.make_name('arch'),
         'subarch': subarch,
         'release': factory.make_name('release'),
-        'kflavor': factory.make_name('kflavor'),
+        'kflavor': kflavor,
         'subarches': subarches,
         'version_name': factory.make_name('version'),
         'label': factory.make_name('label'),
@@ -607,7 +609,11 @@ def make_product(ftype=None):
         'path': '/path/to/%s' % name,
         }
     name = '%s/%s' % (product['os'], product['release'])
-    architecture = '%s/%s' % (product['arch'], product['subarch'])
+    if kflavor == 'generic':
+        subarch = product['subarch']
+    else:
+        subarch = "%s-%s" % (product['subarch'], kflavor)
+    architecture = '%s/%s' % (product['arch'], subarch)
     return name, architecture, product
 
 
@@ -697,7 +703,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
         self.assertEqual(name, resource.name)
         self.assertEqual(architecture, resource.architecture)
-        self.assertEqual(product['kflavor'], resource.extra['kflavor'])
+        self.assertEqual(product['kflavor'], resource.kflavor)
         self.assertEqual(product['subarches'], resource.extra['subarches'])
 
     def test_get_or_create_boot_resource_gets_resource(self):
@@ -708,7 +714,7 @@ class TestBootResourceStore(MAASServerTestCase):
         store = BootResourceStore()
         resource = store.get_or_create_boot_resource(product)
         self.assertEqual(expected, resource)
-        self.assertEqual(product['kflavor'], resource.extra['kflavor'])
+        self.assertEqual(product['kflavor'], resource.kflavor)
         self.assertEqual(product['subarches'], resource.extra['subarches'])
 
     def test_get_or_create_boot_resource_calls_prevent_resource_deletion(self):
@@ -735,6 +741,21 @@ class TestBootResourceStore(MAASServerTestCase):
             reload_object(resource).rtype)
         self.assertThat(
             mock_prevent, MockNotCalled())
+
+    def test_get_or_create_boot_resource_adds_kflavor_to_subarch(self):
+        kflavor = factory.make_name('kflavor')
+        _, architecture, product = make_product(kflavor=kflavor)
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        self.assertEqual(architecture, reload_object(resource).architecture)
+
+    def test_get_or_create_boot_resources_add_no_kflavor_for_generic(self):
+        _, architecture, product = make_product(kflavor='generic')
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        resource = reload_object(resource)
+        self.assertEqual(architecture, resource.architecture)
+        self.assertNotIn('generic', resource.architecture)
 
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
         self.useFixture(SignalsDisabled("largefiles"))
@@ -1019,7 +1040,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         with transaction.atomic():
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
-                architecture=architecture)
+                architecture=architecture, kflavor='generic')
             release_name = resource.name.split('/')[1]
             resource_set = factory.make_BootResourceSet(
                 resource, version=product['version_name'])

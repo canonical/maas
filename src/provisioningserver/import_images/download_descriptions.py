@@ -36,7 +36,7 @@ def clean_up_repo_item(item):
     """Return a subset of dict `item` for storing in a boot images dict."""
     keys_to_keep = [
         'content_id', 'product_name', 'version_name', 'path', 'subarches',
-        'release_codename', 'release_title', 'support_eol']
+        'release_codename', 'release_title', 'support_eol', 'kflavor']
     compact_item = {
         key: item[key]
         for key in keys_to_keep
@@ -94,12 +94,14 @@ class RepoDumper(BasicMirrorWriter):
         self.boot_images_dict.set(
             base_image._replace(subarch=subarch), compact_item)
 
-        # HWE resources with generic, should map to the HWE that ships with
-        # that release.
-        hwe_arch = 'hwe-%s' % release[0]
-        if subarch == hwe_arch and 'generic' in subarches:
-            self.boot_images_dict.set(
-                base_image._replace(subarch='generic'), compact_item)
+        if os == 'ubuntu' and item.get('version') is not None:
+            # HWE resources with generic, should map to the HWE that ships with
+            # that release. Starting with Xenial kernels changed from using the
+            # naming format hwe-<letter> to hwe-<release>. Look for both.
+            hwe_archs = ["hwe-%s" % item['version'], "hwe-%s" % release[0]]
+            if subarch in hwe_archs and 'generic' in subarches:
+                self.boot_images_dict.set(
+                    base_image._replace(subarch='generic'), compact_item)
 
     def sync(self, reader, path):
         try:

@@ -51,18 +51,26 @@ class BootSourceCache(CleanSave, TimestampedModel):
 
     boot_source = ForeignKey(BootSource, blank=False)
 
-    os = CharField(max_length=20, blank=False, null=False)
+    os = CharField(max_length=32, blank=False, null=False)
 
-    arch = CharField(max_length=20, blank=False, null=False)
+    arch = CharField(max_length=32, blank=False, null=False)
 
-    subarch = CharField(max_length=20, blank=False, null=False)
+    subarch = CharField(max_length=32, blank=False, null=False)
 
-    release = CharField(max_length=20, blank=False, null=False)
+    kflavor = CharField(max_length=32, blank=True, null=True)
 
-    label = CharField(max_length=20, blank=False, null=False)
+    release = CharField(max_length=32, blank=False, null=False)
+
+    label = CharField(max_length=32, blank=False, null=False)
 
     release_codename = CharField(max_length=255, blank=True, null=True)
 
     release_title = CharField(max_length=255, blank=True, null=True)
 
     support_eol = DateField(null=True, blank=True)
+
+    def __str__(self):
+        return (
+            "<BootSourceCache os=%s, release=%s, arch=%s, subarch=%s, "
+            "kflavor=%s>" % (
+                self.os, self.release, self.arch, self.subarch, self.kflavor))

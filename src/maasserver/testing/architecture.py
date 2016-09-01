@@ -22,6 +22,7 @@ def make_arch(with_subarch=True, arch_name=None, subarch_name=None):
     """
     if arch_name is None:
         arch_name = factory.make_name('arch')
+    factory.make_default_ubuntu_release_bootable(arch_name)
     if with_subarch:
         if subarch_name is None:
             subarch_name = factory.make_name('sub')

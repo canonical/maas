@@ -29,6 +29,12 @@ import petname
 
 class TestGeneralHandler(MAASServerTestCase):
 
+    def setUp(self):
+        super().setUp()
+        # Disable boot sources signals otherwise the test fails due to unrun
+        # post-commit tasks at the end of the test.
+        self.useFixture(SignalsDisabled("bootsources"))
+
     def dehydrate_actions(self, actions, node_type=None):
         return [
             {
@@ -39,6 +45,41 @@ class TestGeneralHandler(MAASServerTestCase):
             for name, action in actions.items()
             if node_type is None or node_type in action.for_type
             ]
+
+    def make_boot_sources(self):
+        kernels = []
+        ubuntu = UbuntuDistroInfo()
+        for row in ubuntu._rows:
+            release_year = int(row['version'].split('.')[0])
+            if release_year < 12:
+                continue
+            elif release_year < 16:
+                style = row['series'][0]
+            else:
+                style = row['version']
+            for kflavor in [
+                    'generic', 'lowlatency', 'edge', 'lowlatency-edge']:
+                if kflavor == 'generic':
+                    kernel = "hwe-%s" % style
+                else:
+                    kernel = "hwe-%s-%s" % (style, kflavor)
+                arch = factory.make_name('arch')
+                architecture = "%s/%s" % (arch, kernel)
+                release = row['series'].split(' ')[0]
+                factory.make_usable_boot_resource(
+                    name="ubuntu/" + release,
+                    kflavor=kflavor,
+                    extra={'subarches': kernel},
+                    architecture=architecture,
+                    rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                factory.make_BootSourceCache(
+                    os="ubuntu",
+                    arch=arch,
+                    subarch=kernel,
+                    release=release)
+                kernels.append(
+                    (kernel, '%s (%s)' % (release, kernel)))
+        return kernels
 
     def test_architectures(self):
         arches = [
@@ -63,40 +104,18 @@ class TestGeneralHandler(MAASServerTestCase):
             handler.pockets_to_disable({}))
 
     def test_hwe_kernels(self):
-        ubuntu_releases = UbuntuDistroInfo()
-        expected_output = []
-        # Disable boot sources signals otherwise the test fails due to unrun
-        # post-commit tasks at the end of the test.
-        self.useFixture(SignalsDisabled("bootsources"))
-        # Start with the first release MAAS supported. We do this
-        # because the lookup between hwe- kernel and release can fail
-        # when multiple releases start with the same letter. For
-        # example both warty(4.10) and wily(15.10) will have an hwe-w
-        # kernel. Because of this the mapping between kernel and
-        # release will pick the release which was downloaded
-        # first. Since precise no release has used the same first
-        # letter so we do not have this problem with supported
-        # releases.
-        for release in ubuntu_releases.all[
-                ubuntu_releases.all.index('precise'):]:
-            kernel = 'hwe-' + release[0]
-            arch = factory.make_name('arch')
-            architecture = "%s/%s" % (arch, kernel)
-            factory.make_usable_boot_resource(
-                name="ubuntu/" + release,
-                extra={'subarches': kernel},
-                architecture=architecture,
-                rtype=BOOT_RESOURCE_TYPE.SYNCED)
-            factory.make_BootSourceCache(
-                os="ubuntu",
-                arch=arch,
-                subarch=kernel,
-                release=release)
-            expected_output.append((kernel, '%s (%s)' % (release, kernel)))
+        expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {})
         self.assertItemsEqual(
             sorted(expected_output, key=lambda choice: choice[0]),
             sorted(handler.hwe_kernels({}), key=lambda choice: choice[0]))
+
+    def test_hwe_min_kernels(self):
+        expected_output = self.make_boot_sources()
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertItemsEqual(
+            sorted(expected_output, key=lambda choice: choice[0]),
+            sorted(handler.min_hwe_kernels({}), key=lambda choice: choice[0]))
 
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User(), {})

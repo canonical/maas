@@ -84,6 +84,13 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
+                min_hwe_kernels: {
+                    method: "general.min_hwe_kernels",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
                 default_min_hwe_kernel: {
                     method: "general.default_min_hwe_kernel",
                     data: { text: '' },
