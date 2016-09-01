@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from itertools import repeat
 import string
 
 import hypothesis
@@ -12,6 +13,7 @@ import hypothesis.strategies
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.text import (
+    make_gecos_field,
     normalise_to_comma_list,
     normalise_whitespace,
     split_string_list,
@@ -95,3 +97,46 @@ class TestSplitStringList(MAASTestCase):
         self.assertThat(
             list(split_string_list(delimiter + word + delimiter)),
             Equals([word]))
+
+
+class TestMakeGecosField(MAASTestCase):
+    """Tests for `make_gecos_field`."""
+
+    def test_returns_basic_gecos_field_without_input(self):
+        self.assertThat(make_gecos_field(), Equals(",,,,"))
+
+    def test_includes_full_name(self):
+        self.assertThat(
+            make_gecos_field(fullname="Bernard Bierkeller"),
+            Equals("Bernard Bierkeller,,,,"))
+
+    def test_includes_room_number(self):
+        room = factory.make_name("room")
+        self.assertThat(
+            make_gecos_field(room=room),
+            Equals(",%s,,," % room))
+
+    def test_includes_work_telephone_number(self):
+        worktel = factory.make_name("worktel")
+        self.assertThat(
+            make_gecos_field(worktel=worktel),
+            Equals(",,%s,," % worktel))
+
+    def test_includes_home_telephone_number(self):
+        hometel = factory.make_name("hometel")
+        self.assertThat(
+            make_gecos_field(hometel=hometel),
+            Equals(",,,%s," % hometel))
+
+    def test_includes_other_information(self):
+        other = factory.make_name("other")
+        self.assertThat(
+            make_gecos_field(other=other),
+            Equals(",,,,%s" % other))
+
+    def test_cleans_all_fields(self):
+        broken = "colon : comma , non-ascii £ white-space \n\t  "
+        fixed = "colon _ comma _ non-ascii ? white-space"
+        self.assertThat(
+            make_gecos_field(broken, broken, broken, broken, broken),
+            Equals(",".join(repeat(fixed, 5))))

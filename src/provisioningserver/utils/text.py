@@ -4,8 +4,9 @@
 """Text-processing utilities."""
 
 __all__ = [
-    'normalise_whitespace',
+    'make_gecos_field',
     'normalise_to_comma_list',
+    'normalise_whitespace',
     'split_string_list',
 ]
 
@@ -29,3 +30,36 @@ def normalise_to_comma_list(string):
 def split_string_list(string):
     """Take a space- or comma-separated list and generate the parts."""
     return (part for part in re.split(r'[,\s]+', string) if len(part) != 0)
+
+
+def make_gecos_field(
+        fullname=None, room=None, worktel=None, hometel=None, other=None):
+    """Construct a GECOS field.
+
+    Based on a reading of chfn(1).
+
+    All strings passed in will be coerced to US-ASCII, replacing non-ASCII
+    characters with question marks. Colons and commas will be replaced with
+    underscores, and leading and trailing whitespace is stripped.
+
+    :param fullname: The user's full name.
+    :param room: The user's room number.
+    :param worktel: The user's work telephone number.
+    :param hometel: The user's home telephone number.
+    :param other: Other useful information.
+
+    :return: A string suitable for use as the GECOS field in ``/etc/passwd``.
+    """
+    fields = fullname, room, worktel, hometel, other
+
+    def clean(string):
+        if string is None:
+            return ""
+        else:
+            return (
+                string.replace(",", "_").replace(":", "_")
+                .encode("ascii", "replace").decode("ascii")
+                .strip()
+            )
+
+    return ",".join(map(clean, fields))
