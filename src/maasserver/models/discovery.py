@@ -1,0 +1,187 @@
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Model definition for a `Discovery` (a discovered network device)."""
+
+__all__ = [
+    'Discovery',
+]
+
+from django.db.models import (
+    CharField,
+    DateTimeField,
+    DO_NOTHING,
+    ForeignKey,
+    IntegerField,
+    Manager,
+)
+from django.db.models.query import QuerySet
+from maasserver import DefaultViewMeta
+from maasserver.fields import (
+    DomainNameField,
+    MAASIPAddressField,
+    MACAddressField,
+)
+from maasserver.models.cleansave import CleanSave
+from maasserver.models.viewmodel import ViewModel
+from maasserver.utils.orm import MAASQueriesMixin
+from provisioningserver.utils.network import get_mac_organization
+
+
+class DiscoveryQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'ip': "__ip",
+            'mac': "__mac_address",
+        }
+        return super(DiscoveryQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+    def by_unknown_mac(self):
+        """Returns a `QuerySet` of discoveries which have a MAC that is unknown
+        to MAAS. (That is, is not associated with any known Interface.)
+        """
+        # Circular imports
+        from maasserver.models import Interface
+        known_macs = Interface.objects.values_list(
+            'mac_address', flat=True).distinct()
+        return self.exclude(mac_address__in=known_macs)
+
+    def by_unknown_ip(self):
+        """Returns a `QuerySet` of discoveries which have an IP that is unknown
+        to MAAS. (That is, is not associated with any known StaticIPAddress.)
+        """
+        # Circular imports
+        from maasserver.models import StaticIPAddress
+        known_ips = StaticIPAddress.objects.exclude(
+            ip__isnull=True).values_list('ip', flat=True)
+        return self.exclude(ip__in=known_ips)
+
+    def by_unknown_ip_and_mac(self):
+        """Returns a `QuerySet` of discoveries which have a MAC and IP
+        address which are *both* unknown to MAAS. (That is, is not associated
+        with any known Interface and StaticIPAddress, respectively.)
+
+        This could happen if a known IP address is seen from an unexpected MAC,
+        or if a known MAC address is seen using an unexpected IP. We may want
+        to filter these types of irregularities from the user, so that
+        unexpected devices do not show up in their discovered devices list.
+        However, we may wish to surface the discoveries filtered by this query
+        in another way.
+        """
+        return self.by_unknown_mac().by_unknown_ip()
+
+
+class DiscoveryQuerySet(DiscoveryQueriesMixin, QuerySet):
+    """Custom QuerySet which mixes in some additional queries specific to
+    subnets. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class DiscoveryManager(Manager, DiscoveryQueriesMixin):
+    """A utility to manage collections of Discoverys."""
+
+    def get_queryset(self):
+        queryset = DiscoveryQuerySet(self.model, using=self._db)
+        return queryset
+
+    def get_discovery_or_404(self, specifiers):
+        """Fetch a `Discovery` by its ID or specifiers.
+
+        :param specifiers: The discovery specifiers.
+        :type specifiers: str
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        discovery = self.get_object_by_specifiers_or_raise(specifiers)
+        return discovery
+
+
+class Discovery(CleanSave, ViewModel):
+    """A `Discovery` object represents the combined data for a network entity
+    that MAAS believes has been discovered.
+
+    Note that this class is backed by the `maasserver_discovery` view. Any
+    updates to this model must be reflected in `maasserver/dbviews.py` under
+    the `maasserver_discovery` view.
+    """
+
+    class Meta(DefaultViewMeta):
+        # When managed is False, Django will not create a migration for this
+        # model class. This is required for model classes based on views.
+        verbose_name = "Discovery"
+        verbose_name_plural = "Discoveries"
+
+    discovery_id = CharField(
+        max_length=256, editable=False, null=True, blank=False, unique=True)
+
+    neighbour = ForeignKey(
+        'Neighbour', unique=False, blank=False, null=False, editable=False,
+        on_delete=DO_NOTHING)
+
+    # Observed IP address.
+    ip = MAASIPAddressField(
+        unique=False, null=True, editable=False, blank=True,
+        default=None, verbose_name='IP')
+
+    mac_address = MACAddressField(
+        unique=False, null=True, blank=True, editable=False)
+
+    last_seen = DateTimeField(editable=False)
+
+    mdns = ForeignKey(
+        'MDNS', unique=False, blank=True, null=True, editable=False,
+        on_delete=DO_NOTHING)
+
+    # Hostname observed from mDNS-browse.
+    hostname = DomainNameField(
+        max_length=256, editable=False, null=True, blank=False, unique=False)
+
+    observer = ForeignKey(
+        'Node', unique=False, blank=False, null=False, editable=False,
+        on_delete=DO_NOTHING)
+
+    observer_system_id = CharField(
+        max_length=41, unique=False, editable=False)
+
+    # The hostname of the node that made the discovery.
+    observer_hostname = DomainNameField(
+        max_length=256, editable=False, null=True, blank=False, unique=False)
+
+    # Rack interface the discovery was observed on.
+    observer_interface = ForeignKey(
+        'Interface', unique=False, blank=False, null=False, editable=False,
+        on_delete=DO_NOTHING)
+
+    observer_interface_name = CharField(
+        blank=False, editable=False, max_length=255)
+
+    fabric = ForeignKey(
+        'Fabric', unique=False, blank=False, null=False, editable=False,
+        on_delete=DO_NOTHING)
+
+    fabric_name = CharField(
+        max_length=256, editable=False, null=True, blank=True, unique=False)
+
+    vlan = ForeignKey(
+        'VLAN', unique=False, blank=False, null=False, editable=False,
+        on_delete=DO_NOTHING)
+
+    vid = IntegerField(null=True, blank=True)
+
+    objects = DiscoveryManager()
+
+    @property
+    def mac_organization(self):
+        return get_mac_organization(str(self.mac_address))

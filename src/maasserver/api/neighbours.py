@@ -21,9 +21,9 @@ DISPLAYED_NEIGHBOUR_FIELDS = (
     'count',
     'time',
     'vid',
-    'ifname',
-    'interface_id',
-    'system_id',
+    'observer_interface_name',
+    'observer_interface_id',
+    'observer_system_id',
     'created',
     'updated',
 )

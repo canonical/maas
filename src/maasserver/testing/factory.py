@@ -60,6 +60,7 @@ from maasserver.models import (
     Config,
     Device,
     DHCPSnippet,
+    Discovery,
     DNSData,
     DNSResource,
     Domain,
@@ -75,6 +76,7 @@ from maasserver.models import (
     LargeFile,
     LicenseKey,
     Machine,
+    MDNS,
     Neighbour,
     Node,
     OwnerData,
@@ -113,7 +115,10 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.utils.converters import round_size_to_nearest_block
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 import maastesting.factory
@@ -731,16 +736,21 @@ class Factory(maastesting.factory.Factory):
     def make_StaticIPAddress(self, ip=UNDEFINED,
                              alloc_type=IPADDRESS_TYPE.AUTO, interface=None,
                              user=None, subnet=None, dnsresource=None,
-                             **kwargs):
+                             cidr=None, **kwargs):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `interface` is passed, connect this IP address to the
         given interface.
         """
-        if subnet is None:
-            subnet = Subnet.objects.first()
-        if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
-            subnet = self.make_Subnet()
+        if cidr is not None:
+            subnet = get_one(Subnet.objects.filter(cidr=cidr))
+            if subnet is None:
+                subnet = self.make_Subnet(cidr=cidr)
+        else:
+            if subnet is None:
+                subnet = Subnet.objects.first()
+            if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+                subnet = self.make_Subnet(cidr=cidr)
         hostname = kwargs.pop('hostname', None)
 
         if ip is self.UNDEFINED:
@@ -924,6 +934,34 @@ class Factory(maastesting.factory.Factory):
             mac_address=mac_address)
         neighbour.save(_updated=updated)
         return neighbour
+
+    def make_MDNS(self, hostname=None, ip=None, interface=None, updated=None):
+        if hostname is None:
+            hostname = factory.make_name()
+        if interface is None:
+            rack = factory.make_RackController()
+            interface = factory.make_Interface(node=rack)
+        mdns = MDNS(hostname=hostname, ip=ip, interface=interface)
+        mdns.save(_updated=updated)
+        return mdns
+
+    def make_Discovery(self, hostname=None, *args, **kwargs):
+        # A Discovery is created indirectly, by creating each object that
+        # must make up the discovery. Note that if an interface is specified,
+        # it should reference a rack controller interface.
+        neighbour = self.make_Neighbour(*args, **kwargs)
+        interface = neighbour.interface
+        if hostname is not None or random.choice([True, False]):
+            if hostname != "":
+                # Need a way to have a non-None hostname *and* specify that
+                # no MDNS entry should be randomly created.
+                self.make_MDNS(
+                    hostname=hostname, ip=neighbour.ip, interface=interface)
+        # By using filter here, we guarantee that an object is returned.
+        # If we search by the Neighbour ID we think we just created, there
+        # might be no results, since the view might filter it.
+        return get_one(Discovery.objects.filter(
+            mac_address=neighbour.mac_address, ip=neighbour.ip))
 
     def make_Fabric(self, name=None, class_type=None):
         fabric = Fabric(name=name, class_type=class_type)

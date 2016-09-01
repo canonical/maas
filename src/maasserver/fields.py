@@ -675,6 +675,8 @@ class DomainNameField(CharField):
     # https://code.djangoproject.com/ticket/6362
     def to_python(self, value):
         value = super(DomainNameField, self).to_python(value)
+        if value is None:
+            return None
         value = value.strip().rstrip('.')
         return value
 

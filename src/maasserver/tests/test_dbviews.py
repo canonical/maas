@@ -26,6 +26,6 @@ class TestDatabaseViews(MAASServerTestCase):
 
     def test_each_view_can_be_used(self):
         register_all_views()
-        for view_name, view_sql in _ALL_VIEWS:
+        for view_name, view_sql in _ALL_VIEWS.items():
             with closing(connection.cursor()) as cursor:
                 cursor.execute("SELECT * from %s;" % view_name)

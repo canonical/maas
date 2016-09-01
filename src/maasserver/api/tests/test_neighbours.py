@@ -104,11 +104,14 @@ class TestNeighbourAPI(APITestCase.ForUser):
             result["resource_uri"],
             Equals(get_neighbour_uri(neighbour)))
         self.assertThat(
-            result["system_id"],
+            result["observer_system_id"],
             Equals(rack.system_id))
         self.assertThat(
-            result["ifname"],
+            result["observer_interface_name"],
             Equals(iface.name))
+        self.assertThat(
+            result["observer_interface_id"],
+            Equals(iface.id))
         self.assertThat(
             result["ip"],
             Equals(neighbour.ip))

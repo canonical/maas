@@ -200,6 +200,24 @@ class Neighbour(CleanSave, TimestampedModel):
         return self.interface.node.system_id
 
     @property
+    def observer_system_id(self):
+        """Returns the system_id of the rack this neighbour was observed on."""
+        return self.system_id
+
+    @property
     def ifname(self):
         """Returns the interface name this neighbour was observed on."""
         return self.interface.name
+
+    @property
+    def observer_interface_name(self):
+        """Returns the interface name this neighbour was observed on."""
+        return self.ifname
+
+    @property
+    def observer_interface(self):
+        return self.interface
+
+    @property
+    def observer_interface_id(self):
+        return self.interface_id

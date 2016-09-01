@@ -5,6 +5,7 @@
 
 __all__ = [
     'DefaultMeta',
+    'DefaultViewMeta',
     'is_master_process',
     'logger',
     ]
@@ -27,6 +28,11 @@ class DefaultMeta:
     the model and will fail to generate schema migrations for it.
     """
     app_label = 'maasserver'
+
+
+class DefaultViewMeta(DefaultMeta):
+    """Default `Meta` class for a view-backed model."""
+    managed = False
 
 
 def is_master_process():
