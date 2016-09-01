@@ -5636,6 +5636,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
     def test__sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
+        bond_mac = factory.make_mac_address()
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -5654,6 +5655,14 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
                 "monitored": False
             },
+            "bond0": {
+                "type": "bond",
+                "mac_address": bond_mac,
+                "parents": [],
+                "links": [],
+                "enabled": False,
+                "monitored": False
+            }
         }
         controller.update_interfaces(interfaces)
         eth0 = Interface.objects.get(name="eth0", node=controller)
