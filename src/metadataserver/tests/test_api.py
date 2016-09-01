@@ -43,6 +43,7 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -84,9 +85,11 @@ from testtools.matchers import (
     Contains,
     ContainsAll,
     Equals,
+    KeysEqual,
     MatchesAll,
     Not,
 )
+import yaml
 
 
 class TestHelpers(MAASServerTestCase):
@@ -464,6 +467,54 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
             Equals('\n'.join(keys)))
+
+    def test_vendor_data_publishes_yaml(self):
+        node = factory.make_Node()
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'vendor-data'])
+        response = client.get(url)
+        self.assertThat(
+            response.get("Content-Type"),
+            Equals("application/x-yaml; charset=utf-8"))
+
+    def test_vendor_data_for_node_with_owner_includes_system_info(self):
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
+        node = factory.make_Node(owner=user)
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'vendor-data'])
+        response = client.get(url)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            yaml.safe_load(response.content),
+            KeysEqual("system_info", "ntp"))
+
+    def test_vendor_data_for_node_without_owner_includes_no_system_info(self):
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'vendor-data'])
+        client = make_node_client()
+        response = client.get(url)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            yaml.safe_load(response.content),
+            KeysEqual("ntp"))
+
+    def test_vendor_data_calls_through_to_get_vendor_data(self):
+        # i.e. for further information, see `get_vendor_data`.
+        get_vendor_data = self.patch_autospec(api, "get_vendor_data")
+        get_vendor_data.return_value = {"foo": factory.make_name("bar")}
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'vendor-data'])
+        node = factory.make_Node()
+        client = make_node_client(node)
+        response = client.get(url)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(
+            yaml.safe_load(response.content),
+            Equals(get_vendor_data.return_value))
+        self.assertThat(
+            get_vendor_data, MockCalledOnceWith(node))
 
 
 class TestMetadataUserData(MAASServerTestCase):

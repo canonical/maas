@@ -72,11 +72,13 @@ from metadataserver.models import (
 )
 from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.user_data import poweroff
+from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
+import yaml
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -606,7 +608,13 @@ class VersionIndexHandler(MetadataViewHandler):
 class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
 
-    fields = ('instance-id', 'local-hostname', 'public-keys', 'x509')
+    fields = (
+        'instance-id',
+        'local-hostname',
+        'public-keys',
+        'vendor-data',
+        'x509',
+    )
 
     def get_attribute_producer(self, item):
         """Return a callable to deliver a given metadata item.
@@ -624,9 +632,10 @@ class MetaDataHandler(VersionIndexHandler):
             raise MAASAPINotFound("Unknown metadata attribute: %s" % field)
 
         producers = {
-            'local-hostname': self.local_hostname,
             'instance-id': self.instance_id,
+            'local-hostname': self.local_hostname,
             'public-keys': self.public_keys,
+            'vendor-data': self.vendor_data,
             'x509': self.ssl_certs,
         }
 
@@ -660,6 +669,14 @@ class MetaDataHandler(VersionIndexHandler):
     def instance_id(self, node, version, item):
         """Produce instance-id attribute."""
         return make_text_response(node.system_id)
+
+    def vendor_data(self, node, version, item):
+        vendor_data = get_vendor_data(node)
+        vendor_data_dump = yaml.safe_dump(
+            vendor_data, encoding="utf-8", default_flow_style=False)
+        # Use the same Content-Type as Piston 3 for YAML content.
+        return HttpResponse(
+            vendor_data_dump, content_type="application/x-yaml; charset=utf-8")
 
     def public_keys(self, node, version, item):
         """ Produce public-keys attribute."""
