@@ -32,6 +32,7 @@ from maasserver.testing.api import (
     APITransactionTestCase,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
@@ -325,14 +326,14 @@ class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_get_api_version(self):
         response = self.client.get(reverse('api_version'))
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(b'2.0', response.content)
 
     def test_old_api_request(self):
         old_api_url = reverse('api_v1_error') + "maas/" + factory.make_string()
         response = self.client.get(old_api_url)
-        self.assertResponseCode(http.client.GONE, response)
+        self.assertThat(response, HasStatusCode(http.client.GONE))
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
             b'The 1.0 API is no longer available. Please use API version 2.0.',

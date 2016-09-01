@@ -40,6 +40,7 @@ from maasserver.api.support import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maastesting.matchers import (
     IsCallable,
     MockCalledOnceWith,
@@ -138,7 +139,7 @@ class TestFindingResourcesAPI(APITestCase.ForAnonymousAndUserAndAdmin):
     def test_api_doc_accessibility(self):
         self.patch(sys, "stderr", StringIO())
         response = self.client.get(reverse('api-doc'))
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         # No error or warning are emitted by docutils.
         self.assertEqual("", sys.stderr.getvalue())
 

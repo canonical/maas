@@ -44,6 +44,7 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
@@ -711,7 +712,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'cpu_count': 2,
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, response_json['system_id'])
@@ -724,7 +725,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'cpu_count': '1.0',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, response_json['system_id'])
@@ -737,7 +738,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'cpu_count': 'plenty',
         })
-        self.assertResponseCode(http.client.BAD_REQUEST, response)
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test_POST_allocate_allocates_machine_by_mem(self):
         # Asking for enough memory acquires a machine with at least that.
@@ -747,7 +748,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'mem': 1024,
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, response_json['system_id'])
@@ -760,7 +761,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'mem': 'bags',
         })
-        self.assertResponseCode(http.client.BAD_REQUEST, response)
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test_POST_allocate_allocates_machine_by_tags(self):
         machine = factory.make_Node(
@@ -772,7 +773,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': ['fast', 'stable'],
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
@@ -791,7 +792,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'not_tags': ['cute']
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
@@ -810,7 +811,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'zone': zone.name,
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, response_json['system_id'])
@@ -823,7 +824,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'zone': zone.name,
         })
-        self.assertResponseCode(http.client.CONFLICT, response)
+        self.assertThat(response, HasStatusCode(http.client.CONFLICT))
 
     def test_POST_allocate_rejects_unknown_zone(self):
         response = self.client.post(reverse('machines_handler'), {
@@ -842,7 +843,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': 'fast, stable',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
@@ -857,7 +858,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': 'fast stable',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
@@ -872,7 +873,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': 'fast, stable cute',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
@@ -887,7 +888,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': ['fast, stable', 'cute'],
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(machine_tag_names, response_json['tag_names'])
@@ -905,7 +906,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'storage': 'needed:10(ssd)',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
@@ -929,7 +930,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'storage': 'needed:10(ssd)',
             'verbose': 'true',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
@@ -953,7 +954,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'interfaces': 'needed:fabric=ubuntu',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.expectThat(
@@ -981,7 +982,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'verbose': 'true',
             'dry_run': 'true',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.expectThat(
@@ -1015,7 +1016,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'interfaces': 'needed:fabric=ubuntu',
             'verbose': 'true',
         })
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         constraints = response_json['constraints_by_type']
@@ -1044,7 +1045,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'op': 'allocate',
             'tags': 'fast, cheap',
         })
-        self.assertResponseCode(http.client.CONFLICT, response)
+        self.assertThat(response, HasStatusCode(http.client.CONFLICT))
 
     def test_POST_allocate_fails_with_unknown_tags(self):
         # Asking for a tag that does not exist gives a specific error.
@@ -1082,7 +1083,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'subnets': [subnets[pick].name],
         })
 
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
@@ -1104,7 +1105,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             'not_subnets': [subnet.name for subnet in subnets],
         })
 
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(right_machine.system_id, response_json['system_id'])
@@ -1143,7 +1144,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             status=available_status, owner=None, with_boot_disk=True)
         response = self.client.post(
             reverse('machines_handler'), {'op': 'allocate'})
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         machine = Machine.objects.get(system_id=machine.system_id)
         oauth_key = self.client.token.key
         self.assertEqual(oauth_key, machine.token.key)
@@ -2040,7 +2041,7 @@ class TestPowerState(APITransactionTestCase.ForUser):
         response = self.client.get(
             self.get_machine_uri(machine), {"op": "query_power_state"})
 
-        self.assertResponseCode(http.client.OK, response)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         response = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({"state": random_state}, response)

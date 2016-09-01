@@ -30,10 +30,6 @@ from maastesting.testcase import (
     MAASTestType,
 )
 from testscenarios import multiply_scenarios
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
 
 
 def merge_scenarios(*scenario_lists):
@@ -180,22 +176,6 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
             "Cannot promote anonymous user to admin."))
         self.user.is_superuser = True
         self.user.save()
-
-    def assertResponseCode(self, expected_code, response):
-        """Assert that `response` has the HTTP status `expected_code`.
-
-        :param expected_code: An integer HTTP status code.
-        :param response: An instance of Django's `HttpResponse`.
-        """
-        if response.status_code != expected_code:
-            response_dump = response.serialize()
-            if response.charset.lower() not in {"utf-8", "utf_8", "utf8"}:
-                response_dump = response_dump.decode(response.charset)
-                response_dump = response_dump.encode("utf-8", "replace")
-            response_content = Content(UTF8_TEXT, lambda: [response_dump])
-            self.addDetail("Unexpected HTTP response", response_content)
-            self.fail("Expected HTTP %s, got %s" % (
-                expected_code, response.status_code))
 
     def client_log_in(self, as_admin=False):
         self.fail(

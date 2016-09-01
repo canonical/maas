@@ -25,6 +25,7 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
@@ -473,7 +474,8 @@ class TestPowerMixin(APITestCase.ForUser):
             'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
         response = self.client.post(
             self.get_node_uri(machine), {'op': 'power_off'})
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertThat(response, HasStatusCode(
+            http.client.SERVICE_UNAVAILABLE))
         self.assertIn(
             exc_text, response.content.decode(settings.DEFAULT_CHARSET))
 
