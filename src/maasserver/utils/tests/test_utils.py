@@ -13,7 +13,6 @@ from urllib.parse import (
     urlparse,
 )
 
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
@@ -26,7 +25,6 @@ from maasserver.utils import (
     build_absolute_uri,
     find_rack_controller,
     get_local_cluster_UUID,
-    make_validation_error_message,
     strip_domain,
     synchronised,
 )
@@ -254,18 +252,3 @@ class TestSynchronised(MAASTestCase):
         self.assertFalse(lock.locked())
         self.assertEqual(sentinel.called, example_synchronised_function())
         self.assertFalse(lock.locked())
-
-
-class TestMakeValidationErrorMessage(MAASTestCase):
-
-    def test__formats_message_with_all_errors(self):
-        error = ValidationError({
-            "foo": [ValidationError("bar")],
-            "alice": [ValidationError("bob")],
-            "__all__": ["all is lost"],
-        })
-        self.assertEqual(
-            "* all is lost\n"
-            "* alice: bob\n"
-            "* foo: bar",
-            make_validation_error_message(error))
