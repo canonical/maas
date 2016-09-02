@@ -100,10 +100,6 @@ from maasserver.api.machines import (
     MachineHandler,
     MachinesHandler,
 )
-from maasserver.api.neighbours import (
-    NeighbourHandler,
-    NeighboursHandler,
-)
 from maasserver.api.networks import (
     NetworkHandler,
     NetworksHandler,
@@ -199,10 +195,6 @@ files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
 ipaddresses_handler = RestrictedResource(
     IPAddressesHandler, authentication=api_auth)
-neighbour_handler = RestrictedResource(
-    NeighbourHandler, authentication=api_auth)
-neighbours_handler = RestrictedResource(
-    NeighboursHandler, authentication=api_auth)
 network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
@@ -386,10 +378,6 @@ urlpatterns += patterns(
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
     url(r'^events/$', events_handler, name='events_handler'),
-    url(r'^neighbours/$', neighbours_handler, name='neighbours_handler'),
-    url(
-        r'^neighbours/(?P<neighbour_id>[.: \w^]+)/*/$',
-        neighbour_handler, name='neighbour_handler'),
     url(r'^discovery/$', discoveries_handler, name='discoveries_handler'),
     url(
         r'^discovery/(?P<discovery_id>[.: \w=^]+)/*/$',
