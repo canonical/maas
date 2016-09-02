@@ -707,6 +707,7 @@ ALL_NOTIFIERS = (
 )
 
 ALL_HANDLERS = (
+    "bootresource",
     "controller",
     "device",
     "dhcpsnippet",

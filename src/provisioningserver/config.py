@@ -163,6 +163,8 @@ UUID_NOT_SET = None
 
 DEFAULT_IMAGES_URL = "http://images.maas.io/ephemeral-v2/daily/"
 
+DEFAULT_KEYRINGS_PATH = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+
 
 class BootSourceSelection(Schema):
     """Configuration validator for boot source selection configuration."""
@@ -184,7 +186,7 @@ class BootSource(Schema):
     url = UnicodeString(
         if_missing=DEFAULT_IMAGES_URL)
     keyring = UnicodeString(
-        if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
+        if_missing=DEFAULT_KEYRINGS_PATH)
     keyring_data = UnicodeString(if_missing="")
     selections = ForEach(
         BootSourceSelection,

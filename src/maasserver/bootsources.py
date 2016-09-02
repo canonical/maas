@@ -27,7 +27,10 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.version import get_maas_version_ui
 from provisioningserver.auth import get_maas_user_gpghome
-from provisioningserver.config import DEFAULT_IMAGES_URL
+from provisioningserver.config import (
+    DEFAULT_IMAGES_URL,
+    DEFAULT_KEYRINGS_PATH,
+)
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
@@ -51,9 +54,7 @@ def ensure_boot_source_definition():
     """Set default boot source if none is currently defined."""
     if not BootSource.objects.exists():
         source = BootSource.objects.create(
-            url=DEFAULT_IMAGES_URL,
-            keyring_filename=(
-                '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
+            url=DEFAULT_IMAGES_URL, keyring_filename=DEFAULT_KEYRINGS_PATH)
         # Default is to import newest Ubuntu LTS releases, for only amd64
         # release versions only.
         ubuntu = UbuntuOS()
