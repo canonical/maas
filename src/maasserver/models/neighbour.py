@@ -140,7 +140,7 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
         data from the interface (and its related node) in order to provide
         useful, concise information about the neighbour.
         """
-        return self.select_related('interface__node').order_by('updated')
+        return self.select_related('interface__node').order_by('-updated')
 
 
 class Neighbour(CleanSave, TimestampedModel):
@@ -195,24 +195,19 @@ class Neighbour(CleanSave, TimestampedModel):
         return get_mac_organization(str(self.mac_address))
 
     @property
-    def system_id(self):
+    def observer_system_id(self):
         """Returns the system_id of the rack this neighbour was observed on."""
         return self.interface.node.system_id
 
     @property
-    def observer_system_id(self):
+    def observer_hostname(self):
         """Returns the system_id of the rack this neighbour was observed on."""
-        return self.system_id
-
-    @property
-    def ifname(self):
-        """Returns the interface name this neighbour was observed on."""
-        return self.interface.name
+        return self.interface.node.hostname
 
     @property
     def observer_interface_name(self):
         """Returns the interface name this neighbour was observed on."""
-        return self.ifname
+        return self.interface.name
 
     @property
     def observer_interface(self):

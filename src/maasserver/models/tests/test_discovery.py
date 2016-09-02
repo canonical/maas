@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from maasserver.dbviews import register_all_views
+from maasserver.dbviews import register_view
 from maasserver.models import Discovery
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -14,13 +14,15 @@ from testtools.matchers import Equals
 
 class TestDiscoveryModel(MAASServerTestCase):
 
+    def setUp(self):
+        super().setUp()
+        register_view("maasserver_discovery")
+
     def test_mac_organization(self):
-        register_all_views()
         discovery = factory.make_Discovery(mac_address="48:51:b7:00:00:00")
         self.assertThat(discovery.mac_organization, Equals("Intel Corporate"))
 
     def test__ignores_duplicate_macs(self):
-        register_all_views()
         rack1 = factory.make_RackController()
         rack2 = factory.make_RackController()
         iface1 = factory.make_Interface(node=rack1)
@@ -34,7 +36,6 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertThat(Discovery.objects.count(), Equals(1))
 
     def test__query_by_unknown_mac(self):
-        register_all_views()
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
@@ -45,7 +46,6 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertThat(Discovery.objects.by_unknown_mac().count(), Equals(0))
 
     def test__query_by_unknown_ip(self):
-        register_all_views()
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -56,7 +56,6 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertThat(Discovery.objects.by_unknown_ip().count(), Equals(0))
 
     def test__query_by_unknown_ip_and_mac__known_ip(self):
-        register_all_views()
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
@@ -68,7 +67,6 @@ class TestDiscoveryModel(MAASServerTestCase):
             Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0))
 
     def test__query_by_unknown_ip_and_mac__known_mac(self):
-        register_all_views()
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)

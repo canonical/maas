@@ -21,9 +21,7 @@ DISPLAYED_NEIGHBOUR_FIELDS = (
     'count',
     'time',
     'vid',
-    'observer_interface_name',
-    'observer_interface_id',
-    'observer_system_id',
+    'observer',
     'created',
     'updated',
 )
@@ -61,6 +59,15 @@ class NeighbourHandler(OperationsHandler):
                 "Unable to delete neighbour: permission denied.")
         neighbour.delete()
         return rc.DELETED
+
+    @classmethod
+    def observer(cls, neighbour):
+        return {
+            'system_id': neighbour.observer_system_id,
+            'hostname': neighbour.observer_hostname,
+            'interface_id': neighbour.observer_interface_id,
+            'interface_name': neighbour.observer_interface_name,
+        }
 
 
 class NeighboursHandler(OperationsHandler):

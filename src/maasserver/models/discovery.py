@@ -35,7 +35,7 @@ class DiscoveryQueriesMixin(MAASQueriesMixin):
         # with particular properties. Please note that changing the keys here
         # can impact backward compatibility, so use caution.
         specifier_types = {
-            None: self._add_default_query,
+            None: "__discovery_id",
             'ip': "__ip",
             'mac': "__mac_address",
         }

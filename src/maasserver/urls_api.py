@@ -2,6 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
+from maasserver.api.discoveries import (
+    DiscoveriesHandler,
+    DiscoveryHandler,
+)
+
 
 __all__ = []
 
@@ -185,6 +190,10 @@ boot_resource_file_upload_handler = RestrictedResource(
     BootResourceFileUploadHandler, authentication=api_auth)
 boot_resources_handler = RestrictedResource(
     BootResourcesHandler, authentication=api_auth)
+discovery_handler = RestrictedResource(
+    DiscoveryHandler, authentication=api_auth)
+discoveries_handler = RestrictedResource(
+    DiscoveriesHandler, authentication=api_auth)
 events_handler = RestrictedResource(EventsHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
@@ -381,6 +390,10 @@ urlpatterns += patterns(
     url(
         r'^neighbours/(?P<neighbour_id>[.: \w^]+)/*/$',
         neighbour_handler, name='neighbour_handler'),
+    url(r'^discovery/$', discoveries_handler, name='discoveries_handler'),
+    url(
+        r'^discovery/(?P<discovery_id>[.: \w=^]+)/*/$',
+        discovery_handler, name='discovery_handler'),
     url(
         r'^networks/(?P<name>[^/]+)/$',
         network_handler, name='network_handler'),

@@ -76,9 +76,9 @@ class TestNeighboursAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertTrue(results[0]['time'] < results[2]['time'])
-        self.assertTrue(results[0]['time'] < results[1]['time'])
-        self.assertTrue(results[1]['time'] < results[2]['time'])
+        self.assertTrue(results[0]['time'] >= results[2]['time'])
+        self.assertTrue(results[0]['time'] >= results[1]['time'])
+        self.assertTrue(results[1]['time'] >= results[2]['time'])
 
 
 class TestNeighbourAPI(APITestCase.ForUser):
@@ -104,13 +104,16 @@ class TestNeighbourAPI(APITestCase.ForUser):
             result["resource_uri"],
             Equals(get_neighbour_uri(neighbour)))
         self.assertThat(
-            result["observer_system_id"],
+            result["observer"]["system_id"],
             Equals(rack.system_id))
         self.assertThat(
-            result["observer_interface_name"],
+            result["observer"]["hostname"],
+            Equals(rack.hostname))
+        self.assertThat(
+            result["observer"]["interface_name"],
             Equals(iface.name))
         self.assertThat(
-            result["observer_interface_id"],
+            result["observer"]["interface_id"],
             Equals(iface.id))
         self.assertThat(
             result["ip"],

@@ -10,6 +10,7 @@ and are recreated during the `dbupgrade` process.
 
 __all__ = [
     "register_all_views",
+    "register_view",
     ]
 
 from contextlib import closing
@@ -77,3 +78,9 @@ def register_all_views():
     """Register all views into the database."""
     for view_name, view_sql in _ALL_VIEWS.items():
         _register_view(view_name, view_sql)
+
+
+@transactional
+def register_view(view_name):
+    """Register a view by name. CAUTION: this is only for use in tests."""
+    _register_view(view_name, _ALL_VIEWS[view_name])
