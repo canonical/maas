@@ -258,7 +258,7 @@ class MAASHandlerAPITest(APITestCase.ForUser):
                     content=Equals(b"OK")),
             ))
         self.assertThat(
-            PackageRepository.get_main_archive(),
+            PackageRepository.get_main_archive().url,
             Equals(main_archive))
 
     def test_set_ports_archive_overrides_to_package_repository(self):
@@ -278,5 +278,5 @@ class MAASHandlerAPITest(APITestCase.ForUser):
                     content=Equals(b"OK")),
             ))
         self.assertThat(
-            PackageRepository.get_ports_archive(),
+            PackageRepository.get_ports_archive().url,
             Equals(ports_archive))

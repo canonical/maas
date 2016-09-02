@@ -50,6 +50,7 @@ from maasserver.preseed import (
     get_curtin_merged_config,
     get_curtin_userdata,
     get_enlist_preseed,
+    get_enlist_userdata,
     get_netloc_and_path,
     get_node_preseed_context,
     get_preseed,
@@ -87,9 +88,13 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     ContainsAll,
+    ContainsDict,
+    Equals,
     HasLength,
     IsInstance,
     MatchesAll,
+    MatchesDict,
+    MatchesListwise,
     Not,
     StartsWith,
 )
@@ -448,37 +453,8 @@ class TestPreseedContext(MAASServerTestCase):
         context = get_preseed_context()
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
-             'server_url', 'main_archive_hostname', 'main_archive_directory',
-             'ports_archive_hostname', 'ports_archive_directory',
-             'enable_http_proxy', 'http_proxy', 'syslog_host_port'],
+             'server_url', 'syslog_host_port'],
             context)
-
-    def test_get_preseed_context_archive_refs(self):
-        PackageRepository.objects.all().delete()
-        # urlparse lowercases the hostnames. That should not have any
-        # impact but for testing, create lower-case hostnames.
-        main_archive = factory.make_url(
-            scheme="http", netloc="main-archive.example.com")
-        ports_archive = factory.make_url(
-            scheme="http", netloc="ports-archive.example.com")
-        self.add_main_archive(main_archive)
-        self.add_ports_archive(ports_archive)
-        context = get_preseed_context()
-        parsed_main_archive = urlparse(main_archive)
-        parsed_ports_archive = urlparse(ports_archive)
-        self.assertEqual(
-            (
-                parsed_main_archive.hostname,
-                parsed_main_archive.path.lstrip('/'),
-                parsed_ports_archive.hostname,
-                parsed_ports_archive.path.lstrip('/'),
-            ),
-            (
-                context['main_archive_hostname'],
-                context['main_archive_directory'],
-                context['ports_archive_hostname'],
-                context['ports_archive_directory'],
-            ))
 
 
 class TestNodePreseedContext(
@@ -778,7 +754,7 @@ class TestGetCurtinUserData(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
-        main_url = PackageRepository.get_main_archive()
+        main_url = PackageRepository.get_main_archive().url
         factory.make_PackageRepository(
             url=main_url, default=True, arches=['i386', 'amd64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
@@ -1145,7 +1121,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_compose_curtin_archive_config_ports_archive_for_other_arch(self):
         node = self.make_fastpath_node('ppc64el')
         node.osystem = 'ubuntu'
-        main_url = PackageRepository.get_ports_archive()
+        main_url = PackageRepository.get_ports_archive().url
         factory.make_PackageRepository(
             url=main_url, default=True, arches=['ppc64el', 'arm64'])
         self.configure_get_boot_images_for_node(node, 'xinstall')
@@ -1358,10 +1334,79 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
 class TestPreseedMethods(
         PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
-    """Tests for `get_enlist_preseed` and `get_preseed`.
+    """Tests for `get_enlist_preseed`, `get_enlist_userdata` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
     """
+    def assertSystemInfo(self, config):
+        self.assertThat(config, ContainsDict({
+            'system_info': MatchesDict({
+                'package_mirrors': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["i386", "amd64"]),
+                        "search": MatchesDict({
+                            "primary": Equals(
+                                [PackageRepository.get_main_archive().url]),
+                            "security": Equals(
+                                [PackageRepository.get_main_archive().url]),
+                            }),
+                        "failsafe": MatchesDict({
+                            "primary": Equals(
+                                "http://archive.ubuntu.com/ubuntu"),
+                            "security": Equals(
+                                "http://security.ubuntu.com/ubuntu"),
+                            })
+                        }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "search": MatchesDict({
+                            "primary": Equals(
+                                [PackageRepository.get_ports_archive().url]),
+                            "security": Equals(
+                                [PackageRepository.get_ports_archive().url]),
+                            }),
+                        "failsafe": MatchesDict({
+                            "primary": Equals(
+                                "http://ports.ubuntu.com/ubuntu-ports"),
+                            "security": Equals(
+                                "http://ports.ubuntu.com/ubuntu-ports"),
+                            })
+                        }),
+                    ]),
+                }),
+            }))
+
+    def assertAptConfig(self, config, apt_proxy):
+        self.assertThat(config, ContainsDict({
+            'apt': ContainsDict({
+                'preserve_sources_list': Equals(False),
+                'primary': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["amd64", "i386"]),
+                        "uri": Equals(
+                            PackageRepository.get_main_archive().url),
+                    }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(
+                            PackageRepository.get_ports_archive().url),
+                    }),
+                ]),
+                'proxy': Equals(apt_proxy),
+                'security': MatchesListwise([
+                    MatchesDict({
+                        "arches": Equals(["amd64", "i386"]),
+                        "uri": Equals(
+                            PackageRepository.get_main_archive().url),
+                    }),
+                    MatchesDict({
+                        "arches": Equals(["default"]),
+                        "uri": Equals(
+                            PackageRepository.get_ports_archive().url),
+                    }),
+                ]),
+            })
+        }))
 
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1375,6 +1420,12 @@ class TestPreseedMethods(
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()
         self.assertTrue(preseed.startswith(b'#cloud-config'))
+
+    def test_get_enlist_userdata_contains_apt_config(self):
+        preseed = yaml.load(get_enlist_userdata())
+        apt_proxy = 'http://localhost:8000/'
+        self.assertAptConfig(preseed, apt_proxy)
+        self.assertSystemInfo(preseed)
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(

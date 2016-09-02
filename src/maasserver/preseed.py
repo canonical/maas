@@ -33,6 +33,7 @@ from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
     get_archive_config,
+    get_system_info,
     RSYSLOG_PORT,
 )
 from maasserver.enum import (
@@ -101,8 +102,66 @@ def get_enlist_userdata(rack_controller=None):
     :return: The rendered enlistment user-data string.
     :rtype: unicode.
     """
-    return render_enlistment_preseed(
+    server_host = get_maas_facing_server_host(rack_controller=rack_controller)
+    http_proxy = None
+    if Config.objects.get_config('enable_http_proxy'):
+        if Config.objects.get_config('http_proxy'):
+            http_proxy = Config.objects.get_config('http_proxy')
+        elif server_host:
+            http_proxy = "http://%s:8000/" % server_host
+    enlist_userdata = render_enlistment_preseed(
         USERDATA_TYPE.ENLIST, rack_controller=rack_controller)
+    config = get_system_info()
+    config.update({'apt_proxy': http_proxy})
+    config.update(get_enlist_archive_config(http_proxy))
+    return enlist_userdata + yaml.safe_dump(config).encode('utf-8')
+
+
+def get_enlist_archive_config(apt_proxy=None):
+    default = PackageRepository.get_main_archive()
+    ports = PackageRepository.get_ports_archive()
+    # Process the default Ubuntu Archives or Mirror.
+    archives = {
+        'apt': {
+            'preserve_sources_list': False,
+            'primary': [
+                {
+                    'arches': ['amd64', 'i386'],
+                    'uri': default.url
+                },
+                {
+                    'arches': ['default'],
+                    'uri': ports.url
+                },
+            ],
+            'security': [
+                {
+                    'arches': ['amd64', 'i386'],
+                    'uri': default.url
+                },
+                {
+                    'arches': ['default'],
+                    'uri': ports.url
+                },
+            ],
+        },
+    }
+    if apt_proxy:
+        archives['apt']['proxy'] = apt_proxy
+    if default.key:
+        archives['apt']['sources'] = {
+            'default_key': {
+                'key': default.key
+            }
+        }
+    if ports.key:
+        archives['apt']['sources'] = {
+            'ports_key': {
+                'key': ports.key
+            }
+        }
+
+    return archives
 
 
 def curtin_maas_reporter(node, events_support=True):
@@ -603,27 +662,18 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
     :rtype: dict.
     """
     server_host = get_maas_facing_server_host(rack_controller=rack_controller)
-    main_archive_hostname, main_archive_directory = get_netloc_and_path(
-        PackageRepository.get_main_archive())
-    ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
-        PackageRepository.get_ports_archive())
     if rack_controller is None:
         base_url = None
     else:
         base_url = rack_controller.url
+
     return {
-        'main_archive_hostname': main_archive_hostname,
-        'main_archive_directory': main_archive_directory,
-        'ports_archive_hostname': ports_archive_hostname,
-        'ports_archive_directory': ports_archive_directory,
         'osystem': osystem,
         'release': release,
         'server_host': server_host,
         'server_url': absolute_reverse('machines_handler', base_url=base_url),
         'syslog_host_port': '%s:%d' % (server_host, RSYSLOG_PORT),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
-        'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
-        'http_proxy': Config.objects.get_config('http_proxy'),
         }
 
 

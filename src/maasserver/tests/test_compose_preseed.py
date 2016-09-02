@@ -50,9 +50,9 @@ class TestComposePreseed(MAASServerTestCase):
                         "arches": Equals(["i386", "amd64"]),
                         "search": MatchesDict({
                             "primary": Equals(
-                                [PackageRepository.get_main_archive()]),
+                                [PackageRepository.get_main_archive().url]),
                             "security": Equals(
-                                [PackageRepository.get_main_archive()]),
+                                [PackageRepository.get_main_archive().url]),
                             }),
                         "failsafe": MatchesDict({
                             "primary": Equals(
@@ -65,9 +65,9 @@ class TestComposePreseed(MAASServerTestCase):
                         "arches": Equals(["default"]),
                         "search": MatchesDict({
                             "primary": Equals(
-                                [PackageRepository.get_ports_archive()]),
+                                [PackageRepository.get_ports_archive().url]),
                             "security": Equals(
-                                [PackageRepository.get_ports_archive()]),
+                                [PackageRepository.get_ports_archive().url]),
                             }),
                         "failsafe": MatchesDict({
                             "primary": Equals(
@@ -87,14 +87,16 @@ class TestComposePreseed(MAASServerTestCase):
                 'primary': MatchesListwise([
                     MatchesDict({
                         "arches": Equals(["default"]),
-                        "uri": Equals(PackageRepository.get_main_archive()),
+                        "uri": Equals(
+                            PackageRepository.get_main_archive().url),
                     }),
                 ]),
                 'proxy': Equals(apt_proxy),
                 'security': MatchesListwise([
                     MatchesDict({
                         "arches": Equals(["default"]),
-                        "uri": Equals(PackageRepository.get_main_archive()),
+                        "uri": Equals(
+                            PackageRepository.get_main_archive().url),
                     }),
                 ]),
             })

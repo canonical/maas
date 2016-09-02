@@ -381,22 +381,6 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
         responder = protocol.locateResponder(GetArchiveMirrors.commandName)
         self.assertIsNotNone(responder)
 
-    @transactional
-    def add_main_archive(self, url, arches=PackageRepository.MAIN_ARCHES):
-        PackageRepository.objects.create(
-            name=factory.make_name(),
-            url=url,
-            arches=arches,
-            default=True)
-
-    @transactional
-    def add_ports_archive(self, url, arches=PackageRepository.PORTS_ARCHES):
-        PackageRepository.objects.create(
-            name=factory.make_name(),
-            url=url,
-            arches=arches,
-            default=True)
-
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_port_archive_default(self):
@@ -409,9 +393,11 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_main_archive_set(self):
-        yield deferToDatabase(lambda: PackageRepository.objects.all().delete())
+        main_archive = yield deferToDatabase(
+            lambda: PackageRepository.get_main_archive())
         url = factory.make_parsed_url(scheme='http')
-        yield deferToDatabase(self.add_main_archive, url.geturl())
+        main_archive.url = url.geturl()
+        yield deferToDatabase(transactional(main_archive.save))
 
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
@@ -423,9 +409,11 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_ports_archive_set(self):
-        yield deferToDatabase(lambda: PackageRepository.objects.all().delete())
+        ports_archive = yield deferToDatabase(
+            lambda: PackageRepository.get_ports_archive())
         url = factory.make_parsed_url(scheme='http')
-        yield deferToDatabase(self.add_ports_archive, url.geturl())
+        ports_archive.url = url.geturl()
+        yield deferToDatabase(transactional(ports_archive.save))
 
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 

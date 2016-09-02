@@ -1416,8 +1416,10 @@ class UbuntuForm(Form):
 
     def _load_initials(self):
         """Load the initial values for the fields."""
-        self.initial['main_archive'] = PackageRepository.get_main_archive()
-        self.initial['ports_archive'] = PackageRepository.get_ports_archive()
+        self.initial['main_archive'] = (
+            PackageRepository.get_main_archive().url)
+        self.initial['ports_archive'] = (
+            PackageRepository.get_ports_archive().url)
 
     def save(self, *args, **kwargs):
         """Save the content of the fields into the database.

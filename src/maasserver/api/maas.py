@@ -42,9 +42,9 @@ class MigratedConfigValue:
 
 migrated_config_values = {
     'main_archive': MigratedConfigValue(
-        UbuntuForm, PackageRepository.get_main_archive),
+        UbuntuForm, PackageRepository.get_main_archive_url),
     'ports_archive': MigratedConfigValue(
-        UbuntuForm, PackageRepository.get_ports_archive),
+        UbuntuForm, PackageRepository.get_ports_archive_url),
 }
 
 

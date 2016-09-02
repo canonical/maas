@@ -261,8 +261,8 @@ class SettingsTest(MAASServerTestCase):
                 new_ports_archive,
             ),
             (
-                PackageRepository.get_main_archive(),
-                PackageRepository.get_ports_archive(),
+                PackageRepository.get_main_archive().url,
+                PackageRepository.get_ports_archive().url,
             ))
 
     def test_settings_kernelopts_POST(self):

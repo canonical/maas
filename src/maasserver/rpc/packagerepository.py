@@ -22,8 +22,8 @@ def get_archive_mirrors():
     Returns them as a structure suitable for returning in the response
     for :py:class:`~provisioningserver.rpc.region.GetArchiveMirrors`.
     """
-    main_archive = PackageRepository.get_main_archive()
-    ports_archive = PackageRepository.get_ports_archive()
+    main_archive = PackageRepository.get_main_archive_url()
+    ports_archive = PackageRepository.get_ports_archive_url()
     if main_archive is not None:
         main_archive = urlparse(main_archive)
     if ports_archive is not None:

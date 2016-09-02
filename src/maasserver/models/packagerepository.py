@@ -125,23 +125,23 @@ class PackageRepository(CleanSave, TimestampedModel):
         return "%s (%s)" % (self.id, self.name)
 
     @classmethod
+    def get_main_archive_url(cls):
+        return cls.get_main_archive().url
+
+    @classmethod
     def get_main_archive(cls):
-        repo = cls.objects.filter(
+        return cls.objects.filter(
             arches__overlap=PackageRepository.MAIN_ARCHES,
             enabled=True,
             default=True).first()
-        if repo is None:
-            return "http://archive.ubuntu.com/ubuntu"
-        else:
-            return repo.url
+
+    @classmethod
+    def get_ports_archive_url(cls):
+        return cls.get_ports_archive().url
 
     @classmethod
     def get_ports_archive(cls):
-        repo = cls.objects.filter(
+        return cls.objects.filter(
             arches__overlap=PackageRepository.PORTS_ARCHES,
             enabled=True,
             default=True).first()
-        if repo is None:
-            return "http://ports.ubuntu.com/ubuntu-ports"
-        else:
-            return repo.url

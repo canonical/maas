@@ -141,9 +141,9 @@ def get_system_info():
                     "arches": ["i386", "amd64"],
                     "search": {
                         "primary": [
-                            PackageRepository.get_main_archive()],
+                            PackageRepository.get_main_archive().url],
                         "security": [
-                            PackageRepository.get_main_archive()],
+                            PackageRepository.get_main_archive().url],
                     },
                     "failsafe": {
                         "primary": "http://archive.ubuntu.com/ubuntu",
@@ -154,9 +154,9 @@ def get_system_info():
                     "arches": ["default"],
                     "search": {
                         "primary": [
-                            PackageRepository.get_ports_archive()],
+                            PackageRepository.get_ports_archive().url],
                         "security": [
-                            PackageRepository.get_ports_archive()],
+                            PackageRepository.get_ports_archive().url],
                     },
                     "failsafe": {
                         "primary": "http://ports.ubuntu.com/ubuntu-ports",
