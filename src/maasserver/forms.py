@@ -1398,7 +1398,7 @@ class DeployForm(ConfigForm):
 
 
 class UbuntuForm(Form):
-    """Settings page, Ubuntu section."""
+    """Used to access legacy package archives via the Legacy API."""
     main_archive = forms.URLField(
         label="Main archive", required=True,
         help_text=(
