@@ -120,14 +120,24 @@ def dhcp_explore():
             line.split()[0]
             for line in ifconfig_output.splitlines()[1:]]
 
-    from subprocess import check_output, call
+    from subprocess import call, check_output, Popen
     all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
     configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
     unconfigured_ifaces = set(all_ifaces) - set(configured_ifaces)
     for iface in sorted(unconfigured_ifaces):
-        # Run dhclient in the background to avoid blocking node info.
-        call(["dhclient", "-nw", iface])
-        # Ignore return value and continue running dhcplient on the
+        # Run dhclient in the background to avoid blocking node_info.
+        # We need to run two dhclient processes (one for IPv6 and one for IPv4)
+        # and IPv6 will run into issues if the link-local address has not
+        # finished conflict-detection before it starts.  This is complicated by
+        # interaction with dhclient -4 bringing the interface up, so we address
+        # the issue by running dhclient -6 in a loop.
+        # See https://launchpad.net/bugs/1447715
+        iface_str = iface.decode('utf-8')
+        call(["dhclient", "-nw", "-4", iface])
+        Popen([
+            "sh", "-c",
+            "while ! dhclient -6 %s; do sleep .05; done" % iface_str])
+        # Ignore return value and continue running dhclient on the
         # other interfaces.
 
 

@@ -210,7 +210,7 @@ class TestLLDPScripts(MAASTestCase):
 # and 'eth2' while 'ifconfig -s' does not contain them.
 
 # Example output of 'ifconfig -s -a':
-ifconfig_all = """
+ifconfig_all = b"""
 Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
 eth2       1500 0         0      0      0 0             0      0
 eth1       1500 0         0      0      0 0             0      0
@@ -221,7 +221,7 @@ wlan0      1500 0   2304695      0      0 0       1436049      0
 """
 
 # Example output of 'ifconfig -s':
-ifconfig_config = """
+ifconfig_config = b"""
 Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
 eth0       1500 0   1366127      0      0 0        831110      0
 lo        65536 0     38115      0      0 0         38115      0
@@ -236,13 +236,23 @@ class TestDHCPExplore(MAASTestCase):
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [ifconfig_all, ifconfig_config]
         mock_call = self.patch(subprocess, "call")
+        mock_popen = self.patch(subprocess, "Popen")
         dhcp_explore = isolate_function(node_info_module.dhcp_explore)
         dhcp_explore()
         self.assertThat(
             mock_call,
             MockCallsMatch(
-                call(["dhclient", "-nw", 'eth1']),
-                call(["dhclient", "-nw", 'eth2'])))
+                call(["dhclient", "-nw", "-4", b"eth1"]),
+                call(["dhclient", "-nw", "-4", b"eth2"])))
+        self.assertThat(
+            mock_popen,
+            MockCallsMatch(
+                call([
+                    "sh", "-c",
+                    "while ! dhclient -6 eth1; do sleep .05; done"]),
+                call([
+                    "sh", "-c",
+                    "while ! dhclient -6 eth2; do sleep .05; done"])))
 
 
 class TestGatherPhysicalBlockDevices(MAASTestCase):
