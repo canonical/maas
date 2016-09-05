@@ -16,6 +16,7 @@ import urllib.parse
 import zlib
 
 from apiclient.utils import ascii_url
+import netaddr
 from twisted.protocols import amp
 
 
@@ -162,3 +163,16 @@ class CompressedAmpList(AmpList):
     def fromStringProto(self, inString, proto):
         fromStringProto = super(CompressedAmpList, self).fromStringProto
         return fromStringProto(zlib.decompress(inString), proto)
+
+
+class IPAddress(amp.Argument):
+    """Encode a `netaddr.IPAddress` object on the wire."""
+
+    def toString(self, inObject):
+        length = 4 if inObject.version == 4 else 16
+        return inObject.value.to_bytes(length, "big")
+
+    def fromString(self, inString):
+        address = int.from_bytes(inString, "big")
+        version = 4 if len(inString) == 4 else 6
+        return netaddr.IPAddress(address, version)

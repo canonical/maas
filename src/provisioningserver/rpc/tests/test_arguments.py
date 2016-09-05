@@ -10,10 +10,12 @@ import zlib
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+import netaddr
 from provisioningserver.rpc import arguments
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    HasLength,
     IsInstance,
     LessThan,
 )
@@ -146,3 +148,32 @@ class TestCompressedAmpList(MAASTestCase):
         self.expectThat(
             len(encoded_compressed),
             LessThan(2 ** 16))
+
+
+class TestIPAddress(MAASTestCase):
+
+    argument = arguments.IPAddress()
+
+    def test_round_trips_ipv4_address(self):
+        address = netaddr.IPAddress("192.168.34.87")
+        encoded = self.argument.toString(address)
+        self.assertThat(encoded, IsInstance(bytes))
+        self.assertThat(encoded, HasLength(4))
+        decoded = self.argument.fromString(encoded)
+        self.assertThat(decoded, Equals(address))
+
+    def test_round_trips_ipv6_address(self):
+        address = netaddr.IPAddress("fd28:8d1a:6c8e::345")
+        encoded = self.argument.toString(address)
+        self.assertThat(encoded, IsInstance(bytes))
+        self.assertThat(encoded, HasLength(16))
+        decoded = self.argument.fromString(encoded)
+        self.assertThat(decoded, Equals(address))
+
+    def test_round_trips_ipv6_mapped_ipv4_address(self):
+        address = netaddr.IPAddress("::ffff:10.78.45.9")
+        encoded = self.argument.toString(address)
+        self.assertThat(encoded, IsInstance(bytes))
+        self.assertThat(encoded, HasLength(16))
+        decoded = self.argument.fromString(encoded)
+        self.assertThat(decoded, Equals(address))
