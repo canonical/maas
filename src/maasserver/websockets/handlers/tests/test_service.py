@@ -8,8 +8,8 @@ __all__ = []
 from maasserver.models.service import Service
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.service import ServiceHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestServiceHandler(MAASServerTestCase):

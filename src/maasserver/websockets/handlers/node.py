@@ -32,10 +32,12 @@ from maasserver.utils.converters import (
     XMLToYAML,
 )
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerDoesNotExistError,
+)
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
-    dehydrate_datetime,
     TimestampedModelHandler,
 )
 from metadataserver.enum import RESULT_TYPE

@@ -10,6 +10,7 @@ __all__ = [
     "ControllerHandler",
     "DHCPSnippetHandler",
     "DeviceHandler",
+    "DiscoveryHandler",
     "DomainHandler",
     "EventHandler",
     "FabricHandler",
@@ -31,6 +32,7 @@ from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
+from maasserver.websockets.handlers.discovery import DiscoveryHandler
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.event import EventHandler
 from maasserver.websockets.handlers.fabric import FabricHandler
@@ -54,6 +56,7 @@ ignore_unused(BootResourceHandler)
 ignore_unused(ControllerHandler)
 ignore_unused(DHCPSnippetHandler)
 ignore_unused(DeviceHandler)
+ignore_unused(DiscoveryHandler)
 ignore_unused(DomainHandler)
 ignore_unused(EventHandler)
 ignore_unused(FabricHandler)

@@ -710,6 +710,7 @@ ALL_HANDLERS = (
     "bootresource",
     "controller",
     "device",
+    "discovery",
     "dhcpsnippet",
     "domain",
     "event",

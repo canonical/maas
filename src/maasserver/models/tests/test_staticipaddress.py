@@ -44,7 +44,7 @@ from maasserver.utils.orm import (
     RetryTransaction,
     transactional,
 )
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from maasserver.websockets.base import dehydrate_datetime
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,

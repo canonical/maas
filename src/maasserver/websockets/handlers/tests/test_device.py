@@ -22,6 +22,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
     HandlerValidationError,
@@ -30,7 +31,6 @@ from maasserver.websockets.handlers.device import (
     DEVICE_IP_ASSIGNMENT,
     DeviceHandler,
 )
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from testtools import ExpectedException
 from testtools.matchers import (

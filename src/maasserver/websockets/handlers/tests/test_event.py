@@ -12,6 +12,7 @@ from unittest.mock import sentinel
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerPKError,
 )
@@ -19,7 +20,6 @@ from maasserver.websockets.handlers.event import (
     dehydrate_event_type_level,
     EventHandler,
 )
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,

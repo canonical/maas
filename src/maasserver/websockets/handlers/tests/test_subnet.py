@@ -9,8 +9,8 @@ from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
 from testtools import ExpectedException

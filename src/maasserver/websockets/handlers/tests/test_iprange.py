@@ -9,8 +9,8 @@ from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.iprange import IPRangeHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from testtools.matchers import MatchesStructure
 
 

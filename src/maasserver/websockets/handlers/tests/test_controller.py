@@ -9,8 +9,8 @@ from maasserver.enum import NODE_TYPE
 from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.controller import ControllerHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     ContainsDict,

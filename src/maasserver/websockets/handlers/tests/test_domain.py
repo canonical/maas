@@ -14,8 +14,8 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.domain import DomainHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from netaddr import IPAddress
 from testtools import ExpectedException
 from testtools.matchers import Equals

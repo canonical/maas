@@ -741,9 +741,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         would be implied by including a specific piece of information."""
         # Circular imports.
         # XXX mpontillo 2016-03-11 we should do the formatting client side.
-        from maasserver.websockets.handlers.timestampedmodel import (
-            dehydrate_datetime
-        )
+        from maasserver.websockets.base import dehydrate_datetime
         data = {
             "ip": self.ip,
             "alloc_type": self.alloc_type,

@@ -12,7 +12,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.vlan import VLANHandler
 from testtools import ExpectedException
 from testtools.matchers import (

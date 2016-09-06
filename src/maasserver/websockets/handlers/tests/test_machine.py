@@ -76,6 +76,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
@@ -87,7 +88,6 @@ from maasserver.websockets.handlers.machine import (
     MachineHandler,
     Node as node_model,
 )
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE

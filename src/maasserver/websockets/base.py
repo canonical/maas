@@ -27,6 +27,14 @@ from provisioningserver.utils.twisted import (
 )
 
 
+DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
+
+
+def dehydrate_datetime(datetime):
+    """Convert the `datetime` to string with `DATETIME_FORMAT`."""
+    return datetime.strftime(DATETIME_FORMAT)
+
+
 class HandlerError(Exception):
     """Generic exception a handler can raise."""
 

@@ -4,19 +4,13 @@
 """The nodes handler for the WebSocket connection."""
 
 __all__ = [
-    "dehydrate_datetime",
     "TimestampedModelHandler",
     ]
 
-from maasserver.websockets.base import Handler
-
-
-DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
-
-
-def dehydrate_datetime(datetime):
-    """Convert the `datetime` to string with `DATETIME_FORMAT`."""
-    return datetime.strftime(DATETIME_FORMAT)
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    Handler,
+)
 
 
 class TimestampedModelHandler(Handler):

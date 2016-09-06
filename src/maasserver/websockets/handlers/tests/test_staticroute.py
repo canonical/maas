@@ -12,8 +12,8 @@ from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.staticroute import StaticRouteHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from testtools.matchers import MatchesStructure
 
 

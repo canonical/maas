@@ -10,11 +10,13 @@ from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import HandlerPermissionError
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestPackageRepositoryHandler(MAASServerTestCase):

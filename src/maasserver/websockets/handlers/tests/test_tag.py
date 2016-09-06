@@ -8,8 +8,8 @@ __all__ = []
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.tag import TagHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestTagHandler(MAASServerTestCase):

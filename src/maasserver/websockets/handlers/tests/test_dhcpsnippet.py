@@ -17,11 +17,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerPermissionError,
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestDHCPSnippetHandler(MAASServerTestCase):

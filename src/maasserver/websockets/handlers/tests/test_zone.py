@@ -8,7 +8,7 @@ __all__ = []
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.zone import ZoneHandler
 
 
