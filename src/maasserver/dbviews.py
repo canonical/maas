@@ -29,12 +29,9 @@ def _register_view(view_name, view_sql):
     with closing(connection.cursor()) as cursor:
         cursor.execute(view_sql)
 
-# Dictionary of view_name: view_sql tuples which describe the database views.
-_ALL_VIEWS = {
-    # Note that the `Discovery` model object is backed by this view. Any
-    # changes made to this view should be reflected there.
-    "maasserver_discovery":
-    dedent("""\
+# Note that the `Discovery` model object is backed by this view. Any
+# changes made to this view should be reflected there.
+maasserver_discovery_sql = dedent("""\
     SELECT
         DISTINCT ON (neigh.mac_address, neigh.ip)
         neigh.id AS id, -- Django needs a primary key for the object.
@@ -46,6 +43,7 @@ _ALL_VIEWS = {
         neigh.id AS neighbour_id,
         neigh.ip AS ip,
         neigh.mac_address AS mac_address,
+        neigh.vid AS vid,
         GREATEST(neigh.updated, mdns.updated) AS last_seen,
         mdns.id AS mdns_id,
         mdns.hostname AS hostname,
@@ -56,20 +54,36 @@ _ALL_VIEWS = {
         iface.name AS observer_interface_name,
         fabric.id AS fabric_id,
         fabric.name AS fabric_name,
+        -- Note: This VLAN is associated with the physical interface, so the
+        -- actual observed VLAN is actually the 'vid' value on the 'fabric'.
+        -- (this may or may not have an associated VLAN interface on the rack;
+        -- we can sometimes see traffic from unconfigured VLANs.)
         vlan.id AS vlan_id,
-        vlan.vid AS vid
+        subnet.id AS subnet_id,
+        subnet.cidr AS subnet_cidr,
+        MASKLEN(subnet.cidr) AS subnet_prefixlen
     FROM maasserver_neighbour neigh
     JOIN maasserver_interface iface ON neigh.interface_id = iface.id
     JOIN maasserver_node node ON node.id = iface.node_id
     JOIN maasserver_vlan vlan ON iface.vlan_id = vlan.id
     JOIN maasserver_fabric fabric ON vlan.fabric_id = fabric.id
     LEFT OUTER JOIN maasserver_mdns mdns ON mdns.ip = neigh.ip
+    LEFT OUTER JOIN maasserver_subnet subnet ON (
+        vlan.id = subnet.vlan_id
+        -- This checks if the IP address is within a known subnet.
+        AND neigh.ip << subnet.cidr
+    )
     ORDER BY
         neigh.mac_address,
         neigh.ip,
         neigh.updated DESC, -- We want the most recently seen neighbour.
-        mdns.updated DESC -- We want the most recently seen hostname.
-    """),
+        mdns.updated DESC, -- We want the most recently seen hostname.
+        subnet_prefixlen DESC -- We want the best-match CIDR.
+    """)
+
+# Dictionary of view_name: view_sql tuples which describe the database views.
+_ALL_VIEWS = {
+    "maasserver_discovery": maasserver_discovery_sql,
 }
 
 

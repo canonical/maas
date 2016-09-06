@@ -36,6 +36,8 @@ class TestDiscoveryHandler(MAASServerTestCase):
             "observer_interface": discovery.observer_interface_id,
             "observer_interface_name": discovery.observer_interface_name,
             "observer_system_id": discovery.observer_system_id,
+            "subnet": discovery.subnet_id,
+            "subnet_cidr": discovery.subnet_cidr,
             "vid": discovery.vid,
             "vlan": discovery.vlan_id,
             "last_seen": dehydrate_datetime(discovery.last_seen)

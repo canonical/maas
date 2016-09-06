@@ -9,7 +9,10 @@ from maasserver.dbviews import register_view
 from maasserver.models import Discovery
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    Is,
+)
 
 
 class TestDiscoveryModel(MAASServerTestCase):
@@ -76,3 +79,26 @@ class TestDiscoveryModel(MAASServerTestCase):
         factory.make_Interface(mac_address=discovery.mac_address)
         self.assertThat(
             Discovery.objects.by_unknown_ip_and_mac().count(), Equals(0))
+
+    def test__does_not_fail_if_cannot_find_subnet(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        factory.make_Discovery(interface=iface, ip="10.0.0.1")
+        self.assertThat(Discovery.objects.first().subnet, Is(None))
+
+    def test__associates_known_subnet(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
+        factory.make_Discovery(interface=iface, ip="10.0.0.1")
+        self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
+
+    def test__associates_best_subnet(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        # Seems unlikely, but we'll test it anyway. ;-)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24", vlan=iface.vlan)
+        factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
+        factory.make_Discovery(interface=iface, ip="10.0.0.1")
+        self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
+        self.assertThat(Discovery.objects.count(), Equals(1))

@@ -18,6 +18,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultViewMeta
 from maasserver.fields import (
+    CIDRField,
     DomainNameField,
     MAASIPAddressField,
     MACAddressField,
@@ -179,6 +180,14 @@ class Discovery(CleanSave, ViewModel):
         on_delete=DO_NOTHING)
 
     vid = IntegerField(null=True, blank=True)
+
+    # These will only be non-NULL if we found a related Subnet.
+    subnet = ForeignKey(
+        'Subnet', unique=False, blank=True, null=True, editable=False,
+        on_delete=DO_NOTHING)
+
+    subnet_cidr = CIDRField(
+        blank=True, unique=False, editable=False, null=True)
 
     objects = DiscoveryManager()
 
