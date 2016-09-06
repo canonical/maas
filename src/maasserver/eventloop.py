@@ -136,6 +136,11 @@ def make_NetworksMonitoringService():
     return RegionNetworksMonitoringService(reactor)
 
 
+def make_NetworkTimeProtocolService():
+    from maasserver.regiondservices import ntp
+    return ntp.RegionNetworkTimeProtocolService(reactor)
+
+
 def make_WebApplicationService(postgresListener):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
@@ -256,6 +261,11 @@ class RegionEventLoop:
             "only_on_master": False,
             "factory": make_RackControllerService,
             "requires": ["postgres-listener", "rpc-advertise"],
+        },
+        "ntp": {
+            "only_on_master": True,
+            "factory": make_NetworkTimeProtocolService,
+            "requires": [],
         },
     }
 

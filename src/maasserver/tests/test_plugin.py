@@ -98,6 +98,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "import-resources-progress",
             "networks-monitor",
             "nonce-cleanup",
+            "ntp",
             "postgres-listener",
             "rack-controller",
             "region-controller",
