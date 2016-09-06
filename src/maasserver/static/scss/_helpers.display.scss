@@ -1,0 +1,86 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-display
+/// @since        0.0.1
+////
+
+/// Display
+/// @group Display
+@mixin maas-display {
+  .u-align {
+
+    &--right {
+      text-align: right !important;
+    }
+
+    &--left {
+      text-align: left !important;
+    }
+
+    &--center {
+      text-align: center !important;
+    }
+  }
+
+  .u-float {
+
+    &--right {
+      float: right !important;
+    }
+
+    &--left {
+      float: left !important;
+    }
+
+    &--none {
+      float: none !important;
+    }
+  }
+
+  .u-muted {
+    opacity: .5 !important;
+    filter: alpha(opacity = 50) !important;
+  }
+
+  .u-clear {
+    clear: both !important;
+  }
+
+  .u-display {
+
+    &--block {
+      display: block !important;
+    }
+
+    &--inline {
+      display: inline !important;
+    }
+
+    &--inline-block {
+      display: inline-block !important;
+    }
+
+    &--hidden {
+      display: none !important;
+    }
+  }
+
+  .u-width {
+
+    &--full {
+      width: 100% !important;
+    }
+
+    &--half {
+      width: 50% !important;
+    }
+
+    &--third {
+      width: calc(100%/3) !important;
+    }
+
+    &--quater {
+      width: 25% !important;
+    }
+  }
+}

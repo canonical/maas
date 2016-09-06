@@ -1,0 +1,137 @@
+@mixin maas-pages {
+  .hidden {
+    display: none;
+  }
+
+  .small-icon {
+      width: 12px;
+  }
+
+  .images-info {
+      text-align: center;
+      padding: 10px;
+  }
+
+  .images-warning {
+    box-sizing: border-box;
+    border-radius: 2px;
+    list-style: none;
+    padding: 15px 20px 15px 45px;
+    background-repeat: no-repeat;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    background: $white url('#{$asset-path}images/icons/error.svg') no-repeat;
+    background-size: 16px 16px;
+    background-position: 15px center;
+    margin-bottom: 20px;
+  }
+
+  #loader {
+    width: 10px;
+    margin: 16px auto 0 auto;
+  }
+
+  #importing {
+    box-sizing: border-box;
+    border-radius: 2px;
+    list-style: none;
+    padding: 15px;
+    font-size: 16px;
+    margin: 0 0 20px;
+    background: $white;
+    background-position: top 50% left 15px;
+    background-repeat: no-repeat;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+
+    .spinner {
+      margin-top: -3px;
+    }
+  }
+
+  .spinner {
+    @include icon-size(16px);
+    padding: 0;
+    border-bottom: 0 !important;
+    display: inline-block;
+    vertical-align: middle;
+    text-indent: 999em;
+    background: url('#{$asset-path}images/icons/loading.png') no-repeat;
+    background-size: 100% 100%;
+  }
+
+  .spin {
+    animation: spin 1s infinite linear !important;
+  }
+
+  .importing-dot {
+    opacity: 0;
+    -webkit-animation: dot 1.3s infinite;
+    animation: dot 1.3s infinite;
+  }
+
+  @charset 'UTF-8';
+
+/**
+ * MAAS account styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+  .accounts {
+
+      .logout {
+
+          .divide {
+              padding: 0 20px 0 30px;
+              display: inline-block;
+          }
+      }
+
+      .api {
+
+          li {
+              position: relative;
+
+                  input[type='text'] {
+                      @extend %input--styles;
+                      line-height: 30px;
+                      padding-right: 30px;
+                      width: 100%;
+
+                      &::-webkit-input-placeholder {
+                         color: #333;
+                      }
+
+                      &:-moz-placeholder { /* Firefox 18- */
+                         color: #333;
+                      }
+
+                      &::-moz-placeholder {  /* Firefox 19+ */
+                         color: #333;
+                      }
+
+                      &:-ms-input-placeholder {
+                         color: #333;
+                      }
+                  }
+
+              .delete-link {
+                  position: absolute;
+                  top: 13px;
+                  right: 15px;
+              }
+          }
+      }
+  }
+
+  .script-content {
+    width: 100%;
+    overflow: hidden;
+
+    .content {
+      margin: 20px 0 0;
+    }
+  }
+}

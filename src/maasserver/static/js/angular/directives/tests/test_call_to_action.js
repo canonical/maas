@@ -65,24 +65,25 @@ describe("maasCta", function() {
 
     it("sets default title to 'Take action'", function() {
         var directive = compileDirective("items", "active");
-        expect(directive.find("a.cta-group__link").text()).toBe("Take action");
+        expect(
+          directive.find("a.button-group__link").text()).toBe("Take action");
     });
 
     it("sets default title to another name", function() {
         var name = makeName("title");
         var directive = compileDirective("items", "active", null, null, name);
-        expect(directive.find("a.cta-group__link").text()).toBe(name);
+        expect(directive.find("a.button-group__link").text()).toBe(name);
     });
 
     it("click link sets shown to true", function() {
         var directive = compileDirective("items", "active");
-        directive.find("a.cta-group__link").click();
+        directive.find("a.button-group__link").click();
         expect(directive.isolateScope().shown).toBe(true);
     });
 
     it("dropdown hidden when shown is false", function() {
         var directive = compileDirective("items", "active");
-        var dropdown = directive.find("ul.cta-group__dropdown");
+        var dropdown = directive.find("ul.button-group__dropdown");
         expect(dropdown.hasClass("ng-hide")).toBe(true);
     });
 
@@ -91,7 +92,7 @@ describe("maasCta", function() {
         directive.isolateScope().shown = true;
         $scope.$digest();
 
-        var dropdown = directive.find("ul.cta-group__dropdown");
+        var dropdown = directive.find("ul.button-group__dropdown");
         expect(dropdown.hasClass("ng-hide")).toBe(false);
     });
 
@@ -105,7 +106,7 @@ describe("maasCta", function() {
 
     it("dropdown list options", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         var listItems = [];
         angular.forEach(links, function(ele, i) {
@@ -121,10 +122,10 @@ describe("maasCta", function() {
 
     it("dropdown select sets shown to false", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         // Open the dropdown.
-        directive.find("a.cta-group__link").click();
+        directive.find("a.button-group__link").click();
         expect(directive.isolateScope().shown).toBe(true);
 
         // Clicking a link should close the dropdown.
@@ -134,7 +135,7 @@ describe("maasCta", function() {
 
     it("dropdown select sets model", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         angular.element(links[0]).click();
         expect(directive.scope().active).toBe($scope.items[0]);
@@ -142,16 +143,16 @@ describe("maasCta", function() {
 
     it("dropdown select sets title", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         angular.element(links[0]).click();
-        var title = directive.find("a.cta-group__link").text();
+        var title = directive.find("a.button-group__link").text();
         expect(title).toBe($scope.items[0].title);
     });
 
     it("dropdown select sets secondary", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         angular.element(links[0]).click();
         expect(directive.isolateScope().secondary).toBe(true);
@@ -160,7 +161,7 @@ describe("maasCta", function() {
     it("dropdown select sets selectedTitle", function() {
         $scope.items[0].selectedTitle = "Different if Selected";
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         var iscope = directive.isolateScope();
         expect(iscope.getTitle()).toBe("Take action");
@@ -171,7 +172,7 @@ describe("maasCta", function() {
     it("dropdown select sets other options' selectedTitle", function() {
         $scope.items[1].selectedTitle = "Different if Selected";
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         var iscope = directive.isolateScope();
         expect(iscope.getTitle()).toBe("Take action");
@@ -182,10 +183,10 @@ describe("maasCta", function() {
 
     it("clicking body will set shown to false", function() {
         var directive = compileDirective("items", "active");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         // Open the dropdown.
-        directive.find("a.cta-group__link").click();
+        directive.find("a.button-group__link").click();
         expect(directive.isolateScope().shown).toBe(true);
 
         // Click the body.
@@ -201,10 +202,10 @@ describe("maasCta", function() {
     it("clicking button will fire ng-click", function() {
         $scope.clicked = jasmine.createSpy("clicked");
         var directive = compileDirective("items", "active", null, "clicked()");
-        var links = directive.find("li.cta-group__item > a");
+        var links = directive.find("li.button-group__item > a");
 
         // Open the dropdown.
-        directive.find("a.cta-group__link").click();
+        directive.find("a.button-group__link").click();
         expect($scope.clicked).toHaveBeenCalled();
     });
 });

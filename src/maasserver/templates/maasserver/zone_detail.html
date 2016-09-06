@@ -8,10 +8,10 @@ Physical zone: {{ zone.name }}
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block content %}
-<div class="eight-col append-one">
-    <ul>
+<div class="eight-col">
+    <ul class="u-margin--left-none">
         <li class="eight-col border solid">
-           <ul>
+           <ul class="u-margin--left-none">
                <li class="two-col">
                     <h4>Name</h4>
                     <span>{{ zone.name }}</span>
@@ -33,7 +33,7 @@ Physical zone: {{ zone.name }}
         <li class="eight-col border">
             {% if zone.description %}
             <h4>Description</h4>
-            <pre>{{ zone.description }}</pre>
+            <p>{{ zone.description }}</p>
             {% endif %}
         </li>
     </ul>
@@ -43,17 +43,11 @@ Physical zone: {{ zone.name }}
 {% block sidebar %}
 <div class="three-col last-col">
     <h3>Actions</h3>
-    <ul class="no-bullets">
     {% if user.is_superuser %}
-    <li>
-        <a href="{% url 'zone-edit' zone.name %}" class="link-cta-ubuntu full">Edit zone</a>
-    </li>
+    <a href="{% url 'zone-edit' zone.name %}" class="button--primary button--inline">Edit zone</a>
     {% if not zone.is_default %}
-    <li>
-        <a href="{% url 'zone-del' zone.name %}" class="link-cta-ubuntu secondary full">Delete zone</a>
-    </li>
+    <a href="{% url 'zone-del' zone.name %}" class="button--secondary button--inline">Delete zone</a>
     {% endif %}
     {% endif %}
-    </ul>
 </div>
 {% endblock %}

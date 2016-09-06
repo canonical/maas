@@ -126,7 +126,8 @@ angular.module('MAAS').directive('maasControllerImageStatus',
             systemId: "="
         },
         template: [
-            '<i class="icon loading" data-ng-if="showSpinner()"></i> ',
+            '<i class="icon icon--loading u-animation--spin"',
+                'data-ng-if="showSpinner()"></i> ',
             '{$ getImageStatus() $}'].join(''),
         link: function(scope, element, attrs) {
             // Don't register until the systemId is set.

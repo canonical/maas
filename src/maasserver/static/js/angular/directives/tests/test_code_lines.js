@@ -21,7 +21,7 @@ beforeEach(module("MAAS"));
         var directive;
         var html = [
             '<div>',
-                '<code maas-code-lines="' + maasCodeLines + '"></code>',
+                '<pre maas-code-lines="' + maasCodeLines + '"></pre>',
             '</div>'
         ].join('');
 
@@ -32,15 +32,15 @@ beforeEach(module("MAAS"));
 
         // Perform the digest cycle to finish the compile.
         $scope.$digest();
-        return directive.find('code');
+        return directive.find('pre');
     }
 
-    it("spans should have the class line", function() {
+    it("code should have the class line", function() {
         $scope.getText = function() {
             return "codetext";
         };
 
         var directive = compileDirective("getText()");
-        expect(directive.find('span').hasClass("line")).toBe(true);
+        expect(directive.find('code').hasClass("code-block__line")).toBe(true);
     });
 });

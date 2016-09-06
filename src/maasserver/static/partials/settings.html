@@ -1,44 +1,39 @@
-<header class="page-header margin-bottom" data-maas-sticky-header>
-    <div class="inner-wrapper">
-        <h1 class="page-header__title eight-col">
-            Settings
-            <span class="page-header__title--identicator">
-                <a href="settings/">General</a>
-                <span class="divide"></span>
-                <a href="#/settings/dhcp"
-                    data-ng-class="{ active: currentpage === 'dhcp' }"
-                    data-ng-click="toggleTab('dhcp')">DHCP snippets</a>
-                <span class="divide"></span>
-                <a href="#/settings/repositories"
-                    data-ng-class="{ active: currentpage === 'repositories' }"
-                    data-ng-click="toggleTab('dhcp')">Package repositories</a>
-                <span class="power-status--power" data-ng-show="loading">
-                    <span class="loader"></span>
-                    Loading...
-                </span>
-            </span>
-        </h1>
+<header class="page-header u-margin--bottom" data-maas-sticky-header>
+    <div class="wrapper--inner">
+        <h1 class="page-header__title">Settings</h1>
+        <ul class="tabs">
+            <li class="tabs__tab">
+                <a class="tabs__tab-link" href="settings/">General</a>
+            </li>
+            <li class="tabs__tab"
+                data-ng-class="{ 'is-active': currentpage === 'dhcp' }">
+                <a href="#/settings/dhcp" class="tabs__tab-link" data-ng-click="toggleTab('dhcp')">DHCP Snippets</a>
+            </li>
+            <li class="tabs__tab"
+                data-ng-class="{ 'is-active': currentpage === 'repositories' }">
+                <a href="#/settings/repositories" class="tabs__tab-link" data-ng-click="toggleTab('dhcp')">Package repositories</a>
+            </li>
+        </ul>
+        <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading">
+            <i class="icon icon--loading u-animation--spin"></i> Loading...</span>
+        </p>
     </div>
 </header>
 <div data-ng-show="!loading && currentpage === 'dhcp'">
-    <section class="row no-padding-top">
-        <div class="inner-wrapper">
+    <section class="row u-padding--top-none">
+        <div class="wrapper--inner">
             <div>
                 <div class="twelve-col">
-                    <div class="equal-height">
-                        <div class="eight-col">
-                            <h2 class="no-margin">DHCP snippets</h2>
-                        </div>
-                        <!--
-                        XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
-                        <div class="four-col last-col align-right">
-                            <a href="" class="margin-top right">View compiled configuration</a>
-                        </div>
-                        -->
+                    <h2>DHCP Snippets</h2>
+                    <!--
+                    XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
+                    <div class="four-col last-col align-right">
+                        <a href="" class="u-margin--top u-float--right">View compiled configuration</a>
                     </div>
+                    -->
                 </div>
                 <div class="twelve-col">
-                    <div class="table margin-bottom">
+                    <div class="table u-margin--bottom">
                         <div class="table__head">
                             <div class="table__row">
                                 <div class="table__header table-col--20">Name</div>
@@ -50,7 +45,7 @@
                         <div class="table__body">
                             <div class="table__row"
                                 data-ng-repeat="snippet in snippets track by snippet.id"
-                                data-ng-class="{ active: editSnippet === snippet || deleteSnippet === snippet }">
+                                data-ng-class="{ 'is-active': editSnippet === snippet || deleteSnippet === snippet }">
                                 <div data-ng-if="editSnippet !== snippet">
                                     <div class="table__data table-col--20">
                                         <span>{$ snippet.name $}</span>
@@ -74,9 +69,9 @@
                                     </div>
                                     <div class="table__data table-col--20">
                                         <div class="table__controls">
-                                            <a class="icon edit tooltip" data-tooltip="Edit"
+                                            <a class="icon icon--edit tooltip" aria-label="Edit"
                                                 data-ng-click="snippetEnterEdit(snippet)">Edit</a>
-                                            <a class="icon delete tooltip u-margin--left" data-tooltip="Remove"
+                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                 data-ng-click="snippetEnterRemove(snippet)">Remove</a>
                                         </div>
                                     </div>
@@ -86,83 +81,83 @@
                                     data-ng-if="editSnippet === snippet">
                                     <div class="table__data table-col--20">
                                         <maas-obj-field type="text" key="name" placeholder="Name"
-                                            disable-label="true" input-class="table__input no-margin"></maas-obj-field>
+                                            disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--15">
                                         <maas-obj-field type="options" key="type" placeholder="Select type"
-                                            disable-label="true" input-class="table__input no-margin"
+                                            disable-label="true" input-class="table__input u-margin--none"
                                             options="type for type in snippetTypes"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--35">
                                         <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
-                                            disable-label="true" input-class="table__input no-margin"
+                                            disable-label="true" input-class="table__input u-margin--none"
                                             options="subnet.id as getSubnetName(subnet) for subnet in subnets"
                                             data-ng-if="editSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
                                         <maas-obj-field type="options" key="node" placeholder="Choose node"
-                                            disable-label="true" input-class="table__input no-margin"
+                                            disable-label="true" input-class="table__input u-margin--none"
                                             options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
                                             data-ng-if="editSnippet.$maasForm.getValue('type') === 'Node'"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--10"></div>
                                     <div class="table__data table-col--20">
                                         <div class="table__controls">
-                                            <a class="icon edit tooltip" data-tooltip="Edit">Edit</a>
-                                            <a class="icon delete tooltip u-margin--left" data-tooltip="Remove"
+                                            <a class="icon icon--edit tooltip" aria-label="Edit">Edit</a>
+                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                 data-ng-click="snippetEnterRemove(snippet)">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
-                                        <div class="table__row form active">
-                                            <div class="table__data table-col--100 no-padding-top">
+                                        <div class="table__row form is-active">
+                                            <div class="table__data table-col--100 u-padding--top-none">
                                                 <maas-obj-field type="textarea" key="value" placeholder="Custom DHCP snippet"
                                                     disable-label="true" input-width="twelve"></maas-obj-field>
                                             </div>
                                         </div>
-                                        <div class="table__row active">
-                                          <div class="table__data left">
+                                        <div class="table__row is-active">
+                                          <div class="table__data u-float--left">
                                               <maas-obj-errors></maas-obj-errors>
                                           </div>
-                                          <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button"
+                                          <div class="table__data u-float--right">
+                                              <a class="button--base button--inline"
                                                   data-ng-click="snippetExitEdit(snippet)">Cancel</a>
-                                              <button class="cta-ubuntu" maas-obj-save>Save snippet</button>
+                                              <button class="button--primary button--inline" maas-obj-save>Save snippet</button>
                                           </div>
                                         </div>
                                     </div>
                                 </maas-obj-form>
                                 <div class="table__dropdown" data-ng-if="deleteSnippet === snippet">
-                                    <div class="table__row active">
-                                        <div class="table__data left margin-top--five">
-                                              <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this snippet?</p>
+                                    <div class="table__row is-active">
+                                        <div class="table__data u-float--left">
+                                              <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this snippet?</p>
                                         </div>
-                                        <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button" data-ng-click="snippetExitRemove(snippet)">Cancel</a>
-                                              <button class="cta-ubuntu" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
+                                        <div class="table__data u-float--right">
+                                              <a class="button--base button--inline" data-ng-click="snippetExitRemove(snippet)">Cancel</a>
+                                              <button class="button--primary button--inline" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table__row active" data-ng-if="newSnippet">
+                            <div class="table__row is-active" data-ng-if="newSnippet">
                                 <maas-obj-form obj="newSnippet" manager="snippetsManager" manager-method="createItem"
                                     table-form="true" save-on-blur="false" after-save="snippetAddCancel()">
                                     <div class="table__dropdown">
-                                        <div class="table__row form active">
+                                        <div class="table__row form is-active">
                                             <div class="table__data table-col--20">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
-                                                    disable-label="true" input-class="table__input no-margin"></maas-obj-field>
+                                                    disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                             </div>
                                             <div class="table__data table-col--15">
                                                 <maas-obj-field type="options" key="type" placeholder="Select type"
-                                                    disable-label="true" input-class="table__input no-margin"
+                                                    disable-label="true" input-class="table__input u-margin--none"
                                                     options="type for type in snippetTypes"></maas-obj-field>
                                             </div>
                                             <div class="table__data table-col--35">
                                                 <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
-                                                    disable-label="true" input-class="table__input no-margin"
+                                                    disable-label="true" input-class="table__input u-margin--none"
                                                     options="subnet.id as getSubnetName(subnet) for subnet in subnets"
                                                     data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
                                                 <maas-obj-field type="options" key="node" placeholder="Choose node"
-                                                    disable-label="true" input-class="table__input no-margin"
+                                                    disable-label="true" input-class="table__input u-margin--none"
                                                     options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
                                                     data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">
                                                 </maas-obj-field>
@@ -178,19 +173,19 @@
                                                     </label>
                                                 </div>
                                             </div>
-                                            <div class="table__data table-col--100 no-padding-top">
+                                            <div class="table__data table-col--100 u-padding--top-none">
                                                 <maas-obj-field type="textarea" key="value" placeholder="Custom DHCP snippet"
                                                     disable-label="true" input-width="twelve"></maas-obj-field>
                                             </div>
                                         </div>
-                                        <div class="table__row active">
-                                          <div class="table__data left">
+                                        <div class="table__row is-active">
+                                          <div class="table__data u-float--left">
                                               <maas-obj-errors></maas-obj-errors>
                                           </div>
-                                          <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button"
+                                          <div class="table__data u-float--right">
+                                              <a class="button--base button--inline"
                                                   data-ng-click="snippetAddCancel()">Cancel</a>
-                                              <button class="cta-ubuntu" maas-obj-save>Add snippet</button>
+                                              <button class="button--primary button--inline" maas-obj-save>Add snippet</button>
                                           </div>
                                         </div>
                                     </div>
@@ -198,11 +193,12 @@
                             </div>
                         </div>
                     </div>
+                    <a href="" class="button--secondary button--inline"
+                        data-ng-disabled="editing"
+                        data-ng-if="!newSnippet"
+                        data-ng-click="editing || snippetAdd()">Add custom snippet</a>
                 </div>
-                <a href="" class="link-cta-ubuntu secondary"
-                    data-ng-disabled="editing"
-                    data-ng-if="!newSnippet"
-                    data-ng-click="editing || snippetAdd()">Add custom snippet</a>
+
             </div>
             <!--
             XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
@@ -210,7 +206,7 @@
                 <div class="twelve-col">
                     <div class="equal-height">
                         <div class="eight-col">
-                            <h2 class="no-margin">Compiled configuration</h2>
+                            <h2 class="u-margin--none">Compiled configuration</h2>
                         </div>
                         <div class="four-col last-col align-right">
                             <a href="" class="right margin-top">Download as text</a>
@@ -218,8 +214,8 @@
                     </div>
                     <div class="twelve-col">
                         <form class="form form--inline">
-                            <div class="form__group margin-right--ten">
-                                <label for="" class="margin-right--ten">Compiled DHCP configuration for</label>
+                            <div class="form__group u-margin--right-small">
+                                <label for="" class="u-margin--right-small">Compiled DHCP configuration for</label>
                                 <select name="rack" id="rack">
                                     <option value="">rack-controller-1</option>
                                     <option value="">rack-controller-2</option>
@@ -227,7 +223,7 @@
                                 </select>
                             </div>
                             <div class="form__group">
-                                <label for="" class="margin-right--ten">For</label>
+                                <label for="" class="u-margin--right-small">For</label>
                                 <select name="dhcp" id="dhcp">
                                     <option value="" selected="selected">DHCP v4</option>
                                     <option value="">DHCP v4</option>
@@ -248,18 +244,14 @@
     </section>
 </div>
 <div data-ng-show="!loading && currentpage === 'repositories'">
-    <section class="row no-padding-top">
-        <div class="inner-wrapper">
+    <section class="row u-padding--top-none">
+        <div class="wrapper--inner">
             <div>
                 <div class="twelve-col">
-                    <div class="equal-height">
-                        <div class="eight-col">
-                            <h2 class="no-margin">Package repositories</h2>
-                        </div>
-                    </div>
+                    <h2>Package repositories</h2>
                 </div>
                 <div class="twelve-col">
-                    <div class="table margin-bottom">
+                    <div class="table u-margin--bottom">
                         <div class="table__head">
                             <div class="table__row">
                                 <div class="table__header table-col--20">Name</div>
@@ -276,7 +268,7 @@
                             </div>
                             <div class="table__row"
                                 data-ng-repeat="repository in repositories track by repository.id"
-                                data-ng-class="{ active: editRepository === repository || deleteRepository === repository }">
+                                data-ng-class="{ 'is-active': editRepository === repository || deleteRepository === repository }">
                                 <div data-ng-if="editRepository !== repository">
                                     <div class="table__data table-col--20">
                                         <span data-ng-if="repository.name === 'main_archive'">
@@ -302,7 +294,7 @@
                                         </div>
                                         <div class="onoffswitch tooltip"
                                             disabled="disabled"
-                                            data-tooltip="Default Ubuntu repositories cannot be disabled"
+                                            aria-label="Default Ubuntu repositories cannot be disabled"
                                             data-ng-if="isMirror(repository)">
                                             <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
                                                 data-ng-model="repository.enabled">
@@ -314,9 +306,9 @@
                                     </div>
                                     <div class="table__data table-col--15">
                                         <div class="table__controls">
-                                            <a class="icon edit tooltip" data-tooltip="Edit"
+                                            <a class="icon icon--edit tooltip" aria-label="Edit"
                                                 data-ng-click="repositoryEnterEdit(repository)">Edit</a>
-                                            <a class="icon delete tooltip u-margin--left" data-tooltip="Remove"
+                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                 data-ng-if="!isMirror(repository)"
                                                 data-ng-click="repositoryEnterRemove(repository)">Remove</a>
                                         </div>
@@ -335,33 +327,33 @@
                                             </span>
                                         </span>
                                         <maas-obj-field type="text" key="name" placeholder="Name"
-                                            disable-label="true" input-class="table__input no-margin"
+                                            disable-label="true" input-class="table__input u-margin--none"
                                             data-ng-if="!isMirror(repository)"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--55">
                                         <maas-obj-field type="text" key="url" placeholder="URL"
-                                            disable-label="true" input-class="table__input no-margin"
+                                            disable-label="true" input-class="table__input u-margin--none"
                                             data-ng-if="editRepository === repository"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--10"></div>
                                     <div class="table__data table-col--15">
                                         <div class="table__controls">
-                                            <a class="icon edit tooltip" data-tooltip="Edit">Edit</a>
-                                            <a class="icon delete tooltip u-margin--left" data-tooltip="Remove"
+                                            <a class="icon icon--edit tooltip" aria-label="Edit">Edit</a>
+                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                 data-ng-if="!isMirror(repository)"
                                                 data-ng-click="repositoryEnterRemove(repository)">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown form">
-                                        <div class="table__row active">
+                                        <div class="table__row is-active">
                                             <div class="table__data table-col--100">
-                                                <div class="six-col no-margin-bottom">
+                                                <div class="six-col">
                                                     <div class="form__group form__group--inline">
                                                         <maas-obj-field type="textarea" key="key" label="Key"
                                                             label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
                                                 </div>
-                                                <div class="six-col last-col no-margin-bottom">
+                                                <div class="six-col last-col">
                                                     <div class="form__group form__group--inline">
                                                         <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                             label-width="two" input-width="three" values="known_architectures"></maas-obj-field>
@@ -381,53 +373,53 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="table__row active">
-                                                <div class="table__data left">
+                                            <div class="table__row is-active">
+                                                <div class="table__data u-float--left">
                                                     <maas-obj-errors></maas-obj-errors>
                                                 </div>
-                                                <div class="table__data right">
-                                                    <a class="link-cta-ubuntu text-button"
+                                                <div class="table__data u-float--right">
+                                                    <a class="button--base button--inline"
                                                         data-ng-click="repositoryExitEdit()">Cancel</a>
-                                                    <button class="cta-ubuntu" maas-obj-save>Save repository</button>
+                                                    <button class="button--primary button--inline" maas-obj-save>Save repository</button>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </maas-obj-form>
                                 <div class="table__dropdown" data-ng-if="deleteRepository === repository">
-                                    <div class="table__row active">
-                                        <div class="table__data left margin-top--five">
-                                              <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this repository?</p>
+                                    <div class="table__row is-active">
+                                        <div class="table__data u-float--left">
+                                              <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this repository?</p>
                                         </div>
-                                        <div class="table__data right">
-                                              <a class="link-cta-ubuntu text-button" data-ng-click="repositoryExitRemove()">Cancel</a>
-                                              <button class="cta-ubuntu" data-ng-click="repositoryConfirmRemove()">Remove</button>
+                                        <div class="table__data u-float--right">
+                                              <a class="button--base button--inline" data-ng-click="repositoryExitRemove()">Cancel</a>
+                                              <button class="button--primary button--inline" data-ng-click="repositoryConfirmRemove()">Remove</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table__row active" data-ng-if="newRepository">
+                            <div class="table__row is-active" data-ng-if="newRepository">
                                 <maas-obj-form obj="newRepository" manager="packageRepositoriesManager" manager-method="createItem"
                                     table-form="true" save-on-blur="false" after-save="repositoryAddCancel()">
                                     <div class="table__data table-col--20">
-                                        <maas-obj-field type="text" key="name" placeholder="Name" disable-label="true" input-class="table__input no-margin"></maas-obj-field>
+                                        <maas-obj-field type="text" key="name" placeholder="Name" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--55">
-                                        <maas-obj-field type="text" key="url" placeholder="URL" disable-label="true" input-class="table__input no-margin"></maas-obj-field>
+                                        <maas-obj-field type="text" key="url" placeholder="URL" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--10">
                                         <maas-obj-field type="onoffswitch" key="enabled" disable-label="true"></maas-obj-field>
                                     </div>
                                     <div class="table__dropdown form">
-                                        <div class="table__row active">
+                                        <div class="table__row is-active">
                                             <div class="table__data table-col--100">
-                                                <div class="six-col no-margin-bottom">
+                                                <div class="six-col">
                                                     <div class="form__group form__group--inline">
                                                         <maas-obj-field type="textarea" key="key" label="Key"
                                                             label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
                                                 </div>
-                                                <div class="six-col last-col no-margin-bottom">
+                                                <div class="six-col last-col">
                                                     <div class="form__group form__group--inline">
                                                         <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                             label-width="two" input-width="three" values="known_architectures"></maas-obj-field>
@@ -443,14 +435,14 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="table__row active">
-                                            <div class="table__data left">
+                                        <div class="table__row is-active">
+                                            <div class="table__data u-float--left">
                                                 <maas-obj-errors></maas-obj-errors>
                                             </div>
-                                            <div class="table__data right">
-                                                <a class="link-cta-ubuntu text-button"
+                                            <div class="table__data u-float--right">
+                                                <a class="button--base button--inline"
                                                     data-ng-click="repositoryAddCancel()">Cancel</a>
-                                                <button class="cta-ubuntu" maas-obj-save>Add repository</button>
+                                                <button class="button--primary button--inline" maas-obj-save>Add repository</button>
                                             </div>
                                         </div>
                                     </div>
@@ -458,15 +450,15 @@
                             </div>
                         </div>
                     </div>
+                    <a href="" class="button--secondary button--inline"
+                        data-ng-disabled="editing"
+                        data-ng-if="!newRepository"
+                        data-ng-click="editing || repositoryAdd(true)">Add PPA</a>
+                    <a href="" class="button--secondary button--inline"
+                        data-ng-disabled="editing"
+                        data-ng-if="!newRepository"
+                        data-ng-click="editing || repositoryAdd(false)">Add repository</a>
                 </div>
-                <a href="" class="link-cta-ubuntu secondary"
-                    data-ng-disabled="editing"
-                    data-ng-if="!newRepository"
-                    data-ng-click="editing || repositoryAdd(true)">Add PPA</a>
-                <a href="" class="link-cta-ubuntu secondary"
-                    data-ng-disabled="editing"
-                    data-ng-if="!newRepository"
-                    data-ng-click="editing || repositoryAdd(false)">Add repository</a>
             </div>
         </div>
     </section>

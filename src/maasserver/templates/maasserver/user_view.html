@@ -7,22 +7,15 @@
 
 {% block sidebar %}
 <div class="three-col append-one">
-    <ul class="no-bullets">
-        <li>
-            <h4>User details</h4>
-            <a href="{% url 'accounts-edit' view_user.username %}" class="link-cta-ubuntu secondary full">Edit user</a>
-        </li>
-        <li>
-            <h4>Actions</h4>
-            <a href="{% url 'accounts-del' view_user.username %}" class="link-cta-ubuntu secondary full">Delete user</a>
-        </li>
-    </ul>
+    <h4>Actions</h4>
+    <a href="{% url 'accounts-edit' view_user.username %}" class="button--primary button--inline">Edit user</a>
+    <a href="{% url 'accounts-del' view_user.username %}" class="button--secondary button--inline">Delete user</a>
 </div>
 {% endblock %}
 
 {% block content %}
 <div class="eight-col last-col">
-    <ul>
+    <ul class="u-margin--left-none">
         <li class="two-col">
             <h4>Username</h4>
             <span>{{ view_user.username }}</span>

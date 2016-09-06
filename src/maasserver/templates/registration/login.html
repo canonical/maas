@@ -24,32 +24,33 @@
     {% block page-title-block %}
     {% endblock %}
     {% if no_users %}
-        <div class="four-col">
-            <img src="{{ STATIC_URL }}img/pictogram_no_users.png" alt="No users pictogram" class="left space-right-large" />
-        </div>
         <div class="eight-col last-col">
-            <h2>No admin user has been created yet</h2>
+            <h1>No admin user has been created yet</h1>
             <p>Use the "createadmin" administration command to create one:</p>
             <pre>{{ create_command }} createadmin</pre>
-            <a href="{% url 'login' %}" class="button right space-top-small">login</a>
+            <a href="{% url 'login' %}" class="button--primary button--inline">login</a>
         </div>
     {% else %}
-        <h2 class="twelve-col">Login to {% include "maasserver/site_title.html" %}</h2>
-        <div class="accounts eight-col">
-            {% if form.errors %}
-            <p class="form-errors">Your username and password didn't match. Please try again.</p>
-            {% endif %}
-            {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
-            <form method="post" {% if not debug %}autocomplete="off" {% endif %} action="{% url 'login' %}" class="login">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ next }}" />
-                <ul>
-                    {% for field in form %}
-                        {% include "maasserver/form_field.html" %}
-                    {% endfor %}
-                </ul>
-                <input type="submit" value="Login" />
-            </form>
-            {% endif %}
+        <div class="row">
+            <div class="wrapper--inner">
+                <div class="six-col">
+                    <h1>Login to {% include "maasserver/site_title.html" %}</h1>
+                    {% if form.errors %}
+                    <p class="u-text--error"><i class="icon icon--error u-margin--right-tiny"></i>Your username and password didn't match. Please try again.</p>
+                    {% endif %}
+                    {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
+                    <form method="post" {% if not debug %}autocomplete="off" {% endif %} action="{% url 'login' %}" class="form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next }}" />
+                        <ul>
+                            {% for field in form %}
+                                {% include "maasserver/form_field.html" %}
+                            {% endfor %}
+                        </ul>
+                        <input type="submit" value="Login" class="button--primary button--inline" />
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 {% endblock %}

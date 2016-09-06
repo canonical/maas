@@ -1,0 +1,23 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-animations
+/// @since        0.0.1
+////
+
+/// Animations
+/// @group Animations
+@mixin maas-animations {
+  .u-animation--spin {
+    animation: spin 1s infinite linear !important;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+}

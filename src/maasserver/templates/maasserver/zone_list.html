@@ -6,8 +6,8 @@
 
 {% block content %}
 <div id="zones">
-    <h2>Physical zones <span class="icon help tooltip tooltip--right"
-          data-tooltip="A representation of a grouping of nodes, typically by physical location.">
+    <h2>Physical zones <span class="icon icon--help tooltip tooltip--right"
+          aria-label="A representation of a grouping of nodes, typically by physical location.">
     </span></h2>
     <table>
         <thead>
@@ -33,10 +33,10 @@
                 </td>
                 <td><a title="View devices in zone {{ zone_item.name }}" href="{% url 'index' %}#/nodes?query=zone%3A%28{{ zone_item.name }}%29&tab=devices">{{ zone_item.device_only_set.count }}</a></td>
                 {% if user.is_superuser %}
-                <td class="icon-controls">
+                <td class="u-align--right">
                     {% if not zone_item.is_default %}
-                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon edit">edit</a>
-                    <a title="Delete zone {{ zone_item.name }}" class="icon delete" href="{% url 'zone-del' zone_item.name %}">delete</a>
+                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon icon--edit u-margin--right-small">edit</a>
+                    <a title="Delete zone {{ zone_item.name }}" class="icon icon--delete" href="{% url 'zone-del' zone_item.name %}">delete</a>
                     <form method="POST" action="{% url 'zone-del' zone_item.name %}">
                         {% csrf_token %}
                         <input type="hidden" name="name" value="{{ zone_item.name }}" />
@@ -50,7 +50,7 @@
     </table>
     {% include "maasserver/pagination.html" %}
     {% if user.is_superuser %}
-    <a class="link-cta-ubuntu right" href="{% url 'zone-add' %}">Add zone</a>
+    <a class="button--primary button--inline u-float--right" href="{% url 'zone-add' %}">Add zone</a>
     {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,59 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-tool-tips
+/// @since        0.0.1
+////
+
+/// Flash message styles
+/// @group maas flash messages
+@mixin maas-flash-messages {
+  .flash-messages {
+    width: 100%;
+    float: left;
+    margin: 0;
+
+    .flash-messages__item {
+      box-sizing: border-box;
+      border-radius: 2px;
+      list-style: none;
+      padding: 15px 20px;
+      margin: 0 0 20px;
+      background: $white;
+      background-position: top 50% left 15px;
+      background-repeat: no-repeat;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+
+      &:last-of-type {
+        margin-bottom: 0;
+      }
+
+      &.flash-messages__item--error {
+        background: $white url('#{$asset-path}images/icons/error_colour_white.svg') no-repeat;
+        background-size: 16px 16px;
+        background-position: 15px center;
+        padding-left: 45px;
+      }
+
+      &.flash-messages__item--info {
+        background: $white url('#{$asset-path}images/icons/information_colour_white.svg') no-repeat;
+        background-size: 16px 16px;
+        background-position: 15px center;
+        padding-left: 45px;
+      }
+
+      &.flash-messages__item--warning {
+        background: $white url('#{$asset-path}images/icons/warning_colour_white.svg') no-repeat;
+        background-size: 16px 16px;
+        background-position: 15px center;
+        padding-left: 45px;
+      }
+
+      &.flash-messages__item--success {
+        background: $white url('#{$asset-path}images/icons/success_colour_white.svg') no-repeat;
+        background-size: 16px 16px;
+        background-position: 15px center;
+        padding-left: 45px;
+      }
+    }
+  }
+}

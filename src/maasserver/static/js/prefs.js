@@ -42,14 +42,16 @@ Y.extend(TokenWidget, Y.Widget, {
         this.create_link = Y.Node.create('<a />')
             .set('href', '#')
             .set('id','create_token')
-            .addClass('link-cta-ubuntu')
-            .addClass('right')
+            .addClass('button--primary')
+            .addClass('button--inline')
+            .addClass('u-float--right')
             .set('text', "+ Generate MAAS key");
         this.status_node = Y.Node.create('<div />')
             .set('id','create_error');
         this.spinnerNode = Y.Node.create('<img />')
-            .addClass('spinner')
-            .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
+            .addClass('u-animation--spin')
+            .set('src', MAAS_config.uris.statics +
+                'assets/images/icons/in_progress.png');
         this.get('srcNode').one('#token_creation_placeholder')
             .append(this.create_link)
             .append(this.status_node);
@@ -157,7 +159,8 @@ Y.extend(TokenWidget, Y.Widget, {
                     .set('title', 'Delete token')
                     .set(
                         'src',
-                        MAAS_config.uris.statics + 'img/delete.png')))
+                        MAAS_config.uris.statics +
+                        'assets/images/icons/delete.png')))
             .append(Y.Node.create('<input />')
                 .set('type', 'text')
                 .addClass('disabled')

@@ -4,14 +4,17 @@
 
 {% block title %}General settings{% endblock %}
 {% block page-title %}Settings
-<span class="page-header__title--identicator">
-    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-    <a href="{% url 'settings' %}" class="active">General</a>
-    <span class="divide"></span>
-    <a href="{% url 'index' %}#/settings/dhcp">DHCP snippets</a>
-    <span class="divide"></span>
-    <a href="{% url 'index' %}#/settings/repositories">Package repositories</a>
-</span>
+<ul class="tabs u-margin--bottom-none">
+    <li class="tabs__tab is-active">
+        <a class="tabs__tab-link" href="{% url 'settings' %}">General</a>
+    </li>
+    <li class="tabs__tab">
+        <a class="tabs__tab-link" href="{% url 'index' %}#/settings/dhcp">DHCP Snippets</a>
+    </li>
+    <li class="tabs__tab">
+        <a class="tabs__tab-link" href="{% url 'index' %}#/settings/repositories">Package repositories</a>
+    </li>
+</ul>
 {% endblock %}
 
 {% block head %}
@@ -60,12 +63,12 @@
                         <td>
                             {% if user_item.is_superuser %} Yes {% endif %}
                         </td>
-                        <td class="icon-controls">
-                            <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="icon edit">
+                        <td class="u-align--right">
+                            <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="icon icon--edit">
                                 edit
                             </a>
                             {% if user != user_item %}
-                            <a title="Delete user {{ user_item.username }}" class="icon delete" href="{% url 'accounts-del' user_item.username %}">
+                            <a title="Delete user {{ user_item.username }}" class="icon icon--delete" href="{% url 'accounts-del' user_item.username %}">
                                 delete
                             </a>
                             <form method="POST" action="{% url 'accounts-del' user_item.username %}">
@@ -78,7 +81,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <a class="link-cta-ubuntu right" href="{% url 'accounts-add' %}">Add user</a>
+            <a class="button--primary button--inline u-float--right" href="{% url 'accounts-add' %}">Add user</a>
         </div>
     </div>
     <div class="eight-col border">
@@ -102,7 +105,7 @@
                     {% for field in commissioning_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="commissioning_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -115,7 +118,20 @@
                     {% for field in deploy_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="deploy_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
+            </form>
+        </div>
+    </div>
+    <div class="eight-col border">
+        <div id="ubuntu" class="eight-col">
+            <h2>Ubuntu</h2>
+            <form action="{% url 'settings' %}" method="post">
+                {% csrf_token %}
+                <ul>
+                    {% for field in ubuntu_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                </ul>
+                <input type="hidden" name="ubuntu_submit" value="1" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -128,7 +144,7 @@
                     {% for field in windows_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="windows_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -141,7 +157,7 @@
                     {% with field=kernelopts_form.kernel_opts %} {% include "maasserver/form_field.html" %} {% endwith %}
                 </ul>
                 <input type="hidden" name="kernelopts_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -154,7 +170,20 @@
                     {% for field in maas_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="maas_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
+            </form>
+        </div>
+    </div>
+    <div class="eight-col border">
+        <div id="maas" class="eight-col">
+            <h2>MAAS Configuration</h2>
+            <form action="{% url 'settings' %}" method="post">
+                {% csrf_token %}
+                <ul>
+                    {% for field in maas_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                </ul>
+                <input type="hidden" name="maas_submit" value="1" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -166,8 +195,8 @@
                 <ul>
                     {% for field in network_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
-                <input type="hidden" name="network_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="hidden" name="maas_and_network_submit" value="1" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -181,7 +210,7 @@
                     {% for field in boot_source_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="boot_source_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -195,7 +224,7 @@
                     {% for field in third_party_drivers_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="third_party_drivers_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>
@@ -208,7 +237,7 @@
                     {% for field in storage_settings_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="storage_settings_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
             </form>
         </div>
     </div>

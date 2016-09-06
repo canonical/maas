@@ -11,8 +11,8 @@
         <ul>
             {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
         </ul>
-        <input type="submit" value="Save license key" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary" href="{% url 'settings' %}#license_keys">Cancel</a>
+        <input type="submit" value="Save license key" class="button--primary button--inline u-float--right" />
+        <a class="button--secondary button--inline" href="{% url 'settings' %}#license_keys">Cancel</a>
     </form>
 </div>
 {% endblock %}

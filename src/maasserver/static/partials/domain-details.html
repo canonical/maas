@@ -1,50 +1,43 @@
-<header class="page-header margin-bottom" data-maas-sticky-header>
-    <div class="inner-wrapper">
-        <h1 class="page-header__title twelve-col">
+<header class="page-header">
+    <div class="wrapper--inner">
+        <h1 class="page-header__title">
             {$ domain.displayname $}:
             <ng-pluralize data-ng-hide="loading" count="domain.hosts"
                           when="{'one': '{$ domain.hosts $} host,', 'other': '{$ domain.hosts $} hosts,'}"></ng-pluralize>
             <ng-pluralize data-ng-hide="loading" count="domain.resource_count"
                           when="{'one': ' {$ domain.resource_count $} record total', 'other': ' {$ domain.resource_count $} records total'}"></ng-pluralize>
-            <span class="page-header__title--identicator" id="bulk-actions">
-                <span class="power-status--power" data-ng-show="loading">
-                    <span class="loader"></span>
-                    Loading...
-                </span>
-            </span>
         </h1>
-        <div class="page-header__actions ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain() && !loading">
-            <div class="right no-margin-bottom last-col">
-                <button class="cta-ubuntu"
-                    data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete domain</button>
-            </div>
+        <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
+        <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain() && !loading">
+            <button class="button--primary button--inline"
+                data-ng-click="deleteButton()"
+                data-ng-hide="confirmingDelete">Delete domain</button>
         </div>
-        <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
-            <div class="page-header__feedback ng-hide" data-ng-hide="canBeDeleted()">
-                  <p class="page-header__feedback-message error">
+        <div class="page-header__dropdown" data-ng-class="{ 'is-open': confirmingDelete }">
+            <div class="page-header__section ng-hide" data-ng-hide="canBeDeleted()">
+                <p class="page-header__message page-header__message--error">
                     Domain cannot be deleted because it has resource records.  Remove all resource records from the domain to allow deletion.
                 </p>
-                <div class="right">
-                    <a href="" class="link-cta-ubuntu text-button" data-ng-click="cancelDeleteButton()">Cancel</a>
+                <div class="page-header__controls">
+                    <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
                 </div>
             </div>
-            <div class="page-header__feedback ng-hide" data-ng-show="canBeDeleted() && !error">
-                <p class="page-header__feedback-message error">
+              <div class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
+                <p class="page-header__message page-header__message--warning">
                     Are you sure you want to delete this domain?
                 </p>
-                <div class="right">
-                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
-                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Go</button>
+                <div class="page-header__controls">
+                    <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Go</button>
                 </div>
             </div>
-            <div class="page-header__feedback ng-hide" data-ng-show="canBeDeleted() && error">
-                <p class="page-header__feedback-message error">
+              <div class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
+                <p class="page-header__message page-header__message--error">
                     {$ error $}
                 </p>
-                <div class="right">
-                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
-                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Retry</button>
+                <div class="page-header__controls">
+                    <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
         </div>
@@ -52,17 +45,17 @@
 </header>
 <div data-ng-show="!loading">
     <section class="row">
-        <div class="inner-wrapper">
+        <div class="wrapper--inner">
             <div class="twelve-col">
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
                             <div class="table__header table-col--25" data-ng-click="predicate='name'; reverse = !reverse"
-                                 data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
+                                 data-ng-class="{'is-sorted:' predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
                             <div class="table__header table-col--25" data-ng-click="predicate='rrtype'; reverse = !reverse"
-                                 data-ng-class="{sort: predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
+                                 data-ng-class="{'is-sorted:' predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
                             <div class="table__header table-col--50" data-ng-click="predicate='rrdata'; reverse = !reverse"
-                                 data-ng-class="{sort: predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</div>
+                                 data-ng-class="{'is-sorted:' predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</div>
                         </div>
                     </header>
                     <main class="table-body">

@@ -48,11 +48,11 @@ class TestCompiledSCSS(MAASTestCase):
         In-tree compiled CSS must match SCSS compilation.
         """
         in_tree_css_path = os.path.join(
-            root, "src", "maasserver", "static", "css", "maas-styles.css")
+            root, "src", "maasserver", "static", "css", "build.css")
 
         self.assertIs(
             os.path.exists(in_tree_css_path), True,
-            "maas-styles.css is missing.")
+            "build.css is missing.")
 
         # Compile the scss into css into a temp directory.
         output_dir = self.make_dir()
@@ -60,13 +60,13 @@ class TestCompiledSCSS(MAASTestCase):
             "bin/sass",
             "--include-path=src/maasserver/static/scss",
             "--output-style", "compressed",
-            "src/maasserver/static/scss/maas-styles.scss",
+            "src/maasserver/static/scss/build.scss",
             "-o", output_dir)
 
         # Content should be equal. Doesn't use assertEquals so the error
         # output doesn't contain the contents.
         in_tree_css = self.read_content(in_tree_css_path)
         tmp_css = self.read_content(
-            os.path.join(output_dir, "maas-styles.css"))
+            os.path.join(output_dir, "build.css"))
         if in_tree_css != tmp_css:
-            self.fail("maas-styles.css is out-of-date. (run 'make styles')")
+            self.fail("build.css is out-of-date. (run 'make styles')")

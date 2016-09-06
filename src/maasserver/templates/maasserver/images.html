@@ -36,7 +36,7 @@
 </div>
 <div id="images-content" class="hidden">
     <div id="importing" class="hidden">
-        <div class="spinner spin"></div>
+        <div class="spinner spin u-margin--right-small"></div>
         <span class="importing-text"></span>
         <span class="importing-dot">.</span>
         <span class="importing-dot" style="-webkit-animation-delay: 0.2s; animation-delay: 0.2s;">.</span>
@@ -62,8 +62,8 @@
                         <ul id="ubuntu-releases">
                             {% for release in ubuntu_releases %}
                             <li>
-                                <input type="checkbox" name="release" value="{{release.name}}" {% if release.checked %}checked="checked"{% endif %}>
-                                {{release.title}}
+                                <input type="checkbox" name="release" value="{{release.name}}" id="{{release.name}}" {% if release.checked %}checked="checked"{% endif %}>
+                                <label for="{{release.name}}">{{release.title}}</label>
                             </li>
                             {% endfor %}
                         </ul>
@@ -73,8 +73,8 @@
                         <ul id="ubuntu-arches">
                             {% for arch in ubuntu_arches %}
                             <li>
-                                <input type="checkbox" name="arch" value="{{arch.name}}" {% if arch.checked %}checked="checked"{% endif %}>
-                                {{arch.title}}
+                                <input type="checkbox" name="arch" value="{{arch.name}}" id="{{arch.name}}" {% if arch.checked %}checked="checked"{% endif %}>
+                                <label for="{{arch.name}}">{{arch.title}}</label>
                             </li>
                             {% endfor %}
                         </ul>
@@ -107,9 +107,9 @@
                     {% if user.is_superuser %}
                     <div class="twelve-col">
                         {% if ubuntu_streams_count == 1 %}
-                        <input id="ubuntu-apply" type="submit" class="cta-ubuntu right" value="Import images">
+                        <input id="ubuntu-apply" type="submit" class="button--primary button--inline u-float--right" value="Import images">
                         {% elif ubuntu_streams_count > 1 %}
-                        <input id="ubuntu-apply" type="submit" class="cta-ubuntu right" data-lock-value="true" value="Import images">
+                        <input id="ubuntu-apply" type="submit" class="button--primary button--inline u-float--right" data-lock-value="true" value="Import images">
                         {% endif %}
                     </div>
                     {% endif %}
@@ -161,7 +161,7 @@
                 <div>
                     {% if user.is_superuser and not region_import_running %}
                     <div>
-                        <input type="submit" class="cta-ubuntu right" value="Apply changes">
+                        <input type="submit" class="button--primary button--inline u-float--right" value="Apply changes">
                     </div>
                     {% endif %}
                 </div>

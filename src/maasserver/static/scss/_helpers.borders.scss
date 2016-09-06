@@ -1,0 +1,45 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-borders
+/// @since        0.0.1
+////
+
+/// Borders
+/// @group Borders
+@mixin maas-borders($border-color: $mid-grey, $border-width: 1px) {
+  .u-border {
+    border: $border-width dotted $border-color !important;
+
+    &--top {
+      border-top: $border-width dotted $border-color !important;
+    }
+
+    &--right {
+      border-right: $border-width dotted $border-color !important;
+    }
+
+    &--bottom {
+      border-bottom: $border-width dotted $border-color !important;
+    }
+
+    &--left {
+      border-left: $border-width dotted $border-color !important;
+    }
+
+    &--dotted {
+      border-style: dotted !important;
+    }
+
+    &--solid {
+      border-style: solid !important;
+    }
+
+    &--dashed {
+      border-style: dashed !important;
+    }
+
+    &--none {
+      border: 0 !important;
+    }
+  }
+}

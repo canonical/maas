@@ -32,7 +32,8 @@
                  // Each line is to be wrapped by a span which is style & given
                  // its appropriate line number
                  $.each(lines, function() {
-                   insert += '<span class="line">' + this + '</span>\n';
+                   insert += '<code class="code-block__line">' +
+                   this + '</code>\n';
                  });
 
                  // Re-insert the contents

@@ -1,0 +1,18 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-main
+/// @since        0.0.1
+////
+
+/// Main
+/// @group main
+@mixin maas-main {
+
+  html {
+    overflow-y: scroll;
+    overflow-x: hidden;
+    min-height: 100%;
+    color: $text-color;
+    font: #{($base-font-size/16px)*1em}/#{$line-height-ratio} $base-font-family;
+  }
+}

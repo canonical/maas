@@ -1,0 +1,42 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-wrapper
+/// @since        0.0.1
+////
+
+/// MAAS wrapper styling
+/// @group maas wrapper
+@mixin maas-wrapper {
+  .wrapper {
+    min-height: 100%;
+    // scss-lint:disable DuplicateProperty
+    height: auto !important; // This line and the next line are not necessary unless you need IE6 support
+    height: 100%;
+    // scss-lint:enable DuplicateProperty
+    margin: 0 auto;
+    position: relative;
+    background: rgba($white, .4);
+
+    &:after {
+      content: '';
+      position: absolute;
+      display: block;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: url('#{$asset-path}images/backgrounds/background-paper.png');
+      height: 100%;
+      width: 100%;
+      z-index: -1;
+    }
+
+    &--inner {
+      max-width: $site-max-width;
+      width: 100%;
+      margin: 0 auto;
+      clear: both;
+      display: block;
+    }
+  }
+}

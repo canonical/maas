@@ -5,11 +5,11 @@
         <tr class="script {% cycle 'even' 'odd' %}" id="{{ key.osystem }}-{{ key.distro_series }}">
             <td>{{ key.osystem_title }}</td>
             <td>{{ key.distro_series_title }}</td>
-            <td class="icon-controls">
-                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="icon edit">
+            <td class="u-align--right">
+                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="icon icon--edit">
                     edit
                 </a>
-                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="icon delete">
+                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="icon icon--delete">
                     delete
                 </a>
             </td>
@@ -19,4 +19,4 @@
         {% endfor %}
     </tbody>
 </table>
-<a class="link-cta-ubuntu right" href="{% url 'license-key-add' %}">Add license key</a>
+<a class="button--primary button--inline u-float--right" href="{% url 'license-key-add' %}">Add license key</a>

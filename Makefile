@@ -28,11 +28,12 @@ templates := $(shell find etc/maas/templates -type f)
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
+scss_theme := include/nodejs/node_modules/cloud-vanilla-theme
 scss_inputs := \
-    src/maasserver/static/scss/maas-styles.scss \
+    src/maasserver/static/scss/build.scss \
     $(wildcard src/maasserver/static/scss/*/*.scss) \
     $(wildcard src/maasserver/static/scss/*/*/*.scss)
-scss_output := src/maasserver/static/css/maas-styles.css
+scss_output := src/maasserver/static/css/build.css
 
 # Prefix commands with this when they need access to the database.
 # Remember to add a dependency on bin/database from the targets in
@@ -101,13 +102,14 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/maas-region bin/twistd.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py \
+    $(js_enums) $(scss_output)
 	$(buildout) install region
 	@touch --no-create $@
 
 bin/test.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
-    bin/maas-region bin/maas-rack
+  bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
+  bin/maas-region bin/maas-rack
 	$(buildout) install region-test
 	@touch --no-create $@
 
@@ -343,10 +345,15 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	bin/py -m maasserver.utils.jsenums $(py_enums) > $@
 
-styles: bin/sass clean-styles $(scss_output)
+styles: clean-styles $(scss_output)
 
-$(scss_output): $(scss_inputs)
-	bin/sass --include-path=src/maasserver/static/scss --output-style compressed $< -o $(dir $@)
+$(scss_output): bin/sass $(scss_theme) $(scss_inputs)
+	bin/sass --include-path=src/maasserver/static/scss \
+	    --output-style compressed $(scss_inputs) -o $(dir $@)
+
+$(scss_theme): prefix = include/nodejs
+$(scss_theme):
+	$(npm_install) --prefix $(prefix) cloud-vanilla-theme@0.0.22
 
 clean-styles:
 	$(RM) $(scss_output)

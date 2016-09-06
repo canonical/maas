@@ -1,26 +1,22 @@
 <div data-ng-hide="loaded">
     <header class="page-header">
-        <div class="inner-wrapper">
-            <h1 class="page-header__title twelve-col">Loading...</h1>
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
     <header class="page-header">
-        <div class="inner-wrapper">
-            <nav class="page-header__nav">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">{$ node.fqdn $}</h1>
+            <p class="page-header__status">{$ filename $}</p>
+            <div class="page-header__controls u-float--right">
                 <a href="#/node/{$ node.system_id $}">&lsaquo;&nbsp;Back to machine details</a>
-            </nav>
-            <h1 class="page-header__title eight-col">
-                {$ node.fqdn $}
-                <span class="page-header__title--identicator">
-                    {$ filename $}
-                </span>
-            </h1>
+            </div>
         </div>
     </header>
     <div class="row">
-        <div class="inner-wrapper">
+        <div class="wrapper--inner">
             <pre>
                 <code>{$ getResultData() $}</code>
             </pre>

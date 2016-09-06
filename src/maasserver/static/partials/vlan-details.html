@@ -1,166 +1,156 @@
-<div data-ng-hide="loaded">
+<div data-ng-hide="vlanDetails.loaded">
     <header class="page-header">
-        <div class="inner-wrapper">
-            <h1 class="page-header__title twelve-col">Loading...</h1>
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
-<div data-ng-if="vlanDetails.loaded">
-    <header class="page-header" data-maas-sticky-header>
-        <div class="inner-wrapper">
-            <h1 class="page-header__title twelvel-col">
-                {$ vlanDetails.title $}
-            </h1>
+<div class="ng-hide" data-ng-show="vlanDetails.loaded">
+    <header class="page-header">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">{$ vlanDetails.title $}</h1>
             <!-- "Take action" dropdown -->
-            <div data-ng-show="vlanDetails.actionOptions.length">
-                <div class="page-header__actions four-col last-col">
-                     <div class="page-header__cta three-col no-margin-bottom last-col">
-                        <div class="three-col no-margin-bottom last-col">
-                            <div data-maas-cta="vlanDetails.actionOptions"
-                                data-ng-model="vlanDetails.actionOption"
-                                data-ng-change="vlanDetails.actionOptionChanged()">
-                            </div>
-                        </div>
-                    </div>
+            <div class="page-header__controls" data-ng-show="vlanDetails.actionOptions.length">
+                <div data-maas-cta="vlanDetails.actionOptions"
+                    data-ng-model="vlanDetails.actionOption"
+                    data-ng-change="vlanDetails.actionOptionChanged()">
                 </div>
-                <div class="page-header__dropdown border ng-hide" data-ng-show="vlanDetails.actionOption">
-                    <div class="ng-hide" data-ng-hide="vlanDetails.isActionError()">
-                        <h3 class="u-padding--top" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">Provide DHCP</h3>
-                        <form>
-                            <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
-                            <div class="twelve-col"
-                                 data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">
-                                <fieldset class="six-col no-padding no-margin-bottom">
-                                    <div class="inline" data-ng-hide="vlanDetails.relatedSubnets.length === 0">
-                                        <label for="primary-rack" class="two-col">{$ vlanDetails.relatedControllers.length <= 1 ? "Rack controller" : "Primary controller" $}</label>
-                                        <select name="primary-rack"
-                                                class="three-col"
-                                                data-ng-model="vlanDetails.provideDHCPAction.primaryRack"
-                                                data-ng-change="vlanDetails.updatePrimaryRack()"
-                                                data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers">
-                                            <option value=""
-                                                    disabled="disabled"
-                                                    selected="selected"
-                                                    data-ng-show="vlanDetails.provideDHCPAction.primaryRack === ''">Choose primary controller</option>
-                                        </select>
-                                    </div>
-                                    <div class="inline" data-ng-hide="vlanDetails.relatedSubnets.length === 0 || vlanDetails.relatedControllers.length <= 1">
-                                        <label for="secondary-rack" class="two-col">Secondary controller</label>
-                                        <select name="secondary-rack"
-                                                class="three-col"
-                                                data-ng-show="vlanDetails.relatedControllers.length > 1"
-                                                data-ng-disabled="!vlanDetails.provideDHCPAction.primaryRack && vlanDetails.relatedControllers.length > 1"
-                                                data-ng-model="vlanDetails.provideDHCPAction.secondaryRack"
-                                                data-ng-change="vlanDetails.updateSecondaryRack()"
-                                                data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers | filter:vlanDetails.filterPrimaryRack">
-                                            <option value=""
-                                                    selected="selected"
-                                                    data-ng-show="vlanDetails.relatedControllers.length >= 2"></option>
-                                        </select>
-                                    </div>
-                                    <div class="inline"
-                                         data-ng-hide="vlanDetails.relatedSubnets.length === 0 || (vlanDetails.provideDHCPAction.needsDynamicRange === false && vlanDetails.provideDHCPAction.needsGatewayIP === false)">
-                                        <label for="subnet" class="two-col">Subnet</label>
-                                        <select name="subnet" class="three-col"
-                                                data-ng-model="vlanDetails.provideDHCPAction.subnet"
-                                                data-ng-change="vlanDetails.updateSubnet()"
-                                                data-ng-options="row.subnet.id as row.subnet.cidr for row in vlanDetails.relatedSubnets">
-                                            <option value="" disabled="disabled" selected="selected">Choose subnet</option>
-                                            <option value="" data-ng-if=""></option>
-                                        </select>
-                                   </div>
-                                </fieldset>
-                                <fieldset class="six-col last-col no-padding no-margin-bottom">
-                                    <div class="inline"
-                                         data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
-                                        <label for="start-ip" class="two-col">Dynamic range start IP</label>
-                                        <input type="text"
-                                               name="start-ip"
-                                               size="39"
-                                               class="three-col"
-                                               data-ng-placeholder="vlanDetails.provideDHCPAction.startPlaceholder"
-                                               data-ng-model="vlanDetails.provideDHCPAction.startIP"
-                                               data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
-                                               data-ng-change="vlanDetails.updateStartIP()">
-                                    </div>
-                                    <div class="inline" data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
-                                        <label for="end-ip" class="two-col">Dynamic range end IP</label>
-                                        <input type="text"
-                                               name="end-ip"
-                                               size="39"
-                                               class="three-col"
-                                               data-ng-placeholder="vlanDetails.provideDHCPAction.endPlaceholder"
-                                               data-ng-model="vlanDetails.provideDHCPAction.endIP"
-                                               data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
-                                               data-ng-change="vlanDetails.updateEndIP()">
-                                    </div>
-                                    <div class="inline"
-                                         data-ng-hide="vlanDetails.provideDHCPAction.needsGatewayIP === false || vlanDetails.provideDHCPAction.subnetMissingGatewayIP === false || vlanDetails.relatedSubnets.length === 0">
-                                        <label for="gateway-ip" class="two-col">Gateway IP</label>
-                                        <input type="text"
-                                               name="gateway-ip"
-                                               size="39"
-                                               class="three-col"
-                                               data-ng-placeholder="vlanDetails.provideDHCPAction.gatewayPlaceholder"
-                                               data-ng-model="vlanDetails.provideDHCPAction.gatewayIP"
-                                               data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
-                                               data-ng-change="vlanDetails.updatendIP()">
-                                    </div>
-                                    <!-- IP range selection fields -->
-                                        <!--
-                                        <div class="inline">
-                                            <label for="number-of-ips" class="two-col">Maximum addresses</label>
-                                            <input type="text" class="three-col" name="number-of-ips" data-ng-model="vlanDetails.provideDHCPAction.numIPs" data-ng-disabled="true" data-ng-change="vlanDetails.updateNumAddresses()">
-                                        </div>
-                                        -->
-                                </fieldset>
-                            </div>
-                            <div class="form-inline border-top">
-                                <div class="left page-header__feedback no-border--top" style="width: auto;"
-                                     data-ng-show="vlanDetails.actionOption.name === 'disable_dhcp'">
-                                    <p class="page-header__feedback-message warning">
-                                        Are you sure you want to disable DHCP on this VLAN? All subnets on this VLAN will be affected.
-                                    </p>
-                                </div>
-                                <div class="left page-header__feedback no-border--top" style="width: auto;"
-                                         data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">
-                                    <p class="page-header__feedback-message info">
-                                        No subnets are available on this VLAN. DHCP cannot be enabled.
-                                    </p>
-                                </div>
-                                <div class="left page-header__feedback no-border--top" style="width: auto;"
-                                     data-ng-show="vlanDetails.actionOption.name === 'delete'">
-                                    <p class="page-header__feedback-message warning">
-                                        Are you sure you want to delete this VLAN?
-                                    </p>
-                                </div>
-                                <div class="right padding-bottom padding-top">
-                                    <a href="" class="link-cta-ubuntu text-button" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
-                                    <button class="cta-ubuntu" data-ng-click="vlanDetails.actionGo()" data-ng-disabled="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">{$ vlanDetails.actionOption.title $}</button>
+            </div>
+            <div class="page-header__dropdown" data-ng-class="{ 'is-open': vlanDetails.actionOption }">
+                <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">
+                    <h3 class="page-header__dropdown-title" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">Provide DHCP</h3>
+                    <form class="form form--stack">
+                        <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
+                        <fieldset class="form__fieldset six-col" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">
+                            <div class="form__group" data-ng-hide="vlanDetails.relatedSubnets.length === 0">
+                                <label for="primary-rack" class="form__group-label two-col">{$ vlanDetails.relatedControllers.length <= 1 ? "Rack controller" : "Primary controller" $}</label>
+                                <div class="form__group-input three-col">
+                                    <select name="primary-rack"
+                                            data-ng-model="vlanDetails.provideDHCPAction.primaryRack"
+                                            data-ng-change="vlanDetails.updatePrimaryRack()"
+                                            data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers">
+                                        <option value=""
+                                                disabled="disabled"
+                                                selected="selected"
+                                                data-ng-show="vlanDetails.provideDHCPAction.primaryRack === ''">Choose primary controller</option>
+                                    </select>
                                 </div>
                             </div>
-                        </form>
+                            <div class="form__group" data-ng-hide="vlanDetails.relatedSubnets.length === 0 || vlanDetails.relatedControllers.length <= 1">
+                                <label for="secondary-rack" class="form__group-label two-col">Secondary controller</label>
+                                <div class="form__group-input three-col">
+                                    <select name="secondary-rack"
+                                            data-ng-show="vlanDetails.relatedControllers.length > 1"
+                                            data-ng-disabled="!vlanDetails.provideDHCPAction.primaryRack && vlanDetails.relatedControllers.length > 1"
+                                            data-ng-model="vlanDetails.provideDHCPAction.secondaryRack"
+                                            data-ng-change="vlanDetails.updateSecondaryRack()"
+                                            data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers | filter:vlanDetails.filterPrimaryRack">
+                                        <option value=""
+                                                selected="selected"
+                                                data-ng-show="vlanDetails.relatedControllers.length >= 2"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form__group"
+                                 data-ng-hide="vlanDetails.relatedSubnets.length === 0 || (vlanDetails.provideDHCPAction.needsDynamicRange === false && vlanDetails.provideDHCPAction.needsGatewayIP === false)">
+                                <label for="subnet" class="form__group-label two-col">Subnet</label>
+                                <div class="form__group-input three-col">
+                                    <select name="subnet"
+                                            data-ng-model="vlanDetails.provideDHCPAction.subnet"
+                                            data-ng-change="vlanDetails.updateSubnet()"
+                                            data-ng-options="row.subnet.id as row.subnet.cidr for row in vlanDetails.relatedSubnets">
+                                        <option value="" disabled="disabled" selected="selected">Choose subnet</option>
+                                        <option value="" data-ng-if=""></option>
+                                    </select>
+                                </div>
+                           </div>
+                        </fieldset>
+                        <fieldset class="form__fieldset six-col last-col" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">
+                            <div class="form__group"
+                                 data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
+                                <label for="start-ip" class="form__group-label two-col">Dynamic range start IP</label>
+                                <div class="form__group-input three-col">
+                                    <input type="text"
+                                           name="start-ip"
+                                           size="39"
+                                           data-ng-placeholder="vlanDetails.provideDHCPAction.startPlaceholder"
+                                           data-ng-model="vlanDetails.provideDHCPAction.startIP"
+                                           data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
+                                           data-ng-change="vlanDetails.updateStartIP()">
+                                </div>
+                            </div>
+                            <div class="form__group" data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
+                                <label for="end-ip" class="form__group-label two-col">Dynamic range end IP</label>
+                                <div class="form__group-input three-col">
+                                    <input type="text"
+                                           name="end-ip"
+                                           size="39"
+                                           data-ng-placeholder="vlanDetails.provideDHCPAction.endPlaceholder"
+                                           data-ng-model="vlanDetails.provideDHCPAction.endIP"
+                                           data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
+                                           data-ng-change="vlanDetails.updateEndIP()">
+                                </div>
+                            </div>
+                            <div class="form__group"
+                                 data-ng-hide="vlanDetails.provideDHCPAction.needsGatewayIP === false || vlanDetails.provideDHCPAction.subnetMissingGatewayIP === false || vlanDetails.relatedSubnets.length === 0">
+                                <label for="gateway-ip" class="form__group-label two-col">Gateway IP</label>
+                                <div class="form__group-input three-col">
+                                    <input type="text"
+                                           name="gateway-ip"
+                                           size="39"
+                                           data-ng-placeholder="vlanDetails.provideDHCPAction.gatewayPlaceholder"
+                                           data-ng-model="vlanDetails.provideDHCPAction.gatewayIP"
+                                           data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
+                                           data-ng-change="vlanDetails.updatendIP()">
+                                </div>
+                            </div>
+                            <!-- IP range selection fields -->
+                                <!--
+                                <div class="form__group">
+                                    <label for="number-of-ips" class="form__group-label two-col">Maximum addresses</label>
+                                    <input type="text" class="three-col" name="number-of-ips" data-ng-model="vlanDetails.provideDHCPAction.numIPs" data-ng-disabled="true" data-ng-change="vlanDetails.updateNumAddresses()">
+                                </div>
+                                -->
+                        </fieldset>
+                    </form>
+                </section>
+                <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="vlanDetails.isActionError()">
+                    <p class="page-header__message page-header__message--warning"
+                       data-ng-show="vlanDetails.actionOption.name === 'disable_dhcp'">
+                        Are you sure you want to disable DHCP on this VLAN? All subnets on this VLAN will be affected.
+                    </p>
+                    <p class="page-header__message page-header__message--error"
+                       data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">
+                        No subnets are available on this VLAN. DHCP cannot be enabled.
+                    </p>
+                    <p class="page-header__message page-header__message--warning"
+                       data-ng-show="vlanDetails.actionOption.name === 'delete'">
+                        Are you sure you want to delete this VLAN?
+                    </p>
+                    <div class="page-header__controls">
+                        <a href="" class="button--base button--inline" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
+                        <button class="button--primary button--inline" data-ng-click="vlanDetails.actionGo()" data-ng-disabled="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">{$ vlanDetails.actionOption.title $}</button>
                     </div>
-                    <div class="page-header__feedback ng-hide"
-                         data-ng-show="vlanDetails.isActionError()">
-                        <p class="page-header__feedback-message info" style="">{$ vlanDetails.actionError $}</p>
-                        <div class="form-inline">
-                            <div class="right">
-                                <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
-                                <button class="cta-ubuntu" data-ng-click="vlanDetails.actionRetry()">Retry</button>
-                            </div>
-                        </div>
+                </section>
+                <section class="page-header__section twelve-col u-margin--bottom-none ng-hide"
+                     data-ng-show="vlanDetails.isActionError()">
+                    <p class="page-header__message page-header__message--error">{$ vlanDetails.actionError $}</p>
+                    <div class="page-header__controls">
+                        <a href="" class="button--base button--inline u-margin--right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
+                        <button class="button--primary button--inline" data-ng-click="vlanDetails.actionRetry()">Retry</button>
                     </div>
-                </div>
+                </section>
             </div>
             <!-- End of "Take action" dropdown -->
         </div>
     </header>
     <section class="row">
-        <div class="inner-wrapper">
-            <h2>VLAN Summary</h2>
+        <div class="wrapper--inner">
+            <div class="twelve-col">
+                <h2>VLAN Summary</h2>
+            </div>
             <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()">
-                <fieldset class="six-col form">
+                <fieldset class="form__fieldset six-col">
                     <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                     <maas-obj-field type="text" key="name" label="Name" placeholder="VLAN name"
@@ -170,63 +160,67 @@
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
-                <dl class="six-col last-col">
-                    <dt class="two-col">Fabric</dt>
-                    <dd class="four-col last-col">
-                        <a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a>
-                    </dd>
-                    <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlanDetails.vlan.dhcp_on ? "Enabled" : "Disabled" $}</dd>
-                    <div data-ng-if="vlanDetails.vlan.external_dhcp">
-                        <dt class="two-col">External DHCP</dt>
-                        <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
-                            <i class="icon warning tooltip" data-tooltip="Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended."></i>
-                        </dd>
-                    </div>
-                    <div class="ng-hide" data-ng-show="vlanDetails.primaryRack">
-                        <dt class="two-col">Primary controller <span class="icon help tooltip" data-tooltip="The rack controller where DHCP service runs on."></span></dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
-                    </div>
-                    <div class="ng-hide" data-ng-show="vlanDetails.secondaryRack">
-                        <dt class="two-col">Secondary controller <span class="icon help tooltip" data-tooltip="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
-                    </div>
-                    <dt class="two-col">Rack controllers <span class="icon help tooltip" data-tooltip="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
-                    <dd class="four-col last-col">
-                        <span data-ng-repeat="rack in vlanDetails.relatedControllers">
-                            <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
-                        </span>
-                    </dd>
-                    <div data-ng-if="vlanDetails.relatedSpaces.length">
-                        <dt class="two-col">Spaces</dt>
+                <div class="six-col last-col">
+                    <dl>
+                        <dt class="two-col">Fabric</dt>
                         <dd class="four-col last-col">
-                            <span class="margin-right--ten" data-ng-repeat="space in vlanDetails.relatedSpaces">
-                                <a href="#/space/{$ space.id $}">{$ space.name $}</a>
-                            </span>
+                            <a href="#/fabric/{$ vlanDetails.fabric.id $}">{$ vlanDetails.fabric.name $}</a>
                         </dd>
-                    </div>
-                </dl>
+                        <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlanDetails.vlan.dhcp_on ? "Enabled" : "Disabled" $}</dd>
+                        <div data-ng-if="vlanDetails.vlan.external_dhcp">
+                            <dt class="two-col">External DHCP</dt>
+                            <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
+                                <i class="icon icon--warning tooltip" aria-label="Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended."></i>
+                            </dd>
+                        </div>
+                        <div class="ng-hide" data-ng-show="vlanDetails.primaryRack">
+                            <dt class="two-col">Primary controller <span class="icon icon--help tooltip" aria-label="The rack controller where DHCP service runs on."></span></dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
+                        </div>
+                        <div class="ng-hide" data-ng-show="vlanDetails.secondaryRack">
+                            <dt class="two-col">Secondary controller <span class="icon icon--help tooltip" aria-label="The rack controller that will take over DHCP services if the primary fails."></span></dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
+                        </div>
+                        <dt class="two-col">Rack controllers <span class="icon icon--help tooltip" aria-label="A rack controller controls hosts and images and runs network services&#xa;like DHCP for connected VLANs."></span></dt>
+                        <dd class="four-col last-col">
+                            <span data-ng-repeat="rack in vlanDetails.relatedControllers">
+                                <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
+                            </span>&nbsp;
+                        </dd>
+                        <div data-ng-if="vlanDetails.relatedSpaces.length">
+                            <dt class="two-col">Spaces</dt>
+                            <dd class="four-col last-col">
+                                <span class="u-margin--right-small" data-ng-repeat="space in vlanDetails.relatedSpaces">
+                                    <a href="#/space/{$ space.id $}">{$ space.name $}</a>
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
             </maas-obj-form>
         </div>
     </section>
     <section class="row">
-        <div class="inner-wrapper">
-          <div class="twelve-col">
-              <h2>Subnets on this VLAN</h2>
-              <div class="table">
-                  <header class="table__head">
-                      <div class="table__row">
-                          <div class="table__header table-col--60">Subnet</div>
-                          <div class="table__header table-col--10">Used</div>
-                          <div class="table__header table-col--30">Space</div>
-                      </div>
-                  </header>
-                  <section class="table__body">
-                      <div class="table__row" data-ng-repeat="row in vlanDetails.relatedSubnets">
-                          <div class="table__data table-col--60"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
-                          <div class="table__data table-col--10">{$ row.subnet.statistics.usage_string $}</div>
-                          <div class="table__data table-col--30"><a href="#space/{$ row.space.id $}">{$ row.space.name $}</a></div>
-                      </div>
-                  </section>
-              </div>
-          </div>
+        <div class="wrapper--inner">
+            <div class="twelve-col">
+                <h2>Subnets on this VLAN</h2>
+            </div>
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table-col--60">Subnet</div>
+                            <div class="table__header table-col--10">Used</div>
+                            <div class="table__header table-col--30">Space</div>
+                        </div>
+                    </header>
+                    <section class="table__body">
+                        <div class="table__row" data-ng-repeat="row in vlanDetails.relatedSubnets">
+                            <div class="table__data table-col--60"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
+                            <div class="table__data table-col--10">{$ row.subnet.statistics.usage_string $}</div>
+                            <div class="table__data table-col--30"><a href="#space/{$ row.space.id $}">{$ row.space.name $}</a></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
         </div>
     </section>
 </div>

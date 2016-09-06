@@ -70,7 +70,8 @@ describe("maasControllerStatus", function() {
         var serviceClass = makeName("serviceClass");
         directive.isolateScope().serviceClass = serviceClass;
         $scope.$digest();
-        expect(directive.find("span").hasClass(serviceClass)).toBe(true);
+        expect(
+          directive.find("span").hasClass("icon--" + serviceClass)).toBe(true);
     });
 
     it("services is ServicesManager.getItems()", function() {

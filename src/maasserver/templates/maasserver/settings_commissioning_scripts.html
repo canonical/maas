@@ -25,10 +25,8 @@
                     <pre>{{ script.content }}</pre>
                 </div>
             </td>
-            <td class="icon-controls">
-                <a title="Delete commissioning script {{ script.name }}" href="{% url 'commissioning-script-delete' script.id %}">
-                    <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-                </a>
+            <td class="icon-controls u-align--right">
+                <a title="Delete commissioning script {{ script.name }}" class="icon icon--delete" href="{% url 'commissioning-script-delete' script.id %}">Delete</a>
             </td>
         </tr>
     </tbody>
@@ -36,4 +34,4 @@
     No commissioning scripts.
     {% endfor %}
 </table>
-<a class="link-cta-ubuntu right" href="{% url 'commissioning-script-add' %}">Upload script</a>
+<a class="button--primary button--inline u-float--right" href="{% url 'commissioning-script-add' %}">Upload script</a>

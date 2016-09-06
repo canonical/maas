@@ -1,0 +1,32 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-state
+/// @since        0.0.1
+////
+
+/// State
+/// @group State
+@mixin maas-state {
+
+  @each $state, $color in $states {
+    .u-text--#{$state} {
+      color: $color !important;
+    }
+
+    .u-border--#{$state} {
+      border-color: $color !important;
+    }
+
+    .u-background--#{$state} {
+      background-color: $color !important;
+    }
+
+    .has-#{$state} {
+      border: 1px solid $color !important;
+
+      &:focus {
+        border: 1px solid $color !important;
+      }
+    }
+  }
+}

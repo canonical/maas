@@ -11,8 +11,8 @@
 	    <ul>
 	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
 	    </ul>
-	    <input type="submit" class="cta-ubuntu right" value="Add archive" />
-	    <a class="link-cta-ubuntu secondary" href="{% url 'settings' %}">Cancel</a>
+	    <input type="submit" class="button--primary button--inline u-float--right" value="Add archive" />
+	    <a class="button--secondary button--inline" href="{% url 'settings' %}">Cancel</a>
 	</form>
 </div>
 {% endblock %}

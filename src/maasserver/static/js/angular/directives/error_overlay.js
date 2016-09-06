@@ -11,24 +11,24 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the error_overlay.html into the template cache.
     $templateCache.put('directive/templates/error_overlay.html', [
         '<header id="error-header" class="page-header" data-ng-show="show()">',
-            '<div class="inner-wrapper">',
-                '<h1 class="page-header__title eight-col">',
-                    '<span class="icon icon__loading"',
+            '<div class="wrapper--inner">',
+                '<h1 class="page-header__title">',
+                    '<span class="icon icon--loading u-animation--spin',
+                        'u-margin--right-small"',
                         'data-ng-hide="clientError"></span>',
                     '{$ getTitle() $}',
                 '</h1>',
-                '<div class="page-header__actions four-col last-col">',
-                    '<div class="page-header__cta two-col no-margin-bottom ',
-                        'last-col">',
-                        '<button class="two-col cta-ubuntu"',
-                            'data-ng-click="reload()"',
-                            'data-ng-show="clientError">Reload</button>',
-                    '</div>',
+                '<div class="page-header__controls">',
+                    '<button class="button--primary button--inline"',
+                        'data-ng-click="reload()"',
+                        'data-ng-show="clientError">Reload</button>',
                 '</div>',
-                '<div class="page-header__dropdown ng-hide" ',
+                '<div class="page-header__dropdown is-open" ',
                     'data-ng-show="error">',
-                    '<div class="page-header__feedback">',
-                        '<p class="page-header__feedback-message info">',
+                    '<div class="page-header__section twelve-col',
+                        'u-margin--bottom-none">',
+                        '<p class="page-header__message',
+                                  'page-header__message--error">',
                             '{$ error $}',
                         '</p>',
                     '</div>',
@@ -48,9 +48,9 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // continuously.
     if(!angular.isDefined(window.jasmine)) {
         var image = new Image();
-        image.src = "static/img/icons/error.svg";
+        image.src = "static/assets/images/icons/error_colour_white.svg";
         image = new Image();
-        image.src = "static/img/icons/error.png";
+        image.src = "static/assets/images/icons/error.png";
     }
 }]);
 

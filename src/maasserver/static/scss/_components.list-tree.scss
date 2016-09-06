@@ -1,0 +1,57 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-icons
+/// @since        0.0.1
+////
+
+/// Icons
+/// @group Icons
+@mixin maas-list-tree {
+  .list__tree {
+    list-style: none;
+    border-left: 1px solid $outline;
+    position: relative;
+
+    &.list__tree--sub-level {
+      margin-top: 10px;
+      margin-left: 20px;
+      clear: both;
+
+      .list__item .list__item-feedback {
+        left: 180px;
+      }
+    }
+
+    .list__item {
+      list-style: none;
+
+      &:before {
+        content: '';
+        width: 12px;
+        height: 1px;
+        background: $outline;
+        display: inline-block;
+        position: relative;
+        top: -4px;
+        margin-right: 5px;
+      }
+
+      &:last-child::after {
+        content: '';
+        width: 4px;
+        height: 1em;
+        position: absolute;
+        display: block;
+        left: -2px;
+        bottom: -6px;
+        background: $off-white;
+      }
+
+      .list__item-feedback {
+        position: relative;
+        left: 200px;
+        margin-top: -24px;
+      }
+    }
+  }
+}

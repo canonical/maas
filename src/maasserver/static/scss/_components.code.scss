@@ -1,0 +1,44 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-code-block
+/// @since        0.0.1
+////
+
+/// MAAS code block
+/// @group maas code block
+@mixin maas-code-block {
+  .code-block {
+    overflow: auto;
+    margin: .5em 0;
+    padding: 1em;
+    border: 1px solid $mid-grey;
+    border-radius: .5em;
+
+    .code-block__line {
+      float: left;
+      clear: both;
+      margin: 0;
+    }
+
+    &.code-block--terminal {
+      color: $white;
+      border: 0;
+      background-color: $cool-grey;
+    }
+
+    &.code-block--numbering {
+      counter-reset: line-numbering;
+
+      .code-block__line::before {
+        width: 1.5em;
+        padding-right: 1em; // space after numbers
+        content: counter(line-numbering);
+        counter-increment: line-numbering;
+        user-select: none;
+        text-align: right;
+        pointer-events: none;
+        opacity: .5;
+      }
+    }
+  }
+}

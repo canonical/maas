@@ -1,0 +1,34 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-action-card
+/// @since        0.0.1
+////
+
+/// MAAS Action card styling
+/// @group maas action card
+@mixin maas-action-card {
+  .action-card {
+    background: $white;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    margin-bottom: 40px;
+    padding: 20px 20px 10px;
+    box-sizing: border-box;
+    width: 100%;
+    display: inline-block;
+    clear: both;
+
+    .action-card__title {
+      font-size: $h2;
+      margin-bottom: 20px;
+    }
+
+    .action-card__controls {
+      border-top: 1px dotted $warm-grey;
+      width: 100%;
+      display: inline-block;
+      margin: 10px 0 0;
+      padding: 10px 0 0;
+      box-sizing: border-box;
+    }
+  }
+}

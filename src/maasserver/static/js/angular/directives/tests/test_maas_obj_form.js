@@ -45,7 +45,7 @@ describe("maasObjForm", function() {
     // Return the list of rendered errors on the field.
     function getFieldErrorList(field) {
         var errors = [];
-        var lis = field.siblings("ul.errors").children();
+        var lis = field.siblings("ul.form__error").children();
         lis.each(function() {
             errors.push(angular.element(this).text());
         });
@@ -55,7 +55,7 @@ describe("maasObjForm", function() {
     // Return the list of rendered errors in the element.
     function getErrorList(element) {
         var errors = [];
-        var lis = element.find("ul.errors").children();
+        var lis = element.find("ul.form__error").children();
         lis.each(function() {
             errors.push(angular.element(this).text());
         });
@@ -449,7 +449,7 @@ describe("maasObjForm", function() {
 
             var errorsList = getFieldErrorList(field);
             expect(errorsList).toEqual([error]);
-            expect(field.hasClass("invalid")).toBe(true);
+            expect(field.hasClass("has-error")).toBe(true);
         });
 
         it("sets field error on another field", function() {
@@ -464,7 +464,7 @@ describe("maasObjForm", function() {
 
             var errorsList = getFieldErrorList(field);
             expect(errorsList).toEqual(["otherKey: " + error]);
-            expect(field.hasClass("invalid")).toBe(true);
+            expect(field.hasClass("has-error")).toBe(true);
         });
 
         it("sets multiple errors on field", function() {
@@ -480,7 +480,7 @@ describe("maasObjForm", function() {
 
             var errorsList = getFieldErrorList(field);
             expect(errorsList).toEqual([error1, error2]);
-            expect(field.hasClass("invalid")).toBe(true);
+            expect(field.hasClass("has-error")).toBe(true);
         });
     });
 

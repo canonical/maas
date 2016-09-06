@@ -1,0 +1,363 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/vanilla-framework/docs/#mixin-maas-forms
+/// @since        0.0.3
+////
+
+/// Form element styles
+/// @group Forms
+@mixin maas-forms {
+
+  // All input elements
+  input {
+
+    &[type='text'],
+    &[type='number'],
+    &[type='search'],
+    &[type='password'],
+    &[type='email'],
+    &[type='url'],
+    &[type='tel'] {
+      padding: 7px 10px;
+      box-shadow: none;
+      width: 100%;
+
+      &::placeholder {
+        color: $warm-grey;
+      }
+
+      &[disabled] {
+        color: $warm-grey;
+        background-color: $transparent;
+      }
+    }
+
+    &[type='number'] {
+      padding-right: 15px;
+    }
+
+    &[type='search'] {
+      appearance: textfield;
+    }
+
+    &[type='search']::-webkit-search-decoration,
+    &[type='search']::-webkit-search-cancel-button {
+      appearance: none;
+    }
+
+    &[type='checkbox'] {
+      margin: 4px 0 0;
+      margin-top: 1px	9;
+      line-height: normal;
+    }
+
+    &[type='radio'],
+    &[type='image'] {
+      display: inline-block;
+      margin-right: 10px;
+    }
+  }
+
+  // Text area styles
+  textarea {
+    height: auto;
+    min-height: 175px;
+    padding: 7px 10px !important;
+    box-shadow: none;
+    width: 100%;
+
+    &::placeholder {
+      color: $warm-grey;
+    }
+
+    &[disabled] {
+      color: $warm-grey;
+      background-color: $transparent;
+    }
+  }
+
+  // Select dropdown styles
+  select {
+    @extend %input-elements;
+    display: block;
+    clear: both;
+    cursor: pointer;
+    margin: 0;
+    background-image: url('#{$asset-path}images/forms/chevron_down.svg');
+    background-repeat: no-repeat;
+    background-position: top 14px right 10px;
+    background-color: $white;
+    padding: 7px 30px 7px 10px !important;
+    box-shadow: none;
+    width: 100%;
+
+    // Removes firefox select styles & arrow
+    -moz-appearance: none;
+    appearance: none;
+    text-indent: .01px;
+    text-overflow: '';
+
+    &[multiple],
+    &[size] {
+      height: auto;
+      background-image: none;
+      padding-top: 10px;
+    }
+
+    &[disabled] {
+      color: $warm-grey;
+      background-image: none;
+      background-color: $transparent;
+    }
+
+    // Removes firefox dotted outline focusing
+    &:-moz-focusring {
+      color: transparent;
+      text-shadow: 0 0 0 $black;
+    }
+
+    &::-ms-expand {
+      display: none;
+    }
+  }
+
+  fieldset {
+    background: none;
+    margin-left: 0;
+    padding: 0;
+  }
+
+  label {
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+  }
+
+  /// Base for label styling
+  [type="checkbox"] {
+
+    &:not(:checked),
+    &:checked {
+      position: absolute;
+      left: -9999px;
+    }
+
+    + label {
+      position: relative;
+      padding-left: 25px;
+      cursor: pointer;
+
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 3px;
+        width: 11px;
+        height: 11px;
+        border: 1px solid $mid-grey;
+        background: $white;
+        border-radius: 2px;
+      }
+    }
+
+    &:checked {
+
+      + label:before {
+        background-color: $input-checked;
+        border-color: $input-checked;
+      }
+
+      + label:after {
+        content: '✔';
+        position: absolute;
+        line-height: 13px;
+        top: 3px;
+        left: 3px;
+        font-size: 10px;
+        color: $white;
+        transition: all .2s;
+
+        @-moz-document url-prefix() {
+          font-size: 13px;
+          left: 1px;
+        }
+      }
+    }
+
+    &[disabled] {
+      cursor: not-allowed;
+
+      + label {
+        cursor: not-allowed;
+
+        &:before {
+          opacity: .5;
+        }
+      }
+    }
+  }
+
+  [type="radio"] {
+
+    &:not(:checked),
+    &:checked {
+      position: absolute;
+      left: -9999px;
+    }
+
+    + label {
+      position: relative;
+      padding-left: 25px;
+      cursor: pointer;
+
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 1px;
+        width: 13px;
+        height: 13px;
+        border: 1px solid $mid-grey;
+        background: $white;
+        border-radius: 50%;
+      }
+    }
+
+    &:checked {
+
+      + label:after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 4px;
+        width: 9px;
+        height: 9px;
+        background: $input-checked;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .tags {
+    width: 100%;
+
+    .tag-list {
+      width: 100%;
+      margin: 0;
+
+      .tag-item {
+        display: inline-block;
+        float: left;
+        line-height: 36px;
+        margin-bottom: 0;
+        margin-right: 10px;
+        word-wrap: break-word;
+
+        .remove-button {
+          border-bottom: 0;
+        }
+      }
+    }
+
+    .input {
+      width: 100% !important;
+    }
+  }
+
+  .onoffswitch {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    width: 38px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+
+    &[disabled] {
+
+      .onoffswitch-checkbox,
+      .onoffswitch-label {
+        opacity: .5;
+        pointer-events: none;
+      }
+    }
+  }
+
+  .onoffswitch-checkbox {
+    display: none !important;
+  }
+
+  .onoffswitch-label {
+    display: block !important;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 2px;
+    padding-left: 0 !important;
+
+    &:before,
+    &:after {
+      display: none;
+    }
+  }
+
+  .onoffswitch-inner {
+    display: block;
+    width: 200%;
+    margin-left: -100%;
+    transition: margin 0.3s ease-in 0s;
+
+  &:before,
+  &:after {
+      display: block;
+      float: left;
+      width: 50%;
+      height: 18px;
+      padding: 0;
+      line-height: 18px;
+      font-size: 14px;
+      color: $white;
+      font-family: Trebuchet, Arial, sans-serif;
+      font-weight: bold;
+      box-sizing: border-box;
+    }
+
+    &:before {
+      content: "";
+      padding-left: 10px;
+      background-color: #3FB24F;
+      color: #FFFFFF;
+    }
+
+    &:after {
+      content: "";
+      padding-right: 10px;
+      background-color: #EEEEEE;
+      color: #999999;
+      text-align: right;
+    }
+  }
+
+  .onoffswitch-switch {
+    display: block;
+    width: 19px;
+    height: 16px;
+    margin: 0px;
+    background: $white;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 17px;
+    border: 1px solid #d2d2d2;
+    border-radius: 2px;
+    transition: all 0.3s ease-in 0s;
+  }
+
+  .onoffswitch-checkbox:checked + .onoffswitch-label {
+    .onoffswitch-inner {
+      margin-left: 0;
+    }
+    .onoffswitch-switch {
+      right: 0px;
+    }
+  }
+}
