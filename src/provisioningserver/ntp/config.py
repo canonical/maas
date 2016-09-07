@@ -13,6 +13,10 @@ from itertools import (
 )
 import re
 
+from netaddr import (
+    AddrFormatError,
+    IPAddress,
+)
 from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import sudo_write_file
 
@@ -69,8 +73,10 @@ def _render_ntp_maas_conf(servers, peers):
         -- to use as time references.
     """
     lines = ["# MAAS NTP configuration."]
-    lines.extend("server " + server for server in servers)
-    lines.extend("peer " + peer for peer in peers)
+    servers = map(_normalise_address, servers)
+    lines.extend("server %s" % server for server in servers)
+    peers = map(_normalise_address, peers)
+    lines.extend("peer %s" % peer for peer in peers)
     lines.append("")  # Add newline at end.
     return "\n".join(lines)
 
@@ -138,3 +144,20 @@ def _clean_whitespace(lines):
         if not blank:
             yield from lines
             yield "\n"
+
+
+def _normalise_address(address):
+    """Normalise an IP address into a form suitable for the `ntp` daemon.
+
+    It seems to prefer non-mapped IPv4 addresses, for example. Hostnames are
+    passed through.
+    """
+    try:
+        address = IPAddress(address)
+    except AddrFormatError:
+        return address  # Hostname.
+    else:
+        if address.is_ipv4_mapped():
+            return address.ipv4()
+        else:
+            return address

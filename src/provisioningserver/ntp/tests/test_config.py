@@ -10,6 +10,7 @@ import re
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
 from maastesting.testcase import MAASTestCase
+from netaddr import IPAddress
 from provisioningserver.ntp import config
 from provisioningserver.path import get_path
 from testtools.matchers import (
@@ -168,6 +169,18 @@ class TestRenderNTPMAASConf(MAASTestCase):
             '# MAAS NTP configuration.\n'))
         observed_peers = extract_peers(ntp_maas_conf)
         self.assertThat(observed_peers, Equals(peers))
+
+    def test_renders_ipv6_mapped_ipv4_addresses_as_plain_ipv4(self):
+        server_as_ipv4 = factory.make_ipv4_address()
+        server_as_ipv6 = str(IPAddress(server_as_ipv4).ipv6())
+        peer_as_ipv4 = factory.make_ipv4_address()
+        peer_as_ipv6 = str(IPAddress(peer_as_ipv4).ipv6())
+        ntp_maas_conf = config._render_ntp_maas_conf(
+            [server_as_ipv6], [peer_as_ipv6])
+        observed_servers = extract_servers_and_pools(ntp_maas_conf)
+        self.assertThat(observed_servers, Equals([server_as_ipv4]))
+        observed_peers = extract_peers(ntp_maas_conf)
+        self.assertThat(observed_peers, Equals([peer_as_ipv4]))
 
 
 example_ntp_conf = """\
