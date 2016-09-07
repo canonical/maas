@@ -454,6 +454,13 @@
                                 <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
                             </span>
                         </li>
+                        <li class="list__item">
+                            <span>
+                                <span class="icon icon--{$ getServiceClass(services.ntp) $}"></span>
+                                &nbsp;ntp
+                                <span data-ng-if="services.ntp.status_info"> &mdash; {$ services.ntp.status_info $}</span>
+                            </span>
+                        </li>
                     </ul>
                 </div>
             </div>
