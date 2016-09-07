@@ -387,6 +387,7 @@ define clean-run-template
 find $(1) -depth ! -type d \
     ! -path $(1)/etc/maas/templates \
     ! -path $(1)/etc/maas/drivers.yaml \
+    ! -path $(1)/etc/ntp/.keep \
     ! -path $(1)/etc/ntp.conf \
     -print0 | xargs -r0 $(RM)
 find $(1) -depth -type d \

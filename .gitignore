@@ -39,6 +39,7 @@
 /run/*
 /run/etc/*
 /run/etc/maas/*
+/run/etc/ntp/*
 /services/*/supervise
 /src/maasserver/static/js/enums.js
 /TAGS

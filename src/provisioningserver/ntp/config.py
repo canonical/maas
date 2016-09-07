@@ -13,12 +13,12 @@ from itertools import (
 )
 import re
 
-from provisioningserver.path import get_path
+from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import sudo_write_file
 
 
 _ntp_conf_name = "ntp.conf"
-_ntp_maas_conf_name = "ntp.maas.conf"
+_ntp_maas_conf_name = "ntp/maas.conf"
 
 
 def configure(servers, peers):
@@ -31,10 +31,10 @@ def configure(servers, peers):
         -- to use as time references.
     """
     ntp_maas_conf = _render_ntp_maas_conf(servers, peers).encode("ascii")
-    ntp_maas_conf_path = get_path("etc", _ntp_maas_conf_name)
+    ntp_maas_conf_path = get_tentative_path("etc", _ntp_maas_conf_name)
     sudo_write_file(ntp_maas_conf_path, ntp_maas_conf, mode=0o644)
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path).encode("ascii")
-    ntp_conf_path = get_path("etc", _ntp_conf_name)
+    ntp_conf_path = get_tentative_path("etc", _ntp_conf_name)
     sudo_write_file(ntp_conf_path, ntp_conf, mode=0o644)
 
 
@@ -43,7 +43,7 @@ def _render_ntp_conf(includefile):
 
     This configuration includes the file named by `includefile`.
     """
-    ntp_conf_path = get_path("etc", _ntp_conf_name)
+    ntp_conf_path = get_tentative_path("etc", _ntp_conf_name)
     with open(ntp_conf_path, "r", encoding="ascii") as fd:
         lines = _render_ntp_conf_from_source(fd, includefile)
         return "".join(lines)
@@ -71,6 +71,7 @@ def _render_ntp_maas_conf(servers, peers):
     lines = ["# MAAS NTP configuration."]
     lines.extend("server " + server for server in servers)
     lines.extend("peer " + peer for peer in peers)
+    lines.append("")  # Add newline at end.
     return "\n".join(lines)
 
 
