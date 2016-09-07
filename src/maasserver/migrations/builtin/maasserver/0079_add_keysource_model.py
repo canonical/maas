@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, serialize=False, primary_key=True, verbose_name='ID')),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('protocol', models.CharField(max_length=64, choices=[('launchpad', 'launchpad'), ('github', 'github')])),
+                ('protocol', models.CharField(max_length=64, choices=[('lp', 'launchpad'), ('gh', 'github')])),
                 ('auth_id', models.CharField(max_length=255)),
                 ('auto_update', models.BooleanField(default=False)),
             ],

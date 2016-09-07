@@ -23,7 +23,7 @@ class KeySourceManager(Manager):
     """A utility to manage the colletion of `KeySource`s."""
 
     def save_keys_for_user(self, user, protocol, auth_id):
-        source = self.create(protocol=protocol, auth_id=auth_id)
+        source, _ = self.get_or_create(protocol=protocol, auth_id=auth_id)
         source.import_keys(user)
         return source
 
@@ -54,7 +54,7 @@ class KeySource(CleanSave, TimestampedModel):
         verbose_name = "Key Source"
 
     def __str__(self):
-        return self.protocol
+        return "%s:%s" % (self.protocol, self.auth_id)
 
     def import_keys(self, user):
         """Save SSH keys."""

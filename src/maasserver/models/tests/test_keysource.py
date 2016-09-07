@@ -64,3 +64,16 @@ class TestKeySourceManager(MAASServerTestCase):
         self.expectThat(
             mock_import_keys, MockCalledOnceWith(user))
         self.expectThat(KeySource.objects.count(), Equals(1))
+
+    def test_save_keys_for_user_does_not_create_duplicate_keysource(self):
+        user = factory.make_User()
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        factory.make_KeySource(
+            protocol=protocol, auth_id=auth_id)
+        mock_import_keys = self.patch(KeySource, 'import_keys')
+        KeySource.objects.save_keys_for_user(user, protocol, auth_id)
+        self.expectThat(
+            mock_import_keys, MockCalledOnceWith(user))
+        self.expectThat(KeySource.objects.count(), Equals(1))

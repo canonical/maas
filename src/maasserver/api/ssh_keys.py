@@ -16,16 +16,27 @@ from django.http import (
     HttpResponseForbidden,
 )
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import OperationsHandler
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.api.support import (
+    operation,
+    OperationsHandler,
+)
+from maasserver.api.utils import get_mandatory_param
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIValidationError,
+)
 from maasserver.forms import SSHKeyForm
-from maasserver.models import SSHKey
+from maasserver.models import (
+    KeySource,
+    SSHKey,
+)
+from maasserver.utils.keys import ImportSSHKeysError
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
 
 
-DISPLAY_SSHKEY_FIELDS = ("id", "key")
+DISPLAY_SSHKEY_FIELDS = ("id", "key", "keysource")
 
 
 class SSHKeysHandler(OperationsHandler):
@@ -55,6 +66,24 @@ class SSHKeysHandler(OperationsHandler):
                 status=int(http.client.CREATED))
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False, exported_as='import')
+    def import_ssh_keys(self, request):
+        """Import the requesting user's SSH keys.
+
+        Import SSH keys for a given protocol and authorization ID in
+        protocol:auth_id format.
+        """
+        auth_id = get_mandatory_param(request.data, 'auth_id')
+        protocol = request.data.get('protocol', None)
+        if protocol is None:
+            protocol = 'lp'
+        try:
+            return KeySource.objects.save_keys_for_user(
+                user=request.user, protocol=protocol, auth_id=auth_id)
+        except ImportSSHKeysError as e:
+            raise MAASAPIBadRequest(
+                "Importing SSH Keys failed.\n%s" % e.args[0])
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -95,6 +124,13 @@ class SSHKeyHandler(OperationsHandler):
             )
         key.delete()
         return rc.DELETED
+
+    @classmethod
+    def keysource(cls, sshkey):
+        keysource = ""
+        if sshkey.keysource is not None:
+            keysource = str(sshkey.keysource)
+        return keysource
 
     @classmethod
     def resource_uri(cls, sshkey=None):

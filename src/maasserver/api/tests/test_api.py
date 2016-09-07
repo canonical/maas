@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 import json
+import random
 from unittest.mock import Mock
 
 from django.conf import settings
@@ -16,6 +17,7 @@ from maasserver.api import (
     nodes as nodes_module,
 )
 from maasserver.api.nodes import store_node_power_parameters
+from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import (
     ClusterUnavailable,
     MAASAPIBadRequest,
@@ -23,6 +25,8 @@ from maasserver.exceptions import (
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     Config,
+    KeySource,
+    keysource as keysource_module,
     SSHKey,
 )
 from maasserver.models.user import get_auth_tokens
@@ -36,6 +40,7 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith
 from testtools.matchers import (
@@ -228,11 +233,13 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             dict(
                 id=keys[0].id,
                 key=keys[0].key,
+                keysource=str(keys[0].keysource),
                 resource_uri=reverse('sshkey_handler', args=[keys[0].id]),
                 ),
             dict(
                 id=keys[1].id,
                 key=keys[1].key,
+                keysource=str(keys[1].keysource),
                 resource_uri=reverse('sshkey_handler', args=[keys[1].id]),
                 ),
             ]
@@ -249,6 +256,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         expected = dict(
             id=key.id,
             key=key.key,
+            keysource=str(key.keysource),
             resource_uri=reverse('sshkey_handler', args=[key.id]),
             )
         self.assertEqual(expected, parsed_result)
@@ -296,6 +304,61 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertEqual(
             dict(key=["This field is required."]),
             json_load_bytes(response.content))
+
+    def test_import_ssh_keys_creates_keys_and_keysource(self):
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = "%s:%s" % (protocol, auth_id)
+        key_string = get_data('data/test_rsa0.pub')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.return_value = [key_string]
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                op='import', protocol=protocol, auth_id=auth_id))
+        added_key = get_one(SSHKey.objects.filter(user=self.user))
+        self.assertEqual(key_string, added_key.key)
+        self.assertEqual(keysource, str(added_key.keysource))
+        self.assertEqual(http.client.OK, response.status_code, response)
+        self.assertThat(
+            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
+
+    def test_import_ssh_keys_creates_keys_not_duplicate_keysource(self):
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        keysource = factory.make_KeySource(
+            protocol=protocol, auth_id=auth_id)
+        key_string = get_data('data/test_rsa0.pub')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.return_value = [key_string]
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                op='import', protocol=protocol, auth_id=auth_id))
+        added_key = get_one(SSHKey.objects.filter(user=self.user))
+        self.assertEqual(key_string, added_key.key)
+        self.assertEqual(str(keysource), str(added_key.keysource))
+        self.assertEqual(1, KeySource.objects.count())
+        self.assertEqual(http.client.OK, response.status_code, response)
+        self.assertThat(
+            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
+
+    def test_import_ssh_keys_crashes_for_importing_error(self):
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.side_effect = ImportSSHKeysError('error')
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                op='import', protocol=protocol, auth_id=auth_id))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertThat(
+            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
 
 
 class MAASAPIAnonTest(APITestCase.ForAnonymous):

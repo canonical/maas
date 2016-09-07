@@ -1178,9 +1178,11 @@ class Factory(maastesting.factory.Factory):
             tag._populate_nodes_now()
         return tag
 
-    def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
+    def make_user_with_keys(
+            self, n_keys=2, user=None, keysource=None, **kwargs):
         """Create a user with n `SSHKey`.  If user is not None, use this user
-        instead of creating one.
+        instead of creating one.  If keysource is not None, use this keysource
+        instaed of creating one.
 
         Additional keyword arguments are passed to `make_user()`.
         """
@@ -1191,10 +1193,12 @@ class Factory(maastesting.factory.Factory):
                 % MAX_PUBLIC_KEYS)
         if user is None:
             user = self.make_User(**kwargs)
+        if keysource is None:
+            keysource = self.make_KeySource()
         keys = []
         for i in range(n_keys):
             key_string = get_data('data/test_rsa%d.pub' % i)
-            key = SSHKey(user=user, key=key_string)
+            key = SSHKey(user=user, key=key_string, keysource=keysource)
             key.save()
             keys.append(key)
         return user, keys

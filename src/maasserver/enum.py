@@ -655,10 +655,10 @@ SERVICE_STATUS_CHOICES = (
 class KEYS_PROTOCOL_TYPE:
     """The vocabulary of possible protocol types for `KeySource`."""
     #: Launchpad
-    LP = 'launchpad'
+    LP = 'lp'
 
     #: Github
-    GH = 'github'
+    GH = 'gh'
 
 
 KEYS_PROTOCOL_TYPE_CHOICES = (
