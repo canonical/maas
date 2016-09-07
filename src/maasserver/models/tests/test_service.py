@@ -59,42 +59,47 @@ class TestServiceManager(MAASServerTestCase):
         controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         controller.save()
         Service.objects.create_services_for(controller)
+        services = Service.objects.filter(node=controller)
         self.assertThat(
-            Service.objects.filter(node=controller),
-            HasLength(len(REGION_SERVICES + RACK_SERVICES)))
+            {service.name for service in services},
+            Equals(REGION_SERVICES | RACK_SERVICES))
 
     def test_create_services_removes_services(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
+        services = Service.objects.filter(node=controller)
         self.assertThat(
-            Service.objects.filter(node=controller),
-            HasLength(len(REGION_SERVICES)))
+            {service.name for service in services},
+            Equals(REGION_SERVICES))
 
         controller.node_type = NODE_TYPE.MACHINE
         controller.save()
         Service.objects.create_services_for(controller)
+        services = Service.objects.filter(node=controller)
         self.assertThat(
-            Service.objects.filter(node=controller),
+            {service.name for service in services},
             HasLength(0))
 
     def test_create_services_replaces_services(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
+        services = Service.objects.filter(node=controller)
         self.assertThat(
-            Service.objects.filter(node=controller),
-            HasLength(len(REGION_SERVICES)))
+            {service.name for service in services},
+            Equals(REGION_SERVICES))
 
         controller.node_type = NODE_TYPE.RACK_CONTROLLER
         controller.save()
         Service.objects.create_services_for(controller)
+        services = Service.objects.filter(node=controller)
         self.assertThat(
-            Service.objects.filter(node=controller),
-            HasLength(len(RACK_SERVICES)))
+            {service.name for service in services},
+            Equals(RACK_SERVICES))
 
     def test_update_service_for_updates_service_status_and_info(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
-        service = random.choice(REGION_SERVICES)
+        service = random.choice(list(REGION_SERVICES))
         status = factory.pick_choice(SERVICE_STATUS_CHOICES)
         info = factory.make_name("info")
         observed = Service.objects.update_service_for(

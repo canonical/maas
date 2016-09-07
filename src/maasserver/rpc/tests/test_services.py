@@ -5,14 +5,17 @@
 
 __all__ = []
 
+from fixtures import FakeLogger
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.service import (
     RACK_SERVICES,
     Service,
 )
+from maasserver.rpc import services
 from maasserver.rpc.services import update_services
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting.matchers import DocTestMatches
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from testtools.matchers import MatchesStructure
 
@@ -35,6 +38,16 @@ class TestUpdateServices(MAASTransactionServerTestCase):
         system_id = factory.make_name("system_id")
         self.assertRaises(
             NoSuchCluster, update_services, system_id, [])
+
+    def test_update_services_logs_when_service_not_recognised(self):
+        service_name = factory.make_name("service")
+        service = self.make_service(service_name)
+        rack_controller = factory.make_RackController()
+        with FakeLogger(services.__name__) as logger:
+            update_services(rack_controller.system_id, [service])
+        self.assertThat(logger.output, DocTestMatches(
+            "Rack ... reported status for '...' but this is not a "
+            "recognised service (status='...', info='...')."))
 
     def test_update_services_updates_all_services(self):
         services = {

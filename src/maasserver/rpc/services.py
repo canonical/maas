@@ -7,11 +7,16 @@ __all__ = [
     "update_services",
 ]
 
+from logging import getLogger
+
 from maasserver.models.node import RackController
 from maasserver.models.service import Service
 from maasserver.utils.orm import transactional
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
+
+
+log = getLogger(__name__)
 
 
 @synchronous
@@ -30,8 +35,18 @@ def update_services(system_id, services):
     except RackController.DoesNotExist:
         raise NoSuchCluster.from_uuid(system_id)
 
-    # Update each service.
+    # Update each service. For now, when a service is not recognised, log it
+    # and move on, but what we really need is as UpdateServicesV2 RPC call in
+    # order to report this error back to the rack properly.
     for service in services:
-        Service.objects.update_service_for(
-            rack, service['name'], service['status'], service['status_info'])
+        try:
+            Service.objects.update_service_for(
+                rack, service['name'], service['status'],
+                service['status_info'])
+        except Service.DoesNotExist:
+            log.error(
+                "Rack %s reported status for %r but this is not a recognised "
+                "service (status=%r, info=%r).", rack.system_id,
+                service['name'], service['status'], service['status_info'])
+
     return {}

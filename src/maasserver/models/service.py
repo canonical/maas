@@ -23,23 +23,24 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 # Services that run on the region controller. NOTE that this needs to include
 # services overseen by the region's ServiceMonitor.
-REGION_SERVICES = [
+REGION_SERVICES = frozenset({
     "regiond",
     "bind9",
     "ntp",
     "proxy",
-]
+})
 
 # Services that run on the rack controller. NOTE that this needs to include
 # services overseen by the rack's ServiceMonitor.
-RACK_SERVICES = [
+RACK_SERVICES = frozenset({
     "rackd",
     "http",
     "tftp",
     "tgt",
     "dhcpd",
     "dhcpd6",
-]
+    "ntp",
+})
 
 # Statuses that should be set on each service when node is marked dead. NOTE
 # that this needs to include services overseen by the rack's ServiceMonitor.
@@ -80,9 +81,9 @@ class ServiceManager(Manager):
         elif node.node_type == NODE_TYPE.RACK_CONTROLLER:
             expected_services = RACK_SERVICES
         elif node.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
-            expected_services = REGION_SERVICES + RACK_SERVICES
+            expected_services = REGION_SERVICES | RACK_SERVICES
         else:
-            expected_services = []
+            expected_services = frozenset()
 
         # Remove the any extra services that no longer relate to this node.
         for service_name, service in services.items():
@@ -113,9 +114,9 @@ class ServiceManager(Manager):
         """Mark all the services on `node` to the correct dead state."""
         dead_services = set()
         if dead_region:
-            dead_services |= set(REGION_SERVICES)
+            dead_services |= REGION_SERVICES
         if dead_rack:
-            dead_services |= set(RACK_SERVICES)
+            dead_services |= RACK_SERVICES
         for service in self.filter(node=node):
             if service.name in dead_services and service.name in DEAD_STATUSES:
                 service.status = DEAD_STATUSES[service.name]
