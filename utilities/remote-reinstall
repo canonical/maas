@@ -39,7 +39,7 @@ echo ""
 echo "Current MAAS version is: $maas_version"
 echo ""
 echo "WARNING: This will LIVE UPDATE the MAAS server at:"
-if [ $hostname == $ip_address ]; then
+if [ "$hostname" == "$ip_address" ]; then
     echo "    $hostname"
 else
     echo "    $hostname ($ip_address)"

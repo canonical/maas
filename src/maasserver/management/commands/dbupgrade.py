@@ -262,6 +262,15 @@ class Command(BaseCommand):
         triggers.register_all_triggers()
 
     @classmethod
+    def _drop_all_views(cls, database):
+        """Register all PL/pgSQL views.
+
+        :attention: `database` argument is not used!
+        """
+        from maasserver import dbviews
+        dbviews.drop_all_views()
+
+    @classmethod
     def _perform_view_installation(cls, database):
         """Register all PL/pgSQL views.
 
@@ -278,6 +287,12 @@ class Command(BaseCommand):
             # Neither south or django provided as an option then this is the
             # main process that will do the initial sync and spawn the
             # subprocesses.
+
+            # First, drop any views that may already exist. We don't want views
+            # that that depend on a particular schema to prevent schema
+            # changes due to the dependency. The views will be recreated at the
+            # end of this process.
+            self._drop_all_views(database)
 
             # Run south migrations only if forced or needed.
             if always_south or self._south_needs_to_be_performed(database):
