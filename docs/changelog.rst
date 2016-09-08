@@ -2,6 +2,126 @@
 Changelog
 =========
 
+2.1.0 Alpha 2
+=============
+
+Important Announcements
+-----------------------
+
+**commissioning-user-data and pxe/uefi templates no longer available**
+ In the past, MAAS stored commissioning-user-data and pxe/uefi templates
+ in `/etc/maas/templates`. As of MAAS 2.1.0 Alpha 2, these templates are
+ no longer available under /etc/maas.
+
+Major New Features
+------------------
+
+**(Backend) Device Discovery**
+ As of MAAS 2.1.0 Alpha 2, MAAS will automatically listen to the network
+ and report any observed devices.
+
+  * New discovery API can be used to get information about what MAAS has
+    discovered. This API can be used from the command line interface as
+    follows:
+
+    * maas <profile> discoveries read - Lists all MAC, IP bindings
+      (discoveries) that MAAS has seen, and attempts to correlate those
+      discoveries with hostnames advertised by mDNS.
+    * maas <profile> discoveries by-unknown-mac - Lists all discoveries,
+      but filters out discoveries where the MAC belongs to an interface
+      known to MAAS.
+    * maas <profile> discoveries by-unknown-ip - Lists all discoveries,
+      but filters out discoveries where the IP address is known to MAAS
+      (such as reserved by a user, or assigned to a node).
+    * maas <profile> discoveries by-unknown-ip-and-mac - Lists all discoveries,
+      but applies the filters for both unknown MACs and unknown IP addresses.
+
+  * Note that the discovery API is currently read-only. It brings together
+    data from several different sources, including observed network neighbours,
+    resolved mDNS hostnames, and controller interface information.
+  * New maas-rack commands have been added, which are called internally by
+    MAAS in order to gather information about observed devices on the network.
+    MAAS administrators should not normally need to use these commands
+    (although they could be helpful for supportability).
+
+    * maas-rack observe-mdns [--verbose]
+    * sudo maas-rack observe-arp <interface> [--verbose]
+
+  * Note: this feature intentionally does not place any network devices into
+    “promiscuous mode”, or actively probe. MAAS controllers listen to ARP
+    traffic they would have received anyway. Therefore, if a MAAS admin wants
+    to keep MAAS’s knowledge of the network up-to-date, a command such as one
+    of the following could be run periodically (such as from a script invoked
+    by a crontab); MAAS will listen to any ARP replies and update its knowledge
+    of the network:
+
+     * To actively probe one or more subnet CIDRs on an interface:
+       sudo nmap -e <interface> -sn -n -oX - -PR <cidr> [cidr2] [...]
+
+     * To actively probe for a single IP address from a particular interface
+       (regardless of whether or not the IP address is routable on-link on that
+       interface):
+       ping -r -I <interface> <ip-address> -c 3 -w 1 -i 0.2 -D -O
+
+  * MAAS now depends on the avahi-utils and tcpdump packages in order to provide
+    this functionality. (Before MAAS 2.1.0 is released, the MAAS team will consider
+    making these optional dependencies, in case MAAS administrators do not want
+    to run the avahi daemon, or require that tcpdump not be installed.)
+
+Important Bugs Fixed in this Release
+------------------------------------
+
+**Bug #1617596: [2.1] Rack(relay) Controller is rejected after upgrade to 2.1**
+ Fixes a regression regarding registering rack controllers which have bonds
+ interfaces which are not currently bonding any interfaces.
+
+ See bug `1617596`_ for more information.
+
+.. _1617596:
+  http://launchpad.net/bugs/1617596
+
+**Bug #1615618: [2.1] 'SERVICE_STATE' object has no attribute 'getStatusInfo'**
+ Fixes a regression in the service tracking mechanism, where it would fail to
+ successfully track the status of some services.
+
+ See bug `1615618`_ for more information.
+
+.. _1615618:
+  http://launchpad.net/bugs/1615618
+
+
+Other Notable Changes
+---------------------
+
+**WebUI - Better error surfacing for DHCP snippets and Package Repositories**
+ Both the DHCP Snippets Section and the Package Repositories section have now
+ been improvement and will surface better errors.
+
+Ongoing Work
+------------
+
+ * First User Journery - WebUI
+ * Device Discovery - WebUI
+ * Improved IPv6 Support
+ * MAAS Services - NTP
+ * MAAS Image Consolidation
+ * Support for HWE Rolling Kernels
+
+Known Issues and Workarounds
+----------------------------
+
+**Configuring APT key’s in ephemeral environment (overlayfs) fails.**
+ A regression preventing cloud-init from configuring APT's key in a
+ ephemeral environment, prevents MAAS from enlisting, commissioning and
+ deploying `only` when using Derived Repositories or Custom Mirrors that
+ require a new key.
+
+ See bug `1618572`_ for more information.
+
+.. _1618572:
+  http://launchpad.net/bugs/1618572
+
+
 2.0.0 (rc1)
 ===========
 
