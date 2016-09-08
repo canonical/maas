@@ -4005,11 +4005,14 @@ class Controller(Node):
         # Determine which interfaces' neighbours need updating.
         interface_set = {neighbour['interface'] for neighbour in neighbours}
         interfaces = Interface.objects.get_interface_dict_for_node(
-            self, names=interface_set)
+            self, names=interface_set, fetch_fabric_vlan=True)
         for neighbour in neighbours:
             interface = interfaces.get(neighbour['interface'], None)
             if interface is not None:
                 interface.update_neighbour(neighbour)
+                vid = neighbour.get("vid", None)
+                if vid is not None:
+                    interface.report_vid(vid)
 
     def report_mdns_entries(self, entries):
         """Update the mDNS entries on this controller.

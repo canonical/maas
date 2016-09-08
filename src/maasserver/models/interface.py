@@ -219,20 +219,23 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """
         return list(self.filter(node=node, name__in=interface_names))
 
-    def get_interface_dict_for_node(self, node, names=None):
+    def get_interface_dict_for_node(
+            self, node, names=None, fetch_fabric_vlan=False):
         """Returns a list of Inteface objects on the specified node whose
         names match the specified list of interface names.
+
+        Optionally select related VLANs and Fabrics.
         """
         if names is None:
-            return {
-                interface.name: interface
-                for interface in self.filter(node=node)
-            }
+            query = self.filter(node=node)
         else:
-            return {
-                interface.name: interface
-                for interface in self.filter(node=node, name__in=names)
-            }
+            query = self.filter(node=node, name__in=names)
+        if fetch_fabric_vlan:
+            query = query.select_related('vlan__fabric')
+        return {
+            interface.name: interface
+            for interface in query
+        }
 
     def filter_by_ip(self, static_ip_address):
         """Given the specified StaticIPAddress, (or string containing an IP
@@ -1123,6 +1126,27 @@ class Interface(CleanSave, TimestampedModel):
         """Remove tag from interface."""
         if tag in self.tags:
             self.tags.remove(tag)
+
+    def report_vid(self, vid):
+        """Report that the specified VID was seen on this interface.
+
+        Automatically creates the related VLAN on this interface's associated
+        Fabric, if it does not already exist.
+        """
+        if self.vlan is not None and vid is not None:
+            fabric = self.vlan.fabric
+            # Circular imports
+            from maasserver.models.vlan import VLAN
+            vlan, created = VLAN.objects.get_or_create(
+                fabric=fabric, vid=vid, defaults={
+                    'description':
+                        "Automatically created VLAN (observed by %s)."
+                        % (self.get_log_string())
+                })
+            if created:
+                maaslog.info(
+                    "%s: Automatically created VLAN %d (observed on %s)" % (
+                        self.get_log_string(), vid, vlan.fabric.get_name()))
 
     def update_neighbour(self, neighbour_json: dict):
         """Updates the neighbour table for this interface.

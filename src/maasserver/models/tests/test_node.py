@@ -5500,6 +5500,21 @@ class TestReportNeighbours(MAASServerTestCase):
             *[call(neighbour) for neighbour in neighbours]
         ))
 
+    def test__calls_report_vid_for_each_vid(self):
+        rack = factory.make_RackController()
+        factory.make_Interface(name='eth0', node=rack)
+        factory.make_Interface(name='eth1', node=rack)
+        # Just make this a no-op for simplicity.
+        self.patch(interface_module.Interface, 'update_neighbour')
+        report_vid = self.patch(
+            interface_module.Interface, 'report_vid')
+        neighbours = [
+            {'interface': 'eth0', 'mac': factory.make_mac_address(), 'vid': 3},
+            {'interface': 'eth1', 'mac': factory.make_mac_address(), 'vid': 7},
+        ]
+        rack.report_neighbours(neighbours)
+        self.assertThat(report_vid, MockCallsMatch(call(3), call(7)))
+
 
 class TestReportMDNSEntries(MAASServerTestCase):
     """Tests for `Controller.report_mdns_entries()."""

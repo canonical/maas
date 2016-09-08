@@ -6,7 +6,6 @@
 __all__ = [
     "DEFAULT_VID",
     "DEFAULT_VLAN_NAME",
-    "Fabric",
     ]
 
 
@@ -25,7 +24,6 @@ from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.fabric import Fabric
 from maasserver.models.interface import VLANInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin

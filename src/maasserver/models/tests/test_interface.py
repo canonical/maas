@@ -55,6 +55,7 @@ from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
+from maastesting.djangotestcase import CountQueries
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -178,7 +179,7 @@ class TestInterfaceManager(MAASServerTestCase):
                 'eth1': node2_eth1,
             }))
 
-    def test__get_interface_dict_for_node_by_names(self):
+    def test__get_interface_dict_for_node__by_names(self):
         node1 = factory.make_Node()
         node1_eth0 = factory.make_Interface(node=node1, name='eth0')
         node1_eth1 = factory.make_Interface(node=node1, name='eth1')
@@ -205,6 +206,29 @@ class TestInterfaceManager(MAASServerTestCase):
                 'eth0': node2_eth0,
                 'eth1': node2_eth1,
             }))
+
+    def test__get_interface_dict_for_node__prefetches_on_request(self):
+        node1 = factory.make_Node()
+        factory.make_Interface(node=node1, name='eth0')
+        counter = CountQueries()
+        with counter:
+            interfaces = Interface.objects.get_interface_dict_for_node(
+                node1, fetch_fabric_vlan=True)
+            # Need this line in order to cause the extra [potential] queries.
+            self.assertIsNotNone(interfaces['eth0'].vlan.fabric)
+        self.assertThat(counter.num_queries, Equals(1))
+
+    def test__get_interface_dict_for_node__skips_prefetch_if_not_requested(
+            self):
+        node1 = factory.make_Node()
+        factory.make_Interface(node=node1, name='eth0')
+        counter = CountQueries()
+        with counter:
+            interfaces = Interface.objects.get_interface_dict_for_node(
+                node1, fetch_fabric_vlan=False)
+            # Need this line in order to cause the extra [potential] queries.
+            self.assertIsNotNone(interfaces['eth0'].vlan.fabric)
+        self.assertThat(counter.num_queries, Equals(3))
 
     def test_filter_by_ip(self):
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2680,3 +2704,37 @@ class TestReleaseAutoIPs(MAASServerTestCase):
             "Should have 1 AUTO IP addresses that was released.")
         self.assertEqual(subnet, observed[0].subnet)
         self.assertIsNone(observed[0].ip)
+
+
+class TestReportVID(MAASServerTestCase):
+    """Tests for `Interface.release_auto_ips`."""
+
+    def test__creates_vlan_if_necessary(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        iface = factory.make_Interface(vlan=vlan)
+        vid = random.randint(1, 4094)
+        vlan_before = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
+        self.assertIsNone(vlan_before)
+        iface.report_vid(vid)
+        vlan_after = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
+        self.assertIsNotNone(vlan_after)
+        # Report it one more time to make sure we can handle it if we already
+        # observed it. (expect nothing to happen.)
+        iface.report_vid(vid)
+
+    def test__logs_vlan_creation_and_sets_description(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        iface = factory.make_Interface(vlan=vlan)
+        vid = random.randint(1, 4094)
+        with FakeLogger("maas.interface") as maaslog:
+            iface.report_vid(vid)
+        self.assertDocTestMatches(
+            "...: Automatically created VLAN %d..." % vid,
+            maaslog.output)
+        new_vlan = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
+        self.assertDocTestMatches(
+            "Automatically created VLAN (observed by %s)." % (
+                iface.get_log_string()),
+            new_vlan.description)
