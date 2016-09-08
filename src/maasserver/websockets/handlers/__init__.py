@@ -18,6 +18,7 @@ __all__ = [
     "IPRangeHandler",
     "MachineHandler",
     "ServiceHandler",
+    "SSHKeyHandler",
     "SpaceHandler",
     "StaticRouteHandler",
     "SubnetHandler",
@@ -44,6 +45,7 @@ from maasserver.websockets.handlers.packagerepository import (
 )
 from maasserver.websockets.handlers.service import ServiceHandler
 from maasserver.websockets.handlers.space import SpaceHandler
+from maasserver.websockets.handlers.sshkey import SSHKeyHandler
 from maasserver.websockets.handlers.staticroute import StaticRouteHandler
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.tag import TagHandler
@@ -65,6 +67,7 @@ ignore_unused(IPRangeHandler)
 ignore_unused(MachineHandler)
 ignore_unused(PackageRepositoryHandler)
 ignore_unused(ServiceHandler)
+ignore_unused(SSHKeyHandler)
 ignore_unused(SpaceHandler)
 ignore_unused(StaticRouteHandler)
 ignore_unused(SubnetHandler)
