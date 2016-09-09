@@ -15,6 +15,7 @@ from provisioningserver import power
 from provisioningserver.drivers.power import (
     power_drivers_by_name,
     PowerDriverRegistry,
+    PowerError,
 )
 from provisioningserver.events import (
     EVENT_TYPES,
@@ -109,9 +110,8 @@ def power_query_success(system_id, hostname, state):
 @inlineCallbacks
 def power_query_failure(system_id, hostname, failure):
     """Report a node that for which power querying has failed."""
-    message = "Power state could not be queried: %s"
-    message %= failure.getErrorMessage()
-    maaslog.error(message)
+    maaslog.error("%s: Power state could not be queried: %s" % (
+        hostname, failure.getErrorMessage()))
     yield power.power_state_update(system_id, 'error')
     yield send_event_node(
         EVENT_TYPES.NODE_POWER_QUERY_FAILED,
@@ -150,7 +150,7 @@ def maaslog_report_success(node, power_state):
 
 def maaslog_report_failure(node, failure):
     """Log failure to query node."""
-    if failure.check(PowerActionFail):
+    if failure.check(PowerActionFail, PowerError):
         maaslog.error(
             "%s: Could not query power state: %s.",
             node['hostname'], failure.getErrorMessage())

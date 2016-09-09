@@ -32,6 +32,7 @@ from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
     power_drivers_by_name,
     PowerDriverRegistry,
+    PowerError,
 )
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc import (
@@ -308,7 +309,8 @@ class TestPowerQueryExceptions(MAASTestCase):
         self.assertThat(query, MockCallsMatch(*expected_calls))
 
         expected_message = (
-            "Power state could not be queried: %s" % exception_message)
+            "%s: Power state could not be queried: %s" % (
+                hostname, exception_message))
 
         # An attempt was made to report the failure to the region.
         self.assertThat(
@@ -467,6 +469,29 @@ class TestPowerQueryAsync(MAASTestCase):
             hostname-...: Could not query power state: %s.
             hostname-...: Power state has changed from ... to ...
             """ % error_msg,
+            maaslog.output)
+
+    @inlineCallbacks
+    def test_query_all_nodes_swallows_PowerError(self):
+        node1, node2 = self.make_nodes(2)
+        new_state_2 = self.pick_alternate_state(node2['power_state'])
+        get_power_state = self.patch(power.query, 'get_power_state')
+        error_msg = factory.make_name("error")
+        get_power_state.side_effect = [
+            fail(PowerError(error_msg)),
+            succeed(new_state_2),
+        ]
+        suppress_reporting(self)
+
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query.query_all_nodes([node1, node2])
+
+        self.assertDocTestMatches(
+            """\
+            %s: Could not query power state: %s.
+            %s: Power state has changed from %s to %s.
+            """ % (node1['hostname'], error_msg,
+                   node2['hostname'], node2['power_state'], new_state_2),
             maaslog.output)
 
     @inlineCallbacks
