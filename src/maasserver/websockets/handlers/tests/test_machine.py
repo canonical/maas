@@ -231,6 +231,7 @@ class TestMachineHandler(MAASServerTestCase):
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
+            "default_user": node.default_user,
         }
         if for_list:
             allowed_fields = MachineHandler.Meta.list_fields + [

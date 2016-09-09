@@ -840,6 +840,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar skip_networking: An optional flag to indicate if this node
         networking configuration doesn't need to be touched when it is
         commissioned.
+    :ivar default_user: The username this `Node` will be configured with,
+        None otherwise.
     """
 
     class Meta(DefaultMeta):
@@ -1004,6 +1006,11 @@ class Node(CleanSave, TimestampedModel):
     gateway_link_ipv6 = ForeignKey(
         StaticIPAddress, default=None, blank=True, null=True,
         editable=False, related_name='+', on_delete=SET_NULL)
+
+    # Used to configure the default username for this machine. It will be
+    # empty by default, and the default user.
+    default_user = CharField(
+        max_length=32, blank=True, default='')
 
     # Used to determine whether to:
     #  1. Import the SSH Key during commissioning and keep power on.

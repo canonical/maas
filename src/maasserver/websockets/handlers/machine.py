@@ -118,6 +118,7 @@ class MachineHandler(NodeHandler):
             'create_volume_group',
             'create_logical_volume',
             'set_boot_disk',
+            'default_user'
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
