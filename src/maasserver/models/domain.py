@@ -229,7 +229,7 @@ class Domain(CleanSave, TimestampedModel):
             dnsresource__domain_id=self.id).count()
         return ip_count + rr_count
 
-    def add_delegations(self, mapping, dns_ip, default_ttl):
+    def add_delegations(self, mapping, dns_ip_list, default_ttl):
         """Find any subdomains that need to be added to this domain, and add
         them.
 
@@ -257,10 +257,11 @@ class Domain(CleanSave, TimestampedModel):
             # Generate the NS and glue record that will automatically be in the
             # child zone.
             mapping[name].rrset.add((nsttl, 'NS', name))
-            if IPAddress(dns_ip).version == 4:
-                mapping[name].rrset.add((ttl, 'A', dns_ip))
-            else:
-                mapping[name].rrset.add((ttl, 'AAAA', dns_ip))
+            for dns_ip in dns_ip_list:
+                if dns_ip.version == 4:
+                    mapping[name].rrset.add((ttl, 'A', dns_ip.format()))
+                else:
+                    mapping[name].rrset.add((ttl, 'AAAA', dns_ip.format()))
             # Also return any NS RRset from the dnsdata for the '@' label in
             # that zone.  Add glue records for NS hosts as needed.
             for lhs in subdomain.dnsresource_set.filter(name='@'):

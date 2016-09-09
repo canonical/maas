@@ -74,7 +74,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         self.useFixture(RegionConfigurationFixture(maas_url=url))
         ip = factory.make_ipv4_address()
         resolver = self.patch(server_address, 'resolve_hostname')
-        resolver.return_value = {ip}
+        resolver.return_value = {IPAddress(ip)}
 
         hostname = urlparse(url).hostname
         result = get_dns_server_address()
@@ -84,8 +84,8 @@ class TestGetDNSServerAddress(MAASServerTestCase):
     def test_get_dns_server_address_passes_on_IPv4_IPv6_selection(self):
         ipv4 = factory.pick_bool()
         ipv6 = factory.pick_bool()
-        patch = self.patch(zonegenerator, 'get_maas_facing_server_address')
-        patch.return_value = factory.make_ipv4_address()
+        patch = self.patch(zonegenerator, 'get_maas_facing_server_addresses')
+        patch.return_value = [IPAddress(factory.make_ipv4_address())]
 
         get_dns_server_address(ipv4=ipv4, ipv6=ipv6)
 
@@ -95,15 +95,15 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         url = maastesting_factory.make_simple_http_url()
         self.useFixture(RegionConfigurationFixture(maas_url=url))
         self.patch(
-            zonegenerator, 'get_maas_facing_server_address',
+            zonegenerator, 'get_maas_facing_server_addresses',
             FakeMethod(failure=socket.error))
         self.assertRaises(DNSException, get_dns_server_address)
 
     def test_get_dns_server_address_logs_warning_if_ip_is_localhost(self):
         logger = self.patch(zonegenerator, 'logger')
         self.patch(
-            zonegenerator, 'get_maas_facing_server_address',
-            Mock(return_value='127.0.0.1'))
+            zonegenerator, 'get_maas_facing_server_addresses',
+            Mock(return_value=[IPAddress('127.0.0.1')]))
         get_dns_server_address()
         self.assertEqual(
             call(WARNING_MESSAGE % '127.0.0.1'),
@@ -112,7 +112,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
     def test_get_dns_server_address_uses_rack_controller_url(self):
         ip = factory.make_ipv4_address()
         resolver = self.patch(server_address, 'resolve_hostname')
-        resolver.return_value = {ip}
+        resolver.return_value = {IPAddress(ip)}
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
         rack_controller = factory.make_RackController(url=maas_url)

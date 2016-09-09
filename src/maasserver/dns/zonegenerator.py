@@ -24,7 +24,7 @@ from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
-from maasserver.server_address import get_maas_facing_server_address
+from maasserver.server_address import get_maas_facing_server_addresses
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -102,7 +102,7 @@ def warn_loopback(ip):
 
 
 def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
-    """Return the DNS server's IP address.
+    """Return a single DNS server IP address (based on address family).
 
     That address is derived from the config maas_url or rack_controller.url.
     Consult the 'maas-region local_config_set --maas-url' command for
@@ -116,8 +116,29 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
     :param ipv6: Include IPv6 server addresses?
 
     """
+    iplist = get_dns_server_addresses(rack_controller, ipv4, ipv6)
+    return(min(iplist).format())
+
+
+def get_dns_server_addresses(rack_controller=None, ipv4=True, ipv6=True):
+    """Return the DNS server's IP addresses.
+
+    That address is derived from the config maas_url or rack_controller.url.
+    Consult the 'maas-region local_config_set --maas-url' command for
+    details on how to set the MAAS URL.
+
+    :param rack_controller: Optional rack controller to which the DNS server
+        should be accessible.  If given, the server addresses will be taken
+        from the rack controller's `maas_url` setting.  Otherwise, it will be
+        taken from the globally configured default MAAS URL.
+    :param ipv4: Include IPv4 server addresses?
+    :param ipv6: Include IPv6 server addresses?
+    :return: List of IPAddress to use.  Loopback addresses are removed from the
+        list, unless there are no non-loopback addresses.
+
+    """
     try:
-        ip = get_maas_facing_server_address(
+        iplist = get_maas_facing_server_addresses(
             rack_controller, ipv4=ipv4, ipv6=ipv6)
     except socket.error as e:
         raise DNSException(
@@ -128,8 +149,13 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
             "local_config_set --maas-url' command."
             % e.strerror)
 
-    warn_loopback(ip)
-    return ip
+    non_loop = [ip for ip in iplist if not ip.is_loopback()]
+    if len(non_loop) > 0:
+        return non_loop
+    else:
+        for ip in iplist:
+            warn_loopback(ip)
+        return iplist
 
 
 def get_dns_search_paths():
@@ -175,7 +201,7 @@ class ZoneGenerator:
     def _gen_forward_zones(
             domains, serial, mappings, rrset_mappings, default_ttl):
         """Generator of forward zones, collated by domain name."""
-        dns_ip = get_dns_server_address()
+        dns_ip_list = get_dns_server_addresses()
         domains = set(domains)
 
         # For each of the domains that we are generating, create the zone from:
@@ -198,7 +224,7 @@ class ZoneGenerator:
             other_mapping = rrset_mappings[domain]
 
             # 2b. Capture NS RRsets for anything that is a child of this domain
-            domain.add_delegations(other_mapping, dns_ip, default_ttl)
+            domain.add_delegations(other_mapping, dns_ip_list, default_ttl)
 
             # 3. All forward entries for the managed and unmanaged dynamic
             # ranges go into the default domain.
@@ -213,7 +239,7 @@ class ZoneGenerator:
                             dynamic_ranges.append(ip_range.get_MAASIPRange())
 
             yield DNSForwardZoneConfig(
-                domain.name, serial=serial, dns_ip=dns_ip,
+                domain.name, serial=serial, dns_ip_list=dns_ip_list,
                 default_ttl=default_ttl,
                 ns_ttl=domain.get_base_ttl('NS', default_ttl),
                 ipv4_ttl=domain.get_base_ttl('A', default_ttl),

@@ -212,14 +212,14 @@ class TestConfiguration(PservTestCase):
     def test_bind_write_zones_writes_file(self):
         domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
-        dns_ip = factory.pick_ip_in_network(network)
+        dns_ip_list = [factory.pick_ip_in_network(network)]
         ip = factory.pick_ip_in_network(network)
         ttl = random.randint(10, 1000)
         forward_zone = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
             mapping={factory.make_string(): HostnameIPMapping(
                 None, ttl, {ip})},
-            dns_ip=dns_ip)
+            dns_ip_list=dns_ip_list)
         reverse_zone = DNSReverseZoneConfig(
             domain, serial=random.randint(1, 100), network=network)
         actions.bind_write_zones(zones=[forward_zone, reverse_zone])

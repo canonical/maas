@@ -5,6 +5,7 @@
 
 __all__ = [
     'get_maas_facing_server_address',
+    'get_maas_facing_server_addresses',
     'get_maas_facing_server_host',
     ]
 
@@ -54,7 +55,36 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
         which the server address should be computed.
     :param ipv4: Include IPv4 addresses?  Defaults to `True`.
     :param ipv6: Include IPv6 addresses?  Defaults to `True`.
-    :return: An IP address as a unicode string.  If the configured URL
+    :return: An IP addresses as a unicode string.  If the configured URL
+        uses a hostname, this function will resolve that hostname.
+    :raise UnresolvableHost: if no IP addresses could be found for
+        the hostname.
+
+    """
+    addresses = get_maas_facing_server_addresses(
+        rack_controller, ipv4=ipv4, ipv6=ipv6, link_local=True)
+    return min(addresses).format()
+
+
+def get_maas_facing_server_addresses(
+        rack_controller=None, ipv4=True, ipv6=True, link_local=False):
+    """Return addresses for the MAAS server.
+
+    The address is taken from the configured MAAS URL or `controller.url`.
+    Consult the 'maas-region local_config_set' command for details on
+    how to set the MAAS URL.
+
+    If there is more than one IP address for the host, all of the addresses for
+    the appropriate family will be returned.  (If link_local is False, then
+    only non-link-local addresses are returned.
+
+    To get the "best" address, see get_maas_facing_server_address().
+
+    :param rack_controller: The rack controller from the point of view of
+        which the server address should be computed.
+    :param ipv4: Include IPv4 addresses?  Defaults to `True`.
+    :param ipv6: Include IPv6 addresses?  Defaults to `True`.
+    :return: An IP addresses as a list: [IPAddress, ...]  If the configured URL
         uses a hostname, this function will resolve that hostname.
     :raise UnresolvableHost: if no IP addresses could be found for
         the hostname.
@@ -68,4 +98,6 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
         addresses = set()
     if len(addresses) == 0:
         raise UnresolvableHost("No address found for host %s." % hostname)
-    return min(addresses).format()
+    if not link_local:
+        addresses = [ip for ip in addresses if not ip.is_link_local()]
+    return addresses

@@ -194,7 +194,7 @@ class DomainTest(MAASServerTestCase):
     def test_add_delegations_may_do_nothing(self):
         domain = factory.make_Domain()
         mapping = {}
-        domain.add_delegations(mapping, '::1', 30)
+        domain.add_delegations(mapping, [IPAddress("::1")], 30)
 
     def test_add_delegations_adds_delegation(self):
         parent = factory.make_Domain()
@@ -202,7 +202,7 @@ class DomainTest(MAASServerTestCase):
         factory.make_Domain(name="%s.%s" % (name, parent.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, "::1", 30)
+        parent.add_delegations(mapping, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
             rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
         self.assertEqual(expected_map, mapping[name])
@@ -224,7 +224,7 @@ class DomainTest(MAASServerTestCase):
             rrdata="%s.%s." % (other_name, parent.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, "::1", 30)
+        parent.add_delegations(mapping, [IPAddress("::1")], 30)
         expected_map = {
             name: HostnameRRsetMapping(
                 rrset={
@@ -281,7 +281,7 @@ class DomainTest(MAASServerTestCase):
             else:
                 expected_map[ns_part] = HostnameRRsetMapping(
                     rrset={(30, 'A', sip.ip)})
-        parent.add_delegations(mapping, "::1", 30)
+        parent.add_delegations(mapping, [IPAddress("::1")], 30)
         self.assertEqual(expected_map, mapping)
 
     def test_add_delegations_allows_dots(self):
@@ -290,7 +290,7 @@ class DomainTest(MAASServerTestCase):
         factory.make_Domain(name="%s.%s" % (name, parent.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, "::1", 30)
+        parent.add_delegations(mapping, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
             rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
         self.assertEqual(expected_map, mapping[name])
@@ -302,7 +302,7 @@ class DomainTest(MAASServerTestCase):
         factory.make_Domain(name="%s.%s" % (factory.make_name(), child.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, "::1", 30)
+        parent.add_delegations(mapping, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
             rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
         self.assertEqual(expected_map, mapping[name])
