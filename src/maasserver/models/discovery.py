@@ -139,6 +139,8 @@ class Discovery(CleanSave, ViewModel):
     mac_address = MACAddressField(
         unique=False, null=True, blank=True, editable=False)
 
+    first_seen = DateTimeField(editable=False)
+
     last_seen = DateTimeField(editable=False)
 
     mdns = ForeignKey(

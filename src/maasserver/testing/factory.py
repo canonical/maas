@@ -914,7 +914,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Neighbour(
             self, ip=None, time=None, vid=0, count=None, interface=None,
-            mac_address=None, updated=None):
+            mac_address=None, updated=None, created=None):
         if ip is None:
             ip = factory.make_ip_address()
         if time is None:
@@ -932,17 +932,19 @@ class Factory(maastesting.factory.Factory):
         neighbour = Neighbour(
             ip=ip, time=time, vid=vid, count=count, interface=interface,
             mac_address=mac_address)
-        neighbour.save(_updated=updated)
+        neighbour.save(_updated=updated, _created=created)
         return neighbour
 
-    def make_MDNS(self, hostname=None, ip=None, interface=None, updated=None):
+    def make_MDNS(
+            self, hostname=None, ip=None, interface=None, updated=None,
+            created=None):
         if hostname is None:
             hostname = factory.make_name()
         if interface is None:
             rack = factory.make_RackController()
             interface = factory.make_Interface(node=rack)
         mdns = MDNS(hostname=hostname, ip=ip, interface=interface)
-        mdns.save(_updated=updated)
+        mdns.save(_updated=updated, _created=created)
         return mdns
 
     def make_Discovery(self, hostname=None, *args, **kwargs):

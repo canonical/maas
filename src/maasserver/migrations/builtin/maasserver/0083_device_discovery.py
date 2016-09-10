@@ -24,6 +24,7 @@ class Migration(migrations.Migration):
                 ('discovery_id', models.CharField(null=True, max_length=256, editable=False, unique=True)),
                 ('ip', maasserver.fields.MAASIPAddressField(verbose_name='IP', editable=False, blank=True, null=True, default=None)),
                 ('mac_address', maasserver.fields.MACAddressField(blank=True, null=True, editable=False)),
+                ('first_seen', models.DateTimeField(editable=False)),
                 ('last_seen', models.DateTimeField(editable=False)),
                 ('hostname', maasserver.fields.DomainNameField(max_length=256, editable=False, null=True)),
                 ('observer_system_id', models.CharField(max_length=41, editable=False)),

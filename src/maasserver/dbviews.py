@@ -51,6 +51,7 @@ maasserver_discovery = dedent("""\
         neigh.ip AS ip,
         neigh.mac_address AS mac_address,
         neigh.vid AS vid,
+        neigh.created AS first_seen,
         GREATEST(neigh.updated, mdns.updated) AS last_seen,
         mdns.id AS mdns_id,
         mdns.hostname AS hostname,
