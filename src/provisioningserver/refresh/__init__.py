@@ -78,7 +78,7 @@ def get_sys_info():
 
 
 def signal(
-        url, creds, status, message, files={}, script_result=None,
+        url, creds, status, message, files: dict=None, script_result=None,
         extra_headers=None):
     """Send a node signal to a given maas_url."""
     if isinstance(status, int):
@@ -93,7 +93,8 @@ def signal(
             script_result = str(script_result)
         params[b'script_result'] = script_result.encode("utf-8")
 
-    data, headers = encode_multipart_data(params, files)
+    data, headers = encode_multipart_data(
+        params, ({} if files is None else files))
 
     if extra_headers is not None:
         headers.update(extra_headers)

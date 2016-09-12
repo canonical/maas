@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Change cluster controller configuration settings.
@@ -68,8 +68,8 @@ def add_arguments(parser):
     uuid_group = parser.add_mutually_exclusive_group()
     uuid_group.add_argument(
         '--uuid', action='store', required=False,
-        help=('Change the cluster UUID. Pass AUTO to generate a new UUID if '
-              'one is not already set.'))
+        help=('Change the cluster UUID. Use --init instead to generate a '
+              'new UUID if one is not already set.'))
     uuid_group.add_argument(
         '--init', action='store_true', required=False,
         help=('Generate a new UUID for this cluster controller.'))

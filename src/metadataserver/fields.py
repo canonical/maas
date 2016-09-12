@@ -13,10 +13,8 @@ from base64 import (
 )
 
 from django.db import connection
-from django.db.models import (
-    Field,
-    SubfieldBase,
-)
+from django.db.models import SubfieldBase
+from maasserver.fields import Field
 
 
 class Bin(bytes):

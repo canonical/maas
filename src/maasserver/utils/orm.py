@@ -44,6 +44,7 @@ import re
 import threading
 from time import sleep
 import types
+from typing import Container
 
 from django.core.exceptions import (
     MultipleObjectsReturned,
@@ -634,15 +635,18 @@ def savepoint():
             "Savepoints cannot be created outside of a transaction.")
 
 
-def in_transaction(connection=connection):
-    """Is `connection` in the midst of a transaction?
+def in_transaction(_connection=None):
+    """Is `_connection` in the midst of a transaction?
 
     This only enquires as to Django's perspective on the situation. It does
     not actually check that the database agrees with Django.
 
     :return: bool
     """
-    return connection.in_atomic_block
+    if _connection is None:
+        return connection.in_atomic_block
+    else:
+        return _connection.in_atomic_block
 
 
 def validate_in_transaction(connection):
@@ -826,7 +830,8 @@ def parse_item_operation(specifier):
     return specifier, op
 
 
-def parse_item_specifier_type(specifier, spec_types={}, separator=':'):
+def parse_item_specifier_type(
+        specifier, spec_types: Container=None, separator=':'):
     """
     Returns a tuple that splits the string int a specifier, and its specifier
     type.
@@ -835,8 +840,8 @@ def parse_item_specifier_type(specifier, spec_types={}, separator=':'):
     be found in the set, returns None in place of the specifier_type.
 
     :param specifier: The specifier string, such as "ip:10.0.0.1".
-    :param spec_types: A dict whose keys are strings that will be recognized
-        as specifier types.
+    :param spec_types: A container whose elements are strings that will be
+        recognized as specifier types.
     :param separator: Optional specifier. Defaults to ':'.
     :return: tuple
     """

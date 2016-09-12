@@ -66,10 +66,11 @@ class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
        that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
        rrdata) tuples."""
-    def __init__(self, system_id=None, rrset=set(), node_type=None):
+
+    def __init__(self, system_id=None, rrset: set=None, node_type=None):
         self.system_id = system_id
         self.node_type = node_type
-        self.rrset = rrset.copy()
+        self.rrset = set() if rrset is None else rrset.copy()
 
     def __repr__(self):
         return "HostnameRRSetMapping(%r, %r, %r)" % (

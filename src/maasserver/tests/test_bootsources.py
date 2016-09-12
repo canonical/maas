@@ -88,10 +88,11 @@ def make_image_spec(
         )
 
 
-def make_boot_image_mapping(image_specs=[]):
+def make_boot_image_mapping(image_specs=None):
     mapping = BootImageMapping()
-    for image_spec in image_specs:
-        mapping.setdefault(image_spec, {})
+    if image_specs is not None:
+        for image_spec in image_specs:
+            mapping.setdefault(image_spec, {})
     return mapping
 
 

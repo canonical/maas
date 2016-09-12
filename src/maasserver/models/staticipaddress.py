@@ -70,11 +70,13 @@ maaslog = get_maas_logger("node")
 class HostnameIPMapping:
     """This is used to return address information for a host in a way that
        keeps life simple for the callers."""
-    def __init__(self, system_id=None, ttl=None, ips=set(), node_type=None):
+
+    def __init__(
+            self, system_id=None, ttl=None, ips: set=None, node_type=None):
         self.system_id = system_id
         self.node_type = node_type
         self.ttl = ttl
-        self.ips = ips.copy()
+        self.ips = set() if ips is None else ips.copy()
 
     def __repr__(self):
         return "HostnameIPMapping(%r, %r, %r, %r)" % (

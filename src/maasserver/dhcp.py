@@ -235,10 +235,13 @@ def make_dhcp_snippet(dhcp_snippet):
     }
 
 
-def make_hosts_for_subnets(subnets, nodes_dhcp_snippets=[]):
+def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list=None):
     """Return list of host entries to create in the DHCP configuration for the
     given `subnets`.
     """
+    if nodes_dhcp_snippets is None:
+        nodes_dhcp_snippets = []
+
     def get_dhcp_snippets_for_interface(interface):
         dhcp_snippets = list()
         for dhcp_snippet in nodes_dhcp_snippets:
@@ -317,7 +320,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 def make_subnet_config(
         rack_controller, subnet, maas_dns_server, ntp_servers, default_domain,
-        failover_peer=None, subnets_dhcp_snippets=[]):
+        failover_peer=None, subnets_dhcp_snippets: list=None):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
     if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
@@ -327,6 +330,8 @@ def make_subnet_config(
         dns_servers = maas_dns_server
     else:
         dns_servers = ""
+    if subnets_dhcp_snippets is None:
+        subnets_dhcp_snippets = []
     return {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
@@ -369,7 +374,7 @@ def make_failover_peer_config(vlan, rack_controller):
 
 def get_dhcp_configure_for(
         ip_version, rack_controller, vlan, subnets, ntp_servers, domain,
-        dhcp_snippets=[]):
+        dhcp_snippets: list=None):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
@@ -398,6 +403,9 @@ def get_dhcp_configure_for(
             vlan, rack_controller)
     else:
         peer_name, peer_config = None, None
+
+    if dhcp_snippets is None:
+        dhcp_snippets = []
 
     subnets_dhcp_snippets = [
         dhcp_snippet for dhcp_snippet in dhcp_snippets

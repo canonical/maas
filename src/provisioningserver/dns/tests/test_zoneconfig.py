@@ -38,7 +38,7 @@ from twisted.python.filepath import FilePath
 class HostnameIPMapping:
     """This is used to return address information for a host in a way that
        keeps life simple for the callers."""
-    def __init__(self, system_id=None, ttl=None, ips=set()):
+    def __init__(self, system_id=None, ttl=None, ips=frozenset()):
         self.system_id = system_id
         self.ttl = ttl
         self.ips = ips.copy()
@@ -55,7 +55,7 @@ class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
        that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
        rrdata) tuples."""
-    def __init__(self, system_id=None, rrset=set()):
+    def __init__(self, system_id=None, rrset=frozenset()):
         self.system_id = system_id
         self.rrset = rrset.copy()
 

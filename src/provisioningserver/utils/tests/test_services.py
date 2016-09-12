@@ -384,25 +384,25 @@ class TestNeighbourObservationProtocol(MAASTestCase):
 class TrueProcessProtocolService(ProcessProtocolService):
 
     def getProcessParameters(self):
-        return ["/bin/true"]
+        return [b"/bin/true"]
 
 
 class FalseProcessProtocolService(ProcessProtocolService):
 
     def getProcessParameters(self):
-        return ["/bin/false"]
+        return [b"/bin/false"]
 
 
 class CatProcessProtocolService(ProcessProtocolService):
 
     def getProcessParameters(self):
-        return ["/bin/cat"]
+        return [b"/bin/cat"]
 
 
 class EchoProcessProtocolService(ProcessProtocolService):
 
     def getProcessParameters(self):
-        return ["/bin/echo", "{}\n"]
+        return [b"/bin/echo", b"{}\n"]
 
 
 class MockJSONProtocol(JSONPerLineProtocol):

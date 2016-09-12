@@ -739,12 +739,17 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         self.assertItemsEqual(ALL_HANDLERS, factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
-        mock_import = self.patch_autospec(protocol_module, "import_module")
+        getModule = self.patch_autospec(protocol_module, "getModule")
         factory = self.make_factory()
         factory.getSessionEngine()
+        # A reference to the module was obtained via getModule.
         self.assertThat(
-            mock_import,
-            MockCalledOnceWith(protocol_module.settings.SESSION_ENGINE))
+            getModule, MockCalledOnceWith(
+                protocol_module.settings.SESSION_ENGINE))
+        # It was then loaded via that reference.
+        self.assertThat(
+            getModule.return_value.load,
+            MockCalledOnceWith())
 
     def test_getHandler_returns_None_on_missing_handler(self):
         factory = self.make_factory()

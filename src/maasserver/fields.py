@@ -6,6 +6,7 @@
 __all__ = [
     "CIDRField",
     "EditableBinaryField",
+    "Field",
     "HostListFormField",
     "IPListFormField",
     "IPv4CIDRField",
@@ -35,7 +36,7 @@ from django.db import connections
 from django.db.models import (
     BinaryField,
     CharField,
-    Field,
+    Field as _BrokenField,
     GenericIPAddressField,
     IntegerField,
     Q,
@@ -62,6 +63,17 @@ from netaddr import (
 )
 from provisioningserver.utils import typed
 import psycopg2.extensions
+
+
+class Field(_BrokenField):
+    """Django's `Field` has a mutable default argument, hence is broken.
+
+    This fixes it.
+    """
+
+    def __init__(self, *args, validators=None, **kwargs):
+        kwargs["validators"] = [] if validators is None else validators
+        super(Field, self).__init__(*args, **kwargs)
 
 
 MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{1,2}[:-]){5}[0-9a-fA-F]{1,2}\s*$')

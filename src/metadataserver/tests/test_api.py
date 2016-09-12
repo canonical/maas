@@ -226,7 +226,9 @@ def make_node_client(node=None):
     return MAASSensibleOAuthClient(get_node_init_user(), token)
 
 
-def call_signal(client=None, version='latest', files={}, headers={}, **kwargs):
+def call_signal(
+        client=None, version='latest', files: dict=None, headers: dict=None,
+        **kwargs):
     """Call the API's signal method.
 
     :param client: Optional client to POST with.  If omitted, will create
@@ -237,6 +239,10 @@ def call_signal(client=None, version='latest', files={}, headers={}, **kwargs):
     :param **kwargs: Any other keyword parameters are passed on directly
         to the "signal" call.
     """
+    if files is None:
+        files = {}
+    if headers is None:
+        headers = {}
     if client is None:
         client = make_node_client(factory.make_Node(
             status=NODE_STATUS.COMMISSIONING))

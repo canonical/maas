@@ -19,19 +19,19 @@ zchars = "34678abcdefghkmnpqrstwxy"
 znums = dict(zip(zchars, count(0)))
 
 
-def from_int(num, chars=zchars):
-    parts, div = [], len(chars)
+def from_int(num, _chars=zchars):
+    parts, div = [], len(_chars)
     while num > 0:
         num, rem = divmod(num, div)
-        parts.append(chars[rem])
+        parts.append(_chars[rem])
     if len(parts) == 0:
-        return chars[0]
+        return _chars[0]
     else:
         return "".join(parts[::-1])
 
 
-def to_int(zs, nums=znums):
-    total, div = 0, len(nums)
+def to_int(zs, _nums=znums):
+    total, div = 0, len(_nums)
     for char, exp in zip(zs[::-1], count(0)):
-        total += nums[char] * (div ** exp)
+        total += _nums[char] * (div ** exp)
     return total

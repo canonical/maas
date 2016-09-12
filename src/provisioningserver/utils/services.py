@@ -139,6 +139,8 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         env = select_c_utf8_bytes_locale()
         log.msg("%s started." % self.description)
         args = self.getProcessParameters()
+        assert all(isinstance(arg, bytes) for arg in args), (
+            "Process arguments must all be bytes, got: %s" % repr(args))
         self.process = reactor.spawnProcess(
             self.protocol, args[0], args, env=env)
         return self.protocol.done.addErrback(
@@ -205,7 +207,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     # The last successfully recorded interfaces.
     _recorded = None
-    _monitored = set()
+    _monitored = frozenset()
 
     # Use a named filesystem lock to prevent more than one monitoring service
     # running on each host machine. This service attempts to acquire this lock

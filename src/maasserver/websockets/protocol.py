@@ -24,7 +24,6 @@ from django.contrib.auth import (
 )
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.utils.importlib import import_module
 from maasserver.eventloop import services
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -44,6 +43,7 @@ from twisted.internet.protocol import (
     Protocol,
 )
 from twisted.python import log
+from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
 
 
@@ -376,7 +376,7 @@ class WebSocketFactory(Factory):
 
         Used by the protocol to validate the sessionid.
         """
-        return import_module(settings.SESSION_ENGINE)
+        return getModule(settings.SESSION_ENGINE).load()
 
     def cacheHandlers(self):
         """Cache all the websocket handlers."""

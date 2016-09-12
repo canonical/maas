@@ -47,12 +47,13 @@ from twisted.internet.defer import (
 @attr.s
 class FakeConnectionToRegionForGetControllerType(FakeConnectionToRegion):
 
-    controller_type = attr.ib(default={"is_region": False, "is_rack": False})
+    controller_type = attr.ib(
+        default=(("is_region", False), ("is_rack", False)))
 
     def callRemote(self, cmd, system_id):
         assert cmd is region.GetControllerType, (
             "cmd must be GetControllerType, got: %r" % (cmd,))
-        return succeed(self.controller_type)
+        return succeed(dict(self.controller_type))
 
 
 @attr.s
@@ -60,7 +61,8 @@ class StubClusterClientService:
     """A stub `ClusterClientService` service."""
 
     addresses = attr.ib(default=frozenset(), convert=frozenset)
-    controller_type = attr.ib(default={"is_region": False, "is_rack": False})
+    controller_type = attr.ib(
+        default=(("is_region", False), ("is_rack", False)))
 
     def getAllClients(self):
         return [
