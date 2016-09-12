@@ -35,7 +35,10 @@ from twisted.internet.defer import (
     Deferred,
     maybeDeferred,
 )
-from twisted.internet.error import ProcessDone
+from twisted.internet.error import (
+    ProcessDone,
+    ProcessExitedAlready,
+)
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
 from twisted.python import log
@@ -51,22 +54,28 @@ class JSONPerLineProtocol(ProcessProtocol):
 
     def __init__(self, callback=None):
         super().__init__()
-        self.done = Deferred()
-        self.callback = callback
-        self.outbuf = b''
-        self.errbuf = b''
+        if callback is None:
+            self._callback = lambda result: None
+        else:
+            self._callback = callback
+        self._done = lambda result: None
+        self._outbuf = b''
+        self._errbuf = b''
+
+    def setDoneCallback(self, done):
+        self._done = done
 
     def connectionMade(self):
-        self.outbuf = b''
-        self.errbuf = b''
+        self._outbuf = b''
+        self._errbuf = b''
 
     def outReceived(self, data):
-        lines, self.outbuf = self.splitLines(self.outbuf + data)
+        lines, self._outbuf = self.splitLines(self._outbuf + data)
         for line in lines:
             self.outLineReceived(line)
 
     def errReceived(self, data):
-        lines, self.errbuf = self.splitLines(self.errbuf + data)
+        lines, self._errbuf = self.splitLines(self._errbuf + data)
         for line in lines:
             self.errLineReceived(line)
 
@@ -94,19 +103,21 @@ class JSONPerLineProtocol(ProcessProtocol):
             self.objectReceived(obj)
 
     def objectReceived(self, obj):
-        self.callback([obj])
+        self._callback([obj])
 
     def errLineReceived(self, line):
         line = line.decode("utf-8")
         log.msg(line.rstrip())
 
     def processEnded(self, reason):
-        if len(self.errbuf) != 0:
-            self.errLineReceived(self.errbuf)
+        if len(self._errbuf) != 0:
+            self.errLineReceived(self._errbuf)
+        # If the process finished normally, call the _done callback with
+        # None. Otherwise, pass the reason through.
         if reason.check(ProcessDone):
-            self.done.callback(None)
+            self._done(None)
         else:
-            self.done.errback(reason)
+            self._done(reason)
 
 
 class NeighbourObservationProtocol(JSONPerLineProtocol):
@@ -126,25 +137,37 @@ class NeighbourObservationProtocol(JSONPerLineProtocol):
 
 class ProcessProtocolService(TimerService, metaclass=ABCMeta):
 
-    def __init__(self, description, protocol, interval=60.0):
-        assert protocol is not None
-        assert description is not None
-        self.description = description
-        self.protocol = protocol
+    def __init__(self, interval=60.0, reactor_process=None):
+        self.deferredProcessEnded = None
         self.process = None
+        if reactor_process is not None:
+            self.reactor_process = reactor_process
+        else:
+            self.reactor_process = reactor
         super().__init__(interval, self.startProcess)
 
     @deferred
     def startProcess(self):
         env = select_c_utf8_bytes_locale()
-        log.msg("%s started." % self.description)
+        log.msg("%s started." % self.getDescription())
         args = self.getProcessParameters()
+        self.deferredProcessEnded = Deferred()
+        protocol = self.createProcessProtocol()
+        protocol.setDoneCallback(self.processEnded)
         assert all(isinstance(arg, bytes) for arg in args), (
             "Process arguments must all be bytes, got: %s" % repr(args))
-        self.process = reactor.spawnProcess(
-            self.protocol, args[0], args, env=env)
-        return self.protocol.done.addErrback(
-            log.err, "%s failed." % self.description)
+        self.process = self.reactor_process.spawnProcess(
+            protocol, args[0], args, env=env)
+        return self.deferredProcessEnded
+
+    def processEnded(self, failure):
+        if failure is None:
+            log.msg("%s ended normally." % self.getDescription())
+        else:
+            log.err(failure, "%s failed." % self.getDescription())
+        # We don't need to call the errback, because we don't want the service
+        # to crash with an unhandled error.
+        self.deferredProcessEnded.callback(None)
 
     @abstractmethod
     def getProcessParameters(self):
@@ -153,21 +176,51 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         This MUST be overridden in subclasses.
         """
 
+    @abstractmethod
+    def getDescription(self):
+        """Return the description of this process, suitable to use in verbose
+        logging.
+
+        This MUST be overridden in subclasses.
+        """
+
+    @abstractmethod
+    def createProcessProtocol(self):
+        """
+        Creates and returns the ProcessProtocol that will be used to
+        communicate with the process.
+
+        This MUST be overridden in subclasses.
+        """
+
+    def stopProcess(self):
+        try:
+            self.process.signalProcess("INT")
+        except ProcessExitedAlready:
+            pass
+
     def stopService(self):
         """Stops the neighbour observation service."""
         if self.process is not None:
             self.process.loseConnection()
+            # We don't care about the result; we just want to make sure the
+            # process is dead.
+            # XXX this causes us to log errors such as:
+            #     mDNS resolver process failed.
+            # reactor.callFromThread(self.stopProcess)
         return super().stopService()
 
 
 class NeighbourDiscoveryService(ProcessProtocolService):
     """Service to spawn the per-interface device discovery subprocess."""
 
-    def __init__(self, ifname: str, callback):
+    def __init__(self, ifname: str, callback: callable):
         self.ifname = ifname
-        description = "Neighbour observation process for %s" % ifname
-        protocol = NeighbourObservationProtocol(ifname, callback=callback)
-        super().__init__(description=description, protocol=protocol)
+        self.callback = callback
+        super().__init__()
+
+    def getDescription(self) -> str:
+        return "Neighbour observation process for %s" % self.ifname
 
     def getProcessParameters(self):
         maas_rack_cmd = get_maas_provision_command().encode("utf-8")
@@ -177,14 +230,20 @@ class NeighbourDiscoveryService(ProcessProtocolService):
             self.ifname.encode("utf-8")
         ]
 
+    def createProcessProtocol(self):
+        return NeighbourObservationProtocol(
+            self.ifname, callback=self.callback)
+
 
 class MDNSResolverService(ProcessProtocolService):
     """Service to spawn the per-interface device discovery subprocess."""
 
     def __init__(self, callback):
-        protocol = JSONPerLineProtocol(callback=callback)
-        super().__init__(
-            description="mDNS resolver process", protocol=protocol)
+        self.callback = callback
+        super().__init__()
+
+    def getDescription(self):
+        return "mDNS observation process"
 
     def getProcessParameters(self):
         maas_rack_cmd = get_maas_provision_command().encode("utf-8")
@@ -192,6 +251,9 @@ class MDNSResolverService(ProcessProtocolService):
             maas_rack_cmd,
             b"observe-mdns",
         ]
+
+    def createProcessProtocol(self):
+        return JSONPerLineProtocol(callback=self.callback)
 
 
 class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
@@ -379,7 +441,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         for ifname in new_interfaces:
             # Sanity check to ensure the service isn't already started.
             try:
-                self.getServiceNamed("neighbour_disovery:" + ifname)
+                self.getServiceNamed("neighbour_discovery:" + ifname)
             except KeyError:
                 # This is an expected exception. (The call inside the `try`
                 # is only necessary to ensure the service doesn't exist.)
@@ -389,7 +451,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         """Stop monitoring services for the specified set of interfaces."""
         for ifname in deleted_interfaces:
             try:
-                service = self.getServiceNamed("neighbour_disovery:" + ifname)
+                service = self.getServiceNamed("neighbour_discovery:" + ifname)
             except KeyError:
                 # Service doesn't exist, so no need to stop it.
                 pass

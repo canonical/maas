@@ -47,6 +47,7 @@ from testtools.tests.twistedsupport.test_deferred import extract_result
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     DeferredQueue,
     inlineCallbacks,
     succeed,
@@ -56,6 +57,7 @@ from twisted.internet.error import (
     ProcessExitedAlready,
     ProcessTerminated,
 )
+from twisted.internet.task import Clock
 from twisted.python import threadable
 from twisted.python.failure import Failure
 
@@ -282,12 +284,25 @@ class TestJSONPerLineProtocol(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def make_deferred_callback(self):
+        d = Deferred()
+
+        def callback(result):
+            if result is None:
+                d.callback(None)
+            else:
+                d.errback(result)
+
+        return d, callback
+
     @inlineCallbacks
     def test__propagates_exit_errors(self):
         proto = JSONPerLineProtocol(callback=lambda json: None)
+        d, callback = self.make_deferred_callback()
+        proto.setDoneCallback(callback)
         reactor.spawnProcess(proto, b"false", (b"false",))
         with ExpectedException(ProcessTerminated, ".* exit code 1"):
-            yield proto.done
+            yield d
 
     def test__parses_only_full_lines(self):
         callback = Mock()
@@ -357,13 +372,16 @@ class TestJSONPerLineProtocol(MAASTestCase):
             proto.processEnded(Failure(ProcessDone(0)))
         self.assertThat(logger.output, Equals(message))
 
+    @inlineCallbacks
     def test__propagates_errors_from_command(self):
-        callback = Mock()
-        proto = JSONPerLineProtocol(callback=callback)
+        d, callback = self.make_deferred_callback()
+        proto = JSONPerLineProtocol()
+        proto.setDoneCallback(callback)
         proto.connectionMade()
         reason = Failure(ProcessTerminated(1))
         proto.processEnded(reason)
-        self.assertRaises(ProcessTerminated, extract_result, proto.done)
+        with ExpectedException(ProcessTerminated):
+            yield d
 
 
 class TestNeighbourObservationProtocol(MAASTestCase):
@@ -381,25 +399,38 @@ class TestNeighbourObservationProtocol(MAASTestCase):
             callback, MockCallsMatch(call([{"interface": ifname}])))
 
 
-class TrueProcessProtocolService(ProcessProtocolService):
+class MockProcessProtocolService(ProcessProtocolService):
+
+    def __init__(self):
+        super().__init__()
+        self._callback = Mock()
+
+    def getDescription(self):
+        return "%s mock ProcessProtocolService" % self.__class__.__name__
+
+    def createProcessProtocol(self):
+        return JSONPerLineProtocol(callback=self._callback)
+
+
+class TrueProcessProtocolService(MockProcessProtocolService):
 
     def getProcessParameters(self):
         return [b"/bin/true"]
 
 
-class FalseProcessProtocolService(ProcessProtocolService):
+class FalseProcessProtocolService(MockProcessProtocolService):
 
     def getProcessParameters(self):
         return [b"/bin/false"]
 
 
-class CatProcessProtocolService(ProcessProtocolService):
+class CatProcessProtocolService(MockProcessProtocolService):
 
     def getProcessParameters(self):
         return [b"/bin/cat"]
 
 
-class EchoProcessProtocolService(ProcessProtocolService):
+class EchoProcessProtocolService(MockProcessProtocolService):
 
     def getProcessParameters(self):
         return [b"/bin/echo", b"{}\n"]
@@ -416,70 +447,59 @@ class TestProcessProtocolService(MAASTestCase):
 
     def test__base_class_cannot_be_used(self):
         with ExpectedException(TypeError):
-            ProcessProtocolService(
-                description="Mock process", protocol=Mock())
+            ProcessProtocolService()
 
     @inlineCallbacks
     def test__starts_and_stops_process(self):
-        protocol = MockJSONProtocol()
-        service = CatProcessProtocolService(
-            description="Unit test process", protocol=protocol)
+        service = CatProcessProtocolService()
         mock_callback = Mock()
-        protocol.done.addCallback(mock_callback)
         service.startService()
+        self.assertThat(service.deferredProcessEnded, Not(IsFiredDeferred()))
+        service.deferredProcessEnded.addCallback(mock_callback)
         yield service.stopService()
+        yield service.deferredProcessEnded
+        self.assertThat(service.deferredProcessEnded, IsFiredDeferred())
         self.assertTrue(mock_callback.called)
         yield pause(0.0)
-        self.assertThat(protocol.done, IsFiredDeferred())
-        self.assertThat(extract_result(protocol.done), Is(None))
+        self.assertThat(service.deferredProcessEnded, IsFiredDeferred())
+        self.assertThat(extract_result(service.deferredProcessEnded), Is(None))
         with ExpectedException(ProcessExitedAlready):
             service.process.signalProcess("INT")
 
     @inlineCallbacks
     def test__handles_normal_process_exit(self):
-        protocol = MockJSONProtocol()
-        service = TrueProcessProtocolService(
-            description="Unit test process", protocol=protocol)
+        service = TrueProcessProtocolService()
         mock_callback = Mock()
-        protocol.done.addCallback(mock_callback)
         service.startService()
+        service.deferredProcessEnded.addCallback(mock_callback)
         yield service.stopService()
+        yield service.deferredProcessEnded
         self.assertTrue(mock_callback.called)
         yield pause(0.0)
-        self.assertThat(protocol.done, IsFiredDeferred())
-        self.assertThat(extract_result(protocol.done), Is(None))
+        self.assertThat(service.deferredProcessEnded, IsFiredDeferred())
+        self.assertThat(extract_result(service.deferredProcessEnded), Is(None))
 
     @inlineCallbacks
     def test__handles_abnormal_process_exit(self):
-        protocol = MockJSONProtocol()
-        service = FalseProcessProtocolService(
-            description="Unit test process", protocol=protocol)
-        mock_errback = Mock()
-        mock_callback = Mock()
-        protocol.done.addCallback(mock_callback)
-        protocol.done.addErrback(mock_errback)
-        service.startService()
-        yield service.stopService()
-        self.assertTrue(mock_errback.called)
-        self.assertFalse(mock_callback.called)
-        yield pause(0.0)
-        self.assertThat(protocol.done, IsFiredDeferred())
-        self.assertThat(extract_result(protocol.done), Equals(None))
+        service = FalseProcessProtocolService()
+        with TwistedLoggerFixture() as logger:
+            service.startService()
+            d = service.deferredProcessEnded
+            yield service.stopService()
+            self.assertThat(d, IsFiredDeferred())
+        self.assertThat(logger.output, DocTestMatches("... failed..."))
 
     @inlineCallbacks
     def test__calls_protocol_callback(self):
-        callback = Mock()
-        protocol = MockJSONProtocol(callback=callback)
-        service = EchoProcessProtocolService(
-            description="Unit test process", protocol=protocol)
+        service = EchoProcessProtocolService()
         service.startService()
         # Wait for the protocol to finish. (the echo process will stop)
-        yield protocol.done
-        self.assertThat(callback, MockCalledOnceWith([{}]))
+        d = service.deferredProcessEnded
+        result = yield d
+        self.assertThat(service._callback, MockCalledOnceWith([{}]))
         yield service.stopService()
-        yield pause(0.0)
-        self.assertThat(protocol.done, IsFiredDeferred())
-        self.assertThat(extract_result(protocol.done), Equals(None))
+        self.assertThat(d, IsFiredDeferred())
+        self.assertThat(result, Equals(None))
 
 
 class TestNeighbourDiscoveryService(MAASTestCase):
@@ -495,6 +515,26 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         self.assertTrue(args[0].endswith(b'maas-rack'))
         self.assertTrue(args[1], Equals(b"observe-arp"))
         self.assertTrue(args[2], Equals(ifname.encode('utf-8')))
+
+    @inlineCallbacks
+    def test__restarts_process_after_finishing(self):
+        ifname = factory.make_name('eth')
+        service = NeighbourDiscoveryService(ifname, Mock())
+        mock_process_params = self.patch(service, 'getProcessParameters')
+        mock_process_params.return_value = [b'/bin/echo', b'{}']
+        service.clock = Clock()
+        service.startService()
+        # Wait for the protocol to finish
+        service.clock.advance(0.0)
+        yield service.deferredProcessEnded
+        self.assertThat(service.deferredProcessEnded, IsFiredDeferred())
+        # Advance the clock (should start the service again)
+        interval = service.step
+        service.clock.advance(interval)
+        # The Deferred should have been recreated.
+        self.assertThat(service.deferredProcessEnded, Not(IsFiredDeferred()))
+        yield service.deferredProcessEnded
+        service.stopService()
 
 
 class TestMDNSResolverService(MAASTestCase):
