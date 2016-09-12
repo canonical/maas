@@ -45,10 +45,12 @@ class TestKeySource(MAASServerTestCase):
         mock_get_protocol_keys = self.patch(
             keysource_module, 'get_protocol_keys')
         mock_get_protocol_keys.return_value = keys.strip().split('\n')
-        keysource.import_keys(user)
+        returned_sshkeys = keysource.import_keys(user)
         self.expectThat(
             mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
         self.expectThat(SSHKey.objects.count(), Equals(2))
+        self.assertItemsEqual(
+            returned_sshkeys, SSHKey.objects.filter(keysource=keysource))
 
 
 class TestKeySourceManager(MAASServerTestCase):

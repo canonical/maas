@@ -23,9 +23,15 @@ class KeySourceManager(Manager):
     """A utility to manage the colletion of `KeySource`s."""
 
     def save_keys_for_user(self, user, protocol, auth_id):
+        """Save SSH Keys for user's protocol and auth_id.
+
+        :param user: The user to save the SSH keys for.
+        :param protocol: The protocol 'source'.
+        :param auth_id: The protocol username.
+        :return: List of saved `SSHKey`s.
+        """
         source, _ = self.get_or_create(protocol=protocol, auth_id=auth_id)
-        source.import_keys(user)
-        return source
+        return source.import_keys(user)
 
 
 class KeySource(CleanSave, TimestampedModel):
@@ -62,5 +68,6 @@ class KeySource(CleanSave, TimestampedModel):
         from maasserver.models.sshkey import SSHKey
 
         keys = get_protocol_keys(self.protocol, self.auth_id)
-        for key in keys:
+        return [
             SSHKey.objects.create(key=key, user=user, keysource=self)
+            for key in keys]
