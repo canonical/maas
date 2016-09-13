@@ -52,18 +52,10 @@ class JSONPerLineProtocol(ProcessProtocol):
     line of text.
     """
 
-    def __init__(self, callback=None):
+    def __init__(self, callback):
         super().__init__()
-        if callback is None:
-            self._callback = lambda result: None
-        else:
-            self._callback = callback
-        self._done = lambda result: None
-        self._outbuf = b''
-        self._errbuf = b''
-
-    def setDoneCallback(self, done):
-        self._done = done
+        self._callback = callback
+        self.done = Deferred()
 
     def connectionMade(self):
         self._outbuf = b''
@@ -112,12 +104,12 @@ class JSONPerLineProtocol(ProcessProtocol):
     def processEnded(self, reason):
         if len(self._errbuf) != 0:
             self.errLineReceived(self._errbuf)
-        # If the process finished normally, call the _done callback with
+        # If the process finished normally, fire _done with
         # None. Otherwise, pass the reason through.
         if reason.check(ProcessDone):
-            self._done(None)
+            self.done.callback(None)
         else:
-            self._done(reason)
+            self.done.errback(reason)
 
 
 class NeighbourObservationProtocol(JSONPerLineProtocol):
@@ -137,37 +129,27 @@ class NeighbourObservationProtocol(JSONPerLineProtocol):
 
 class ProcessProtocolService(TimerService, metaclass=ABCMeta):
 
-    def __init__(self, interval=60.0, reactor_process=None):
-        self.deferredProcessEnded = None
-        self.process = None
-        if reactor_process is not None:
-            self.reactor_process = reactor_process
-        else:
-            self.reactor_process = reactor
+    def __init__(self, interval=60.0):
         super().__init__(interval, self.startProcess)
+        self._process = self._protocol = None
 
     @deferred
     def startProcess(self):
         env = select_c_utf8_bytes_locale()
         log.msg("%s started." % self.getDescription())
         args = self.getProcessParameters()
-        self.deferredProcessEnded = Deferred()
-        protocol = self.createProcessProtocol()
-        protocol.setDoneCallback(self.processEnded)
         assert all(isinstance(arg, bytes) for arg in args), (
             "Process arguments must all be bytes, got: %s" % repr(args))
-        self.process = self.reactor_process.spawnProcess(
-            protocol, args[0], args, env=env)
-        return self.deferredProcessEnded
+        self._protocol = self.createProcessProtocol()
+        self._process = reactor.spawnProcess(
+            self._protocol, args[0], args, env=env)
+        return self._protocol.done.addBoth(self._processEnded)
 
-    def processEnded(self, failure):
+    def _processEnded(self, failure):
         if failure is None:
             log.msg("%s ended normally." % self.getDescription())
         else:
             log.err(failure, "%s failed." % self.getDescription())
-        # We don't need to call the errback, because we don't want the service
-        # to crash with an unhandled error.
-        self.deferredProcessEnded.callback(None)
 
     @abstractmethod
     def getProcessParameters(self):
@@ -195,14 +177,14 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
 
     def stopProcess(self):
         try:
-            self.process.signalProcess("INT")
+            self._process.signalProcess("INT")
         except ProcessExitedAlready:
             pass
 
     def stopService(self):
         """Stops the neighbour observation service."""
-        if self.process is not None:
-            self.process.loseConnection()
+        if self._process is not None:
+            self._process.loseConnection()
             # We don't care about the result; we just want to make sure the
             # process is dead.
             # XXX this causes us to log errors such as:
