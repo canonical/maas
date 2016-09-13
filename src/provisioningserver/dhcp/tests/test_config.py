@@ -153,7 +153,7 @@ def make_sample_params(test, ipv6=False):
     hostnames = (
         name for shared_network in shared_networks
         for subnet in shared_network["subnets"]
-        for name in subnet["ntp_servers"].split()
+        for name in subnet["ntp_servers"]
         if not is_ip_address(name)
     )
     update_HOSTALIASES(test, zip(hostnames, hostaddresses))
@@ -291,7 +291,7 @@ class TestGetConfig(PservTestCase):
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         dns_servers_expected = [
-            ", ".join(subnet["dns_servers"].split())
+            ", ".join(map(str, subnet["dns_servers"]))
             for network in params['shared_networks']
             for subnet in network['subnets']
         ]
@@ -318,7 +318,7 @@ class TestGetConfig(PservTestCase):
             server if is_ip_address(server) else gethostbyname(server)
             for network in params['shared_networks']
             for subnet in network['subnets']
-            for server in subnet["ntp_servers"].split()
+            for server in subnet["ntp_servers"]
         ]
         ntp_servers_observed = [
             server for server_line in re.findall(

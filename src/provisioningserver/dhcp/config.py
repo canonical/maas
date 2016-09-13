@@ -29,7 +29,6 @@ import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
     normalise_whitespace,
-    split_string_list,
 )
 from provisioningserver.utils.twisted import synchronous
 import tempita
@@ -170,6 +169,14 @@ def get_config(
             shared_networks, hosts, omapi_key)
 
 
+def normalise_any_iterable_to_comma_list(iterable):
+    """Like `normalise_to_comma_list` but coerces any iterable."""
+    if isinstance(iterable, str):
+        return normalise_to_comma_list(iterable)
+    else:
+        return ", ".join(map(str, iterable))
+
+
 @typed
 def get_config_v4(
         template_name: str, global_dhcp_snippets: Sequence[dict],
@@ -188,12 +195,12 @@ def get_config_v4(
     # Helper functions to stuff into the template namespace.
     helpers = {
         "oneline": normalise_whitespace,
-        "commalist": normalise_to_comma_list,
+        "commalist": normalise_any_iterable_to_comma_list,
     }
 
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:
-            ntp_servers = split_string_list(subnet.get("ntp_servers", ""))
+            ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
             subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
@@ -226,7 +233,7 @@ def get_config_v6(
     # Helper functions to stuff into the template namespace.
     helpers = {
         "oneline": normalise_whitespace,
-        "commalist": normalise_to_comma_list,
+        "commalist": normalise_any_iterable_to_comma_list,
     }
 
     rack_addrs = [
@@ -245,7 +252,7 @@ def get_config_v6(
             if rack_ip_found:
                 subnet["bootloader"] = compose_conditional_bootloader(
                     True, rack_ip)
-            ntp_servers = split_string_list(subnet.get("ntp_servers", ""))
+            ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
             subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)

@@ -10,6 +10,7 @@ __all__ = [
     'make_host',
     'make_host_dhcp_snippets',
     'make_shared_network',
+    'make_shared_network_v1',
     'make_subnet_config',
     'make_subnet_dhcp_snippets',
     'make_subnet_pool',
@@ -100,15 +101,15 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
         'subnet_mask': str(network.netmask),
         'subnet_cidr': str(network.cidr),
         'broadcast_ip': str(network.broadcast),
-        'dns_servers': " ".join((
-            factory.pick_ip_in_network(network),
-            factory.pick_ip_in_network(network),
-        )),
-        'ntp_servers': " ".join((
+        'dns_servers': [
+            IPAddress(factory.pick_ip_in_network(network)),
+            IPAddress(factory.pick_ip_in_network(network)),
+        ],
+        'ntp_servers': [
             factory.make_ipv4_address(),
             factory.make_ipv6_address(),
             factory.make_name("ntp-server"),
-        )),
+        ],
         'domain_name': '%s.example.com' % factory.make_name('domain'),
         'router_ip': factory.pick_ip_in_network(network),
         'pools': pools,
@@ -129,6 +130,21 @@ def make_shared_network(name=None, subnets=None, ipv6=False):
         "name": name,
         "subnets": subnets,
     }
+
+
+def make_shared_network_v1(name=None, subnets=None, ipv6=False):
+    """Return complete DHCP configuration dict for a shared network.
+
+    This produces the configuration dict suitable for original configure and
+    validate DHCP calls, not the V2 calls.
+    """
+    shared_network = make_shared_network(name, subnets, ipv6)
+    for subnet in shared_network["subnets"]:
+        subnet["dns_servers"] = " ".join(
+            str(server) for server in subnet["dns_servers"])
+        subnet["ntp_server"] = " ".join(
+            str(server) for server in subnet.pop("ntp_servers"))
+    return shared_network
 
 
 def make_failover_peer_config(

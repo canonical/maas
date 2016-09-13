@@ -622,7 +622,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'broadcast_ip',
                 'router_ip',
                 'dns_servers',
-                'ntp_servers',
+                'ntp_server',
                 'domain_name',
                 'pools',
                 'dhcp_snippets',
@@ -664,7 +664,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         config = dhcp.make_subnet_config(
             rack_controller, subnet, "", ntp, default_domain)
-        self.expectThat(config['ntp_servers'], Equals(ntp))
+        self.expectThat(config['ntp_server'], Equals(ntp))
 
     def test__overrides_ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1221,7 +1221,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "broadcast_ip": str(ha_network.broadcast),
                 "router_ip": str(ha_subnet.gateway_ip),
                 "dns_servers": '127.0.0.1',
-                "ntp_servers": ntp_servers,
+                "ntp_server": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1245,7 +1245,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "broadcast_ip": str(other_network.broadcast),
                 "router_ip": str(other_subnet.gateway_ip),
                 "dns_servers": '127.0.0.1',
-                "ntp_servers": ntp_servers,
+                "ntp_server": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1357,7 +1357,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "subnet_cidr": str(ha_network.cidr),
                 "broadcast_ip": str(ha_network.broadcast),
                 "router_ip": str(ha_subnet.gateway_ip),
-                "ntp_servers": ntp_servers,
+                "ntp_server": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,
@@ -1380,7 +1380,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                 "subnet_cidr": str(other_network.cidr),
                 "broadcast_ip": str(other_network.broadcast),
                 "router_ip": str(other_subnet.gateway_ip),
-                "ntp_servers": ntp_servers,
+                "ntp_server": ntp_servers,
                 "domain_name": default_domain.name,
                 "dhcp_snippets": [{
                     "name": dhcp_snippet.name,

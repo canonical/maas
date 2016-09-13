@@ -308,6 +308,15 @@ class Cluster(RPCProtocol):
     def configure_dhcpv4(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
+        dhcp.update_shared_networks(shared_networks)
+        return self.configure_dhcpv4_v2(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+
+    @cluster.ConfigureDHCPv4_V2.responder
+    def configure_dhcpv4_v2(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv4Server(omapi_key)
         d = concurrency.dhcp.run(
             dhcp.configure, server,
@@ -320,8 +329,16 @@ class Cluster(RPCProtocol):
     def validate_dhcpv4_config(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        server = dhcp.DHCPv4Server(omapi_key)
+        dhcp.update_shared_networks(shared_networks)
+        return self.validate_dhcpv4_config_v2(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
 
+    @cluster.ValidateDHCPv4Config_V2.responder
+    def validate_dhcpv4_config_v2(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
+        server = dhcp.DHCPv4Server(omapi_key)
         d = deferToThread(
             dhcp.validate, server,
             failover_peers, shared_networks, hosts, interfaces,
@@ -331,6 +348,15 @@ class Cluster(RPCProtocol):
 
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
+        dhcp.update_shared_networks(shared_networks)
+        return self.configure_dhcpv6_v2(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+
+    @cluster.ConfigureDHCPv6_V2.responder
+    def configure_dhcpv6_v2(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv6Server(omapi_key)
@@ -345,8 +371,16 @@ class Cluster(RPCProtocol):
     def validate_dhcpv6_config(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        server = dhcp.DHCPv6Server(omapi_key)
+        dhcp.update_shared_networks(shared_networks)
+        return self.validate_dhcpv6_config_v2(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
 
+    @cluster.ValidateDHCPv6Config_V2.responder
+    def validate_dhcpv6_config_v2(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
+        server = dhcp.DHCPv6Server(omapi_key)
         d = deferToThread(
             dhcp.validate, server,
             failover_peers, shared_networks, hosts, interfaces,

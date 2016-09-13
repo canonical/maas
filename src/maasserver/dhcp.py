@@ -341,7 +341,7 @@ def make_subnet_config(
             '' if not subnet.gateway_ip
             else str(subnet.gateway_ip)),
         'dns_servers': dns_servers,
-        'ntp_servers': ntp_servers,
+        'ntp_server': ntp_servers,
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
         'dhcp_snippets': [

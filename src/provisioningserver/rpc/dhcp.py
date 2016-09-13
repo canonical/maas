@@ -7,6 +7,7 @@ __all__ = [
     "configure",
     "DHCPv4Server",
     "DHCPv6Server",
+    "update_shared_networks",
 ]
 
 from collections import namedtuple
@@ -15,6 +16,7 @@ import os
 import re
 from tempfile import NamedTemporaryFile
 
+from netaddr import IPAddress
 from provisioningserver.dhcp import (
     DHCPv4Server,
     DHCPv6Server,
@@ -41,6 +43,7 @@ from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
 )
+from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
@@ -424,3 +427,19 @@ def validate(
         except ExternalProcessError as e:
             return _parse_dhcpd_errors(e.output_as_unicode)
     return None
+
+
+def update_shared_networks(shared_networks):
+    """Update the `shared_networks` structure to match the V2 calls.
+
+    Mutates `shared_networks` in place.
+    """
+    for shared_network in shared_networks:
+        for subnet in shared_network["subnets"]:
+            dns_servers = subnet["dns_servers"]
+            if isinstance(dns_servers, str):
+                dns_servers = map(IPAddress, split_string_list(dns_servers))
+                subnet["dns_servers"] = list(dns_servers)
+            if "ntp_server" in subnet:  # Note singular.
+                ntp_servers = split_string_list(subnet.pop("ntp_server"))
+                subnet["ntp_servers"] = list(ntp_servers)

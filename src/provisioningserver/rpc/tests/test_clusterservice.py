@@ -55,6 +55,7 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_interface,
     make_shared_network,
+    make_shared_network_v1,
 )
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
@@ -1762,15 +1763,29 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             "dhcp_server": (dhcp, "DHCPv4Server"),
             "command": cluster.ConfigureDHCPv4,
             "make_network": factory.make_ipv4_network,
+            "make_shared_network": make_shared_network_v1,
+        }),
+        ("DHCPv4,V2", {
+            "dhcp_server": (dhcp, "DHCPv4Server"),
+            "command": cluster.ConfigureDHCPv4_V2,
+            "make_network": factory.make_ipv4_network,
+            "make_shared_network": make_shared_network,
         }),
         ("DHCPv6", {
             "dhcp_server": (dhcp, "DHCPv6Server"),
             "command": cluster.ConfigureDHCPv6,
             "make_network": factory.make_ipv6_network,
+            "make_shared_network": make_shared_network_v1,
+        }),
+        ("DHCPv6,V2", {
+            "dhcp_server": (dhcp, "DHCPv6Server"),
+            "command": cluster.ConfigureDHCPv6_V2,
+            "make_network": factory.make_ipv6_network,
+            "make_shared_network": make_shared_network,
         }),
     )
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=50000)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         self.assertIsNotNone(
@@ -1783,7 +1798,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [make_shared_network()]
+        shared_networks = [self.make_shared_network()]
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1794,6 +1809,9 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             'hosts': hosts,
             'interfaces': interfaces,
             })
+
+        # The `shared_networks` structure is always the V2 style.
+        dhcp.update_shared_networks(shared_networks)
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(configure, MockCalledOnceWith(
@@ -1832,7 +1850,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         network = self.make_network()
         ip_low, ip_high = factory.make_ip_range(network)
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [make_shared_network()]
+        shared_networks = [self.make_shared_network()]
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1853,11 +1871,25 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
             "dhcp_server": (dhcp, "DHCPv4Server"),
             "command": cluster.ValidateDHCPv4Config,
             "make_network": factory.make_ipv4_network,
+            "make_shared_network": make_shared_network_v1,
+        }),
+        ("DHCPv4,V2", {
+            "dhcp_server": (dhcp, "DHCPv4Server"),
+            "command": cluster.ValidateDHCPv4Config_V2,
+            "make_network": factory.make_ipv4_network,
+            "make_shared_network": make_shared_network,
         }),
         ("DHCPv6", {
             "dhcp_server": (dhcp, "DHCPv6Server"),
             "command": cluster.ValidateDHCPv6Config,
             "make_network": factory.make_ipv6_network,
+            "make_shared_network": make_shared_network_v1,
+        }),
+        ("DHCPv6,V2", {
+            "dhcp_server": (dhcp, "DHCPv6Server"),
+            "command": cluster.ValidateDHCPv6Config_V2,
+            "make_network": factory.make_ipv6_network,
+            "make_shared_network": make_shared_network,
         }),
     )
 
@@ -1879,7 +1911,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
 
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [make_shared_network()]
+        shared_networks = [self.make_shared_network()]
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1919,7 +1951,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
 
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
-        shared_networks = [make_shared_network()]
+        shared_networks = [self.make_shared_network()]
         hosts = [make_host()]
         interfaces = [make_interface()]
 
