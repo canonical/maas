@@ -71,3 +71,10 @@ $states: (
   information: $information,
   loading: $loading
 );
+
+// MAAS Status icon colours
+$status-failed:        #ed3146!default;
+$status-in-progress:   #19b6ee!default;
+$status-queued:        #888!default;
+$status-succeeded:     #3eb34f!default;
+$status-waiting:       #f99b0f!default;

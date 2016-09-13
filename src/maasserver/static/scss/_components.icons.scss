@@ -185,6 +185,41 @@
       background: url('#{$asset-path}images/forms/chevron-up.svg') no-repeat;
       background-size: 100% 100%;
     }
+
+    &--status-failed {
+      //scss-lint:disable PlaceholderInExtend
+      @extend .icon;
+      //scss-link:enable PlaceholderInExtend
+      content: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="status-queued" transform="translate(1, 1)"><g id="Page-1"><g id="status-queued"><g id="Group"><circle id="Oval" stroke="#{$status-failed}" stroke-width="2" cx="6" cy="6" r="6"></circle><circle id="Oval-Copy" class="status-circle" fill="#{$status-failed}" cx="6" cy="6" r="4"></circle></g></g></g></g></g></svg>');
+    }
+
+    &--status-in-progress {
+      //scss-lint:disable PlaceholderInExtend
+      @extend .icon;
+      //scss-link:enable PlaceholderInExtend
+      content: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="status-queued" transform="translate(1, 1)"><g id="Page-1"><g id="status-queued"><g id="Group"><circle id="Oval" stroke="#{$status-in-progress}" stroke-width="2" cx="6" cy="6" r="6"></circle><circle id="Oval-Copy" class="status-circle" fill="#{$status-in-progress}" cx="6" cy="6" r="4"></circle></g></g></g></g></g></svg>');
+    }
+
+    &--status-queued {
+      //scss-lint:disable PlaceholderInExtend
+      @extend .icon;
+      //scss-link:enable PlaceholderInExtend
+      content: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="status-queued" transform="translate(1, 1)"><g id="Page-1"><g id="status-queued"><g id="Group"><circle id="Oval" stroke="#{$status-queued}" stroke-width="2" cx="6" cy="6" r="6"></circle><circle id="Oval-Copy" class="status-circle" fill="#{$status-queued}" cx="6" cy="6" r="4"></circle></g></g></g></g></g></svg>');
+    }
+
+    &--status-succeeded {
+      //scss-lint:disable PlaceholderInExtend
+      @extend .icon;
+      //scss-link:enable PlaceholderInExtend
+      content: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="status-queued" transform="translate(1, 1)"><g id="Page-1"><g id="status-queued"><g id="Group"><circle id="Oval" stroke="#{$status-succeeded}" stroke-width="2" cx="6" cy="6" r="6"></circle><circle id="Oval-Copy" class="status-circle" fill="#{$status-succeeded}" cx="6" cy="6" r="4"></circle></g></g></g></g></g></svg>');
+    }
+
+    &--status-waiting {
+      //scss-lint:disable PlaceholderInExtend
+      @extend .icon;
+      //scss-link:enable PlaceholderInExtend
+      content: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="status-queued" transform="translate(1, 1)"><g id="Page-1"><g id="status-queued"><g id="Group"><circle id="Oval" stroke="#{$status-waiting}" stroke-width="2" cx="6" cy="6" r="6"></circle><circle id="Oval-Copy" class="status-circle" fill="#{$status-waiting}" cx="6" cy="6" r="4"></circle></g></g></g></g></g></svg>');
+    }
   }
 
   /// Set a specific icon size
