@@ -308,7 +308,7 @@ class Cluster(RPCProtocol):
     def configure_dhcpv4(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        dhcp.update_shared_networks(shared_networks)
+        dhcp.upgrade_shared_networks(shared_networks)
         return self.configure_dhcpv4_v2(
             omapi_key, failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
@@ -329,7 +329,7 @@ class Cluster(RPCProtocol):
     def validate_dhcpv4_config(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        dhcp.update_shared_networks(shared_networks)
+        dhcp.upgrade_shared_networks(shared_networks)
         return self.validate_dhcpv4_config_v2(
             omapi_key, failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
@@ -350,7 +350,7 @@ class Cluster(RPCProtocol):
     def configure_dhcpv6(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        dhcp.update_shared_networks(shared_networks)
+        dhcp.upgrade_shared_networks(shared_networks)
         return self.configure_dhcpv6_v2(
             omapi_key, failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
@@ -371,7 +371,7 @@ class Cluster(RPCProtocol):
     def validate_dhcpv6_config(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces, global_dhcp_snippets=[]):
-        dhcp.update_shared_networks(shared_networks)
+        dhcp.upgrade_shared_networks(shared_networks)
         return self.validate_dhcpv6_config_v2(
             omapi_key, failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)

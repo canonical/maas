@@ -10,6 +10,7 @@ __all__ = [
 
 from collections import defaultdict
 from operator import itemgetter
+from typing import Iterable
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -43,16 +44,24 @@ from netaddr import IPAddress
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
+    ConfigureDHCPv4_V2,
     ConfigureDHCPv6,
+    ConfigureDHCPv6_V2,
     ValidateDHCPv4Config,
+    ValidateDHCPv4Config_V2,
     ValidateDHCPv6Config,
+    ValidateDHCPv6Config_V2,
 )
+from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.utils import typed
+from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
 )
 from twisted.internet.defer import inlineCallbacks
+from twisted.protocols import amp
 from twisted.python import log
 
 
@@ -318,18 +327,19 @@ def make_pools_for_subnet(subnet, failover_peer=None):
     return pools
 
 
+@typed
 def make_subnet_config(
-        rack_controller, subnet, maas_dns_server, ntp_servers, default_domain,
-        failover_peer=None, subnets_dhcp_snippets: list=None):
+        rack_controller, subnet, maas_dns_server, ntp_servers: list,
+        default_domain, failover_peer=None, subnets_dhcp_snippets: list=None):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
     if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
         # Replace MAAS DNS with the servers defined on the subnet.
-        dns_servers = ", ".join(subnet.dns_servers)
+        dns_servers = [IPAddress(server) for server in subnet.dns_servers]
     elif maas_dns_server is not None and len(maas_dns_server) > 0:
-        dns_servers = maas_dns_server
+        dns_servers = [IPAddress(maas_dns_server)]
     else:
-        dns_servers = ""
+        dns_servers = []
     if subnets_dhcp_snippets is None:
         subnets_dhcp_snippets = []
     return {
@@ -341,7 +351,7 @@ def make_subnet_config(
             '' if not subnet.gateway_ip
             else str(subnet.gateway_ip)),
         'dns_servers': dns_servers,
-        'ntp_server': ntp_servers,
+        'ntp_servers': ntp_servers,
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
         'dhcp_snippets': [
@@ -372,9 +382,10 @@ def make_failover_peer_config(vlan, rack_controller):
     }
 
 
+@typed
 def get_dhcp_configure_for(
-        ip_version, rack_controller, vlan, subnets, ntp_servers, domain,
-        dhcp_snippets: list=None):
+        ip_version: int, rack_controller, vlan, subnets: list,
+        ntp_servers: list, domain, dhcp_snippets: Iterable=None):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
@@ -480,6 +491,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     hosts_v6 = []
     interfaces_v6 = set()
     ntp_servers = Config.objects.get_config("ntp_servers")
+    ntp_servers = list(split_string_list(ntp_servers))
     default_domain = Domain.objects.get_default_domain()
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
@@ -575,12 +587,12 @@ def configure_dhcp(rack_controller):
     # Configure both IPv4 and IPv6.
     ipv4_exc, ipv6_exc = None, None
     ipv4_status, ipv6_status = SERVICE_STATUS.UNKNOWN, SERVICE_STATUS.UNKNOWN
+
     try:
-        yield client(
-            ConfigureDHCPv4, omapi_key=omapi_key,
-            failover_peers=failover_peers_v4,
-            shared_networks=shared_networks_v4,
-            hosts=hosts_v4, interfaces=interfaces_v4,
+        yield _perform_dhcp_config(
+            client, ConfigureDHCPv4_V2, ConfigureDHCPv4, omapi_key=omapi_key,
+            failover_peers=failover_peers_v4, interfaces=interfaces_v4,
+            shared_networks=shared_networks_v4, hosts=hosts_v4,
             global_dhcp_snippets=global_dhcp_snippets)
     except Exception as exc:
         ipv4_exc = exc
@@ -596,13 +608,13 @@ def configure_dhcp(rack_controller):
         log.msg(
             "Successfully configured DHCPv4 on rack controller '%s'." % (
                 rack_controller.system_id))
+
     try:
-        yield client(
-            ConfigureDHCPv6, omapi_key=omapi_key,
-            failover_peers=failover_peers_v6,
-            shared_networks=shared_networks_v6,
-            hosts=hosts_v6, interfaces=interfaces_v6,
-            global_dhcp_snippets=global_dhcp_snippets)
+        yield _perform_dhcp_config(
+            client, ConfigureDHCPv6_V2, ConfigureDHCPv6, omapi_key=omapi_key,
+            failover_peers=failover_peers_v6, interfaces=interfaces_v6,
+            hosts=hosts_v6, global_dhcp_snippets=global_dhcp_snippets,
+            shared_networks=shared_networks_v6)
     except Exception as exc:
         ipv6_exc = exc
         ipv6_status = SERVICE_STATUS.DEAD
@@ -713,19 +725,19 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     ]
 
     # Validate both IPv4 and IPv6.
-    v4_call = client(
-        ValidateDHCPv4Config, omapi_key=omapi_key,
-        failover_peers=failover_peers_v4, shared_networks=shared_networks_v4,
-        hosts=hosts_v4, interfaces=interfaces_v4,
-        global_dhcp_snippets=global_dhcp_snippets)
-    v6_call = client(
-        ValidateDHCPv6Config, omapi_key=omapi_key,
-        failover_peers=failover_peers_v6, shared_networks=shared_networks_v6,
-        hosts=hosts_v6, interfaces=interfaces_v6,
-        global_dhcp_snippets=global_dhcp_snippets)
+    v4_args = dict(
+        omapi_key=omapi_key, failover_peers=failover_peers_v4, hosts=hosts_v4,
+        interfaces=interfaces_v4, global_dhcp_snippets=global_dhcp_snippets,
+        shared_networks=shared_networks_v4)
+    v6_args = dict(
+        omapi_key=omapi_key, failover_peers=failover_peers_v6, hosts=hosts_v6,
+        interfaces=interfaces_v6, global_dhcp_snippets=global_dhcp_snippets,
+        shared_networks=shared_networks_v6)
 
-    v4_response = v4_call.wait(30)
-    v6_response = v6_call.wait(30)
+    # XXX: These remote calls can hold transactions open for a prolonged
+    # period. This is bad for concurrency and scaling.
+    v4_response = _validate_dhcp_config_v4(client, **v4_args).wait(30)
+    v6_response = _validate_dhcp_config_v6(client, **v6_args).wait(30)
 
     # Deduplicate errors between IPv4 and IPv6
     known_errors = []
@@ -739,3 +751,44 @@ def validate_dhcp_config(test_dhcp_snippet=None):
                 known_errors.append(hash)
                 unique_errors.append(error)
     return unique_errors
+
+
+def _validate_dhcp_config_v4(client, **args):
+    """See `_validate_dhcp_config_vx`."""
+    return _perform_dhcp_config(
+        client, ValidateDHCPv4Config_V2, ValidateDHCPv4Config, **args)
+
+
+def _validate_dhcp_config_v6(client, **args):
+    """See `_validate_dhcp_config_vx`."""
+    return _perform_dhcp_config(
+        client, ValidateDHCPv6Config_V2, ValidateDHCPv6Config, **args)
+
+
+@asynchronous
+def _perform_dhcp_config(
+        client, v2_command, v1_command, *, shared_networks, **args):
+    """Call `v2_command` then `v1_command`...
+
+    ... if the former is not recognised. This allows interoperability between
+    a region that's newer than the rack controller.
+
+    :param client: An RPC client.
+    :param v2_command: The RPC command to attempt first.
+    :param v1_command: The RPC command to attempt second.
+    :param shared_networks: The shared networks argument for `v2_command` and
+        `v1_command`. If `v2_command` is not handled by the remote side, this
+        structure will be downgraded in place.
+    :param args: Remaining arguments for `v2_command` and `v1_command`.
+    """
+    def call(command):
+        return client(command, shared_networks=shared_networks, **args)
+
+    def maybeDowngrade(failure):
+        if failure.check(amp.UnhandledCommand):
+            downgrade_shared_networks(shared_networks)
+            return call(v1_command)
+        else:
+            return failure
+
+    return call(v2_command).addErrback(maybeDowngrade)

@@ -1811,7 +1811,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             })
 
         # The `shared_networks` structure is always the V2 style.
-        dhcp.update_shared_networks(shared_networks)
+        dhcp.upgrade_shared_networks(shared_networks)
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(configure, MockCalledOnceWith(
