@@ -21,7 +21,10 @@ from maasserver.models import (
 )
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import (
     get_one,
@@ -50,6 +53,7 @@ from testtools.matchers import (
     ContainsAll,
     HasLength,
 )
+from twisted.internet import reactor
 
 
 class PatchOSInfoMixin:
@@ -73,6 +77,25 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
+
+    def make_other_resource(self, os=None, arch=None, subarch=None,
+                            release=None):
+        if os is None:
+            os = factory.make_name('os')
+        if arch is None:
+            arch = factory.make_name('arch')
+        if subarch is None:
+            subarch = factory.make_name('subarch')
+        if release is None:
+            release = factory.make_name('release')
+        name = '%s/%s' % (os, release)
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name, architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
 
     def test__returns_connection_error_True(self):
         owner = factory.make_admin()
@@ -237,7 +260,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             json_resource,
             ContainsAll([
                 'id', 'rtype', 'name', 'title', 'arch', 'size',
-                'complete', 'status', 'downloading',
+                'complete', 'status', 'icon', 'downloading',
                 'numberOfNodes', 'lastUpdate']))
 
     def test_returns_ubuntu_release_version_name(self):
@@ -431,6 +454,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         json_resource = json_obj['resources'][0]
         self.assertEqual("Downloading  50%", json_resource['status'])
+        self.assertEqual("in-progress", json_resource['icon'])
 
     def test_combined_subarch_resource_shows_queued_if_no_progress(self):
         owner = factory.make_admin()
@@ -449,6 +473,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_obj = json.loads(response)
         json_resource = json_obj['resources'][0]
         self.assertEqual("Queued for download", json_resource['status'])
+        self.assertEqual("queued", json_resource['icon'])
 
     def test_combined_subarch_resource_shows_complete_status(self):
         owner = factory.make_admin()
@@ -468,7 +493,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         json_resource = json_obj['resources'][0]
-        self.assertEqual("Complete", json_resource['status'])
+        self.assertEqual("Synced", json_resource['status'])
+        self.assertEqual("succeeded", json_resource['icon'])
 
     def test_combined_subarch_resource_shows_waiting_for_cluster_to_sync(self):
         owner = factory.make_admin()
@@ -488,6 +514,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_resource = json_obj['resources'][0]
         self.assertEqual(
             "Waiting for rack controller(s) to sync", json_resource['status'])
+        self.assertEqual("waiting", json_resource['icon'])
 
     def test_combined_subarch_resource_shows_clusters_syncing(self):
         owner = factory.make_admin()
@@ -509,15 +536,54 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_resource = json_obj['resources'][0]
         self.assertEqual(
             "Syncing to rack controller(s)", json_resource['status'])
+        self.assertEqual("in-progress", json_resource['icon'])
+
+    def test_other_images_returns_images_from_cache(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        cache = factory.make_BootSourceCache()
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        other_images = json_obj['other_images']
+        self.assertEquals([{
+            'name': '%s/%s/%s/%s' % (
+                cache.os, cache.arch, cache.subarch, cache.release),
+            'title': '%s/%s' % (cache.os, cache.release),
+            'checked': False,
+        }], other_images)
+
+    def test_other_images_returns_image_checked_when_synced(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        cache = factory.make_BootSourceCache()
+        self.make_other_resource(
+            os=cache.os, arch=cache.arch,
+            subarch=cache.subarch, release=cache.release)
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        other_images = json_obj['other_images']
+        self.assertEquals([{
+            'name': '%s/%s/%s/%s' % (
+                cache.os, cache.arch, cache.subarch, cache.release),
+            'title': '%s/%s' % (cache.os, cache.release),
+            'checked': True,
+        }], other_images)
 
 
-class TestBootResourceSaveUbuntu(MAASServerTestCase, PatchOSInfoMixin):
+class TestBootResourceSaveUbuntu(
+        MAASTransactionServerTestCase, PatchOSInfoMixin):
 
     def setUp(self):
         super(TestBootResourceSaveUbuntu, self).setUp()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
+
+    def patch_import_resources(self):
+        mock_import = self.patch(bootresource, 'import_resources')
+        mock_import.side_effect = (
+            lambda notify: reactor.callLater(0, notify.callback, None))
+        return mock_import
 
     def test_asserts_is_admin(self):
         owner = factory.make_User()
@@ -529,17 +595,19 @@ class TestBootResourceSaveUbuntu(MAASServerTestCase, PatchOSInfoMixin):
         handler = BootResourceHandler(owner, {})
         sources = [factory.make_BootSource()]
         self.patch_get_os_info_from_boot_sources(sources)
-        mock_import = self.patch(bootresource, 'import_resources')
-        handler.save_ubuntu({'releases': [], 'arches': []})
-        self.assertThat(mock_import, MockCalledOnceWith())
+        mock_import = self.patch_import_resources()
+        handler.save_ubuntu(
+            {'url': sources[0].url, 'releases': [], 'arches': []})
+        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
     def test_sets_empty_selections(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {})
         source = factory.make_BootSource()
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch(bootresource, 'import_resources')
-        handler.save_ubuntu({'releases': [], 'arches': []})
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {'url': source.url, 'releases': [], 'arches': []})
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(1))
@@ -555,8 +623,9 @@ class TestBootResourceSaveUbuntu(MAASServerTestCase, PatchOSInfoMixin):
         source = factory.make_BootSource()
         releases = [factory.make_name('release') for _ in range(3)]
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch(bootresource, 'import_resources')
-        handler.save_ubuntu({'releases': releases, 'arches': []})
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {'url': source.url, 'releases': releases, 'arches': []})
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(len(releases)))
@@ -571,8 +640,9 @@ class TestBootResourceSaveUbuntu(MAASServerTestCase, PatchOSInfoMixin):
         releases = [factory.make_name('release') for _ in range(3)]
         arches = [factory.make_name('arches') for _ in range(3)]
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch(bootresource, 'import_resources')
-        handler.save_ubuntu({'releases': releases, 'arches': arches})
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {'url': source.url, 'releases': releases, 'arches': arches})
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(len(releases)))
@@ -591,13 +661,14 @@ class TestBootResourceSaveUbuntu(MAASServerTestCase, PatchOSInfoMixin):
         keep_selection = BootSourceSelection.objects.create(
             boot_source=source, os='ubuntu', release=release)
         self.patch_get_os_info_from_boot_sources([source])
-        self.patch(bootresource, 'import_resources')
-        handler.save_ubuntu({'releases': [release], 'arches': []})
+        self.patch_import_resources()
+        handler.save_ubuntu(
+            {'url': source.url, 'releases': [release], 'arches': []})
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
 
 
-class TestBootResourceSaveOther(MAASServerTestCase):
+class TestBootResourceSaveOther(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestBootResourceSaveOther, self).setUp()
@@ -624,6 +695,12 @@ class TestBootResourceSaveOther(MAASServerTestCase):
         factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
+    def patch_import_resources(self):
+        mock_import = self.patch(bootresource, 'import_resources')
+        mock_import.side_effect = (
+            lambda notify: reactor.callLater(0, notify.callback, None))
+        return mock_import
+
     def test_asserts_is_admin(self):
         owner = factory.make_User()
         handler = BootResourceHandler(owner, {})
@@ -637,7 +714,7 @@ class TestBootResourceSaveOther(MAASServerTestCase):
             boot_source=source, os='ubuntu')
         other_selection = BootSourceSelection.objects.create(
             boot_source=source, os=factory.make_name('os'))
-        self.patch(bootresource, 'import_resources')
+        self.patch_import_resources()
         handler.save_other({'images': []})
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(other_selection))
@@ -654,7 +731,7 @@ class TestBootResourceSaveOther(MAASServerTestCase):
             factory.make_BootSourceCache(
                 boot_source=source, os=os, release=release, arch=arch)
             images.append('%s/%s/subarch/%s' % (os, arch, release))
-        self.patch(bootresource, 'import_resources')
+        self.patch_import_resources()
         handler.save_other({'images': images})
 
         selection = get_one(BootSourceSelection.objects.filter(
@@ -665,9 +742,9 @@ class TestBootResourceSaveOther(MAASServerTestCase):
     def test_calls_import_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {})
-        mock_import = self.patch(bootresource, 'import_resources')
+        mock_import = self.patch_import_resources()
         handler.save_other({'images': []})
-        self.assertThat(mock_import, MockCalledOnceWith())
+        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
 
 class TestBootResourceFetch(MAASServerTestCase):

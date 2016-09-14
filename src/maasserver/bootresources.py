@@ -102,11 +102,13 @@ from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     DeferredList,
     inlineCallbacks,
 )
 from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
+from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("bootresources")
@@ -799,11 +801,15 @@ class BootResourceStore(ObjectStore):
                     "Deleting empty resource %s.", resource)
                 resource.delete()
 
-    def finalize(self):
+    def finalize(self, notify=None):
         """Perform the finalization of data into the database.
 
         This will remove the un-needed `BootResource`'s and write the
         file data into the large object store.
+
+        :param notify: Instance of `Deferred` that is called when all the
+            metadata has been downloaded and the image data download has been
+            started.
         """
         # XXX blake_r 2014-10-30 bug=1387133: A scenario can occur where insert
         # never gets called by the writer, causing this method to delete all
@@ -818,12 +824,20 @@ class BootResourceStore(ObjectStore):
             len(self._content_to_finalize))
         if (self._resources_to_delete == self._init_resources_to_delete and
                 len(self._content_to_finalize) == 0):
-            maaslog.error(
+            error_msg = (
                 "Finalization of imported images skipped, "
-                "or all %s synced images would be deleted.",
-                self._resources_to_delete)
+                "or all %s synced images would be deleted." % (
+                    self._resources_to_delete))
+            maaslog.error(error_msg)
+            if notify is not None:
+                failure = Failure(Exception(error_msg))
+                reactor.callLater(0, notify.errback, failure)
             return
         self.resource_cleaner()
+        # Callback the notify before starting the download of the actual data
+        # for the images.
+        if notify is not None:
+            reactor.callLater(0, notify.callback, None)
         self.perform_write()
         self.resource_set_cleaner()
 
@@ -905,7 +919,8 @@ def download_boot_resources(path, store, product_mapping,
     writer.sync(reader, rpath)
 
 
-def download_all_boot_resources(sources, product_mapping, store=None):
+def download_all_boot_resources(
+        sources, product_mapping, store=None, notify=None):
     """Downloads all of the boot resources from the sources.
 
     Boot resources are stored into the `BootResource` model.
@@ -914,6 +929,8 @@ def download_all_boot_resources(sources, product_mapping, store=None):
         which we should download.
     :param product_mapping: A `ProductMapping` describing the resources to be
         downloaded.
+    :param notify: Instance of `Deferred` that is called when all the metadata
+        has been downloaded and the image data download has been started.
     """
     maaslog.debug("Initializing BootResourceStore.")
     if store is None:
@@ -925,7 +942,7 @@ def download_all_boot_resources(sources, product_mapping, store=None):
             source['url'], store, product_mapping,
             keyring_file=source.get('keyring'))
     maaslog.debug("Finalizing BootResourceStore.")
-    store.finalize()
+    store.finalize(notify=notify)
 
 
 def set_global_default_releases():
@@ -959,19 +976,22 @@ def set_global_default_releases():
 
 
 @asynchronous(timeout=FOREVER)
-def _import_resources():
+def _import_resources(notify=None):
     """Import boot resources.
 
     Pulls the sources from `BootSource`. This only starts the process if
     some SYNCED `BootResource` already exist.
 
     This MUST be called from outside of a database transaction.
+
+    :param notify: Instance of `Deferred` that is called when all the metadata
+        has been downloaded and the image data download has been started.
     """
     # Avoid circular import.
     from maasserver.clusterrpc.boot_images import RackControllersImporter
 
     # Sync boot resources into the region.
-    d = deferToDatabase(_import_resources_with_lock)
+    d = deferToDatabase(_import_resources_with_lock, notify=notify)
 
     def cb_import(_):
         d = deferToDatabase(RackControllersImporter.new)
@@ -988,7 +1008,7 @@ def _import_resources():
 @synchronous
 @with_connection
 @synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
-def _import_resources_with_lock():
+def _import_resources_with_lock(notify=None):
     """Import boot resources once the `import_images` lock is held.
 
     This should *not* be called in a transaction; it will manage transactions
@@ -999,10 +1019,18 @@ def _import_resources_with_lock():
     :raise DatabaseLockNotHeld: If the `import_images` lock cannot be acquired
         at the beginning of this method. This happens quickly because the lock
         is acquired using a TRY variant; see `dblocks`.
+
+    :param notify: Instance of `Deferred` that is called when all the metadata
+        has been downloaded and the image data download has been started.
     """
     assert not in_transaction(), (
         "_import_resources_with_lock() must not be called within a "
         "preexisting transaction; it manages its own.")
+
+    # Make sure that notify is a `Deferred` that has not beed called.
+    if notify is not None:
+        assert isinstance(notify, Deferred), "Notify should be a `Deferred`"
+        assert not notify.called, "Notify should not have already been called."
 
     # Make sure that maas user's GNUPG home directory exists. This is
     # needed for importing of boot resources, which occurs on the region
@@ -1033,20 +1061,23 @@ def _import_resources_with_lock():
             return
         product_mapping = map_products(image_descriptions)
 
-        download_all_boot_resources(sources, product_mapping)
+        download_all_boot_resources(sources, product_mapping, notify=notify)
         set_global_default_releases()
         maaslog.info(
             "Finished importing of boot images from %d source(s).",
             len(sources))
 
 
-def _import_resources_in_thread():
+def _import_resources_in_thread(notify=None):
     """Import boot resources in a thread managed by Twisted.
 
     Errors are logged. The returned `Deferred` will never errback so it's safe
     to use in a `TimerService`, for example.
+
+    :param notify: Instance of `Deferred` that is called when all the metadata
+        has been downloaded and the image data download has been started.
     """
-    d = deferToDatabase(_import_resources)
+    d = deferToDatabase(_import_resources, notify=notify)
     d.addErrback(_handle_import_failures)
     return d
 
@@ -1062,14 +1093,17 @@ def _handle_import_failures(failure):
     log.err(failure, "Importing boot resources failed.")
 
 
-def import_resources():
+def import_resources(notify=None):
     """Starts the importing of boot resources.
 
     Note: This function returns immediately. It only starts the process, it
     doesn't wait for it to be finished, as it can take several minutes to
     complete.
+
+    :param notify: Instance of `Deferred` that is called when all the metadata
+        has been downloaded and the image data download has been started.
     """
-    reactor.callFromThread(_import_resources_in_thread)
+    reactor.callFromThread(_import_resources_in_thread, notify=notify)
 
 
 def is_import_resources_running():

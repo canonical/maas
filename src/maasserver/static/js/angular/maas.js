@@ -54,6 +54,11 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                         'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
                 }).
+                when('/images', {
+                    templateUrl: versionedPath(
+                        'static/partials/images.html'),
+                    controller: 'ImagesController'
+                }).
                 when('/domains', {
                     templateUrl: versionedPath(
                         'static/partials/domains-list.html'),

@@ -83,7 +83,9 @@ from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,
     reload_object,
+    transactional,
 )
+from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.version import get_maas_version_ui
 from maastesting.matchers import (
     MockCalledOnce,
@@ -112,6 +114,7 @@ from testtools.matchers import (
 )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
+    Deferred,
     fail,
     succeed,
 )
@@ -1149,6 +1152,44 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                     written_data = stream.read()
                 self.assertEqual(content, written_data)
 
+    @asynchronous(timeout=1)
+    def test_finalize_calls_notify_errback(self):
+
+        @transactional
+        def create_store(testcase):
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            store = BootResourceStore()
+            testcase.patch(store, 'resource_cleaner')
+            testcase.patch(store, 'perform_write')
+            testcase.patch(store, 'resource_set_cleaner')
+            return store
+
+        notify = Deferred()
+        d = deferToDatabase(create_store, self)
+        d.addCallback(lambda store: store.finalize(notify=notify))
+        d.addCallback(lambda _: notify)
+        d.addErrback(lambda failure: failure.trap(Exception))
+        return d
+
+    @asynchronous(timeout=1)
+    def test_finalize_calls_notify_callback(self):
+
+        @transactional
+        def create_store(testcase):
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            store = BootResourceStore()
+            store._content_to_finalize = [sentinel.content]
+            testcase.patch(store, 'resource_cleaner')
+            testcase.patch(store, 'perform_write')
+            testcase.patch(store, 'resource_set_cleaner')
+            return store
+
+        notify = Deferred()
+        d = deferToDatabase(create_store, self)
+        d.addCallback(lambda store: store.finalize(notify=notify))
+        d.addCallback(lambda _: notify)
+        return d
+
 
 class TestSetGlobalDefaultReleases(MAASServerTestCase):
 
@@ -1300,7 +1341,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             sources=[], product_mapping=product_mapping, store=store)
         self.assertThat(
             fake_finalize,
-            MockCalledOnceWith())
+            MockCalledOnceWith(notify=None))
 
     def test__import_resources_exits_early_if_lock_held(self):
         set_simplestreams_env = self.patch_autospec(
@@ -1362,7 +1403,8 @@ class TestImportImages(MAASTransactionServerTestCase):
             MockCalledOnceWith(descriptions))
         self.expectThat(
             download_all_boot_resources,
-            MockCalledOnceWith([sentinel.source], sentinel.mapping))
+            MockCalledOnceWith(
+                [sentinel.source], sentinel.mapping, notify=None))
         self.expectThat(
             set_global_default_releases,
             MockCalledOnceWith())
@@ -1417,14 +1459,14 @@ class TestImportResourcesInThread(MAASTestCase):
         bootresources._import_resources_in_thread()
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(
-                bootresources._import_resources))
+                bootresources._import_resources, notify=None))
 
     def tests__defaults_force_to_False(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(
-                bootresources._import_resources))
+                bootresources._import_resources, notify=None))
 
     def test__logs_errors_and_does_not_errback(self):
         logger = self.useFixture(TwistedLoggerFixture())

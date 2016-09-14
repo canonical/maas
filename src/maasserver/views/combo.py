@@ -51,6 +51,7 @@ MERGE_VIEWS = {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
             "js/angular/maas.js",
+            "js/angular/factories/bootresources.js",
             "js/angular/factories/dhcpsnippets.js",
             "js/angular/factories/packagerepositories.js",
             "js/angular/factories/region.js",
@@ -80,6 +81,7 @@ MERGE_VIEWS = {
             "js/angular/services/converter.js",
             "js/angular/services/json.js",
             "js/angular/directives/accordion.js",
+            "js/angular/directives/boot_images.js",
             "js/angular/directives/call_to_action.js",
             "js/angular/directives/code_lines.js",
             "js/angular/directives/controller_image_status.js",
@@ -107,6 +109,7 @@ MERGE_VIEWS = {
             "js/angular/controllers/add_hardware.js",
             "js/angular/controllers/add_device.js",
             "js/angular/controllers/add_domain.js",
+            "js/angular/controllers/images.js",
             "js/angular/controllers/node_details.js",
             "js/angular/controllers/node_details_networking.js",
             "js/angular/controllers/node_details_storage.js",

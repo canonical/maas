@@ -1,0 +1,265 @@
+
+<div data-ng-class="{ 'action-card': design === 'action-card', 'row u-padding--top-large': design === 'page' }" data-ng-if="!loading">
+    <div data-ng-class="{ 'wrapper--inner': design === 'page' }">
+        <h2 data-ng-class="{ 'action-card__title': design === 'action-card' }">
+            <i data-ng-if="design === 'action-card'" class="icon icon--large {$ getTitleIcon() $}"></i> Ubuntu
+        </h2>
+        <div data-ng-class="{ 'action-card__controls': design === 'action-card' }">
+            <p class="u-margin--top-small u-margin--bottom-small" data-ng-if="isSuperUser() && !source.tooMany">
+                Select images and architecture to be imported and kept in sync daily. Images will be available for deploying to machines managed by MAAS.
+            </p>
+            <form class="form">
+                <div data-ng-if="isSuperUser() && !source.tooMany">
+                    <h3>Choose source</h3>
+                    <div class="form__group">
+                        <input type="radio" ng-model="source.source_type" id="source_maas" value="maas.io" data-ng-change="sourceChanged()">
+                        <label for="source_maas" class="u-margin--right">maas.io</label>
+                        <input type="radio" ng-model="source.source_type" id="source_custom" value="custom" data-ng-change="sourceChanged()">
+                        <label for="source_custom">Custom</label>
+                    </div>
+                    <div data-ng-if="showMirrorPath()">
+                        <h3>Mirror URL</h3>
+                        <p>Add the URL you want to use to select your images from.</p>
+                        <div class="u-width--half u-display--inline-block u-float--left">
+                            <div class="form__group">
+                                <input type="text" name="mirrorUrl" placeholder="e.g. http:// or file://"
+                                    data-ng-model="source.url" data-ng-change="sourceChanged()">
+                            </div>
+                            <div data-ng-if="isShowingAdvancedOptions()">
+                                <div class="form__group">
+                                    <label for="keyring_filename" class="form__group--label">Path to the keyring to validate the mirror path.</label>
+                                    <input type="text" name="keyring_filename" placeholder="e.g. /usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+                                        data-ng-model="source.keyring_filename"
+                                        data-ng-class="{ 'has-error': bothKeyringOptionsSet() }">
+                                    <ul class="form__error" data-ng-if="bothKeyringOptionsSet()">
+                                        <li class="form__error-item">Cannot set both keyring path and keyring contents.</li>
+                                    </ul>
+                                </div>
+                                <div class="form__group">
+                                    <label for="keyring_data" class="form__group--label">Contents of the keyring to validate the mirror path.</label>
+                                    <textarea name="keyring_data" placeholder="Contents of GPG key"
+                                        data-ng-model="source.keyring_data"
+                                        data-ng-class="{ 'has-error': bothKeyringOptionsSet() }"></textarea>
+                                    <ul class="form__error" data-ng-if="bothKeyringOptionsSet()">
+                                        <li class="form__error-item">Cannot set both keyring path and keyring contents.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="u-width--half u-display--inline-block u-float--left">
+                            <div class="u-display--inline-block u-float--left u-margin--top-tiny u-margin--left">
+                                <i class="icon" data-ng-class="{ 'icon--close': !isShowingAdvancedOptions(), 'icon--open': isShowingAdvancedOptions() }"></i>
+                                <a data-ng-click="toggleAdvancedOptions()" data-ng-if="!isShowingAdvancedOptions()">Show advanced options</a>
+                                <a data-ng-click="toggleAdvancedOptions()" data-ng-if="isShowingAdvancedOptions()">Hide advanced options</a>
+                            </div>
+                            <button class="button--secondary button--inline u-float--right"
+                                data-ng-if="showConnectButton()"
+                                data-ng-disabled="isConnectButtonDisabled()"
+                                data-ng-click="connect()">Connect</button>
+                            <div class="u-clear"></div>
+                        </div>
+                        <div class="u-clear"></div>
+                    </div>
+                </div>
+                <div data-ng-if="showConnectBlock()">
+                    <div class="u-clear"></div>
+                    <div class="u-margin--top-large u-margin--bottom-large u-padding--top-large u-padding--bottom-large">
+                        <p class="text-center" data-ng-if="!source.connecting && source.errorMessage">
+                            <i class="icon icon--warning"></i> {$ source.errorMessage $}
+                            <a data-ng-if="source.source_type === 'maas.io'" data-ng-click="connect()">Retry</a>
+                        </p>
+                        <p class="text-center" data-ng-if="source.connecting">
+                            <i class="icon icon--loading u-animation--spin"></i> Connecting
+                        </p>
+                    </div>
+                </div>
+                <div data-ng-if="isSuperUser() && !source.tooMany && showSelections()">
+                    <div class="u-width--half u-display--inline-block u-float--left">
+                        <h3>Images</h3>
+                        <div class="u-width--half u-display--inline-block u-float--left">
+                            <div class="form__group" data-ng-repeat="release in getUbuntuLTSReleases() | orderBy:'-title'">
+                                <input type="checkbox" id="{$ release.name $}"
+                                    data-ng-checked="isSelected('releases', release)"
+                                    data-ng-click="toggleSelection('releases', release)">
+                                <label for="{$ release.name $}">{$ release.title $}</label>
+                            </div>
+                        </div>
+                        <div class="u-width--half u-display--inline-block u-float--left">
+                            <div class="form__group" data-ng-repeat="release in getUbuntuNonLTSReleases() | orderBy:'-title'">
+                                <input type="checkbox" id="{$ release.name $}"
+                                    data-ng-checked="isSelected('releases', release)"
+                                    data-ng-click="toggleSelection('releases', release)">
+                                <label for="{$ release.name $}">{$ release.title $}</label>
+                            </div>
+                        </div>
+                        <div class="u-clear"></div>
+                    </div>
+                    <div class="u-width--half u-display--inline-block u-float--left">
+                        <h3>Architectures</h3>
+                        <div class="form__group" data-ng-repeat="arch in getArchitectures() | orderBy:'title'">
+                            <input type="checkbox" id="{$ arch.name $}"
+                                data-ng-checked="isSelected('arches', arch)"
+                                data-ng-click="toggleSelection('arches', arch)">
+                            <label for="{$ arch.name $}">{$ arch.title $}</label>
+                        </div>
+                    </div>
+                    <div class="u-clear"></div>
+                </div>
+                <section class="table u-margin--top" data-ng-if="showImagesTable()">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table-col--25">Release</div>
+                            <div class="table__header table-col--15">Architecture</div>
+                            <div class="table__header table-col--20">Size</div>
+                            <div class="table__header table-col--30">Importing status</div>
+                        </div>
+                    </header>
+                    <main class="table__body">
+                        <div class="table__row table--error" data-ng-if="!ltsIsSelected()">
+                            <div class="table__data table-col--100">
+                                <i class="icon icon--error"></i> Select at least one 14.04+ LTS release and one architecture.
+                            </div>
+                        </div>
+                        <div class="table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']">
+                            <div class="table__data table-col--2">
+                                <i class="icon {$ image.icon $}"></i>
+                            </div>
+                            <div class="table__data table-col--23">
+                                {$ image.title $}
+                            </div>
+                            <div class="table__data table-col--15">{$ image.arch $}</div>
+                            <div class="table__data table-col--20">{$ image.size $}</div>
+                            <div class="table__data table-col--30">{$ image.status $}</div>
+                        </div>
+                    </main>
+                </section>
+                <div class="twelve-col" data-ng-if="!source.tooMany">
+                    <div class="u-float--right">
+                        <!-- Not supported yet.
+                        <a class="button--base button--inline" data-ng-if="showStopImportButton()">Stop import</a>
+                        -->
+                        <button class="button--secondary button--inline"
+                            data-ng-if="isSuperUser() && showSaveSelection()"
+                            data-ng-disabled="!canSaveSelection()"
+                            data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="row" data-ng-if="design === 'page' && other.images.length && !source.isNew">
+    <div class="wrapper--inner">
+        <h2>Other Images</h2>
+        <div data-ng-if="isSuperUser() && !source.tooMany">
+            <span class="u-margin--right" data-ng-repeat="image in other.images | orderBy:['-title']">
+                <input type="checkbox" id="{$ image.name $}"
+                    data-ng-checked="image.checked"
+                    data-ng-click="toggleOtherSelection(image)">
+                <label for="{$ image.name $}">{$ image.title $}</label>
+            <span>
+        </div>
+        <section class="table u-margin--top">
+            <header class="table__head">
+                <div class="table__row">
+                    <div class="table__header table-col--25">Release</div>
+                    <div class="table__header table-col--15">Architecture</div>
+                    <div class="table__header table-col--20">Size</div>
+                    <div class="table__header table-col--30">Importing status</div>
+                </div>
+            </header>
+            <main class="table__body">
+                <div class="table__row" data-ng-if="!otherImages.length">
+                    <div class="table__data table-col--100">
+                        No images have been selected for syncing.
+                    </div>
+                </div>
+                <div class="table__row" data-ng-repeat="image in otherImages | orderBy:['-title', 'arch']">
+                    <div class="table__data table-col--2">
+                        <i class="icon {$ image.icon $}"></i>
+                    </div>
+                    <div class="table__data table-col--23">
+                        {$ image.title $}
+                    </div>
+                    <div class="table__data table-col--15">{$ image.arch $}</div>
+                    <div class="table__data table-col--20">{$ image.size $}</div>
+                    <div class="table__data table-col--30">{$ image.status $}</div>
+                </div>
+            </main>
+        </section>
+        <div class="twelve-col" data-ng-if="!source.tooMany">
+            <div class="u-float--right">
+                <button class="button--secondary button--inline"
+                    data-ng-if="isSuperUser()"
+                    data-ng-disabled="saving"
+                    data-ng-click="saveOtherSelection()">{$ getSaveSelectionText() $}</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row" data-ng-if="design === 'page' && generatedImages.length">
+    <div class="wrapper--inner">
+        <h2>Generated Images</h2>
+        <section class="table u-margin--top">
+            <header class="table__head">
+                <div class="table__row">
+                    <div class="table__header table-col--25">Release</div>
+                    <div class="table__header table-col--15">Architecture</div>
+                    <div class="table__header table-col--20">Size</div>
+                    <div class="table__header table-col--30">Importing status</div>
+                </div>
+            </header>
+            <main class="table__body">
+                <div class="table__row" data-ng-if="!generatedImages.length">
+                    <div class="table__data table-col--100">
+                        No images have been uploaded.
+                    </div>
+                </div>
+                <div class="table__row" data-ng-repeat="image in generatedImages | orderBy:['-title', 'arch']">
+                    <div class="table__data table-col--2">
+                        <i class="icon {$ image.icon $}"></i>
+                    </div>
+                    <div class="table__data table-col--23">
+                        {$ image.title $}
+                    </div>
+                    <div class="table__data table-col--15">{$ image.arch $}</div>
+                    <div class="table__data table-col--20">{$ image.size $}</div>
+                    <div class="table__data table-col--30">{$ image.status $}</div>
+                </div>
+            </main>
+        </section>
+    </div>
+</div>
+<div class="row" data-ng-if="design === 'page' && customImages.length">
+    <div class="wrapper--inner">
+        <h2>Custom Images</h2>
+        <section class="table u-margin--top">
+            <header class="table__head">
+                <div class="table__row">
+                    <div class="table__header table-col--25">Release</div>
+                    <div class="table__header table-col--15">Architecture</div>
+                    <div class="table__header table-col--20">Size</div>
+                    <div class="table__header table-col--30">Importing status</div>
+                </div>
+            </header>
+            <main class="table__body">
+                <div class="table__row" data-ng-if="!customImages.length">
+                    <div class="table__data table-col--100">
+                        No images have been uploaded.
+                    </div>
+                </div>
+                <div class="table__row" data-ng-repeat="image in customImages | orderBy:['-title', 'arch']">
+                    <div class="table__data table-col--2">
+                        <i class="icon {$ image.icon $}"></i>
+                    </div>
+                    <div class="table__data table-col--23">
+                        {$ image.title $}
+                    </div>
+                    <div class="table__data table-col--15">{$ image.arch $}</div>
+                    <div class="table__data table-col--20">{$ image.size $}</div>
+                    <div class="table__data table-col--30">{$ image.status $}</div>
+                </div>
+            </main>
+        </section>
+    </div>
+</div>

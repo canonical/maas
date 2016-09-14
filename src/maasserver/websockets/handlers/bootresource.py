@@ -38,6 +38,8 @@ from maasserver.models import (
     Node,
 )
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.version import get_maas_version_ui
 from maasserver.websockets.base import (
     Handler,
@@ -52,6 +54,13 @@ from provisioningserver.import_images.download_descriptions import (
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    FOREVER,
+)
+from twisted.internet.defer import Deferred
+from twisted.python import log
 
 
 def get_distro_series_info_row(series):
@@ -94,7 +103,7 @@ class BootResourceHandler(Handler):
                 'source_type': source_type,
                 'url': source.url,
                 'keyring_filename': source.keyring_filename,
-                'keyring_data': source.keyring_data.decode('ascii'),
+                'keyring_data': bytes(source.keyring_data).decode("ascii"),
             })
         return sources
 
@@ -156,6 +165,94 @@ class BootResourceHandler(Handler):
                 'checked': checked,
                 })
         return arches
+
+    def check_if_image_matches_resource(self, resource, image):
+        """Return True if the resource matches the image."""
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        if os != image.os or series != image.release or arch != image.arch:
+            return False
+        if not resource.supports_subarch(subarch):
+            return False
+        return True
+
+    def get_matching_resource_for_image(self, resources, image):
+        """Return True if the image matches one of the resources."""
+        for resource in resources:
+            if self.check_if_image_matches_resource(resource, image):
+                return resource
+        return None
+
+    def get_other_synced_resources(self):
+        """Return all synced resources that are not Ubuntu."""
+        resources = list(BootResource.objects.filter(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED).exclude(
+            name__startswith='ubuntu/').order_by('-name', 'architecture'))
+        for resource in resources:
+            self.add_resource_template_attributes(resource)
+        return resources
+
+    def add_resource_template_attributes(self, resource):
+        """Adds helper attributes to the resource."""
+        resource.title = self.get_resource_title(resource)
+        resource.arch, resource.subarch = resource.split_arch()
+        resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
+            resource)
+        resource_set = resource.get_latest_set()
+        if resource_set is None:
+            resource.size = human_readable_bytes(0)
+            resource.last_update = resource.updated
+            resource.complete = False
+            resource.status = "Queued for download"
+            resource.downloading = False
+        else:
+            resource.size = human_readable_bytes(resource_set.total_size)
+            resource.last_update = resource_set.updated
+            resource.complete = resource_set.complete
+            if not resource.complete:
+                progress = resource_set.progress
+                if progress > 0:
+                    resource.status = "Downloading %3.0f%%" % progress
+                    resource.downloading = True
+                    resource.icon = 'in-progress'
+                else:
+                    resource.status = "Queued for download"
+                    resource.downloading = False
+                    resource.icon = 'queued'
+            else:
+                # See if the resource also exists on all the clusters.
+                if resource in self.rack_resources:
+                    resource.status = "Synced"
+                    resource.downloading = False
+                    resource.icon = 'succeeded'
+                else:
+                    resource.complete = False
+                    if self.racks_syncing:
+                        resource.status = "Syncing to rack controller(s)"
+                        resource.downloading = True
+                        resource.icon = 'in-progress'
+                    else:
+                        resource.status = (
+                            "Waiting for rack controller(s) to sync")
+                        resource.downloading = False
+                        resource.icon = 'waiting'
+
+    def format_other_images(self):
+        """Return formatted other images for selection."""
+        resources = self.get_other_synced_resources()
+        images = []
+        for image in BootSourceCache.objects.exclude(os='ubuntu'):
+            resource = self.get_matching_resource_for_image(resources, image)
+            title = get_os_release_title(image.os, image.release)
+            if title is None:
+                title = '%s/%s' % (image.os, image.release)
+            images.append({
+                'name': '%s/%s/%s/%s' % (
+                    image.os, image.arch, image.subarch, image.release),
+                'title': title,
+                'checked': True if resource else False,
+            })
+        return images
 
     def node_has_architecture_for_resource(self, node, resource):
         """Return True if node is the same architecture as resource."""
@@ -302,24 +399,29 @@ class BootResourceHandler(Handler):
             if progress > 0:
                 resource.status = "Downloading %3.0f%%" % progress
                 resource.downloading = True
+                resource.icon = 'in-progress'
             else:
                 resource.status = "Queued for download"
                 resource.downloading = False
+                resource.icon = 'queued'
         else:
             # See if all the resources exist on all the racks.
             rack_has_resources = any(
                 res in group for res in self.rack_resources)
             if rack_has_resources:
-                resource.status = "Complete"
+                resource.status = "Synced"
                 resource.downloading = False
+                resource.icon = 'succeeded'
             else:
                 resource.complete = False
                 if self.racks_syncing:
                     resource.status = "Syncing to rack controller(s)"
                     resource.downloading = True
+                    resource.icon = 'in-progress'
                 else:
                     resource.status = "Waiting for rack controller(s) to sync"
                     resource.downloading = False
+                    resource.icon = 'waiting'
         return resource
 
     def combine_resources(self, resources):
@@ -380,7 +482,7 @@ class BootResourceHandler(Handler):
                 rtype=resource.rtype, name=resource.name,
                 title=resource.title, arch=resource.arch, size=resource.size,
                 complete=resource.complete, status=resource.status,
-                downloading=resource.downloading,
+                icon=resource.icon, downloading=resource.downloading,
                 numberOfNodes=resource.number_of_nodes,
                 lastUpdate=resource.last_update.strftime(
                     "%a, %d %b. %Y %H:%M:%S")
@@ -396,92 +498,150 @@ class BootResourceHandler(Handler):
             region_import_running=is_import_resources_running(),
             rack_import_running=self.racks_syncing,
             resources=json_resources,
-            ubuntu=json_ubuntu)
+            ubuntu=json_ubuntu,
+            other_images=self.format_other_images())
         return json.dumps(data)
 
+    def get_bootsource(self, params, from_db=False):
+        source_type = params.get('source_type', 'custom')
+        if source_type == 'maas.io':
+            url = DEFAULT_IMAGES_URL
+            keyring_filename = DEFAULT_KEYRINGS_PATH
+            keyring_data = b''
+        elif source_type == 'custom':
+            url = params['url']
+            keyring_filename = params.get('keyring_filename', '')
+            keyring_data = params.get('keyring_data', '').encode('utf-8')
+            if keyring_filename == '' and keyring_data == b'':
+                keyring_filename = DEFAULT_KEYRINGS_PATH
+        else:
+            raise HandlerError('Unknown source_type: %s' % source_type)
+
+        if from_db:
+            source, created = BootSource.objects.get_or_create(
+                url=url,
+                defaults={
+                    'keyring_filename': keyring_filename,
+                    'keyring_data': keyring_data})
+            if not created:
+                source.keyring_filename = keyring_filename
+                source.keyring_data = keyring_data
+                source.save()
+            else:
+                # This was a new source, make sure its the only source in the
+                # database. This is because the UI only supports handling one
+                # source at a time.
+                BootSource.objects.exclude(id=source.id).delete()
+            return source
+        else:
+            return BootSource(
+                url=url,
+                keyring_filename=keyring_filename,
+                keyring_data=keyring_data,
+            )
+
+    @asynchronous(timeout=FOREVER)
     def save_ubuntu(self, params):
         """Called to save the Ubuntu section of the websocket."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
 
-        os = 'ubuntu'
-        releases = params['releases']
-        arches = params['arches']
-        boot_source = BootSource.objects.first()
+        @transactional
+        def update_source(params):
+            os = 'ubuntu'
+            releases = params['releases']
+            arches = params['arches']
+            boot_source = self.get_bootsource(params, from_db=True)
 
-        # Remove all selections, that are not of release.
-        BootSourceSelection.objects.filter(
-            boot_source=boot_source, os=os).exclude(
-            release__in=releases).delete()
+            # Remove all selections, that are not of release.
+            BootSourceSelection.objects.filter(
+                boot_source=boot_source, os=os).exclude(
+                release__in=releases).delete()
 
-        if len(releases) > 0:
-            # Create or update the selections.
-            for release in releases:
+            if len(releases) > 0:
+                # Create or update the selections.
+                for release in releases:
+                    selection, _ = BootSourceSelection.objects.get_or_create(
+                        boot_source=boot_source, os=os, release=release)
+                    selection.arches = arches
+                    selection.subarches = ["*"]
+                    selection.labels = ["*"]
+                    selection.save()
+            else:
+                # Create a selection that will cause nothing to be downloaded,
+                # since no releases are selected.
                 selection, _ = BootSourceSelection.objects.get_or_create(
-                    boot_source=boot_source, os=os, release=release)
+                    boot_source=boot_source, os=os, release="")
                 selection.arches = arches
                 selection.subarches = ["*"]
                 selection.labels = ["*"]
                 selection.save()
-        else:
-            # Create a selection that will cause nothing to be downloaded,
-            # since no releases are selected.
-            selection, _ = BootSourceSelection.objects.get_or_create(
-                boot_source=boot_source, os=os, release="")
-            selection.arches = arches
-            selection.subarches = ["*"]
-            selection.labels = ["*"]
-            selection.save()
 
-        # Start the import process, now that the selections have changed.
-        import_resources()
-        return self.poll({})
+        notify = Deferred()
+        d = deferToDatabase(update_source, params)
+        d.addCallback(callOut, import_resources, notify=notify)
+        d.addCallback(lambda _: notify)
+        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
+        d.addErrback(
+            log.err,
+            "Failed to start the image import. Unable to save the Ubuntu "
+            "image(s) source information.")
+        return d
 
+    @asynchronous(timeout=FOREVER)
     def save_other(self, params):
         """Update `BootSourceSelection`'s to only include the selected
         images."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
-        # Remove all selections that are not Ubuntu.
-        BootSourceSelection.objects.exclude(os='ubuntu').delete()
 
-        # Break down the images into os/release with multiple arches.
-        selections = defaultdict(list)
-        for image in params['images']:
-            os, arch, _, release = image.split('/', 4)
-            name = '%s/%s' % (os, release)
-            selections[name].append(arch)
+        @transactional
+        def update_selections(params):
+            # Remove all selections that are not Ubuntu.
+            BootSourceSelection.objects.exclude(os='ubuntu').delete()
 
-        # Create each selection for the source.
-        for name, arches in selections.items():
-            os, release = name.split('/')
-            cache = BootSourceCache.objects.filter(
-                os=os, arch=arch, release=release).first()
-            if cache is None:
-                # It is possible the cache changed while waiting for the user
-                # to perform an action. Ignore the selection as its no longer
-                # available.
-                continue
-            # Create the selection for the source.
-            BootSourceSelection.objects.create(
-                boot_source=cache.boot_source,
-                os=os, release=release,
-                arches=arches, subarches=["*"], labels=["*"])
+            # Break down the images into os/release with multiple arches.
+            selections = defaultdict(list)
+            for image in params['images']:
+                os, arch, _, release = image.split('/', 4)
+                name = '%s/%s' % (os, release)
+                selections[name].append(arch)
 
-        # Start the import process, now that the selections have changed.
-        import_resources()
-        return self.poll({})
+            # Create each selection for the source.
+            for name, arches in selections.items():
+                os, release = name.split('/')
+                cache = BootSourceCache.objects.filter(
+                    os=os, arch=arch, release=release).first()
+                if cache is None:
+                    # It is possible the cache changed while waiting for the
+                    # user to perform an action. Ignore the selection as its
+                    # no longer available.
+                    continue
+                # Create the selection for the source.
+                BootSourceSelection.objects.create(
+                    boot_source=cache.boot_source,
+                    os=os, release=release,
+                    arches=arches, subarches=["*"], labels=["*"])
+
+        notify = Deferred()
+        d = deferToDatabase(update_selections, params)
+        d.addCallback(callOut, import_resources, notify=notify)
+        d.addCallback(lambda _: notify)
+        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
+        d.addErrback(
+            log.err,
+            "Failed to start the image import. Unable to save the non-Ubuntu "
+            "image(s) source information")
+        return d
 
     def fetch(self, params):
         """Fetch the releases and the arches from the provided source."""
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
         # Build a source, but its not saved into the database.
-        source = BootSource(
-            url=params['url'],
-            keyring_filename=params.get('keyring_filename', ''),
-            keyring_data=params.get('keyring_data', '').encode('utf-8'),
-        ).to_dict_without_selections()
+        source = self.get_bootsource(
+            params, from_db=False).to_dict_without_selections()
+
         # FIXME: This modifies the environment of the entire process, which is
         # Not Cool. We should integrate with simplestreams in a more
         # Pythonic manner.
