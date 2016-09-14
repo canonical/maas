@@ -671,7 +671,9 @@ class MetaDataHandler(VersionIndexHandler):
         return make_text_response(node.system_id)
 
     def vendor_data(self, node, version, item):
-        vendor_data = get_vendor_data(node)
+        vendor_data = {"cloud-init": "#cloud-config\n%s" % yaml.safe_dump(
+            get_vendor_data(node)
+        )}
         vendor_data_dump = yaml.safe_dump(
             vendor_data, encoding="utf-8", default_flow_style=False)
         # Use the same Content-Type as Piston 3 for YAML content.

@@ -84,12 +84,18 @@ from provisioningserver.events import (
 from testtools.matchers import (
     Contains,
     ContainsAll,
+    ContainsDict,
     Equals,
     KeysEqual,
     MatchesAll,
     Not,
+    StartsWith,
 )
 import yaml
+
+
+LooksLikeCloudInit = ContainsDict(
+    {"cloud-init": StartsWith("#cloud-config")})
 
 
 class TestHelpers(MAASServerTestCase):
@@ -491,9 +497,11 @@ class TestMetadataCommon(MAASServerTestCase):
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'vendor-data'])
         response = client.get(url)
+        content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
-            yaml.safe_load(response.content),
+            yaml.safe_load(content['cloud-init']),
             KeysEqual("system_info", "ntp"))
 
     def test_vendor_data_for_node_without_owner_includes_no_system_info(self):
@@ -501,9 +509,11 @@ class TestMetadataCommon(MAASServerTestCase):
         url = reverse(view_name, args=['latest', 'vendor-data'])
         client = make_node_client()
         response = client.get(url)
+        content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
-            yaml.safe_load(response.content),
+            yaml.safe_load(content['cloud-init']),
             KeysEqual("ntp"))
 
     def test_vendor_data_calls_through_to_get_vendor_data(self):
@@ -515,9 +525,11 @@ class TestMetadataCommon(MAASServerTestCase):
         node = factory.make_Node()
         client = make_node_client(node)
         response = client.get(url)
+        content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
-            yaml.safe_load(response.content),
+            yaml.safe_load(content['cloud-init']),
             Equals(get_vendor_data.return_value))
         self.assertThat(
             get_vendor_data, MockCalledOnceWith(node))
