@@ -1320,6 +1320,11 @@ class NetworkForm(ConfigForm):
     ntp_servers = get_config_field('ntp_servers')
 
 
+class NetworkDiscoveryForm(ConfigForm):
+    """Settings page, Network Discovery section."""
+    network_discovery = get_config_field('network_discovery')
+
+
 class ThirdPartyDriversForm(ConfigForm):
     """Settings page, Third Party Drivers section."""
     enable_third_party_drivers = get_config_field('enable_third_party_drivers')

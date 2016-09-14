@@ -38,6 +38,7 @@ from maasserver.forms import (
     EditUserForm,
     GlobalKernelOptsForm,
     MAASForm,
+    NetworkDiscoveryForm,
     NetworkForm,
     NewUserCreationForm,
     StorageSettingsForm,
@@ -226,6 +227,13 @@ def settings(request):
     if response is not None:
         return response
 
+    # Process the network discovery form.
+    network_discovery_form, response = process_form(
+        request, NetworkDiscoveryForm, reverse('settings'),
+        'network_discovery', "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the Commissioning form.
     commissioning_form, response = process_form(
         request, CommissioningForm, reverse('settings'), 'commissioning',
@@ -280,6 +288,7 @@ def settings(request):
             'license_keys': license_keys,
             'maas_form': maas_form,
             'network_form': network_form,
+            'network_discovery_form': network_discovery_form,
             'show_boot_source': show_boot_source,
             'boot_source_form': boot_source_form,
             'third_party_drivers_form': third_party_drivers_form,

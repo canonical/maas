@@ -82,6 +82,7 @@ from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
 )
+from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.event import Event
 import maasserver.models.interface as interface_module
 from maasserver.models.node import (
@@ -5480,6 +5481,26 @@ class TestController(MAASServerTestCase):
 
     def test__was_probably_machine_false(self):
         self.assertFalse(factory.make_RackController()._was_probably_machine())
+
+
+class TestControllerUpdateDiscoveryState(MAASServerTestCase):
+
+    def test__calls_update_discovery_state_per_interface(self):
+        controller = factory.make_RegionRackController()
+        eth1 = factory.make_Interface(node=controller)
+        factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, node=controller, parents=[eth1])
+        enable_passive = random.choice([True, False])
+        enable_active = random.choice([True, False])
+        discovery_config = NetworkDiscoveryConfig(
+            passive=enable_passive, active=enable_active)
+        mock_update_discovery_state = self.patch(
+            interface_module.Interface, "update_discovery_state")
+        interfaces = controller.update_discovery_state(discovery_config)
+        self.expectThat(
+            mock_update_discovery_state, MockCallsMatch(*[
+                call(discovery_config, interfaces[ifname])
+                for ifname in interfaces.keys()]))
 
 
 class TestReportNeighbours(MAASServerTestCase):

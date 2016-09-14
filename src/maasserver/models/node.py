@@ -196,6 +196,9 @@ from provisioningserver.utils.env import (
 )
 from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.ipaddr import get_mac_addresses
+from provisioningserver.utils.network import (
+    annotate_with_default_monitored_interfaces,
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -4065,27 +4068,17 @@ class Controller(Node):
             sorted(list(items))
             for items in process_order
         ]
+        # Cache the neighbour discovery settings, since they will be used for
+        # every interface on this Controller.
+        discovery_mode = Config.objects.get_network_discovery_config()
         for name in flatten(process_order):
+            settings = interfaces[name]
             # Note: the interface that comes back from this call may be None,
             # if we decided not to model an interface based on what the rack
             # sent.
-            interface = self._update_interface(name, interfaces[name])
-            # For now, just use the default set of monitored interfaces
-            # calculated by the controller. In the future, when we support
-            # granular configuration for neighbour discovery, this will need
-            # to be computed based on any global settings and/or fabric, VLAN,
-            # or subnet based settings.
+            interface = self._update_interface(name, settings)
             if interface is not None:
-                if interfaces[name].get('monitored', False):
-                    interface.neighbour_discovery_state = True
-                else:
-                    interface.neighbour_discovery_state = False
-                # The 'monitored' flag only applies to neighbour discovery.
-                # mDNS discovery can happen on any interface on the controller.
-                interface.mdns_discovery_state = True
-                interface.save(
-                    update_fields=[
-                        'neighbour_discovery_state', 'mdns_discovery_state'])
+                interface.update_discovery_state(discovery_mode, settings)
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
 
@@ -4153,6 +4146,24 @@ class Controller(Node):
             self.update_interfaces(response['interfaces'])
         if len(update_fields) > 0:
             self.save(update_fields=update_fields)
+
+    def update_discovery_state(self, discovery_mode):
+        """Update network discovery state on this Controller's interfaces.
+
+        The `discovery_mode` parameter must be a NetworkDiscoveryConfig tuple.
+
+        Returns the `interfaces` dictionary used during processing.
+        """
+        # Get the interfaces in the [rough] format of the region/rack contract.
+        interfaces = Interface.objects.get_all_interfaces_definition_for_node(
+            self)
+        # Use the data to calculate which interfaces should be monitored by
+        # default on this controller, then update each interface.
+        annotate_with_default_monitored_interfaces(interfaces)
+        for settings in interfaces.values():
+            interface = settings['obj']
+            interface.update_discovery_state(discovery_mode, settings)
+        return interfaces
 
 
 class RackController(Controller):

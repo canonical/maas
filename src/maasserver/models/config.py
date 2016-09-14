@@ -7,8 +7,10 @@ __all__ = [
     'Config',
     ]
 
-
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    namedtuple,
+)
 import copy
 from socket import gethostname
 
@@ -24,10 +26,18 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 DEFAULT_OS = UbuntuOS()
+
 DNSSEC_VALIDATION_CHOICES = [
     ("auto", "Automatic (use default root key)"),
     ("yes", "Yes (manually configured root key)"),
     ("no", "No (Disable DNSSEC; useful when upstream DNS is misconfigured)")
+]
+
+NETWORK_DISCOVERY_CHOICES = [
+    # XXX mpontillo: commented out until active discovery exists in MAAS.
+    # ("active", "Enabled (with active discovery)"),
+    ("enabled", "Enabled"),
+    ("disabled", "Disabled")
 ]
 
 
@@ -53,6 +63,8 @@ def get_default_config():
         'dnssec_validation': "auto",
         'ntp_servers': 'ntp.ubuntu.com',
         'omapi_key': '',
+        # Network discovery
+        'network_discovery': 'enabled',
         # RPC configuration.
         'rpc_region_certificate': None,
         'rpc_shared_secret': None,
@@ -74,11 +86,15 @@ def get_default_config():
 # Default values for config options.
 DEFAULT_CONFIG = get_default_config()
 
+# Encapsulates the possible states for network discovery
+NetworkDiscoveryConfig = namedtuple(
+    'NetworkDiscoveryConfig', ('active', 'passive'))
+
 
 class ConfigManager(Manager):
     """Manager for Config model class.
 
-    Don't import or instantiate this directly; access as `Config.objects.
+    Don't import or instantiate this directly; access as `Config.objects`.
     """
 
     def __init__(self):
@@ -150,6 +166,20 @@ class ConfigManager(Manager):
     def _config_changed(self, sender, instance, created, **kwargs):
         for connection in self._config_changed_connections[instance.name]:
             connection(sender, instance, created, **kwargs)
+
+    def get_network_discovery_config_from_value(self, value):
+        """Given the configuration value for `network_discovery`, return
+        a `namedtuple` (`NetworkDiscoveryConfig`) of booleans: (active,
+        passive).
+        """
+        discovery_mode = value
+        active = discovery_mode == "active"
+        passive = active or (discovery_mode == "enabled")
+        return NetworkDiscoveryConfig(active, passive)
+
+    def get_network_discovery_config(self):
+        return self.get_network_discovery_config_from_value(
+            self.get_config('network_discovery'))
 
 
 class Config(Model):

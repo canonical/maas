@@ -7,16 +7,23 @@ __all__ = []
 
 import random
 import threading
+from unittest.mock import call
 
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_TYPE,
 )
+from maasserver.models import Controller
+from maasserver.models.config import (
+    Config,
+    NetworkDiscoveryConfig,
+)
 from maasserver.models.signals.interfaces import update_parents_thread_local
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCallsMatch
 from testtools.matchers import (
     Contains,
     Not,
@@ -269,3 +276,43 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         self.assertEquals(
             (new_fabric.id, old_vlan.vid),
             (vlan_subnet.vlan.fabric.id, vlan_subnet.vlan.vid))
+
+
+class TestDiscoveryConfigChanges(MAASServerTestCase):
+    """Test that changes to the network discovery cause interface changes."""
+
+    def test_active_configuration_causes_interface_update(self):
+        factory.make_RegionRackController()
+        factory.make_RegionController()
+        factory.make_RackController()
+        mock_update_discovery_state = self.patch(
+            Controller, "update_discovery_state")
+        Config.objects.set_config('network_discovery', 'active')
+        self.expectThat(
+            mock_update_discovery_state,
+            MockCallsMatch(*[call(NetworkDiscoveryConfig(
+                active=True, passive=True))] * 3))
+
+    def test_passive_configuration_causes_interface_update(self):
+        factory.make_RegionRackController()
+        factory.make_RegionController()
+        factory.make_RackController()
+        mock_update_discovery_state = self.patch(
+            Controller, "update_discovery_state")
+        Config.objects.set_config('network_discovery', 'enabled')
+        self.expectThat(
+            mock_update_discovery_state,
+            MockCallsMatch(*[call(NetworkDiscoveryConfig(
+                active=False, passive=True))] * 3))
+
+    def test_disabled_configuration_causes_interface_update(self):
+        factory.make_RegionRackController()
+        factory.make_RegionController()
+        factory.make_RackController()
+        mock_update_discovery_state = self.patch(
+            Controller, "update_discovery_state")
+        Config.objects.set_config('network_discovery', 'disabled')
+        self.expectThat(
+            mock_update_discovery_state,
+            MockCallsMatch(*[call(NetworkDiscoveryConfig(
+                active=False, passive=False))] * 3))

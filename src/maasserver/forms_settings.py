@@ -26,6 +26,7 @@ from maasserver.models.config import (
     Config,
     DEFAULT_OS,
     DNSSEC_VALIDATION_CHOICES,
+    NETWORK_DISCOVERY_CHOICES,
 )
 from maasserver.storage_layouts import get_storage_layout_choices
 from maasserver.utils.forms import compose_invalid_choice_text
@@ -155,13 +156,26 @@ def make_commissioning_distro_series_field(*args, **kwargs):
 
 
 def make_dnssec_validation_field(*args, **kwargs):
-    """Build and return the make_dnssec_validation_field field."""
+    """Build and return the dnssec_validation field."""
     field = forms.ChoiceField(
         initial=CONFIG_ITEMS['dnssec_validation']['default'],
         choices=DNSSEC_VALIDATION_CHOICES,
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'dnssec_validation', DNSSEC_VALIDATION_CHOICES)
+        },
+        **kwargs)
+    return field
+
+
+def make_network_discovery_field(*args, **kwargs):
+    """Build and return the network_discovery field."""
+    field = forms.ChoiceField(
+        initial=CONFIG_ITEMS['network_discovery']['default'],
+        choices=NETWORK_DISCOVERY_CHOICES,
+        error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'network_discovery', NETWORK_DISCOVERY_CHOICES)
         },
         **kwargs)
     return field
@@ -256,6 +270,33 @@ CONFIG_ITEMS = {
                 "NTP servers, specified as IP addresses or hostnames, to be "
                 "used as time references for MAAS itself and the machines "
                 "MAAS deploys, e.g. ntp.ubuntu.com"),
+        }
+    },
+    'network_discovery': {
+        'default': 'enabled',
+        'form': make_network_discovery_field,
+        'form_kwargs': {
+            'label': (
+                "Host discovery and network observation"),
+            'required': False,
+            'help_text': (
+                # XXX mpontillo: commented out until active discovery exists.
+                # "If active mode is enabled, MAAS will use active techniques "
+                # "to observe attached networks, such as sending DHCP "
+                # "packets, ICMP echo (ping), and/or IPv4 ARP requests. MAAS "
+                # "may use 'nmap' for this purpose, if it is installed. "
+                # "Active discovery allows MAAS to maintain accurate data "
+                # "about which IP addresses are in-use on attached networks, "
+                # "and what services they are running. If passive mode is
+                # "enabled, "
+                "If enabled, MAAS will use 'tcpdump' to listen to IPv4 ARP "
+                "requests, and 'avahi-browse' to resolve mDNS (RFC 6762) "
+                "records advertised on local networks. This helps MAAS "
+                "determine which IP addresses and VLANs are in use on the "
+                "network, and helps users to determine their purpose."
+                # " Passive discovery is "
+                # "automatically enabled if active discovery is selected."
+            )
         }
     },
     'default_osystem': {

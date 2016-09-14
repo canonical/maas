@@ -36,6 +36,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,
@@ -68,10 +69,14 @@ from netaddr import (
 from provisioningserver.utils.ipaddr import (
     get_first_and_last_usable_host_in_network,
 )
+from provisioningserver.utils.network import (
+    annotate_with_default_monitored_interfaces,
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    Is,
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
@@ -206,6 +211,111 @@ class TestInterfaceManager(MAASServerTestCase):
                 'eth0': node2_eth0,
                 'eth1': node2_eth1,
             }))
+
+    def test__get_all_interfaces_definition_for_node(self):
+        node1 = factory.make_Node()
+        eth0 = factory.make_Interface(node=node1, name='eth0')
+        eth0_vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, parents=[eth0], node=node1)
+        eth1 = factory.make_Interface(
+            node=node1, name='eth1', enabled=False)
+        eth2 = factory.make_Interface(node=node1, name='eth2')
+        eth4 = factory.make_Interface(node=node1, name='eth4')
+        bond0 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, parents=[eth2], name='bond0',
+            node=node1)
+        br0 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, parents=[eth4], name='br0',
+            node=node1)
+        br1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, parents=[], name='br1', node=node1)
+        # Make sure we only got one Node's interfaces by creating a few
+        # dummy interfaces.
+        node2 = factory.make_Node()
+        factory.make_Interface(node=node2, name='eth0')
+        factory.make_Interface(node=node2, name='eth1')
+        expected_result = {
+            'eth0': {
+                'type': 'physical',
+                'mac_address': str(eth0.mac_address),
+                'enabled': True,
+                'parents': [],
+                'source': 'maas-database',
+                'obj': eth0,
+                'monitored': True,
+            },
+            eth0_vlan.name: {
+                'type': 'vlan',
+                'mac_address': str(eth0_vlan.mac_address),
+                'enabled': True,
+                'parents': ['eth0'],
+                'source': 'maas-database',
+                'obj': eth0_vlan,
+                'monitored': False,
+            },
+            'eth1': {
+                'type': 'physical',
+                'mac_address': str(eth1.mac_address),
+                'enabled': False,
+                'parents': [],
+                'source': 'maas-database',
+                'obj': eth1,
+                'monitored': False,
+            },
+            'eth2': {
+                'type': 'physical',
+                'mac_address': str(eth2.mac_address),
+                'enabled': True,
+                'parents': [],
+                'source': 'maas-database',
+                'obj': eth2,
+                'monitored': False,
+            },
+            'eth4': {
+                'type': 'physical',
+                'mac_address': str(eth4.mac_address),
+                'enabled': True,
+                'parents': [],
+                'source': 'maas-database',
+                'obj': eth4,
+                # Physical bridge members are monitored.
+                'monitored': True,
+            },
+            'bond0': {
+                'type': 'bond',
+                'mac_address': str(bond0.mac_address),
+                'enabled': True,
+                'parents': ['eth2'],
+                'source': 'maas-database',
+                'obj': bond0,
+                # Bonds are monitored.
+                'monitored': True,
+            },
+            'br0': {
+                'type': 'bridge',
+                'mac_address': str(br0.mac_address),
+                'enabled': True,
+                'parents': ['eth4'],
+                'source': 'maas-database',
+                'obj': br0,
+                'monitored': False,
+            },
+            'br1': {
+                'type': 'bridge',
+                'mac_address': str(br1.mac_address),
+                'enabled': True,
+                'parents': [],
+                'source': 'maas-database',
+                'obj': br1,
+                # Zero-parent bridges are monitored.
+                'monitored': True
+            },
+        }
+        interfaces = Interface.objects.get_all_interfaces_definition_for_node(
+            node1)
+        # Need to ensure this call is compatible with the returned structure.
+        annotate_with_default_monitored_interfaces(interfaces)
+        self.assertDictEqual(interfaces, expected_result)
 
     def test__get_interface_dict_for_node__prefetches_on_request(self):
         node1 = factory.make_Node()
@@ -2704,6 +2814,62 @@ class TestReleaseAutoIPs(MAASServerTestCase):
             "Should have 1 AUTO IP addresses that was released.")
         self.assertEqual(subnet, observed[0].subnet)
         self.assertIsNone(observed[0].ip)
+
+
+class InterfaceUpdateDiscoveryTest(MAASServerTestCase):
+    """Tests for `Interface.update_discovery_state`.
+
+    Note: these tests make extensive use of reload_object() to help ensure that
+    the update_fields=[...] parameter to save() is correct.
+    """
+
+    def test__monitored_flag_vetoes_discovery_state(self):
+        settings = {'monitored': False}
+        iface = factory.make_Interface()
+        iface.update_discovery_state(
+            NetworkDiscoveryConfig(passive=True, active=False),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.neighbour_discovery_state, Is(False))
+
+    def test__sets_neighbour_state_true_when_monitored_flag_is_true(self):
+        settings = {'monitored': True}
+        iface = factory.make_Interface()
+        iface.update_discovery_state(
+            NetworkDiscoveryConfig(passive=True, active=False),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.neighbour_discovery_state, Is(True))
+
+    def test__sets_mdns_state_based_on_passive_setting(self):
+        settings = {'monitored': False}
+        iface = factory.make_Interface()
+        iface.update_discovery_state(
+            NetworkDiscoveryConfig(passive=False, active=False),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.mdns_discovery_state, Is(False))
+        iface.update_discovery_state(
+            NetworkDiscoveryConfig(passive=True, active=False),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.mdns_discovery_state, Is(True))
+
+    def test__sets_active_discovery_state_based_on_active_setting(self):
+        settings = {'monitored': False}
+        iface = factory.make_Interface()
+        iface.update_discovery_state(
+            NetworkDiscoveryConfig(passive=False, active=False),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.active_discovery_state, Is(False))
+        iface.update_discovery_state(
+            # This is an invalid state as far as the configuration is
+            # concerned, but it's supported by the model.
+            NetworkDiscoveryConfig(passive=False, active=True),
+            settings=settings)
+        iface = reload_object(iface)
+        self.expectThat(iface.active_discovery_state, Is(True))
 
 
 class TestReportVID(MAASServerTestCase):

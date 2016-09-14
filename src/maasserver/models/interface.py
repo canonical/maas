@@ -246,6 +246,31 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 ip=static_ip_address)
         return self.filter(ip_addresses=static_ip_address)
 
+    def get_all_interfaces_definition_for_node(self, node):
+        """Returns the interfaces definition for the specified node.
+
+        The interfaces definition is returned in a format consistent with the
+        contract between the rack and the region.
+
+        Note: this method currently implements just enough of the contract to
+        satisfy the `get_default_monitored_interfaces()` call.
+
+        As a convenience, also returns the model object for the interface in
+        the `obj` key.
+        """
+        interfaces = self.get_interface_dict_for_node(node)
+        result = {}
+        for ifname, interface in interfaces.items():
+            result[ifname] = {
+                "type": interface.type,
+                "mac_address": str(interface.mac_address),
+                "enabled": interface.enabled,
+                "parents": [parent.name for parent in interface.parents.all()],
+                "source": "maas-database",
+                "obj": interface,
+            }
+        return result
+
     def get_interface_or_404(self, system_id, specifiers, user, perm):
         """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
         exceptions if no `Interface` with this id exist, if the `Node` with
@@ -1207,6 +1232,32 @@ class Interface(CleanSave, TimestampedModel):
             binding.count += 1
             binding.save(update_fields=['count', 'updated'])
         return binding
+
+    def update_discovery_state(self, discovery_mode, settings: dict):
+        """Updates the state of interface monitoring. Uses
+
+        The `discovery_mode` parameter must be a NetworkDiscoveryConfig tuple.
+
+        The `interfaces` dict must be in the format defined by the region/rack
+        contract. This function checks its 'monitored' key to determine whether
+        or not to monitor the interface.
+
+        Upon completion, .save() will be called to update the discovery state
+        fields.
+        """
+        monitored = settings.get('monitored', False)
+        if monitored:
+            self.neighbour_discovery_state = discovery_mode.passive
+        else:
+            # Force neighbour discovery to a disabled state if this is not
+            # an interface that should be monitored.
+            self.neighbour_discovery_state = False
+        self.mdns_discovery_state = discovery_mode.passive
+        self.active_discovery_state = discovery_mode.active
+        self.save(
+            update_fields=[
+                'neighbour_discovery_state', 'mdns_discovery_state',
+                'active_discovery_state'])
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):

@@ -187,6 +187,19 @@
             </form>
         </div>
     </div>
+    <div class="eight-col border">
+        <div id="network" class="eight-col">
+            <h2>Network Discovery</h2>
+            <form action="{% url 'settings' %}" method="post">
+                {% csrf_token %}
+                <ul>
+                    {% for field in network_discovery_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                </ul>
+                <input type="hidden" name="network_discovery_submit" value="1" />
+                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
+            </form>
+        </div>
+    </div>
     {% if show_boot_source %}
     <div class="eight-col border">
         <div id="boot_source" class="eight-col">
