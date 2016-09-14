@@ -181,6 +181,10 @@
           font-size: 13px;
           left: 1px;
         }
+
+        @media screen and (-moz-overlay-scrollbars) {
+          left: 2px;
+        }
       }
     }
 

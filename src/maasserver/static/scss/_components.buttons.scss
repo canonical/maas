@@ -74,7 +74,7 @@
 
     .button-group__dropdown {
       border-radius: 3px;
-      right: 0;
+      left: 0;
       margin: 0;
       list-style: none;
       background: $white;
@@ -82,11 +82,9 @@
       z-index: 20;
       max-height: 1000px;
       transition: max-height .3s ease-in;
-      overflow: hidden;
       position: absolute;
       top: 36px;
       clear: both;
-      width: 100%;
       min-width: 160px;
     }
 
@@ -95,6 +93,7 @@
       clear: both;
       padding: 5px 10px;
       margin: 0;
+      width: 100%;
 
       .button-group__item-link {
         color: $cool-grey;
@@ -103,6 +102,12 @@
         float: left;
         margin: 0;
         border: 0;
+        text-transform: lowercase;
+        white-space: nowrap;
+
+        &:first-letter {
+          text-transform: uppercase;
+        }
 
         &:hover {
           color: $link-hover;
