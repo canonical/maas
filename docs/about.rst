@@ -1,6 +1,15 @@
 About this documentation
 ========================
 
+This is API and developer documentation only. MAAS 2.0 user documentation is
+published on `http://maas.io_` and its source is found on `GitHub_`.
+
+.. _http://maas.io:
+  http://maas.io/docs/
+
+.. _GitHub:
+  https://github.com/CanonicalLtd/maas-docs
+
 This is the documentation for Canonical's MAAS software. If you aren't
 sure what that is, you should probably skip everything else and head
 straight to the :ref:`orientation` section where it is explained.

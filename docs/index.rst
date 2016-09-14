@@ -6,6 +6,15 @@ MAAS: Metal As A Service
 
 This is the documentation for the `MAAS project`_.
 
+This is API and developer documentation only. MAAS 2.0 user documentation is
+published on `http://maas.io_` and its source is found on `GitHub_`.
+
+.. _http://maas.io:
+  http://maas.io/docs/
+
+.. _GitHub:
+  https://github.com/CanonicalLtd/maas-docs
+
 Metal as a Service -- MAAS -- lets you treat physical servers like
 virtual machines in the cloud. Rather than having to manage each
 server individually, MAAS turns your bare metal into an elastic
