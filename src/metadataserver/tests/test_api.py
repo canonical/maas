@@ -490,7 +490,25 @@ class TestMetadataCommon(MAASServerTestCase):
             response.get("Content-Type"),
             Equals("application/x-yaml; charset=utf-8"))
 
-    def test_vendor_data_for_node_with_owner_includes_system_info(self):
+    def test_vendor_data_node_with_owner_def_user_includes_system_info(self):
+        # Test vendor_data includes system_info when the node has an owner
+        # and a default_user set.
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
+        node = factory.make_Node(owner=user, default_user=user)
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'vendor-data'])
+        response = client.get(url)
+        content = yaml.safe_load(response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertThat(content, LooksLikeCloudInit)
+        self.assertThat(
+            yaml.safe_load(content['cloud-init']),
+            KeysEqual("system_info", "ntp"))
+
+    def test_vendor_data_node_without_def_user_includes_no_system_info(self):
+        # Test vendor_data includes no system_info when the node has an owner
+        # but doesn't have a default_user set.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_Node(owner=user)
         client = make_node_client(node)
@@ -502,7 +520,7 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertThat(content, LooksLikeCloudInit)
         self.assertThat(
             yaml.safe_load(content['cloud-init']),
-            KeysEqual("system_info", "ntp"))
+            KeysEqual("ntp"))
 
     def test_vendor_data_for_node_without_owner_includes_no_system_info(self):
         view_name = self.get_metadata_name('-meta-data')

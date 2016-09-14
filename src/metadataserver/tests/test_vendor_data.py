@@ -14,12 +14,14 @@ from metadataserver.vendor_data import (
     get_vendor_data,
 )
 from testtools.matchers import (
+    Contains,
     ContainsDict,
     Equals,
     Is,
     IsInstance,
     KeysEqual,
     MatchesDict,
+    Not,
 )
 
 
@@ -30,8 +32,14 @@ class TestGetVendorData(MAASServerTestCase):
         node = factory.make_Node()
         self.assertThat(get_vendor_data(node), IsInstance(dict))
 
-    def test_includes_system_information(self):
+    def test_includes_no_system_information_if_no_default_user(self):
         node = factory.make_Node(owner=factory.make_User())
+        vendor_data = get_vendor_data(node)
+        self.assertThat(vendor_data, Not(Contains('system_info')))
+
+    def test_includes_system_information_if_default_user(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, default_user=owner)
         vendor_data = get_vendor_data(node)
         self.assertThat(vendor_data, ContainsDict({
             "system_info": MatchesDict({
@@ -59,12 +67,19 @@ class TestGenerateSystemInfo(MAASServerTestCase):
         configuration = generate_system_info(node)
         self.assertThat(dict(configuration), Equals({}))
 
-    def test_yields_basic_system_info_when_node_is_owned(self):
+    def test_yields_nothing_when_owner_and_no_default_user(self):
+        node = factory.make_Node()
+        self.assertThat(node.owner, Is(None))
+        self.assertThat(node.default_user, Is(''))
+        configuration = generate_system_info(node)
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_basic_system_info_when_node_owned_with_default_user(self):
         owner = factory.make_User()
         owner.first_name = "First"
         owner.last_name = "Last"
         owner.save()
-        node = factory.make_Node(owner=owner)
+        node = factory.make_Node(owner=owner, default_user=owner)
         configuration = generate_system_info(node)
         self.assertThat(dict(configuration), Equals({
             "system_info": {

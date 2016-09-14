@@ -25,8 +25,8 @@ def get_vendor_data(node):
 
 def generate_system_info(node):
     """Generate cloud-init system information for the given node."""
-    if node.owner is not None:
-        username = node.owner.username
+    if node.owner is not None and node.default_user:
+        username = node.default_user
         fullname = node.owner.get_full_name()
         gecos = make_gecos_field(fullname)
         yield "system_info", {
