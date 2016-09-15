@@ -62,6 +62,7 @@ def get_default_config():
         'upstream_dns': None,
         'dnssec_validation': "auto",
         'ntp_servers': 'ntp.ubuntu.com',
+        'ntp_external_only': False,
         'omapi_key': '',
         # Network discovery
         'network_discovery': 'enabled',

@@ -38,6 +38,7 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     release_a_newer_than_b,
 )
+from provisioningserver.utils.text import normalise_whitespace
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
@@ -270,6 +271,23 @@ CONFIG_ITEMS = {
                 "NTP servers, specified as IP addresses or hostnames, to be "
                 "used as time references for MAAS itself and the machines "
                 "MAAS deploys, e.g. ntp.ubuntu.com"),
+        }
+    },
+    'ntp_external_only': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "Use external NTP servers only",
+            'required': False,
+            'help_text': normalise_whitespace("""\
+                Configure all region controller hosts, rack controller hosts,
+                and subsequently deployed machines to refer directly to the
+                configured external NTP servers. Otherwise only region
+                controller hosts will be configured to use those external NTP
+                servers, rack contoller hosts will in turn refer to the
+                regions' NTP servers, and deployed machines will refer to the
+                racks' NTP servers.
+            """),
         }
     },
     'network_discovery': {

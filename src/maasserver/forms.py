@@ -1318,6 +1318,7 @@ class NetworkForm(ConfigForm):
     upstream_dns = get_config_field('upstream_dns')
     dnssec_validation = get_config_field('dnssec_validation')
     ntp_servers = get_config_field('ntp_servers')
+    ntp_external_only = get_config_field('ntp_external_only')
 
 
 class NetworkDiscoveryForm(ConfigForm):
