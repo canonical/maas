@@ -5,8 +5,8 @@
 
 __all__ = []
 
-
 from getpass import getpass
+import re
 
 from django.contrib.auth.models import User
 from django.core.management.base import (
@@ -14,6 +14,9 @@ from django.core.management.base import (
     CommandError,
 )
 from django.db import DEFAULT_DB_ALIAS
+from maasserver.enum import KEYS_PROTOCOL_TYPE
+from maasserver.models.keysource import KeySource
+from maasserver.utils.keys import ImportSSHKeysError
 
 
 class EmptyUsername(CommandError):
@@ -26,6 +29,10 @@ class InconsistentPassword(CommandError):
 
 class EmptyEmail(CommandError):
     """User did not provide an email."""
+
+
+class SSHKeysError(CommandError):
+    """Error during SSH keys import."""
 
 
 def read_input(prompt):
@@ -91,6 +98,37 @@ def prompt_for_email():
     return email
 
 
+def prompt_for_ssh_import():
+    """Prompt user for protocal and user-id to import SSH keys."""
+    return read_input(
+        "Import SSH keys [] (lp:user-id or gh:user-id): ")
+
+
+def validate_ssh_import(ssh_import):
+    """Validate user's SSH import input."""
+    if ssh_import.startswith(('lp', 'gh')):
+        import_regex = re.compile(r'^(?:lp|gh):[\w-]*$')
+        match = import_regex.match(ssh_import)
+        if match is not None:
+            return tuple(match.group().split(':'))
+        else:
+            raise SSHKeysError(
+                "The protocol or user-id entered is not in a correct format. "
+                "Your SSH keys will not be imported.")
+    else:
+        protocol = KEYS_PROTOCOL_TYPE.LP
+        import_regex = re.compile(r'^[\w-]*$')
+        match = import_regex.match(ssh_import)
+        if match is not None:
+            print("SSH import protocol was not entered.  "
+                  "Using Launchpad protocol (default).")
+            return protocol, match.group()
+        else:
+            raise SSHKeysError(
+                "The input entered is not in a correct format. "
+                "Your SSH keys will not be imported.")
+
+
 class Command(BaseCommand):
     help = "Create a MAAS administrator account."
 
@@ -104,6 +142,10 @@ class Command(BaseCommand):
         parser.add_argument(
             '--email', default=None,
             help="Specifies the email for the admin.")
+        parser.add_argument(
+            '--ssh-import', default=None,
+            help="Import SSH keys from Launchpad (lp:user-id) or "
+            "Github (gh:user-id).")
 
     def handle(self, *args, **options):
         username = options.get('username', None)
@@ -115,6 +157,19 @@ class Command(BaseCommand):
         email = options.get('email', None)
         if email is None:
             email = prompt_for_email()
+        ssh_import = options.get('ssh_import', None)
+        if ssh_import is None:
+            ssh_import = prompt_for_ssh_import()
 
         User.objects.db_manager(DEFAULT_DB_ALIAS).create_superuser(
             username, email=email, password=password)
+
+        if ssh_import:  # User entered input
+            protocol, auth_id = validate_ssh_import(ssh_import)
+            user = User.objects.get(username=username)
+            try:
+                KeySource.objects.save_keys_for_user(
+                    user=user, protocol=protocol, auth_id=auth_id)
+            except ImportSSHKeysError as e:
+                raise SSHKeysError(
+                    "Importing SSH Keys failed.\n%s" % e.args[0])

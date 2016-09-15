@@ -7,8 +7,13 @@ __all__ = [
     'get_protocol_keys',
     ]
 
+import logging
+
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 import requests
+
+
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 class ImportSSHKeysError(Exception):
