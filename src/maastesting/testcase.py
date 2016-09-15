@@ -31,7 +31,6 @@ from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
 import testtools
-from testtools.content import text_content
 import testtools.matchers
 
 
@@ -139,10 +138,6 @@ class MAASTestCase(
             return MAASRunTest
 
     def setUp(self):
-        # Add the full test identifier as a detail because nose does not use
-        # it when reporting test failure or error details.
-        if self.id() != testtools.TestCase.id(self):
-            self.addDetail("test-id", text_content(self.id()))
         self.maybeCheckTableRowCounts()
         self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()
