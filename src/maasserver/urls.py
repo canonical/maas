@@ -22,10 +22,6 @@ from maasserver.views.account import (
     login,
     logout,
 )
-from maasserver.views.images import (
-    ImageDeleteView,
-    ImagesView,
-)
 from maasserver.views.index import IndexView
 from maasserver.views.prefs import (
     SSHKeyCreateView,
@@ -159,15 +155,6 @@ urlpatterns += patterns(
         r'^license-key/add/$',
         LicenseKeyCreate.as_view(),
         name='license-key-add'),
-)
-
-# Image views.
-urlpatterns += patterns(
-    'maasserver.views',
-    url(r'^images/$', ImagesView.as_view(), name='images'),
-    url(
-        r'^images/(?P<resource_id>[\w\-]+)/delete/$',
-        ImageDeleteView.as_view(), name='image-delete'),
 )
 
 # Zone views.

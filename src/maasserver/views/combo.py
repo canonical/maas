@@ -137,9 +137,6 @@ MERGE_VIEWS = {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
             "js/io.js",
-            "js/image.js",
-            "js/image_views.js",
-            "js/user_panel.js",
             "js/prefs.js",
             "js/shortpoll.js",
             "js/enums.js",
