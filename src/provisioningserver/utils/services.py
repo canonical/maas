@@ -15,9 +15,11 @@ from datetime import timedelta
 import json
 from json.decoder import JSONDecodeError
 import os
+from pprint import pformat
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.fs import (
     get_maas_provision_command,
     NamedLock,
@@ -33,6 +35,7 @@ from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    inlineCallbacks,
     maybeDeferred,
 )
 from twisted.internet.error import (
@@ -42,6 +45,7 @@ from twisted.internet.error import (
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
 from twisted.python import log
+from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("networks.monitor")
@@ -238,6 +242,13 @@ class MDNSResolverService(ProcessProtocolService):
         return JSONPerLineProtocol(callback=self.callback)
 
 
+class NetworksMonitoringLock(NamedLock):
+    """Host scoped lock to ensure only one network monitoring service runs."""
+
+    def __init__(self):
+        super().__init__("networks-monitoring")
+
+
 class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     """Service to monitor network interfaces for configuration changes.
 
@@ -249,22 +260,34 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
     interval = timedelta(seconds=30).total_seconds()
 
-    # The last successfully recorded interfaces.
-    _recorded = None
-    _monitored = frozenset()
-
-    # Use a named filesystem lock to prevent more than one monitoring service
-    # running on each host machine. This service attempts to acquire this lock
-    # on each loop, and then it holds the lock until the service stops.
-    _lock = NamedLock("networks-monitoring")
-    _locked = False
-
-    def __init__(self, reactor):
+    def __init__(self, clock=None, enable_monitoring=True):
+        # Order is very important here. First we set the clock to the passed-in
+        # reactor, so that unit tests can fake out the clock if necessary.
+        # Then we call super(). The superclass will set up the structures
+        # required to add parents to this service, which allows the remainder
+        # of this method to succeed. (And do so without the side-effect of
+        # executing calls that shouldn't be executed based on the desired
+        # reactor.)
+        self.clock = clock
         super().__init__()
+        self.enable_monitoring = enable_monitoring
+        # The last successfully recorded interfaces.
+        self._recorded = None
+        self._monitored = frozenset()
+        self._monitoring_state = {}
+        self._monitoring_mdns = False
+        self._locked = False
+        # Use a named filesystem lock to prevent more than one monitoring
+        # service running on each host machine. This service attempts to
+        # acquire this lock on each loop, and then it holds the lock until the
+        # service stops.
+        self._lock = NetworksMonitoringLock()
+        # Set up child service to update interface.
         self.interface_monitor = TimerService(
             self.interval, self.updateInterfaces)
+        self.interface_monitor.setName("updateInterfaces")
+        self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
-        self.clock = reactor
 
     def updateInterfaces(self):
         """Update interfaces, catching and logging errors.
@@ -277,7 +300,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         def update(responsible):
             if responsible:
                 d = maybeDeferred(self.getInterfaces)
-                d.addCallback(self._maybeRecordInterfaces)
+                d.addCallback(self._updateInterfaces)
                 return d
 
         def failed(failure):
@@ -286,7 +309,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 "Failed to update and/or record network interface "
                 "configuration: %s" % failure.getErrorMessage())
 
-        return d.addCallback(update).addErrback(failed)
+        d = d.addCallback(update)
+        # During the update, we might fail to get the interface monitoring
+        # state from the region. We can safely ignore this, as it will be
+        # retried shortly.
+        d.addErrback(Failure.trap, NoConnectionsAvailable)
+        d.addErrback(failed)
+        return d
 
     def getInterfaces(self):
         """Get the current network interfaces configuration.
@@ -294,6 +323,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         This can be overridden by subclasses.
         """
         return deferToThread(get_all_interfaces_definition)
+
+    @abstractmethod
+    def getDiscoveryState(self):
+        """Record the interfaces information.
+
+        This MUST be overridden in subclasses.
+        """
 
     @abstractmethod
     def recordInterfaces(self, interfaces):
@@ -345,7 +381,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                     "Networks monitoring service: Process ID %d assumed "
                     "responsibility." % os.getpid())
                 self._locked = True
-                self._updateMonitoredInterfaces(self._recorded)
                 return True
 
     def _releaseSoleResponsibility(self):
@@ -360,39 +395,45 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             self._locked = False
             # If we were monitoring neighbours on any interfaces, we need to
             # stop the monitoring services.
-            self._updateMonitoredInterfaces()
+            self._configureNetworkDiscovery({})
 
-    def _maybeRecordInterfaces(self, interfaces):
+    def _updateInterfaces(self, interfaces):
         """Record `interfaces` if they've changed."""
         if interfaces != self._recorded:
             d = maybeDeferred(self.recordInterfaces, interfaces)
+            # Note: _interfacesRecorded() will reconfigure discovery after
+            # recording the interfaces, so there is no need to call
+            # _configureNetworkDiscovery() here.
             d.addCallback(callOut, self._interfacesRecorded, interfaces)
             return d
+        else:
+            # If the interfaces didn't change, we still need to poll for
+            # monitoring state changes.
+            d = maybeDeferred(self._configureNetworkDiscovery, interfaces)
+            return d
 
-    def _getInterfacesForNeighbourDiscovery(self, interfaces):
+    def _getInterfacesForNeighbourDiscovery(
+            self, interfaces: dict, monitoring_state: dict):
         """Return the interfaces which will be used for neighbour discovery.
 
         :return: The set of interface names to run neighbour discovery on.
         """
-        # XXX Don't observe interfaces when running the test suite/dev env.
-        # This will be fixed in a future branch. We need an RPC call to
-        # determine the interfaces to run discovery on.
+        # Don't observe interfaces when running the test suite/dev env.
         # In addition, if we don't own the lock, we should not be monitoring
-        # the interfaces any longer.
+        # any interfaces.
         if is_dev_environment() or not self._locked or interfaces is None:
             return set()
-        # XXX Need to get this from the region instead. This is just a
-        # temporary measure to get things working. (Currently, if we had called
-        # the region, it would have returned the same result anyway.)
         monitored_interfaces = {
             ifname for ifname in interfaces
-            if interfaces[ifname]['monitored'] is True
+            if (ifname in monitoring_state and
+                monitoring_state[ifname].get('neighbour', False) is True)
         }
         return monitored_interfaces
 
     def _startNeighbourDiscovery(self, ifname):
         """"Start neighbour discovery service on the specified interface."""
         service = NeighbourDiscoveryService(ifname, self.reportNeighbours)
+        service.clock = self.clock
         service.setName("neighbour_discovery:" + ifname)
         service.setServiceParent(self)
 
@@ -404,6 +445,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # This is an expected exception. (The call inside the `try`
             # is only necessary to ensure the service doesn't exist.)
             service = MDNSResolverService(self.reportMDNSEntries)
+            service.clock = self.clock
             service.setName("mdns_resolver")
             service.setServiceParent(self)
 
@@ -440,9 +482,19 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             else:
                 service.disownServiceParent()
                 maaslog.info(
-                    "Stopped neighbour observation on interface: %s" % ifname)
+                    "Stopped neighbour observation service for %s." % ifname)
 
-    def _updateMonitoredInterfaces(self, interfaces=None):
+    def _shouldMonitorMDNS(self, monitoring_state):
+        # If any interface is configured for mDNS, we must start the monitoring
+        # process. (You cannot select interfaces when using `avahi-browse`.)
+        mdns_state = {
+            monitoring_state[ifname].get('mdns', False)
+            for ifname in monitoring_state.keys()
+        }
+        return True in mdns_state
+
+    @inlineCallbacks
+    def _configureNetworkDiscovery(self, interfaces):
         """Update the set of monitored interfaces.
 
         Calculates the difference between the interfaces that are currently
@@ -454,34 +506,65 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         Updates `self._monitored` with the current set of interfaces being
         monitored.
         """
-        monitored_interfaces = self._getInterfacesForNeighbourDiscovery(
-            interfaces)
-        # Calculate the difference between the sets. We need to know which
-        # interfaces were added and deleted (with respect to the interfaces we
-        # were already monitoring).
-        new_interfaces = monitored_interfaces.difference(self._monitored)
-        deleted_interfaces = self._monitored.difference(monitored_interfaces)
-        self._startNeighbourDiscoveryServices(new_interfaces)
-        self._stopNeighbourDiscoveryServices(deleted_interfaces)
-        # Determine if we went from monitoring zero interfaces to monitoring
-        # at least one. If so, we need to start mDNS discovery.
-        # XXX Need to get this setting from the region.
-        if len(self._monitored) == 0 and len(monitored_interfaces) > 0:
+        if interfaces is None:
+            # This is a no-op if we don't have any interfaces to monitor yet.
+            # (An empty dictionary tells us not to monitor any interfaces.)
+            return
+        # Don't bother calling the region if the interface dictionary
+        # hasn't yet been populated, or was intentionally set to nothing.
+        if len(interfaces) > 0:
+            monitoring_state = yield maybeDeferred(
+                self.getDiscoveryState)
+        else:
+            monitoring_state = {}
+        # If the monitoring state has changed, we need to potentially start
+        # or stop some services.
+        if self._monitoring_state != monitoring_state:
+            state = pformat(monitoring_state)
+            log.msg("New interface monitoring state: \n%s" % state)
+            self._configureNeighbourDiscovery(interfaces, monitoring_state)
+            self._configureMDNS(monitoring_state)
+            self._monitoring_state = monitoring_state
+
+    def _configureMDNS(self, monitoring_state):
+        should_monitor_mdns = self._shouldMonitorMDNS(monitoring_state)
+        if not self._monitoring_mdns and should_monitor_mdns:
             # We weren't currently monitoring any interfaces, but we have been
             # requested to monitor at least one.
             self._startMDNSDiscoveryService()
-        elif len(self._monitored) > 0 and len(monitored_interfaces) == 0:
+            self._monitoring_mdns = True
+        elif self._monitoring_mdns and not should_monitor_mdns:
             # We are currently monitoring at least one interface, but we have
             # been requested to stop monitoring them all.
             self._stopMDNSDiscoveryService()
+            self._monitoring_mdns = False
         else:
             # No state change. We either still AREN'T monitoring any
             # interfaces, or we still ARE monitoring them. (Either way, it
             # doesn't matter for mDNS discovery purposes.)
             pass
+
+    def _configureNeighbourDiscovery(self, interfaces, monitoring_state):
+        monitored_interfaces = self._getInterfacesForNeighbourDiscovery(
+            interfaces, monitoring_state)
+        # Calculate the difference between the sets. We need to know which
+        # interfaces were added and deleted (with respect to the interfaces we
+        # were already monitoring).
+        new_interfaces = monitored_interfaces.difference(self._monitored)
+        deleted_interfaces = self._monitored.difference(monitored_interfaces)
+        if len(new_interfaces) > 0:
+            log.msg("Starting neighbour discovery for interfaces: %s" % (
+                pformat(new_interfaces)))
+            self._startNeighbourDiscoveryServices(new_interfaces)
+        if len(deleted_interfaces) > 0:
+            log.msg(
+                "Stopping neighbour discovery for interfaces: %s" % (
+                    pformat(deleted_interfaces)))
+            self._stopNeighbourDiscoveryServices(deleted_interfaces)
         self._monitored = monitored_interfaces
 
     def _interfacesRecorded(self, interfaces):
         """The given `interfaces` were recorded successfully."""
         self._recorded = interfaces
-        self._updateMonitoredInterfaces(interfaces)
+        if self.enable_monitoring is True:
+            self._configureNetworkDiscovery(interfaces)

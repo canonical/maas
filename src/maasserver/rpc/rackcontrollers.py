@@ -194,6 +194,14 @@ def update_interfaces(system_id, interfaces):
 
 @synchronous
 @transactional
+def get_discovery_state(system_id):
+    """Update the interface definition on the rack controller."""
+    rack_controller = RackController.objects.get(system_id=system_id)
+    return rack_controller.get_discovery_state()
+
+
+@synchronous
+@transactional
 def report_mdns_entries(system_id, mdns):
     """Report observed neighbours seen on the rack controller."""
     try:

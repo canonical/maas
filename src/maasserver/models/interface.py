@@ -1238,7 +1238,7 @@ class Interface(CleanSave, TimestampedModel):
 
         The `discovery_mode` parameter must be a NetworkDiscoveryConfig tuple.
 
-        The `interfaces` dict must be in the format defined by the region/rack
+        The `settings` dict must be in the format defined by the region/rack
         contract. This function checks its 'monitored' key to determine whether
         or not to monitor the interface.
 
@@ -1258,6 +1258,24 @@ class Interface(CleanSave, TimestampedModel):
             update_fields=[
                 'neighbour_discovery_state', 'mdns_discovery_state',
                 'active_discovery_state'])
+
+    def get_discovery_state(self):
+        """Returns the interface monitoring state for this `Interface`.
+
+        The returned object must be suitable to serialize into JSON for RPC
+        purposes.
+        """
+        # If the text field is empty, treat it the same as 'null'.
+        if str(self.active_discovery_params) == '':
+            params = None
+        else:
+            params = self.active_discovery_params
+        return {
+            'neighbour': self.neighbour_discovery_state,
+            'mdns': self.mdns_discovery_state,
+            'active': self.active_discovery_state,
+            'params': params
+        }
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):

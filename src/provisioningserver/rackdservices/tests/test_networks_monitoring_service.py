@@ -19,6 +19,7 @@ from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from twisted.internet.defer import (
     inlineCallbacks,
+    maybeDeferred,
     succeed,
 )
 from twisted.internet.task import Clock
@@ -26,7 +27,7 @@ from twisted.internet.task import Clock
 
 class TestRackNetworksMonitoringService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
 
     @inlineCallbacks
     def test_runs_refresh_first_time(self):
@@ -35,7 +36,8 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         self.addCleanup((yield connecting))
 
         rpc_service = services.getServiceNamed('rpc')
-        service = RackNetworksMonitoringService(rpc_service, Clock())
+        service = RackNetworksMonitoringService(
+            rpc_service, Clock(), enable_monitoring=False)
 
         yield service.startService()
         yield service.stopService()
@@ -61,14 +63,15 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         }
 
         rpc_service = services.getServiceNamed('rpc')
-        service = RackNetworksMonitoringService(rpc_service, Clock())
+        service = RackNetworksMonitoringService(
+            rpc_service, Clock(), enable_monitoring=False)
         service.getInterfaces = lambda: succeed(interfaces)
         # Put something in the cache. This tells recordInterfaces that refresh
         # has already run but the interfaces have changed thus they need to be
         # updated.
-        service._interfacesRecorded({})
+        service._recorded = {}
 
-        yield service.startService()
+        service.startService()
         yield service.stopService()
 
         self.assertThat(
@@ -82,31 +85,34 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         protocol, connecting = fixture.makeEventLoop(
             region.UpdateInterfaces, region.ReportNeighbours)
         self.addCleanup((yield connecting))
-
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-
         rpc_service = services.getServiceNamed('rpc')
-        service = RackNetworksMonitoringService(rpc_service, Clock())
-        service.getInterfaces = lambda: succeed(interfaces)
-        # Put something in the cache. This tells recordInterfaces that refresh
-        # has already run but the interfaces have changed thus they need to be
-        # updated.
-        service._interfacesRecorded({})
+        service = RackNetworksMonitoringService(
+            rpc_service, Clock(), enable_monitoring=False)
         neighbours = [{"ip": factory.make_ip_address()}]
-
-        # yield service.startService()
         yield service.reportNeighbours(neighbours)
-        # yield service.stopService()
-
         self.assertThat(
             protocol.ReportNeighbours, MockCalledOnceWith(
                 protocol, system_id=rpc_service.getClient().localIdent,
                 neighbours=neighbours))
+
+    @inlineCallbacks
+    def test_asks_region_for_monitoring_state(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateInterfaces, region.GetDiscoveryState)
+        self.addCleanup((yield connecting))
+        rpc_service = services.getServiceNamed('rpc')
+        reactor = Clock()
+        service = RackNetworksMonitoringService(
+            rpc_service, reactor, enable_monitoring=False)
+        protocol.GetDiscoveryState.return_value = {'interfaces': {}}
+        # Put something in the cache. This tells recordInterfaces that refresh
+        # has already run but the interfaces have changed thus they need to be
+        # updated.
+        service._recorded = {}
+        yield service.startService()
+        yield maybeDeferred(service.getDiscoveryState)
+        yield service.stopService()
+        self.assertThat(
+            protocol.GetDiscoveryState, MockCalledOnceWith(
+                protocol, system_id=rpc_service.getClient().localIdent))

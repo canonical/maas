@@ -15,6 +15,7 @@ __all__ = [
     "GetBootSources",
     "GetBootSourcesV2",
     "GetControllerType",
+    "GetDiscoveryState",
     "GetProxies",
     "Identify",
     "ListNodePowerParameters",
@@ -450,6 +451,23 @@ class UpdateInterfaces(amp.Command):
     ]
     response = []
     errors = []
+
+
+class GetDiscoveryState(amp.Command):
+    """Called by a rack controller to get its interface discovery state.
+
+    :since: 2.1
+    """
+
+    arguments = [
+        (b'system_id', amp.Unicode()),
+    ]
+    response = [
+        (b'interfaces', StructureAsJSON()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
 
 
 class RequestNodeInfoByMACAddress(amp.Command):

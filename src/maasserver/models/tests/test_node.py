@@ -8564,3 +8564,17 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
                 node=region, mac_address=mac_address).exists()
 
         self.assertTrue((yield deferToDatabase(has_nic, region)))
+
+
+class TestControllerGetDiscoveryState(MAASServerTestCase):
+
+    def test__gets_discovery_state_for_each_interface(self):
+        rack = factory.make_RegionRackController(ifname='eth0')
+        eth1 = factory.make_Interface(node=rack, name='eth1')
+        factory.make_Interface(node=rack, name='eth2')
+        monitoring_state = rack.get_discovery_state()
+        self.assertThat(monitoring_state, Contains('eth0'))
+        self.assertThat(monitoring_state, Contains('eth1'))
+        self.assertThat(monitoring_state, Contains('eth2'))
+        self.assertThat(
+            monitoring_state['eth1'], Equals(eth1.get_discovery_state()))

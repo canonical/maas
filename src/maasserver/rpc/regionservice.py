@@ -408,6 +408,20 @@ class Region(RPCProtocol):
         d.addCallback(lambda args: {})
         return d
 
+    @region.GetDiscoveryState.responder
+    def get_discovery_state(self, system_id):
+        """get_interface_monitoring_state()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
+        """
+        d = deferToDatabase(
+            rackcontrollers.get_discovery_state, system_id)
+        d.addCallback(lambda args: {
+            'interfaces': args
+        })
+        return d
+
     @region.ReportMDNSEntries.responder
     def report_mdns_entries(self, system_id, mdns):
         """report_neighbours()

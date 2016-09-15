@@ -19,6 +19,10 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
     Arrange for this to run on the master regiond process only.
     """
 
+    def getDiscoveryState(self):
+        """Get interface monitoring state from the region."""
+        return deferToDatabase(self.getInterfaceMonitoringStateFromDatabase)
+
     def recordInterfaces(self, interfaces):
         """Record the interfaces information."""
         return deferToDatabase(self.recordInterfacesIntoDatabase, interfaces)
@@ -30,6 +34,12 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
     def reportMDNSEntries(self, mdns):
         """Record the specified list of mDNS entries."""
         return deferToDatabase(self.recordMDNSEntriesIntoDatabase, mdns)
+
+    @transactional
+    def getInterfaceMonitoringStateFromDatabase(self):
+        """Record the interfaces information."""
+        region_controller = RegionController.objects.get_running_controller()
+        return region_controller.get_discovery_state()
 
     @transactional
     def recordInterfacesIntoDatabase(self, interfaces):

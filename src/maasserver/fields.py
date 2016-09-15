@@ -287,8 +287,9 @@ class JSONObjectField(Field, metaclass=SubfieldBase):
     def get_db_prep_value(self, value, connection=None, prepared=False):
         """python -> db: json dump.
 
-       Keys are sorted when dumped to guarantee stable output. DB field can
-       guarantee uniqueness and be queried (the same dict makes the same JSON).
+        Keys are sorted when dumped to guarantee stable output. DB field can
+        guarantee uniqueness and be queried (the same dict makes the same
+        JSON).
         """
         if value is not None:
             return dumps(deepcopy(value), sort_keys=True)

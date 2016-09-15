@@ -4040,6 +4040,18 @@ class Controller(Node):
             if interface is not None:
                 interface.update_mdns_entry(entry)
 
+    def get_discovery_state(self):
+        """Returns the interface monitoring state for this Controller.
+
+        The returned object must be suitable to serialize into JSON for RPC
+        purposes.
+        """
+        interfaces = self.interface_set.all()
+        return {
+            interface.name: interface.get_discovery_state()
+            for interface in interfaces
+        }
+
     def update_interfaces(self, interfaces):
         """Update the interfaces attached to the controller.
 

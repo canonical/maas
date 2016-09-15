@@ -32,6 +32,7 @@ from provisioningserver.utils.services import (
     MDNSResolverService,
     NeighbourDiscoveryService,
     NeighbourObservationProtocol,
+    NetworksMonitoringLock,
     NetworksMonitoringService,
     ProcessProtocolService,
 )
@@ -62,10 +63,13 @@ from twisted.python.failure import Failure
 class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
-    def __init__(self):
-        super().__init__(reactor)
+    def __init__(self, enable_monitoring=False, *args, **kwargs):
+        super().__init__(enable_monitoring=enable_monitoring, *args, **kwargs)
         self.iterations = DeferredQueue()
         self.interfaces = []
+
+    def getDiscoveryState(self):
+        return {}
 
     def updateInterfaces(self):
         d = super().updateInterfaces()
@@ -166,21 +170,21 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_recordInterfaces_not_called_when_interfaces_not_changed(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         # Configuration does NOT change between the first and second call.
-        get_interfaces.side_effect = [sentinel.config1, sentinel.config1]
+        get_interfaces.side_effect = [{}, {}]
 
         service = self.makeService()
         self.assertThat(service.interfaces, HasLength(0))
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([sentinel.config1]))
+        self.assertThat(service.interfaces, Equals([{}]))
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([sentinel.config1]))
+        self.assertThat(service.interfaces, Equals([{}]))
 
         self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
 
     @inlineCallbacks
     def test_recordInterfaces_called_after_failure(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
-        get_interfaces.return_value = sentinel.config
+        get_interfaces.return_value = {}
 
         service = self.makeService()
         recordInterfaces = self.patch(service, "recordInterfaces")
@@ -192,15 +196,13 @@ class TestNetworksMonitoringService(MAASTestCase):
             # recordInterfaces is called the first time, as expected.
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith(
-                sentinel.config))
+            self.assertThat(recordInterfaces, MockCalledOnceWith({}))
 
             # recordInterfaces is called the second time too; the service noted
             # that it crashed last time and knew to run it again.
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith(
-                sentinel.config))
+            self.assertThat(recordInterfaces, MockCalledOnceWith({}))
 
             # recordInterfaces is NOT called the third time; the service noted
             # that the configuration had not changed.
@@ -212,13 +214,10 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_assumes_sole_responsibility_before_updating(self):
         # A filesystem lock is used to prevent multiple network monitors from
         # running on each host machine.
-        lock = NetworksMonitoringService._lock
-
-        # Not locked before creating the service.
-        self.assertFalse(lock.is_locked())
-
-        # Still not locked after instantiating the service.
         service = self.makeService()
+
+        # Not locked after instantiating the service.
+        lock = service._lock
         self.assertFalse(lock.is_locked())
 
         # It's locked when the service is started and has begun iterating.
@@ -245,7 +244,7 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_does_not_update_if_cannot_assume_sole_responsibility(self):
         # A filesystem lock is used to prevent multiple network monitors from
         # running on each host machine.
-        lock = NetworksMonitoringService._lock
+        lock = NetworksMonitoringLock()
 
         with lock:
             service = self.makeService()
@@ -261,7 +260,7 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_attempts_to_assume_sole_responsibility_on_each_iteration(self):
         # A filesystem lock is used to prevent multiple network monitors from
         # running on each host machine.
-        lock = NetworksMonitoringService._lock
+        lock = NetworksMonitoringLock()
 
         with lock:
             service = self.makeService()

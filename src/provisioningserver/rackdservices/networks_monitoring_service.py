@@ -9,6 +9,7 @@ __all__ = [
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.region import (
+    GetDiscoveryState,
     ReportMDNSEntries,
     ReportNeighbours,
     RequestRackRefresh,
@@ -23,9 +24,21 @@ maaslog = get_maas_logger("networks.monitor")
 class RackNetworksMonitoringService(NetworksMonitoringService):
     """Rack service to monitor network interfaces for configuration changes."""
 
-    def __init__(self, clientService, reactor):
-        super(RackNetworksMonitoringService, self).__init__(reactor)
+    def __init__(self, clientService, *args, **kwargs):
+        super(RackNetworksMonitoringService, self).__init__(*args, **kwargs)
         self.clientService = clientService
+
+    def getDiscoveryState(self):
+        """Get the discovery state from the region."""
+        client = self.clientService.getClient()
+        if self._recorded is None:
+            # Wait until the rack has refreshed.
+            return {}
+        else:
+            d = client(
+                GetDiscoveryState, system_id=client.localIdent)
+            d.addCallback(lambda args: args['interfaces'])
+            return d
 
     def recordInterfaces(self, interfaces):
         """Record the interfaces information to the region."""

@@ -336,7 +336,6 @@ class TestInterfaceManager(MAASServerTestCase):
         with counter:
             interfaces = Interface.objects.get_interface_dict_for_node(
                 node1, fetch_fabric_vlan=False)
-            # Need this line in order to cause the extra [potential] queries.
             self.assertIsNotNone(interfaces['eth0'].vlan.fabric)
         self.assertThat(counter.num_queries, Equals(3))
 
@@ -2816,7 +2815,7 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         self.assertIsNone(observed[0].ip)
 
 
-class InterfaceUpdateDiscoveryTest(MAASServerTestCase):
+class TestInterfaceUpdateDiscovery(MAASServerTestCase):
     """Tests for `Interface.update_discovery_state`.
 
     Note: these tests make extensive use of reload_object() to help ensure that
@@ -2870,6 +2869,28 @@ class InterfaceUpdateDiscoveryTest(MAASServerTestCase):
             settings=settings)
         iface = reload_object(iface)
         self.expectThat(iface.active_discovery_state, Is(True))
+
+
+class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
+
+    def test__changes_blank_active_params_to_none(self):
+        iface = factory.make_Interface()
+        iface.active_discovery_params = ''
+        state = iface.get_discovery_state()
+        self.assertThat(state['params'], Is(None))
+
+    def test__reports_correct_parameters(self):
+        iface = factory.make_Interface()
+        iface.active_discovery_params = {'arbitrary': factory.make_name()}
+        iface.active_discovery_state = random.choice([True, False])
+        iface.neighbour_discovery_state = random.choice([True, False])
+        iface.mdns_discovery_state = random.choice([True, False])
+        state = iface.get_discovery_state()
+        self.assertThat(state['active'], Equals(iface.active_discovery_state))
+        self.assertThat(
+            state['neighbour'], Equals(iface.neighbour_discovery_state))
+        self.assertThat(state['mdns'], Equals(iface.mdns_discovery_state))
+        self.assertThat(state['params'], Equals(iface.active_discovery_params))
 
 
 class TestReportVID(MAASServerTestCase):
