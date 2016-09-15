@@ -831,10 +831,10 @@ class TestBootResourceStore(MAASServerTestCase):
             store.get_resource_file_log_identifier(
                 rfile, resource_set, resource))
 
-    def test_write_content_saves_data(self):
+    def test_write_content_thread_saves_data(self):
         rfile, reader, content = make_boot_resource_file_with_stream()
         store = BootResourceStore()
-        store.write_content(rfile, reader)
+        store.write_content_thread(rfile.id, reader)
         self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
         with rfile.largefile.content.open('rb') as stream:
             written_data = stream.read()
@@ -847,12 +847,12 @@ class TestBootResourceStore(MAASServerTestCase):
         "XXX blake_r: Skipped because it causes the test that runs after this "
         "to fail. Because this test is not isolated and places a task in the "
         "reactor.")
-    def test_write_content_deletes_file_on_bad_checksum(self):
+    def test_write_content_thread_deletes_file_on_bad_checksum(self):
         rfile, _, _ = make_boot_resource_file_with_stream()
         reader = BytesIO(factory.make_bytes())
         store = BootResourceStore()
         with post_commit_hooks:
-            store.write_content(rfile, reader)
+            store.write_content_thread(rfile.id, reader)
         self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
 
     def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):

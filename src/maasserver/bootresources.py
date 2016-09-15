@@ -401,6 +401,9 @@ class BootResourceStore(ObjectStore):
     # might cause high network and database load.
     write_threads = 2
 
+    # Read at 10MiB per chunk.
+    read_size = 1024 * 1024 * 10
+
     def __init__(self):
         """Initialize store."""
         self.cache_current_resources()
@@ -671,22 +674,34 @@ class BootResourceStore(ObjectStore):
                 rfile, resource_set, resource)
             maaslog.debug('Boot image already up-to-date %s.', ident)
 
-    def write_content(self, rfile, reader):
+    def write_content_thread(self, rid, reader):
         """Writes the data from the given reader, into the object storage
         for the given `BootResourceFile`."""
-        ident = self.get_resource_file_log_identifier(rfile)
+
+        @transactional
+        def get_rfile_and_ident():
+            rfile = BootResourceFile.objects.get(id=rid)
+            ident = self.get_resource_file_log_identifier(rfile)
+            rfile.largefile  # Preload largefile in the transaction.
+            return rfile, ident
+
+        rfile, ident = get_rfile_and_ident()
         cksummer = sutil.checksummer(
             {'sha256': rfile.largefile.sha256})
         maaslog.debug("Finalizing boot image %s.", ident)
 
         # Ensure that the size of the largefile starts at zero.
         rfile.largefile.size = 0
-        rfile.largefile.save(update_fields=['size'])
+        transactional(rfile.largefile.save)(update_fields=['size'])
 
-        # Write the contents into the database, while calculating the sha256
-        # hash for the read data.
-        with rfile.largefile.content.open('wb') as stream:
-            while True:
+        @transactional
+        def write_chunk():
+            """Write a chunk into the database with a transaction per trunk.
+
+            This ensures that the content and the size is committed into the
+            database per chunk. This makes the process be reported correctly.
+            """
+            with rfile.largefile.content.open('wb') as stream:
                 buf = reader.read(self.read_size)
                 stream.write(buf)
                 cksummer.update(buf)
@@ -694,7 +709,14 @@ class BootResourceStore(ObjectStore):
                 rfile.largefile.size += buf_len
                 rfile.largefile.save(update_fields=['size'])
                 if buf_len != self.read_size:
-                    break
+                    return True
+                else:
+                    return False
+
+        # Write chunks until it says its done.
+        while True:
+            if write_chunk():
+                break
 
         if not cksummer.check():
             # Calculated sha256 hash from the data does not match, what
@@ -705,15 +727,9 @@ class BootResourceStore(ObjectStore):
                 "checksum '%s' (found: %s expected: %s)",
                 ident, cksummer.algorithm,
                 cksummer.hexdigest(), cksummer.expected)
-            rfile.delete()
+            transactional(rfile.delete)()
         else:
             maaslog.debug('Finalized boot image %s.', ident)
-
-    @transactional
-    def write_content_thread(self, rid, reader):
-        """Calls `write_content` inside its own thread."""
-        rfile = BootResourceFile.objects.get(id=rid)
-        self.write_content(rfile, reader)
 
     def perform_write(self):
         """Performs all writing of content into the object storage.
