@@ -58,6 +58,7 @@ MERGE_VIEWS = {
             "js/angular/factories/nodes.js",
             "js/angular/factories/devices.js",
             "js/angular/factories/machines.js",
+            "js/angular/factories/configs.js",
             "js/angular/factories/controllers.js",
             "js/angular/factories/zones.js",
             "js/angular/factories/general.js",

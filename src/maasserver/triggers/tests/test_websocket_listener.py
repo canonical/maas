@@ -17,11 +17,13 @@ from maasserver.enum import (
 )
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.config import Config
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import register_websocket_triggers
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -851,6 +853,77 @@ class TestDeviceWithParentNodeResultListener(
             yield deferToDatabase(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestConfigListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("config", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                transactional(Config.objects.set_config),
+                "config_verbose", True)
+            obj = yield deferToDatabase(
+                transactional(Config.objects.get),
+                name="config_verbose")
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % obj.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "config_verbose", True)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("config", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                transactional(Config.objects.set_config),
+                "config_verbose", False)
+            obj = yield deferToDatabase(
+                transactional(Config.objects.get),
+                name="config_verbose")
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % obj.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "config_verbose", True)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("config", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            obj = yield deferToDatabase(
+                transactional(Config.objects.get),
+                name="config_verbose")
+            old_id = obj.id
+            yield deferToDatabase(transactional(obj.delete))
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % old_id), dv.value)
         finally:
             yield listener.stopService()
 

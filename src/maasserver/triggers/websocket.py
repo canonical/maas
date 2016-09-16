@@ -918,6 +918,23 @@ def register_websocket_triggers():
             "delete",
             {'OLD.node_type': node_type})
 
+    # Config table
+    register_procedure(
+        render_notification_procedure(
+            'config_create_notify', 'config_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'config_update_notify', 'config_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'config_delete_notify', 'config_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_config", "config_create_notify", "insert")
+    register_trigger(
+        "maasserver_config", "config_update_notify", "update")
+    register_trigger(
+        "maasserver_config", "config_delete_notify", "delete")
+
     # Device Node types
     register_procedure(
         render_device_notification_procedure(

@@ -687,6 +687,7 @@ class MakeProtocolFactoryMixin:
         return protocol, factory
 
 ALL_NOTIFIERS = (
+    "config",
     "controller",
     "device",
     "dhcpsnippet",
@@ -708,6 +709,7 @@ ALL_NOTIFIERS = (
 )
 
 ALL_HANDLERS = (
+    "config",
     "bootresource",
     "controller",
     "device",
