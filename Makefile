@@ -92,6 +92,10 @@ install-dependencies:
 configure-buildout:
 	utilities/configure-buildout
 
+sudoers:
+	utilities/grant-nmap-permissions
+	utilities/install-arp-observer
+
 bin/buildout: bootstrap-buildout.py
 	@utilities/configure-buildout --quiet
 	$(python) bootstrap-buildout.py --allow-site-packages
@@ -447,6 +451,7 @@ define phony_targets
   sampledata
   smoke
   styles
+  sudoers
   syncdb
   test
   test+coverage

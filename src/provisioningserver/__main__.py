@@ -13,6 +13,7 @@ import provisioningserver.support_dump
 import provisioningserver.upgrade_cluster
 import provisioningserver.utils.arp
 import provisioningserver.utils.avahi
+import provisioningserver.utils.scan_network
 from provisioningserver.utils.script import (
     AtomicDeleteScript,
     AtomicWriteScript,
@@ -29,6 +30,7 @@ script_commands = {
     'install-uefi-config': provisioningserver.boot.install_grub,
     'observe-arp': provisioningserver.utils.arp,
     'observe-mdns': provisioningserver.utils.avahi,
+    'scan-network': provisioningserver.utils.scan_network,
     'register': provisioningserver.register_command,
     'support-dump': provisioningserver.support_dump,
     'upgrade-cluster': provisioningserver.upgrade_cluster,
