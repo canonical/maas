@@ -149,16 +149,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         username = options.get('username', None)
+        password = options.get('password', None)
+        email = options.get('email', None)
+        ssh_import = options.get('ssh_import', None)
+        prompt_ssh_import = False
+        if ssh_import is None and (username is None or
+           password is None or email is None):
+            prompt_ssh_import = True
         if username is None:
             username = prompt_for_username()
-        password = options.get('password', None)
         if password is None:
             password = prompt_for_password()
-        email = options.get('email', None)
         if email is None:
             email = prompt_for_email()
-        ssh_import = options.get('ssh_import', None)
-        if ssh_import is None:
+        if prompt_ssh_import:
             ssh_import = prompt_for_ssh_import()
 
         User.objects.db_manager(DEFAULT_DB_ALIAS).create_superuser(

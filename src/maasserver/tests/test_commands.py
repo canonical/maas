@@ -134,6 +134,20 @@ class TestCommands(MAASServerTestCase):
         self.assertThat(stdout, IsEmpty)
         self.assertTrue(user.check_password(password))
 
+    def test_createadmin_not_prompt_for_ssh_import_if_other_params_given(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        username = factory.make_name('user')
+        password = factory.make_string()
+        email = factory.make_email_address()
+
+        call_command(
+            'createadmin', username=username, password=password, email=email,
+            stdout=stdout, stderr=stderr)
+
+        self.assertThat(stderr, IsEmpty)
+        self.assertThat(stdout, IsEmpty)
+
     def test_createadmin_prompts_for_ssh_import_if_not_given(self):
         stderr = StringIO()
         stdout = StringIO()
