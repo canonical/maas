@@ -1,0 +1,103 @@
+/* Copyright 2016 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Unit tests for ImagesController.
+ */
+
+describe("ImagesController", function() {
+
+    // Load the MAAS module.
+    beforeEach(module("MAAS"));
+
+    // Grab the needed angular pieces.
+    var $controller, $rootScope, $location, $scope, $q;
+    beforeEach(inject(function($injector) {
+        $controller = $injector.get("$controller");
+        $rootScope = $injector.get("$rootScope");
+        $location = $injector.get("$location");
+        $scope = $rootScope.$new();
+        $q = $injector.get("$q");
+    }));
+
+    // Load any injected managers and services.
+    var BootResourcesManager, ConfigsManager, UsersManager;
+    var ManagerHelperService;
+    beforeEach(inject(function($injector) {
+        BootResourcesManager = $injector.get("BootResourcesManager");
+        ConfigsManager = $injector.get("ConfigsManager");
+        UsersManager = $injector.get("UsersManager");
+        ManagerHelperService = $injector.get("ManagerHelperService");
+    }));
+
+    // Makes the NodesListController
+    function makeController(loadManagerDefer) {
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+        if(angular.isObject(loadManagerDefer)) {
+            loadManagers.and.returnValue(loadManagerDefer.promise);
+        } else {
+            loadManagers.and.returnValue($q.defer().promise);
+        }
+
+        // Create the controller.
+        var controller = $controller("ImagesController", {
+            $scope: $scope,
+            $rootScope: $rootScope,
+            BootResourcesManager: BootResourcesManager,
+            ConfigsManager: ConfigsManager,
+            ManagerHelperService: ManagerHelperService
+        });
+
+        return controller;
+    }
+
+    it("sets title and page on $rootScope", function() {
+        var controller = makeController();
+        expect($rootScope.title).toBe("Loading...");
+        expect($rootScope.page).toBe("images");
+    });
+
+    it("calls loadManagers with correct managers", function() {
+        var controller = makeController();
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
+            ConfigsManager, UsersManager]);
+    });
+
+    it("sets initial $scope", function() {
+        var controller = makeController();
+        expect($scope.loading).toBe(true);
+        expect($scope.bootResources).toBe(BootResourcesManager.getData());
+        expect($scope.configManager).toBe(ConfigsManager);
+        expect($scope.autoImport).toBeNull();
+    });
+
+    it("clears loading and sets title", function() {
+        var controller = makeController();
+        BootResourcesManager._data.resources = [];
+        $scope.$digest();
+        expect($scope.loading).toBe(false);
+        expect($scope.title).toBe("Boot Images");
+    });
+
+    it("sets autoImport object", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        var autoImport = {
+            name: "boot_images_auto_import",
+            value: true
+        };
+        ConfigsManager._items = [autoImport];
+        defer.resolve();
+        $scope.$digest();
+        expect($scope.autoImport).toBe(autoImport);
+    });
+
+    describe("isSuperUser", function() {
+
+        it("returns isSuperUser from UsersManager", function() {
+            var controller = makeController();
+            var sentinel = {};
+            spyOn(UsersManager, "isSuperUser").and.returnValue(sentinel);
+            expect($scope.isSuperUser()).toBe(sentinel);
+        });
+    });
+});

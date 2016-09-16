@@ -689,6 +689,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     var switchScope = scope.$new();
                     switchScope._toggle = controller.registerField(
                         attrs.key, scope);
+                    switchScope._changed = function() {
+                        controller.startEditingField(attrs.key);
+                        controller.stopEditingField(
+                            attrs.key, switchScope._toggle);
+                    };
 
                     // Construct the on and off toggle.
                     inputElement = angular.element([
@@ -696,7 +701,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             '<input type="checkbox" name="' + attrs.key + '" ',
                                 'class="onoffswitch-checkbox" ',
                                 'id="' + attrs.key + '" ',
-                                'ng-model="_toggle">',
+                                'ng-model="_toggle" ',
+                                'ng-change="_changed()">',
                             '<label class="onoffswitch-label" ',
                                 'for="' + attrs.key + '">',
                                 '<span class="onoffswitch-inner"></span>',

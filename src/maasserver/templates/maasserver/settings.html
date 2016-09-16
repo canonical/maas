@@ -200,21 +200,6 @@
             </form>
         </div>
     </div>
-    {% if show_boot_source %}
-    <div class="eight-col border">
-        <div id="boot_source" class="eight-col">
-            <h2>Boot Images</h2>
-            <form action="{% url 'settings' %}" method="post">
-                {% csrf_token %}
-                <ul>
-                    {% for field in boot_source_form %} {% include "maasserver/form_field.html" %} {% endfor %}
-                </ul>
-                <input type="hidden" name="boot_source_submit" value="1" />
-                <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
-            </form>
-        </div>
-    </div>
-    {% endif %}
     <div class="eight-col border">
         <div id="third_party_drivers" class="eight-col">
             <h2>Third Party Drivers Configuration</h2>

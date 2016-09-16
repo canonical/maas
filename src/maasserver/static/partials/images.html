@@ -1,7 +1,18 @@
 <header class="page-header margin-bottom">
     <div class="wrapper--inner">
         <h1 class="page-header__title">Boot Images</h1>
+        <p class="page-header__status" data-ng-show="loading">
+            <span class="u-text--loading">
+                <i class="icon icon--loading u-animation--spin"></i>
+                Loading...
+            </span>
+        </p>
         <maas-boot-images-status></maas-boot-images-status>
+        <div class="page-header__controls" data-ng-if="!loading && isSuperUser() && autoImport">
+            <maas-obj-form obj="autoImport" manager="configManager" inline="true">
+                <maas-obj-field type="onoffswitch" key="value" label="Automatically sync images"></maas-obj-field>
+            </maas-obj-form>
+        </div>
     </div>
 </header>
 <maas-boot-images></maas-boot-images>

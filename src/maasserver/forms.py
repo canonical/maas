@@ -9,7 +9,6 @@ __all__ = [
     "AdminNodeForm",
     "BootSourceForm",
     "BootSourceSelectionForm",
-    "BootSourceSettingsForm",
     "BulkNodeActionForm",
     "ClaimIPForMACForm",
     "CommissioningForm",
@@ -81,7 +80,6 @@ from maasserver.exceptions import NodeActionError
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
-    StrippedCharField,
 )
 from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
@@ -155,7 +153,6 @@ from netaddr import (
     IPNetwork,
     valid_ipv6,
 )
-from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
@@ -1465,66 +1462,6 @@ class WindowsForm(ConfigForm):
 class GlobalKernelOptsForm(ConfigForm):
     """Settings page, Global Kernel Parameters section."""
     kernel_opts = get_config_field('kernel_opts')
-
-
-class BootSourceSettingsForm(ConfigForm):
-    """Settings page, Boot Images section."""
-    config_fields = ['boot_images_auto_import']
-
-    boot_images_auto_import = get_config_field('boot_images_auto_import')
-    boot_source_url = forms.URLField(
-        label="Sync URL", required=True,
-        help_text=(
-            "URL to sync boot image from, e.g. %s" % (DEFAULT_IMAGES_URL)))
-
-    def __init__(self, *args, **kwargs):
-        super(BootSourceSettingsForm, self).__init__(*args, **kwargs)
-        self.configure_keyring_filename()
-        self._load_initials()
-
-    def configure_keyring_filename(self):
-        """Create the keyring field if the boot source is not using
-        keyring_data."""
-        boot_source = BootSource.objects.first()
-        if boot_source is None or len(boot_source.keyring_data) == 0:
-            self.fields['boot_source_keyring'] = StrippedCharField(
-                label="Keyring Path", required=True,
-                help_text=(
-                    "Path to the keyring to validate the sync URL, e.g. "
-                    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"))
-
-    def _load_initials(self):
-        """Load the initial values for the fields."""
-        boot_source = BootSource.objects.first()
-        if boot_source is None:
-            return
-        self.initial['boot_source_url'] = boot_source.url
-        self.initial['boot_source_keyring'] = boot_source.keyring_filename
-
-    def save(self):
-        """Save the content of the fields into the database.
-
-        This implementation of `save` does not support the `commit` argument.
-
-        :return: Whether or not the content of the fields was valid and hence
-            sucessfully saved into the database.
-        :rtype: boolean
-        """
-        super(BootSourceSettingsForm, self).save()
-        if self._errors:
-            return False
-        boot_source = BootSource.objects.first()
-        if boot_source is None:
-            boot_source = BootSource.objects.create(
-                url=self.cleaned_data['boot_source_url'],
-                keyring_filename=self.cleaned_data['boot_source_keyring'])
-            return True
-        boot_source.url = self.cleaned_data['boot_source_url']
-        if 'boot_source_keyring' in self.cleaned_data:
-            boot_source.keyring_filename = (
-                self.cleaned_data['boot_source_keyring'])
-        boot_source.save()
-        return True
 
 
 ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE = (
