@@ -81,6 +81,8 @@ def get_default_config():
         'curtin_verbose': False,
         # Analytics.
         'enable_analytics': True,
+        # First admin journey.
+        'completed_intro': True,  # True at the moment, until its complete.
     }
 
 

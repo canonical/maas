@@ -21,7 +21,8 @@ var MAAS_config = {
     register_url: '{{register_url}}',
     register_secret: '{{register_secret}}',
     {% endif %}
-    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %}
+    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %},
+    completed_intro: {% if completed_intro %}true{% else %}false{% endif %}
 
 };
 // -->

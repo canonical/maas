@@ -38,6 +38,12 @@ from maasserver.views import settings as settings_view
 
 class SettingsTest(MAASServerTestCase):
 
+    def test_settings_redirects_to_index_when_intro_not_completed(self):
+        self.client_log_in()
+        Config.objects.set_config('completed_intro', False)
+        response = self.client.get(reverse('settings'))
+        self.assertEqual('/', extract_redirect(response))
+
     def test_settings_list_users(self):
         # The settings page displays a list of the users with links to view,
         # delete or edit each user. Note that the link to delete the the

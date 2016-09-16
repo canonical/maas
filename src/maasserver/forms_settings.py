@@ -458,6 +458,14 @@ CONFIG_ITEMS = {
                 "development.")
         }
     },
+    'completed_intro': {
+        'default': True,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "Marks if the initial intro has been completed.",
+            'required': False
+        }
+    },
 }
 
 

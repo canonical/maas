@@ -40,4 +40,5 @@ def global_options(context):
         'doc_version': get_maas_doc_version(),
         'register_url': maas_url,
         'register_secret': Config.objects.get_config('rpc_shared_secret'),
+        'completed_intro': Config.objects.get_config('completed_intro'),
     }

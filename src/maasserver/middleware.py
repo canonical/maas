@@ -44,6 +44,7 @@ from maasserver.components import (
 )
 from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
+from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_retryable_failure
@@ -116,6 +117,10 @@ class AccessMiddleware:
                 return HttpResponseRedirect("%s?next=%s" % (
                     reverse('login'), urlquote_plus(request.path)))
             else:
+                if not Config.objects.get_config('completed_intro'):
+                    index_path = reverse('index')
+                    if request.path != index_path:
+                        return HttpResponseRedirect(reverse('index'))
                 return None
 
 

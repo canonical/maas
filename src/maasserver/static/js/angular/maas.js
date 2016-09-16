@@ -29,6 +29,11 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
         }
         if(path === href) {
             $routeProvider.
+                when('/intro', {
+                    templateUrl: versionedPath(
+                        'static/partials/intro.html'),
+                    controller: 'IntroController'
+                }).
                 when('/nodes', {
                     templateUrl: versionedPath(
                         'static/partials/nodes-list.html'),
@@ -109,6 +114,18 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                 });
         }
     });
+
+// Force users to #/intro when it has not been completed.
+angular.module('MAAS').run(['$rootScope', '$location',
+    function ($rootScope, $location) {
+        $rootScope.$on('$routeChangeStart', function(event, next, current) {
+            if(!MAAS_config.completed_intro) {
+                if(next.controller !== 'IntroController') {
+                    $location.path('/intro');
+                }
+            }
+        });
+    }]);
 
 // Send pageview to Google Anayltics when the route has changed.
 angular.module('MAAS').run(['$rootScope',

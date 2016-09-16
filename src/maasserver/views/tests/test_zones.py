@@ -17,7 +17,10 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.models import Zone
+from maasserver.models import (
+    Config,
+    Zone,
+)
 from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing import (
     extract_redirect,
@@ -40,6 +43,12 @@ from testtools.matchers import (
 
 
 class ZoneListingViewTest(MAASServerTestCase):
+
+    def test_zone_list_redirects_to_index_when_intro_not_completed(self):
+        self.client_log_in()
+        Config.objects.set_config('completed_intro', False)
+        response = self.client.get(reverse('zone-list'))
+        self.assertEqual('/', extract_redirect(response))
 
     def test_zone_list_link_present_on_homepage(self):
         self.client_log_in()

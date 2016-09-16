@@ -86,7 +86,7 @@
                     <a href="#nav" class="nav-toggle__link open"></a>
                     <a href="#" class="nav-toggle__link close"></a>
                 </div>
-                <ul id="main-nav">
+                <ul id="main-nav" data-ng-if="page !== 'intro'">
                     {% if user.is_authenticated %}
                     <li>
                         <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
@@ -113,6 +113,9 @@
                 </ul>
                 {% if user.is_authenticated %}
                 <ul class="u-float--right">
+                    <li data-ng-if="page === 'intro'">
+                        <a data-ng-click="skip()">Skip</a>
+                    </li>
                     <li id="user-link">
                         <a href="#" class="u-display--hidden">
                             {{ user.username }}
