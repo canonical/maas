@@ -17,7 +17,7 @@
     text-indent: 999em;
 
     &.icon--add {
-      background: url('#{$asset-path}images/icons/add.svg') no-repeat;
+      background: url('data:image/svg+xml;utf8, <svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns"><g id="Storage-buttons-left" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage"><g id="04.2-creating-lv" sketch:type="MSArtboardGroup" transform="translate(-1212.000000, -1844.000000)" fill="#B2B2B2"><g id="Normal" sketch:type="MSLayerGroup" transform="translate(-16.000000, -11.000000)"><g id="Storage-Copy" transform="translate(14.000000, 1273.000000)" sketch:type="MSShapeGroup"><g id="Avilable-disks-and-partitions" transform="translate(202.000000, 258.000000)"><g id="table-all"><g id="network-row-copy-3" transform="translate(0.000000, 313.000000)"><g id="actions-copy-5" transform="translate(990.000000, 10.000000)"><path d="M37.1483077,4 L31.4190769,9.72923077 L25.6898462,4 L24,5.68984615 L29.7292308,11.4203077 L24,17.1495385 L25.6898462,18.8393846 L31.4190769,13.1101538 L37.1483077,18.8393846 L38.8393846,17.1495385 L33.1089231,11.4203077 L38.8393846,5.68984615 L37.1483077,4 Z" id="remove-icon-copy" transform="translate(32.000000, 12.000000) rotate(-315.000000) translate(-32.000000, -12.000000) "></path></g></g></g></g></g></g></g></g></svg>') no-repeat;
       background-size: 100% 100%;
     }
 
@@ -124,6 +124,12 @@
 
       &-mono {
         background: url('#{$asset-path}images/icons/success-mono.svg') no-repeat;
+        background-size: 100% 100%;
+      }
+
+      &-grey {
+        background: url('data:image/svg+xml;utf8, <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="success"><rect id="rect6708" x="0" y="9.99999989e-06" width="16" height="16"></rect><circle id="circle6710" stroke="#{$warm-grey}" stroke-width="1.5" fill="#{$warm-grey}" cx="8" cy="8.00001" r="7.2500086"></circle><polygon id="path6712" fill="#{$white}" points="11.80029 4.92345 11.73439 4.98115 6.99964 9.12837 4.22407 6.74743 3.38501 7.69631 7.00033 11.50002 12.5 5.71278 11.80029 4.92349"></polygon></g></g></svg>');
+        background-size: 100% 100%;
       }
     }
 
@@ -178,12 +184,14 @@
 
     &.icon--open {
       background: url('#{$asset-path}images/forms/chevron-down.svg') no-repeat;
-      background-size: 100% 100%;
+      background-size: 10px 4px;
+      background-position: center 4px;
     }
 
     &.icon--close {
       background: url('#{$asset-path}images/forms/chevron-up.svg') no-repeat;
-      background-size: 100% 100%;
+      background-size: 10px 4px;
+      background-position: center 4px;
     }
 
     &--status-failed {

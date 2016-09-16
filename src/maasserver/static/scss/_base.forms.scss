@@ -18,6 +18,7 @@
     &[type='email'],
     &[type='url'],
     &[type='tel'] {
+      @extend %input-elements;
       padding: 7px 10px;
       box-shadow: none;
       width: 100%;
@@ -83,7 +84,7 @@
     clear: both;
     cursor: pointer;
     margin: 0;
-    background-image: url('#{$asset-path}images/forms/chevron_down.svg');
+    background-image: url('#{$asset-path}images/forms/chevron-down.svg');
     background-repeat: no-repeat;
     background-position: top 14px right 10px;
     background-color: $white;
@@ -143,6 +144,7 @@
     }
 
     + label {
+      height: 16px;
       position: relative;
       padding-left: 25px;
       cursor: pointer;
@@ -180,10 +182,6 @@
         @-moz-document url-prefix() {
           font-size: 13px;
           left: 1px;
-        }
-
-        @media screen and (-moz-overlay-scrollbars) {
-          left: 2px;
         }
       }
     }
@@ -273,9 +271,12 @@
     display: inline-block;
     vertical-align: middle;
     width: 38px;
+    margin: 0 0 4px;
+    //scss-lint:disable VendorPrefixes
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    //scss-lint:enable VendorPrefixes
 
     &[disabled] {
 
@@ -285,6 +286,11 @@
         pointer-events: none;
       }
     }
+  }
+
+  .onoffswitch-external-label {
+    display: inline-block;
+    margin-left: 5px;
   }
 
   .onoffswitch-checkbox {
@@ -297,6 +303,7 @@
     cursor: pointer;
     border-radius: 2px;
     padding-left: 0 !important;
+    margin: 0 !important;
 
     &:before,
     &:after {
@@ -308,10 +315,10 @@
     display: block;
     width: 200%;
     margin-left: -100%;
-    transition: margin 0.3s ease-in 0s;
+    transition: margin .3s ease-in 0s;
 
-  &:before,
-  &:after {
+    &:before,
+    &:after {
       display: block;
       float: left;
       width: 50%;
@@ -326,17 +333,17 @@
     }
 
     &:before {
-      content: "";
+      content: '';
       padding-left: 10px;
-      background-color: #3FB24F;
-      color: #FFFFFF;
+      background-color: $success;
+      color: $white;
     }
 
     &:after {
-      content: "";
+      content: '';
       padding-right: 10px;
-      background-color: #EEEEEE;
-      color: #999999;
+      background-color: $gallery-grey;
+      color: $warm-grey;
       text-align: right;
     }
   }
@@ -345,23 +352,25 @@
     display: block;
     width: 19px;
     height: 16px;
-    margin: 0px;
+    margin: 0;
     background: $white;
     position: absolute;
     top: 0;
     bottom: 0;
-    right: 17px;
-    border: 1px solid #d2d2d2;
+    right: 19px;
+    border: 1px solid $outline;
     border-radius: 2px;
-    transition: all 0.3s ease-in 0s;
+    transition: all .3s ease-in 0s;
+    box-sizing: border-box;
   }
 
   .onoffswitch-checkbox:checked + .onoffswitch-label {
     .onoffswitch-inner {
       margin-left: 0;
     }
+
     .onoffswitch-switch {
-      right: 0px;
+      right: 0;
     }
   }
 }

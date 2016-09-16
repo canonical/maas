@@ -13,6 +13,7 @@
       margin-bottom: 10px;
 
       .form__group-input {
+        position: relative;
 
         .form__group-remove {
           position: absolute;
@@ -24,6 +25,13 @@
           background: url('#{$asset-path}images/icons/remove.svg') no-repeat;
           background-size: 75% 75%;
           background-position: center;
+          display: inline-block;
+        }
+
+        .icon {
+          position: absolute;
+          top: 10px;
+          right: 10px;
           display: inline-block;
         }
       }
@@ -66,6 +74,7 @@
     .form__siblings {
       float: left;
       width: 100%;
+      margin-bottom: 10px;
 
       &:hover {
 
@@ -78,10 +87,6 @@
             background-color: $white;
             outline: none;
           }
-        }
-
-        & + .form__group {
-          margin-bottom: 10px;
         }
       }
 
@@ -133,6 +138,7 @@
         display: inline-block;
         width: auto;
         margin: 0;
+        vertical-align: middle;
       }
 
       .form__group {
@@ -152,10 +158,21 @@
         .form__group-input {
           display: inline-block;
           width: auto;
+          min-height: 34px;
         }
 
-        input[type='checkbox'] + label,
-        input[type='radio'] + label {
+        [type='checkbox'] + label,
+        [type='radio'] + label {
+          line-height: 34px;
+        }
+
+        .onoffswitch {
+          margin: 9px 0 0;
+        }
+
+        .onoffswitch-external-label {
+          margin: 0;
+          vertical-align: middle;
           line-height: 34px;
         }
       }

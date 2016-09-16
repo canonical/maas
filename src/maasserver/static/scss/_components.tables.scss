@@ -23,8 +23,7 @@
     border-color: $table-border-color;
     border-spacing: 0;
     overflow-x: scroll;
-    margin-bottom: 20px;
-    margin: 0 0 2.5em;
+    margin: 0 0 20px;
     width: 100%;
     text-align: left;
     border-collapse: separate;
@@ -181,7 +180,7 @@
       a:link,
       a:visited {
         color: $text-color;
-        border-bottom: 1px solid #d2d2d2;
+        border-bottom: 1px solid $link-border;
 
         &:hover {
           text-decoration: none;
@@ -301,7 +300,7 @@
       a:link,
       a:visited {
         color: $text-color;
-        border-bottom: 1px solid #d2d2d2;
+        border-bottom: 1px solid $link-border;
 
         &:hover {
           text-decoration: none;
@@ -415,7 +414,7 @@
       a:link,
       a:visited {
         color: $text-color;
-        border-bottom: 1px solid #d2d2d2;
+        border-bottom: 1px solid $link-border;
 
         &:hover {
           text-decoration: none;
@@ -443,6 +442,7 @@
       background-color: $white;
       border-color: $alto-grey;
       background-position: right 10px top 16px;
+      margin: -7px 0;
 
       &[disabled] {
         background-color: transparent;

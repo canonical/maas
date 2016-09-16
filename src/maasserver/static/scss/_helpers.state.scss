@@ -8,6 +8,11 @@
 /// @group State
 @mixin maas-state {
 
+  .u-text--subtle {
+    color: $warm-grey;
+    font-size: .9375rem;
+  }
+
   @each $state, $color in $states {
     .u-text--#{$state} {
       color: $color !important;
