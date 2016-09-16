@@ -121,9 +121,9 @@ from twisted.internet.defer import (
 from twisted.protocols.amp import UnhandledCommand
 
 
-def make_boot_resource_file_with_stream():
+def make_boot_resource_file_with_stream(size=None):
     resource = factory.make_usable_boot_resource(
-        rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        rtype=BOOT_RESOURCE_TYPE.SYNCED, size=size)
     rfile = resource.sets.first().files.first()
     with rfile.largefile.content.open('rb') as stream:
         content = stream.read()
@@ -832,8 +832,11 @@ class TestBootResourceStore(MAASServerTestCase):
                 rfile, resource_set, resource))
 
     def test_write_content_thread_saves_data(self):
-        rfile, reader, content = make_boot_resource_file_with_stream()
         store = BootResourceStore()
+        # Make size bigger than the read size so multiple loops are performed
+        # and the content is written correctly.
+        size = int(2.5 * store.read_size)
+        rfile, reader, content = make_boot_resource_file_with_stream(size=size)
         store.write_content_thread(rfile.id, reader)
         self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
         with rfile.largefile.content.open('rb') as stream:

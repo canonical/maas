@@ -703,6 +703,7 @@ class BootResourceStore(ObjectStore):
             """
             with rfile.largefile.content.open('wb') as stream:
                 buf = reader.read(self.read_size)
+                stream.seek(0, 2)
                 stream.write(buf)
                 cksummer.update(buf)
                 buf_len = len(buf)

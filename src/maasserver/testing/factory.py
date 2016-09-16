@@ -1480,7 +1480,9 @@ class Factory(maastesting.factory.Factory):
 
     def make_boot_resource_file_with_content(
             self, resource_set, filename=None, filetype=None, extra=None,
-            content=None, size=512):
+            content=None, size=None):
+        if size is None:
+            size = 512
         largefile = self.make_LargeFile(content=content, size=size)
         return self.make_BootResourceFile(
             resource_set, largefile, filename=filename, filetype=filetype,
@@ -1488,7 +1490,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
-            extra=None, version=None, label=None, kflavor=None):
+            extra=None, version=None, label=None, kflavor=None, size=None):
         resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra,
             kflavor=kflavor)
@@ -1508,7 +1510,7 @@ class Factory(maastesting.factory.Factory):
             # cases this will always be true. The simplestreams content from
             # maas.io, is formatted this way.
             self.make_boot_resource_file_with_content(
-                resource_set, filename=filetype, filetype=filetype)
+                resource_set, filename=filetype, filetype=filetype, size=None)
         return resource
 
     def make_default_ubuntu_release_bootable(self, arch=None):
