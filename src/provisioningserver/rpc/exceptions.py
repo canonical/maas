@@ -72,7 +72,7 @@ class NoSuchCluster(Exception):
     @classmethod
     def from_uuid(cls, uuid):
         return cls(
-            "The cluster with UUID %s could not "
+            "The rack controller with UUID %s could not "
             "be found." % uuid
         )
 
@@ -129,7 +129,7 @@ class CannotRegisterCluster(Exception):
     @classmethod
     def from_uuid(cls, uuid, message):
         return cls(
-            "The cluster with UUID %s could not "
+            "The rack controller with UUID %s could not "
             "be registered:\n%s" % (uuid, message)
         )
 
