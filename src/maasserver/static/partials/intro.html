@@ -1,0 +1,70 @@
+<div class="row" data-ng-if="!loading">
+    <div class="two-col"></div>
+    <div class="eight-col">
+        <div class="action-card">
+            <h2 class="action-card__title">
+                <i class="icon icon--large"
+                    data-ng-class="{ 'icon--success': !welcomeInError(), 'icon--error': welcomeInError() }"></i>
+                Welcome to MAAS
+            </h2>
+            <div class="action-card__controls">
+                <div class="u-margin--top">
+                    <maas-obj-form obj="maasName" manager="configManager">
+                        <div class="three-col">
+                            <maas-obj-field type="text" key="value" label="Region name" subtle="false" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                    </maas-obj-form>
+                </div>
+            </div>
+        </div>
+        <div class="action-card">
+            <h2 class="action-card__title">
+                <i class="icon icon--large"
+                    data-ng-class="{ 'icon--success': !networkInError(), 'icon--error': networkInError() }"></i>
+                Connectivity
+            </h2>
+            <div class="action-card__controls">
+                <div class="row u-border--none u-padding--none u-margin--top">
+                    <maas-obj-form obj="upstreamDNS" manager="configManager">
+                        <div class="three-col">
+                            <maas-obj-field type="text" key="value" label="DNS forwarder" subtle="false" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                        <div class="one-col"></div>
+                        <div class="five-col last-col u-text--subtle">The address used to resolve domains not managed by MAAS. The value is used as the value of 'forwarders' in the DNS server configuration.</div>
+                    </maas-obj-form>
+                </div>
+                <div class="row u-border--none u-padding--none u-margin--top">
+                    <maas-obj-form obj="mainArchive" manager="repoManager">
+                        <div class="three-col">
+                            <maas-obj-field type="text" key="url" label="Ubuntu archive" subtle="false" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                        <div class="one-col"></div>
+                        <div class="five-col last-col u-text--subtle">The server where machines retrieve packages for Intel architectures.</div>
+                    </maas-obj-form>
+                </div>
+                <div class="row u-border--none u-padding--none u-margin--top">
+                    <maas-obj-form obj="portsArchive" manager="repoManager">
+                        <div class="three-col">
+                            <maas-obj-field type="text" key="url" label="Ubuntu extra architectures" subtle="false" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                        <div class="one-col"></div>
+                        <div class="five-col last-col u-text--subtle">Archive used by machines to retrieve packages for non-Intel architectures.</div>
+                    </maas-obj-form>
+                </div>
+                <div class="row u-border--none u-padding--none u-margin--top">
+                    <maas-obj-form obj="httpProxy" manager="configManager">
+                        <div class="three-col">
+                            <maas-obj-field type="text" key="value" label="APT &amp; HTTP/HTTPS proxy server" subtle="false" blur-on-enter="true"></maas-obj-field>
+                        </div>
+                        <div class="one-col"></div>
+                        <div class="five-col last-col u-text--subtle">This will be passed onto deployed machines to use as a proxy for APT traffic. MAAS also uses the proxy for downloading boot images. In no URL is provided, the build-in MAAS proxy will be used.</div>
+                    </maas-obj-form>
+                </div>
+            </div>
+        </div>
+        <maas-boot-images design="'action-card'"></maas-boot-images>
+        <button class="button button--primary"
+            data-ng-disabled="!canContinue()"
+            data-ng-click="clickContinue()">Continue</button>
+    </div>
+</div>

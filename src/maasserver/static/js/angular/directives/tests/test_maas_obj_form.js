@@ -132,6 +132,16 @@ describe("maasObjForm", function() {
 
             expect(inputField.val()).toBe("");
         });
+
+        it("sets $maasForm on obj", function() {
+            expect($scope.obj.$maasForm).toBeDefined();
+        });
+
+        it("hasErrors returns true if has-error class exists", function() {
+            var inputField = angular.element(directive.find("#key"));
+            inputField.addClass('has-error');
+            expect($scope.obj.$maasForm.hasErrors()).toBe(true);
+        });
     });
 
     describe("textarea", function() {
@@ -876,6 +886,9 @@ describe("maasObjForm", function() {
             // Error is placed on the input and in the global section.
             expect(getFieldErrorList(field)).toEqual([keyError]);
             expect(getErrorList(errors)).toEqual([error]);
+
+            // Has error returns true.
+            expect($scope.obj.$maasForm.hasErrors()).toBe(true);
         });
     });
 

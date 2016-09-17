@@ -28,9 +28,13 @@ describe("IntroController", function() {
     }));
 
     // Load any injected managers and services.
-    var ConfigsManager, ManagerHelperService;
+    var ConfigsManager, PackageRepositoriesManager, BootResourcesManager;
+    var ManagerHelperService;
     beforeEach(inject(function($injector) {
         ConfigsManager = $injector.get("ConfigsManager");
+        PackageRepositoriesManager = $injector.get(
+            "PackageRepositoriesManager");
+        BootResourcesManager = $injector.get("BootResourcesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
@@ -45,11 +49,11 @@ describe("IntroController", function() {
 
     // Makes the IntroController
     function makeController(loadManagerDefer) {
-        var loadManager = spyOn(ManagerHelperService, "loadManager");
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagerDefer)) {
-            loadManager.and.returnValue(loadManagerDefer.promise);
+            loadManagers.and.returnValue(loadManagerDefer.promise);
         } else {
-            loadManager.and.returnValue($q.defer().promise);
+            loadManagers.and.returnValue($q.defer().promise);
         }
 
         // Create the controller.
@@ -59,6 +63,8 @@ describe("IntroController", function() {
             $window: $window,
             $location: $location,
             ConfigsManager: ConfigsManager,
+            PackageRepositoriesManager: PackageRepositoriesManager,
+            BootResourcesManager: BootResourcesManager,
             ManagerHelperService: ManagerHelperService
         });
 
@@ -73,13 +79,22 @@ describe("IntroController", function() {
 
     it("calls loadManagers with correct managers", function() {
         var controller = makeController();
-        expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            ConfigsManager);
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            [ConfigsManager, PackageRepositoriesManager]);
     });
 
     it("sets initial $scope", function() {
         var controller = makeController();
         expect($scope.loading).toBe(true);
+        expect($scope.configManager).toBe(ConfigsManager);
+        expect($scope.repoManager).toBe(PackageRepositoriesManager);
+        expect($scope.bootResources).toBe(BootResourcesManager.getData());
+        expect($scope.hasImages).toBe(false);
+        expect($scope.maasName).toBeNull();
+        expect($scope.upstreamDNS).toBeNull();
+        expect($scope.mainArchive).toBeNull();
+        expect($scope.portsArchive).toBeNull();
+        expect($scope.httpProxy).toBeNull();
     });
 
     it("clears loading", function() {
@@ -97,6 +112,33 @@ describe("IntroController", function() {
         expect($location.path).toHaveBeenCalledWith('/');
     });
 
+    it("sets required objects on resolve", function() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        var maasName = { name: 'maas_name' };
+        var upstreamDNS = { name: 'upstream_dns' };
+        var httpProxy = { name: 'http_proxy' };
+        var mainArchive = {
+            'default': true,
+            name: 'main_archive'
+        };
+        var portsArchive = {
+            'default': true,
+            name: 'ports_archive'
+        };
+        ConfigsManager._items = [
+            maasName, upstreamDNS, httpProxy, mainArchive];
+        PackageRepositoriesManager._items = [mainArchive, portsArchive];
+
+        defer.resolve();
+        $scope.$digest();
+        expect($scope.maasName).toBe(maasName);
+        expect($scope.upstreamDNS).toBe(upstreamDNS);
+        expect($scope.httpProxy).toBe(httpProxy);
+        expect($scope.mainArchive).toBe(mainArchive);
+        expect($scope.portsArchive).toBe(portsArchive);
+    });
+
     describe("$rootScope.skip", function() {
 
         it("calls updateItem and reloads", function() {
@@ -104,6 +146,149 @@ describe("IntroController", function() {
             var defer = $q.defer();
             spyOn(ConfigsManager, "updateItem").and.returnValue(defer.promise);
             $rootScope.skip();
+
+            expect(ConfigsManager.updateItem).toHaveBeenCalledWith({
+                'name': 'completed_intro',
+                'value': true
+            });
+            defer.resolve();
+            $scope.$digest();
+            expect($window.location.reload).toHaveBeenCalled();
+        });
+    });
+
+    describe("welcomeInError", function() {
+
+        it("returns false without form", function() {
+            var controller = makeController();
+            $scope.maasName = {};
+            expect($scope.welcomeInError()).toBe(false);
+        });
+
+        it("returns hasErrors from form", function() {
+            var controller = makeController();
+            var sentinel = {};
+            var hasErrors = jasmine.createSpy("hasErrors");
+            hasErrors.and.returnValue(sentinel);
+            $scope.maasName = {
+                $maasForm: {
+                    hasErrors: hasErrors
+                }
+            };
+            expect($scope.welcomeInError()).toBe(sentinel);
+        });
+    });
+
+    describe("networkInError", function() {
+
+        it("returns false when no forms", function() {
+            var controller = makeController();
+            $scope.upstreamDNS = {};
+            $scope.mainArchive = {};
+            $scope.portsArchive = {};
+            $scope.httpProxy = {};
+            expect($scope.networkInError()).toBe(false);
+        });
+
+        it("returns false when none have errors", function() {
+            var controller = makeController();
+            var hasErrors = jasmine.createSpy("hasErrors");
+            hasErrors.and.returnValue(false);
+            var obj = {
+                $maasForm: {
+                    hasErrors: hasErrors
+                }
+            };
+            $scope.upstreamDNS = obj;
+            $scope.mainArchive = obj;
+            $scope.portsArchive = obj;
+            $scope.httpProxy = obj;
+            expect($scope.networkInError()).toBe(false);
+        });
+
+        it("returns true when one has error", function() {
+            var controller = makeController();
+            var hasErrorsFalse = jasmine.createSpy("hasErrors");
+            hasErrorsFalse.and.returnValue(false);
+            var objFalse = {
+                $maasForm: {
+                    hasErrors: hasErrorsFalse
+                }
+            };
+            var hasErrorsTrue = jasmine.createSpy("hasErrors");
+            hasErrorsTrue.and.returnValue(true);
+            var objTrue = {
+                $maasForm: {
+                    hasErrors: hasErrorsTrue
+                }
+            };
+            $scope.upstreamDNS = objTrue;
+            $scope.mainArchive = objFalse;
+            $scope.portsArchive = objFalse;
+            $scope.httpProxy = objFalse;
+            expect($scope.networkInError()).toBe(true);
+        });
+    });
+
+    describe("canContinue", function() {
+
+        it("returns false when welcome has error", function() {
+            var controller = makeController();
+            spyOn($scope, "welcomeInError").and.returnValue(true);
+            expect($scope.canContinue()).toBe(false);
+        });
+
+        it("returns false when network has error", function() {
+            var controller = makeController();
+            spyOn($scope, "welcomeInError").and.returnValue(false);
+            spyOn($scope, "networkInError").and.returnValue(true);
+            expect($scope.canContinue()).toBe(false);
+        });
+
+        it("returns false when no images", function() {
+            var controller = makeController();
+            spyOn($scope, "welcomeInError").and.returnValue(false);
+            spyOn($scope, "networkInError").and.returnValue(false);
+            $scope.hasImages = false;
+            expect($scope.canContinue()).toBe(false);
+        });
+
+        it("returns true", function() {
+            var controller = makeController();
+            spyOn($scope, "welcomeInError").and.returnValue(false);
+            spyOn($scope, "networkInError").and.returnValue(false);
+            $scope.hasImages = true;
+            expect($scope.canContinue()).toBe(true);
+        });
+    });
+
+    describe("clickContinue", function() {
+
+        it("does nothing if cannot continue", function() {
+            var controller = makeController();
+            spyOn($scope, "canContinue").and.returnValue(false);
+            spyOn(ConfigsManager, "updateItem");
+            $scope.clickContinue();
+            expect(ConfigsManager.updateItem).not.toHaveBeenCalled();
+        });
+
+        it("forces ignores canContinue", function() {
+            var controller = makeController();
+            spyOn($scope, "canContinue").and.returnValue(false);
+            spyOn(ConfigsManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+            $scope.clickContinue(true);
+            expect(ConfigsManager.updateItem).toHaveBeenCalledWith({
+                'name': 'completed_intro',
+                'value': true
+            });
+        });
+
+        it("calls updateItem and reloads", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(ConfigsManager, "updateItem").and.returnValue(defer.promise);
+            $scope.clickContinue(true);
 
             expect(ConfigsManager.updateItem).toHaveBeenCalledWith({
                 'name': 'completed_intro',

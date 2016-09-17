@@ -12,9 +12,11 @@
                 <div data-ng-if="isSuperUser() && !source.tooMany">
                     <h3>Choose source</h3>
                     <div class="form__group">
-                        <input type="radio" ng-model="source.source_type" id="source_maas" value="maas.io" data-ng-change="sourceChanged()">
+                        <input type="radio" ng-model="source.source_type" id="source_maas" value="maas.io"
+                            data-ng-change="sourceChanged()" data-ng-disabled="saving">
                         <label for="source_maas" class="u-margin--right">maas.io</label>
-                        <input type="radio" ng-model="source.source_type" id="source_custom" value="custom" data-ng-change="sourceChanged()">
+                        <input type="radio" ng-model="source.source_type" id="source_custom" value="custom"
+                            data-ng-change="sourceChanged()" data-ng-disabled="saving">
                         <label for="source_custom">Custom</label>
                     </div>
                     <div data-ng-if="showMirrorPath()">
@@ -80,7 +82,8 @@
                             <div class="form__group" data-ng-repeat="release in getUbuntuLTSReleases() | orderBy:'-title'">
                                 <input type="checkbox" id="{$ release.name $}"
                                     data-ng-checked="isSelected('releases', release)"
-                                    data-ng-click="toggleSelection('releases', release)">
+                                    data-ng-click="toggleSelection('releases', release)"
+                                    data-ng-disabled="saving">
                                 <label for="{$ release.name $}">{$ release.title $}</label>
                             </div>
                         </div>
@@ -88,7 +91,8 @@
                             <div class="form__group" data-ng-repeat="release in getUbuntuNonLTSReleases() | orderBy:'-title'">
                                 <input type="checkbox" id="{$ release.name $}"
                                     data-ng-checked="isSelected('releases', release)"
-                                    data-ng-click="toggleSelection('releases', release)">
+                                    data-ng-click="toggleSelection('releases', release)"
+                                    data-ng-disabled="saving">
                                 <label for="{$ release.name $}">{$ release.title $}</label>
                             </div>
                         </div>
@@ -99,7 +103,8 @@
                         <div class="form__group" data-ng-repeat="arch in getArchitectures() | orderBy:'title'">
                             <input type="checkbox" id="{$ arch.name $}"
                                 data-ng-checked="isSelected('arches', arch)"
-                                data-ng-click="toggleSelection('arches', arch)">
+                                data-ng-click="toggleSelection('arches', arch)"
+                                data-ng-disabled="saving">
                             <label for="{$ arch.name $}">{$ arch.title $}</label>
                         </div>
                     </div>
@@ -155,7 +160,8 @@
             <span class="u-margin--right" data-ng-repeat="image in other.images | orderBy:['-title']">
                 <input type="checkbox" id="{$ image.name $}"
                     data-ng-checked="image.checked"
-                    data-ng-click="toggleOtherSelection(image)">
+                    data-ng-click="toggleOtherSelection(image)"
+                    data-ng-disabled="saving">
                 <label for="{$ image.name $}">{$ image.title $}</label>
             <span>
         </div>

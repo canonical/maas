@@ -83,6 +83,22 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             }
         };
 
+        // Return true if any field in the form as an error.
+        MAASFormController.prototype.hasErrors = function() {
+            var hasErrors = false;
+            angular.forEach(this.fields, function(field) {
+                if(field.scope.hasErrors()) {
+                    hasErrors = true;
+                }
+            });
+            if(angular.isDefined(this.errorScope)) {
+                if(this.errorScope.hasErrors()) {
+                    hasErrors = true;
+                }
+            }
+            return hasErrors;
+        };
+
         // Called by maas-obj-field to register it as a editable field.
         MAASFormController.prototype.registerField = function(key, scope) {
             // Store the state of the field and its scope.
@@ -765,6 +781,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         }, 1);
                     }
                 };
+
+                // Called by controller to see if error is set on field.
+                scope.hasErrors = function() {
+                    return inputElement.hasClass("has-error");
+                };
             }
         };
     }]);
@@ -815,6 +836,11 @@ angular.module('MAAS').directive('maasObjErrors', function() {
                             );
                         });
                     }
+                };
+
+                // Called by controller to see if error is set on field.
+                scope.hasErrors = function() {
+                    return ul.children().length > 0;
                 };
             }
         };

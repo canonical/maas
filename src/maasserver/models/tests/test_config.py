@@ -39,6 +39,13 @@ class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
         self.assertIn("rpc_shared_secret", observed)
         del observed["rpc_shared_secret"]
 
+        # completed_intro is set to True in all tests so that URL manipulation
+        # in the middleware does not occur. We check that it is True and
+        # remove it from the expected and observed.
+        self.assertTrue(observed["completed_intro"])
+        del expected["completed_intro"]
+        del observed["completed_intro"]
+
         self.assertEqual(expected, observed)
 
 
