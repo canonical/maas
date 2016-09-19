@@ -52,22 +52,22 @@ export PGDATABASE := maas
 export MAAS_ROOT := $(CURDIR)/run
 
 build: \
-    bin/buildout \
-    bin/database \
-    bin/maas \
-    bin/maas-rack \
-    bin/maas-region \
-    bin/twistd.rack \
-    bin/twistd.region \
-    bin/test.cli \
-    bin/test.rack \
-    bin/test.config \
-    bin/test.region \
-    bin/test.testing \
-    bin/test.js \
-    bin/test.e2e \
-    bin/py bin/ipy \
-    $(js_enums)
+  bin/buildout \
+  bin/database \
+  bin/maas \
+  bin/maas-rack \
+  bin/maas-region \
+  bin/twistd.rack \
+  bin/twistd.region \
+  bin/test.cli \
+  bin/test.rack \
+  bin/test.config \
+  bin/test.region \
+  bin/test.testing \
+  bin/test.js \
+  bin/test.e2e \
+  bin/py bin/ipy \
+  $(js_enums)
 
 all: build doc
 
@@ -88,6 +88,10 @@ install-dependencies:
 	sed 's:^[.]/:/:' $^ > $@
 	echo '/src/**/*.pyc' >> $@
 	echo '/etc/**/*.pyc' >> $@
+
+run/etc/ntp.conf: templates/ntp.conf
+	@mkdir -p $(@D)
+	@cp templates/ntp.conf $@
 
 configure-buildout:
 	utilities/configure-buildout
@@ -136,18 +140,19 @@ bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 # bin/maas-region is needed for South migration tests. bin/flake8 is
 # needed for checking lint and bin/sass is needed for checking css.
 bin/test.testing: \
-    bin/maas-region bin/flake8 bin/sass bin/buildout \
-    buildout.cfg versions.cfg setup.py
+  bin/maas-region bin/flake8 bin/sass bin/buildout \
+  buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
 
 bin/maas-rack bin/twistd.rack: \
-    bin/buildout buildout.cfg versions.cfg setup.py
+  bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@
 
 bin/test.rack: \
-	  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack
+  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack \
+  run/etc/ntp.conf
 	$(buildout) install rack-test
 	@touch --no-create $@
 
