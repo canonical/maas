@@ -19,7 +19,7 @@ from provisioningserver.utils.text import (
 def get_vendor_data(node):
     return dict(chain(
         generate_system_info(node),
-        generate_ntp_configuration(),
+        generate_ntp_configuration(node),
     ))
 
 
@@ -37,7 +37,7 @@ def generate_system_info(node):
         }
 
 
-def generate_ntp_configuration():
+def generate_ntp_configuration(node):
     """Generate cloud-init configuration for NTP servers.
 
     cloud-init supports::
@@ -53,7 +53,19 @@ def generate_ntp_configuration():
     but MAAS does not yet distinguish between pool and non-pool servers, and
     so this returns a single set of time references.
     """
-    ntp_servers = Config.objects.get_config("ntp_servers")
-    ntp_servers = set(split_string_list(ntp_servers))
+    ntp_external_only = Config.objects.get_config("ntp_external_only")
+    if ntp_external_only:
+        ntp_servers = Config.objects.get_config("ntp_servers")
+        ntp_servers = set(split_string_list(ntp_servers))
+    else:
+        if node.boot_cluster_ip is None:
+            # For now this means there are no NTP servers but this will change
+            # with the "routable pairs" work, at which point we'll be able to
+            # easily calculate all rack addresses routable from the node.
+            ntp_servers = set()
+        else:
+            # Point the node back to the rack it booted from.
+            ntp_servers = {node.boot_cluster_ip}
+
     if len(ntp_servers) >= 1:
         yield "ntp", {"servers": sorted(ntp_servers)}

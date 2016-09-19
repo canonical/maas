@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -48,6 +50,7 @@ class TestGetVendorData(MAASServerTestCase):
         }))
 
     def test_includes_ntp_server_information(self):
+        Config.objects.set_config("ntp_external_only", True)
         Config.objects.set_config("ntp_servers", "foo bar")
         node = factory.make_Node()
         vendor_data = get_vendor_data(node)
@@ -94,17 +97,39 @@ class TestGenerateSystemInfo(MAASServerTestCase):
 class TestGenerateNTPConfiguration(MAASServerTestCase):
     """Tests for `generate_ntp_configuration`."""
 
-    def test_yields_nothing_when_no_ntp_servers_are_defined(self):
+    def test_external_only_yields_nothing_when_no_ntp_servers_defined(self):
+        Config.objects.set_config("ntp_external_only", True)
         Config.objects.set_config("ntp_servers", "")
-        configuration = generate_ntp_configuration()
+        configuration = generate_ntp_configuration(node=sentinel.ignored)
         self.assertThat(dict(configuration), Equals({}))
 
-    def test_yields_all_ntp_servers_when_defined(self):
+    def test_external_only_yields_all_ntp_servers_when_defined(self):
+        Config.objects.set_config("ntp_external_only", True)
         ntp_servers = factory.make_hostname(), factory.make_hostname()
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
-        configuration = generate_ntp_configuration()
+        configuration = generate_ntp_configuration(node=sentinel.ignored)
         self.assertThat(dict(configuration), Equals({
             "ntp": {
                 "servers": sorted(ntp_servers),
+            },
+        }))
+
+    def test_yields_nothing_when_machine_has_no_boot_cluster_address(self):
+        Config.objects.set_config("ntp_external_only", False)
+        machine = factory.make_Machine()
+        machine.boot_cluster_ip = None
+        machine.save()
+        configuration = generate_ntp_configuration(machine)
+        self.assertThat(dict(configuration), Equals({}))
+
+    def test_yields_boot_cluster_address_when_machine_has_booted(self):
+        Config.objects.set_config("ntp_external_only", False)
+        machine = factory.make_Machine()
+        machine.boot_cluster_ip = factory.make_ip_address()
+        machine.save()
+        configuration = generate_ntp_configuration(machine)
+        self.assertThat(dict(configuration), Equals({
+            "ntp": {
+                "servers": [machine.boot_cluster_ip],
             },
         }))
