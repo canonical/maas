@@ -509,11 +509,11 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         boot_interface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=boot_interface)
         newer_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         newer_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, interface=newer_nic)
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=newer_nic)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.domain)
         expected_mapping = {
@@ -531,12 +531,11 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             disable_ipv4=False)
         boot_interface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=boot_interface)
-        nic = node.get_boot_interface()
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=boot_interface)
+        nic = node.get_boot_interface()  # equals boot_interface
         auto_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, interface=nic)
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=nic)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.domain)
         expected_mapping = {

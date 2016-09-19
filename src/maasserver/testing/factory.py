@@ -736,24 +736,38 @@ class Factory(maastesting.factory.Factory):
     def make_StaticIPAddress(self, ip=UNDEFINED,
                              alloc_type=IPADDRESS_TYPE.AUTO, interface=None,
                              user=None, subnet=None, dnsresource=None,
-                             cidr=None, **kwargs):
+                             cidr=None, hostname=None, **kwargs):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `interface` is passed, connect this IP address to the
         given interface.
         """
-        if cidr is not None:
-            subnet = get_one(Subnet.objects.filter(cidr=cidr))
+        vlan = None if interface is None else interface.vlan
+
+        if cidr is None:
             if subnet is None:
-                subnet = self.make_Subnet(cidr=cidr)
-        else:
-            if subnet is None:
-                subnet = Subnet.objects.first()
+                if vlan is None:
+                    subnet = Subnet.objects.first()
+                else:
+                    subnet = Subnet.objects.filter(vlan=vlan).first()
+            # Create a subnet if the allocation type is not USER_RESERVED.
+            # It's not super clear why this is necessary, but it is thought
+            # that in ages past (?) MAAS did not require a network to be
+            # modelled in order to add a USER_RESERVED address, and there are
+            # most likely test cases that depend on this behavior.
             if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
-                subnet = self.make_Subnet(cidr=cidr)
-        hostname = kwargs.pop('hostname', None)
+                subnet = self.make_Subnet(vlan=vlan)
+        else:
+            if vlan is None:
+                subnet = get_one(Subnet.objects.filter(cidr=cidr))
+            else:
+                subnet = get_one(Subnet.objects.filter(cidr=cidr, vlan=vlan))
+            if subnet is None:
+                subnet = self.make_Subnet(cidr=cidr, vlan=vlan)
 
         if ip is self.UNDEFINED:
+            # See the above comment about subnets and USER_RESERVED for some
+            # hints as to why we think this behaviour exists.
             if not subnet and alloc_type == IPADDRESS_TYPE.USER_RESERVED:
                 ip = self.make_ip_address()
             else:

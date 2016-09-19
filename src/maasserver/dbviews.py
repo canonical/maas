@@ -36,6 +36,7 @@ def _register_view(view_name, view_sql):
     with closing(connection.cursor()) as cursor:
         cursor.execute(view_sql)
 
+
 # Note that the `Discovery` model object is backed by this view. Any
 # changes made to this view should be reflected there.
 maasserver_discovery = dedent("""\
@@ -88,6 +89,43 @@ maasserver_discovery = dedent("""\
         mdns.updated DESC, -- We want the most recently seen hostname.
         subnet_prefixlen DESC -- We want the best-match CIDR.
     """)
+
+
+# Pairs of IP addresses that can route between nodes. In MAAS all addresses in
+# a "space" are mutually routable, so this essentially means finding pairs of
+# IP addresses that are in subnets with the same space ID. Typically this view
+# should not be used without constraining, say, the sets of nodes, to find
+# addresses that are mutually routable between region controllers for example.
+maasserver_routable_pairs = dedent("""\
+    SELECT if_left.node_id AS left_node_id,
+           if_left.id AS left_interface_id,
+           subnet_left.id AS left_subnet_id,
+           sip_left.ip AS left_ip,
+           if_right.node_id AS right_node_id,
+           if_right.id AS right_interface_id,
+           subnet_right.id AS right_subnet_id,
+           sip_right.ip AS right_ip,
+           subnet_left.space_id AS space_id
+      FROM maasserver_interface AS if_left
+      JOIN maasserver_interface_ip_addresses AS ifia_left
+        ON if_left.id = ifia_left.interface_id
+      JOIN maasserver_staticipaddress AS sip_left
+        ON ifia_left.staticipaddress_id = sip_left.id
+      JOIN maasserver_subnet AS subnet_left
+        ON sip_left.subnet_id = subnet_left.id
+      JOIN maasserver_subnet AS subnet_right
+        ON subnet_left.space_id = subnet_right.space_id
+      JOIN maasserver_staticipaddress AS sip_right
+        ON subnet_right.id = sip_right.subnet_id
+      JOIN maasserver_interface_ip_addresses AS ifia_right
+        ON sip_right.id = ifia_right.staticipaddress_id
+      JOIN maasserver_interface AS if_right
+        ON ifia_right.interface_id = if_right.id
+     WHERE if_left.enabled AND sip_left.ip IS NOT NULL
+       AND if_right.enabled AND sip_right.ip IS NOT NULL
+       AND inet_same_family(sip_left.ip, sip_right.ip)
+    """)
+
 
 # Views that are helpful for supporting MAAS.
 # These can be batch-run using the maas-region-support-dump script.
@@ -241,6 +279,7 @@ maas_support__commissioning_result_summary = dedent("""\
 # Dictionary of view_name: view_sql tuples which describe the database views.
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
+    "maasserver_routable_pairs": maasserver_routable_pairs,
     "maas_support__node_overview": maas_support__node_overview,
     "maas_support__device_overview": maas_support__device_overview,
     "maas_support__node_networking": maas_support__node_networking,

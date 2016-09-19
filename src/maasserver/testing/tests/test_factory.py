@@ -10,6 +10,10 @@ import random
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from testtools.matchers import (
+    Contains,
+    Equals,
+)
 
 
 class TestFactory(MAASServerTestCase):
@@ -78,3 +82,20 @@ class TestFactory(MAASServerTestCase):
         factory.make_Zone()
         node = reload_object(node)
         self.assertEqual(previous_zone, node.zone)
+
+    def test_make_StaticIPAddress_uses_vlan_for_new_subnet(self):
+        iface = factory.make_Interface()  # Specifies a VLAN.
+        sip = factory.make_StaticIPAddress(interface=iface)
+        self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
+        self.assertThat(
+            {iface.vlan for iface in sip.interface_set.all()},
+            Contains(iface.vlan))
+
+    def test_make_StaticIPAddress_uses_vlan_for_subnet_with_cidr(self):
+        iface = factory.make_Interface()  # Specifies a VLAN.
+        network = factory.make_ip4_or_6_network()
+        sip = factory.make_StaticIPAddress(interface=iface, cidr=network)
+        self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
+        self.assertThat(
+            {iface.vlan for iface in sip.interface_set.all()},
+            Contains(iface.vlan))
