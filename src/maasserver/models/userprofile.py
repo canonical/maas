@@ -10,6 +10,7 @@ __all__ = [
 
 from django.contrib.auth.models import User
 from django.db.models import (
+    BooleanField,
     Manager,
     Model,
     OneToOneField,
@@ -58,6 +59,9 @@ class UserProfile(CleanSave, Model):
 
     objects = UserProfileManager()
     user = OneToOneField(User)
+
+    # Set to true when the user has completed the intro page of the Web UI.
+    completed_intro = BooleanField(default=False)
 
     def delete(self):
         if self.user.node_set.exists():

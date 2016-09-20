@@ -523,6 +523,10 @@ class TransactionalHelpersMixin:
         return factory.make_SSHKey(**params)
 
     @transactional
+    def update_sshkey(self, id, params):
+        return apply_update_to_model(SSHKey, id, params)
+
+    @transactional
     def delete_sshkey(self, id):
         key = SSHKey.objects.get(id=id)
         key.delete()

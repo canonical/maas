@@ -18,16 +18,19 @@ from maasserver.utils.version import (
 )
 
 
-def yui(context):
+def yui(request):
     return {
         'YUI_DEBUG': settings.YUI_DEBUG,
     }
 
 
-def global_options(context):
+def global_options(request):
     version = get_maas_version_ui()
     with RegionConfiguration.open() as config:
         maas_url = config.maas_url
+    user_completed_intro = False
+    if hasattr(request.user, 'userprofile'):
+        user_completed_intro = request.user.userprofile.completed_intro
     return {
         'persistent_errors': get_persistent_errors(),
         'global_options': {
@@ -41,4 +44,5 @@ def global_options(context):
         'register_url': maas_url,
         'register_secret': Config.objects.get_config('rpc_shared_secret'),
         'completed_intro': Config.objects.get_config('completed_intro'),
+        'user_completed_intro': user_completed_intro,
     }

@@ -88,7 +88,7 @@ def get_html_display_for_key(key, size):
         return escape(key, quote=True)
 
 
-MAX_KEY_DISPLAY = 50
+DEFAULT_KEY_DISPLAY = 50
 
 
 class SSHKey(CleanSave, TimestampedModel):
@@ -125,10 +125,12 @@ class SSHKey(CleanSave, TimestampedModel):
     def __str__(self):
         return self.key
 
-    def display_html(self):
+    def display_html(self, key_size=None):
         """Return a compact HTML representation of this key.
 
         :return: The HTML representation of this key.
         :rtype: unicode
         """
-        return mark_safe(get_html_display_for_key(self.key, MAX_KEY_DISPLAY))
+        if key_size is None:
+            key_size = DEFAULT_KEY_DISPLAY
+        return mark_safe(get_html_display_for_key(self.key, key_size))

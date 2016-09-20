@@ -2760,6 +2760,70 @@ class TestUserSSHKeyListener(
             yield listener.stopService()
 
 
+class TestSSHKeyListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the maasserver_sshkey
+    table."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sshkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            obj = yield deferToDatabase(self.create_sshkey, {"user": user})
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % obj.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
+        other_sshkey = yield deferToDatabase(
+            self.create_sshkey, {"user": user})
+        contents = other_sshkey.key
+        yield deferToDatabase(self.delete_sshkey, other_sshkey.id)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sshkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_sshkey, sshkey.id, {'key': contents})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % sshkey.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        user = yield deferToDatabase(self.create_user)
+        sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sshkey", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_sshkey, sshkey.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % sshkey.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
 class TestUserSSLKeyListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the maasserver_sslkey

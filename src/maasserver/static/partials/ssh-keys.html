@@ -1,0 +1,92 @@
+<section class="table">
+    <header class="table__head">
+        <div class="table__row">
+            <div class="table__header table-col--25">Source</div>
+            <div class="table__header table-col--35">ID</div>
+            <div class="table__header table-col--30">Number of keys</div>
+            <div class="table__header table-col--10"></div>
+        </div>
+    </header>
+    <main class="table__body">
+        <div class="table__row" data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']"
+            data-ng-class="{ 'is-active': group.id === openRow }">
+            <div class="table__data table-col--25">{$ sourceTitles[group.source] $}</div>
+            <div data-ng-if="group.source !== 'upload'">
+                <div class="table__data table-col--35">{$ group.authId $}</div>
+                <div class="table__data table-col--30">{$ group.keys.length $}</div>
+            </div>
+            <div data-ng-if="group.source === 'upload'">
+                <div class="table__data table-col--65" data-ng-bind-html="trustAsHtml(group.keys[0].display)"></div>
+            </div>
+            <div class="table__data table-col--10">
+                <div class="table__controls">
+                    <a class="icon icon--open tooltip u-margin--right" aria-label="Open"
+                        data-ng-click="open(group, 'view')"
+                        data-ng-if="group.source !== 'upload' && openRow !== group.id">Open</a>
+                    <a class="icon icon--close tooltip u-margin--right" aria-label="Close"
+                        data-ng-click="close()"
+                        data-ng-if="group.source !== 'upload' && openRow === group.id">Close</a>
+                    <a class="icon icon--delete tooltip" aria-label="Delete"
+                        data-ng-click="open(group, 'delete')">Delete</a>
+                </div>
+            </div>
+            <div class="table__dropdown">
+                <div class="table__row u-border--none"
+                    data-ng-class="{ 'is-active': rowMode === 'view' }">
+                    <div class="u-margin--left u-margin--right u-margin--bottom u-border u-border--solid u-padding--small">
+                        <p data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></p>
+                    </div>
+                </div>
+                <div class="table__row"
+                    data-ng-class="{ 'is-active': rowMode === 'delete' }">
+                    <div class="table__data u-float--left u-margin--top-tiny">
+                          <p><span class="icon icon--warning u-margin--right-small"></span>Are you sure you want to remove this key source?</p>
+                    </div>
+                    <div class="table__data u-float--right">
+                          <a class="button--base button--inline" data-ng-click="close()">Cancel</a>
+                          <button class="button--primary button--inline" data-ng-click="confirmDelete(group)">Remove</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table__dropdown-row is-active">
+            <form class="form form--inline">
+                <div class="table__data u-float--left">
+                    <div class="form__group">
+                        <label class="form__group-label" for="source">Source</label>
+                        <div class="form__group-input">
+                            <select id="source" data-ng-model="add.source" data-ng-disabled="add.saving">
+                                <option value="lp">Launchpad</option>
+                                <option value="gh">Github</option>
+                                <option value="upload">Upload</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form__group" data-ng-if="add.source !== 'upload'">
+                        <label class="form__group-label" for="authId">ID</label>
+                        <div class="form__group-input">
+                            <input type="text" id="authId" name="authId" placeholder="User ID"
+                                data-ng-model="add.authId" data-ng-disabled="add.saving">
+                        </div>
+                    </div>
+                    <div class="form__group" data-ng-if="add.source === 'upload'">
+                        <label class="form__group-label" for="key">Public key</label>
+                        <div class="form__group-input">
+                            <textarea id="key" name="key" placeholder="Public key"
+                                data-ng-model="add.key" data-ng-disabled="add.saving"
+                                style="min-height: 100px;"></textarea>
+                        </div>
+                    </div>
+                    <ul class="form__error errors" data-ng-if="add.error">
+                        <li class="form__error-item">{$ add.error $}</li>
+                    </ul>
+                </div>
+                <div class="table__data u-float--right">
+                    <button type="submit" class="button--primary button--inline"
+                        data-ng-disabled="!canImportKeys()"
+                        data-ng-click="importKeys()">Import</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</section>

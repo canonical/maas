@@ -34,6 +34,11 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                         'static/partials/intro.html'),
                     controller: 'IntroController'
                 }).
+                when('/intro/user', {
+                    templateUrl: versionedPath(
+                        'static/partials/intro-user.html'),
+                    controller: 'IntroUserController'
+                }).
                 when('/nodes', {
                     templateUrl: versionedPath(
                         'static/partials/nodes-list.html'),
@@ -122,6 +127,10 @@ angular.module('MAAS').run(['$rootScope', '$location',
             if(!MAAS_config.completed_intro) {
                 if(next.controller !== 'IntroController') {
                     $location.path('/intro');
+                }
+            } else if (!MAAS_config.user_completed_intro) {
+                if(next.controller !== 'IntroUserController') {
+                    $location.path('/intro/user');
                 }
             }
         });

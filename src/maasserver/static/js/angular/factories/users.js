@@ -100,5 +100,25 @@ angular.module('MAAS').factory(
             return Manager.prototype.reloadItems.call(this);
         };
 
+        // Mark the user as completed the intro.
+        UsersManager.prototype.markIntroComplete = function() {
+            var self = this;
+            return RegionConnection.callMethod(
+                "user.mark_intro_complete", {}).then(
+                    function(user) {
+                        if(angular.isObject(self._authUser)) {
+                            // Copy the user into the authUser. This keeps the
+                            // reference the same, not requiring another call
+                            // to getAuthUser.
+                            angular.copy(user, self._authUser);
+                        } else {
+                            self._authUser = user;
+                        }
+                        return self._authUser;
+                    }, function(error) {
+                        ErrorService.raiseError(error);
+                    });
+        };
+
         return new UsersManager();
     }]);

@@ -803,13 +803,18 @@ class Factory(maastesting.factory.Factory):
     def make_email(self):
         return '%s@example.com' % self.make_string(10)
 
-    def make_User(self, username=None, password='test', email=None):
+    def make_User(
+            self, username=None, password='test', email=None,
+            completed_intro=True):
         if username is None:
             username = self.make_username()
         if email is None:
             email = self.make_email()
-        return User.objects.create_user(
+        user = User.objects.create_user(
             username=username, password=password, email=email)
+        user.userprofile.completed_intro = completed_intro
+        user.userprofile.save()
+        return user
 
     def make_KeySource(self, protocol=None, auth_id=None, auto_update=False):
         if protocol is None:
@@ -1242,13 +1247,18 @@ class Factory(maastesting.factory.Factory):
             keys.append(key)
         return user, keys
 
-    def make_admin(self, username=None, password='test', email=None):
+    def make_admin(
+            self, username=None, password='test', email=None,
+            completed_intro=True):
         if username is None:
             username = self.make_username()
         if email is None:
             email = self.make_email()
-        return User.objects.create_superuser(
+        user = User.objects.create_superuser(
             username, password=password, email=email)
+        user.userprofile.completed_intro = completed_intro
+        user.userprofile.save()
+        return user
 
     def make_FileStorage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)

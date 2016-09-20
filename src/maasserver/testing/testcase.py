@@ -88,7 +88,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         # Disconnect the status transition event to speed up tests.
         self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
 
-    def client_log_in(self, as_admin=False):
+    def client_log_in(self, as_admin=False, completed_intro=True):
         """Log `self.client` into MAAS.
 
         Sets `self.logged_in_user` to match the logged-in identity.
@@ -99,9 +99,11 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
             "client.login instead.", DeprecationWarning)
         password = 'test'
         if as_admin:
-            user = factory.make_admin(password=password)
+            user = factory.make_admin(
+                password=password, completed_intro=completed_intro)
         else:
-            user = factory.make_User(password=password)
+            user = factory.make_User(
+                password=password, completed_intro=completed_intro)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
 

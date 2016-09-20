@@ -1541,6 +1541,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_sshkey", "user_sshkey_unlink_notify", "delete")
 
+    # SSH key table.
+    register_procedure(
+        render_notification_procedure(
+            'sshkey_create_notify', 'sshkey_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'sshkey_update_notify', 'sshkey_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'sshkey_delete_notify', 'sshkey_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_sshkey", "sshkey_create_notify", "insert")
+    register_trigger(
+        "maasserver_sshkey", "sshkey_update_notify", "update")
+    register_trigger(
+        "maasserver_sshkey", "sshkey_delete_notify", "delete")
+
     # SSL key table, update to linked user.
     register_procedure(
         render_notification_procedure(

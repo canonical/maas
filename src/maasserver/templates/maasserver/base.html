@@ -110,7 +110,7 @@
                     <a href="#" class="nav-toggle__link close"></a>
                 </div>
                 <ul id="main-nav">
-                    {% if user.is_authenticated %}
+                    {% if user.is_authenticated and user_completed_intro %}
                     <li>
                         <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'index' %}#/nodes">Nodes</a>
                     </li>
@@ -144,7 +144,7 @@
                                 <a class="{% block nav-active-prefs %}{% endblock %}" href="{% url 'prefs' %}">{{ user.username }}</a>
                             </li>
                             <li>
-                                <a href="{% url 'logout' %}">Logout</a>
+                                <a class="{% block nav-active-logout %}{% endblock %}" href="{% url 'logout' %}">Logout</a>
                             </li>
                         </ul>
                     </li>

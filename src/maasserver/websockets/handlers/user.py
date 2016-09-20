@@ -20,7 +20,7 @@ class UserHandler(Handler):
     class Meta:
         queryset = User.objects.filter(is_active=True)
         pk = 'id'
-        allowed_methods = ['list', 'get', 'auth_user']
+        allowed_methods = ['list', 'get', 'auth_user', 'mark_intro_complete']
         fields = [
             "id",
             "username",
@@ -64,4 +64,14 @@ class UserHandler(Handler):
 
     def auth_user(self, params):
         """Return the authenticated user."""
+        return self.full_dehydrate(self.user)
+
+    def mark_intro_complete(self, params):
+        """Mark the user as completed the intro.
+
+        This is only for the authenticated user. This cannot be performed on
+        a different user.
+        """
+        self.user.userprofile.completed_intro = True
+        self.user.userprofile.save()
         return self.full_dehydrate(self.user)

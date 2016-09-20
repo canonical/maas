@@ -117,10 +117,12 @@ class AccessMiddleware:
                 return HttpResponseRedirect("%s?next=%s" % (
                     reverse('login'), urlquote_plus(request.path)))
             else:
-                if not Config.objects.get_config('completed_intro'):
+                if (not Config.objects.get_config('completed_intro') or
+                        not request.user.userprofile.completed_intro):
                     index_path = reverse('index')
-                    if request.path != index_path:
-                        return HttpResponseRedirect(reverse('index'))
+                    if (request.path != index_path and
+                            request.path != reverse('logout')):
+                        return HttpResponseRedirect(index_path)
                 return None
 
 

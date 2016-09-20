@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import http.client
+
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.core.urlresolvers import reverse
@@ -62,6 +64,11 @@ class TestLogin(MAASServerTestCase):
 
 
 class TestLogout(MAASServerTestCase):
+
+    def test_logout_doesnt_redirect_when_intro_not_completed(self):
+        self.client_log_in(completed_intro=False)
+        response = self.client.get(reverse('logout'))
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_logout_link_present_on_homepage(self):
         self.client_log_in()
