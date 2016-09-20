@@ -358,6 +358,27 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
                 }
             })
 
+    def test__configure_dhcp_gateway_fe80_allowed(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="2001:db8::/64", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "extra": {
+                "subnet": subnet.id,
+                "gateway": "fe80::1",
+                "start": "2001:db8:0:0:1::",
+                "end": "2001:db8:0:0:1:ffff:ffff:ffff"
+            }
+        })
+        subnet = reload_object(subnet)
+        self.assertEqual(subnet.gateway_ip, 'fe80::1')
+
     def test__configure_dhcp_gateway_inside_range_raises(self):
         rack = factory.make_RackController()
         user = factory.make_admin()
@@ -377,6 +398,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
                     "end": "10.0.0.99"
                 }
             })
+        vlan = reload_object(vlan)
 
     def test__configure_dhcp_gateway_raises_if_dynamic_range_required(self):
         rack = factory.make_RackController()

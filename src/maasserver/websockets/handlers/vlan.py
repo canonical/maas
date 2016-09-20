@@ -112,7 +112,8 @@ class VLANHandler(TimestampedModelHandler):
             if len(gateway_text) > 0:
                 gateway = netaddr.IPAddress(gateway_text)
                 ipnetwork = netaddr.IPNetwork(subnet.cidr)
-                if gateway not in ipnetwork:
+                if gateway not in ipnetwork and not (
+                        gateway.version == 6 and gateway.is_link_local()):
                     raise ValueError(
                         "Gateway IP must be within specified subnet: %s" %
                         subnet.cidr)
