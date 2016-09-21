@@ -9,6 +9,7 @@ from functools import partial
 import http.client
 
 from django.core.urlresolvers import reverse
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
@@ -251,21 +252,79 @@ class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
                 user, NODE_PERMISSION.EDIT, interface))
 
 
-class TestMAASAuthorizationBackendForNetworking(MAASServerTestCase):
+class TestMAASAuthorizationBackendForUnrestrictedRead(MAASServerTestCase):
 
     scenarios = (
+        ("dnsdata", {"factory": factory.make_DNSData}),
+        ("dnsresource", {"factory": factory.make_DNSResource}),
+        ("domain", {"factory": factory.make_Domain}),
         ("fabric", {"factory": factory.make_Fabric}),
         ("interface", {
             "factory": partial(
                 factory.make_Interface, INTERFACE_TYPE.PHYSICAL)}),
         ("subnet", {"factory": factory.make_Subnet}),
         ("space", {"factory": factory.make_Space}),
+        ("staticroute", {"factory": factory.make_StaticRoute}),
+        ("vlan", {"factory": factory.make_VLAN}),
         )
 
     def test_user_can_view(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         self.assertTrue(
+            backend.has_perm(
+                user, NODE_PERMISSION.VIEW, self.factory()))
+
+    def test_user_cannot_edit(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.EDIT, self.factory()))
+
+    def test_user_not_admin(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.ADMIN, self.factory()))
+
+    def test_admin_can_view(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.VIEW, self.factory()))
+
+    def test_admin_can_edit(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.EDIT, self.factory()))
+
+    def test_admin_is_admin(self):
+        backend = MAASAuthorizationBackend()
+        admin = factory.make_admin()
+        self.assertTrue(
+            backend.has_perm(
+                admin, NODE_PERMISSION.ADMIN, self.factory()))
+
+
+class TestMAASAuthorizationBackendForAdminRestricted(MAASServerTestCase):
+
+    scenarios = (
+        ("discovery", {"factory": factory.make_Discovery}),
+        )
+
+    def setUp(self):
+        super().setUp()
+        register_view("maasserver_discovery")
+
+    def test_user_cannot_view(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        self.assertFalse(
             backend.has_perm(
                 user, NODE_PERMISSION.VIEW, self.factory()))
 

@@ -241,3 +241,18 @@ def sorttop(data):
             for deps in data.values():
                 deps.difference_update(batch)
             yield batch
+
+
+def is_instance_or_subclass(test, *query):
+    """Checks if a `test` object is an instance or type matching `query`.
+
+    The `query` parameter will be flattened into a tuple before being used.
+    """
+    # isinstance() requires a tuple.
+    query_tuple = tuple(flatten(query))
+    if isinstance(test, query_tuple):
+        return True
+    try:
+        return issubclass(test, query_tuple)
+    except TypeError:
+        return False

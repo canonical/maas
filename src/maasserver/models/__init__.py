@@ -167,6 +167,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston3.doc import HandlerDocumentation
+from provisioningserver.utils import is_instance_or_subclass
 
 # Connect the 'create_user' method to the post save signal of User.
 post_save.connect(create_user, sender=User)
@@ -223,6 +224,37 @@ HandlerDocumentation.get_resource_uri_template = get_resource_uri_template
 HandlerDocumentation.resource_uri_template = (
     property(get_resource_uri_template))
 
+# Some actions are applied to model object types global to MAAS; not
+# necessarily a particular object. The following objects cannot be created or
+# changed by non-administrative users, but superusers can always create, read
+# write, or delete them.
+UNRESTRICTED_READ_MODELS = (
+    DNSData,
+    DNSResource,
+    Domain,
+    Fabric,
+    FanNetwork,
+    Space,
+    Subnet,
+    StaticRoute,
+    VLAN
+)
+
+# The following model objects are restricted from non-administrative users.
+# They cannot be seen (or created, or modified, or deleted) by "normal" users.
+ADMIN_RESTRICTED_MODELS = (
+    Discovery,
+)
+
+# ADMIN_PERMISSIONS applies to the model objects in ADMIN_RESTRICTED_MODELS.
+# These model objects are restricted to administrators only; permission checks
+# will return True for administrators given any of the following permissions:
+ADMIN_PERMISSIONS = (
+    NODE_PERMISSION.VIEW,
+    NODE_PERMISSION.EDIT,
+    NODE_PERMISSION.ADMIN,
+)
+
 
 class MAASAuthorizationBackend(ModelBackend):
 
@@ -250,7 +282,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, BlockDevice) or isinstance(obj, FilesystemGroup):
+        elif isinstance(obj, (BlockDevice, FilesystemGroup)):
             if isinstance(obj, BlockDevice):
                 node = obj.node
             else:
@@ -287,32 +319,28 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (DNSData, DNSResource, Domain)):
+        elif is_instance_or_subclass(obj, UNRESTRICTED_READ_MODELS):
+            # This model is classified under 'unrestricted read' for any
+            # logged-in user; so everyone can view, but only an admin can
+            # do anything else.
             if perm == NODE_PERMISSION.VIEW:
-                # Any registered user can view a dns resource or zone.
                 return True
-            elif perm in [NODE_PERMISSION.EDIT, NODE_PERMISSION.ADMIN]:
+            elif perm in ADMIN_PERMISSIONS:
                 # Admin permission is solely granted to superusers.
                 return user.is_superuser
             else:
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(
-                obj, (Fabric, FanNetwork, Space, StaticRoute, Subnet, VLAN)):
-            if perm == NODE_PERMISSION.VIEW:
-                # Any registered user can view a fabric or interface regardless
-                # of its state.
-                return True
-            elif perm in [NODE_PERMISSION.EDIT, NODE_PERMISSION.ADMIN]:
-                # Admin permission is solely granted to superusers.
+        elif is_instance_or_subclass(obj, ADMIN_RESTRICTED_MODELS):
+            # Only administrators are allowed to read/write these objects.
+            if perm in ADMIN_PERMISSIONS:
                 return user.is_superuser
             else:
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
         else:
-            # Only Nodes and BlockDevices can be checked.
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
