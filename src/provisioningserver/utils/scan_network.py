@@ -353,6 +353,7 @@ def warn_about_missing_cidrs(
         if IPNetwork(cidr) not in cidrs_on_interface:
             stderr.write("Warning: %s is not present on %s\n" % (
                 cidr, ifname_to_scan))
+            stderr.flush()
 
 
 def validate_ipv4_cidrs(cidrs):
@@ -406,6 +407,7 @@ def scan_networks(args, to_scan, stderr, stdout):
         clock_diff = time.monotonic() - clock
         stderr.write(
             "%d scan(s) completed in %d second(s).\n" % (count, clock_diff))
+        stderr.flush()
     else:
         # For a ping scan, we can easily get a count of the number of hosts,
         # and whether or not the ping was successful. It will be printed to
@@ -421,6 +423,7 @@ def scan_networks(args, to_scan, stderr, stdout):
         stderr.write(
             "Scanned %d hosts (%d up) in %d second(s).\n" % (
                 count, hosts, clock_diff))
+        stderr.flush()
 
 
 def run(args, stdout=sys.stdout, stderr=sys.stderr):

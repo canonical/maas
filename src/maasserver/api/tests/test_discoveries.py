@@ -12,9 +12,23 @@ import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.api import discoveries as discoveries_module
+from maasserver.api.discoveries import (
+    interpret_scan_all_rack_networks_rpc_results,
+    scan_all_rack_networks,
+)
+from maasserver.clusterrpc.utils import RPCResults
 from maasserver.dbviews import register_view
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
+from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
+from maastesting.testcase import MAASTestCase
+from provisioningserver.rpc import cluster
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -69,8 +83,14 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
     def get_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
         response = self.client.get(uri, *args, **kwargs)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        return results
+
+    def post_api_results(self, *args, **kwargs):
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, *args, **kwargs)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         return results
 
@@ -139,6 +159,14 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({'op': 'by_unknown_ip_and_mac'})
         self.assertThat(len(results), Equals(0))
 
+    def test__scan__calls_scan_all_networks(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({'op': 'scan'})
+        self.assertThat(result, Equals(result))
+
 
 class TestDiscoveryAPI(APITestCase.ForUser):
 
@@ -159,8 +187,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
         response = self.client.get(uri)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Spot check expected values in the results
         self.assertThat(
@@ -197,8 +224,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         [discovery] = make_discoveries(interface=iface, count=1)
         uri = get_discovery_uri_by_specifiers("ip:" + str(discovery.ip))
         response = self.client.get(uri)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             result["ip"],
@@ -208,8 +234,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         uri = reverse(
             'discovery_handler', args=[random.randint(10000, 20000)])
         response = self.client.get(uri)
-        self.assertEqual(
-            http.client.NOT_FOUND, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.NOT_FOUND))
 
     def test_update_not_allowed(self):
         rack = factory.make_RackController()
@@ -220,9 +245,8 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         response = self.client.put(uri, {
             "ip": factory.make_ip_address(),
         })
-        self.assertEqual(
-            http.client.METHOD_NOT_ALLOWED, response.status_code,
-            response.content)
+        self.assertThat(
+            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED))
 
     def test_delete_not_allowed_even_for_admin(self):
         self.become_admin()
@@ -232,6 +256,89 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
         response = self.client.delete(uri)
-        self.assertEqual(
-            http.client.METHOD_NOT_ALLOWED, response.status_code,
-            response.content)
+        self.assertThat(
+            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED))
+
+
+def make_RPCResults(
+        results=None, available=None, unavailable=None, success=None,
+        failed=None, timeout=None):
+    """Creates an `RPCResults` namedtuple without requiring all arguments."""
+    return RPCResults(
+        results, available, unavailable, success, failed, timeout)
+
+
+class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
+
+    def test__no_racks_available(self):
+        results = make_RPCResults(available=[])
+        result = interpret_scan_all_rack_networks_rpc_results(results)
+        self.assertThat(result, DocTestMatches(
+            "Unable to initiate network scanning on any rack controller..."))
+
+    def test__scan_not_started_on_at_least_one_rack(self):
+        results = make_RPCResults(available=['x'], unavailable=['y', 'z'])
+        result = interpret_scan_all_rack_networks_rpc_results(results)
+        self.assertThat(result, DocTestMatches(
+            "Scanning could not be started on 2 rack..."))
+
+    def test__scan_in_progress(self):
+        results = make_RPCResults(available=['x'], unavailable=[])
+        result = interpret_scan_all_rack_networks_rpc_results(results)
+        self.assertThat(result, DocTestMatches(
+            "Scanning is in-progress..."))
+
+
+class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.result = factory.make_name("result")
+        interpret_result_mock = self.patch(
+            discoveries_module.interpret_scan_all_rack_networks_rpc_results)
+        interpret_result_mock.return_value = self.result
+        self.call_racks_sync_mock = self.patch(
+            discoveries_module, 'call_racks_synchronously')
+        r1 = factory.make_RackController()
+        r2 = factory.make_RackController()
+        r3 = factory.make_RackController()
+        r4 = factory.make_RackController()
+        r5 = factory.make_RackController()
+        self.available = [r1, r2, r3, r5]
+        self.unavailable = [r4]
+        self.started = [r1, r2]
+        self.in_progress = [r3]
+        self.timed_out = [r5]
+        self.call_racks_sync_mock.return_value = make_RPCResults(
+            available=self.available, unavailable=self.unavailable,
+            success=self.started, failed=self.in_progress,
+            timeout=self.timed_out)
+
+    def test__populates_results_correctly(self):
+        result = scan_all_rack_networks()
+        self.assertThat(result, Equals(
+            {
+                "result": self.result,
+                "scan_started_on":
+                    [r.system_id for r in self.started],
+                "scan_already_in_progress_on":
+                    [r.system_id for r in self.in_progress],
+                "scan_attempted_on":
+                    [r.system_id for r in self.available],
+                "failed_to_connect_to":
+                    [r.system_id for r in self.unavailable],
+                "rpc_call_timed_out_on":
+                    [r.system_id for r in self.timed_out],
+            }
+        ))
+
+    def test__results_can_be_converted_to_json_and_back(self):
+        result = scan_all_rack_networks()
+        json_result = json.dumps(result)
+        self.assertThat(json.loads(json_result), Equals(result))
+
+    def test__calls_racks_synchronously(self):
+        scan_all_rack_networks()
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanAllNetworks))

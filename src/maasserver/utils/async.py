@@ -57,6 +57,18 @@ class UseOnceIterator:
 
 @asynchronous(timeout=FOREVER)
 def gather(calls, timeout=10.0):
+    """Deprecated version of `gatherCallResults()`.
+
+    This method yields only the result of each call, rather than a (call,
+    result) tuple. Thus, callers can only match up the original call with the
+    result by calling `gatherCallResults()`.
+    """
+    for call, result in gatherCallResults(calls, timeout=timeout):
+        yield result
+
+
+@asynchronous(timeout=FOREVER)
+def gatherCallResults(calls, timeout=10.0):
     """gather(calls, timeout=10.0)
 
     Issue calls into the reactor, passing results back to another thread.
@@ -82,7 +94,12 @@ def gather(calls, timeout=10.0):
 
     """
 
-    # Prepare of a list of Deferreds that we're going to wait for.
+    # Prepare of a list of Deferreds that we're going to wait for. The original
+    # input call objects need to be preserved, since the caller may need to
+    # match the results up with the original call.
+    calls = list(calls)
+
+    # This list must be in the same order as the list of `calls`.
     deferreds = [maybeDeferred(call) for call in calls]
 
     # We'll use this queue (thread-safe) to pass results back.
@@ -108,29 +125,32 @@ def gather(calls, timeout=10.0):
     else:
         canceller = reactor.callLater(timeout, cancel)
 
-    countdown = count(len(deferreds), -1)
+    countdown = count(len(calls), -1)
+
+    def finished():
+        queue.put(done)
+        if canceller is not None:
+            if canceller.active():
+                canceller.cancel()
 
     # Callback to report the result back to the queue. If it's the last
     # result to be reported, `done` is put into the queue, and the
     # delayed call to `cancel` is itself cancelled.
-    def report(result):
-        queue.put(result)
+    def report(result, call):
+        queue.put((call, result))
         if next(countdown) == 1:
-            queue.put(done)
-            if canceller is not None:
-                if canceller.active():
-                    canceller.cancel()
+            finished()
 
-    for deferred in deferreds:
-        deferred.addBoth(report)
+    # We need to add callbacks to the `deferred` here, but the caller needs
+    # a reference to the original call.
+    for index, deferred in enumerate(deferreds):
+        deferred.addBoth(report, calls[index])
 
     # If there are no calls then there will be no results, so we put
     # `done` into the queue, and cancel the nascent delayed call to
     # `cancel`, if it exists.
-    if len(deferreds) == 0:
-        queue.put(done)
-        if canceller is not None:
-            canceller.cancel()
+    if len(calls) == 0:
+        finished()
 
     # Return an iterator to the invoking thread that will stop at the
     # first sign of the `done` sentinel.

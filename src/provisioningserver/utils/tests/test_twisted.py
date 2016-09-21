@@ -54,6 +54,7 @@ from provisioningserver.utils.twisted import (
     IAsynchronous,
     ISynchronous,
     LONGTIME,
+    makeDeferredWithProcessProtocol,
     pause,
     retries,
     RPCFetcher,
@@ -87,6 +88,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.error import ProcessDone
 from twisted.internet.task import Clock
 from twisted.internet.threads import (
     deferToThread,
@@ -1648,3 +1650,30 @@ class TestThreadPoolLimiter(MAASTestCase):
         # Wait and it shall be released.
         yield pool.lock.run(noop)
         self.assertThat(pool.lock.tokens, Equals(1))
+
+
+class TestMakeDeferredWithProcessProtocol(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test__calls_callback_when_processended_called_with_none(self):
+        d, protocol = makeDeferredWithProcessProtocol()
+        protocol.processEnded(None)
+        result = yield d
+        self.expectThat(result, Is(None))
+
+    @inlineCallbacks
+    def test__calls_callback_when_process_called_with_processdone(self):
+        d, protocol = makeDeferredWithProcessProtocol()
+        protocol.processEnded(Failure(ProcessDone(0)))
+        result = yield d
+        self.expectThat(result, Is(None))
+
+    @inlineCallbacks
+    def test__calls_errback_when_processended_called_with_failure(self):
+        d, protocol = makeDeferredWithProcessProtocol()
+        exception = factory.make_exception()
+        protocol.processEnded(Failure(exception))
+        with ExpectedException(type(exception)):
+            yield d

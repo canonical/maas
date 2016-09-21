@@ -10,6 +10,7 @@ __all__ = [
 from functools import partial
 import json
 from operator import itemgetter
+import os
 from os import urandom
 import random
 import re
@@ -18,6 +19,7 @@ from socket import (
     AF_INET6,
     gethostname,
 )
+import sys
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
@@ -71,11 +73,15 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
 )
 from provisioningserver.service_monitor import service_monitor
+from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
-from provisioningserver.utils.fs import NamedLock
+from provisioningserver.utils.fs import (
+    get_maas_provision_command,
+    NamedLock,
+)
 from provisioningserver.utils.network import (
     get_all_interfaces_definition,
     resolve_host_to_addrinfo,
@@ -83,13 +89,16 @@ from provisioningserver.utils.network import (
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    select_c_utf8_bytes_locale,
 )
 from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,
+    makeDeferredWithProcessProtocol,
 )
 from twisted import web
 from twisted.application.internet import TimerService
+from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
@@ -102,10 +111,12 @@ from twisted.internet.endpoints import (
 from twisted.internet.error import (
     ConnectError,
     ConnectionClosed,
+    ProcessDone,
 )
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
 import twisted.web.client
@@ -128,6 +139,59 @@ def catch_probe_and_enlist_error(name, failure):
         "Failed to probe and enlist %s nodes: %s",
         name, failure.getErrorMessage())
     return None
+
+
+def get_scan_all_networks_args():
+    """Return the arguments needed to perform a scan of all networks.
+
+    The output of this function is suitable for passing into a call
+    to `subprocess.Popen()`.
+    """
+    args = sudo([get_maas_provision_command(), 'scan-network'])
+    binary_args = [arg.encode(sys.getfilesystemencoding()) for arg in args]
+    return binary_args
+
+
+def spawnProcessAndNullifyStdout(protocol, args):
+    """"Utility function to spawn a process and redirect stdout to /dev/null.
+
+    Spawns the process with the specified `protocol` in the reactor, with the
+    specified list of binary `args`.
+    """
+    # Using childFDs we arrange for the child's stdout to go to /dev/null
+    # and for stderr to be read asynchronously by the reactor.
+    with open(os.devnull, "r+b") as devnull:
+        # This file descriptor to /dev/null will be closed before the
+        # spawned process finishes, but will remain open in the spawned
+        # process; that's the Magic Of UNIX™.
+        reactor.spawnProcess(
+            protocol, args[0], args, childFDs={
+                0: devnull.fileno(),
+                1: devnull.fileno(),
+                2: 'r'
+            },
+            env=select_c_utf8_bytes_locale())
+
+
+def executeScanAllNetworksSubprocess():
+    """Runs the network scanning subprocess.
+
+    Redirects stdout and stderr in the subprocess to /dev/null. Leaves
+    stderr intact, so that we might pass useful logging through.
+
+    Returns the `reason` (see `ProcessProtocol.processEnded`) from the
+    scan process after waiting for it to complete.
+    """
+    done, protocol = makeDeferredWithProcessProtocol()
+    # Technically this is not guaranteed to be a string containing just
+    # one line of text. But reality in this case is both atomic and
+    # concise. (And if it isn't, we can fix it, since we're calling our
+    # own command.)
+    protocol.errReceived = lambda data: (
+        log.msg("Scan all networks: " + data.decode("utf-8")))
+    args = get_scan_all_networks_args()
+    spawnProcessAndNullifyStdout(protocol, args)
+    return done
 
 
 class Cluster(RPCProtocol):
@@ -494,6 +558,29 @@ class Cluster(RPCProtocol):
         else:
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)
+        return {}
+
+    @cluster.ScanAllNetworks.responder
+    def scan_all_networks(self):
+        """ScanAllNetworks()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ScanAllNetworks`.
+        """
+        lock = NamedLock('scan-all-networks')
+        try:
+            lock.acquire()
+        except lock.NotAvailable:
+            # Scan is already running; don't do anything.
+            raise exceptions.ScanAllNetworksAlreadyInProgress()
+        else:
+            # The lock *must* be released, so put on the paranoid hat here and
+            # use maybeDeferred to make sure that errors all trigger the call
+            # to lock.release.
+            d = maybeDeferred(executeScanAllNetworksSubprocess)
+            d.addErrback(Failure.trap, ProcessDone)  # Exited normally.
+            d.addErrback(log.err, 'Failed to scan all networks.')
+            d.addBoth(callOut, lock.release)
         return {}
 
     @cluster.DisableAndShutoffRackd.responder

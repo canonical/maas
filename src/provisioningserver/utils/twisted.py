@@ -2,6 +2,9 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities related to the Twisted/Crochet execution environment."""
+from twisted.internet.error import ProcessDone
+from twisted.internet.protocol import ProcessProtocol
+
 
 __all__ = [
     'asynchronous',
@@ -18,6 +21,7 @@ __all__ = [
     'IAsynchronous',
     'ISynchronous',
     'LONGTIME',
+    'makeDeferredWithProcessProtocol',
     'pause',
     'retries',
     'synchronous',
@@ -936,3 +940,19 @@ class ThreadPoolLimiter:
 
         return self.lock.acquire().addCallback(locked).addErrback(
             log.err, "Critical failure arranging call in thread")
+
+
+def makeDeferredWithProcessProtocol():
+    """Returns a (`Deferred`, `ProcessProtocol`) tuple.
+
+    The Deferred's `callback()` will be called (with None) if the
+    `ProcessProtocol` is called back indicating that no error occurred.
+    Its `errback()` will be called with the `Failure` reason otherwise.
+    """
+    done = Deferred()
+    protocol = ProcessProtocol()
+    # Call the errback if the "failure" object indicates a non-zero exit.
+    protocol.processEnded = lambda reason: (
+        done.errback(reason) if (reason and not reason.check(ProcessDone))
+        else done.callback(None))
+    return done, protocol

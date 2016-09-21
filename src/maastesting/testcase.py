@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from importlib import import_module
 import os
 from unittest import mock
+from unittest.mock import MagicMock
 
 import crochet
 from maastesting.crochet import EventualResultCatchingMixin
@@ -244,7 +245,8 @@ class MAASTestCase(
         with active_test(result, self):
             super(MAASTestCase, self).__call__(result)
 
-    def patch(self, obj, attribute=None, value=mock.sentinel.unset):
+    def patch(
+            self, obj, attribute=None, value=mock.sentinel.unset) -> MagicMock:
         """Patch `obj.attribute` with `value`.
 
         If `value` is unspecified, a new `MagicMock` will be created and
@@ -265,11 +267,12 @@ class MAASTestCase(
             attribute = obj.__name__
             obj = import_module(obj.__module__)
         if value is mock.sentinel.unset:
-            value = mock.MagicMock(__name__=attribute)
+            value = MagicMock(__name__=attribute)
         super(MAASTestCase, self).patch(obj, attribute, value)
         return value
 
-    def patch_autospec(self, obj, attribute, spec_set=False, instance=False):
+    def patch_autospec(
+            self, obj, attribute, spec_set=False, instance=False) -> MagicMock:
         """Patch `obj.attribute` with an auto-spec of itself.
 
         See `mock.create_autospec` and `patch`.

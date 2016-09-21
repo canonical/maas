@@ -25,6 +25,7 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
+    "ScanAllNetworks",
     "ValidateDHCPv4Config",
     "ValidateDHCPv4Config_V2",
     "ValidateDHCPv6Config",
@@ -607,6 +608,21 @@ class AddChassis(amp.Command):
         (b"protocol", amp.Unicode(optional=True)),
     ]
     errors = {}
+
+
+class ScanAllNetworks(amp.Command):
+    """Requests an immediate scan of all attached networks.
+
+    If a scan is already in progress, this call is a no-op.
+
+    :since: 2.1
+    """
+    arguments = []
+    errors = {
+        exceptions.ScanAllNetworksAlreadyInProgress: (
+            b"ScanAllNetworksAlreadyInProgress"
+        )
+    }
 
 
 class DisableAndShutoffRackd(amp.Command):

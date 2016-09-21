@@ -6,15 +6,38 @@
 __all__ = []
 
 import random
-from unittest.mock import sentinel
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
+from fixtures import FakeLogger
 from maasserver.clusterrpc import utils
+from maasserver.clusterrpc.utils import call_racks_synchronously
 from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import async
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from testtools.matchers import Equals
+from twisted.python.failure import Failure
+
+
+class MockFailure(Failure):
+    """Fake twisted Failure object.
+
+    Purposely doesn't call super().__init__().
+    """
+
+    def __init__(self):
+        self.type = type(self)
+        self.frames = []
+        self.value = "Mock failure"
 
 
 class TestCallClusters(MAASServerTestCase):
@@ -24,13 +47,153 @@ class TestCallClusters(MAASServerTestCase):
         rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
-        async_gather = self.patch(async, "gather")
+        async_gather = self.patch(async, "gatherCallResults")
         async_gather.return_value = []
 
         # call_clusters returns with nothing because we patched out
         # async.gather, but we're interested in the side-effect: getClientFor
         # has been called for the accepted nodegroup.
         self.assertItemsEqual([], utils.call_clusters(sentinel.command))
+        self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
+
+    def test__with_successful_callbacks(self):
+        rack = factory.make_RackController()
+        getClientFor = self.patch(utils, "getClientFor")
+        getClientFor.return_value = lambda: None
+        partial = self.patch(utils, "partial")
+        partial.return_value = sentinel.partial
+        async_gather = self.patch(async, "gatherCallResults")
+        async_gather.return_value = (
+            result for result in [(sentinel.partial, sentinel.result)])
+        available_callback = Mock()
+        unavailable_callback = Mock()
+        success_callback = Mock()
+        failed_callback = Mock()
+        timeout_callback = Mock()
+        result = list(utils.call_clusters(
+            sentinel.command,
+            available_callback=available_callback,
+            unavailable_callback=unavailable_callback,
+            success_callback=success_callback,
+            failed_callback=failed_callback,
+            timeout_callback=timeout_callback))
+        self.assertThat(result, Equals([sentinel.result]))
+        self.assertThat(available_callback, MockCalledOnceWith(rack))
+        self.assertThat(unavailable_callback, MockNotCalled())
+        self.assertThat(success_callback, MockCalledOnceWith(rack))
+        self.assertThat(failed_callback, MockNotCalled())
+        self.assertThat(timeout_callback, MockNotCalled())
+
+    def test__with_unavailable_callbacks(self):
+        logger = self.useFixture(FakeLogger("maasserver"))
+        rack = factory.make_RackController()
+        getClientFor = self.patch(utils, "getClientFor")
+        getClientFor.side_effect = NoConnectionsAvailable
+        partial = self.patch(utils, "partial")
+        partial.return_value = sentinel.partial
+        async_gather = self.patch(async, "gatherCallResults")
+        async_gather.return_value = (iter([]))
+        available_callback = Mock()
+        unavailable_callback = Mock()
+        success_callback = Mock()
+        failed_callback = Mock()
+        timeout_callback = Mock()
+        result = list(utils.call_clusters(
+            sentinel.command,
+            available_callback=available_callback,
+            unavailable_callback=unavailable_callback,
+            success_callback=success_callback,
+            failed_callback=failed_callback,
+            timeout_callback=timeout_callback))
+        self.assertThat(result, Equals([]))
+        self.assertThat(available_callback, MockNotCalled())
+        self.assertThat(unavailable_callback, MockCalledOnceWith(rack))
+        self.assertThat(success_callback, MockNotCalled())
+        self.assertThat(failed_callback, MockNotCalled())
+        self.assertThat(timeout_callback, MockNotCalled())
+        self.assertThat(
+            logger.output, DocTestMatches(
+                "...Unable to get RPC connection..."))
+
+    def test__with_failed_callbacks(self):
+        logger = self.useFixture(FakeLogger("maasserver"))
+        rack = factory.make_RackController()
+        getClientFor = self.patch(utils, "getClientFor")
+        getClientFor.return_value = lambda: None
+        partial = self.patch(utils, "partial")
+        partial.return_value = sentinel.partial
+        async_gather = self.patch(async, "gatherCallResults")
+        async_gather.return_value = (
+            result for result in [(sentinel.partial, MockFailure())])
+        available_callback = Mock()
+        unavailable_callback = Mock()
+        success_callback = Mock()
+        failed_callback = Mock()
+        timeout_callback = Mock()
+        result = list(utils.call_clusters(
+            sentinel.command,
+            available_callback=available_callback,
+            unavailable_callback=unavailable_callback,
+            success_callback=success_callback,
+            failed_callback=failed_callback,
+            timeout_callback=timeout_callback))
+        self.assertThat(result, Equals([]))
+        self.assertThat(available_callback, MockCalledOnceWith(rack))
+        self.assertThat(unavailable_callback, MockNotCalled())
+        self.assertThat(success_callback, MockNotCalled())
+        self.assertThat(failed_callback, MockCalledOnceWith(rack))
+        self.assertThat(timeout_callback, MockNotCalled())
+        self.assertThat(
+            logger.output, DocTestMatches(
+                "...Failure while communicating with..."))
+
+    def test__with_timeout_callbacks(self):
+        logger = self.useFixture(FakeLogger("maasserver"))
+        rack = factory.make_RackController()
+        getClientFor = self.patch(utils, "getClientFor")
+        getClientFor.return_value = lambda: None
+        partial = self.patch(utils, "partial")
+        partial.return_value = sentinel.partial
+        async_gather = self.patch(async, "gatherCallResults")
+        async_gather.return_value = (result for result in [])
+        available_callback = Mock()
+        unavailable_callback = Mock()
+        success_callback = Mock()
+        failed_callback = Mock()
+        timeout_callback = Mock()
+        result = list(utils.call_clusters(
+            sentinel.command,
+            available_callback=available_callback,
+            unavailable_callback=unavailable_callback,
+            success_callback=success_callback,
+            failed_callback=failed_callback,
+            timeout_callback=timeout_callback))
+        self.assertThat(result, Equals([]))
+        self.assertThat(available_callback, MockCalledOnceWith(rack))
+        self.assertThat(unavailable_callback, MockNotCalled())
+        self.assertThat(success_callback, MockNotCalled())
+        self.assertThat(failed_callback, MockNotCalled())
+        self.assertThat(timeout_callback, MockCalledOnceWith(rack))
+        self.assertThat(
+            logger.output, DocTestMatches(
+                "...RPC connection timed out..."))
+
+
+class TestCallRacksSynchronously(MAASServerTestCase):
+    """Tests for `utils.call_rakcks_synchronously`."""
+
+    def test__gets_clients(self):
+        rack = factory.make_RackController()
+        getClientFor = self.patch(utils, "getClientFor")
+        getClientFor.return_value = lambda: None
+        async_gather = self.patch(async, "gatherCallResults")
+        async_gather.return_value = []
+
+        # call_clusters returns with nothing because we patched out
+        # async.gather, but we're interested in the side-effect: getClientFor
+        # has been called for the accepted nodegroup.
+        self.assertItemsEqual(
+            [], call_racks_synchronously(sentinel.command).results)
         self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
 
 
