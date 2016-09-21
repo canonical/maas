@@ -26,7 +26,11 @@ from maasserver.fields import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.viewmodel import ViewModel
 from maasserver.utils.orm import MAASQueriesMixin
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
+
+
+maaslog = get_maas_logger("discovery")
 
 
 class DiscoveryQueriesMixin(MAASQueriesMixin):
@@ -107,6 +111,32 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
         """
         discovery = self.get_object_by_specifiers_or_raise(specifiers)
         return discovery
+
+    def clear(self, user=None, all=False, mdns=False, neighbours=False):
+        """Deletes discoveries of the specified type(s).
+
+        :param all: Deletes all discovery data.
+        :param mdns: Deletes mDNS entries.
+        :param neighbours: Deletes neighbour entries.
+        """
+        # Circular imports.
+        from maasserver.models import (
+            MDNS,
+            Neighbour,
+        )
+        if True not in (all, mdns, neighbours):
+            return
+        if mdns or all:
+            MDNS.objects.all().delete()
+            what = "mDNS"
+        if neighbours or all:
+            Neighbour.objects.all().delete()
+            what = "neighbour"
+        if all:
+            what = "mDNS and neighbour"
+        maaslog.info("%s all %s entries." % (
+            "Cleared" if user is None else "User '%s' cleared" % (
+                user.username), what))
 
 
 class Discovery(CleanSave, ViewModel):

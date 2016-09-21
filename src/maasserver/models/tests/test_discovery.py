@@ -6,9 +6,20 @@
 __all__ = []
 
 from maasserver.dbviews import register_view
-from maasserver.models import Discovery
+from maasserver.models import (
+    Discovery,
+    discovery as discovery_module,
+    MDNS,
+    Neighbour,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import (
+    DocTestMatches,
+    Matches,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from testtools.matchers import (
     Equals,
     Is,
@@ -102,3 +113,75 @@ class TestDiscoveryModel(MAASServerTestCase):
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
         self.assertThat(Discovery.objects.count(), Equals(1))
+
+
+class TestDiscoveryManagerClear(MAASServerTestCase):
+    """Tests for `DiscoveryManager.clear` """
+
+    def test__clear_mdns_entries(self):
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        factory.make_MDNS()
+        factory.make_MDNS()
+        factory.make_Neighbour()
+        factory.make_Neighbour()
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        Discovery.objects.clear(mdns=True)
+        self.assertThat(MDNS.objects.count(), Equals(0))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches('Cleared all mDNS entries.'))))
+
+    def test__clear_neighbour_entries(self):
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        factory.make_MDNS()
+        factory.make_MDNS()
+        factory.make_Neighbour()
+        factory.make_Neighbour()
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        Discovery.objects.clear(neighbours=True)
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches('Cleared all neighbour entries.'))
+        ))
+
+    def test__clear_all_entries(self):
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        factory.make_MDNS()
+        factory.make_MDNS()
+        factory.make_Neighbour()
+        factory.make_Neighbour()
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        Discovery.objects.clear(all=True)
+        self.assertThat(MDNS.objects.count(), Equals(0))
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches('Cleared all mDNS and neighbour entries.'))
+        ))
+
+    def test__clear_mdns_entries_is_noop_if_what_to_clear_is_unspecified(self):
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        factory.make_MDNS()
+        factory.make_MDNS()
+        factory.make_Neighbour()
+        factory.make_Neighbour()
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        # clear() is a no-op if what to clear isn't specified.
+        Discovery.objects.clear()
+        self.assertThat(MDNS.objects.count(), Equals(2))
+        self.assertThat(Neighbour.objects.count(), Equals(2))
+        self.assertThat(maaslog, MockNotCalled())
+
+    def test__clear_logs_username_if_given(self):
+        user = factory.make_admin()
+        maaslog = self.patch(discovery_module.maaslog, 'info')
+        factory.make_MDNS()
+        factory.make_Neighbour()
+        Discovery.objects.clear(user=user, all=True)
+        self.assertThat(maaslog, MockCalledOnceWith(
+            Matches(DocTestMatches("User '%s' cleared..." % user.username))
+        ))

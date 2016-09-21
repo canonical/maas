@@ -159,6 +159,54 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({'op': 'by_unknown_ip_and_mac'})
         self.assertThat(len(results), Equals(0))
 
+    def test__clear_not_allowed_for_non_admin(self):
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {'op': 'clear'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code,
+            response.content)
+
+    def test__clear_requires_parameters(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {'op': 'clear'})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            response.content)
+
+    def test__clear_all_allowed_for_admin(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {'op': 'clear', 'all': 'true'})
+        self.assertEqual(204, response.status_code, response.content)
+
+    def test__clear_mdns_allowed_for_admin(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {'op': 'clear', 'mdns': 'true'})
+        self.assertEqual(204, response.status_code, response.content)
+
+    def test__clear_neighbours_allowed_for_admin(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        iface = rack.interface_set.first()
+        make_discoveries(interface=iface, count=3)
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, {'op': 'clear', 'neighbours': 'true'})
+        self.assertEqual(204, response.status_code, response.content)
+
     def test__scan__calls_scan_all_networks(self):
         scan_all_rack_networks_mock = self.patch(
             discoveries_module.scan_all_rack_networks)

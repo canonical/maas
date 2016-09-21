@@ -8,11 +8,21 @@ __all__ = [
     'DiscoveriesHandler',
     ]
 
+from textwrap import dedent
+
+from django.http.response import (
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+)
+from formencode.validators import StringBool
 from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_optional_param
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Discovery
+from piston3.utils import rc
 
 
 DISPLAYED_DISCOVERY_FIELDS = (
@@ -122,6 +132,37 @@ class DiscoveriesHandler(OperationsHandler):
         network (most recent first).
         """
         return Discovery.objects.by_unknown_ip_and_mac().order_by("-last_seen")
+
+    @operation(idempotent=False)
+    def clear(self, request, **kwargs):
+        """Deletes all discovered neighbours and/or mDNS entries.
+
+        :param mdns: if True, deletes all mDNS entries.
+        :param neighbours: if True, deletes all neighbour entries.
+        :param all: if True, deletes all discovery data.
+        """
+        all = get_optional_param(
+            request.POST, 'all', default=False, validator=StringBool)
+        mdns = get_optional_param(
+            request.POST, 'mdns', default=False, validator=StringBool)
+        neighbours = get_optional_param(
+            request.POST, 'neighbours', default=False, validator=StringBool)
+
+        if not request.user.has_perm(NODE_PERMISSION.ADMIN, Discovery):
+            response = HttpResponseForbidden(
+                content_type='text/plain',
+                content="Must be an administrator to clear discovery entries.")
+            return response
+        if True not in (mdns, neighbours, all):
+            content = dedent("""\
+                Bad request: could not determine what data to clear.
+                Must specify mdns=True, neighbours=True, or all=True.""")
+            response = HttpResponseBadRequest(
+                content_type='text/plain', content=content)
+            return response
+        Discovery.objects.clear(
+            user=request.user, all=all, mdns=mdns, neighbours=neighbours)
+        return rc.DELETED
 
     @operation(idempotent=False)
     def scan(self, request, **kwargs):
