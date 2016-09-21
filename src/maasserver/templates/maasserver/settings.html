@@ -39,7 +39,7 @@
 
 {% block content %}
 <div id="settings">
-    <div class="eight-col">
+    <div class="eight-col u-border--bottom">
         <div id="users" class="eight-col">
             <h2>Users and Keys</h2>
             <table>
@@ -84,19 +84,19 @@
             <a class="button--primary button--inline u-float--right" href="{% url 'accounts-add' %}">Add user</a>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="commissioning_scripts" class="eight-col">
             {% include "maasserver/settings_commissioning_scripts.html" %}
         </div>
     </div>
     {% if show_license_keys %}
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="license_keys" class="eight-col">
             {% include "maasserver/settings_license_keys.html" %}
         </div>
     </div>
     {% endif %}
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="commissioning" class="eight-col">
             <h2>Commissioning</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -109,7 +109,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="deploy" class="eight-col">
             <h2>Deploy</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -122,7 +122,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="ubuntu" class="eight-col">
             <h2>Ubuntu</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -135,7 +135,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="windows" class="eight-col">
             <h2>Windows</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -148,7 +148,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="global_kernel_opts" class="eight-col">
             <h2>Global Kernel Parameters</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -161,7 +161,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="maas" class="eight-col">
             <h2>MAAS Configuration</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -174,7 +174,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="network" class="eight-col">
             <h2>Network Configuration</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -187,7 +187,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="network" class="eight-col">
             <h2>Network Discovery</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -200,7 +200,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col u-border--bottom">
         <div id="third_party_drivers" class="eight-col">
             <h2>Third Party Drivers Configuration</h2>
             <form action="{% url 'settings' %}" method="post">
@@ -213,7 +213,7 @@
             </form>
         </div>
     </div>
-    <div class="eight-col border">
+    <div class="eight-col">
         <div id="storage_settings" class="eight-col">
             <h2>Storage</h2>
             <form action="{% url 'settings' %}" method="post">

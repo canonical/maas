@@ -7,8 +7,8 @@
 {% block content %}
 <div class="eight-col">
     <h2>Settings</h2>
-    <div id="profile" class="eight-col">
-        <form action="." method="post">
+    <div id="profile" class="eight-col u-border--bottom">
+        <form action="." method="post" class="eight-col">
             {% csrf_token %}
             <ul>
                 {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
@@ -18,7 +18,6 @@
             <a class="button--secondary button--inline" href="{% url 'settings' %}">Cancel</a>
         </form>
     </div>
-    <div class="u-clearfix"></div>
     <h2>Change password</h2>
     <div id="password" class="eight-col">
         <form action="." method="post">

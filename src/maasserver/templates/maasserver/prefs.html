@@ -37,7 +37,7 @@
                 <p id="token_creation_placeholder" />
             </div>
         </section>
-        <section id="ssh-keys" class="ssh-keys eight-col border">
+        <section id="ssh-keys" class="ssh-keys eight-col u-border--bottom">
             <h3>SSH keys</h3>
             <div class="eight-col">
                 <ul class="no-bullets">
@@ -53,7 +53,7 @@
                 <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="button--primary button--inline u-float--right">+ Add SSH key</a>
             </div>
         </section>
-        <section id="ssl-keys" class="eight-col border">
+        <section id="ssl-keys" class="eight-col u-border--bottom">
             <h3>SSL keys</h3>
             <div class="eight-col">
                 <ul class="no-bullets">
@@ -69,7 +69,7 @@
                 <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="button--primary button--inline u-float--right">+ Add SSL key</a>
             </div>
         </section>
-        <section id="profile" class="eight-col border">
+        <section id="profile" class="eight-col u-border--bottom">
             <h2>User details</h2>
             <div class="eight-col">
                 <form action="." method="post">{% csrf_token %}
@@ -81,7 +81,7 @@
                 </form>
             </div>
         </section>
-        <section id="password" class="eight-col border">
+        <section id="password" class="eight-col">
             <h2>Password</h2>
             <div class="eight-col">
                 <form action="." method="post">{% csrf_token %}
