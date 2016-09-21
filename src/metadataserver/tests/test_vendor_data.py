@@ -7,6 +7,7 @@ __all__ = []
 
 from unittest.mock import sentinel
 
+from maasserver.dbviews import register_view
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -123,13 +124,35 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_boot_cluster_address_when_machine_has_booted(self):
+        register_view("maasserver_routable_pairs")
         Config.objects.set_config("ntp_external_only", False)
+
         machine = factory.make_Machine()
-        machine.boot_cluster_ip = factory.make_ip_address()
-        machine.save()
+        address = factory.make_StaticIPAddress(
+            interface=factory.make_Interface(node=machine))
+
+        rack_primary = factory.make_RackController(subnet=address.subnet)
+        rack_primary_address = factory.make_StaticIPAddress(
+            interface=factory.make_Interface(node=rack_primary),
+            subnet=address.subnet)
+
+        rack_secondary = factory.make_RackController(subnet=address.subnet)
+        rack_secondary_address = factory.make_StaticIPAddress(
+            interface=factory.make_Interface(node=rack_secondary),
+            subnet=address.subnet)
+
+        vlan = address.subnet.vlan
+        vlan.primary_rack = rack_primary
+        vlan.secondary_rack = rack_secondary
+        vlan.dhcp_on = True
+        vlan.save()
+
         configuration = generate_ntp_configuration(machine)
         self.assertThat(dict(configuration), Equals({
             "ntp": {
-                "servers": [machine.boot_cluster_ip],
+                "servers": sorted((
+                    rack_primary_address.ip,
+                    rack_secondary_address.ip,
+                )),
             },
         }))
