@@ -935,7 +935,7 @@ class Factory(maastesting.factory.Factory):
             self, ip=None, time=None, vid=0, count=None, interface=None,
             mac_address=None, updated=None, created=None):
         if ip is None:
-            ip = factory.make_ip_address()
+            ip = factory.make_ipv4_address()
         if time is None:
             time = random.randint(0, 10000000)
         # Note that None is a valid value for vid, so we use 0 for the default.

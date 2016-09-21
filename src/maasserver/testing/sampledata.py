@@ -278,6 +278,11 @@ def populate(seed="sampledata"):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.2",
             subnet=subnet_3, interface=bond0_10)
+        # Add some discovery devices for rack interfaces
+        for _ in range(3):
+            factory.make_Discovery(interface=eth0)
+            factory.make_Discovery(interface=eth1)
+            factory.make_Discovery(interface=eth2)
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
@@ -312,6 +317,11 @@ def populate(seed="sampledata"):
     factory.make_StaticIPAddress(
         alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.3",
         subnet=subnet_3, interface=bond0_10)
+    # Add some discovery devices for rack interfaces
+    for _ in range(3):
+        factory.make_Discovery(interface=eth0)
+        factory.make_Discovery(interface=eth1)
+        factory.make_Discovery(interface=eth2)
 
     # Region controller (happy-region)
     #   eth0     - fabric 0 - untagged
