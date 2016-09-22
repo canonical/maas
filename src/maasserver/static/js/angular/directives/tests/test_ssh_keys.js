@@ -354,6 +354,32 @@ describe("maasSshKeys", function() {
             expect(scope.add.error).toBe(error);
         });
 
+        it("import - handles __all__ in error on reject", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var defer = $q.defer();
+            spyOn(SSHKeysManager, "importKeys").and.returnValue(defer.promise);
+            spyOn(scope, "canImportKeys").and.returnValue(true);
+            scope.add.source = 'lp';
+            scope.add.authId = makeName('auth');
+            scope.importKeys();
+
+            expect(scope.add.error).toBeNull();
+            expect(scope.add.saving).toBe(true);
+            expect(SSHKeysManager.importKeys).toHaveBeenCalledWith({
+                protocol: 'lp',
+                auth_id: scope.add.authId
+            });
+            var error = {
+                '__all__': [makeName("error")]
+            };
+            defer.reject(angular.toJson(error));
+            $scope.$digest();
+
+            expect(scope.add.saving).toBe(false);
+            expect(scope.add.error).toBe(error.__all__[0]);
+        });
+
         it("create - clears saving on resolve", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();

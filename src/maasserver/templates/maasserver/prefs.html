@@ -4,6 +4,8 @@
 {% block title %}User preferences for {{ user.username }}{% endblock %}
 {% block page-title %}User preferences for {{ user.username }}{% endblock %}
 
+{% block ng-app %}data-ng-app="MAAS"{% endblock %}
+
 {% block head %}
   <script type="text/javascript">
   <!--
@@ -37,21 +39,10 @@
                 <p id="token_creation_placeholder" />
             </div>
         </section>
-        <section id="ssh-keys" class="ssh-keys eight-col u-border--bottom">
+        <section id="ssh-keys" class="ssh-keys eight-col u-border--bottom" data-ng-controller="PreferencesController">
             <h3>SSH keys</h3>
-            <div class="eight-col">
-                <ul class="no-bullets">
-                    {% for key in user.sshkey_set.all %}
-                    <li>
-                        <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
-                            <img title="Delete SSH key" class="left" src="{{ STATIC_URL }}assets/images/icons/delete.png" />
-                        </a>
-                        {{ key.display_html }}
-                    </li>
-                    {% empty %} No SSH key configured. {% endfor %}
-                </ul>
-                <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="button--primary button--inline u-float--right">+ Add SSH key</a>
-            </div>
+            <span class="u-text--loading" data-ng-if="loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span>
+            <maas-ssh-keys data-ng-if="!loading"></maas-ssh-keys>
         </section>
         <section id="ssl-keys" class="eight-col u-border--bottom">
             <h3>SSL keys</h3>

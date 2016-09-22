@@ -77,7 +77,16 @@ angular.module('MAAS').directive('maasSshKeys', [
                             $scope.add.key = '';
                         }, function(error) {
                             $scope.add.saving = false;
-                            $scope.add.error = error;
+                            var errorJson = JSONService.tryParse(error);
+                            if(angular.isObject(errorJson)) {
+                                if(angular.isArray(errorJson.__all__)) {
+                                    $scope.add.error = errorJson.__all__[0];
+                                } else {
+                                    $scope.add.error = error;
+                                }
+                            } else {
+                                $scope.add.error = error;
+                            }
                         });
                     } else {
                         SSHKeysManager.createItem({
@@ -91,7 +100,13 @@ angular.module('MAAS').directive('maasSshKeys', [
                             $scope.add.saving = false;
                             var errorJson = JSONService.tryParse(error);
                             if(angular.isObject(errorJson)) {
-                                $scope.add.error = errorJson.key[0];
+                                if(angular.isArray(errorJson.key)) {
+                                    $scope.add.error = errorJson.key[0];
+                                } else if(angular.isArray(errorJson.__all__)) {
+                                    $scope.add.error = errorJson.__all__[0];
+                                } else {
+                                    $scope.add.error = error;
+                                }
                             } else {
                                 $scope.add.error = error;
                             }

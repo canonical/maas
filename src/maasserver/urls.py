@@ -24,8 +24,6 @@ from maasserver.views.account import (
 )
 from maasserver.views.index import IndexView
 from maasserver.views.prefs import (
-    SSHKeyCreateView,
-    SSHKeyDeleteView,
     SSLKeyCreateView,
     SSLKeyDeleteView,
     userprefsview,
@@ -90,12 +88,6 @@ urlpatterns += patterns(
 urlpatterns += patterns(
     'maasserver.views',
     url(r'^account/prefs/$', userprefsview, name='prefs'),
-    url(
-        r'^account/prefs/sshkey/add/$', SSHKeyCreateView.as_view(),
-        name='prefs-add-sshkey'),
-    url(
-        r'^account/prefs/sshkey/delete/(?P<keyid>\d*)/$',
-        SSHKeyDeleteView.as_view(), name='prefs-delete-sshkey'),
     url(
         r'^account/prefs/sslkey/add/$', SSLKeyCreateView.as_view(),
         name='prefs-add-sslkey'),

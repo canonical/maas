@@ -4,8 +4,6 @@
 """Preferences views."""
 
 __all__ = [
-    'SSHKeyCreateView',
-    'SSHKeyDeleteView',
     'userprefsview',
     ]
 
@@ -21,35 +19,13 @@ from django.template import RequestContext
 from django.views.generic import CreateView
 from maasserver.forms import (
     ProfileForm,
-    SSHKeyForm,
     SSLKeyForm,
 )
-from maasserver.models import (
-    SSHKey,
-    SSLKey,
-)
+from maasserver.models import SSLKey
 from maasserver.views import (
     HelpfulDeleteView,
     process_form,
 )
-
-
-class SSHKeyCreateView(CreateView):
-
-    form_class = SSHKeyForm
-    template_name = 'maasserver/prefs_add_sshkey.html'
-
-    def get_form_kwargs(self):
-        kwargs = super(SSHKeyCreateView, self).get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        messages.info(self.request, "SSH key added.")
-        return super(SSHKeyCreateView, self).form_valid(form)
-
-    def get_success_url(self):
-        return reverse('prefs')
 
 
 class SSLKeyCreateView(CreateView):
@@ -79,23 +55,6 @@ class SSLKeyDeleteView(HelpfulDeleteView):
     def get_object(self):
         keyid = self.kwargs.get('keyid', None)
         key = get_object_or_404(SSLKey, id=keyid)
-        if key.user != self.request.user:
-            raise PermissionDenied("Can't delete this key.  It's not yours.")
-        return key
-
-    def get_next_url(self):
-        return reverse('prefs')
-
-
-class SSHKeyDeleteView(HelpfulDeleteView):
-
-    template_name = 'maasserver/prefs_confirm_delete_sshkey.html'
-    context_object_name = 'key'
-    model = SSHKey
-
-    def get_object(self):
-        keyid = self.kwargs.get('keyid', None)
-        key = get_object_or_404(SSHKey, id=keyid)
         if key.user != self.request.user:
             raise PermissionDenied("Can't delete this key.  It's not yours.")
         return key

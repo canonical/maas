@@ -36,7 +36,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
             }
         data = {
             "id": sshkey.id,
-            "display": sshkey.display_html(75),
+            "display": sshkey.display_html(70),
             "user": sshkey.user.id,
             "key": sshkey.key,
             "keysource": keysource,

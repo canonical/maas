@@ -336,9 +336,34 @@ describe("RegionConnection", function() {
                 $window.location.port + $window.location.pathname + "/ws");
         });
 
+        it("uses path from base[href]", function() {
+            var path = makeName("path");
+            var fakeElement = {
+                attr: function(attr) {
+                    expect(attr).toBe("href");
+                    return path;
+                },
+                data: function(attr) {
+                    return undefined;
+                }
+            };
+            spyOn(angular, "element").and.returnValue(fakeElement);
+
+            expect(RegionConnection._buildUrl()).toBe(
+                "ws://" + $window.location.hostname + ":" +
+                $window.location.port + path + "/ws");
+
+            // Reset angular.element so the test will complete successfully as
+            // angular.mock requires the actual call to work for afterEach.
+            angular.element.and.callThrough();
+        });
+
         it("uses port from data-websocket-port", function() {
             var port = "8888";
             var fakeElement = {
+                attr: function(attr) {
+                    return undefined;
+                },
                 data: function(attr) {
                     expect(attr).toBe("websocket-port");
                     return port;

@@ -175,10 +175,14 @@ angular.module('MAAS').factory(
                 proto = 'wss';
             }
 
-            // Port can be overridden by data-websocket-port in the base
-            // element.
+            // Path and port can be overridden by href and data-websocket-port
+            // in the base element respectively.
             var base = angular.element("base");
             if(angular.isDefined(base)) {
+                var newPath = base.attr("href");
+                if(angular.isDefined(newPath)) {
+                    path = newPath;
+                }
                 var newPort = base.data("websocket-port");
                 if(angular.isDefined(newPort)) {
                     port = newPort;

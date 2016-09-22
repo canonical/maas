@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" {% block ng-app %}{% endblock %}>
 <head>
+    <base href="{% url 'index' %}">
     <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
 
     <meta charset="UTF-8" />

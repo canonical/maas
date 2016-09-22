@@ -61,7 +61,7 @@ class SSHKeyHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add display to the SSH key."""
-        data["display"] = obj.display_html(75)
+        data["display"] = obj.display_html(70)
         return data
 
     def create(self, params):
