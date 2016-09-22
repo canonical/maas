@@ -358,11 +358,13 @@
                                                         <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                             label-width="two" input-width="three" values="known_architectures"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline" data-ng-if="!isPPA(editRepository)">
+                                                    <div class="form__group form__group--inline"
+                                                        data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                         <maas-obj-field type="tags" key="distributions" label="Distributions"
                                                             placeholder="Add a distribution" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline" data-ng-if="!isPPA(editRepository)">
+                                                    <div class="form__group form__group--inline"
+                                                        data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                         <maas-obj-field type="tags" key="components" label="Components"
                                                             placeholder="Add a component" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
