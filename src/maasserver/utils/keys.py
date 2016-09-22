@@ -7,9 +7,13 @@ __all__ = [
     'get_protocol_keys',
     ]
 
+import http
 import logging
 
-from maasserver.enum import KEYS_PROTOCOL_TYPE
+from maasserver.enum import (
+    KEYS_PROTOCOL_TYPE,
+    KEYS_PROTOCOL_TYPE_CHOICES,
+)
 import requests
 
 
@@ -22,20 +26,28 @@ class ImportSSHKeysError(Exception):
 
 def get_protocol_keys(protocol, auth_id):
     """Retrieve SSH Keys for auth_id using protocol."""
-    try:
-        if protocol == KEYS_PROTOCOL_TYPE.LP:
-            return get_launchpad_ssh_keys(auth_id)
-        elif protocol == KEYS_PROTOCOL_TYPE.GH:
-            return get_github_ssh_keys(auth_id)
-    except requests.exceptions.RequestException as e:
-        raise ImportSSHKeysError(e)
+    if protocol == KEYS_PROTOCOL_TYPE.LP:
+        keys = get_launchpad_ssh_keys(auth_id)
+    elif protocol == KEYS_PROTOCOL_TYPE.GH:
+        keys = get_github_ssh_keys(auth_id)
+    if not keys:
+        raise ImportSSHKeysError(
+            "Unable to import SSH keys. "
+            "There are no SSH keys for %s user %s." % (
+                dict(KEYS_PROTOCOL_TYPE_CHOICES)[protocol], auth_id))
+    return keys
 
 
 def get_launchpad_ssh_keys(auth_id):
     """Retrieve SSH Keys from launchpad."""
     url = 'https://launchpad.net/~%s/+sshkeys' % auth_id
     response = requests.get(url)
-    # If HTTP error, need to force the raise
+    # Check for 404 error which happens for an unknown user
+    if response.status_code == http.HTTPStatus.NOT_FOUND:
+        raise ImportSSHKeysError(
+            "Unable to import SSH keys. "
+            "launchpad user %s doesn't exist." % (auth_id))
+    # If another type of HTTP error, need to force the raise
     response.raise_for_status()
     return [key for key in response.text.splitlines() if key]
 
@@ -44,7 +56,12 @@ def get_github_ssh_keys(auth_id):
     """Retrieve SSH Keys from github."""
     url = 'https://api.github.com/users/%s/keys' % auth_id
     response = requests.get(url)
-    # If HTTP error, need to force the raise
+    # Check for 404 error which happens for an unknown user
+    if response.status_code == http.HTTPStatus.NOT_FOUND:
+        raise ImportSSHKeysError(
+            "Unable to import SSH keys. "
+            "github user %s doesn't exist." % (auth_id))
+    # If another type of HTTP error, need to force the raise
     response.raise_for_status()
     # github returns JSON content
     return [data['key'] for data in response.json() if 'key' in data]

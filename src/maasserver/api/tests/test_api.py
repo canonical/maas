@@ -43,6 +43,7 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith
+from requests.exceptions import RequestException
 from testtools.matchers import (
     Contains,
     Equals,
@@ -345,7 +346,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertThat(
             mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
 
-    def test_import_ssh_keys_crashes_for_importing_error(self):
+    def test_import_ssh_keys_crashes_for_ImportSSHKeysERROR(self):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
@@ -357,8 +358,20 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
                 op='import', protocol=protocol, auth_id=auth_id))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
-        self.assertThat(
-            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
+
+    def test_import_ssh_keys_crashes_for_RequestException(self):
+        protocol = random.choice(
+            [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
+        auth_id = factory.make_name('auth_id')
+        mock_get_protocol_keys = self.patch(
+            keysource_module, 'get_protocol_keys')
+        mock_get_protocol_keys.side_effect = RequestException('error')
+        response = self.client.post(
+            reverse('sshkeys_handler'), data=dict(
+                op='import', protocol=protocol, auth_id=auth_id))
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code,
+            response.content)
 
 
 class MAASAPIAnonTest(APITestCase.ForAnonymous):

@@ -17,6 +17,7 @@ from django.db import DEFAULT_DB_ALIAS
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models.keysource import KeySource
 from maasserver.utils.keys import ImportSSHKeysError
+import requests
 
 
 class EmptyUsername(CommandError):
@@ -175,5 +176,7 @@ class Command(BaseCommand):
                 KeySource.objects.save_keys_for_user(
                     user=user, protocol=protocol, auth_id=auth_id)
             except ImportSSHKeysError as e:
+                return e.args[0]
+            except requests.exceptions.RequestException as e:
                 raise SSHKeysError(
-                    "Importing SSH Keys failed.\n%s" % e.args[0])
+                    "Importing SSH keys failed.\n%s" % e.args[0])

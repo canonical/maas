@@ -24,11 +24,11 @@ from maasserver.models.user import get_creds_tuple
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
+from requests.exceptions import RequestException
 from testtools.matchers import (
     AfterPreprocessing,
     HasLength,
@@ -206,8 +206,9 @@ class TestCommands(MAASServerTestCase):
         ssh_import = "%s:%s" % (
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name('user-id'))
-        self.patch(keysource_module, 'save_keys_for_user').return_value = (
-            ImportSSHKeysError())
+        self.patch(
+            keysource_module.KeySourceManager,
+            'save_keys_for_user').side_effect = (RequestException('error'))
         self.assertRaises(
             createadmin.SSHKeysError, call_command, 'createadmin',
             username=username, password=password, email=email,

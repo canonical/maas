@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import http
+
 from hypothesis import given
 from hypothesis.strategies import sampled_from
 from maasserver.enum import KEYS_PROTOCOL_TYPE
@@ -19,7 +21,6 @@ from maasserver.utils.keys import (
 import maasserver.utils.keys as keys_module
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import requests
 import requests as requests_module
 from testtools.matchers import Equals
 
@@ -37,13 +38,13 @@ class TestKeys(MAASTestCase):
         self.assertThat(mock_get_keys, MockCalledOnceWith(auth_id))
 
     @given(sampled_from([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
-    def test_get_protocol_keys_crashes_on_requests_error(self, protocol):
+    def test_get_protocol_keys_crashes_on_no_keys(self, protocol):
         auth_id = factory.make_name('auth_id')
         if protocol == KEYS_PROTOCOL_TYPE.LP:
             mock_get_keys = self.patch(keys_module, 'get_launchpad_ssh_keys')
         else:
             mock_get_keys = self.patch(keys_module, 'get_github_ssh_keys')
-        mock_get_keys.side_effect = requests.exceptions.RequestException()
+        mock_get_keys.return_value = []
         self.assertRaises(
             ImportSSHKeysError, get_protocol_keys, protocol, auth_id)
 
@@ -60,6 +61,12 @@ class TestKeys(MAASTestCase):
             keys, Equals(
                 [key for key in key_string.splitlines() if key]))
 
+    def test_get_launchpad_crashes_for_user_not_found(self):
+        auth_id = factory.make_name('auth_id')
+        mock_requests = self.patch(requests_module, 'get')
+        mock_requests.return_value.status_code = http.HTTPStatus.NOT_FOUND
+        self.assertRaises(ImportSSHKeysError, get_launchpad_ssh_keys, auth_id)
+
     def test_get_protocol_keys_returns_github_keys(self):
         auth_id = factory.make_name('auth_id')
         key_string = str(
@@ -72,3 +79,9 @@ class TestKeys(MAASTestCase):
         self.expectThat(
             keys, Equals(
                 [data['key'] for data in key_string if 'key' in data]))
+
+    def test_get_github_crashes_for_user_not_found(self):
+        auth_id = factory.make_name('auth_id')
+        mock_requests = self.patch(requests_module, 'get')
+        mock_requests.return_value.status_code = http.HTTPStatus.NOT_FOUND
+        self.assertRaises(ImportSSHKeysError, get_github_ssh_keys, auth_id)

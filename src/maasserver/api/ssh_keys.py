@@ -34,6 +34,7 @@ from maasserver.utils.keys import ImportSSHKeysError
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
+from requests.exceptions import RequestException
 
 
 DISPLAY_SSHKEY_FIELDS = ("id", "key", "keysource")
@@ -81,9 +82,8 @@ class SSHKeysHandler(OperationsHandler):
         try:
             return KeySource.objects.save_keys_for_user(
                 user=request.user, protocol=protocol, auth_id=auth_id)
-        except ImportSSHKeysError as e:
-            raise MAASAPIBadRequest(
-                "Importing SSH Keys failed.\n%s" % e.args[0])
+        except (ImportSSHKeysError, RequestException) as e:
+            raise MAASAPIBadRequest(e.args[0])
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
