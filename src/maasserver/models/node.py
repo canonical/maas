@@ -964,19 +964,6 @@ class Node(CleanSave, TimestampedModel):
 
     tags = ManyToManyField(Tag)
 
-    # Disable IPv4 support on node once deployed, on operating systems that
-    # support this choice.
-    disable_ipv4 = BooleanField(
-        default=False, verbose_name="Disable IPv4 when deployed",
-        help_text=(
-            "On operating systems where this choice is supported, this option "
-            "disables IPv4 networking on this node when it is deployed.  "
-            "IPv4 may still be used for booting and installing the node.  "
-            "THIS MAY STOP YOUR NODE FROM WORKING.  Do not disable IPv4 "
-            "unless you know what you're doing: clusters must be configured "
-            "to use a MAAS URL with a hostname that resolves on both IPv4 and "
-            "IPv6."))
-
     # Record the Interface the node last booted from.
     # This will be used for determining which Interface to create a static
     # IP reservation for when starting a node.
@@ -1055,6 +1042,10 @@ class Node(CleanSave, TimestampedModel):
             return "%s (%s)" % (self.system_id, self.fqdn)
         else:
             return self.system_id
+
+    @property
+    def disable_ipv4(self):
+        return False
 
     @property
     def is_rack_controller(self):
@@ -1308,8 +1299,6 @@ class Node(CleanSave, TimestampedModel):
 
         Return the current IP addresses for this Node, or the empty
         list if there are none.
-
-        If `disable_ipv4` is set, any IPv4 addresses will be omitted.
         """
         # If the node has static IP addresses assigned they will be returned
         # before the dynamic IP addresses are returned. The dynamic IP
@@ -1318,14 +1307,7 @@ class Node(CleanSave, TimestampedModel):
         ips = self.static_ip_addresses()
         if len(ips) == 0:
             ips = self.dynamic_ip_addresses()
-        if self.disable_ipv4:
-            return [
-                ip
-                for ip in ips
-                if IPAddress(ip).version > 4
-                ]
-        else:
-            return ips
+        return ips
 
     def static_ip_addresses(self):
         """Static IP addresses allocated to this node."""
@@ -2774,8 +2756,6 @@ class Node(CleanSave, TimestampedModel):
 
         # DISTINCT ON returns the first matching row for any given
         # IP family. Using the query's ordering.
-        #
-        # For nodes that have disable_ipv4 set, leave out any IPv4 address.
         cursor.execute("""
             SELECT DISTINCT ON (family(subnet.gateway_ip))
                 interface.id, subnet.id, subnet.gateway_ip
@@ -2795,11 +2775,7 @@ class Node(CleanSave, TimestampedModel):
                 subnet.gateway_ip IS NOT NULL AND
                 host(subnet.gateway_ip) != '' AND
                 staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
-                (
-                    node.disable_ipv4 IS FALSE OR
-                    family(subnet.gateway_ip) <> 4
-                )
+                staticip.alloc_type != 6 /* Ignore DISCOVERED */
             ORDER BY
                 family(subnet.gateway_ip),
                 vlan.dhcp_on DESC,

@@ -132,8 +132,7 @@ class TestDNSServer(MAASServerTestCase):
             network = factory.make_ipv4_network()
             subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.READY, domain=domain,
-            disable_ipv4=False)
+            interface=True, status=NODE_STATUS.READY, domain=domain)
         nic = node.get_boot_interface()
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
@@ -313,7 +312,7 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
         self.patch(settings, 'DNS_CONNECT', True)
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.DEPLOYED, disable_ipv4=False)
+            interface=True, status=NODE_STATUS.DEPLOYED)
         nic = node.get_boot_interface()
         # Get an IP in the dynamic range.
         dynamic_range = subnet.get_dynamic_ranges()[0]

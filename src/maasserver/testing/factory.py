@@ -272,16 +272,13 @@ class Factory(maastesting.factory.Factory):
             NODE_TRANSITIONS[None] = valid_initial_states
 
     def make_Device(self, hostname=None, interface=False, domain=None,
-                    disable_ipv4=None, vlan=None, fabric=None, owner_data={},
-                    **kwargs):
+                    vlan=None, fabric=None, owner_data={}, **kwargs):
         if hostname is None:
             hostname = self.make_string(20)
-        if disable_ipv4 is None:
-            disable_ipv4 = self.pick_bool()
         if domain is None:
             domain = Domain.objects.get_default_domain()
         device = Device(
-            hostname=hostname, disable_ipv4=disable_ipv4, domain=domain,
+            hostname=hostname, domain=domain,
             **kwargs)
         device.save()
         # Add owner data.
@@ -353,7 +350,7 @@ class Factory(maastesting.factory.Factory):
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
             created=None, zone=None, networks=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
-            power_state_updated=undefined, disable_ipv4=None,
+            power_state_updated=undefined,
             with_boot_disk=True, vlan=None, fabric=None,
             bmc_connected_to=None, owner_data={}, **kwargs):
         """Make a :class:`Node`.
@@ -387,15 +384,13 @@ class Factory(maastesting.factory.Factory):
         if power_state_updated is undefined:
             power_state_updated = (
                 timezone.now() - timedelta(minutes=random.randint(0, 15)))
-        if disable_ipv4 is None:
-            disable_ipv4 = self.pick_bool()
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, zone=zone,
-            power_state=power_state, power_state_updated=power_state_updated,
-            disable_ipv4=disable_ipv4, domain=domain,
-            **kwargs)
+            power_state=power_state,
+            power_state_updated=power_state_updated,
+            domain=domain, **kwargs)
         node.power_type = power_type
         node.power_parameters = power_parameters
         self._save_node_unchecked(node)

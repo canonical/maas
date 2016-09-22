@@ -1899,20 +1899,20 @@ class TestNode(MAASServerTestCase):
         # addresses take precedence: they are allocated and deallocated in
         # a synchronous fashion whereas the dynamic addresses are updated
         # periodically.
-        node = factory.make_Node(interface=True, disable_ipv4=False)
+        node = factory.make_Node(interface=True)
         interface = node.get_boot_interface()
         ip = factory.make_StaticIPAddress(interface=interface)
         self.assertItemsEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
-        node = factory.make_Node(disable_ipv4=False)
+        node = factory.make_Node()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
         self.assertItemsEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_includes_static_ipv4_addresses_by_default(self):
-        node = factory.make_Node(disable_ipv4=False)
+        node = factory.make_Node()
         ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'static_ip_addresses').return_value = [
@@ -1924,7 +1924,7 @@ class TestNode(MAASServerTestCase):
             node.ip_addresses())
 
     def test_ip_addresses_includes_dynamic_ipv4_addresses_by_default(self):
-        node = factory.make_Node(disable_ipv4=False)
+        node = factory.make_Node()
         ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'dynamic_ip_addresses').return_value = [
@@ -1934,26 +1934,6 @@ class TestNode(MAASServerTestCase):
         self.assertItemsEqual(
             [ipv4_address, ipv6_address],
             node.ip_addresses())
-
-    def test_ip_addresses_strips_static_ipv4_addresses_if_ipv4_disabled(self):
-        node = factory.make_Node(disable_ipv4=True)
-        ipv4_address = factory.make_ipv4_address()
-        ipv6_address = factory.make_ipv6_address()
-        self.patch(node, 'static_ip_addresses').return_value = [
-            ipv4_address,
-            ipv6_address,
-        ]
-        self.assertEqual([ipv6_address], node.ip_addresses())
-
-    def test_ip_addresses_strips_dynamic_ipv4_addresses_if_ipv4_disabled(self):
-        node = factory.make_Node(disable_ipv4=True)
-        ipv4_address = factory.make_ipv4_address()
-        ipv6_address = factory.make_ipv6_address()
-        self.patch(node, 'dynamic_ip_addresses').return_value = [
-            ipv4_address,
-            ipv6_address,
-        ]
-        self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_get_interfaces_returns_all_connected_interfaces(self):
         node = factory.make_Node()
@@ -4368,7 +4348,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
 
     def test__simple(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+            status=NODE_STATUS.READY)
         boot_interface = node.get_boot_interface()
         managed_subnet = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
@@ -4378,8 +4358,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__ipv4_and_ipv6(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -4400,7 +4379,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
 
     def test__only_one(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+            status=NODE_STATUS.READY)
         boot_interface = node.get_boot_interface()
         managed_subnet = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
@@ -4415,8 +4394,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__managed_subnet_over_unmanaged(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         unmanaged_network = factory.make_ipv4_network()
         unmanaged_subnet = factory.make_Subnet(
@@ -4438,8 +4416,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__bond_over_physical_interface(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -4468,8 +4445,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__physical_over_vlan_interface(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -4494,8 +4470,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__boot_interface_over_other_interfaces(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -4522,8 +4497,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__sticky_ip_over_user_reserved(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         sticky_network = factory.make_ipv4_network()
@@ -4546,8 +4520,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__user_reserved_ip_over_auto(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         user_reserved_network = factory.make_ipv4_network()
@@ -4574,8 +4547,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
     """Tests for `Node.get_default_gateways`."""
 
     def test__return_set_ipv4_and_ipv6(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -4612,8 +4584,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_set_ipv4_and_guess_ipv6(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -4642,8 +4613,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_set_ipv6_and_guess_ipv4(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -4672,8 +4642,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_guess_ipv4_and_ipv6(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -4755,7 +4724,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             rackif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v6_subnet, rack_v6)
         rack.boot_interface = rackif
         rack.save()
-        node = factory.make_Node(status=NODE_STATUS.READY, disable_ipv4=False)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         nodeif = factory.make_Interface(vlan=vlan, node=node)
         if ipv4:
             nodeif.link_subnet(INTERFACE_LINK_TYPE.AUTO, v4_subnet)

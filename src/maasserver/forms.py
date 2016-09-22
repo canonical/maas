@@ -491,9 +491,6 @@ class NodeForm(MAASModelForm):
         # Are we creating a new node object?
         self.new_node = (instance is None)
 
-        self.fields['disable_ipv4'] = forms.BooleanField(
-            label="", required=False)
-
     def clean_disable_ipv4(self):
         # Boolean fields only show up in UI form submissions as "true" (if the
         # box was checked) or not at all (if the box was not checked).  This
@@ -508,6 +505,9 @@ class NodeForm(MAASModelForm):
         form_data = self.submitted_data
         if 'ui_submission' in form_data and 'disable_ipv4' not in form_data:
             self.cleaned_data['disable_ipv4'] = False
+        if self.cleaned_data.get('disable_ipv4'):
+            raise ValidationError(
+                'If specified, disable_ipv4 must be False.')
         return self.cleaned_data['disable_ipv4']
 
     def clean_swap_size(self):
@@ -558,6 +558,9 @@ class NodeForm(MAASModelForm):
             "The size of the swap file in bytes. The field also accepts K, M, "
             "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
 
+    disable_ipv4 = forms.BooleanField(
+        required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Node
 
@@ -568,7 +571,6 @@ class NodeForm(MAASModelForm):
         fields = (
             'hostname',
             'domain',
-            'disable_ipv4',
             'swap_size',
             )
 

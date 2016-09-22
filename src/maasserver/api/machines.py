@@ -247,8 +247,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             kilobytes, megabytes, gigabytes and terabytes.
         :type swap_size: unicode
 
-        :param disable_ipv4: Whether or not IPv4 should be enabled on the
-            machine.
+        :param disable_ipv4: Deprecated.  If specified, must be False.
         :type disable_ipv4: boolean
 
         :param cpu_count: The amount of CPU cores the machine has.

@@ -167,7 +167,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual([tag.name], parsed_result['tag_names'])
 
     def test_GET_returns_associated_ip_addresses(self):
-        machine = factory.make_Node(disable_ipv4=False)
+        machine = factory.make_Node()
         nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=machine)
         subnet = factory.make_Subnet()
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -1220,38 +1220,6 @@ class TestMachineAPI(APITestCase.ForUser):
         # Confirm the machine's physical zone has not been updated.
         machine = reload_object(machine)
         self.assertEqual(old_zone, machine.zone)
-
-    def test_PUT_sets_disable_ipv4(self):
-        self.become_admin()
-        original_setting = factory.pick_bool()
-        machine = factory.make_Node(
-            owner=self.user,
-            architecture=make_usable_architecture(self),
-            disable_ipv4=original_setting)
-        new_setting = not original_setting
-
-        response = self.client.put(
-            self.get_machine_uri(machine), {'disable_ipv4': new_setting})
-        self.assertEqual(http.client.OK, response.status_code)
-
-        machine = reload_object(machine)
-        self.assertEqual(new_setting, machine.disable_ipv4)
-
-    def test_PUT_leaves_disable_ipv4_unchanged_by_default(self):
-        self.become_admin()
-        original_setting = factory.pick_bool()
-        machine = factory.make_Node(
-            owner=self.user,
-            architecture=make_usable_architecture(self),
-            disable_ipv4=original_setting)
-        self.assertEqual(original_setting, machine.disable_ipv4)
-
-        response = self.client.put(
-            self.get_machine_uri(machine), {'zone': factory.make_Zone()})
-        self.assertEqual(http.client.OK, response.status_code)
-
-        machine = reload_object(machine)
-        self.assertEqual(original_setting, machine.disable_ipv4)
 
     def test_PUT_updates_swap_size(self):
         self.become_admin()

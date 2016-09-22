@@ -486,6 +486,18 @@ class TestNodesAPI(APITestCase.ForUser):
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
 
+    def test_GET_has_disable_ipv4(self):
+        # The api allows for fetching the list of Nodes.
+        factory.make_Node()
+        factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
+        response = self.client.get(reverse('nodes_handler'))
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(http.client.OK, response.status_code)
+        disable_ipv4 = [node.get('disable_ipv4') for node in parsed_result]
+        self.assertItemsEqual([False, False], disable_ipv4)
+
     def test_GET_shows_all_types(self):
         machines = [
             factory.make_Node(agent_name=factory.make_name('agent-name'))

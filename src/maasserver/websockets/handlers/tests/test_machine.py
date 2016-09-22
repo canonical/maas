@@ -161,7 +161,6 @@ class TestMachineHandler(MAASServerTestCase):
                 }
                 for device in node.children.all().order_by('id')
             ], key=itemgetter('fqdn')),
-            "disable_ipv4": node.disable_ipv4,
             "domain": handler.dehydrate_domain(node.domain),
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,

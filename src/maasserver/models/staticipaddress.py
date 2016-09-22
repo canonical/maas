@@ -311,8 +311,6 @@ class StaticIPAddressManager(Manager):
         # DISTINCT ON returns the first matching row for any given
         # hostname, using the query's ordering.  Here, we're trying to
         # return the IPs for the oldest Interface address.
-        #
-        # For nodes that have disable_ipv4 set, leave out any IPv4 address.
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
         if raw_ttl:
             ttl_clause = """node.address_ttl"""
@@ -379,11 +377,7 @@ class StaticIPAddressManager(Manager):
             query_parms = []
         sql_query += """
                 staticip.ip IS NOT NULL AND
-                host(staticip.ip) != '' AND
-                (
-                    node.disable_ipv4 IS FALSE OR
-                    family(staticip.ip) <> 4
-                )
+                host(staticip.ip) != ''
             ORDER BY
                 node.hostname,
                 is_boot DESC,
@@ -460,11 +454,7 @@ class StaticIPAddressManager(Manager):
             """
         iface_sql_query += """
                 staticip.ip IS NOT NULL AND
-                host(staticip.ip) != '' AND
-                (
-                    node.disable_ipv4 IS FALSE OR
-                    family(staticip.ip) <> 4
-                )
+                host(staticip.ip) != ''
             ORDER BY
                 node.hostname,
                 interface.id

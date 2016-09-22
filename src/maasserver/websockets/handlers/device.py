@@ -88,7 +88,6 @@ class DeviceHandler(NodeHandler):
             "status_expires",
             "power_state_queried",
             "power_state_updated",
-            "disable_ipv4",
             "osystem",
             "error_description",
             "error",

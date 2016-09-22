@@ -85,34 +85,22 @@ class TestNodeForm(MAASServerTestCase):
 
         self.assertFalse(form.is_valid())
 
-    def test_obeys_disable_ipv4_if_given(self):
-        setting = factory.pick_bool()
+    def test_accepts_disable_ipv4_if_false(self):
         form = NodeForm(
             data={
                 'architecture': make_usable_architecture(self),
-                'disable_ipv4': setting,
+                'disable_ipv4': False,
                 })
-        node = form.save()
-        self.assertEqual(setting, node.disable_ipv4)
+        form.save()
+        # The field does not get to the model.
 
-    def test_takes_missing_disable_ipv4_as_False_in_UI(self):
+    def test_rejects_disable_ipv4_if_true(self):
         form = NodeForm(
-            instance=factory.make_Node(disable_ipv4=True),
             data={
                 'architecture': make_usable_architecture(self),
-                'ui_submission': True,
+                'disable_ipv4': True,
                 })
-        node = form.save()
-        self.assertFalse(node.disable_ipv4)
-
-    def test_takes_missing_disable_ipv4_as_Unchanged_in_API(self):
-        form = NodeForm(
-            instance=factory.make_Node(disable_ipv4=True),
-            data={
-                'architecture': make_usable_architecture(self),
-                })
-        node = form.save()
-        self.assertTrue(node.disable_ipv4)
+        self.assertFalse(form.is_valid())
 
 
 class TestAdminNodeForm(MAASServerTestCase):

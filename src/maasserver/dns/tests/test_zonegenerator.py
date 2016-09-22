@@ -201,15 +201,14 @@ class TestGetHostnameMapping(MAASServerTestCase):
     """Test for `get_hostname_ip_mapping`."""
 
     def test_get_hostname_ip_mapping_containts_both_static_and_dynamic(self):
-        node1 = factory.make_Node(
-            interface=True, disable_ipv4=False)
+        node1 = factory.make_Node(interface=True)
         node1_interface = node1.get_boot_interface()
         subnet = factory.make_Subnet()
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=node1_interface)
-        node2 = factory.make_Node(interface=True, disable_ipv4=False)
+        node2 = factory.make_Node(interface=True)
         node2_interface = node2.get_boot_interface()
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         dynamic_ip = factory.make_StaticIPAddress(
@@ -229,8 +228,7 @@ class TestGetHostnameMapping(MAASServerTestCase):
             expected_mapping.items(), actual.items())
 
     def test_get_hostname_dnsdata_mapping_contains_node_and_non_node(self):
-        node = factory.make_Node(
-            interface=True, disable_ipv4=False)
+        node = factory.make_Node(interface=True)
         dnsdata1 = factory.make_DNSData(
             name=node.hostname, domain=node.domain, rrtype='MX')
         dnsdata2 = factory.make_DNSData(domain=node.domain)
@@ -350,7 +348,7 @@ class TestZoneGenerator(MAASServerTestCase):
         # Create a node with two interfaces, with NULL ips
         node = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric,
-            domain=domain, interface_count=3, disable_ipv4=False)
+            domain=domain, interface_count=3)
         dnsdata = factory.make_DNSData(domain=domain)
         boot_iface = node.boot_interface
         interfaces = list(node.interface_set.all().exclude(id=boot_iface.id))
@@ -416,7 +414,7 @@ class TestZoneGenerator(MAASServerTestCase):
         subnet2 = factory.make_Subnet(cidr=parent)
         node = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, vlan=subnet1.vlan, fabric=subnet1.vlan.fabric,
-            domain=domain, disable_ipv4=False)
+            domain=domain)
         boot_iface = node.boot_interface
         factory.make_StaticIPAddress(interface=boot_iface, subnet=subnet1)
         default_ttl = random.randint(10, 300)
@@ -509,7 +507,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="10.0.0.0/23")
         domain = factory.make_Domain(ttl=random.randint(200, 299))
         node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, status=NODE_STATUS.READY, subnet=subnet,
+            status=NODE_STATUS.READY, subnet=subnet,
             domain=domain)
         boot_iface = node.get_boot_interface()
         [boot_ip] = boot_iface.claim_auto_ips()
@@ -533,7 +531,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="10.0.0.0/23")
         domain = factory.make_Domain(ttl=random.randint(200, 299))
         node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, status=NODE_STATUS.READY, subnet=subnet,
+            status=NODE_STATUS.READY, subnet=subnet,
             domain=domain, address_ttl=random.randint(300, 399))
         boot_iface = node.get_boot_interface()
         [boot_ip] = boot_iface.claim_auto_ips()
@@ -562,7 +560,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="10.0.0.0/23")
         domain = factory.make_Domain(ttl=random.randint(200, 299))
         node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, status=NODE_STATUS.READY, subnet=subnet,
+            status=NODE_STATUS.READY, subnet=subnet,
             domain=domain, address_ttl=random.randint(300, 399))
         boot_iface = node.get_boot_interface()
         [boot_ip] = boot_iface.claim_auto_ips()
@@ -593,7 +591,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="10.0.0.0/23")
         domain = factory.make_Domain(ttl=random.randint(200, 299))
         node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, status=NODE_STATUS.READY, subnet=subnet,
+            status=NODE_STATUS.READY, subnet=subnet,
             domain=domain, address_ttl=random.randint(300, 399))
         boot_iface = node.get_boot_interface()
         [boot_ip] = boot_iface.claim_auto_ips()

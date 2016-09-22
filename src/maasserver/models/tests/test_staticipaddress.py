@@ -344,7 +344,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         expected_mapping = {}
         for _ in range(3):
-            node = factory.make_Node(interface=True, disable_ipv4=False)
+            node = factory.make_Node(interface=True)
             boot_interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
             staticip = factory.make_StaticIPAddress(
@@ -361,7 +361,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         domain = Domain.objects.get_default_domain()
         expected_mapping = {}
         for _ in range(3):
-            node = factory.make_Node(interface=True, disable_ipv4=False)
+            node = factory.make_Node(interface=True)
             boot_interface = node.get_boot_interface()
             subnet = factory.make_Subnet()
             staticip = factory.make_StaticIPAddress(
@@ -385,7 +385,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
             interface=True, hostname=full_hostname, interface_count=3,
-            subnet=subnet, disable_ipv4=False)
+            subnet=subnet)
         boot_interface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -434,7 +434,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 node = factory.make_Node_with_Interface_on_Subnet(
                     interface=True, hostname="%s.%s" % (
                         factory.make_name('hostname'), dom.name),
-                    subnet=subnet, disable_ipv4=False, address_ttl=ttl)
+                    subnet=subnet, address_ttl=ttl)
                 boot_interface = node.get_boot_interface()
                 factory.make_StaticIPAddress(
                     alloc_type=IPADDRESS_TYPE.STICKY,
@@ -464,7 +464,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 node = factory.make_Node_with_Interface_on_Subnet(
                     interface=True, hostname="%s.%s" % (
                         factory.make_name('hostname'), dom.name),
-                    subnet=subnet, disable_ipv4=False, address_ttl=ttl)
+                    subnet=subnet, address_ttl=ttl)
                 boot_interface = node.get_boot_interface()
                 factory.make_StaticIPAddress(
                     alloc_type=IPADDRESS_TYPE.STICKY,
@@ -480,7 +480,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
 
     def test_get_hostname_ip_mapping_picks_mac_with_static_address(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), disable_ipv4=False)
+            hostname=factory.make_name('host'))
         boot_interface = node.get_boot_interface()
         subnet = boot_interface.ip_addresses.first().subnet
         nic2 = factory.make_Interface(
@@ -504,8 +504,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node(
-            interface=True, hostname=factory.make_name('host'),
-            disable_ipv4=False)
+            interface=True, hostname=factory.make_name('host'))
         boot_interface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -527,8 +526,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node(
-            interface=True, hostname=factory.make_name('host'),
-            disable_ipv4=False)
+            interface=True, hostname=factory.make_name('host'))
         boot_interface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
@@ -546,7 +544,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_combines_IPv4_and_IPv6_addresses(self):
-        node = factory.make_Node(interface=True, disable_ipv4=False)
+        node = factory.make_Node(interface=True)
         interface = node.get_boot_interface()
         ipv4_network = factory.make_ipv4_network()
         ipv4_subnet = factory.make_Subnet(cidr=ipv4_network)
@@ -569,7 +567,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
     def test_get_hostname_ip_mapping_combines_MACs_for_same_node(self):
         # A node's preferred static IPv4 and IPv6 addresses may be on
         # different MACs.
-        node = factory.make_Node(disable_ipv4=False)
+        node = factory.make_Node()
         ipv4_network = factory.make_ipv4_network()
         ipv4_subnet = factory.make_Subnet(cidr=ipv4_network)
         ipv4_address = factory.make_StaticIPAddress(
@@ -592,32 +590,11 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 {ipv4_address.ip, ipv6_address.ip}, node.node_type)},
             mapping)
 
-    def test_get_hostname_ip_mapping_skips_ipv4_if_disable_ipv4_set(self):
-        node = factory.make_Node(interface=True, disable_ipv4=True)
-        boot_interface = node.get_boot_interface()
-        ipv4_network = factory.make_ipv4_network()
-        ipv4_subnet = factory.make_Subnet(cidr=ipv4_network)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO,
-            interface=boot_interface,
-            ip=factory.pick_ip_in_network(ipv4_network), subnet=ipv4_subnet)
-        ipv6_network = factory.make_ipv6_network()
-        ipv6_subnet = factory.make_Subnet(cidr=ipv6_network)
-        ipv6_address = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO,
-            interface=boot_interface,
-            ip=factory.pick_ip_in_network(ipv6_network), subnet=ipv6_subnet)
-        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
-            node.domain)
-        self.assertEqual({node.fqdn: HostnameIPMapping(
-            node.system_id, 30, {ipv6_address.ip}, node.node_type)}, mapping)
-
     def test_get_hostname_ip_mapping_prefers_non_discovered_addresses(self):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=iface,
@@ -638,8 +615,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         node.boot_interface = None
         node.save()
         iface = node.get_boot_interface()
@@ -672,8 +648,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         iface2 = factory.make_Interface(node=node)
         bondif = factory.make_Interface(
@@ -699,8 +674,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         iface2 = factory.make_Interface(node=node)
         iface3 = factory.make_Interface(node=node)
@@ -731,8 +705,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         iface_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
@@ -758,8 +731,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         iface_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, interface=iface,
@@ -785,8 +757,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
-            disable_ipv4=False)
+            hostname=factory.make_name('host'), subnet=subnet)
         iface = node.get_boot_interface()
         vlanif = factory.make_Interface(
             INTERFACE_TYPE.VLAN, node=node, parents=[iface])
@@ -836,7 +807,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         # interface an AUTO IP on subnets[0].
         node = factory.make_Node_with_Interface_on_Subnet(
             hostname=factory.make_name('host'), subnet=subnets[0],
-            vlan=subnets[0].vlan, disable_ipv4=False)
+            vlan=subnets[0].vlan)
         sip0 = node.boot_interface.ip_addresses.first()
         ip0 = factory.pick_ip_in_network(cidrs[0])
         sip0.ip = ip0
@@ -874,7 +845,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         # interface an AUTO IP on subnets[0].
         node = factory.make_Node_with_Interface_on_Subnet(
             hostname=factory.make_name('host'), subnet=subnets[0],
-            vlan=subnets[0].vlan, disable_ipv4=False)
+            vlan=subnets[0].vlan)
         sip0 = node.boot_interface.ip_addresses.first()
         ip0 = factory.pick_ip_in_network(cidrs[0])
         sip0.ip = ip0
@@ -1050,8 +1021,7 @@ class TestRenderJSON(MAASServerTestCase):
     def test__includes_node_summary_if_requested(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, subnet=subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
@@ -1062,8 +1032,7 @@ class TestRenderJSON(MAASServerTestCase):
     def test__node_summary_includes_interface_name(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, subnet=subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         self.expectThat(node.interface_set.count(), Equals(1))
         iface = node.interface_set.first()
         ip = factory.make_StaticIPAddress(
@@ -1079,7 +1048,7 @@ class TestRenderJSON(MAASServerTestCase):
         hostname = factory.make_name('hostname')
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False, subnet=subnet, hostname=hostname)
+            subnet=subnet, hostname=hostname)
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
