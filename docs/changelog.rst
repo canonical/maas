@@ -2,6 +2,283 @@
 Changelog
 =========
 
+2.1.0 Alpha 4
+=============
+
+Important Announcements
+-----------------------
+
+**MAAS Landing page - Let’s see what’s on your network!**
+ As of MAAS 2.1 alpha 4, administrative users have a new landing page. Once
+ administrators log in they will be redirected to the MAAS dashboard.
+
+ This dashboard is where administrators will have some basic information
+ and the ability to see the observed and discovered devices.
+
+Major new features
+------------------
+
+**Device discovery UI**
+ MAAS 2.1 alpha 4 introduces the MAAS Device Discovery UI. As part of the
+ dashboard, administrative users will be able to see all the observed and
+ discovered devices.
+
+ MAAS will also allow administrator to properly register those discoveries
+ as MAAS known devices, and be able to select the IP address allocation for
+ them, if MAAS is to manage them.
+
+**Active Device Discovery - map your network (API only)**
+ As of MAAS 2.1 alpha 2, networks attached to rack controllers are observed
+ for device discovery purposes. MAAS listens to ARP requests and replies to
+ determine which IPv4 addresses are in-use on attached networks, and will
+ resolve their hostnames if possible (when advertised using the mDNS
+ protocol).
+
+ As of MAAS 2.1 alpha 4, MAAS now has the ability to actively probe subnets.
+ This allows MAAS to keep its knowledge of which devices are on the network
+ up-to-date, and discover “quiet” devices that MAAS would not be able to
+ observe passively. If ‘nmap’ is installed, MAAS will prefer to use it for
+ scanning (since the scan is faster and will transmit fewer packets). If
+ ‘nmap’ is not installed, MAAS will fall back to using parallel ‘ping’ requests.
+
+ Scanning is available using the API at the following URL:
+
+    POST /MAAS/api/2.0/discovery/?op=scan
+
+ To scan using the command-line interface, you can use the following syntax:
+
+    maas <profile> discoveries scan [cidr=<cidr> [cidr=<cidr>....] [force=true] [always_use_ping=true] [slow=true] [threads=<num-concurrent-scanning-threads>]
+
+ If you want to scan particular subnets, specify one or more using the cidr
+ option. For example, ‘cidr=192.168.0.0/24’ would scan for neighbours on
+ 192.168.0.0/24 on any rack controller configured with an address in that
+ network. The cidr option can be specified multiple times, such as
+ ‘cidr=192.168.0.0/24 cidr=192.168.1.0/24’.
+
+ If you want to scan all networks attached to all rack controllers, you must
+ specify the “force=true” option. (This is not allowed by default, since some
+ network operators do not allow active neighbour scanning.)
+
+ If your organization has a policy against using ‘nmap’, you will want to use
+ the ‘always_use_ping’ option, in case ‘nmap’ has been installed on a rack
+ controller by mistake.
+
+ If quickly scanning your network using ‘nmap’ may raise alerts with an
+ intrusion detection system, you can use the ‘slow=true’ argument to slow
+ down scanning. This option has no effect when using ‘ping’, since scanning
+ using ‘ping’ is already slower. If using ‘ping’, scans can be slowed down or
+ sped up, if desired, by using the threads option, such as by specifying
+ “threads=2”. Using the threads option has less impact on nmap threads, which
+ use a single thread to scan an entire network.
+
+Minor new features
+------------------
+
+**First User Journey - Import your SSH keys from Launchpad or Github**
+ The ability to import SSH keys from Launchpad or Github was introduced in
+ MAAS alpha 3. As of alpha 4, you can do so via the Front-end.
+
+ All users will now have the ability to import their SSH keys from the UI.
+ All users who log-in to MAAS for the first time will be prompted to import
+ their SSH keys, if they so desire. Alternatively, users can do so via their
+ user profile page.
+
+Other notable changes
+---------------------
+
+**NTP Improvements - MAAS NTP vs External**
+ MAAS now provides the ability to decide between using solely an external NTP
+ server or a MAAS run NTP server. MAAS run NTP services is the preferred
+ configuration, but, in order to maintain backwards compatibility,
+ administrators can chose to use external NTP organizations. This will only
+ be suitable for scenarios where administrators have restricted communication
+ between their machines and the MAAS rack controllers.
+
+Bugs fixed in this release
+--------------------------
+
+#1625668    [2.1] When trying to add SSH keys for a GH user that doesn't exist, there's no feedback
+#1626748    [2.1] maas admin discoveries scan API output shows rack controller ids instead of names
+#1626722    [2.1] DHPv6 addresses do not have netmasks: do not create /128 subnets for them
+#1625812    [2.1] Error message is not user friendly
+#1625689    [2.1] default gateway cannot be set to fe80::/64 via web ui
+#1626727    [2.1] You can define distribution or component for 'ubuntu archive' or 'ubuntu extra architectures'
+#1625671    [2.1] Need better error message when trying to add SSH keys for LP/GH user that doesn't exist
+#1623994    [2.1] DHCP configuration breaks when NTP servers are unresolvable.
+#1626669    [2.1] Can't logout, create users and do other actions
+#1625674    [2.1] No feedback when there are no keys to import from LP/GH
+
+Known issues and workarounds
+----------------------------
+
+**LP: #1623634: Unable to cancel the image import.**
+ When downloading images, MAAS will fail to cancel the import of all or
+ any of the images being imported. MAAS will first download all the images
+ before the user is able to remove them.
+
+ See bug `1617596`_ for more information.
+
+.. _1617596:
+  http://launchpad.net/bugs/1617596
+
+**LP: 1624693: Rack failed to run/register on fresh install**
+ The MAAS Rack Controller is unable to register after a fresh install due to
+ being unable to parse network interfaces. After manual restart of maas-rackd,
+ the rack was successfully registered.
+
+ See bug `1624693`_ for more information.
+
+.. _1624693:
+  http://launchpad.net/bugs/1624693
+
+
+2.1.0 Alpha 3
+=============
+
+Major new features
+------------------
+
+**First User Configuration Journey (UI)**
+ Starting from alpha 3, MAAS now provides the ability for administrators to
+ perform some initial configuration when they log-in into the UI for the
+ first time. The configuration includes:
+
+  * Ability to change the name of your MAAS.
+  * Ability to configure options that affect connectivity:
+  * Option to select an Upstream DNS Server (Optional)
+  * Option to input different Ubuntu Mirrors (Required).
+  * Option to input an external proxy (Optional)
+  * Ability to select additional images to download.
+
+**MAAS time sync, NTP services and configuration**
+ Starting from alpha 3, MAAS now provides managed NTP services (with ntpd) in
+ both the Region and Rack controller. This allows MAAS to not only keep its
+ own controllers time synced, but the deployed machines as well.
+
+ * Region Controller time syncs from external source
+   The Region Controller configures the NTP service (ntpd) to keep its time
+   sync from one or various external sources. By default, the MAAS region
+   controller syncs its time from ntp.ubuntu.com. The default can be changed
+   by one or multiple external NTP servers from the Settings page, under the
+   Network Configuration section.
+
+ * Rack Controller time syncs from the Region Controller
+   The Rack Controllers also configure the NTP service (ntpd). Unlike the
+   Region Controllers, the Rack Controllers sync their time from the Region
+   Controller(s) instead of accessing directly to the external time source.
+
+   Additionally, the Rack Controllers also configure DHCP with the correct
+   NTP information, so that any machine on the network that DHCP’s from MAAS
+   can benefit of the NTP configuration.
+
+ * Machines configured to sync time from external NTP (transitional).
+   MAAS also configures deployed machines with NTP configuration. This is done
+   by cloud-init via MAAS vendor data.
+
+   During the transition period, MAAS will configure machines to use the
+   external time source (configured under the Settings page). Note that this
+   is transitional, as in future releases the machines will default to the
+   Rack Controller for NTP.
+
+**MAAS Images page re-written in AngularJS**
+ Continuing the transition from YUI to AngularJS, the MAAS Images page has now
+ been completely redesigned and reimplemented in AngularJS. Improvements to
+ the Image page include:
+
+ * Ability to select the image source (maas.io or custom repository).
+   Show the releases and architectures available in the custom repository
+   before the import starts.
+
+ * Ability to view the status of the image in the import process.
+   Show percentage based progress on the image import.
+
+ Additionally, the ‘Boot Images’ section in the Settings page has been removed.
+
+**Minor new features**
+
+ * (Backend) Ability to import SSH keys from Launchpad and Github
+   MAAS now provides the ability to import SSH keys for a user from Launchpad
+   and Github. This is currently supported via the API or via the user
+   creation process. Users can import their SSH keys when creating their user
+   for Launchpad or Github:
+
+    maas createadmin --ssh-import lp:<user-id>
+    maas createadmin --ssh-import gh:<user-id>
+
+   Or via the API based CLI with:
+
+    maas <maas username> sshkeys import protocol=lp auth_id=<user-id>
+    maas <maas username> sshkeys import protocol=gh auth_id=<user-id>
+
+ * MAAS now provides cloud-init vendor data for NTP
+   As of MAAS 2.1 alpha 3, MAAS now provide cloud-init vendor data. Vendor
+   data allows cloud-init to do some initial configurations on the system
+   before user data is being run. As of 2.1, MAAS will provide NTP
+   configuration which is delivered via vendor data. Note that this is
+   dependent on the latest version of cloud-init (0.7.8-1-g3705bb5-0ubuntu1).
+   This is currently available in Yakkety and is in progress to be available
+   in Xenial.
+
+ * Add ability to enable or disable network discovery
+   MAAS now provides the ability to disable the discovery of networks and
+   devices. By default, discovery is enabled. This setting can be changed
+   under the Settings page, or via the MAAS CLI and API using the
+   “network_discovery” configuration key. (Accepted values are “enabled” and
+   “disabled”.) When discovery is disabled, mDNS records and ARP requests will
+   no longer be stored in MAAS, and the listening processes on each rack
+   controller will be shut down.
+
+Other notable changes
+---------------------
+
+**HTML template updates**
+ In MAAS 2.1 alpha 3, the HTML templates and SCSS framework has been
+ completely rebuilt and using the current Vanilla CSS framework as its base.
+ This includes all design patterns and utility classes which would be expected
+ of a powerful frontend GUI framework.
+
+ HTML and CSS templates have been completely redesigned to use the new
+ “Vanilla” styles. This brings a refreshed look of icons and interactions that
+ benefit the UI. While users may not see much difference, it has been
+ completely re-implemented in the backend.
+
+ Thank you the design and web teams for their contribution to MAAS.
+
+Known issues and workarounds
+----------------------------
+
+**Unable to cancel the image import.**
+ When downloading images, MAAS will fail to cancel the import of all or any of
+ the images being imported. MAAS will first download all the images before the
+ user is able to remove them.
+
+ See bug `1623634`_ for more information.
+
+.. _1623634:
+  http://launchpad.net/bugs/1623634
+
+**Unable to enable DHCP if NTP server is unresolvable.**
+ If the NTP server(s) are unresolvable, DHCP will fail to enable. This is
+ because DHCP doesn’t accept DNS names for DHCP’s NTP configuration, and as
+ such, MAAS tries to resolve the domain before it is able to set it in the
+ configuration.
+
+ See bug `1623994`_ for more information.
+
+.. _1623994:
+  http://launchpad.net/bugs/1623994
+
+**Rack failed to run/register on fresh install**
+ The MAAS Rack Controller is unable to register after a fresh install due to
+ being unable to parse network interfaces. After manual restart of maas-rackd,
+ the rack was successfully registered.
+
+ See bug `1624693`_ for more information.
+
+.. _1624693:
+  http://launchpad.net/bugs/1624693
+
+
 2.1.0 Alpha 2
 =============
 
