@@ -14,6 +14,8 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api import discoveries as discoveries_module
 from maasserver.api.discoveries import (
+    get_controller_summary,
+    get_failure_summary,
     interpret_scan_all_rack_networks_rpc_results,
     scan_all_rack_networks,
 )
@@ -28,11 +30,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
+from netaddr import IPNetwork
 from provisioningserver.rpc import cluster
 from testtools.matchers import (
     Equals,
     HasLength,
 )
+from twisted.python.failure import Failure
 
 
 def timestamp_format(time):
@@ -86,6 +90,10 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         return results
+
+    def post_api_response(self, *args, **kwargs):
+        uri = get_discoveries_uri()
+        return self.client.post(uri, *args, **kwargs)
 
     def post_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
@@ -159,6 +167,115 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({'op': 'by_unknown_ip_and_mac'})
         self.assertThat(len(results), Equals(0))
 
+    def test__scan__fails_scan_all_if_not_forced(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        response = self.post_api_response({'op': 'scan'})
+        self.assertThat(
+            response, HasStatusCode(http.client.BAD_REQUEST))
+
+    def test__scan__threads_must_be_number(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        response = self.post_api_response({'op': 'scan', 'threads': 'x'})
+        self.assertThat(
+            response, HasStatusCode(http.client.BAD_REQUEST))
+
+    def test__scan__calls_scan_all_networks_with_scan_all_if_forced(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({'op': 'scan', 'force': 'true'})
+        self.assertThat(result, Equals(result))
+        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+            scan_all=True, ping=False, slow=False, threads=None))
+
+    def test__scan__passes_ping(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({
+            'op': 'scan',
+            'force': 'true',
+            'always_use_ping': 'true'
+        })
+        self.assertThat(result, Equals(result))
+        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+            scan_all=True, ping=True, slow=False, threads=None))
+
+    def test__scan__passes_slow(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({
+            'op': 'scan',
+            'force': 'true',
+            'slow': 'true'
+        })
+        self.assertThat(result, Equals(result))
+        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+            scan_all=True, ping=False, slow=True, threads=None))
+
+    def test__scan__passes_threads(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({
+            'op': 'scan',
+            'force': 'true',
+            'threads': '3.14'
+        })
+        self.assertThat(result, Equals(result))
+        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+            scan_all=True, ping=False, slow=False, threads=3))
+
+    def test__scan__calls_scan_all_networks_with_specified_cidrs(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        result = self.post_api_results({
+            'op': 'scan',
+            'force': 'true',
+            'cidr': ['192.168.0.0/24', '192.168.1.0/24']
+        })
+        self.assertThat(result, Equals(result))
+        self.assertThat(
+            scan_all_rack_networks_mock, MockCalledOnceWith(cidrs=[
+                IPNetwork('192.168.0.0/24'),
+                IPNetwork('192.168.1.0/24')],
+                ping=False, slow=False, threads=None
+            ))
+
+    def test__scan__with_invalid_cidrs_fails(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        response = self.post_api_response({
+            'op': 'scan',
+            'cidr': ['x.x.x.x/y']
+        })
+        self.assertThat(
+            response, HasStatusCode(http.client.BAD_REQUEST))
+
+    def test__scan__with_no_cidrs_does_not_call_scan_all_networks(self):
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
+        response = self.post_api_response({'op': 'scan'})
+        self.assertThat(
+            response, HasStatusCode(http.client.BAD_REQUEST))
+
     def test__clear_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
         iface = rack.interface_set.first()
@@ -206,14 +323,6 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         uri = get_discoveries_uri()
         response = self.client.post(uri, {'op': 'clear', 'neighbours': 'true'})
         self.assertEqual(204, response.status_code, response.content)
-
-    def test__scan__calls_scan_all_networks(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
-        result = self.post_api_results({'op': 'scan'})
-        self.assertThat(result, Equals(result))
 
 
 class TestDiscoveryAPI(APITestCase.ForUser):
@@ -309,32 +418,49 @@ class TestDiscoveryAPI(APITestCase.ForUser):
 
 
 def make_RPCResults(
-        results=None, available=None, unavailable=None, success=None,
-        failed=None, timeout=None):
+        results=None, failures=None, available=None, unavailable=None,
+        success=None, failed=None, timeout=None):
     """Creates an `RPCResults` namedtuple without requiring all arguments."""
     return RPCResults(
-        results, available, unavailable, success, failed, timeout)
+        results, failures, available, unavailable, success, failed, timeout)
 
 
 class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
 
     def test__no_racks_available(self):
-        results = make_RPCResults(available=[])
+        results = make_RPCResults(available=[], failed=[])
         result = interpret_scan_all_rack_networks_rpc_results(results)
         self.assertThat(result, DocTestMatches(
             "Unable to initiate network scanning on any rack controller..."))
 
     def test__scan_not_started_on_at_least_one_rack(self):
-        results = make_RPCResults(available=['x'], unavailable=['y', 'z'])
+        results = make_RPCResults(
+            available=['x'], unavailable=['y', 'z'], failed=[])
         result = interpret_scan_all_rack_networks_rpc_results(results)
         self.assertThat(result, DocTestMatches(
             "Scanning could not be started on 2 rack..."))
 
     def test__scan_in_progress(self):
-        results = make_RPCResults(available=['x'], unavailable=[])
+        results = make_RPCResults(
+            available=['x'], unavailable=[], failed=[])
         result = interpret_scan_all_rack_networks_rpc_results(results)
         self.assertThat(result, DocTestMatches(
             "Scanning is in-progress..."))
+
+    def test__scan_failed_on_at_least_one_rack(self):
+        results = make_RPCResults(
+            available=['x'], failed=['v', 'w'], unavailable=['y', 'z'])
+        result = interpret_scan_all_rack_networks_rpc_results(results)
+        self.assertThat(result, DocTestMatches(
+            "Scanning could not be started...In addition, a scan was already "
+            "in-progress on 2..."))
+
+    def test__failed_rack(self):
+        results = make_RPCResults(
+            available=['w'], failed=['w'], unavailable=[])
+        result = interpret_scan_all_rack_networks_rpc_results(results)
+        self.assertThat(result, DocTestMatches(
+            "A scan was already in-progress on 1 rack..."))
 
 
 class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
@@ -355,11 +481,12 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         self.available = [r1, r2, r3, r5]
         self.unavailable = [r4]
         self.started = [r1, r2]
-        self.in_progress = [r3]
+        self.failed = [r3]
         self.timed_out = [r5]
+        self.failures = [Failure(Exception("foo"))]
         self.call_racks_sync_mock.return_value = make_RPCResults(
             available=self.available, unavailable=self.unavailable,
-            success=self.started, failed=self.in_progress,
+            success=self.started, failures=self.failures, failed=self.failed,
             timeout=self.timed_out)
 
     def test__populates_results_correctly(self):
@@ -368,15 +495,17 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             {
                 "result": self.result,
                 "scan_started_on":
-                    [r.system_id for r in self.started],
-                "scan_already_in_progress_on":
-                    [r.system_id for r in self.in_progress],
+                    get_controller_summary(self.started),
+                "scan_failed_on":
+                    get_controller_summary(self.failed),
                 "scan_attempted_on":
-                    [r.system_id for r in self.available],
+                    get_controller_summary(self.available),
                 "failed_to_connect_to":
-                    [r.system_id for r in self.unavailable],
+                    get_controller_summary(self.unavailable),
                 "rpc_call_timed_out_on":
-                    [r.system_id for r in self.timed_out],
+                    get_controller_summary(self.timed_out),
+                "failures":
+                    get_failure_summary(self.failures),
             }
         ))
 
@@ -389,4 +518,35 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         scan_all_rack_networks()
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanAllNetworks))
+                cluster.ScanNetworks, kwargs={}))
+
+    def test__calls_racks_synchronously_with_scan_all(self):
+        scan_all_rack_networks(scan_all=True)
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanNetworks, kwargs={'scan_all': True}))
+
+    def test__calls_racks_synchronously_with_cidrs(self):
+        scan_all_rack_networks(cidrs=['a', 'b', 'c'])
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanNetworks, kwargs={'cidrs': ['a', 'b', 'c']}))
+
+    def test__calls_racks_synchronously_with_force_ping(self):
+        scan_all_rack_networks(ping=True)
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanNetworks, kwargs={'force_ping': True}))
+
+    def test__calls_racks_synchronously_with_threads(self):
+        threads = random.randint(1, 99)
+        scan_all_rack_networks(threads=threads)
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanNetworks, kwargs={'threads': threads}))
+
+    def test__calls_racks_synchronously_with_slow(self):
+        scan_all_rack_networks(slow=True)
+        self.assertThat(
+            self.call_racks_sync_mock, MockCalledOnceWith(
+                cluster.ScanNetworks, kwargs={'slow': True}))

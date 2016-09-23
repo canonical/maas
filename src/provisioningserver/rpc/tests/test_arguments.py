@@ -177,3 +177,24 @@ class TestIPAddress(MAASTestCase):
         self.assertThat(encoded, HasLength(16))
         decoded = self.argument.fromString(encoded)
         self.assertThat(decoded, Equals(address))
+
+
+class TestIPNetwork(MAASTestCase):
+
+    argument = arguments.IPNetwork()
+
+    def test_round_trips_ipv4_address(self):
+        network = factory.make_ipv4_network()
+        encoded = self.argument.toString(network)
+        self.assertThat(encoded, IsInstance(bytes))
+        self.assertThat(encoded, HasLength(5))
+        decoded = self.argument.fromString(encoded)
+        self.assertThat(decoded, Equals(network))
+
+    def test_round_trips_ipv6_address(self):
+        network = factory.make_ipv6_network()
+        encoded = self.argument.toString(network)
+        self.assertThat(encoded, IsInstance(bytes))
+        self.assertThat(encoded, HasLength(17))
+        decoded = self.argument.fromString(encoded)
+        self.assertThat(decoded, Equals(network))

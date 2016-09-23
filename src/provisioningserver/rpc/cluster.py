@@ -25,7 +25,7 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
-    "ScanAllNetworks",
+    "ScanNetworks",
     "ValidateDHCPv4Config",
     "ValidateDHCPv4Config_V2",
     "ValidateDHCPv6Config",
@@ -39,6 +39,7 @@ from provisioningserver.rpc.arguments import (
     Bytes,
     CompressedAmpList,
     IPAddress,
+    IPNetwork,
     ParsedURL,
     StructureAsJSON,
 )
@@ -610,17 +611,44 @@ class AddChassis(amp.Command):
     errors = {}
 
 
-class ScanAllNetworks(amp.Command):
-    """Requests an immediate scan of all attached networks.
+class ScanNetworks(amp.Command):
+    """Requests an immediate scan of attached networks.
 
-    If a scan is already in progress, this call is a no-op.
+    If the `scan_all` parameter is True, scans all subnets on Ethernet
+    interfaces known to the rack controller.
+
+    If the `force_ping` parameter is True, forces the use of `ping` even if
+    `nmap` is installed.
+
+    If the `threads` parameter is supplied, overrides the number of concurrent
+    threads the rack controller is allowed to spawn while scanning the network.
+
+    If the `cidrs` parameter is supplied, scans the specified CIDRs on the
+    rack controller.
+
+    If the `interface` paramter is supplied, limits the scan to the specified
+    interface.
+
+    If both the `cidrs` and the `interface` parameters are supplied, the rack
+    will scan for the specified `cidrs` on the specified interface, no
+    matter if those CIDRs appear to be configured on that interface or not.
+
+    If a scan is already in progress, this call raises a
+    `ScanNetworksAlreadyInProgress` error.
 
     :since: 2.1
     """
-    arguments = []
+    arguments = [
+        (b"scan_all", amp.Boolean(optional=True)),
+        (b"force_ping", amp.Boolean(optional=True)),
+        (b"slow", amp.Boolean(optional=True)),
+        (b"threads", amp.Integer(optional=True)),
+        (b"cidrs", amp.ListOf(IPNetwork(), optional=True)),
+        (b"interface", amp.Unicode(optional=True)),
+    ]
     errors = {
-        exceptions.ScanAllNetworksAlreadyInProgress: (
-            b"ScanAllNetworksAlreadyInProgress"
+        exceptions.ScanNetworksAlreadyInProgress: (
+            b"ScanNetworksAlreadyInProgress"
         )
     }
 

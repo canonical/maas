@@ -72,6 +72,14 @@ def get_mandatory_param(data, key, validator=None):
         return value
 
 
+def _validate_param(key, value, validator):
+    """Validates the spcified `value` using the supplied `validator`."""
+    try:
+        return validator.to_python(value)
+    except Invalid as e:
+        raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
+
+
 def get_optional_param(data, key, default=None, validator=None):
     """Get the optional parameter from the provided data dict if exists.
     If it exists it validates if validator given.
@@ -93,22 +101,23 @@ def get_optional_param(data, key, default=None, validator=None):
     if value is None:
         return default
     if validator is not None:
-        try:
-            return validator.to_python(value)
-        except Invalid as e:
-            raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
-    else:
-        return value
+        value = _validate_param(key, value, validator)
+    return value
 
 
-def get_optional_list(data, key, default=None):
+def get_optional_list(data, key, default=None, validator=None):
     """Get the list from the provided data dict or return a default value.
+
+    Optionally uses the specified `validator`.
     """
-    value = data.getlist(key)
-    if value == []:
+    values = data.getlist(key)
+    if values == []:
         return default
     else:
-        return value
+        if validator is not None:
+            for count, value in enumerate(values):
+                values[count] = _validate_param(key, value, validator)
+        return values
 
 
 def get_list_from_dict_or_multidict(data, key, default=None):

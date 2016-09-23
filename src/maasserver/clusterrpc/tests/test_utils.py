@@ -145,7 +145,7 @@ class TestCallClusters(MAASServerTestCase):
         self.assertThat(timeout_callback, MockNotCalled())
         self.assertThat(
             logger.output, DocTestMatches(
-                "...Failure while communicating with..."))
+                "Exception during ... on rack controller...MockFailure: ..."))
 
     def test__with_timeout_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))

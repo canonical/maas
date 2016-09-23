@@ -14,15 +14,28 @@ from django.http.response import (
     HttpResponseBadRequest,
     HttpResponseForbidden,
 )
-from formencode.validators import StringBool
+from formencode.validators import (
+    CIDR,
+    Number,
+    StringBool,
+)
 from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.api.utils import get_optional_param
+from maasserver.api.utils import (
+    get_optional_list,
+    get_optional_param,
+)
+from maasserver.clusterrpc.utils import (
+    call_racks_synchronously,
+    RPCResults,
+)
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Discovery
+from netaddr import IPNetwork
 from piston3.utils import rc
+from provisioningserver.rpc import cluster
 
 
 DISPLAYED_DISCOVERY_FIELDS = (
@@ -36,11 +49,6 @@ DISPLAYED_DISCOVERY_FIELDS = (
     'vid',
     'observer',
 )
-from maasserver.clusterrpc.utils import (
-    call_racks_synchronously,
-    RPCResults,
-)
-from provisioningserver.rpc import cluster
 
 
 class DiscoveryHandler(OperationsHandler):
@@ -193,37 +201,122 @@ class DiscoveriesHandler(OperationsHandler):
         scan_started_on: A list of rack 'system_id' values where a scan was
         successfully started.
 
-        scan_already_in_progress_on: A list of rack 'system_id' values where
+        scan_failed_on: A list of rack 'system_id' values where
         a scan was attempted, but failed because a scan was already in
         progress.
 
         rpc_call_timed_out_on: A list of rack 'system_id' values where the
         RPC connection was made, but the call timed out before a ten second
         timeout elapsed.
+
+        :param cidr: The subnet CIDR(s) to scan (can be specified multiple
+            times). If not specified, defaults to all networks.
+        :param force: If True, will force the scan, even if all networks are
+            specified. (This may not be the best idea, depending on acceptable
+            use agreements, and the politics of the organization that owns the
+            network.) Default: False.
+        :param always_use_ping: If True, will force the scan to use 'ping' even
+            if 'nmap' is installed. Default: False.
+        :param slow: If True, and 'nmap' is being used, will limit the scan
+            to nine packets per second. If the scanner is 'ping', this option
+            has no effect. Default: False.
+        :param threads: The number of threads to use during scanning. If 'nmap'
+            is the scanner, the default is one thread per 'nmap' process. If
+            'ping' is the scanner, the default is four threads per CPU.
         """
-        return scan_all_rack_networks()
+        cidrs = get_optional_list(
+            request.POST, 'cidr', default=[], validator=CIDR)
+        # The RPC call requires a list of CIDRs.
+        ipnetworks = [IPNetwork(cidr) for cidr in cidrs]
+        force = get_optional_param(
+            request.POST, 'force', default=False, validator=StringBool)
+        always_use_ping = get_optional_param(
+            request.POST, 'always_use_ping', default=False,
+            validator=StringBool)
+        slow = get_optional_param(
+            request.POST, 'slow', default=False, validator=StringBool)
+        threads = get_optional_param(
+            request.POST, 'threads', default=None, validator=Number)
+        if threads is not None:
+            threads = int(threads)  # Could be a floating point.
+        if len(cidrs) == 0 and force is not True:
+            error = (
+                "Bad request: scanning all subnets is not allowed unless "
+                "force=True is specified.\n\n**WARNING: This will scan ALL "
+                "networks attached to MAAS rack controllers.\nCheck with your "
+                "internet service provider or IT department to be sure this "
+                "is\nallowed before proceeding.**\n")
+            return HttpResponseBadRequest(
+                content_type="text/plain", content=error)
+        elif len(cidrs) == 0 and force is True:
+            # No CIDRs specified and force==True, so scan all networks.
+            return scan_all_rack_networks(
+                scan_all=True, ping=always_use_ping, slow=slow,
+                threads=threads)
+        else:
+            return scan_all_rack_networks(
+                cidrs=ipnetworks, ping=always_use_ping, slow=slow,
+                threads=threads)
 
 
 def interpret_scan_all_rack_networks_rpc_results(
         rpc_results: RPCResults) -> str:
-    """Return a human-readable string with the results of `ScanAllNetworks`."""
+    """Return a human-readable string with the results of `ScanNetworks`."""
     if len(rpc_results.available) == 0:
         result = (
             "Unable to initiate network scanning on any rack controller. "
             "Verify that the rack controllers are started and have "
             "connected to the region.")
     elif len(rpc_results.unavailable) > 0:
-        result = (
-            "Scanning could not be started on %d rack controller(s). "
-            "Verify that all rack controllers are connected to the "
-            "region." % len(rpc_results.unavailable))
+        if len(rpc_results.failed) == 0:
+            result = (
+                "Scanning could not be started on %d rack controller(s). "
+                "Verify that all rack controllers are connected to the "
+                "region." % len(rpc_results.unavailable))
+        else:
+            result = (
+                "Scanning could not be started on %d rack controller(s). "
+                "Verify that all rack controllers are connected to the "
+                "region. In addition, a scan was already in-progress on %d "
+                "rack controller(s); another scan cannot be started until the "
+                "current scan finishes." % (
+                    len(rpc_results.unavailable), len(rpc_results.failed)))
+    elif len(rpc_results.failed) == 0:
+            result = "Scanning is in-progress on all rack controllers."
     else:
-        result = "Scanning is in-progress on all rack controllers."
+        result = (
+            "A scan was already in-progress on %d rack controller(s); another "
+            "scan cannot be started until the current scan finishes." % (
+                len(rpc_results.failed))
+        )
     return result
 
 
-def scan_all_rack_networks() -> dict:
-    """Call each rack and instruct it to scan all attached networks.
+def get_failure_summary(failures):
+    """Returns a list of dictionaries summarizing each `Failure`."""
+    return [
+        {
+            'type': failure.type.__name__,
+            'message': str(failure.value),
+        }
+        for failure in failures
+    ]
+
+
+def get_controller_summary(controllers):
+    """Return a list of dictionaries summarizing each controller."""
+    return [
+        {
+            'system_id': controller.system_id,
+            'hostname': controller.hostname,
+        }
+        for controller in controllers
+    ]
+
+
+def scan_all_rack_networks(
+        scan_all=None, cidrs=None, ping=None, threads=None, slow=None) -> dict:
+    """Call each rack controller and instruct it to scan its attached networks.
 
     Interprets the results and returns a dict with the following keys:
         result: A human-readable string summarizing the results.
@@ -234,7 +327,7 @@ def scan_all_rack_networks() -> dict:
             RPC connection failed.
         scan_started_on: A list of rack `system_id` values where a scan
             was successfully started.
-        scan_already_in_progress_on: A list of rack `system_id` values where
+        scan_failed_on: A list of rack `system_id` values where
             a scan was attempted, but failed because a scan was already in
             progress.
         rpc_call_timed_out_on: A list of rack `system_id` values where the
@@ -244,27 +337,42 @@ def scan_all_rack_networks() -> dict:
     This function is intended to be used directly by the API and websocket
     layers, so must return a dict that is safe to encode to JSON.
 
+    :param cidrs: An iterable of netaddr.IPNetwork objects to instruct the
+        rack controllers to scan. If omitted, the rack will scan all of its
+        attached networks.
     :return: dict
     """
-    rpc_results = call_racks_synchronously(cluster.ScanAllNetworks)
+    kwargs = {}
+    if scan_all is not None:
+        kwargs['scan_all'] = scan_all
+    if cidrs is not None:
+        kwargs['cidrs'] = cidrs
+    if ping is not None:
+        kwargs['force_ping'] = ping
+    if threads is not None:
+        kwargs['threads'] = threads
+    if slow is not None:
+        kwargs['slow'] = slow
+    rpc_results = call_racks_synchronously(cluster.ScanNetworks, kwargs=kwargs)
     result = interpret_scan_all_rack_networks_rpc_results(rpc_results)
     # WARNING: This method returns a dictionary which is directly used in the
     # result of a MAAS API call. Keys returned in this dictionary cannot be
     # renamed or removed, and (values cannot be repurposed) without breaking
     # API backward compatibility.
-    return {
+    results = {
         "result": result,
         "scan_started_on":
-            [rack.system_id for rack in rpc_results.success],
-        # Note that failure can only mean one thing: that the scan is
-        # already in progress.
-        "scan_already_in_progress_on":
-            [rack.system_id for rack in rpc_results.failed],
+            get_controller_summary(rpc_results.success),
+        "scan_failed_on":
+            get_controller_summary(rpc_results.failed),
         "scan_attempted_on":
-            [rack.system_id for rack in rpc_results.available],
+            get_controller_summary(rpc_results.available),
         "failed_to_connect_to":
-            [rack.system_id for rack in rpc_results.unavailable],
+            get_controller_summary(rpc_results.unavailable),
         # This is very unlikely to happen, but it's here just in case.
         "rpc_call_timed_out_on":
-            [rack.system_id for rack in rpc_results.timeout]
+            get_controller_summary(rpc_results.timeout),
+        "failures":
+            get_failure_summary(rpc_results.failures),
     }
+    return results

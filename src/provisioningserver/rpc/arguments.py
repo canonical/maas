@@ -176,3 +176,30 @@ class IPAddress(amp.Argument):
         address = int.from_bytes(inString, "big")
         version = 4 if len(inString) == 4 else 6
         return netaddr.IPAddress(address, version)
+
+
+class IPNetwork(amp.Argument):
+    """Encode a `netaddr.IPNetwork` object on the wire."""
+
+    def toString(self, inObject):
+        length = 4 if inObject.version == 4 else 16
+        return (
+            inObject.cidr.value.to_bytes(length, "big") +
+            inObject.prefixlen.to_bytes(1, "big")
+        )
+
+    def fromString(self, inString):
+        # Compared to sending an IPAddress over the wire, we need to account
+        # for one extra byte for the prefix length.
+        if len(inString) == 5:
+            version = 4
+            address_length = 4
+        else:
+            version = 6
+            address_length = 16
+        address = int.from_bytes(inString[:address_length], "big")
+        prefixlen = int.from_bytes(inString[address_length:], "big")
+        network = netaddr.IPNetwork(
+            netaddr.IPAddress(address, version=version))
+        network.prefixlen = prefixlen
+        return network

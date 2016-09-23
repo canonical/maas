@@ -141,14 +141,39 @@ def catch_probe_and_enlist_error(name, failure):
     return None
 
 
-def get_scan_all_networks_args():
+def get_scan_all_networks_args(
+        scan_all=False, force_ping=False, threads=None, cidrs=None, slow=False,
+        interface=None):
     """Return the arguments needed to perform a scan of all networks.
 
     The output of this function is suitable for passing into a call
     to `subprocess.Popen()`.
+
+    :param cidrs: an iterable of CIDR strings
     """
     args = sudo([get_maas_provision_command(), 'scan-network'])
-    binary_args = [arg.encode(sys.getfilesystemencoding()) for arg in args]
+    if threads is not None:
+        args.extend(["--threads", str(threads)])
+    if force_ping:
+        args.append("--ping")
+    if slow:
+        args.append("--slow")
+    # None of these parameters are relevant if we are scanning everything...
+    if not scan_all:
+        # ... but force the caller to be explicit about scanning all networks.
+        # Keep track of the original length of `args` to make sure we add at
+        # least one argument.
+        original_args_length = len(args)
+        if interface is not None:
+            args.append(interface)
+        if cidrs is not None:
+            args.extend(str(cidr) for cidr in cidrs)
+        assert original_args_length != len(args), (
+            "Invalid scan parameters. Must specify cidrs or interface if not "
+            "using scan_all."
+        )
+    binary_args = [
+        arg.encode(sys.getfilesystemencoding()) for arg in args]
     return binary_args
 
 
@@ -173,7 +198,9 @@ def spawnProcessAndNullifyStdout(protocol, args):
             env=select_c_utf8_bytes_locale())
 
 
-def executeScanAllNetworksSubprocess():
+def executeScanNetworksSubprocess(
+        scan_all=False, force_ping=False, slow=False, threads=None, cidrs=None,
+        interface=None):
     """Runs the network scanning subprocess.
 
     Redirects stdout and stderr in the subprocess to /dev/null. Leaves
@@ -181,6 +208,8 @@ def executeScanAllNetworksSubprocess():
 
     Returns the `reason` (see `ProcessProtocol.processEnded`) from the
     scan process after waiting for it to complete.
+
+    :param cidrs: A list of CIDR strings to run neighbour scans on.
     """
     done, protocol = makeDeferredWithProcessProtocol()
     # Technically this is not guaranteed to be a string containing just
@@ -189,7 +218,9 @@ def executeScanAllNetworksSubprocess():
     # own command.)
     protocol.errReceived = lambda data: (
         log.msg("Scan all networks: " + data.decode("utf-8")))
-    args = get_scan_all_networks_args()
+    args = get_scan_all_networks_args(
+        scan_all=scan_all, force_ping=force_ping, slow=slow, threads=threads,
+        cidrs=cidrs, interface=interface)
     spawnProcessAndNullifyStdout(protocol, args)
     return done
 
@@ -560,24 +591,30 @@ class Cluster(RPCProtocol):
             maaslog.error(message)
         return {}
 
-    @cluster.ScanAllNetworks.responder
-    def scan_all_networks(self):
-        """ScanAllNetworks()
+    @cluster.ScanNetworks.responder
+    def scan_all_networks(
+            self, scan_all=False, force_ping=False, slow=False, threads=None,
+            cidrs=None, interface=None):
+        """ScanNetworks()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ScanAllNetworks`.
+        :py:class:`~provisioningserver.rpc.cluster.ScanNetworks`.
         """
-        lock = NamedLock('scan-all-networks')
+        lock = NamedLock('scan-networks')
         try:
             lock.acquire()
         except lock.NotAvailable:
             # Scan is already running; don't do anything.
-            raise exceptions.ScanAllNetworksAlreadyInProgress()
+            raise exceptions.ScanNetworksAlreadyInProgress(
+                "Only one concurrent network scan is allowed.")
         else:
             # The lock *must* be released, so put on the paranoid hat here and
             # use maybeDeferred to make sure that errors all trigger the call
             # to lock.release.
-            d = maybeDeferred(executeScanAllNetworksSubprocess)
+            d = maybeDeferred(
+                executeScanNetworksSubprocess, scan_all=scan_all,
+                force_ping=force_ping, slow=slow, cidrs=cidrs, threads=threads,
+                interface=interface)
             d.addErrback(Failure.trap, ProcessDone)  # Exited normally.
             d.addErrback(log.err, 'Failed to scan all networks.')
             d.addBoth(callOut, lock.release)

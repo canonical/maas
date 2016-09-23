@@ -23,11 +23,18 @@ from twisted.python.failure import Failure
 
 RPCResults = namedtuple(
     'CallResults', (
-        'results', 'available', 'unavailable', 'success', 'failed', 'timeout'))
+        'results',
+        'failures',
+        'available',
+        'unavailable',
+        'success',
+        'failed',
+        'timeout',
+    ))
 
 
 def call_racks_synchronously(
-        command, timeout=10, controllers=None):
+        command, *, kwargs=None, timeout=10, controllers=None):
     """Calls the specified RPC command on each rack controller synchronously.
 
     Collects the results into a list, then returns a `RPCResults` namedtuple
@@ -37,22 +44,27 @@ def call_racks_synchronously(
     Blocks for up to `timeout` seconds in order to connect to each rack
     controller and await the result of the call. (Therefore, this function
     should only be used when calling RPC methods which return immediately.)
+
+    If a dictionary of `kwargs` is specified, those arguments will be passed
+    to the specified command.
     """
     available_racks = []
     unavailable_racks = []
     successful_racks = []
     failed_racks = []
     timed_out_racks = []
+    failures = []
     results = list(call_clusters(
-        command, timeout=timeout, controllers=controllers,
+        command, kwargs=kwargs, timeout=timeout, controllers=controllers,
         available_callback=available_racks.append,
         unavailable_callback=unavailable_racks.append,
         success_callback=successful_racks.append,
         failed_callback=failed_racks.append,
+        failure_callback=failures.append,
         timeout_callback=timed_out_racks.append))
     return RPCResults(
-        results, available_racks, unavailable_racks, successful_racks,
-        failed_racks, timed_out_racks)
+        results, failures, available_racks, unavailable_racks,
+        successful_racks, failed_racks, timed_out_racks)
 
 
 def _none(_):
@@ -61,9 +73,10 @@ def _none(_):
 
 
 def call_clusters(
-        command, timeout=10, controllers=None, ignore_errors=True,
-        available_callback=_none, unavailable_callback=_none,
-        success_callback=_none, failed_callback=_none, timeout_callback=_none):
+        command, *, kwargs=None, timeout=10, controllers=None,
+        ignore_errors=True, available_callback=_none,
+        unavailable_callback=_none, success_callback=_none,
+        failed_callback=_none, failure_callback=_none, timeout_callback=_none):
     """Make an RPC call to all rack controllers in parallel.
 
     Includes optional callbacks to report the status of the call for each
@@ -81,16 +94,20 @@ def call_clusters(
     :param command: An :class:`amp.Command` to call on the clusters.
     :param ignore_errors: If True, errors encountered whilst calling
         `command` on the clusters won't raise an exception.
-    :param available_callback: Optional callback; called when an RPC
-        connection to the controller was established.
-    :param unavailable_callback: Optional callback; called when an RPC
-        connection to the controller failed to be established.
-    :param success_callback: Optional callback; called when the RPC call
-        was a success and this method is about to yield the result.
-    :param failed_callback: Optional callback; called if the RPC call
-        fails with a well-known exception.
+    :param available_callback: Optional callback; called with the controller
+        when an RPC connection to the controller was established.
+    :param unavailable_callback: Optional callback; called with the controller
+        when an RPC connection to the controller failed to be established.
+    :param success_callback: Optional callback; called with the controller
+        when the RPC call was a success and this method is about to yield the
+        result.
+    :param failed_callback: Optional callback; called with the controller if
+        the RPC call fails.
+    :param failure_callback: Optional callback; called with the `Failure`
+        object if the RPC call fail with a well-known exception.
     :param timeout_callback: Optional callback; called if the RPC call
         fails with a timeout.
+    :param kwargs: Optional keyword arguments to pass to the command
     :return: A generator of results, i.e. the dicts returned by the RPC
         call.
     :raises: :py:class:`ClusterUnavailable` when a cluster is not
@@ -100,6 +117,8 @@ def call_clusters(
     # Get the name of the RPC function for logging purposes. Each RPC function
     # is enacapsulated in a `class`, so should have a corresponding `__name__`.
     # However, we don't want to crash if that isn't the case.
+    if kwargs is None:
+        kwargs = {}
     command_name = (
         command.commandName.decode("ascii") if hasattr(command, 'commandName')
         else "<unknown>")
@@ -127,7 +146,7 @@ def call_clusters(
                 "call_clusters() must not be called in the reactor thread. "
                 "You probably want to use deferToDatabase().")
             available_callback(controller)
-            call = partial(client, command)
+            call = partial(client, command, **kwargs)
             calls[call] = controller
 
     for call, response in async.gatherCallResults(calls, timeout=timeout):
@@ -137,16 +156,24 @@ def call_clusters(
         controller = calls[call]
         del calls[call]
         if isinstance(response, Failure):
-            logger.error(
-                "Error while calling %s: Failure while communicating with "
-                "rack controller: %s (%s)", command_name,
-                controller.hostname, controller.system_id)
-            logger.error(response.getTraceback())
+            # Create a nice message for logging purposes. We can rely on
+            # the 'type' ivar being filled in with the Exception type in a
+            # Failure object, so use that to get a nice version of the name.
+            exception_class = response.type.__name__
+            error = str(response.value).strip()
+            if len(error) > 0:
+                error = ": " + error
+            human_readable_error = (
+                "Exception during %s() on rack controller '%s' (%s): %s%s" % (
+                    command_name, controller.hostname, controller.system_id,
+                    exception_class, error))
+            logger.warn(human_readable_error)
+            # For failures, there are two callbacks: one for the controller
+            # that failed, the second for the specific failure that occurred.
             failed_callback(controller)
+            failure_callback(response)
             if not ignore_errors:
-                raise ClusterUnavailable(
-                    "Failure while communicating with rack controller: "
-                    "%s (%s)." % (controller.hostname, controller.system_id))
+                raise ClusterUnavailable(human_readable_error)
         else:
             success_callback(controller)
             yield response

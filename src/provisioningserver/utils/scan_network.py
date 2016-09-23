@@ -401,14 +401,19 @@ def scan_networks(args, to_scan, stderr, stdout):
     use_nmap = has_command_available('nmap')
     use_ping = args.ping
     if use_nmap and not use_ping:
+        tool = 'nmap'
         scanner = nmap_scan(to_scan, slow=args.slow, threads=args.threads)
+        count = 0
         for count, event in enumerate(scanner, 1):
             write_event(event, stdout)
         clock_diff = time.monotonic() - clock
-        stderr.write(
-            "%d scan(s) completed in %d second(s).\n" % (count, clock_diff))
-        stderr.flush()
+        if count > 0:
+            stderr.write(
+                "%d nmap scan(s) completed in %d second(s).\n" % (
+                    count, clock_diff))
+            stderr.flush()
     else:
+        tool = 'ping'
         # For a ping scan, we can easily get a count of the number of hosts,
         # and whether or not the ping was successful. It will be printed to
         # stderr for informational purposes.
@@ -420,10 +425,12 @@ def scan_networks(args, to_scan, stderr, stdout):
                 hosts += 1
             write_event(event, stdout)
         clock_diff = time.monotonic() - clock
-        stderr.write(
-            "Scanned %d hosts (%d up) in %d second(s).\n" % (
-                count, hosts, clock_diff))
-        stderr.flush()
+        if count > 0:
+            stderr.write(
+                "Pinged %d hosts (%d up) in %d second(s).\n" % (
+                    count, hosts, clock_diff))
+            stderr.flush()
+    return {"count": count, "tool": tool, "seconds": clock_diff}
 
 
 def run(args, stdout=sys.stdout, stderr=sys.stderr):
@@ -459,4 +466,8 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
         # user if they requested to scan a CIDR that doesn't exist.
         warn_about_missing_cidrs(ifname_to_scan, cidrs, interfaces, stderr)
 
-    scan_networks(args, to_scan, stderr, stdout)
+    result = scan_networks(args, to_scan, stderr, stdout)
+    if result['count'] == 0:
+        stderr.write("Requested network(s) not available to scan: %s\n" % (
+            ", ".join(cidrs) if len(cidrs) > 0 else ifname_to_scan))
+        stderr.flush()

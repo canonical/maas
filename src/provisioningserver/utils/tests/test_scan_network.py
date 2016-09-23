@@ -200,7 +200,7 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         # Force the use of `ping` even if `nmap` is installed.
         self.run_command('--ping', 'eth1', '192.168.0.0/24')
         self.assertThat(self.error_output.getvalue(), DocTestMatches(
-            "Scanned...hosts...second..."))
+            "Pinged...hosts...second..."))
 
     def test__runs_ping_e2e_prints_warning_for_unknown_cidr(self):
         self.popen.return_value.returncode = 1
@@ -257,6 +257,11 @@ class TestScanNetworkCommandEndToEnd(MAASTestCase):
         self.run_command(*args)
         self.assertThat(self.error_output.getvalue(), DocTestMatches(
             "...scan...completed...second..."))
+
+    def test__prints_error_for_missing_cidr(self):
+        self.run_command('8.8.8.0/24')
+        self.assertThat(self.error_output.getvalue(), DocTestMatches(
+            "Requested network(s) not available to scan:..."))
 
 
 class TestRunPing(MAASTestCase):

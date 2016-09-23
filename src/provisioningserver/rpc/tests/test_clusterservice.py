@@ -43,6 +43,7 @@ from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
 )
+from netaddr import IPNetwork
 from provisioningserver import (
     concurrency,
     power as power_module,
@@ -84,7 +85,7 @@ from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
-    executeScanAllNetworksSubprocess,
+    executeScanNetworksSubprocess,
     get_scan_all_networks_args,
     PatchedURI,
     spawnProcessAndNullifyStdout,
@@ -2206,47 +2207,48 @@ class TestClusterProtocol_Refresh(MAASTestCase):
             }, response)
 
 
-class TestClusterProtocol_ScanAllNetworks(MAASTestCase):
+class TestClusterProtocol_ScanNetworks(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.ScanAllNetworks.commandName)
+            cluster.ScanNetworks.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test__raises_refresh_already_in_progress_when_locked(self):
-        with NamedLock('scan-all-networks'):
+        with NamedLock('scan-networks'):
             with ExpectedException(
-                    exceptions.ScanAllNetworksAlreadyInProgress):
+                    exceptions.ScanNetworksAlreadyInProgress):
                 yield call_responder(
-                    Cluster(), cluster.ScanAllNetworks, {})
+                    Cluster(), cluster.ScanNetworks, {'scan_all': True})
 
     @inlineCallbacks
     def test__acquires_lock_when_scanning_releases_when_done(self):
         def mock_scan(*args, **kwargs):
-            lock = NamedLock('scan-all-networks')
+            lock = NamedLock('scan-networks')
             self.assertTrue(lock.is_locked())
         self.patch(
-            clusterservice, 'executeScanAllNetworksSubprocess', mock_scan)
+            clusterservice, 'executeScanNetworksSubprocess', mock_scan)
 
-        yield call_responder(Cluster(), cluster.ScanAllNetworks, {})
+        yield call_responder(Cluster(), cluster.ScanNetworks, {
+            'scan_all': True})
 
-        lock = NamedLock('scan-all-networks')
+        lock = NamedLock('scan-networks')
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
     def test__releases_on_error(self):
         exception = factory.make_exception()
         mock_scan = self.patch(
-            clusterservice, 'executeScanAllNetworksSubprocess')
+            clusterservice, 'executeScanNetworksSubprocess')
         mock_scan.side_effect = exception
 
         with TwistedLoggerFixture() as logger:
             yield call_responder(
-                Cluster(), cluster.ScanAllNetworks, {})
+                Cluster(), cluster.ScanNetworks, {'scan_all': True})
 
         # The failure is logged
         self.assertDocTestMatches(
@@ -2260,7 +2262,7 @@ class TestClusterProtocol_ScanAllNetworks(MAASTestCase):
         )
 
         # The lock is released
-        lock = NamedLock('scan-all-networks')
+        lock = NamedLock('scan-networks')
         self.assertFalse(lock.is_locked())
 
     @inlineCallbacks
@@ -2269,16 +2271,61 @@ class TestClusterProtocol_ScanAllNetworks(MAASTestCase):
             clusterservice, 'maybeDeferred')
         mock_maybeDeferred.side_effect = (succeed(None),)
 
-        yield call_responder(Cluster(), cluster.ScanAllNetworks, {})
+        yield call_responder(Cluster(), cluster.ScanNetworks, {
+            'scan_all': True})
 
         self.assertThat(
             mock_maybeDeferred, MockCalledOnceWith(
-                clusterservice.executeScanAllNetworksSubprocess))
+                clusterservice.executeScanNetworksSubprocess,
+                cidrs=None, force_ping=None, interface=None, scan_all=True,
+                slow=None, threads=None))
+
+    def test_get_scan_all_networks_args_asserts_for_invalid_config(self):
+        with ExpectedException(AssertionError, "Invalid scan parameters.*"):
+            get_scan_all_networks_args()
 
     def test_get_scan_all_networks_args_returns_expected_binary_args(self):
-        args = get_scan_all_networks_args()
+        args = get_scan_all_networks_args(scan_all=True)
         self.assertThat(args, Equals(
             [get_maas_provision_command().encode('utf-8'), b'scan-network']
+        ))
+
+    def test_get_scan_all_networks_args_returns_supplied_cidrs(self):
+        args = get_scan_all_networks_args(cidrs=[
+            IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
+        self.assertThat(args, Equals([
+            get_maas_provision_command().encode('utf-8'),
+            b'scan-network',
+            b'192.168.0.0/24',
+            b'192.168.1.0/24'
+            ]
+        ))
+
+    def test_get_scan_all_networks_args_returns_supplied_interface(self):
+        args = get_scan_all_networks_args(interface='eth0')
+        self.assertThat(args, Equals([
+            get_maas_provision_command().encode('utf-8'),
+            b'scan-network',
+            b'eth0'
+        ]
+        ))
+
+    def test_get_scan_all_networks_with_all_optional_arguments(self):
+        threads = random.randint(1, 10)
+        args = get_scan_all_networks_args(
+            scan_all=False, slow=True, threads=threads, force_ping=True,
+            interface='eth0', cidrs=[
+                IPNetwork('192.168.0.0/24'), IPNetwork('192.168.1.0/24')])
+        self.assertThat(args, Equals([
+            get_maas_provision_command().encode('utf-8'),
+            b'scan-network',
+            b'--threads', str(threads).encode('utf-8'),
+            b'--ping',
+            b'--slow',
+            b'eth0',
+            b'192.168.0.0/24',
+            b'192.168.1.0/24'
+        ]
         ))
 
     @inlineCallbacks
@@ -2302,12 +2349,12 @@ class TestClusterProtocol_ScanAllNetworks(MAASTestCase):
         self.assertThat(errReceived, MockCalledOnceWith(b'foo\n'))
 
     @inlineCallbacks
-    def test_executeScanAllNetworksSubprocess(self):
+    def test_executeScanNetworksSubprocess(self):
         mock_scan_args = self.patch(
             clusterservice, 'get_scan_all_networks_args')
         mock_scan_args.return_value = [b"/bin/sh", b'-c', b"echo -n foo >&2"]
         mock_log_msg = self.patch(clusterservice.log, 'msg')
-        d = executeScanAllNetworksSubprocess()
+        d = executeScanNetworksSubprocess()
         yield d
         self.assertThat(
             mock_log_msg, MockCalledOnceWith('Scan all networks: foo'))
