@@ -47,7 +47,8 @@ class TestBMC(MAASServerTestCase):
             power_type="virsh",
             power_parameters={
                 'power_address':
-                "protocol://%s:8080/path/to/thing#tag" % machine_ip.ip})
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.ip_to_url_format(machine_ip.ip))})
         # Make sure they're sharing an IP.
         machine = reload_object(machine)
         machine_ip_addr = TestBMC.get_machine_ip_address(machine)
@@ -74,7 +75,8 @@ class TestBMC(MAASServerTestCase):
             power_type="virsh",
             power_parameters={
                 'power_address':
-                "protocol://%s:8080/path/to/thing#tag" % bmc_ip})
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.ip_to_url_format(bmc_ip))})
         # Make sure they're not sharing an IP.
         machine = reload_object(machine)
         machine_ip_addr = TestBMC.get_machine_ip_address(machine)
@@ -87,7 +89,8 @@ class TestBMC(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
         power_parameters = {
             'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % sticky_ip.ip,
+            "protocol://%s:8080/path/to/thing#tag" % (
+                factory.ip_to_url_format(sticky_ip.ip)),
         }
         bmc = factory.make_BMC(
             power_type="virsh", power_parameters=power_parameters)
@@ -98,7 +101,7 @@ class TestBMC(MAASServerTestCase):
         ip = factory.make_ipv4_address()
         power_parameters = {
             'power_address':
-            "protocol://%s:8080/path#tag" % ip,
+            "protocol://%s:8080/path#tag" % factory.ip_to_url_format(ip),
         }
         bmc = factory.make_BMC(
             power_type="virsh", power_parameters=power_parameters)
@@ -110,7 +113,8 @@ class TestBMC(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
         bmc.power_parameters = {
             'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % sticky_ip.ip,
+            "protocol://%s:8080/path/to/thing#tag" % (
+                factory.ip_to_url_format(sticky_ip.ip)),
         }
         bmc.save()
         self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
@@ -187,7 +191,8 @@ class TestBMC(MAASServerTestCase):
 
         bmc.power_parameters = {
             'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % new_ip}
+            "protocol://%s:8080/path/to/thing#tag" % (
+                factory.ip_to_url_format(new_ip))}
         bmc.save()
 
         # Check Machine has old IP address and kept same instance: machine_ip.
@@ -222,7 +227,8 @@ class TestBMC(MAASServerTestCase):
         # Now change the BMC's address to match machine's.
         bmc.power_parameters = {
             'power_address':
-            "protocol://%s:8080/path/to/thing#tag" % machine_ip.ip}
+            "protocol://%s:8080/path/to/thing#tag" % (
+                factory.ip_to_url_format(machine_ip.ip))}
         bmc.save()
 
         # Make sure BMC and Machine are using same StaticIPAddress instance.

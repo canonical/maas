@@ -31,10 +31,24 @@ class IP_EXTRACTOR_PATTERNS:
     IDENTITY = '^(?P<address>.+?)$'
 
     # The typical URL pattern. Extracts address field as the value.
+    # The given URL has an address component that is one of:
+    # (1) an IPv6 IP address surrounded by []
+    # (2) an IPv4 IP address (no [])
+    # (3) a name
+    # (4) the empty string.
+    # Cases 2 and 3 are processed in the regex by excluding all []/: from the
+    # allowed values.  The need to verify the [] around the IPv6 IP address
+    # introduces a goodly amount of complexity due to looking forward/backward
+    # to determine if [] is ok/expected.
+    # The resulting address is simply the IP address (v6 or v4), or a hostname.
     URL = (r'^'
            r'((?P<schema>.+?)://)?'
            r'((?P<user>.+?)(:(?P<password>.*?))?@)?'
-           r'(?P<address>.*?)'
+
+           r'(?:\[(?=[0-9a-fA-F]*:[0-9a-fA-F.:]+\]))?'
+           r'(?P<address>(?:(?:[^\[\]/:]*(?!\]))|'
+           r'(?:(?<=\[)[0-9a-fA-F:.]+(?=\]))))\]?'
+
            r'(:(?P<port>\d+?))?'
            r'(?P<path>/.*?)?'
            r'(?P<query>[?].*?)?'

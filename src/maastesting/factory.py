@@ -211,6 +211,15 @@ class Factory:
                     return vlan_tag
             raise TooManyRandomRetries("Could not find an available VLAN tag.")
 
+    def ip_to_url_format(self, ip):
+        # We return either '[ip:v6:address]' or 'a.b.c.d' depending on the
+        # family of the IP Address.
+        ip_addr = IPAddress(ip)
+        if ip_addr.version == 6:
+            return "[%s]" % str(ip_addr)
+        else:
+            return "%s" % str(ip_addr)
+
     def make_ipv4_address(self):
         octets = list(islice(self.random_octets, 4))
         if octets[0] == 0:
