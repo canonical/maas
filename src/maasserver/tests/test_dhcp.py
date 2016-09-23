@@ -65,10 +65,15 @@ from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
+    AllMatch,
     ContainsAll,
+    ContainsDict,
     Equals,
+    HasLength,
     IsInstance,
+    MatchesAll,
     MatchesStructure,
+    Not,
 )
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
@@ -604,6 +609,93 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
             dhcp.get_ip_address_for_rack_controller(rack_controller, vlan))
 
 
+class TestGetNTPServerAddressesForRack(MAASServerTestCase):
+    """Tests for `get_ntp_server_addresses_for_rack`."""
+
+    def test__returns_empty_dict_for_unconnected_rack(self):
+        rack = factory.make_RackController()
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack),
+            Equals({}))
+
+    def test__returns_dict_with_rack_addresses(self):
+        rack = factory.make_RackController()
+        space = factory.make_Space()
+        subnet = factory.make_Subnet(space=space)
+        interface = factory.make_Interface(node=rack)
+        address = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({
+                (space.id, subnet.get_ipnetwork().version): address.ip,
+            }))
+
+    def test__returns_dict_grouped_by_space_and_address_family(self):
+        rack = factory.make_RackController()
+        space1 = factory.make_Space()
+        space2 = factory.make_Space()
+        subnet1 = factory.make_Subnet(space=space1)
+        subnet2 = factory.make_Subnet(space=space2)
+        interface = factory.make_Interface(node=rack)
+        address1 = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        address2 = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({
+                (space1.id, subnet1.get_ipnetwork().version): address1.ip,
+                (space2.id, subnet2.get_ipnetwork().version): address2.ip,
+            }))
+
+    def test__returned_dict_chooses_minimum_address(self):
+        rack = factory.make_RackController()
+        space = factory.make_Space()
+        cidr = factory.make_ip4_or_6_network(host_bits=16)
+        subnet = factory.make_Subnet(space=space, cidr=cidr)
+        interface = factory.make_Interface(node=rack)
+        addresses = {
+            factory.make_StaticIPAddress(
+                interface=interface, subnet=subnet,
+                alloc_type=IPADDRESS_TYPE.STICKY)
+            for _ in range(10)
+        }
+
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({
+                (space.id, subnet.get_ipnetwork().version): min(
+                    (address.ip for address in addresses), key=IPAddress),
+            }))
+
+    def test__constant_query_count(self):
+        rack = factory.make_RackController()
+        interface = factory.make_Interface(node=rack)
+
+        count, result = count_queries(
+            dhcp.get_ntp_server_addresses_for_rack, rack)
+        self.assertThat(count, Equals(1))
+        self.assertThat(result, Equals({}))
+
+        for _ in (1, 2):
+            space = factory.make_Space()
+            for family in (4, 6):
+                cidr = factory.make_ip4_or_6_network(family, host_bits=8)
+                subnet = factory.make_Subnet(space=space, cidr=cidr)
+                for _ in (1, 2):
+                    factory.make_StaticIPAddress(
+                        interface=interface, subnet=subnet,
+                        alloc_type=IPADDRESS_TYPE.STICKY)
+
+        count, result = count_queries(
+            dhcp.get_ntp_server_addresses_for_rack, rack)
+        self.assertThat(count, Equals(1))
+        self.assertThat(result, Not(Equals({})))
+
+
 class TestMakeSubnetConfig(MAASServerTestCase):
     """Tests for `make_subnet_config`."""
 
@@ -659,7 +751,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             rack_controller, subnet, maas_dns, ntp_servers, default_domain)
         self.assertThat(config['dns_servers'], Equals([IPAddress(maas_dns)]))
 
-    def test__sets_ntp_from_arguments(self):
+    def test__sets_ntp_from_list_argument(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
@@ -670,6 +762,34 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, "", ntp_servers, default_domain)
         self.expectThat(config['ntp_servers'], Equals(ntp_servers))
+
+    def test__sets_ntp_from_empty_dict_argument(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, "", {}, default_domain)
+        self.expectThat(config['ntp_servers'], Equals([]))
+
+    def test__sets_ntp_from_dict_argument(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        address = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        ntp_servers = {
+            (subnet.space_id, subnet.get_ipnetwork().version): address.ip,
+        }
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, "", ntp_servers, default_domain)
+        self.expectThat(config['ntp_servers'], Equals([address.ip]))
 
     def test__overrides_ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1400,6 +1520,70 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         self.assertItemsEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)
+
+
+class TestGetDHCPConfiguration(MAASServerTestCase):
+    """Tests for `get_dhcp_configuration`."""
+
+    def make_RackController_ready_for_DHCP(self):
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        subnet4 = factory.make_Subnet(
+            vlan=vlan, cidr="10.20.30.0/24")
+        subnet6 = factory.make_Subnet(
+            vlan=vlan, cidr="fd38:c341:27da:c831::/64")
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+        address4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet4,
+            interface=interface)
+        address6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet6,
+            interface=interface)
+        return rack, (address4, address6)
+
+    def assertHasConfigurationForNTP(
+            self, shared_network, subnet, ntp_servers):
+        self.assertThat(
+            shared_network, MatchesAll(
+                # Quick-n-dirty: match only one shared network.
+                HasLength(1), AllMatch(ContainsDict({
+                    "subnets": MatchesAll(
+                        # Quick-n-dirty: match only one subnet.
+                        HasLength(1), AllMatch(ContainsDict({
+                            "subnet_cidr": Equals(subnet.cidr),
+                            "ntp_servers": Equals(ntp_servers),
+                        })),
+                    ),
+                })),
+            )
+        )
+
+    def test__uses_global_ntp_servers_when_ntp_external_only_is_set(self):
+        ntp_servers = [factory.make_hostname(), factory.make_ip_address()]
+        Config.objects.set_config("ntp_servers", ", ".join(ntp_servers))
+        Config.objects.set_config("ntp_external_only", True)
+
+        rack, (addr4, addr6) = self.make_RackController_ready_for_DHCP()
+        config = dhcp.get_dhcp_configuration(rack)
+
+        self.assertHasConfigurationForNTP(
+            config.shared_networks_v4, addr4.subnet, ntp_servers)
+        self.assertHasConfigurationForNTP(
+            config.shared_networks_v6, addr6.subnet, ntp_servers)
+
+    def test__finds_per_subnet_addresses_when_ntp_external_only_not_set(self):
+        ntp_servers = [factory.make_hostname(), factory.make_ip_address()]
+        Config.objects.set_config("ntp_servers", ", ".join(ntp_servers))
+        Config.objects.set_config("ntp_external_only", False)
+
+        rack, (addr4, addr6) = self.make_RackController_ready_for_DHCP()
+        config = dhcp.get_dhcp_configuration(rack)
+
+        self.assertHasConfigurationForNTP(
+            config.shared_networks_v4, addr4.subnet, [addr4.ip])
+        self.assertHasConfigurationForNTP(
+            config.shared_networks_v6, addr6.subnet, [addr6.ip])
 
 
 class TestConfigureDHCP(MAASTransactionServerTestCase):

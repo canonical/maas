@@ -12,8 +12,12 @@ from collections import (
     defaultdict,
     namedtuple,
 )
+from itertools import groupby
 from operator import itemgetter
-from typing import Iterable
+from typing import (
+    Iterable,
+    Union,
+)
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -43,7 +47,10 @@ from maasserver.rpc import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
@@ -229,6 +236,37 @@ def get_ip_address_for_rack_controller(rack_controller, vlan):
     return get_ip_address_for_interface(interface, vlan)
 
 
+@typed
+def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
+    """Return a map of rack IP addresses suitable for NTP.
+
+    These are keyed by `(subnet-space-id, subnet-ip-address-family)`, e.g.::
+
+      {(73, 4): "192.168.1.1"}
+
+    Only a single routable address for the rack will be returned in each
+    space+family group even if there are multiple.
+    """
+    rack_addresses = StaticIPAddress.objects.filter(
+        interface__enabled=True, interface__node=rack, alloc_type__in={
+            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED})
+    rack_addresses = rack_addresses.order_by(
+        "subnet__space_id", "subnet__cidr", "ip")
+    rack_addresses = rack_addresses.values_list(
+        "subnet__space_id", "subnet__cidr", "ip")
+
+    def get_space_id_and_family(record):
+        space_id, cidr, ip = record
+        return space_id, IPNetwork(cidr).version
+
+    return {
+        space_id_and_family: min(
+            (ip for _, _, ip in group), key=IPAddress)
+        for space_id_and_family, group in groupby(
+            rack_addresses, get_space_id_and_family)
+    }
+
+
 def make_interface_hostname(interface):
     """Return the host decleration name for DHCPD for this `interface`."""
     interface_name = interface.name.replace(".", "-")
@@ -332,9 +370,15 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 @typed
 def make_subnet_config(
-        rack_controller, subnet, maas_dns_server, ntp_servers: list,
-        default_domain, failover_peer=None, subnets_dhcp_snippets: list=None):
-    """Return DHCP subnet configuration dict for a rack interface."""
+        rack_controller, subnet, maas_dns_server,
+        ntp_servers: Union[list, dict], default_domain,
+        failover_peer=None, subnets_dhcp_snippets: list=None):
+    """Return DHCP subnet configuration dict for a rack interface.
+
+    :param ntp_servers: Either a list of NTP server addresses or hostnames to
+        include in DHCP responses, or a dict; if the latter, it ought to match
+        the output from `get_ntp_server_addresses_for_rack`.
+    """
     ip_network = subnet.get_ipnetwork()
     if subnet.dns_servers is not None and len(subnet.dns_servers) > 0:
         # Replace MAAS DNS with the servers defined on the subnet.
@@ -345,6 +389,15 @@ def make_subnet_config(
         dns_servers = []
     if subnets_dhcp_snippets is None:
         subnets_dhcp_snippets = []
+
+    if isinstance(ntp_servers, dict):
+        try:
+            ntp_server = ntp_servers[subnet.space_id, subnet.get_ip_version()]
+        except KeyError:
+            ntp_servers = []
+        else:
+            ntp_servers = [ntp_server]
+
     return {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
@@ -388,7 +441,7 @@ def make_failover_peer_config(vlan, rack_controller):
 @typed
 def get_dhcp_configure_for(
         ip_version: int, rack_controller, vlan, subnets: list,
-        ntp_servers: list, domain, dhcp_snippets: Iterable=None):
+        ntp_servers: Union[list, dict], domain, dhcp_snippets: Iterable=None):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
@@ -493,8 +546,15 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     shared_networks_v6 = []
     hosts_v6 = []
     interfaces_v6 = set()
-    ntp_servers = Config.objects.get_config("ntp_servers")
-    ntp_servers = list(split_string_list(ntp_servers))
+
+    # NTP configuration can get tricky...
+    ntp_external_only = Config.objects.get_config("ntp_external_only")
+    if ntp_external_only:
+        ntp_servers = Config.objects.get_config("ntp_servers")
+        ntp_servers = list(split_string_list(ntp_servers))
+    else:
+        ntp_servers = get_ntp_server_addresses_for_rack(rack_controller)
+
     default_domain = Domain.objects.get_default_domain()
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
