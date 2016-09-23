@@ -1478,55 +1478,50 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
             factory.make_DHCPSnippet(enabled=True)
 
-        args = dhcp.get_dhcp_configuration(primary_rack)
-        return primary_rack, args
+        config = dhcp.get_dhcp_configuration(primary_rack)
+        return primary_rack, config
 
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_configure_for_both_ipv4_and_ipv6(self):
         # ... when DHCP_CONNECT is True.
         self.patch(dhcp.settings, "DHCP_CONNECT", True)
-        rack_controller, args = yield deferToDatabase(
+        rack_controller, config = yield deferToDatabase(
             self.create_rack_controller)
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
         protocol, ipv4_stub, ipv6_stub = yield deferToThread(
             self.prepare_rpc, rack_controller)
         ipv4_stub.side_effect = always_succeed_with({})
         ipv6_stub.side_effect = always_succeed_with({})
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         yield dhcp.configure_dhcp(rack_controller)
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     @wait_for_reactor
@@ -1553,23 +1548,12 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__doesnt_call_configure_for_both_ipv4_and_ipv6(self):
         # ... when DHCP_CONNECT is False.
-        rack_controller, args = yield deferToDatabase(
+        rack_controller, config = yield deferToDatabase(
             self.create_rack_controller)
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
         protocol, ipv4_stub, ipv6_stub = yield deferToThread(
             self.prepare_rpc, rack_controller)
         ipv4_stub.side_effect = always_succeed_with({})
         ipv6_stub.side_effect = always_succeed_with({})
-        interfaces_v4 = [
-            {"name": name}
-            for name in interfaces_v4
-        ]
-        interfaces_v6 = [
-            {"name": name}
-            for name in interfaces_v6
-        ]
 
         yield dhcp.configure_dhcp(rack_controller)
 
@@ -1768,62 +1752,54 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
             factory.make_DHCPSnippet(enabled=True)
 
-        args = dhcp.get_dhcp_configuration(primary_rack)
-        return primary_rack, args
+        config = dhcp.get_dhcp_configuration(primary_rack)
+        return primary_rack, config
 
     def test__calls_validate_for_both_ipv4_and_ipv6(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         dhcp.validate_dhcp_config()
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__calls_connected_rack_when_subnet_primary_rack_is_disconn(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         disconnected_rack = factory.make_RackController(interface=False)
@@ -1838,41 +1814,36 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         dhcp.validate_dhcp_config(dhcp_snippet)
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__calls_connected_rack_when_node_primary_rack_is_disconn(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         disconnected_rack = factory.make_RackController(interface=False)
@@ -1890,41 +1861,36 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         dhcp.validate_dhcp_config(dhcp_snippet)
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__calls_validate_with_new_dhcp_snippet(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         # DHCPSnippetForm generates a new DHCPSnippet in memory and validates
@@ -1933,107 +1899,97 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         new_dhcp_snippet = DHCPSnippet(
             name=factory.make_name('name'), value=value)
         dhcp.validate_dhcp_config(new_dhcp_snippet)
-        global_dhcp_snippets.append({
+        config.global_dhcp_snippets.append({
             'name': new_dhcp_snippet.name,
             'description': new_dhcp_snippet.description,
             'value': new_dhcp_snippet.value.data,
         })
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__calls_validate_with_disabled_dhcp_snippet(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         new_dhcp_snippet = factory.make_DHCPSnippet(enabled=False)
         dhcp.validate_dhcp_config(new_dhcp_snippet)
-        global_dhcp_snippets.append({
+        config.global_dhcp_snippets.append({
             'name': new_dhcp_snippet.name,
             'description': new_dhcp_snippet.description,
             'value': new_dhcp_snippet.value.data,
         })
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__calls_validate_with_updated_dhcp_snippet(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
         interfaces_v4 = [
             {"name": name}
-            for name in interfaces_v4
+            for name in config.interfaces_v4
         ]
         interfaces_v6 = [
             {"name": name}
-            for name in interfaces_v6
+            for name in config.interfaces_v6
         ]
 
         updated_dhcp_snippet = DHCPSnippet.objects.get(
             name=random.choice([
                 dhcp_snippet['name']
-                for dhcp_snippet in global_dhcp_snippets]
+                for dhcp_snippet in config.global_dhcp_snippets]
             ))
         updated_dhcp_snippet.value = updated_dhcp_snippet.value.update(
             factory.make_string())
         dhcp.validate_dhcp_config(updated_dhcp_snippet)
-        for i, dhcp_snippet in enumerate(global_dhcp_snippets):
+        for i, dhcp_snippet in enumerate(config.global_dhcp_snippets):
             if dhcp_snippet['name'] == updated_dhcp_snippet.name:
-                global_dhcp_snippets[i] = {
+                config.global_dhcp_snippets[i] = {
                     'name': updated_dhcp_snippet.name,
                     'description': updated_dhcp_snippet.description,
                     'value': updated_dhcp_snippet.value.data,
@@ -2041,50 +1997,34 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
                 break
 
         if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(shared_networks_v4)
-            self.process_expected_shared_networks(shared_networks_v6)
+            self.process_expected_shared_networks(config.shared_networks_v4)
+            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v4,
-                shared_networks=shared_networks_v4,
-                hosts=hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v4,
+                shared_networks=config.shared_networks_v4,
+                hosts=config.hosts_v4, interfaces=interfaces_v4,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
         self.assertThat(
             ipv6_stub, MockCalledOnceWith(
-                ANY, omapi_key=omapi,
-                failover_peers=failover_peers_v6,
-                shared_networks=shared_networks_v6,
-                hosts=hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=global_dhcp_snippets,
+                ANY, omapi_key=config.omapi_key,
+                failover_peers=config.failover_peers_v6,
+                shared_networks=config.shared_networks_v6,
+                hosts=config.hosts_v6, interfaces=interfaces_v6,
+                global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
 
     def test__returns_no_errors_when_valid(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         self.prepare_rpc(rack_controller)
-        interfaces_v4 = [
-            {"name": name}
-            for name in interfaces_v4
-        ]
-        interfaces_v6 = [
-            {"name": name}
-            for name in interfaces_v6
-        ]
 
         self.assertEquals([], dhcp.validate_dhcp_config())
 
     def test__returns_errors_when_invalid(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         dhcpd_error = {
             'error': factory.make_name('error'),
             'line_num': 14,
@@ -2092,22 +2032,11 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             'position': factory.make_name('position'),
         }
         self.prepare_rpc(rack_controller, [dhcpd_error])
-        interfaces_v4 = [
-            {"name": name}
-            for name in interfaces_v4
-        ]
-        interfaces_v6 = [
-            {"name": name}
-            for name in interfaces_v6
-        ]
 
         self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
 
     def test__dedups_errors(self):
-        rack_controller, args = self.create_rack_controller()
-        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-         global_dhcp_snippets) = args
+        rack_controller, config = self.create_rack_controller()
         dhcpd_error = {
             'error': factory.make_name('error'),
             'line_num': 14,
@@ -2115,14 +2044,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             'position': factory.make_name('position'),
         }
         self.prepare_rpc(rack_controller, [dhcpd_error, dhcpd_error])
-        interfaces_v4 = [
-            {"name": name}
-            for name in interfaces_v4
-        ]
-        interfaces_v6 = [
-            {"name": name}
-            for name in interfaces_v6
-        ]
 
         self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
 

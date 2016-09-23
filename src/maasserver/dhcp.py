@@ -8,7 +8,10 @@ __all__ = [
     'validate_dhcp_config',
     ]
 
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    namedtuple,
+)
 from operator import itemgetter
 from typing import Iterable
 
@@ -542,11 +545,16 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 })
                 hosts_v6.extend(hosts)
                 interfaces_v6.add(interface)
-    return (
-        get_omapi_key(),
+    return DHCPConfigurationForRack(
         failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-        global_dhcp_snippets)
+        get_omapi_key(), global_dhcp_snippets)
+
+
+DHCPConfigurationForRack = namedtuple("DHCPConfigurationForRack", (
+    "failover_peers_v4", "shared_networks_v4", "hosts_v4", "interfaces_v4",
+    "failover_peers_v6", "shared_networks_v6", "hosts_v6", "interfaces_v6",
+    "omapi_key", "global_dhcp_snippets"))
 
 
 @asynchronous
@@ -569,19 +577,16 @@ def configure_dhcp(rack_controller):
     client = yield getClientFor(rack_controller.system_id)
 
     # Get configuration for both IPv4 and IPv6.
-    (omapi_key, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-     failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-     global_dhcp_snippets) = (
-        yield deferToDatabase(get_dhcp_configuration, rack_controller))
+    config = yield deferToDatabase(get_dhcp_configuration, rack_controller)
 
     # Fix interfaces to go over the wire.
     interfaces_v4 = [
         {"name": name}
-        for name in interfaces_v4
+        for name in config.interfaces_v4
     ]
     interfaces_v6 = [
         {"name": name}
-        for name in interfaces_v6
+        for name in config.interfaces_v6
     ]
 
     # Configure both IPv4 and IPv6.
@@ -590,10 +595,11 @@ def configure_dhcp(rack_controller):
 
     try:
         yield _perform_dhcp_config(
-            client, ConfigureDHCPv4_V2, ConfigureDHCPv4, omapi_key=omapi_key,
-            failover_peers=failover_peers_v4, interfaces=interfaces_v4,
-            shared_networks=shared_networks_v4, hosts=hosts_v4,
-            global_dhcp_snippets=global_dhcp_snippets)
+            client, ConfigureDHCPv4_V2, ConfigureDHCPv4,
+            failover_peers=config.failover_peers_v4, interfaces=interfaces_v4,
+            shared_networks=config.shared_networks_v4, hosts=config.hosts_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
+            omapi_key=config.omapi_key)
     except Exception as exc:
         ipv4_exc = exc
         ipv4_status = SERVICE_STATUS.DEAD
@@ -601,7 +607,7 @@ def configure_dhcp(rack_controller):
             "Error configuring DHCPv4 on rack controller '%s': %s" % (
                 rack_controller.system_id, exc))
     else:
-        if len(shared_networks_v4) > 0:
+        if len(config.shared_networks_v4) > 0:
             ipv4_status = SERVICE_STATUS.RUNNING
         else:
             ipv4_status = SERVICE_STATUS.OFF
@@ -611,10 +617,11 @@ def configure_dhcp(rack_controller):
 
     try:
         yield _perform_dhcp_config(
-            client, ConfigureDHCPv6_V2, ConfigureDHCPv6, omapi_key=omapi_key,
-            failover_peers=failover_peers_v6, interfaces=interfaces_v6,
-            hosts=hosts_v6, global_dhcp_snippets=global_dhcp_snippets,
-            shared_networks=shared_networks_v6)
+            client, ConfigureDHCPv6_V2, ConfigureDHCPv6,
+            failover_peers=config.failover_peers_v6, interfaces=interfaces_v6,
+            shared_networks=config.shared_networks_v6, hosts=config.hosts_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
+            omapi_key=config.omapi_key)
     except Exception as exc:
         ipv6_exc = exc
         ipv6_status = SERVICE_STATUS.DEAD
@@ -622,7 +629,7 @@ def configure_dhcp(rack_controller):
             "Error configuring DHCPv6 on rack controller '%s': %s" % (
                 rack_controller.system_id, exc))
     else:
-        if len(shared_networks_v6) > 0:
+        if len(config.shared_networks_v6) > 0:
             ipv6_status = SERVICE_STATUS.RUNNING
         else:
             ipv6_status = SERVICE_STATUS.OFF
@@ -709,30 +716,29 @@ def validate_dhcp_config(test_dhcp_snippet=None):
         rack_controller = RackController.objects.get(system_id=client.ident)
 
     # Get configuration for both IPv4 and IPv6.
-    (omapi_key, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-     failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
-     global_dhcp_snippets) = get_dhcp_configuration(
-        rack_controller, test_dhcp_snippet)
+    config = get_dhcp_configuration(rack_controller, test_dhcp_snippet)
 
     # Fix interfaces to go over the wire.
     interfaces_v4 = [
         {"name": name}
-        for name in interfaces_v4
+        for name in config.interfaces_v4
     ]
     interfaces_v6 = [
         {"name": name}
-        for name in interfaces_v6
+        for name in config.interfaces_v6
     ]
 
     # Validate both IPv4 and IPv6.
     v4_args = dict(
-        omapi_key=omapi_key, failover_peers=failover_peers_v4, hosts=hosts_v4,
-        interfaces=interfaces_v4, global_dhcp_snippets=global_dhcp_snippets,
-        shared_networks=shared_networks_v4)
+        omapi_key=config.omapi_key, failover_peers=config.failover_peers_v4,
+        hosts=config.hosts_v4, interfaces=interfaces_v4,
+        global_dhcp_snippets=config.global_dhcp_snippets,
+        shared_networks=config.shared_networks_v4)
     v6_args = dict(
-        omapi_key=omapi_key, failover_peers=failover_peers_v6, hosts=hosts_v6,
-        interfaces=interfaces_v6, global_dhcp_snippets=global_dhcp_snippets,
-        shared_networks=shared_networks_v6)
+        omapi_key=config.omapi_key, failover_peers=config.failover_peers_v6,
+        hosts=config.hosts_v6, interfaces=interfaces_v6,
+        global_dhcp_snippets=config.global_dhcp_snippets,
+        shared_networks=config.shared_networks_v6)
 
     # XXX: These remote calls can hold transactions open for a prolonged
     # period. This is bad for concurrency and scaling.
