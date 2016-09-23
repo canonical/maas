@@ -61,7 +61,8 @@ angular.module('MAAS').controller('NodeEventsController', [
         };
 
         // Load nodes manager.
-        ManagerHelperService.loadManager(MachinesManager).then(function() {
+        ManagerHelperService.loadManager(
+            $scope, MachinesManager).then(function() {
             // If redirected from the NodeDetailsController then the node
             // will already be active. No need to set it active again.
             var activeNode = MachinesManager.getActiveItem();

@@ -441,7 +441,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         }
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
             ControllersManager, UsersManager
         ]).then(function() {

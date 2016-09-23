@@ -104,9 +104,10 @@ describe("SpaceDetailsController", function() {
     it("calls loadManagers with correct managers" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-                SpacesManager, VLANsManager, SubnetsManager,
-                FabricsManager, UsersManager]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [
+                    SpacesManager, VLANsManager, SubnetsManager,
+                    FabricsManager, UsersManager]);
     });
 
     it("raises error if space identifier is invalid", function() {

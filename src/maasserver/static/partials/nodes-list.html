@@ -25,7 +25,7 @@
                 </a>
             </li>
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <li class="tabs__tab" data-ng-show="isSuperUser()"
+            <li class="tabs__tab" data-ng-if="isSuperUser()"
                 data-ng-class="{ 'is-active': currentpage === 'controllers' }">
                 <a href=""
                     class="tabs__tab-link tooltip"

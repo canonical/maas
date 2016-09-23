@@ -104,9 +104,10 @@ describe("FabricDetailsController", function() {
     it("calls loadManagers with correct managers" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-                FabricsManager, VLANsManager, SubnetsManager,
-                SpacesManager, ControllersManager, UsersManager]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [
+                    FabricsManager, VLANsManager, SubnetsManager,
+                    SpacesManager, ControllersManager, UsersManager]);
     });
 
     it("raises error if fabric identifier is invalid", function() {

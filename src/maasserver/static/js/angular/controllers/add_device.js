@@ -266,7 +266,7 @@ angular.module('MAAS').controller('AddDeviceController', [
 
         // Load subnets to get the available subnets.
         ManagerHelperService.loadManagers(
-            [SubnetsManager, DomainsManager]).then(function() {
+            $scope, [SubnetsManager, DomainsManager]).then(function() {
                 // Initial device.
                 $scope.device = newDevice();
             });

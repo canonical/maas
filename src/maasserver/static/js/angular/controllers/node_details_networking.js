@@ -1440,7 +1440,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Load all the required managers. NodesManager and GeneralManager
         // are loaded by the parent controller "NodeDetailsController".
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             FabricsManager,
             VLANsManager,
             SubnetsManager,

@@ -91,7 +91,8 @@ angular.module('MAAS').controller('IntroController', [
             } else {
                 // Load the required managers.
                 var managers = [ConfigsManager, PackageRepositoriesManager];
-                ManagerHelperService.loadManagers(managers).then(function() {
+                ManagerHelperService.loadManagers(
+                    $scope, managers).then(function() {
                     $scope.loading = false;
                     $scope.maasName = ConfigsManager.getItemFromList(
                         "maas_name");

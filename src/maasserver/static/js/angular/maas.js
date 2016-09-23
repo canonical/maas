@@ -28,7 +28,7 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
             path += '/';
         }
         if(path === href) {
-            $routeProvider.
+            var routes = $routeProvider.
                 when('/intro', {
                     templateUrl: versionedPath(
                         'static/partials/intro.html'),
@@ -113,10 +113,22 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: versionedPath(
                         'static/partials/settings.html'),
                     controller: 'SettingsController'
+                });
+            if(MAAS_config.superuser) {
+                // Only superuser's can access the dashboard at the moment.
+                routes = routes.when('/dashboard', {
+                    templateUrl: versionedPath(
+                        'static/partials/dashboard.html'),
+                    controller: 'DashboardController'
                 }).
                 otherwise({
+                    redirectTo: '/dashboard'
+                });
+            } else {
+                routes = routes.otherwise({
                     redirectTo: '/nodes'
                 });
+            }
         }
     });
 

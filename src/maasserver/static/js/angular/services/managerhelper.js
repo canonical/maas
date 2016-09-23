@@ -13,31 +13,81 @@ angular.module('MAAS').service('ManagerHelperService', [
     function($q, $timeout, ErrorService, RegionConnection) {
 
         // Loads the manager.
-        this.loadManager = function(manager) {
+        this.loadManager = function(scope, manager) {
+            var defer = $q.defer();
+
+            // If the manager already has this scope loaded then nothing needs
+            // to be done.
+            if(manager._scopes.indexOf(scope) > -1) {
+                $timeout(function() {
+                    defer.resolve(manager);
+                });
+                return defer.promise;
+            }
+
             // Do this entire operation with in the context of the region
             // connection is connected.
-            var defer = $q.defer();
             RegionConnection.defaultConnect().then(function() {
-                if(manager.isLoaded()) {
-                    $timeout(function() {
-                        defer.resolve(manager);
+                if(manager._type === 'notify') {
+                    if(manager.isLoaded()) {
+                        $timeout(function() {
+                            manager._scopes.push(scope);
+                            defer.resolve(manager);
+                        });
+                    } else {
+                        manager.loadItems().then(function() {
+                            manager._scopes.push(scope);
+                            defer.resolve(manager);
+                        }, function(error) {
+                            ErrorService.raiseError(error);
+                        });
+                    }
+                    // Always enable auto reload. This will make sure the items
+                    // are reloaded if the connection goes down.
+                    manager.enableAutoReload();
+
+                    // Remove the scope for the loaded scopes for the manager.
+                    scope.$on("$destroy", function() {
+                        var idx = manager._scopes.indexOf(scope);
+                        if(idx > -1) {
+                            manager._scopes.splice(idx, 1);
+                        }
+                    });
+                } else if(manager._type === 'poll') {
+                    if(manager.isPolling()) {
+                        $timeout(function() {
+                            manager._scopes.push(scope);
+                            defer.resolve(manager);
+                        });
+                    } else {
+                        manager.startPolling().then(function() {
+                            manager._scopes.push(scope);
+                            defer.resolve(manager);
+                        }, function(error) {
+                            ErrorService.raiseError(error);
+                        });
+                    }
+
+                    // Stop the polling when the scope is destroyed and its
+                    // not in use by any other scopes.
+                    scope.$on("$destroy", function() {
+                        var idx = manager._scopes.indexOf(scope);
+                        if(idx > -1) {
+                            manager._scopes.splice(idx, 1);
+                        }
+                        if(manager._scopes.length === 0) {
+                            manager.stopPolling();
+                        }
                     });
                 } else {
-                    manager.loadItems().then(function() {
-                        defer.resolve(manager);
-                    }, function(error) {
-                        ErrorService.raiseError(error);
-                    });
+                    throw new Error("Unknown manager type: " + manager._type);
                 }
-                // Always enable auto reload. This will make sure the items
-                // are reloaded if the connection goes down.
-                manager.enableAutoReload();
             });
             return defer.promise;
         };
 
         // Gets the list of managers.
-        this.loadManagers = function(managers) {
+        this.loadManagers = function(scope, managers) {
             var defer = $q.defer();
             var loadedManagers = [];
 
@@ -50,7 +100,7 @@ angular.module('MAAS').service('ManagerHelperService', [
 
             var self = this;
             angular.forEach(managers, function(manager) {
-                self.loadManager(manager).then(function(loadedManager) {
+                self.loadManager(scope, manager).then(function(loadedManager) {
                     loadedManagers.push(loadedManager);
                     resolveAllLoaded();
                 });

@@ -574,14 +574,15 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Load zones and domains. Once loaded create the first machine and
         // chassis.
         ManagerHelperService.loadManagers(
-            [ZonesManager, DomainsManager]).then(function() {
+            $scope, [ZonesManager, DomainsManager]).then(function() {
                 // Add the first machine and chassis.
                 $scope.machine = newMachine();
                 $scope.chassis = newChassis();
             });
 
         // Load the general manager.
-        ManagerHelperService.loadManager(GeneralManager).then(function() {
+        ManagerHelperService.loadManager(
+            $scope, GeneralManager).then(function() {
             if($scope.architectures.length > 0) {
                 // If the machine doesn't have an architecture
                 // set then it was created before all of the

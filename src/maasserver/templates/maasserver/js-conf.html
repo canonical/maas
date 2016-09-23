@@ -17,6 +17,7 @@ var MAAS_config = {
         account_handler: '{% url "account_handler" %}',
         },
     files_version: '{{files_version}}',
+    superuser: {% if user.is_superuser %}true{% else %}false{% endif %},
     {% if user.is_superuser %}
     register_url: '{{register_url}}',
     register_secret: '{{register_secret}}',

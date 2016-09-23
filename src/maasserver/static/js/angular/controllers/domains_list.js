@@ -43,9 +43,8 @@ angular.module('MAAS').controller('DomainsListController', [
             return UsersManager.isSuperUser();
         };
 
-        ManagerHelperService.loadManagers([
-            DomainsManager,
-            UsersManager]).then(
+        ManagerHelperService.loadManagers(
+            $scope, [DomainsManager, UsersManager]).then(
             function() {
                 $scope.loading = false;
             });

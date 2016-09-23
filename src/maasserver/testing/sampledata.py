@@ -159,9 +159,12 @@ def populate(seed="sampledata"):
     """
     random.seed(seed)
 
-    admin = factory.make_admin(username="admin", password="test")  # noqa
-    user1, _ = factory.make_user_with_keys(username="user1", password="test")
-    user2, _ = factory.make_user_with_keys(username="user2", password="test")
+    admin = factory.make_admin(
+        username="admin", password="test", completed_intro=False)  # noqa
+    user1, _ = factory.make_user_with_keys(
+        username="user1", password="test", completed_intro=False)
+    user2, _ = factory.make_user_with_keys(
+        username="user2", password="test", completed_intro=False)
 
     # Physical zones.
     zones = [
@@ -280,9 +283,12 @@ def populate(seed="sampledata"):
             subnet=subnet_3, interface=bond0_10)
         # Add some discovery devices for rack interfaces
         for _ in range(3):
-            factory.make_Discovery(interface=eth0)
-            factory.make_Discovery(interface=eth1)
-            factory.make_Discovery(interface=eth2)
+            factory.make_Discovery(
+                interface=eth0, ip=factory.pick_ip_in_Subnet(subnet_1))
+            factory.make_Discovery(
+                interface=eth1, ip=factory.pick_ip_in_Subnet(subnet_1))
+            factory.make_Discovery(
+                interface=eth2, ip=factory.pick_ip_in_Subnet(subnet_2))
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
@@ -319,9 +325,12 @@ def populate(seed="sampledata"):
         subnet=subnet_3, interface=bond0_10)
     # Add some discovery devices for rack interfaces
     for _ in range(3):
-        factory.make_Discovery(interface=eth0)
-        factory.make_Discovery(interface=eth1)
-        factory.make_Discovery(interface=eth2)
+        factory.make_Discovery(
+            interface=eth0, ip=factory.pick_ip_in_Subnet(subnet_1))
+        factory.make_Discovery(
+            interface=eth1, ip=factory.pick_ip_in_Subnet(subnet_1))
+        factory.make_Discovery(
+            interface=eth2, ip=factory.pick_ip_in_Subnet(subnet_2))
 
     # Region controller (happy-region)
     #   eth0     - fabric 0 - untagged

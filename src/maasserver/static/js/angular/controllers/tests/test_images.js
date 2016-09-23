@@ -58,8 +58,8 @@ describe("ImagesController", function() {
 
     it("calls loadManagers with correct managers", function() {
         var controller = makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            ConfigsManager, UsersManager]);
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            $scope, [ConfigsManager, UsersManager]);
     });
 
     it("sets initial $scope", function() {

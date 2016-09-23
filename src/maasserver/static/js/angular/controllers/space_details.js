@@ -108,7 +108,7 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         };
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             SpacesManager, SubnetsManager, VLANsManager, FabricsManager,
             UsersManager]).then(function() {
             // Possibly redirected from another controller that already had

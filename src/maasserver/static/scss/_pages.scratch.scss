@@ -1,4 +1,11 @@
 @mixin maas-pages {
+
+  .u-text--truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .hidden {
     display: none;
   }

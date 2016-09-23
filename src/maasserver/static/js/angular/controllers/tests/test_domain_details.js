@@ -98,7 +98,7 @@ describe("DomainDetailsController", function() {
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [DomainsManager, UsersManager]);
+                $scope, [DomainsManager, UsersManager]);
     });
 
     it("raises error if domain identifier is invalid", function() {

@@ -40,6 +40,16 @@ angular.module('MAAS').service(
             // object.
             this._items = [];
 
+            // The way this manager recieves its updated information. 'notify'
+            // means this manager recieved notify messages from the websocket.
+            // See PollingManager for the other possible type. This is only
+            // used by the `ManagerHelperService` to identify how updating
+            // the data should be handled.
+            this._type = 'notify';
+
+            // Holds list of scopes that currently have this manager loaded.
+            this._scopes = [];
+
             // True when all of the items have been loaded. This is done on
             // intial connection to the region.
             this._loaded = false;
@@ -178,6 +188,17 @@ angular.module('MAAS').service(
         // Return list of items.
         Manager.prototype.getItems = function() {
             return this._items;
+        };
+
+        // Clears the currect state of the manager.
+        Manager.prototype.clear = function() {
+            this._loaded = false;
+            this._items.length = 0;
+            this._actionQueue.length = 0;
+            this._selectedItems.length = 0;
+            this._activeItem = null;
+            this._metadata = {};
+            this._metadataAttributes.length = 0;
         };
 
         // Load all the items.

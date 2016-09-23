@@ -249,7 +249,7 @@ angular.module('MAAS').controller('SettingsController', [
         }
 
         // Load the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
                 PackageRepositoriesManager, DHCPSnippetsManager,
                 MachinesManager, DevicesManager, ControllersManager,
                 SubnetsManager, GeneralManager]).then(

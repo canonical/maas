@@ -22,7 +22,7 @@ angular.module('MAAS').directive('maasVersionReloader', [
                     $window.location.reload(true);
                 };
 
-                ManagerHelperService.loadManager(GeneralManager).then(
+                ManagerHelperService.loadManager($scope, GeneralManager).then(
                     function() {
                         GeneralManager.enableAutoReload(true);
                         $scope.$watch("version.text",

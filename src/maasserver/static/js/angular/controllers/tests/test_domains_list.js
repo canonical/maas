@@ -66,7 +66,7 @@ describe("DomainsListController", function() {
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [DomainsManager, UsersManager]);
+                $scope, [DomainsManager, UsersManager]);
         });
 
     it("sets loading to false when loadManagers resolves", function() {

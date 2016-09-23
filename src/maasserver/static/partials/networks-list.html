@@ -15,7 +15,7 @@
         <div class="page-header__dropdown" data-ng-class="{ 'is-open': actionOption.name}">
             <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="actionOption.name === 'add_fabric'">
                 <maas-obj-form obj="newObject" manager="fabricManager" manager-method="createItem"
-                    inline="true" save-on-blur="false" after-save="cancelAction()">
+                    inline="true" save-on-blur="false" after-save="cancelAction">
                     <fieldset class="form__fieldset">
                         <maas-obj-field
                             type="text" key="name" label="Add fabric" subtle="false"
@@ -30,7 +30,7 @@
             </section>
             <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="actionOption.name === 'add_vlan'">
                 <maas-obj-form obj="newObject" manager="vlanManager" manager-method="createItem"
-                    inline="true" save-on-blur="false" after-save="cancelAction()">
+                    inline="true" save-on-blur="false" after-save="cancelAction">
                     <fieldset class="form__fieldset">
                         <maas-obj-field
                             type="text" key="name" label="Add VLAN" subtle="false"
@@ -52,7 +52,7 @@
             </section>
             <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="actionOption.name === 'add_space'">
                 <maas-obj-form obj="newObject" manager="spaceManager" manager-method="createItem"
-                    inline="true" save-on-blur="false" after-save="cancelAction()">
+                    inline="true" save-on-blur="false" after-save="cancelAction">
                     <fieldset class="form__fieldset">
                         <maas-obj-field
                             type="text" key="name" label="Add space" subtle="false"
@@ -66,7 +66,7 @@
                 </maas-obj-form>
             </section>
             <maas-obj-form obj="newObject" manager="subnetManager" manager-method="createItem"
-                table-form="true" save-on-blur="false" pre-process="actionSubnetPreSave" after-save="cancelAction()" class="ng-hide" data-ng-show="actionOption.name == 'add_subnet'">
+                table-form="true" save-on-blur="false" pre-process="actionSubnetPreSave" after-save="cancelAction" class="ng-hide" data-ng-show="actionOption.name == 'add_subnet'">
                 <section class="page-header__section twelve-col u-margin--bottom-none">
                     <h3 class="page-header__dropdown-title">Add subnet</h3>
                     <fieldset class="form__fieldset six-col">

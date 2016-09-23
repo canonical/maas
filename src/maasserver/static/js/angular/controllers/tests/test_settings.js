@@ -145,10 +145,11 @@ describe("SettingsController", function() {
 
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            PackageRepositoriesManager, DHCPSnippetsManager, MachinesManager,
-            DevicesManager, ControllersManager, SubnetsManager,
-            GeneralManager]);
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            $scope, [
+                PackageRepositoriesManager, DHCPSnippetsManager,
+                MachinesManager, DevicesManager, ControllersManager,
+                SubnetsManager, GeneralManager]);
     });
 
     it("sets loading to false", function() {

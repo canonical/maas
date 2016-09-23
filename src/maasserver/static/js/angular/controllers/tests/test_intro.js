@@ -80,7 +80,7 @@ describe("IntroController", function() {
     it("calls loadManagers with correct managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            [ConfigsManager, PackageRepositoriesManager]);
+            $scope, [ConfigsManager, PackageRepositoriesManager]);
     });
 
     it("sets initial $scope", function() {

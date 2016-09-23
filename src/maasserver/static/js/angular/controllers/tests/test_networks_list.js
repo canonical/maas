@@ -76,10 +76,11 @@ describe("NetworksListController", function() {
 
     it("calls loadManagers with expected managers", function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-                SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
-                UsersManager
-            ]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [
+                    SubnetsManager, FabricsManager, SpacesManager,
+                    VLANsManager, UsersManager
+                ]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {

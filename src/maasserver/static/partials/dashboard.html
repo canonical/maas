@@ -1,0 +1,166 @@
+<section class="row">
+    <div class="wrapper--inner">
+        <h1>Getting started</h1>
+        <ul>
+            <li>
+                <strong>Nodes:</strong> add, configure, deploy and commission machines. <a href="#/nodes">Manage nodes</a>
+            </li>
+            <li>
+                <strong>Images:</strong> edit your preferences and import alternatives. <a href="#/images">Edit images</a>
+            </li>
+            <li>
+                <strong>Networking:</strong> configure and edit fabrics and spaces, subnets and vlans. <a href="#/networks?by=fabric">Configure networking</a>
+            </li>
+            <li>Review the list below to add devices to MAAS.</li>
+        </ul>
+    </div>
+</section>
+<section class="row" data-ng-if="!loading">
+    <div class="wrapper--inner">
+        <div class="eight-col">
+            <h2>{$ discoveredDevices.length $} items discovered</h2>
+        </div>
+        <div class="four-col last-col">
+            <div class="u-float--right" data-ng-if="networkDiscovery">
+                <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
+                    <maas-obj-field type="onoffswitch" key="value" label="Device discovery"
+                        on-value="enabled" off-value="disabled" subtle="false"></maas-obj-field>
+                </maas-obj-form>
+            </div>
+        </div>
+        <ul class="flash-messages u-padding--bottom" data-ng-if="networkDiscovery.value === 'disabled'">
+            <li class="flash-messages__item flash-messages__item--warning">List of devices will not update as discovery is turned off</li>
+        </ul>
+        <div class="twelve-col">
+            <div class="table">
+                <header class="table__head">
+                    <div class="table__row">
+                        <div class="table__header table-col--20">Name</div>
+                        <div class="table__header table-col--20">
+                            <a class="table__header-link"
+                               data-ng-click="column = 'mac'"
+                               data-ng-class="{'is-active': column === 'mac'}">Mac</a>
+                            <span class="divide"></span>
+                            <a class="table__header-link"
+                               data-ng-click="column = 'manufacturer'"
+                               data-ng-class="{'is-active': column === 'manufacturer'}">Manufacturer</a>
+                        </div>
+                        <div class="table__header table-col--20">IP</div>
+                        <div class="table__header table-col--20">Rack</div>
+                        <div class="table__header table-col--20">Last seen</div>
+                    </div>
+                </header>
+                <div class="table__body">
+                    <div class="table__row" data-ng-if="!discoveredDevices.length">
+                        <div class="table__header table-col--100">
+                            No new discoveries...
+                        </div>
+                    </div>
+                    <div class="table__row"
+                        data-ng-repeat="discovery in discoveredDevices track by discovery.discovery_id"
+                        data-ng-class="{'is-active' : discovery.discovery_id === selectedDevice}">
+                        <div data-ng-if="discovery.discovery_id !== selectedDevice"
+                            data-ng-dblclick="toggleSelected(discovery.discovery_id)">
+                            <div class="table__data table-col--20">
+                                {$ getDiscoveryName(discovery) $} <i class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP"></i>
+                            </div>
+                            <div class="table__data table-col--20" data-ng-if="column === 'mac'">
+                                {$ discovery.mac_address $}
+                            </div>
+                            <div class="table__data table-col--20" data-ng-if="column === 'manufacturer'">
+                                {$ discovery.mac_organization || 'Unknown' $}
+                            </div>
+                            <div class="table__data table-col--20 u-text--truncate">
+                                {$ discovery.ip $}
+                            </div>
+                            <div class="table__data table-col--17">
+                                {$ discovery.observer_hostname $}
+                            </div>
+                            <div class="table__data table-col--20">
+                                <time>{$ discovery.last_seen $}</time>
+                            </div>
+                            <div class="table__data table-col--3">
+                                <i class="icon icon--open tooltip" aria-label="Open"
+                                    data-ng-click="toggleSelected(discovery.discovery_id)">Open</i>
+                            </div>
+                        </div>
+                        <maas-obj-form data-ng-if="discovery.discovery_id === selectedDevice"
+                            obj="convertTo" manager="deviceManager" manager-method="createItem"
+                            pre-process="preProcess" after-save="afterSave" table-form="true" save-on-blur="false">
+                            <div class="table__data table-col--20">
+                                <maas-obj-field class="u-margin--bottom-none" type="text" key="hostname"
+                                    disable-label="true" placeholder="Hostname (optional)"></maas-obj-field>
+                            </div>
+                            <div class="table__data table-col--77"></div>
+                            <div class="table__data table-col--3">
+                                <i class="icon icon--close tooltip" aria-label="Close"
+                                    data-ng-click="toggleSelected(discovery.discovery_id)">Close</i>
+                            </div>
+                            <div class="table__dropdown">
+                                <div class="table__row is-active">
+                                    <div class="table__data table-col--100">
+                                        <div class="six-col">
+                                            <dl>
+                                                <dt class="two-col">Mac</dt>
+                                                    <dd class="four-col last-col">{$ discovery.mac_address $}</dd>
+                                                <dt class="two-col">IP</dt>
+                                                    <dd class="four-col last-col">{$ discovery.ip $}</dd>
+                                                <dt class="two-col">Rack</dt>
+                                                    <dd class="four-col last-col">{$ discovery.observer_hostname $}</dd>
+                                                <dt class="two-col">Last seen</dt>
+                                                    <dd class="four-col last-col"><time>{$ discovery.last_seen $}</time></dd>
+                                            </dl>
+                                        </div>
+                                        <div class="six-col last-col">
+                                            <dl>
+                                                <dt class="two-col">Fabric</dt>
+                                                    <dd class="four-col last-col">{$ discovery.fabric_name $}</dd>
+                                                <dt class="two-col">VLAN</dt>
+                                                    <dd class="four-col last-col">{$ getVLANName(discovery.vlan) $}</dd>
+                                                <dt class="two-col">Subnet</dt>
+                                                    <dd class="four-col last-col">{$ getSubnetName(discovery.subnet) $}</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__row is-active u-padding--top-small">
+                                    <div class="table__data table-col--100">
+                                        <fieldset class="form__fieldset six-col">
+                                            <div class="form__group">
+                                                <label class="form__group-label two-col u-margin--bottom-small">Type</label>
+                                                <div class="form__group-input three-col">
+                                                    <select id="type" name="type" ng-model="convertTo.type">
+                                                        <option value="" disabled>Choose type</option>
+                                                        <option value="device">Device</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <maas-obj-field type="options" key="domain" label="Domain" placeholder="Choose domain"
+                                                label-width="two" input-width="three" subtle="false"
+                                                options="domain as domain.name for domain in domains"></maas-obj-field>
+                                        </fieldset>
+                                        <fieldset class="form__fieldset six-col last-col">
+                                            <maas-obj-field type="options" subtle="false" key="ip_assignment" label="IP assignment" placeholder="Select IP assignment"
+                                                options="option[0] as option[1] for option in convertTo.deviceIPOptions" label-width="two" input-width="three"></maas-obj-field>
+                                        </fieldset>
+                                    </div>
+                                </div>
+                                <div class="table__row is-active">
+                                    <div class="table__data u-float--left">
+                                        <maas-obj-errors></maas-obj-errors>
+                                    </div>
+                                    <div class="table__data u-float--right">
+                                        <a class="button--base button--inline" data-ng-click="toggleSelected(selectedDevice)">Cancel</a>
+                                        <button class="button--secondary button--inline"
+                                            data-ng-click="convertTo.goTo = true" maas-obj-save>Save and go to device details</button>
+                                        <button class="button--primary button--inline" maas-obj-save>Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </maas-obj-form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -147,10 +147,11 @@ describe("SubnetDetailsController", function() {
     it("calls loadManagers with required managers" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-                SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
-                FabricsManager
-            ]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                $scope, [
+                    SubnetsManager, IPRangesManager, SpacesManager,
+                    VLANsManager, FabricsManager
+                ]);
     });
 
     it("raises error if subnet identifier is invalid", function() {

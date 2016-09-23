@@ -716,7 +716,7 @@ describe("maasObjForm", function() {
             };
             var html = [
                 '<maas-obj-form obj="obj" manager="manager" ',
-                    'after-save="saved()">',
+                    'after-save="saved">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
                         'placeholder="Placeholder" label-width="two" ',
                         'input-width="three"></maas-obj-field>',

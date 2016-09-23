@@ -87,7 +87,7 @@
                             data-ng-repeat="staticRoute in (subnetStaticRoutes = staticRoutes | filterBySubnet:subnet:'source' | orderBy:'gateway_ip')"
                             data-ng-class="{'is-active': isStaticRouteInEditMode(staticRoute) || isStaticRouteInDeleteMode(staticRoute)}">
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
-                                save-on-blur="false" after-save="staticRouteToggleEditMode(staticRoute)">
+                                save-on-blur="false" after-save="ipRangeClearEditMode">
                                 <div class="table__data table-col--30 form__fieldset">
                                     <span data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.gateway_ip $}</span>
                                     <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP"
@@ -152,7 +152,7 @@
                         </div>
                         <div class="table__row is-active" data-ng-if="newStaticRoute">
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
-                                table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute()">
+                                table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute">
                                 <div class="table__data table-col--30">
                                     <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                 </div>
@@ -268,7 +268,7 @@
                             <div class="table__dropdown" data-ng-if="isIPRangeInEditMode(iprange)">
                                 <div class="table__row is-active">
                                     <maas-obj-form obj="iprange" manager="iprangeManager" table-form="true"
-                                        save-on-blur="false" after-save="ipRangeToggleEditMode(iprange)">
+                                        save-on-blur="false" after-save="ipRangeClearEditMode">
                                         <div class="table__data table-col--100">
                                             <div class="six-col">
                                                 <maas-obj-field type="text" key="start_ip" label="Start IP address"
@@ -310,7 +310,7 @@
                         </div>
                         <div class="table__row is-active form form--stack" data-ng-if="newRange">
                             <maas-obj-form obj="newRange" manager="iprangeManager" manager-method="createItem"
-                                table-form="true" save-on-blur="false" after-save="cancelAddRange()">
+                                table-form="true" save-on-blur="false" after-save="cancelAddRange">
                                 <div class="table__data table-col--100">
                                     <div class="form__fieldset six-col">
                                         <maas-obj-field type="text" key="start_ip" label="Start IP address"

@@ -699,7 +699,8 @@ angular.module('MAAS').directive('maasBootImages', [
                         $scope.loading = false;
                     }
                 });
-                ManagerHelperService.loadManager(UsersManager).then(function() {
+                ManagerHelperService.loadManager(
+                    $scope, UsersManager).then(function() {
                     ready -= 1;
                     if(ready === 0) {
                         $scope.loading = false;

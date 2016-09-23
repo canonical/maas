@@ -1,4 +1,4 @@
-<header class="page-header u-margin--bottom" data-maas-sticky-header>
+<header class="page-header u-margin--bottom">
     <div class="wrapper--inner">
         <h1 class="page-header__title">Settings</h1>
         <ul class="tabs">
@@ -77,7 +77,7 @@
                                     </div>
                                 </div>
                                 <maas-obj-form obj="editSnippet" manager="snippetsManager" manager-method="updateItem"
-                                    table-form="true" save-on-blur="false" after-save="snippetExitEdit()"
+                                    table-form="true" save-on-blur="false" after-save="snippetExitEdit"
                                     data-ng-if="editSnippet === snippet">
                                     <div class="table__data table-col--20">
                                         <maas-obj-field type="text" key="name" placeholder="Name"
@@ -139,7 +139,7 @@
                             </div>
                             <div class="table__row is-active" data-ng-if="newSnippet">
                                 <maas-obj-form obj="newSnippet" manager="snippetsManager" manager-method="createItem"
-                                    table-form="true" save-on-blur="false" after-save="snippetAddCancel()">
+                                    table-form="true" save-on-blur="false" after-save="snippetAddCancel">
                                     <div class="table__dropdown">
                                         <div class="table__row form is-active">
                                             <div class="table__data table-col--20">
@@ -315,7 +315,7 @@
                                     </div>
                                 </div>
                                 <maas-obj-form obj="editRepository" manager="packageRepositoriesManager" manager-method="updateItem"
-                                    table-form="true" save-on-blur="false" after-save="repositoryExitEdit()"
+                                    table-form="true" save-on-blur="false" after-save="repositoryExitEdit"
                                     data-ng-if="editRepository === repository">
                                     <div class="table__data table-col--20">
                                         <span data-ng-if="isMirror(repository)">
@@ -402,7 +402,7 @@
                             </div>
                             <div class="table__row is-active" data-ng-if="newRepository">
                                 <maas-obj-form obj="newRepository" manager="packageRepositoriesManager" manager-method="createItem"
-                                    table-form="true" save-on-blur="false" after-save="repositoryAddCancel()">
+                                    table-form="true" save-on-blur="false" after-save="repositoryAddCancel">
                                     <div class="table__data table-col--20">
                                         <maas-obj-field type="text" key="name" placeholder="Name" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>

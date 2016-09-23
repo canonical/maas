@@ -592,8 +592,8 @@ angular.module('MAAS').controller('NodesListController', [
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
-        ManagerHelperService.loadManagers(
-            [MachinesManager, DevicesManager, ControllersManager,
+        ManagerHelperService.loadManagers($scope, [
+            MachinesManager, DevicesManager, ControllersManager,
             GeneralManager, ZonesManager, UsersManager, ServicesManager]).then(
             function() {
                 $scope.loading = false;

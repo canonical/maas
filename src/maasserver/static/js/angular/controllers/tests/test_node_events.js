@@ -107,7 +107,7 @@ describe("NodeEventsController", function() {
     it("calls loadManager with MachinesManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            MachinesManager);
+            $scope, MachinesManager);
     });
 
     it("doesnt call setActiveItem if node already loaded", function() {

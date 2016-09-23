@@ -1024,7 +1024,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             MachinesManager,
             ControllersManager,
             ZonesManager,

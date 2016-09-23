@@ -25,7 +25,7 @@ angular.module('MAAS').controller('ImagesController', [
 
             // Load the required managers.
             ManagerHelperService.loadManagers(
-                [ConfigsManager, UsersManager]).then(function() {
+                $scope, [ConfigsManager, UsersManager]).then(function() {
                 $scope.autoImport = ConfigsManager.getItemFromList(
                     "boot_images_auto_import");
             });

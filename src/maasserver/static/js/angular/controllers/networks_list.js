@@ -265,7 +265,7 @@ angular.module('MAAS').controller('NetworksListController', [
             return obj;
         };
 
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
             UsersManager]).then(
             function() {

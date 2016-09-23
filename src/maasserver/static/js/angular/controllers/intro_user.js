@@ -52,9 +52,10 @@ angular.module('MAAS').controller('IntroUserController', [
                 $location.path('/');
             } else {
                 // Load the required managers.
-                ManagerHelperService.loadManager(UsersManager).then(function() {
-                    $scope.loading = false;
-                    $scope.user = UsersManager.getAuthUser();
-                });
+                ManagerHelperService.loadManager(
+                    $scope, UsersManager).then(function() {
+                        $scope.loading = false;
+                        $scope.user = UsersManager.getAuthUser();
+                    });
             }
     }]);

@@ -81,9 +81,8 @@ angular.module('MAAS').controller('DomainDetailsController', [
         };
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
-            DomainsManager,
-            UsersManager]).then(function() {
+        ManagerHelperService.loadManagers(
+            $scope, [DomainsManager, UsersManager]).then(function() {
             // Possibly redirected from another controller that already had
             // this domain set to active. Only call setActiveItem if not
             // already the activeItem.

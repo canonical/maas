@@ -155,7 +155,7 @@ angular.module('MAAS').directive('maasSshKeys', [
                     });
                 });
 
-                ManagerHelperService.loadManager(SSHKeysManager).then(
+                ManagerHelperService.loadManager($scope, SSHKeysManager).then(
                     function() {
                         $scope.loading = false;
                     });

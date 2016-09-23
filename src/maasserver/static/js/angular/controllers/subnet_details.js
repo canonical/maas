@@ -243,10 +243,15 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.ipRangeToggleEditMode = function(range) {
             $scope.deleteIPRange = null;
             if($scope.isIPRangeInEditMode(range)) {
-                $scope.editIPRange  = null;
+                $scope.editIPRange = null;
             } else {
                 $scope.editIPRange = range;
             }
+        };
+
+        // Clear edit mode for the IP range.
+        $scope.ipRangeClearEditMode = function() {
+            $scope.editIPRange = null;
         };
 
         // Return true if the IP range is in delete mode.
@@ -351,7 +356,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         }
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
             UsersManager, FabricsManager, StaticRoutesManager
         ]).then(function() {

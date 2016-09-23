@@ -110,13 +110,13 @@ describe("AddHardwareController", function() {
     it("calls loadManagers with ZonesManager, DomainsManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            [ZonesManager, DomainsManager]);
+            $scope, [ZonesManager, DomainsManager]);
     });
 
     it("calls loadManager with GeneralManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            GeneralManager);
+            $scope, GeneralManager);
     });
 
     it("intializes machine once ZonesManager and DomainsManager loaded",

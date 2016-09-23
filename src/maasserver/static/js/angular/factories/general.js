@@ -211,6 +211,12 @@ angular.module('MAAS').factory(
             // Set to true when the items list should reload upon re-connection
             // to the region.
             this._autoReload = false;
+
+            // Use the same notify type as a default manager.
+            this._type = 'notify';
+
+            // The scopes that have loaded this manager.
+            this._scopes = [];
         }
 
         GeneralManager.prototype._getInternalData = function(name) {

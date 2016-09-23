@@ -258,9 +258,11 @@ describe("NodeDetailsController", function() {
 
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
-        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            MachinesManager, ControllersManager, ZonesManager, GeneralManager,
-            UsersManager, TagsManager, DomainsManager, ServicesManager]);
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            $scope, [
+                MachinesManager, ControllersManager, ZonesManager,
+                GeneralManager, UsersManager, TagsManager, DomainsManager,
+                ServicesManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {

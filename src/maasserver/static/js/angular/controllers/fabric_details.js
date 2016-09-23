@@ -143,7 +143,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
         };
 
         // Load all the required managers.
-        ManagerHelperService.loadManagers([
+        ManagerHelperService.loadManagers($scope, [
             FabricsManager, VLANsManager, SubnetsManager, SpacesManager,
             ControllersManager, UsersManager]).then(
             function() {

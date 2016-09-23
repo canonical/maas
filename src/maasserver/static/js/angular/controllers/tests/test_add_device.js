@@ -175,7 +175,7 @@ describe("AddDeviceController", function() {
     it("calls loadManagers with SubnetsManager and DomainsManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            [SubnetsManager, DomainsManager]);
+            $scope, [SubnetsManager, DomainsManager]);
     });
 
     describe("show", function() {

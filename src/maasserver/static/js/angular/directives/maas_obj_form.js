@@ -173,7 +173,9 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                     field.editing = false;
                     field.scope.updateValue(newObj[key]);
                     self.scope.saving = false;
-                    self.scope.afterSave();
+                    if(angular.isFunction(self.scope.afterSave)) {
+                        self.scope.afterSave(newObj);
+                    }
                     return newObj;
                 }, function(error) {
                     var errorJson = JSONService.tryParse(error);
@@ -239,7 +241,9 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             return this.manager[this.managerMethod](
                 updatedObj).then(function(newObj) {
                     self.scope.saving = false;
-                    self.scope.afterSave();
+                    if(angular.isFunction(self.scope.afterSave)) {
+                        self.scope.afterSave(newObj);
+                    }
                     return newObj;
                 }, function(error) {
                     var errorJson = JSONService.tryParse(error);
@@ -292,7 +296,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                 manager: "=",
                 managerMethod: "@",
                 preProcess: "=",
-                afterSave: "&",
+                afterSave: "=",
                 tableForm: "=",
                 saveOnBlur: "=",
                 inline: "=",
@@ -708,7 +712,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     switchScope._changed = function() {
                         controller.startEditingField(attrs.key);
                         controller.stopEditingField(
-                            attrs.key, switchScope._toggle);
+                            attrs.key, switchScope.getValue());
                     };
 
                     // Construct the on and off toggle.
@@ -730,12 +734,30 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Called by controller to update the value.
                     scope.updateValue = function(newValue) {
-                        switchScope._toggle = newValue;
+                        if(attrs.onValue === newValue) {
+                            switchScope._toggle = true;
+                        } else if(attrs.offValue === newValue) {
+                            switchScope._toggle = false;
+                        } else {
+                            switchScope._toggle = newValue;
+                        }
                     };
 
                     // Called by controller to get the value.
                     scope.getValue = function() {
-                        return switchScope._toggle;
+                        if(switchScope._toggle) {
+                            if(attrs.onValue) {
+                                return attrs.onValue;
+                            } else {
+                                return true;
+                            }
+                        } else {
+                            if(attrs.offValue) {
+                                return attrs.offValue;
+                            } else {
+                                return true;
+                            }
+                        }
                     };
                 } else {
                     throw new Error(

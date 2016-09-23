@@ -210,7 +210,7 @@ describe("NodesListController", function() {
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [MachinesManager, DevicesManager, ControllersManager,
+                $scope, [MachinesManager, DevicesManager, ControllersManager,
                 GeneralManager, ZonesManager, UsersManager, ServicesManager]);
         });
 

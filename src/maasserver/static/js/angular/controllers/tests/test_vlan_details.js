@@ -184,8 +184,9 @@ describe("VLANDetailsController", function() {
     it("calls loadManagers with required managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            [VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
-            ControllersManager, UsersManager]);
+            $scope, [
+                VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
+                ControllersManager, UsersManager]);
     });
 
     it("raises error if vlan identifier is invalid", function() {
