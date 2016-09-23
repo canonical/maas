@@ -7,11 +7,13 @@ __all__ = [
     "RegionNetworkTimeProtocolService",
 ]
 
+from collections import defaultdict
 from datetime import timedelta
 
 import attr
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
+from maasserver.routablepairs import find_addresses_between_nodes
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -63,8 +65,25 @@ class RegionNetworkTimeProtocolService(TimerService):
 
     @synchronous
     def _getPeers(self):
-        """Return an immutable set of sets of peer IP addresses."""
-        return RegionController.objects.get_active_peer_addresses()
+        """Return an immutable set of peer IP addresses."""
+        try:
+            this_region = RegionController.objects.get_running_controller()
+        except RegionController.DoesNotExist:
+            return frozenset()  # Probably a transient error.
+        else:
+            peer_regions = RegionController.objects.exclude(id=this_region.id)
+            peer_addresses = defaultdict(list)
+            for _, _, peer_region, peer_address in (
+                    find_addresses_between_nodes({this_region}, peer_regions)):
+                peer_addresses[peer_region].append(peer_address)
+            return frozenset(
+                min(peer_addresses, key=self._peerAddressSortKey).format()
+                for peer_addresses in peer_addresses.values())
+
+    @staticmethod
+    def _peerAddressSortKey(address):
+        """A key that would sort IPv6 before IPv4, then address order."""
+        return (0 if address.version == 6 else 1), address.value
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the NTP server if the configuration changes.

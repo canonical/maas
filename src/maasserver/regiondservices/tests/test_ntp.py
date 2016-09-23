@@ -5,11 +5,11 @@
 
 __all__ = []
 
-from unittest.mock import sentinel
+from os.path import join
 
 from crochet import wait_for
+from maasserver.dbviews import register_view
 from maasserver.models.config import Config
-from maasserver.models.node import RegionController
 from maasserver.regiondservices import ntp
 from maasserver.service_monitor import service_monitor
 from maasserver.testing.factory import factory
@@ -29,7 +29,6 @@ from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
 from testtools.matchers import (
     Equals,
-    Is,
     IsInstance,
     MatchesStructure,
 )
@@ -40,12 +39,16 @@ from twisted.internet.defer import inlineCallbacks
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-def make_endpoints(region):
-    process = factory.make_RegionControllerProcess(region)
-    return [
-        factory.make_RegionControllerProcessEndpoint(process)
-        for _ in range(3)
-    ]
+def make_region_with_address(space):
+    region = factory.make_RegionController()
+    iface = factory.make_Interface(node=region)
+    cidr4 = factory.make_ipv4_network(24)
+    subnet4 = factory.make_Subnet(space=space, cidr=cidr4)
+    cidr6 = factory.make_ipv6_network(64)
+    subnet6 = factory.make_Subnet(space=space, cidr=cidr6)
+    sip4 = factory.make_StaticIPAddress(interface=iface, subnet=subnet4)
+    sip6 = factory.make_StaticIPAddress(interface=iface, subnet=subnet6)
+    return region, sip4, sip6
 
 
 class TestRegionNetworkTimeProtocolService_Basic(MAASTestCase):
@@ -65,8 +68,7 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionNetworkTimeProtocolService, self).setUp()
-        maas_id_fixture = MAASIDFixture(factory.make_name("maas-id"))
-        self.maas_id = self.useFixture(maas_id_fixture).system_id
+        register_view("maasserver_routable_pairs")
         self.useFixture(MAASRootFixture())
 
     @transactional
@@ -75,11 +77,13 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         ntp_servers = {factory.make_name("ntp-server") for _ in range(5)}
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
         # Populate the database with example peers.
-        region = factory.make_RegionController()
-        endpoints = make_endpoints(region)
+        space = factory.make_Space()
+        region, addr4, addr6 = make_region_with_address(space)
+        self.useFixture(MAASIDFixture(region.system_id))
+        peer1, addr1_4, addr1_6 = make_region_with_address(space)
+        peer2, addr2_4, addr2_6 = make_region_with_address(space)
         # Create a configuration object.
-        return ntp._Configuration(
-            ntp_servers, {frozenset(e.address for e in endpoints)})
+        return ntp._Configuration(ntp_servers, {addr1_6.ip, addr2_6.ip})
 
     @wait_for_reactor
     @inlineCallbacks
@@ -88,7 +92,6 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         configuration = yield deferToDatabase(self.make_example_configuration)
         configure = self.patch_autospec(ntp, "configure")
         restartService = self.patch_autospec(service_monitor, "restartService")
-
         yield service._tryUpdate()
         self.assertThat(configure, MockCalledOnceWith(
             configuration.references, configuration.peers))
@@ -122,7 +125,10 @@ class TestRegionNetworkTimeProtocolService_Errors(
         # Ensure that we never actually execute against systemd.
         self.patch_autospec(service_monitor, "restartService")
 
-        self.useFixture(MAASRootFixture())
+        maasroot = self.useFixture(MAASRootFixture()).path
+        with open(join(maasroot, "etc", "ntp.conf"), "w") as ntp_conf:
+            ntp_conf.write("# Placeholder NTP configuration file.\n")
+
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
@@ -141,18 +147,7 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
 
     def setUp(self):
         super(TestRegionNetworkTimeProtocolService_Database, self).setUp()
-        maas_id_fixture = MAASIDFixture(factory.make_name("maas-id"))
-        self.maas_id = self.useFixture(maas_id_fixture).system_id
-
-    def test__getPeers_calls_through_to_RegionController(self):
-        service = ntp.RegionNetworkTimeProtocolService(reactor)
-
-        get_active_peer_addresses = self.patch_autospec(
-            RegionController.objects, "get_active_peer_addresses")
-        get_active_peer_addresses.return_value = sentinel.peers
-
-        self.assertThat(service._getPeers(), Is(sentinel.peers))
-        self.assertThat(get_active_peer_addresses, MockCalledOnceWith())
+        register_view("maasserver_routable_pairs")
 
     def test__getReferences_returns_frozenset_of_ntp_servers(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
@@ -167,6 +162,27 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         self.assertThat(observed, IsInstance(frozenset))
         self.assertThat(observed, Equals(expected))
 
+    def test__getPeers_returns_frozenset_of_peer_ip_addresses(self):
+        service = ntp.RegionNetworkTimeProtocolService(reactor)
+
+        # Put all addresses in the same space so they're mutually routable.
+        space = factory.make_Space()
+        # Populate the database with "this" region and example peers.
+        region, addr4, addr6 = make_region_with_address(space)
+        self.useFixture(MAASIDFixture(region.system_id))
+        peer1, addr1_4, addr1_6 = make_region_with_address(space)
+        peer2, addr2_4, addr2_6 = make_region_with_address(space)
+        peer3, addr3_4, addr3_6 = make_region_with_address(space)
+
+        # Delete the third peer's IPv6 address; the reason for this will
+        # become apparent very soon...
+        addr3_6.delete()
+
+        # IPv6 peers are preferred, but IPv4 addresses will be returned when
+        # there are no IPv6 addresses available for the given peer.
+        self.assertThat(service._getPeers(), Equals(
+            {addr1_6.ip, addr2_6.ip, addr3_4.ip}))
+
     def test__getConfiguration_returns_configuration_object(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
 
@@ -174,15 +190,18 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         ntp_servers = {factory.make_name("ntp-server") for _ in range(5)}
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
 
-        # Populate the database with example peers.
-        region = factory.make_RegionController()
-        endpoints = make_endpoints(region)
+        # Put all addresses in the same space so they're mutually routable.
+        space = factory.make_Space()
+        # Populate the database with "this" region and an example peer.
+        region, addr4, addr6 = make_region_with_address(space)
+        self.useFixture(MAASIDFixture(region.system_id))
+        peer, addr4, addr6 = make_region_with_address(space)
 
         observed = service._getConfiguration()
         self.assertThat(observed, IsInstance(ntp._Configuration))
 
         expected_references = frozenset(ntp_servers)
-        expected_peers = frozenset({frozenset(e.address for e in endpoints)})
+        expected_peers = {addr6.ip}  # IPv6 is preferred.
 
         self.assertThat(observed, MatchesStructure.byEquality(
             references=expected_references, peers=expected_peers))
