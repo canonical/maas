@@ -310,17 +310,17 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
-        keysource = "%s:%s" % (protocol, auth_id)
+        ks = "%s:%s" % (protocol, auth_id)
         key_string = get_data('data/test_rsa0.pub')
         mock_get_protocol_keys = self.patch(
             keysource_module, 'get_protocol_keys')
         mock_get_protocol_keys.return_value = [key_string]
         response = self.client.post(
-            reverse('sshkeys_handler'), data=dict(
-                op='import', protocol=protocol, auth_id=auth_id))
+            reverse('sshkeys_handler'),
+            data=dict(op='import', keysource=ks))
         added_key = get_one(SSHKey.objects.filter(user=self.user))
         self.assertEqual(key_string, added_key.key)
-        self.assertEqual(keysource, str(added_key.keysource))
+        self.assertEqual(ks, str(added_key.keysource))
         self.assertEqual(http.client.OK, response.status_code, response)
         self.assertThat(
             mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id))
@@ -329,6 +329,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
+        ks = "%s:%s" % (protocol, auth_id)
         keysource = factory.make_KeySource(
             protocol=protocol, auth_id=auth_id)
         key_string = get_data('data/test_rsa0.pub')
@@ -336,8 +337,8 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             keysource_module, 'get_protocol_keys')
         mock_get_protocol_keys.return_value = [key_string]
         response = self.client.post(
-            reverse('sshkeys_handler'), data=dict(
-                op='import', protocol=protocol, auth_id=auth_id))
+            reverse('sshkeys_handler'),
+            data=dict(op='import', keysource=ks))
         added_key = get_one(SSHKey.objects.filter(user=self.user))
         self.assertEqual(key_string, added_key.key)
         self.assertEqual(str(keysource), str(added_key.keysource))
@@ -350,12 +351,13 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
+        ks = "%s:%s" % (protocol, auth_id)
         mock_get_protocol_keys = self.patch(
             keysource_module, 'get_protocol_keys')
         mock_get_protocol_keys.side_effect = ImportSSHKeysError('error')
         response = self.client.post(
-            reverse('sshkeys_handler'), data=dict(
-                op='import', protocol=protocol, auth_id=auth_id))
+            reverse('sshkeys_handler'),
+            data=dict(op='import', keysource=ks))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
 
@@ -363,12 +365,13 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         protocol = random.choice(
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH])
         auth_id = factory.make_name('auth_id')
+        ks = "%s:%s" % (protocol, auth_id)
         mock_get_protocol_keys = self.patch(
             keysource_module, 'get_protocol_keys')
         mock_get_protocol_keys.side_effect = RequestException('error')
         response = self.client.post(
-            reverse('sshkeys_handler'), data=dict(
-                op='import', protocol=protocol, auth_id=auth_id))
+            reverse('sshkeys_handler'),
+            data=dict(op='import', keysource=ks))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code,
             response.content)

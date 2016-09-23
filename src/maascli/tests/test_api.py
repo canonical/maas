@@ -19,6 +19,7 @@ from unittest.mock import (
 import httplib2
 from maascli import api
 from maascli.actions.boot_resources_create import BootResourcesCreateAction
+from maascli.actions.sshkeys_import import SSHKeysImportAction
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
@@ -153,6 +154,14 @@ class TestFunctions(MAASTestCase):
             BootResourcesCreateAction,
             api.get_action_class(handler, action))
 
+    def test_get_action_class_returns_SSHKeysImportAction_class(self):
+        # Test uses SSHKeysImportAction as its know to exist.
+        handler = {'name': 'SSHKeysHandler'}
+        action = {'name': 'import'}
+        self.assertEqual(
+            SSHKeysImportAction,
+            api.get_action_class(handler, action))
+
     def test_get_action_class_bases_returns_Action(self):
         handler = {'name': factory.make_name('handler')}
         action = {'name': 'create'}
@@ -166,6 +175,14 @@ class TestFunctions(MAASTestCase):
         action = {'name': 'create'}
         self.assertEqual(
             (BootResourcesCreateAction,),
+            api.get_action_class_bases(handler, action))
+
+    def test_get_action_class_bases_returns_SSHKeysImportAction(self):
+        # Test uses SSHKeysImportAction as its know to exist.
+        handler = {'name': 'SSHKeysHandler'}
+        action = {'name': 'import'}
+        self.assertEqual(
+            (SSHKeysImportAction,),
             api.get_action_class_bases(handler, action))
 
 

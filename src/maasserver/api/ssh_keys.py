@@ -20,7 +20,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.api.utils import get_mandatory_param
+from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -75,15 +75,22 @@ class SSHKeysHandler(OperationsHandler):
         Import SSH keys for a given protocol and authorization ID in
         protocol:auth_id format.
         """
-        auth_id = get_mandatory_param(request.data, 'auth_id')
-        protocol = request.data.get('protocol', None)
-        if protocol is None:
-            protocol = 'lp'
-        try:
-            return KeySource.objects.save_keys_for_user(
-                user=request.user, protocol=protocol, auth_id=auth_id)
-        except (ImportSSHKeysError, RequestException) as e:
-            raise MAASAPIBadRequest(e.args[0])
+        keysource = request.data.get('keysource', None)
+        if keysource is not None:
+            if ':' in keysource:
+                protocol, auth_id = keysource.split(':', 1)
+            else:
+                protocol = KEYS_PROTOCOL_TYPE.LP
+                auth_id = keysource
+            try:
+                return KeySource.objects.save_keys_for_user(
+                    user=request.user, protocol=protocol, auth_id=auth_id)
+            except (ImportSSHKeysError, RequestException) as e:
+                raise MAASAPIBadRequest(e.args[0])
+        else:
+            raise MAASAPIBadRequest(
+                "Importing SSH keys failed. "
+                "Input needs to be in protocol:auth_id or auth_id format.")
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
