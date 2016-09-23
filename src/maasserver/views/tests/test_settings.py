@@ -395,11 +395,6 @@ class UserManagementTest(MAASServerTestCase):
         self.assertSequenceEqual(
             [confirmation_message],
             [elem.text.strip() for elem in doc.cssselect('h2')])
-        # The page features a form that submits to itself.
-        self.assertSequenceEqual(
-            ['.'],
-            [elem.get('action').strip() for elem in doc.cssselect(
-                '#content form')])
 
     def test_delete_user_POST(self):
         # A POST request to the user delete finally deletes the user.

@@ -8,7 +8,7 @@
 <div class="eight-col">
     <h2>Settings</h2>
     <div id="profile" class="eight-col u-border--bottom">
-        <form action="." method="post" class="eight-col">
+        <form method="post" class="eight-col">
             {% csrf_token %}
             <ul>
                 {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
@@ -20,7 +20,7 @@
     </div>
     <h2>Change password</h2>
     <div id="password" class="eight-col">
-        <form action="." method="post">
+        <form method="post">
             {% csrf_token %}
             <ul>
                 {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}

@@ -7,7 +7,7 @@
 <div class="eight-col">
     <h2>Are you sure you want to delete the license key '{{ license_key_to_delete.osystem }} / {{ license_key_to_delete.distro_series }}'?<br /></h2>
     <p>This action is permanent and can not be undone.</p>
-    <form action="." method="post">{% csrf_token %}
+    <form method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <input type="submit" value="Delete license key" class="button--primary button--inline u-float--right" />
         <a class="button--secondary button--inline" href="{% url 'settings' %}#license_keys">Cancel</a>

@@ -207,7 +207,7 @@ class TestCommands(MAASServerTestCase):
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name('user-id'))
         self.patch(
-            keysource_module.KeySourceManager,
+            keysource_module.KeySource.objects,
             'save_keys_for_user').side_effect = (RequestException('error'))
         self.assertRaises(
             createadmin.SSHKeysError, call_command, 'createadmin',

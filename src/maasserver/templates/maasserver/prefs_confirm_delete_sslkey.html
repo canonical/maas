@@ -1,4 +1,4 @@
-{% extends "maasserver/prefs_confirm_delete_sshkey.html" %}
+{% extends "maasserver/base.html" %}
 
 {% block title %}Delete SSL key{% endblock %}
 {% block page-title %}Delete SSL key{% endblock %}
@@ -8,7 +8,7 @@
     <h2>Are you sure you want to delete the following key?<br /></h2>
     <p style="word-wrap: break-word; width: 700px;">{{ sslkey }}</p>
     <p>This action is permanent and can not be undone.</p>
-    <form action="." method="post">{% csrf_token %}
+    <form method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <input type="submit" value="Delete key" class="right" />
         <a href="{% url 'prefs' %}">Cancel</a>

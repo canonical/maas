@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="eight-col">
-	<form action="." method="post">
+	<form method="post">
 	    {% csrf_token %}
 	    <ul>
 	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}

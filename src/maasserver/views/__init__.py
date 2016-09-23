@@ -10,7 +10,6 @@ __all__ = [
     "PaginatedListView",
     "process_form",
     "settings",
-    "settings_add_archive",
     "TextTemplateView",
     ]
 
