@@ -1664,6 +1664,38 @@ class UnknownInterfaceTest(MAASServerTestCase):
 
 class UpdateIpAddressesTest(MAASServerTestCase):
 
+    def test__finds_ipv6_subnet(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=network.cidr)
+        cidr = "%s/128" % str(IPAddress(network.first + 1))
+        interface.update_ip_addresses([cidr])
+
+        self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
+        self.assertEqual(interface.ip_addresses.first().subnet, subnet)
+
+    def test__finds_ipv6_subnet_regardless_of_order(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=network.cidr)
+        cidr_net = str(network.cidr)
+        cidr_128 = "%s/128" % str(IPAddress(network.first + 1))
+        iface.update_ip_addresses([cidr_128, cidr_net])
+
+        self.assertFalse(Subnet.objects.filter(cidr=cidr_128).exists())
+        self.assertFalse(iface.ip_addresses.exclude(subnet=subnet).exists())
+
+    def test__creates_missing_slash_64_ipv6_subnet(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv6_network()
+        cidr = "%s/128" % str(IPAddress(network.first + 1))
+        interface.update_ip_addresses([cidr])
+
+        subnets = Subnet.objects.filter(cidr="%s/64" % str(network.ip))
+        self.assertEqual(1, len(subnets))
+        self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
+        self.assertEqual(interface.ip_addresses.first().subnet, subnets[0])
+
     def test__creates_missing_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ip4_or_6_network()
@@ -1701,7 +1733,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
 
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.order_by('id')[i]
+            ip = interface.ip_addresses.get(ip=cidr_list[i].split('/')[0])
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=str(IPNetwork(cidr_list[i]).ip)))
@@ -1783,7 +1815,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Discovered IP address should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.order_by('id')[i]
+            ip = interface.ip_addresses.get(ip=cidr_list[i].split('/')[0])
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=str(IPNetwork(cidr_list[i]).ip)))
@@ -1829,7 +1861,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Unknown interfaces should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.order_by('id')[i]
+            ip = interface.ip_addresses.get(ip=cidr_list[i].split('/')[0])
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=str(IPNetwork(cidr_list[i]).ip)))
@@ -1865,7 +1897,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             "Sticky IP address should have been deleted.")
         self.assertEqual(num_connections, interface.ip_addresses.count())
         for i in range(num_connections):
-            ip = interface.ip_addresses.order_by('id')[i]
+            ip = interface.ip_addresses.get(ip=cidr_list[i].split('/')[0])
             self.assertThat(ip, MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=str(IPNetwork(cidr_list[i]).ip)))

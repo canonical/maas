@@ -633,7 +633,8 @@ class Interface(CleanSave, TimestampedModel):
         StaticIPAddress.objects.filter(
             interface=self, alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
 
-        for ip in cidr_list:
+        # Sort the cidr list by prefixlen.
+        for ip in sorted(cidr_list, key=lambda x: int(x.split('/')[1])):
             network = IPNetwork(ip)
             cidr = str(network.cidr)
             address = str(network.ip)
@@ -650,16 +651,39 @@ class Interface(CleanSave, TimestampedModel):
                     self.vlan = vlan
                     self.save()
             except Subnet.DoesNotExist:
-                # XXX mpontillo 2015-11-01 Configuration != state. That is,
-                # this means we have just a subnet on an unknown Fabric/VLAN,
-                # and this fact should be recorded somewhere, so that the user
-                # gets a chance to configure it. Note, however, that if this
-                # is already a managed cluster interface, a Fabric/VLAN will
-                # already have been created.
-                subnet = Subnet.objects.create_from_cidr(cidr)
-                maaslog.info(
-                    "Creating subnet %s connected to interface %s "
-                    "of node %s.", cidr, self, self.get_node())
+                subnet = None
+                if network.version == 6 and network.prefixlen == 128:
+                    # Bug#1626722: /128 ipv6 addresses are special.  DHCPv6
+                    # does not provide prefixlen in any way - "that is the duty
+                    # of router-advertisments."  Find the correct subnet, if
+                    # any.
+                    # See also: launchpad.net/bugs/1609898.
+                    subnet = Subnet.objects.get_best_subnet_for_ip(address)
+                    if subnet is None:
+                        # XXX lamont 2016-09-23 Bug#1627160: This is an IP with
+                        # NO associated subnet (we would have added the subnet
+                        # earlier in this loop if there was an address
+                        # configured on the interface proper.  We would also
+                        # have it if we were the DHCP provider for the network.
+                        # In other words, what we have is a DHCP client on a
+                        # subnet with no RA configured, and MAAS is not
+                        # providing DHCP, and has not been told about the
+                        # subnet...  For now, assume that the subnet is a /64
+                        # (which the admin can edit later.)  Eventually, we'll
+                        # want to look and see if the host has a link-local
+                        # route for any block containing the IP.
+                        cidr = '%s/64' % address
+                if subnet is None:
+                    # XXX mpontillo 2015-11-01 Configuration != state. That is,
+                    # this means we have just a subnet on an unknown
+                    # Fabric/VLAN, and this fact should be recorded somewhere,
+                    # so that the user gets a chance to configure it. Note,
+                    # however, that if this is already a managed cluster
+                    # interface, a Fabric/VLAN will already have been created.
+                    subnet = Subnet.objects.create_from_cidr(cidr)
+                    maaslog.info(
+                        "Creating subnet %s connected to interface %s "
+                        "of node %s.", cidr, self, self.get_node())
 
             # First check if this IP address exists in the database (at all).
             prev_address = get_one(
