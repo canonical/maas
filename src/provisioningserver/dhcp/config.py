@@ -12,6 +12,7 @@ from itertools import (
     chain,
     repeat,
 )
+import logging
 from platform import linux_distribution
 import socket
 from typing import Sequence
@@ -32,6 +33,10 @@ from provisioningserver.utils.text import (
 )
 from provisioningserver.utils.twisted import synchronous
 import tempita
+
+
+logger = logging.getLogger(__name__)
+
 
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = ("""
@@ -109,7 +114,7 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
 
 
 @synchronous
-def gen_addresses(hostname):
+def _gen_addresses(hostname):
     """Yield IPv4 and IPv6 addresses for `hostname`.
 
     Yields (ip-version, address) tuples, where ip-version is either 4 or 6.
@@ -127,15 +132,63 @@ def gen_addresses(hostname):
             yield 6, ipaddr
 
 
-def get_addresses(*hostnames):
+# See `_gen_addresses_where_possible`.
+_gen_addresses_where_possible_suppress = frozenset((
+    socket.EAI_ADDRFAMILY, socket.EAI_AGAIN, socket.EAI_FAIL,
+    socket.EAI_NODATA, socket.EAI_NONAME))
+
+
+def _gen_addresses_where_possible(hostname):
+    """Yield IPv4 and IPv6 addresses for `hostname`.
+
+    A variant of `_gen_addresses` that ignores some resolution failures. The
+    addresses returned are only those that are resolvable at the time this
+    function is called. Specifically the following errors are ignored:
+
+      +----------------+-----------------------------------------------+
+      | EAI_ADDRFAMILY | The specified network host does not have any  |
+      |                | network addresses in the requested address    |
+      |                | family.                                       |
+      +----------------+-----------------------------------------------+
+      | EAI_AGAIN      | The name server returned a temporary failure  |
+      |                | indication. Try again later.                  |
+      +----------------+-----------------------------------------------+
+      | EAI_FAIL       | The name server returned a permanent failure  |
+      |                | indication.                                   |
+      +----------------+-----------------------------------------------+
+      | EAI_NODATA     | The specified network host exists, but does   |
+      |                | not have any network addresses defined.       |
+      +----------------+-----------------------------------------------+
+      | EAI_NONAME     | The node or service is not known; or both node|
+      |                | and service are NULL; or AI_NUMERICSERV was   |
+      |                | specified and service was not a numeric       |
+      |                | port-number string.                           |
+      +----------------+-----------------------------------------------+
+
+    Descriptions from getaddrinfo(3).
+    """
+    try:
+        yield from _gen_addresses(hostname)
+    except socket.gaierror as error:
+        if error.errno in _gen_addresses_where_possible_suppress:
+            # Log this but otherwise suppress/ignore for now.
+            logger.warning("Could not resolve %s: %s", hostname, error)
+        else:
+            raise
+
+
+def _get_addresses(*hostnames):
     """Resolve and collate addresses for the given hostnames.
 
+    Uses `_gen_addresses_where_possible` internally so suppresses a few
+    different name resolution failures.
+
     :return: A tuple of two lists. The first contains all IPv4 addresses
-    discovered, the second all IPv6 addresses.
+        discovered, the second all IPv6 addresses.
     """
     ipv4, ipv6 = [], []
     for hostname in hostnames:
-        for ipver, addr in gen_addresses(hostname):
+        for ipver, addr in _gen_addresses_where_possible(hostname):
             if ipver == 4:
                 ipv4.append(addr)
             elif ipver == 6:
@@ -201,7 +254,7 @@ def get_config_v4(
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:
             ntp_servers = subnet["ntp_servers"]  # Is a list.
-            ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
+            ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
             subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
 
@@ -253,7 +306,7 @@ def get_config_v6(
                 subnet["bootloader"] = compose_conditional_bootloader(
                     True, rack_ip)
             ntp_servers = subnet["ntp_servers"]  # Is a list.
-            ntp_servers_ipv4, ntp_servers_ipv6 = get_addresses(*ntp_servers)
+            ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
             subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
 

@@ -18,9 +18,15 @@ import tempfile
 from textwrap import dedent
 import traceback
 
-from fixtures import EnvironmentVariable
+from fixtures import (
+    EnvironmentVariable,
+    FakeLogger,
+)
 from maastesting.factory import factory
-from maastesting.matchers import GreaterThanOrEqual
+from maastesting.matchers import (
+    DocTestMatches,
+    GreaterThanOrEqual,
+)
 import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
@@ -118,17 +124,13 @@ def update_HOSTALIASES(test, hostaliases):
     test.useFixture(EnvironmentVariable("HOSTALIASES", hostaliases_path))
 
 
-def make_sample_params(test, ipv6=False):
+def make_sample_params_only(ipv6=False):
     """Return a dict of arbitrary DHCP configuration parameters.
 
-    :param test: An instance of `maastesting.testcase.TestCase`.
     :param ipv6: When true, prepare configuration for a DHCPv6 server,
         otherwise prepare configuration for a DHCPv4 server.
     :return: A dictionary of sample configuration.
     """
-    if not does_HOSTALIASES_work_here():
-        test.skipTest("HOSTALIASES is not fully supported")
-
     failover_peers = [
         make_failover_peer_config()
         for _ in range(3)
@@ -146,18 +148,6 @@ def make_sample_params(test, ipv6=False):
                 peer = random.choice(failover_peers)
                 pool["failover_peer"] = peer["name"]
 
-    # So that get_config can resolve the configuration, collect hostnames from
-    # the sample configuration that need to resolve then configure HOSTALIASES
-    # to give each an address somewhere in the local 127.0.0.0/8 network.
-    hostaddresses = netaddr.IPRange("127.1.0.1", "127.1.255.254")
-    hostnames = (
-        name for shared_network in shared_networks
-        for subnet in shared_network["subnets"]
-        for name in subnet["ntp_servers"]
-        if not is_ip_address(name)
-    )
-    update_HOSTALIASES(test, zip(hostnames, hostaddresses))
-
     return {
         'omapi_key': b64encode(factory.make_bytes()).decode("ascii"),
         'failover_peers': failover_peers,
@@ -166,6 +156,38 @@ def make_sample_params(test, ipv6=False):
         'global_dhcp_snippets': make_global_dhcp_snippets(),
         'ipv6': ipv6,
     }
+
+
+def make_sample_params(test, ipv6=False):
+    """Return a dict of arbitrary DHCP configuration parameters.
+
+    This differs from `make_sample_params_only` in that it arranges it such
+    that hostnames within the sample configuration can be resolved using
+    `gethostbyname` or `getaddrinfo`.
+
+    :param test: An instance of `maastesting.testcase.TestCase`.
+    :param ipv6: When true, prepare configuration for a DHCPv6 server,
+        otherwise prepare configuration for a DHCPv4 server.
+    :return: A dictionary of sample configuration.
+    """
+    if not does_HOSTALIASES_work_here():
+        test.skipTest("HOSTALIASES is not fully supported")
+
+    sample_params = make_sample_params_only(ipv6=ipv6)
+
+    # So that get_config can resolve the configuration, collect hostnames from
+    # the sample configuration that need to resolve then configure HOSTALIASES
+    # to give each an address somewhere in the local 127.0.0.0/8 network.
+    hostaddresses = netaddr.IPRange("127.1.0.1", "127.1.255.254")
+    hostnames = (
+        name for shared_network in sample_params["shared_networks"]
+        for subnet in shared_network["subnets"]
+        for name in subnet["ntp_servers"]
+        if not is_ip_address(name)
+    )
+    update_HOSTALIASES(test, zip(hostnames, hostaddresses))
+
+    return sample_params
 
 
 def validate_dhcpd_configuration(test, configuration, ipv6):
@@ -336,6 +358,24 @@ class TestGetConfig(PservTestCase):
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertNotIn("ntp-servers", rendered)
 
+    def test__silently_discards_unresolvable_ntp_servers(self):
+        params = make_sample_params_only(ipv6=self.ipv6)
+        rendered = config.get_config(self.template, **params)
+        validate_dhcpd_configuration(self, rendered, self.ipv6)
+        ntp_servers_expected = [
+            server
+            for network in params['shared_networks']
+            for subnet in network['subnets']
+            for server in subnet["ntp_servers"]
+            if is_ip_address(server)
+        ]
+        ntp_servers_observed = [
+            server for server_line in re.findall(
+                r"\b(?:ntp-servers|dhcp6[.]sntp-servers)\s+(.+);", rendered)
+            for server in server_line.split(", ")
+        ]
+        self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
+
     def test__renders_router_ip_if_present(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         router_ip = factory.make_ipv4_address()
@@ -465,3 +505,25 @@ class TestComposeConditionalBootloader(PservTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
+
+
+class TestGetAddresses(PservTestCase):
+    """Tests for `_get_addresses`."""
+
+    def test__ip_addresses_are_passed_through(self):
+        address4 = factory.make_ipv4_address()
+        address6 = factory.make_ipv6_address()
+        self.assertThat(
+            config._get_addresses(address4, address6),
+            Equals(([address4], [address6])))
+
+    def test__ignores_resolution_failures(self):
+        self.assertThat(
+            config._get_addresses("no-way-this-exists.maas.io"),
+            Equals(([], [])))
+
+    def test__logs_resolution_failures(self):
+        with FakeLogger(config.__name__) as logger:
+            config._get_addresses("no-way-this-exists.maas.io")
+        self.assertThat(logger.output.strip(), DocTestMatches(
+            "Could not resolve no-way-this-exists.maas.io: [Errno ...] ..."))

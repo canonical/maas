@@ -182,12 +182,12 @@ class DHCPConfigNameResolutionDisabled(Fixture):
     """Prevent hostname resolution when generating DHCP configuration."""
 
     def _setUp(self):
-        assert hasattr(config, "gen_addresses")
-        restore = patch(config, "gen_addresses", self._genRandomAddresses)
+        assert hasattr(config, "_gen_addresses")
+        restore = patch(config, "_gen_addresses", self._genRandomAddresses)
         self.addCleanup(restore)
 
     def _genRandomAddresses(self, hostname):
-        # Mimic config.gen_addresses by yielding a random IPv4 address and a
+        # Mimic config._gen_addresses by yielding a random IPv4 address and a
         # random IPv6 address.
         yield 4, factory.make_ipv4_address()
         yield 6, factory.make_ipv6_address()
