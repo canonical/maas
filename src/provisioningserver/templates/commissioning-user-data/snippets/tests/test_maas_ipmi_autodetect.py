@@ -26,6 +26,7 @@ from snippets.maas_ipmi_autodetect import (
     commit_ipmi_settings,
     configure_ipmi_user,
     format_user_key,
+    get_ipmi_ip_address,
     IPMIError,
     list_user_numbers,
     make_ipmi_user_settings,
@@ -489,3 +490,26 @@ class TestBMCSupportsLANPlus(MAASTestCase):
         ppc64le_platform.return_value = 'ppc64le'
         detected = bmc_supports_lan2_0()
         self.assertEqual(True, detected)
+
+
+class TestGetIPMIIPAddress(MAASTestCase):
+    """Tests for get_ipmi_ip_address()."""
+
+    scenarios = [
+        ('none', dict(
+            output='  IP_Address    \n\n', expected=None)),
+        ('bogus', dict(
+            output='  IP_Address    bogus\n\n', expected=None)),
+        ('ipv4', dict(
+            output='  IP_Address    192.168.1.1\n\n', expected='192.168.1.1')),
+        ('ipv6', dict(
+            output='  IP_Address    2001:db8::3\n\n', expected='2001:db8::3')),
+        ('link-local', dict(
+            output='  IP_Address    fe80::3:7\n\n', expected='fe80::3:7')),
+    ]
+
+    def test_get_ipmi_ip_address(self):
+        run_command = self.patch(maas_ipmi_autodetect, 'run_command')
+        run_command.return_value = self.output
+        actual = get_ipmi_ip_address()
+        self.assertEqual(self.expected, actual)

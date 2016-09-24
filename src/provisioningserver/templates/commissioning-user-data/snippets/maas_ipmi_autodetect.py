@@ -144,8 +144,11 @@ def set_ipmi_network_source(source):
 
 def get_ipmi_ip_address():
     output = bmc_get('Lan_Conf:IP_Address')
-    show_re = re.compile('([0-9]{1,3}[.]?){4}')
+    show_re = re.compile(
+        '((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
     res = show_re.search(output)
+    if res is None:
+        return None
     return res.group()
 
 

@@ -35,9 +35,13 @@ def get_channel_number(address, output):
 def get_ipmi_ip_address(local_address):
     output = subprocess.getoutput(
         'ipmitool -B 0 -T 0x20 -b 0 -t 0x20 -m %s lan print 2' % local_address)
-    show_re = re.compile('IP Address\s+:\s+([0-9]{1,3}[.]?){4}')
+    show_re = re.compile(
+        'IP Address\s+:\s+'
+        '(?P<addr>(?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
     res = show_re.search(output)
-    return res.group().split()[-1]
+    if res is None:
+        return None
+    return res.groupdict().get('addr', None)
 
 
 def get_maas_power_settings(user, password, ipaddress, hwaddress):
