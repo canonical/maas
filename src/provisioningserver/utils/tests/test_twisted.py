@@ -6,15 +6,21 @@
 __all__ = []
 
 from functools import partial
+import io
 from itertools import cycle
 import operator
 from operator import attrgetter
+import os
 from random import (
     randint,
     random,
+    randrange,
 )
 import re
+import signal
+import sys
 import threading
+from unittest import mock
 from unittest.mock import (
     ANY,
     Mock,
@@ -29,6 +35,8 @@ from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
     Provides,
 )
 from maastesting.testcase import (
@@ -56,13 +64,16 @@ from provisioningserver.utils.twisted import (
     LONGTIME,
     makeDeferredWithProcessProtocol,
     pause,
+    ProcessGroupLeaderMixin,
     retries,
     RPCFetcher,
     synchronous,
+    terminateProcess,
     ThreadPool,
     ThreadPoolLimiter,
     ThreadUnpool,
 )
+from testtools.content import content_from_stream
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
@@ -88,7 +99,11 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
-from twisted.internet.error import ProcessDone
+from twisted.internet.error import (
+    ProcessDone,
+    ProcessTerminated,
+)
+from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.task import Clock
 from twisted.internet.threads import (
     deferToThread,
@@ -1677,3 +1692,163 @@ class TestMakeDeferredWithProcessProtocol(MAASTestCase):
         protocol.processEnded(Failure(exception))
         with ExpectedException(type(exception)):
             yield d
+
+
+# A script that prints the signals it receives, as long as they're SIGTERM or
+# SIGQUIT. It prints "Ready." on stderr once it's registered signal handlers.
+signal_printer = """\
+from signal import Signals, signal
+from sys import stderr
+from time import sleep
+from traceback import print_exc
+
+def print_signal(signum, frame):
+    print(Signals(signum).name, flush=True)
+
+signal(Signals.SIGTERM, print_signal)
+signal(Signals.SIGQUIT, print_signal)
+
+print("Ready.", file=stderr, flush=True)
+
+sleep(5.0)
+"""
+
+
+class SignalPrinterProtocol(ProcessProtocol):
+    """Process protocol for use with `signal_printer`."""
+
+    def __init__(self):
+        super(SignalPrinterProtocol, self).__init__()
+        self.ready = Deferred()
+        self.done = Deferred()
+        self.out = io.BytesIO()
+        self.err = io.BytesIO()
+
+    def outReceived(self, data):
+        self.out.write(data)
+
+    def errReceived(self, data):
+        self.err.write(data)
+        if not self.ready.called:
+            self.ready.callback(data)
+
+    def processEnded(self, reason):
+        self.done.callback(reason)
+
+
+class SignalPrinterProtocolAsGroupLeader(
+        ProcessGroupLeaderMixin, SignalPrinterProtocol):
+    """Process protocol for use with `signal_printer` that ...
+
+    ...configures itself as a process group leader.
+    """
+
+
+class TestTerminateProcess(MAASTestCase):
+    """Tests for `terminateProcess`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=10)
+
+    def setUp(self):
+        super(TestTerminateProcess, self).setUp()
+        self.sigprint = self.make_file("sigprint.py", signal_printer)
+        # Allow spying on calls to os.kill and os.killpg by terminateProcess.
+        self.assertThat(twisted_module._os_kill, Is(os.kill))
+        self.patch(
+            twisted_module, "_os_kill",
+            Mock(wraps=twisted_module._os_kill))
+        self.assertThat(twisted_module._os_killpg, Is(os.killpg))
+        self.patch(
+            twisted_module, "_os_killpg",
+            Mock(wraps=twisted_module._os_killpg))
+
+    def startSignalPrinter(self, protocol):
+        self.assertThat(protocol, IsInstance(SignalPrinterProtocol))
+        self.addDetail("out", content_from_stream(protocol.out, seek_offset=0))
+        self.addDetail("err", content_from_stream(protocol.err, seek_offset=0))
+        python = sys.executable.encode("utf-8")
+        process = reactor.spawnProcess(
+            protocol, python, (python, self.sigprint.encode("utf-8")))
+
+        # Wait for the spawned subprocess to tell us that it's ready.
+        def cbReady(message):
+            self.assertThat(message.decode("utf-8"), Equals("Ready.\n"))
+            return process
+
+        return protocol.ready.addCallback(cbReady)
+
+    def terminateSignalPrinter(self, process, protocol):
+        # Terminate with some short timings; no point waiting long in a test,
+        # and we need to do it before the subprocess finishes sleeping.
+        terminateProcess(
+            process.pid, protocol.done, quit_after=0.1,
+            kill_after=0.2)
+
+    @inlineCallbacks
+    def test__terminates_process_with_TERM_QUIT_then_KILL(self):
+        protocol = SignalPrinterProtocol()
+        process = yield self.startSignalPrinter(protocol)
+        self.terminateSignalPrinter(process, protocol)
+        # The subprocess is terminated with SIGKILL but received SIGTERM then
+        # SIGQUIT prior to that.
+        try:
+            yield protocol.done
+        except ProcessTerminated as reason:
+            self.assertThat(reason, IsInstance(ProcessTerminated))
+            self.assertThat(reason.signal, Equals(signal.SIGKILL))
+            self.assertThat(
+                protocol.out.getvalue().decode("utf-8").split(),
+                Equals(["SIGTERM", "SIGQUIT"]))
+
+    @inlineCallbacks
+    def test__terminates_with_kill_and_killpg(self):
+        protocol = SignalPrinterProtocolAsGroupLeader()
+        process = yield self.startSignalPrinter(protocol)
+        # Capture the pid now; it gets cleared when the process exits.
+        pid = process.pid
+        # Terminate and wait for it to exit.
+        self.terminateSignalPrinter(process, protocol)
+        yield protocol.done.addErrback(Failure.trap, ProcessTerminated)
+        # os.kill was called once then os.killpg was called twice because the
+        # subprocess made itself a process group leader.
+        self.assertThat(
+            twisted_module._os_kill, MockCallsMatch(
+                mock.call(pid, signal.SIGTERM),
+            ))
+        self.assertThat(
+            twisted_module._os_killpg, MockCallsMatch(
+                mock.call(pid, signal.SIGQUIT),
+                mock.call(pid, signal.SIGKILL),
+            ))
+
+    @inlineCallbacks
+    def test__terminates_with_kill_if_not_in_separate_process_group(self):
+        protocol = SignalPrinterProtocol()
+        process = yield self.startSignalPrinter(protocol)
+        # Capture the pid now; it gets cleared when the process exits.
+        pid = process.pid
+        # Terminate and wait for it to exit.
+        self.terminateSignalPrinter(process, protocol)
+        yield protocol.done.addErrback(Failure.trap, ProcessTerminated)
+        # os.kill was called 3 times because the subprocess did not make
+        # itself a process group leader.
+        self.assertThat(
+            twisted_module._os_kill, MockCallsMatch(
+                mock.call(pid, signal.SIGTERM),
+                mock.call(pid, signal.SIGQUIT),
+                mock.call(pid, signal.SIGKILL),
+            ))
+        self.assertThat(
+            twisted_module._os_killpg, MockNotCalled())
+
+
+class TestProcessGroupLeaderMixin(MAASTestCase):
+    """Tests for `ProcessGroupLeaderMixin`."""
+
+    def test__calls_setpgid_on_child_process(self):
+        self.assertThat(twisted_module._os_setpgid, Is(os.setpgid))
+        setpgid = self.patch(twisted_module, "_os_setpgid")
+        protocol = ProcessGroupLeaderMixin()
+        transport = Mock(pid=randrange(99999, 9999999))
+        protocol.makeConnection(transport)
+        self.assertThat(setpgid, MockCalledOnceWith(transport.pid, 0))

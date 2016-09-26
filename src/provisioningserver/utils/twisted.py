@@ -2,9 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities related to the Twisted/Crochet execution environment."""
-from twisted.internet.error import ProcessDone
-from twisted.internet.protocol import ProcessProtocol
-
 
 __all__ = [
     'asynchronous',
@@ -23,6 +20,7 @@ __all__ = [
     'LONGTIME',
     'makeDeferredWithProcessProtocol',
     'pause',
+    'ProcessGroupLeaderMixin',
     'retries',
     'synchronous',
     'ThreadPool',
@@ -40,6 +38,13 @@ from functools import (
 )
 from itertools import repeat
 from operator import attrgetter
+import os
+from os import (
+    kill as _os_kill,
+    killpg as _os_killpg,
+    setpgid as _os_setpgid,
+)
+import signal
 import threading
 
 from crochet import run_in_reactor
@@ -51,6 +56,8 @@ from twisted.internet.defer import (
     maybeDeferred,
     succeed,
 )
+from twisted.internet.error import ProcessDone
+from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
 from twisted.python import (
@@ -956,3 +963,74 @@ def makeDeferredWithProcessProtocol():
         done.errback(reason) if (reason and not reason.check(ProcessDone))
         else done.callback(None))
     return done, protocol
+
+
+def terminateProcess(pid, done, *, quit_after=5.0, kill_after=10.0):
+    """Terminate the given process.
+
+    A "sensible" way to terminate a process. Does the following:
+
+      1. Sends SIGTERM to the process identified by `pid`.
+      2. Waits for up to 5 seconds.
+      3. Sends SIGQUIT to the process *group* of process `pid`.
+      4. Waits for up to an additional 5 seconds.
+      5. Sends SIGKILL to the process *group* of process `pid`.
+
+    Steps #3 and #5 have a safeguard: if the process identified by `pid` has
+    the same process group as the invoking process the signal is sent only to
+    the process and not to the process group. This prevents the caller from
+    inadvertently killing itself. You may want to use this in conjunction with
+    `ProcessGroupLeaderMixin` to ensure that the child process becomes a
+    process group leader soon after spawning.
+
+    :param pid: The PID to terminate.
+    :param done: A `Deferred` that fires when the process exits.
+    """
+    ppgid = os.getpgrp()
+
+    def kill(sig):
+        """Attempt to send `signal` to the given `pid`."""
+        try:
+            _os_kill(pid, sig)
+        except ProcessLookupError:
+            pass  # Already exited.
+
+    def killpg(sig):
+        """Attempt to send `signal` to the progress group of `pid`.
+
+        If `pid` is running in the same process group as the invoking process,
+        this falls back to using kill(2) instead of killpg(2).
+        """
+        try:
+            pgid = os.getpgid(pid)
+            if pgid == ppgid:
+                _os_kill(pid, sig)
+            else:
+                _os_killpg(pgid, sig)
+        except ProcessLookupError:
+            pass  # Already exited.
+
+    killers = (
+        reactor.callLater(0.0, kill, signal.SIGTERM),
+        reactor.callLater(quit_after, killpg, signal.SIGQUIT),
+        reactor.callLater(kill_after, killpg, signal.SIGKILL),
+    )
+
+    def ended():
+        for killer in killers:
+            if killer.active():
+                killer.cancel()
+
+    done.addBoth(callOut, ended)
+
+
+class ProcessGroupLeaderMixin(ProcessProtocol):
+    """Mix-in to ensure that the spawned process is a process group leader."""
+
+    def connectionMade(self):
+        super().connectionMade()
+        if self.transport.pid is not None:
+            try:
+                _os_setpgid(self.transport.pid, 0)
+            except ProcessLookupError:
+                pass  # Already exited.
