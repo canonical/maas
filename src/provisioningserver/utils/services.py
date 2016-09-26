@@ -16,6 +16,7 @@ import json
 from json.decoder import JSONDecodeError
 import os
 from pprint import pformat
+import re
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger.log import get_maas_logger
@@ -52,8 +53,10 @@ maaslog = get_maas_logger("networks.monitor")
 
 
 class JSONPerLineProtocol(ProcessProtocol):
-    """ProcessProtocol which allows easy parsing of a single JSON object per
-    line of text.
+    """ProcessProtocol which parses a single JSON object per line of text.
+
+    This expects that a UTF-8 locale is used, i.e. that text written to stdout
+    and stderr by the spawned process uses the UTF-8 character set.
     """
 
     def __init__(self, callback):
@@ -221,6 +224,25 @@ class NeighbourDiscoveryService(ProcessProtocolService):
             self.ifname, callback=self.callback)
 
 
+class MDNSProcessProtocol(JSONPerLineProtocol):
+    """Variant of `JSONPerLineProtocol` that massages stderr.
+
+    The spawned process is assumed to be `avahi-browse` which prints a
+    somewhat inane "Got SIG***, quitting" message when signalled. We do want
+    to see if it has something useful to say so we filter out lines from
+    stderr matching this pattern. Other lines are logged with the prefix
+    "observe-mdns".
+    """
+
+    _re_ignore_stderr = re.compile(
+        "^Got SIG[A-Z]+, quitting[.]")
+
+    def errLineReceived(self, line):
+        line = line.decode("utf-8").rstrip()
+        if self._re_ignore_stderr.match(line) is None:
+            log.msg("observe-mdns:", line)
+
+
 class MDNSResolverService(ProcessProtocolService):
     """Service to spawn the per-interface device discovery subprocess."""
 
@@ -239,7 +261,7 @@ class MDNSResolverService(ProcessProtocolService):
         ]
 
     def createProcessProtocol(self):
-        return JSONPerLineProtocol(callback=self.callback)
+        return MDNSProcessProtocol(callback=self.callback)
 
 
 class NetworksMonitoringLock(NamedLock):

@@ -33,22 +33,17 @@ another.
 __all__ = [
     "add_arguments",
     "run",
-    "observe_mdns",
-    "parse_avahi_event",
-    "unescape_avahi_service_name",
 ]
 
+from contextlib import contextmanager
 import io
 import json
-import os
 import re
-import stat
 import subprocess
 import sys
 from textwrap import dedent
 import time
-
-from provisioningserver.utils.script import ActionScriptError
+from typing import Iterable
 
 
 def _rstrip(s: str, suffix: str) -> str:
@@ -122,41 +117,67 @@ def parse_avahi_event(line: str) -> dict:
     return data
 
 
-def observe_mdns(verbose=False, input=sys.stdin, output=sys.stdout):
-    """Function for printing avahi hostname bindings on stdout.
+def _extract_mdns_events(lines: Iterable[str]) -> Iterable[dict]:
+    """Extract Avahi-format mDNS events from the given stream."""
+    for event in map(parse_avahi_event, lines):
+        if event is not None:
+            yield event
+
+
+def _observe_mdns(reader, output: io.TextIOBase, verbose: bool):
+    """Process the given `reader` for `avahi-browse` events.
+
+    IO is mostly isolated in this function; the transformation functions
+    `_observe_all_in_full` and `_observe_resolver_found` can be tested without
+    having to deal with IO.
+
+    :param reader: A context-manager yielding a `io.TextIOBase`.
+    """
+    if verbose:
+        observer = _observe_all_in_full
+    else:
+        observer = _observe_resolver_found
+    with reader as infile:
+        events = _extract_mdns_events(infile)
+        for event in observer(events):
+            print(json.dumps(event), file=output, flush=True)
+
+
+def _observe_all_in_full(events: Iterable[dict]) -> Iterable[dict]:
+    """Report on all mDNS events, in full."""
+    return iter(events)
+
+
+def _observe_resolver_found(events: Iterable[dict]) -> Iterable[dict]:
+    """Report on `RESOLVER_FOUND` events only, with restricted details.
+
+    The RESOLVER_FOUND event is interesting to MAAS right now; other events
+    like BROWSER_NEW and BROWSER_REMOVED are not.
     """
     seen = dict()
-    for line in input:
-        event = parse_avahi_event(line)
-        if event is None:
-            continue
-        if verbose is True:
-            output.write(json.dumps(event))
-            output.write("\n")
-            output.flush()
-        elif event['event'] == 'RESOLVER_FOUND':
-            # In non-verbose mode, we only care about the critical data.
-            interface = event['interface']
-            hostname = event['hostname']
-            address = event['address']
-            entry = (address, hostname, interface)
-            # Use a monotonic clock to protect ourselves from clock skew.
-            clock = int(time.monotonic())
-            # Check if we've seen this mDNS entry in the past ten minutes.
-            if entry in seen and clock <= (seen[entry] + 600):
-                continue
-            else:
-                # If we haven't seen this entry [recently], update its
-                # last-seen time and continue to report it.
-                seen[entry] = clock
-            data = {
+    for event in filter(_p_resolver_found, events):
+        # In non-verbose mode we only care about the critical data.
+        interface = event['interface']
+        hostname = event['hostname']
+        address = event['address']
+        entry = (address, hostname, interface)
+        # Use a monotonic clock to protect ourselves from clock skew.
+        clock = int(time.monotonic())
+        # Check if we've seen this mDNS entry in the past ten minutes.
+        if entry not in seen or clock > (seen[entry] + 600):
+            # We haven't seen this entry [recently], so update its
+            # last-seen time and report it.
+            seen[entry] = clock
+            yield {
                 'interface': interface,
                 'hostname': hostname,
                 'address': address,
             }
-            output.write(json.dumps(data))
-            output.write("\n")
-            output.flush()
+
+
+def _p_resolver_found(event):
+    """Return `True` if this is a `RESOLVER_FOUND` event."""
+    return event['event'] == 'RESOLVER_FOUND'
 
 
 def add_arguments(parser):
@@ -182,24 +203,79 @@ def add_arguments(parser):
 
 def run(args, output=sys.stdout, stdin=sys.stdin):
     """Observe an Ethernet interface and print ARP bindings."""
-    avahi_browse = None
     if args.input_file is None:
-        avahi_browse = subprocess.Popen(
-            ["/usr/bin/avahi-browse", "--all", "--resolve", "--no-db-lookup",
-             "--parsable", "--no-fail"], stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        infile = io.TextIOWrapper(avahi_browse.stdout, encoding='utf-8')
+        reader = _reader_from_avahi()
+    elif args.input_file == "-":
+        reader = _reader_from_stdin(stdin)
     else:
-        if args.input_file == '-':
-            mode = os.fstat(stdin.fileno()).st_mode
-            if not stat.S_ISFIFO(mode):
-                raise ActionScriptError("Expected stdin to be a pipe.")
-            infile = stdin
-        else:
-            infile = open(args.input_file, "r")
-    observe_mdns(
-        input=infile, output=output, verbose=args.verbose)
-    if avahi_browse is not None:
-        return_code = avahi_browse.poll()
-        if return_code is not None:
-            raise SystemExit(return_code)
+        reader = _reader_from_file(args.input_file)
+    try:
+        _observe_mdns(reader, output, args.verbose)
+    except KeyboardInterrupt:
+        # Suppress this exception and allow for a clean exit instead.
+        # ActionScript would exit 1 if we allowed it to propagate, but
+        # SIGINT/SIGTERM are how this script is meant to be terminated.
+        pass
+
+
+@contextmanager
+def _reader_from_avahi():
+    """Read from a newly spawned `avahi-browse` subprocess.
+
+    :raises SystemExit: If `avahi-browse` exits non-zero.
+    """
+    avahi_browse = subprocess.Popen(
+        ["/usr/bin/avahi-browse", "--all", "--resolve", "--no-db-lookup",
+         "--parsable", "--no-fail"], stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE)
+    try:
+        # Avahi says "All strings used in DNS-SD are UTF-8 strings".
+        yield io.TextIOWrapper(avahi_browse.stdout, encoding='utf-8')
+    finally:
+        # SIGINT or SIGTERM (see ActionScript.setup) has been received,
+        # avahi-browse may have crashed or been terminated, or there may have
+        # been an exception in this script. In any case we give the subprocess
+        # a chance to exit cleanly if it has not done so already, and then we
+        # report on that exit.
+        if _terminate_process(avahi_browse) != 0:
+            raise SystemExit(avahi_browse.returncode)
+
+
+@contextmanager
+def _reader_from_stdin(stdin):
+    """Reader from `stdin`.
+
+    Using `sys.stdin` as a context manager directly would cause it to be
+    closed on exit from the context, but that's not necessarily what we want;
+    we may exit the context because of an error, not because stdin has been
+    exhausted, so we want to insulate it from that.
+    """
+    yield stdin
+
+
+@contextmanager
+def _reader_from_file(filename):
+    """Reader from `filename`."""
+    # Avahi says "All strings used in DNS-SD are UTF-8 strings".
+    with open(filename, "r", encoding="utf-8") as infile:
+        yield infile
+
+
+def _terminate_process(process, wait=2.5, kill=2.5):
+    """Ensures that `process` terminates.
+
+    :return: The exit code of the process.
+    """
+    try:
+        # The subprocess may have already been signalled, for example as part
+        # of this process's process group when Ctrl-c is pressed at the
+        # terminal, so give it some time to exit.
+        return process.wait(timeout=wait)
+    except subprocess.TimeoutExpired:
+        # Either the subprocess has not been signalled, or it's slow.
+        process.terminate()  # SIGTERM.
+        try:
+            return process.wait(timeout=kill)
+        except subprocess.TimeoutExpired:
+            process.kill()  # SIGKILL.
+            return process.wait()

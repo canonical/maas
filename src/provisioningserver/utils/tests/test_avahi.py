@@ -6,25 +6,24 @@
 __all__ = []
 
 from argparse import ArgumentParser
+from contextlib import contextmanager
 import io
 import json
 from tempfile import NamedTemporaryFile
 import time
-from unittest.mock import Mock
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import avahi as avahi_module
 from provisioningserver.utils.avahi import (
     add_arguments,
-    observe_mdns,
     parse_avahi_event,
     run,
     unescape_avahi_service_name,
 )
-from provisioningserver.utils.script import ActionScriptError
 from testtools.matchers import (
     Equals,
     HasLength,
+    Not,
 )
 from testtools.testcase import ExpectedException
 
@@ -122,6 +121,18 @@ class TestParseAvahiEvent(MAASTestCase):
 
     def test__returns_none_for_malformed_input(self):
         self.assertThat(parse_avahi_event(";;;"), Equals(None))
+
+
+def observe_mdns(*, input, output, verbose=False):
+    """Print avahi hostname bindings on stdout.
+
+    This is a backwards-compatibility shim to aid testing.
+    """
+    @contextmanager
+    def reader():
+        yield input
+    return avahi_module._observe_mdns(
+        reader(), output, verbose=verbose)
 
 
 class TestObserveMDNS(MAASTestCase):
@@ -232,44 +243,20 @@ class TestObserveMDNSCommand(MAASTestCase):
         add_arguments(parser)
         args = parser.parse_args([])
         popen = self.patch(avahi_module.subprocess, 'Popen')
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
         popen.return_value.stdout = io.BytesIO(self.test_input_bytes)
+        popen.return_value.wait.return_value = 0
+        popen.return_value.returncode = 0
         output = io.StringIO()
         run(args, output=output)
         self.assertThat(popen.call_count, Equals(1))
-
-    def test__checks_for_pipe(self):
-        parser = ArgumentParser()
-        add_arguments(parser)
-        args = parser.parse_args(['--input-file', '-'])
-        output = io.StringIO()
-        stdin = self.patch(avahi_module.sys, 'stdin')
-        stdin.return_value.fileno = Mock()
-        fstat = self.patch(avahi_module.os, 'fstat')
-        fstat.return_value.st_mode = None
-        stat = self.patch(avahi_module.stat, 'S_ISFIFO')
-        stat.return_value = False
-        with ExpectedException(
-                ActionScriptError, 'Expected stdin to be a pipe'):
-            run(args, output=output)
 
     def test__allows_pipe_input(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(['--input-file', '-'])
         output = io.StringIO()
-
-        def yield_test_data(mock):
-            yield self.test_input_str
-        stdin_mock = Mock()
-        stdin_mock.__iter__ = yield_test_data
-        stdin_mock.return_value.fileno = Mock()
-        fstat = self.patch(avahi_module.os, 'fstat')
-        fstat.return_value.st_mode = None
-        stat = self.patch(avahi_module.stat, 'S_ISFIFO')
-        stat.return_value = True
-        run(args, output=output, stdin=stdin_mock)
+        run(args, output=output, stdin=[self.test_input_str])
+        self.assertThat(output.getvalue(), Not(HasLength(0)))
 
     def test__allows_file_input(self):
         with NamedTemporaryFile('w') as f:
@@ -281,19 +268,14 @@ class TestObserveMDNSCommand(MAASTestCase):
             output = io.StringIO()
             run(args, output=output)
 
-    def test__raises_systemexit_poll_result(self):
+    def test__raises_systemexit(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
         popen = self.patch(avahi_module.subprocess, 'Popen')
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = None
+        popen.return_value.wait.return_value = 42
+        popen.return_value.returncode = 42
         popen.return_value.stdout = io.BytesIO(self.test_input_bytes)
         output = io.StringIO()
-        observe_mdns_mock = self.patch(avahi_module, 'observe_mdns')
-        observe_mdns_mock.return_value = None
-        popen.return_value.poll = Mock()
-        popen.return_value.poll.return_value = 42
-        with ExpectedException(
-                SystemExit, '.*42.*'):
+        with ExpectedException(SystemExit, '.*42.*'):
             run(args, output=output)

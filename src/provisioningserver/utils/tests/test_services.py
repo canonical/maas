@@ -516,3 +516,20 @@ class TestMDNSResolverService(MAASTestCase):
         self.assertThat(args, HasLength(2))
         self.assertTrue(args[0].endswith(b"maas-rack"))
         self.assertTrue(args[1], Equals(b"observe-mdns"))
+
+    @inlineCallbacks
+    def test__protocol_selectively_logs_stderr(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+        service = MDNSResolverService(lambda _: None)
+        protocol = service.createProcessProtocol()
+        reactor.spawnProcess(protocol, b"sh", (b"sh", b"-c", b"exec cat >&2"))
+        protocol.transport.write(
+            b"Lines written to stderr are logged\n"
+            b"with a prefix, with one exception:\n"
+            b"Got SIGFAKE, quitting.\n")
+        protocol.transport.closeStdin()
+        yield protocol.done
+        self.assertThat(logger.output, Equals(
+            "observe-mdns: Lines written to stderr are logged\n"
+            "---\n"
+            "observe-mdns: with a prefix, with one exception:"))
