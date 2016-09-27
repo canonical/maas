@@ -1323,6 +1323,7 @@ class NetworkForm(ConfigForm):
 class NetworkDiscoveryForm(ConfigForm):
     """Settings page, Network Discovery section."""
     network_discovery = get_config_field('network_discovery')
+    active_discovery_interval = get_config_field('active_discovery_interval')
 
 
 class ThirdPartyDriversForm(ConfigForm):

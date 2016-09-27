@@ -250,17 +250,17 @@ class DiscoveriesHandler(OperationsHandler):
                 content_type="text/plain", content=error)
         elif len(cidrs) == 0 and force is True:
             # No CIDRs specified and force==True, so scan all networks.
-            return scan_all_rack_networks(
+            results = scan_all_rack_networks(
                 scan_all=True, ping=always_use_ping, slow=slow,
                 threads=threads)
         else:
-            return scan_all_rack_networks(
+            results = scan_all_rack_networks(
                 cidrs=ipnetworks, ping=always_use_ping, slow=slow,
                 threads=threads)
+        return user_friendly_scan_results(results)
 
 
-def interpret_scan_all_rack_networks_rpc_results(
-        rpc_results: RPCResults) -> str:
+def get_scan_result_string_for_humans(rpc_results: RPCResults) -> str:
     """Return a human-readable string with the results of `ScanNetworks`."""
     if len(rpc_results.available) == 0:
         result = (
@@ -315,7 +315,8 @@ def get_controller_summary(controllers):
 
 
 def scan_all_rack_networks(
-        scan_all=None, cidrs=None, ping=None, threads=None, slow=None) -> dict:
+        scan_all=None, cidrs=None, ping=None, threads=None,
+        slow=None) -> RPCResults:
     """Call each rack controller and instruct it to scan its attached networks.
 
     Interprets the results and returns a dict with the following keys:
@@ -337,9 +338,15 @@ def scan_all_rack_networks(
     This function is intended to be used directly by the API and websocket
     layers, so must return a dict that is safe to encode to JSON.
 
+    :param scan_all: If True, allows scanning all networks if no `cidrs` were
+        passed in.
     :param cidrs: An iterable of netaddr.IPNetwork objects to instruct the
         rack controllers to scan. If omitted, the rack will scan all of its
         attached networks.
+    :param ping: If True, forces the use of 'ping' rather than 'nmap'.
+    :param threads: If specified, overrides the default number of concurrent
+        scanning threads.
+    :param slow: If True, forces 'nmap' to scan slower (if it is being used).
     :return: dict
     """
     kwargs = {}
@@ -354,7 +361,16 @@ def scan_all_rack_networks(
     if slow is not None:
         kwargs['slow'] = slow
     rpc_results = call_racks_synchronously(cluster.ScanNetworks, kwargs=kwargs)
-    result = interpret_scan_all_rack_networks_rpc_results(rpc_results)
+    return rpc_results
+
+
+def user_friendly_scan_results(rpc_results: RPCResults) -> dict:
+    """Given the specified `RPCResults` object, returns a user-friendly dict.
+
+    Interprets the given `RPCResults` and transforms it into a dictionary
+    suitable to return from the API, with human-readable strings.
+    """
+    result = get_scan_result_string_for_humans(rpc_results)
     # WARNING: This method returns a dictionary which is directly used in the
     # result of a MAAS API call. Keys returned in this dictionary cannot be
     # renamed or removed, and (values cannot be repurposed) without breaking

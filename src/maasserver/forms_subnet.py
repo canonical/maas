@@ -37,6 +37,9 @@ class SubnetForm(MAASModelForm):
     rdns_mode = forms.ChoiceField(
         choices=RDNS_MODE_CHOICES, required=False)
 
+    active_discovery = forms.BooleanField(
+        required=False)
+
     allow_proxy = forms.BooleanField(
         required=False)
 
@@ -51,6 +54,7 @@ class SubnetForm(MAASModelForm):
             'gateway_ip',
             'dns_servers',
             'rdns_mode',
+            'active_discovery',
             'allow_proxy',
             )
 

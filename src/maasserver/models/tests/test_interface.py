@@ -2886,43 +2886,17 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
         iface = reload_object(iface)
         self.expectThat(iface.mdns_discovery_state, Is(True))
 
-    def test__sets_active_discovery_state_based_on_active_setting(self):
-        settings = {'monitored': False}
-        iface = factory.make_Interface()
-        iface.update_discovery_state(
-            NetworkDiscoveryConfig(passive=False, active=False),
-            settings=settings)
-        iface = reload_object(iface)
-        self.expectThat(iface.active_discovery_state, Is(False))
-        iface.update_discovery_state(
-            # This is an invalid state as far as the configuration is
-            # concerned, but it's supported by the model.
-            NetworkDiscoveryConfig(passive=False, active=True),
-            settings=settings)
-        iface = reload_object(iface)
-        self.expectThat(iface.active_discovery_state, Is(True))
-
 
 class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
 
-    def test__changes_blank_active_params_to_none(self):
-        iface = factory.make_Interface()
-        iface.active_discovery_params = ''
-        state = iface.get_discovery_state()
-        self.assertThat(state['params'], Is(None))
-
     def test__reports_correct_parameters(self):
         iface = factory.make_Interface()
-        iface.active_discovery_params = {'arbitrary': factory.make_name()}
-        iface.active_discovery_state = random.choice([True, False])
         iface.neighbour_discovery_state = random.choice([True, False])
         iface.mdns_discovery_state = random.choice([True, False])
         state = iface.get_discovery_state()
-        self.assertThat(state['active'], Equals(iface.active_discovery_state))
         self.assertThat(
             state['neighbour'], Equals(iface.neighbour_discovery_state))
         self.assertThat(state['mdns'], Equals(iface.mdns_discovery_state))
-        self.assertThat(state['params'], Equals(iface.active_discovery_params))
 
 
 class TestReportVID(MAASServerTestCase):

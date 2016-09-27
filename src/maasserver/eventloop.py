@@ -136,6 +136,13 @@ def make_NetworksMonitoringService():
     return RegionNetworksMonitoringService(reactor)
 
 
+def make_ActiveDiscoveryService(postgresListener):
+    from maasserver.regiondservices.active_discovery import (
+        ActiveDiscoveryService
+    )
+    return ActiveDiscoveryService(reactor, postgresListener)
+
+
 def make_NetworkTimeProtocolService():
     from maasserver.regiondservices import ntp
     return ntp.RegionNetworkTimeProtocolService(reactor)
@@ -256,6 +263,11 @@ class RegionEventLoop:
             "only_on_master": False,
             "factory": make_NetworksMonitoringService,
             "requires": [],
+        },
+        "active-discovery": {
+            "only_on_master": True,
+            "factory": make_ActiveDiscoveryService,
+            "requires": ["postgres-listener"],
         },
         "rack-controller": {
             "only_on_master": False,

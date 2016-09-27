@@ -27,6 +27,7 @@ DISPLAYED_SUBNET_FIELDS = (
     'gateway_ip',
     'dns_servers',
     'rdns_mode',
+    'active_discovery',
     'allow_proxy',
 )
 

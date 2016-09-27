@@ -11,6 +11,7 @@ __all__ = [
     'validate_config_name',
     ]
 
+from datetime import timedelta
 import re
 from socket import gethostname
 
@@ -298,22 +299,30 @@ CONFIG_ITEMS = {
                 "Host discovery and network observation"),
             'required': False,
             'help_text': (
-                # XXX mpontillo: commented out until active discovery exists.
-                # "If active mode is enabled, MAAS will use active techniques "
-                # "to observe attached networks, such as sending DHCP "
-                # "packets, ICMP echo (ping), and/or IPv4 ARP requests. MAAS "
-                # "may use 'nmap' for this purpose, if it is installed. "
-                # "Active discovery allows MAAS to maintain accurate data "
-                # "about which IP addresses are in-use on attached networks, "
-                # "and what services they are running. If passive mode is
-                # "enabled, "
-                "If enabled, MAAS will use 'tcpdump' to listen to IPv4 ARP "
-                "requests, and 'avahi-browse' to resolve mDNS (RFC 6762) "
-                "records advertised on local networks. This helps MAAS "
-                "determine which IP addresses and VLANs are in use on the "
-                "network, and helps users to determine their purpose."
-                # " Passive discovery is "
-                # "automatically enabled if active discovery is selected."
+                "If network discovery is enabled, MAAS will use passive "
+                "techniques to observe networks attached to rack controllers, "
+                "such as listening to ARP requests and mDNS advertisements. "
+                "Each subnet can be configured for active neighbour "
+                "discovery, which will cause MAAS to periodically scan for "
+                "neighbours on that subnet. If network discovery is "
+                "disabled, MAAS will neither listen for any neighbours, nor "
+                "actively scan any subnets."
+            )
+        }
+    },
+    'active_discovery_interval': {
+        'default': int(timedelta(hours=3).total_seconds()),
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'label': (
+                "Active discovery interval"),
+            'required': False,
+            'help_text': (
+                "If network discovery is enabled, MAAS will periodically scan "
+                "each subnet enabled for active discovery after the specified "
+                "number of seconds has elapsed. MAAS will check if this "
+                "interval has elapsed every five minutes. If the interval is "
+                "set to 0, MAAS will not actively scan any subnets."
             )
         }
     },

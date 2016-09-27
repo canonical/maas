@@ -16,8 +16,9 @@ from maasserver.api import discoveries as discoveries_module
 from maasserver.api.discoveries import (
     get_controller_summary,
     get_failure_summary,
-    interpret_scan_all_rack_networks_rpc_results,
+    get_scan_result_string_for_humans,
     scan_all_rack_networks,
+    user_friendly_scan_results,
 )
 from maasserver.clusterrpc.utils import RPCResults
 from maasserver.dbviews import register_view
@@ -79,6 +80,14 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
         register_view("maasserver_discovery")
+        # Patch to ensure an actual scan is not attempted.
+        scan_all_rack_networks_mock = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        user_friendly_scan_results_mock = self.patch(
+            discoveries_module.user_friendly_scan_results)
+        user_friendly_scan_results_mock.return_value = lambda x: x
+        result = {"result": factory.make_name()}
+        scan_all_rack_networks_mock.return_value = result
 
     def test_handler_path(self):
         self.assertEqual(
@@ -87,17 +96,6 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
     def get_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
         response = self.client.get(uri, *args, **kwargs)
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        return results
-
-    def post_api_response(self, *args, **kwargs):
-        uri = get_discoveries_uri()
-        return self.client.post(uri, *args, **kwargs)
-
-    def post_api_results(self, *args, **kwargs):
-        uri = get_discoveries_uri()
-        response = self.client.post(uri, *args, **kwargs)
         self.assertThat(response, HasStatusCode(http.client.OK))
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         return results
@@ -167,81 +165,79 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         results = self.get_api_results({'op': 'by_unknown_ip_and_mac'})
         self.assertThat(len(results), Equals(0))
 
-    def test__scan__fails_scan_all_if_not_forced(self):
-        scan_all_rack_networks_mock = self.patch(
+
+class TestDiscoveriesScanAPI(APITestCase.ForUser):
+
+    def post_api_response(self, *args, **kwargs):
+        uri = get_discoveries_uri()
+        return self.client.post(uri, *args, **kwargs)
+
+    def post_api_results(self, *args, **kwargs):
+        uri = get_discoveries_uri()
+        response = self.client.post(uri, *args, **kwargs)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        return results
+
+    def setUp(self):
+        super().setUp()
+        register_view("maasserver_discovery")
+        # Patch to ensure an actual scan is not attempted.
+        self.scan_all_rack_networks_mock = self.patch(
             discoveries_module.scan_all_rack_networks)
+        user_friendly_scan_results_mock = self.patch(
+            discoveries_module.user_friendly_scan_results)
+        user_friendly_scan_results_mock.return_value = lambda x: x
         result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
+        self.scan_all_rack_networks_mock.return_value = result
+
+    def test__scan__fails_scan_all_if_not_forced(self):
         response = self.post_api_response({'op': 'scan'})
         self.assertThat(
             response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test__scan__threads_must_be_number(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         response = self.post_api_response({'op': 'scan', 'threads': 'x'})
         self.assertThat(
             response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test__scan__calls_scan_all_networks_with_scan_all_if_forced(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         result = self.post_api_results({'op': 'scan', 'force': 'true'})
         self.assertThat(result, Equals(result))
-        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+        self.assertThat(self.scan_all_rack_networks_mock, MockCalledOnceWith(
             scan_all=True, ping=False, slow=False, threads=None))
 
     def test__scan__passes_ping(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         result = self.post_api_results({
             'op': 'scan',
             'force': 'true',
             'always_use_ping': 'true'
         })
         self.assertThat(result, Equals(result))
-        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+        self.assertThat(self.scan_all_rack_networks_mock, MockCalledOnceWith(
             scan_all=True, ping=True, slow=False, threads=None))
 
     def test__scan__passes_slow(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         result = self.post_api_results({
             'op': 'scan',
             'force': 'true',
             'slow': 'true'
         })
         self.assertThat(result, Equals(result))
-        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+        self.assertThat(self.scan_all_rack_networks_mock, MockCalledOnceWith(
             scan_all=True, ping=False, slow=True, threads=None))
 
     def test__scan__passes_threads(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         result = self.post_api_results({
             'op': 'scan',
             'force': 'true',
             'threads': '3.14'
         })
         self.assertThat(result, Equals(result))
-        self.assertThat(scan_all_rack_networks_mock, MockCalledOnceWith(
+        self.assertThat(self.scan_all_rack_networks_mock, MockCalledOnceWith(
             scan_all=True, ping=False, slow=False, threads=3))
 
     def test__scan__calls_scan_all_networks_with_specified_cidrs(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         result = self.post_api_results({
             'op': 'scan',
             'force': 'true',
@@ -249,17 +245,13 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         })
         self.assertThat(result, Equals(result))
         self.assertThat(
-            scan_all_rack_networks_mock, MockCalledOnceWith(cidrs=[
+            self.scan_all_rack_networks_mock, MockCalledOnceWith(cidrs=[
                 IPNetwork('192.168.0.0/24'),
                 IPNetwork('192.168.1.0/24')],
                 ping=False, slow=False, threads=None
             ))
 
     def test__scan__with_invalid_cidrs_fails(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         response = self.post_api_response({
             'op': 'scan',
             'cidr': ['x.x.x.x/y']
@@ -268,10 +260,6 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
             response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test__scan__with_no_cidrs_does_not_call_scan_all_networks(self):
-        scan_all_rack_networks_mock = self.patch(
-            discoveries_module.scan_all_rack_networks)
-        result = {"result": factory.make_name()}
-        scan_all_rack_networks_mock.return_value = result
         response = self.post_api_response({'op': 'scan'})
         self.assertThat(
             response, HasStatusCode(http.client.BAD_REQUEST))
@@ -429,28 +417,28 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
 
     def test__no_racks_available(self):
         results = make_RPCResults(available=[], failed=[])
-        result = interpret_scan_all_rack_networks_rpc_results(results)
+        result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches(
             "Unable to initiate network scanning on any rack controller..."))
 
     def test__scan_not_started_on_at_least_one_rack(self):
         results = make_RPCResults(
             available=['x'], unavailable=['y', 'z'], failed=[])
-        result = interpret_scan_all_rack_networks_rpc_results(results)
+        result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches(
             "Scanning could not be started on 2 rack..."))
 
     def test__scan_in_progress(self):
         results = make_RPCResults(
             available=['x'], unavailable=[], failed=[])
-        result = interpret_scan_all_rack_networks_rpc_results(results)
+        result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches(
             "Scanning is in-progress..."))
 
     def test__scan_failed_on_at_least_one_rack(self):
         results = make_RPCResults(
             available=['x'], failed=['v', 'w'], unavailable=['y', 'z'])
-        result = interpret_scan_all_rack_networks_rpc_results(results)
+        result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches(
             "Scanning could not be started...In addition, a scan was already "
             "in-progress on 2..."))
@@ -458,7 +446,7 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
     def test__failed_rack(self):
         results = make_RPCResults(
             available=['w'], failed=['w'], unavailable=[])
-        result = interpret_scan_all_rack_networks_rpc_results(results)
+        result = get_scan_result_string_for_humans(results)
         self.assertThat(result, DocTestMatches(
             "A scan was already in-progress on 1 rack..."))
 
@@ -469,7 +457,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         super().setUp()
         self.result = factory.make_name("result")
         interpret_result_mock = self.patch(
-            discoveries_module.interpret_scan_all_rack_networks_rpc_results)
+            discoveries_module.get_scan_result_string_for_humans)
         interpret_result_mock.return_value = self.result
         self.call_racks_sync_mock = self.patch(
             discoveries_module, 'call_racks_synchronously')
@@ -490,7 +478,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             timeout=self.timed_out)
 
     def test__populates_results_correctly(self):
-        result = scan_all_rack_networks()
+        result = user_friendly_scan_results(scan_all_rack_networks())
         self.assertThat(result, Equals(
             {
                 "result": self.result,
@@ -510,7 +498,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         ))
 
     def test__results_can_be_converted_to_json_and_back(self):
-        result = scan_all_rack_networks()
+        result = user_friendly_scan_results(scan_all_rack_networks())
         json_result = json.dumps(result)
         self.assertThat(json.loads(json_result), Equals(result))
 

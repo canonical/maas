@@ -45,3 +45,6 @@ staticip_acquire = DatabaseXactLock(8)
 # problem because registration involves populating fabrics, VLANs, and other
 # information that may overlap between rack controller.
 rack_registration = DatabaseLock(9)
+
+# Lock to prevent concurrent network scanning.
+try_active_discovery = DatabaseLock(10).TRY

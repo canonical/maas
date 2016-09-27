@@ -454,27 +454,6 @@ class Interface(CleanSave, TimestampedModel):
     # interfaces (virtual bridges).
     neighbour_discovery_state = BooleanField(default=False, editable=False)
 
-    # Indicates if active discovery should occur on this interface.
-    # Only meaningful for interfaces that belong to controllers.
-    # If this value is True, it instructs MAAS that it is permissible for the
-    # controller to send packets out on this interface for the purpose of
-    # enhancing discovery results. Active discovery is a generic term that
-    # includes multicast beaconing, host discovery via ARP and/or ICMP
-    # requests, and whatever other mechanisms might come about in the future
-    # which require sending packets. (DHCP discovery is currently excluded from
-    # this, since it was a pre-existing active discovery service, but it should
-    # eventually be refactored to honor this flag.)
-    active_discovery_state = BooleanField(default=False, editable=False)
-
-    # Additional parameters for active discovery. As of this writing, active
-    # discovery parameters are undefined, but it is envisioned that they will
-    # be passed to controllers in JSON format. This field might specify
-    # configuration such as which subnets to scan, the allowed scanning speed,
-    # types of active scanning that are allowed, etc.
-    # Only meaningful if `active_discovery_state` is True.
-    active_discovery_params = JSONObjectField(
-        blank=True, default="", editable=False)
-
     # Set only on a BridgeInterface when it is created by a standard user
     # when a machine is acquired. Once the machine is released the bridge
     # interface is removed.
@@ -1277,11 +1256,9 @@ class Interface(CleanSave, TimestampedModel):
             # an interface that should be monitored.
             self.neighbour_discovery_state = False
         self.mdns_discovery_state = discovery_mode.passive
-        self.active_discovery_state = discovery_mode.active
         self.save(
             update_fields=[
-                'neighbour_discovery_state', 'mdns_discovery_state',
-                'active_discovery_state'])
+                'neighbour_discovery_state', 'mdns_discovery_state'])
 
     def get_discovery_state(self):
         """Returns the interface monitoring state for this `Interface`.
@@ -1290,15 +1267,9 @@ class Interface(CleanSave, TimestampedModel):
         purposes.
         """
         # If the text field is empty, treat it the same as 'null'.
-        if str(self.active_discovery_params) == '':
-            params = None
-        else:
-            params = self.active_discovery_params
         return {
             'neighbour': self.neighbour_discovery_state,
             'mdns': self.mdns_discovery_state,
-            'active': self.active_discovery_state,
-            'params': params
         }
 
 

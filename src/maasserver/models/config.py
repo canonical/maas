@@ -12,6 +12,7 @@ from collections import (
     namedtuple,
 )
 import copy
+from datetime import timedelta
 from socket import gethostname
 
 from django.db.models import (
@@ -34,8 +35,6 @@ DNSSEC_VALIDATION_CHOICES = [
 ]
 
 NETWORK_DISCOVERY_CHOICES = [
-    # XXX mpontillo: commented out until active discovery exists in MAAS.
-    # ("active", "Enabled (with active discovery)"),
     ("enabled", "Enabled"),
     ("disabled", "Disabled")
 ]
@@ -66,6 +65,8 @@ def get_default_config():
         'omapi_key': '',
         # Network discovery
         'network_discovery': 'enabled',
+        'active_discovery_interval': int(timedelta(hours=3).total_seconds()),
+        'active_discovery_last_scan': 0,
         # RPC configuration.
         'rpc_region_certificate': None,
         'rpc_shared_secret': None,

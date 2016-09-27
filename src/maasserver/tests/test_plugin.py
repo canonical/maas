@@ -92,6 +92,7 @@ class TestRegionServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
+            "active-discovery",
             "database-tasks",
             "dns-publication-cleanup",
             "import-resources",

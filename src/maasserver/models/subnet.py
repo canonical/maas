@@ -290,6 +290,17 @@ class SubnetManager(Manager, SubnetQueriesMixin):
             fabric = int(fabric)
         return fabric
 
+    def get_cidr_list_for_periodic_active_scan(self):
+        """Returns the list of subnets which allow a periodic active scan.
+
+        :return: list of `netaddr.IPNetwork` objects.
+        """
+        query = self.filter(active_discovery=True)
+        return [
+            IPNetwork(cidr)
+            for cidr in query.values_list('cidr', flat=True)
+        ]
+
     def get_subnet_or_404(self, specifiers, user, perm):
         """Fetch a `Subnet` by its id.  Raise exceptions if no `Subnet` with
         this id exists or if the provided user has not the required permission
@@ -356,6 +367,9 @@ class Subnet(CleanSave, TimestampedModel):
 
     allow_proxy = BooleanField(
         editable=True, blank=False, null=False, default=True)
+
+    active_discovery = BooleanField(
+        editable=True, blank=False, null=False, default=False)
 
     def get_ipnetwork(self):
         return IPNetwork(self.cidr)
