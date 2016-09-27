@@ -44,6 +44,16 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod("device.create", node);
         };
 
+        // Create an interface on device.
+        DevicesManager.prototype.createInterface = function(params) {
+            var self = this;
+            return RegionConnection.callMethod(
+                "device.create_interface", params).then(function(device) {
+                    self._replaceItem(device);
+                    return device;
+                });
+        };
+
         // Perform the action on the device.
         DevicesManager.prototype.performAction = function(
             device, action, extra) {

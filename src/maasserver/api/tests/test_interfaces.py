@@ -266,7 +266,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
             self.assertEqual(
                 http.client.CONFLICT, response.status_code, response.content)
 
-    def test_create_physical_requires_mac_and_name(self):
+    def test_create_physical_requires_mac(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_interfaces_uri(node)
@@ -277,7 +277,6 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual({
             "mac_address": ["This field is required."],
-            "name": ["This field is required."],
             }, json_load_bytes(response.content))
 
     def test_create_physical_doesnt_allow_mac_already_register(self):

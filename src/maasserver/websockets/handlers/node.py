@@ -100,6 +100,7 @@ class NodeHandler(TimestampedModelHandler):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
         data["status"] = obj.display_status()
+        data["status_code"] = obj.status
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["memory"] = obj.display_memory()
         data["node_type_display"] = obj.get_node_type_display()

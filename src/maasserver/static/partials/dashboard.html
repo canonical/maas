@@ -51,8 +51,19 @@
                     </div>
                 </header>
                 <div class="table__body">
+                    <div class="table__row table--success" data-ng-if="convertTo.saved">
+                        <div class="table__data table-col--97">
+                            <i class="icon icon--success"></i> {$ convertTo.hostname $} has been add to {$ site $}.
+                            <a href="#/node/{$ convertTo.parent $}" data-ng-if="convertTo.parent">Go to the machine devices page.</a>
+                            <a href="#/nodes/?tab=devices" data-ng-if="!convertTo.parent">Go to the device listing.</a>
+                        </div>
+                        <div class="table__data table-col--3">
+                            <i class="icon icon--cross tooltip" aria-label="Clear"
+                                data-ng-click="convertTo.saved = false">Clear</i>
+                        </div>
+                    </div>
                     <div class="table__row" data-ng-if="!discoveredDevices.length">
-                        <div class="table__header table-col--100">
+                        <div class="table__data table-col--100">
                             No new discoveries...
                         </div>
                     </div>
@@ -85,8 +96,8 @@
                             </div>
                         </div>
                         <maas-obj-form data-ng-if="discovery.discovery_id === selectedDevice"
-                            obj="convertTo" manager="deviceManager" manager-method="createItem"
-                            pre-process="preProcess" after-save="afterSave" table-form="true" save-on-blur="false">
+                            obj="convertTo" manager="proxyManager" pre-process="preProcess"
+                            after-save="afterSave" table-form="true" save-on-blur="false">
                             <div class="table__data table-col--20">
                                 <maas-obj-field class="u-margin--bottom-none" type="text" key="hostname"
                                     disable-label="true" placeholder="Hostname (optional)"></maas-obj-field>
@@ -129,17 +140,27 @@
                                             <div class="form__group">
                                                 <label class="form__group-label two-col u-margin--bottom-small">Type</label>
                                                 <div class="form__group-input three-col">
-                                                    <select id="type" name="type" ng-model="convertTo.type">
+                                                    <select name="type" ng-model="convertTo.type">
                                                         <option value="" disabled>Choose type</option>
                                                         <option value="device">Device</option>
+                                                        <option value="interface">Interface</option>
                                                     </select>
                                                 </div>
                                             </div>
                                             <maas-obj-field type="options" key="domain" label="Domain" placeholder="Choose domain"
                                                 label-width="two" input-width="three" subtle="false"
-                                                options="domain as domain.name for domain in domains"></maas-obj-field>
+                                                options="domain as domain.name for domain in domains"
+                                                data-ng-if="convertTo.type === 'device'"></maas-obj-field>
+                                            <maas-obj-field type="options" subtle="false" key="system_id" label="Device name" placeholder="Select device name"
+                                                options="device.system_id as device.fqdn for device in devices | orderBy:'fqdn'"
+                                                label-width="two" label-info="Create as an interface on the selected device." input-width="three"
+                                                data-ng-if="convertTo.type === 'interface'"></maas-obj-field>
                                         </fieldset>
                                         <fieldset class="form__fieldset six-col last-col">
+                                            <maas-obj-field type="options" subtle="false" key="parent" label="Parent" placeholder="Select parent (optional)" placeholder-enabled="true"
+                                                options="machine.system_id as machine.fqdn for machine in machines | filter:{status_code: 6} | orderBy:'fqdn'"
+                                                label-width="two" label-info="Assign this device as a child of the parent machine." input-width="three"
+                                                data-ng-if="convertTo.type === 'device'"></maas-obj-field>
                                             <maas-obj-field type="options" subtle="false" key="ip_assignment" label="IP assignment" placeholder="Select IP assignment"
                                                 options="option[0] as option[1] for option in convertTo.deviceIPOptions" label-width="two" input-width="three"></maas-obj-field>
                                         </fieldset>
@@ -152,7 +173,13 @@
                                     <div class="table__data u-float--right">
                                         <a class="button--base button--inline" data-ng-click="toggleSelected(selectedDevice)">Cancel</a>
                                         <button class="button--secondary button--inline"
-                                            data-ng-click="convertTo.goTo = true" maas-obj-save>Save and go to device details</button>
+                                            data-ng-click="convertTo.goTo = true"
+                                            data-ng-if="!convertTo.$maasForm.getValue('parent')"
+                                            maas-obj-save>Save and go to device listing</button>
+                                        <button class="button--secondary button--inline"
+                                            data-ng-click="convertTo.goTo = true"
+                                            data-ng-if="convertTo.$maasForm.getValue('parent')"
+                                            maas-obj-save>Save and go to machine details</button>
                                         <button class="button--primary button--inline" maas-obj-save>Save</button>
                                     </div>
                                 </div>

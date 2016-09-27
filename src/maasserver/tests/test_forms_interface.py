@@ -133,6 +133,33 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 type=INTERFACE_TYPE.PHYSICAL, tags=tags))
         self.assertItemsEqual([], interface.parents.all())
 
+    def test__creates_physical_interface_generates_name(self):
+        node = factory.make_Node()
+        interface_name = factory.make_name("eth")
+        self.patch(node, "get_next_ifname").return_value = interface_name
+        mac_address = factory.make_mac_address()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        form = PhysicalInterfaceForm(
+            node=node,
+            data={
+                'mac_address': mac_address,
+                'vlan': vlan.id,
+                'tags': ",".join(tags),
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                node=node, mac_address=mac_address, name=interface_name,
+                type=INTERFACE_TYPE.PHYSICAL, tags=tags))
+        self.assertItemsEqual([], interface.parents.all())
+
     def test__creates_physical_interface_disconnected(self):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
@@ -294,6 +321,26 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 name=new_name, vlan=new_vlan, enabled=False, tags=[]))
+        self.assertItemsEqual([], interface.parents.all())
+
+    def test__edits_doesnt_overwrite_name(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0')
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        form = PhysicalInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': new_vlan.id,
+                'enabled': False,
+                'tags': "",
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface.name, vlan=new_vlan, enabled=False, tags=[]))
         self.assertItemsEqual([], interface.parents.all())
 
     def test__edits_interface_disconnected(self):

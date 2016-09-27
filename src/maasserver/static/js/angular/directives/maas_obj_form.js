@@ -498,6 +498,18 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         labelElement.addClass("u-margin--right");
                     }
                     element.append(labelElement);
+
+                    // Add a label info icon with tooltip.
+                    if(angular.isString(attrs.labelInfo)
+                        && attrs.labelInfo.length > 0) {
+                        var infoElement = angular.element('<i/>');
+                        infoElement.addClass('icon');
+                        infoElement.addClass('icon--info');
+                        infoElement.addClass('tooltip');
+                        infoElement.attr('aria-label', attrs.labelInfo);
+                        labelElement.text(labelElement.text() + ' ');
+                        labelElement.append(infoElement);
+                    }
                 }
 
                 // Add the wrapper for the input.
@@ -586,6 +598,13 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             "'options' on maas-obj-field.");
                     }
 
+                    // Placeholder by default is disabled, allow it to be
+                    // enabled.
+                    var disabled = "disabled";
+                    if(attrs.placeholderEnabled === "true") {
+                        disabled = "";
+                    }
+
                     // Create a child scope of the parent scope for this
                     // directive. Since this directive is created with an
                     // isolated scope we need the child to use the parent so
@@ -606,7 +625,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         'ng-options="' + options + '"' +
                         'ng-change="_selectNgChange()"' +
                         'ng-disabled="_ngDisabled()">' +
-                        '<option value="" disabled>' + placeholder +
+                        '<option value="" ' + disabled + '>' + placeholder +
                         '</option></select>')(childScope);
 
                     // Called by controller to update the value.

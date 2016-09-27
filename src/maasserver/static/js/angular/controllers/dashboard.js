@@ -30,12 +30,26 @@ angular.module('MAAS').controller('DashboardController', [
         $scope.discoveredDevices = DiscoveriesManager.getItems();
         $scope.domains = DomainsManager.getItems();
         $scope.machines = MachinesManager.getItems();
-        $scope.deviceManager = DevicesManager;
+        $scope.devices = DevicesManager.getItems();
         $scope.configManager = ConfigsManager;
         $scope.networkDiscovery = null;
         $scope.column = 'mac';
         $scope.selectedDevice = null;
         $scope.convertTo = null;
+
+        // Proxy manager that the maas-obj-form directive uses to call the
+        // correct method based on current type.
+        $scope.proxyManager = {
+            updateItem: function(params) {
+                if($scope.convertTo.type === 'device') {
+                    return DevicesManager.createItem(params);
+                } else if($scope.convertTo.type === 'interface') {
+                    return DevicesManager.createInterface(params);
+                } else {
+                    throw new Error("Unknown type: " + $scope.convertTo.type);
+                }
+            }
+        };
 
         // Return the name name for the Discovery.
         $scope.getDiscoveryName = function(discovery) {
@@ -76,8 +90,10 @@ angular.module('MAAS').controller('DashboardController', [
                     type: 'device',
                     hostname: $scope.getDiscoveryName(discovered),
                     domain: DomainsManager.getDefaultDomain(),
+                    parent: null,
                     ip_assignment: 'dynamic',
                     goTo: false,
+                    saved: false,
                     deviceIPOptions: deviceIPOptions.filter(
                         function(option) {
                             // Filter the options to not include static if
@@ -101,23 +117,36 @@ angular.module('MAAS').controller('DashboardController', [
             var discovered = DiscoveriesManager.getItemFromList(
                 $scope.selectedDevice);
             item = angular.copy(item);
-            item.primary_mac = discovered.mac_address;
-            item.extra_macs = [];
-            item.interfaces = [{
-                mac: discovered.mac_address,
-                ip_assignment: item.ip_assignment,
-                ip_address: discovered.ip,
-                subnet: discovered.subnet
-            }];
+            if($scope.convertTo.type === 'device') {
+                item.primary_mac = discovered.mac_address;
+                item.extra_macs = [];
+                item.interfaces = [{
+                    mac: discovered.mac_address,
+                    ip_assignment: item.ip_assignment,
+                    ip_address: discovered.ip,
+                    subnet: discovered.subnet
+                }];
+            } else if($scope.convertTo.type === 'interface') {
+                item.mac_address = discovered.mac_address;
+                item.ip_address = discovered.ip;
+                item.subnet = discovered.subnet;
+            }
             return item;
         };
 
         // Called after the createItem has been successful.
-        $scope.afterSave = function() {
+        $scope.afterSave = function(obj) {
             DiscoveriesManager._removeItem($scope.selectedDevice);
             $scope.selectedDevice = null;
+            $scope.convertTo.hostname = obj.hostname;
+            $scope.convertTo.parent = obj.parent;
+            $scope.convertTo.saved = true;
             if($scope.convertTo.goTo) {
-                $location.path('/nodes').search({tab: 'devices'});
+                if(angular.isString(obj.parent)) {
+                    $location.path('/node/' + obj.parent);
+                } else {
+                    $location.path('/nodes').search({tab: 'devices'});
+                }
             }
         };
 

@@ -29,7 +29,6 @@ from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
     HandlerNoSuchMethodError,
-    HandlerPKError,
     HandlerValidationError,
 )
 from maastesting.matchers import (
@@ -301,10 +300,10 @@ class TestHandler(MAASServerTestCase):
             sentinel.obj,
             handler.hydrate(sentinel.obj, sentinel.nothing))
 
-    def test_get_object_raises_HandlerPKError(self):
+    def test_get_object_raises_HandlerValidationError(self):
         handler = self.make_nodes_handler()
         self.assertRaises(
-            HandlerPKError,
+            HandlerValidationError,
             handler.get_object, {"host": "test"})
 
     def test_get_object_raises_HandlerDoesNotExistError(self):

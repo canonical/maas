@@ -272,7 +272,9 @@ class Handler(metaclass=HandlerMetaclass):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         if self._meta.pk not in params:
-            raise HandlerPKError("Missing %s in params" % self._meta.pk)
+            raise HandlerValidationError({
+                self._meta.pk: ['This field is required']
+            })
         pk = params[self._meta.pk]
         try:
             obj = self._meta.object_class.objects.get(**{

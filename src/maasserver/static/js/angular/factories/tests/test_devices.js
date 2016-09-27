@@ -49,6 +49,22 @@ describe("DevicesManager", function() {
             ["owner", "tags", "zone"]);
     });
 
+    describe("createInferface", function() {
+
+        it("calls device.create_interface with params", function(done) {
+            var device = makeDevice();
+            webSocket.returnData.push(makeFakeResponse(device));
+            spyOn(DevicesManager, "_replaceItem");
+            DevicesManager.createInterface(device).then(function(obj) {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("device.create_interface");
+                expect(sentObject.params.system_id).toBe(device.system_id);
+                expect(DevicesManager._replaceItem).toHaveBeenCalledWith(obj);
+                done();
+            });
+        });
+    });
+
     describe("performAction", function() {
 
         it("calls device.action with system_id and action", function(done) {

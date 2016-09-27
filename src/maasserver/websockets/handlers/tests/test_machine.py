@@ -209,6 +209,7 @@ class TestMachineHandler(MAASServerTestCase):
             "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
             "show_os_info": handler.dehydrate_show_os_info(node),
             "status": node.display_status(),
+            "status_code": node.status,
             "storage": "%3.1f" % (sum([
                 blockdevice.size
                 for blockdevice in node.physicalblockdevice_set.all()
@@ -237,6 +238,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "actions",
                 "fqdn",
                 "status",
+                "status_code",
                 "pxe_mac",
                 "pxe_mac_vendor",
                 "extra_macs",

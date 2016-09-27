@@ -204,6 +204,8 @@ class PhysicalInterfaceForm(InterfaceForm):
         super(PhysicalInterfaceForm, self).__init__(*args, **kwargs)
         # Force MAC to be non-null.
         self.fields['mac_address'].required = True
+        # Allow the name to be auto-generated if missing.
+        self.fields['name'].required = False
 
     def _get_validation_exclusions(self):
         # The instance is created just before this in django. The only way to
@@ -234,8 +236,12 @@ class PhysicalInterfaceForm(InterfaceForm):
     def clean(self):
         cleaned_data = super(PhysicalInterfaceForm, self).clean()
         new_name = cleaned_data.get('name')
-        if self.fields_ok(['name']) and new_name:
-            self.clean_interface_name_uniqueness(new_name)
+        if self.fields_ok(['name']):
+            if new_name:
+                self.clean_interface_name_uniqueness(new_name)
+            elif not new_name and self.instance.id is None:
+                # No name provided and new instance. Auto-generate the name.
+                cleaned_data['name'] = self.node.get_next_ifname()
         return cleaned_data
 
 

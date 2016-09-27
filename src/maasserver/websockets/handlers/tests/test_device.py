@@ -465,6 +465,105 @@ class TestDeviceHandler(MAASServerTestCase):
         })
         self.assertThat(created_device["primary_mac"], Equals(mac))
 
+    def test_create_interface_raises_validation_error_for_missing_macs(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        device = factory.make_Device(owner=user)
+        params = {
+            "system_id": device.system_id,
+            }
+        error = self.assertRaises(
+            HandlerValidationError, handler.create_interface, params)
+        self.assertThat(error.message_dict, Equals(
+            {'mac_address': [
+                'This field is required.',
+                'This field cannot be blank.']}))
+
+    def test_create_interface_creates_with_dynamic_ip_assignment(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        device = factory.make_Device(owner=user)
+        mac = factory.make_mac_address()
+        updated_device = handler.create_interface({
+            "system_id": device.system_id,
+            "mac_address": mac,
+            "ip_assignment": DEVICE_IP_ASSIGNMENT.DYNAMIC,
+        })
+        self.expectThat(updated_device["primary_mac"], Equals(mac))
+        self.expectThat(
+            updated_device["ip_assignment"],
+            Equals(DEVICE_IP_ASSIGNMENT.DYNAMIC))
+
+    def test_create_interface_creates_with_external_ip_assignment(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        device = factory.make_Device(owner=user)
+        mac = factory.make_mac_address()
+        ip_address = factory.make_ipv4_address()
+        updated_device = handler.create_interface({
+            "system_id": device.system_id,
+            "mac_address": mac,
+            "ip_assignment": DEVICE_IP_ASSIGNMENT.EXTERNAL,
+            "ip_address": ip_address,
+        })
+        self.expectThat(updated_device["primary_mac"], Equals(mac))
+        self.expectThat(
+            updated_device["ip_assignment"],
+            Equals(DEVICE_IP_ASSIGNMENT.EXTERNAL))
+        self.expectThat(
+            StaticIPAddress.objects.filter(ip=ip_address).count(),
+            Equals(1), "StaticIPAddress was not created.")
+
+    def test_create_interface_creates_with_static_ip_assignment_implicit(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        device = factory.make_Device(owner=user)
+        mac = factory.make_mac_address()
+        subnet = factory.make_Subnet()
+        updated_device = handler.create_interface({
+            "system_id": device.system_id,
+            "mac_address": mac,
+            "ip_assignment": DEVICE_IP_ASSIGNMENT.STATIC,
+            "subnet": subnet.id,
+        })
+        self.expectThat(updated_device["primary_mac"], Equals(mac))
+        self.expectThat(
+            updated_device["ip_assignment"],
+            Equals(DEVICE_IP_ASSIGNMENT.STATIC))
+        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        observed_subnet = static_interface.ip_addresses.first().subnet
+        self.expectThat(
+            observed_subnet, Equals(subnet),
+            "Static assignment to the subnet was not created.")
+
+    def test_create_interface_creates_static_ip_assignment_explicit(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        device = factory.make_Device(owner=user)
+        mac = factory.make_mac_address()
+        subnet = factory.make_Subnet()
+        ip_address = factory.pick_ip_in_Subnet(subnet)
+        updated_device = handler.create_interface({
+            "system_id": device.system_id,
+            "mac_address": mac,
+            "ip_assignment": DEVICE_IP_ASSIGNMENT.STATIC,
+            "subnet": subnet.id,
+            "ip_address": ip_address,
+        })
+        self.expectThat(updated_device["primary_mac"], Equals(mac))
+        self.expectThat(
+            updated_device["ip_assignment"],
+            Equals(DEVICE_IP_ASSIGNMENT.STATIC))
+        self.expectThat(updated_device["ip_address"], Equals(ip_address))
+        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        observed_subnet = static_interface.ip_addresses.first().subnet
+        self.expectThat(
+            observed_subnet, Equals(subnet),
+            "Static assignment to the subnet was not created.")
+        self.expectThat(
+            StaticIPAddress.objects.filter(ip=ip_address).count(),
+            Equals(1), "StaticIPAddress was not created.")
+
     def test_missing_action_raises_error(self):
         user = factory.make_User()
         device = self.make_device_with_ip_address(owner=user)

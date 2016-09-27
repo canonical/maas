@@ -215,7 +215,23 @@ describe("maasObjForm", function() {
         it("adds placeholder option", function() {
             var select = angular.element(directive.find("#key"));
             var placeholder = angular.element(select.find('option[value=""]'));
+            expect(placeholder.attr('disabled')).toBe('disabled');
             expect(placeholder.text()).toBe("Placeholder");
+        });
+
+        it("creates placeholder enabled", function() {
+            options = "option.id as option.text for option in options";
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="options" key="key" ',
+                        'placeholder-enabled="true" options="' + options + '">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+            var select = angular.element(directive.find("#key"));
+            var placeholder = angular.element(select.find('option[value=""]'));
+            expect(placeholder.attr('disabled')).toBeUndefined();
         });
 
         it("adds label with width", function() {
@@ -911,6 +927,33 @@ describe("maasObjForm", function() {
         it("label is not added", function() {
             var label = directive.find("label");
             expect(label.length).toBe(0);
+        });
+    });
+
+    describe("labelInfo", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'label-info="My Info"></maas-obj-field>',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("icon add with tooltip added in label", function() {
+            var label = directive.find("label");
+            var icon = label.find("i");
+            expect(label.text()).toBe("key ");
+            expect(icon.hasClass("icon")).toBe(true);
+            expect(icon.hasClass("icon--info")).toBe(true);
+            expect(icon.hasClass("tooltip")).toBe(true);
+            expect(icon.attr('aria-label')).toBe("My Info");
         });
     });
 

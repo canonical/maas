@@ -80,12 +80,40 @@ describe("DashboardController", function() {
         expect($scope.discoveredDevices).toBe(DiscoveriesManager.getItems());
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.machines).toBe(MachinesManager.getItems());
-        expect($scope.deviceManager).toBe(DevicesManager);
         expect($scope.configManager).toBe(ConfigsManager);
         expect($scope.networkDiscovery).toBeNull();
         expect($scope.column).toBe('mac');
         expect($scope.selectedDevice).toBeNull();
         expect($scope.convertTo).toBeNull();
+    });
+
+    describe("proxyManager", function() {
+
+        it("calls DevicesManager.createItem when device", function() {
+            var controller = makeController();
+            var sentinel = {};
+            spyOn(DevicesManager, "createItem").and.returnValue(sentinel);
+            $scope.convertTo = {
+                type: 'device'
+            };
+            var params = {};
+            var observed = $scope.proxyManager.updateItem(params);
+            expect(observed).toBe(sentinel);
+            expect(DevicesManager.createItem).toHaveBeenCalledWith(params);
+        });
+
+        it("calls DevicesManager.createInterface when interface", function() {
+            var controller = makeController();
+            var sentinel = {};
+            spyOn(DevicesManager, "createInterface").and.returnValue(sentinel);
+            $scope.convertTo = {
+                type: 'interface'
+            };
+            var params = {};
+            var observed = $scope.proxyManager.updateItem(params);
+            expect(observed).toBe(sentinel);
+            expect(DevicesManager.createInterface).toHaveBeenCalledWith(params);
+        });
     });
 
     describe("getDiscoveryName", function() {
@@ -178,8 +206,10 @@ describe("DashboardController", function() {
                 type: 'device',
                 hostname: $scope.getDiscoveryName(discovered),
                 domain: defaultDomain,
+                parent: null,
                 ip_assignment: 'dynamic',
                 goTo: false,
+                saved: false,
                 deviceIPOptions: [
                     ['dynamic', 'Dynamic'],
                     ['static', 'Static'],
@@ -207,8 +237,10 @@ describe("DashboardController", function() {
                 type: 'device',
                 hostname: $scope.getDiscoveryName(discovered),
                 domain: defaultDomain,
+                parent: null,
                 ip_assignment: 'dynamic',
                 goTo: false,
+                saved: false,
                 deviceIPOptions: [
                     ['dynamic', 'Dynamic'],
                     ['external', 'External']
@@ -219,7 +251,7 @@ describe("DashboardController", function() {
 
     describe("preProcess", function() {
 
-        it("adjust item to include the needed fields", function() {
+        it("adjust device to include the needed fields", function() {
             var controller = makeController();
             var id = makeInteger(0, 100);
             var defaultDomain = {
@@ -241,8 +273,10 @@ describe("DashboardController", function() {
                 type: 'device',
                 hostname: $scope.getDiscoveryName(discovered),
                 domain: defaultDomain,
+                parent: null,
                 ip_assignment: 'dynamic',
                 goTo: false,
+                saved: false,
                 deviceIPOptions: [
                     ['dynamic', 'Dynamic'],
                     ['static', 'Static'],
@@ -258,6 +292,44 @@ describe("DashboardController", function() {
                 }]
             });
         });
+
+        it("adjust interface to include the needed fields", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var defaultDomain = {
+                id: 0
+            };
+            DomainsManager._items = [defaultDomain];
+            var discovered = {
+                discovery_id: id,
+                hostname: makeName("hostname"),
+                subnet: makeInteger(0, 100),
+                mac_address: makeName("mac"),
+                ip: makeName("ip")
+            };
+            DiscoveriesManager._items = [discovered];
+            $scope.toggleSelected(id);
+            $scope.convertTo.type = 'interface';
+            var observed = $scope.preProcess($scope.convertTo);
+            expect(observed).not.toBe($scope.convertTo);
+            expect(observed).toEqual({
+                type: 'interface',
+                hostname: $scope.getDiscoveryName(discovered),
+                domain: defaultDomain,
+                parent: null,
+                ip_assignment: 'dynamic',
+                goTo: false,
+                saved: false,
+                deviceIPOptions: [
+                    ['dynamic', 'Dynamic'],
+                    ['static', 'Static'],
+                    ['external', 'External']
+                ],
+                mac_address: discovered.mac_address,
+                ip_address: discovered.ip,
+                subnet: discovered.subnet
+            });
+        });
     });
 
     describe("afterSave", function() {
@@ -270,8 +342,15 @@ describe("DashboardController", function() {
                 goTo: false
             };
             spyOn(DiscoveriesManager, "_removeItem");
-            $scope.afterSave();
+            var newObj = {
+                hostname: makeName("hostname"),
+                parent: makeName("parent")
+            };
+            $scope.afterSave(newObj);
             expect(DiscoveriesManager._removeItem).toHaveBeenCalledWith(id);
+            expect($scope.convertTo.hostname).toBe(newObj.hostname);
+            expect($scope.convertTo.parent).toBe(newObj.parent);
+            expect($scope.convertTo.saved).toBe(true);
             expect($scope.selectedDevice).toBeNull();
         });
 
@@ -284,11 +363,14 @@ describe("DashboardController", function() {
             };
             spyOn(DiscoveriesManager, "_removeItem");
             spyOn($location, "path");
-            $scope.afterSave();
+            $scope.afterSave({
+                hostname: makeName("hostname"),
+                parent: makeName("parent")
+            });
             expect($location.path).not.toHaveBeenCalled();
         });
 
-        it("calls $location.path if goTo", function() {
+        it("calls $location.path if goTo without parent", function() {
             var controller = makeController();
             var id = makeInteger(0, 100);
             $scope.selectedDevice = id;
@@ -300,9 +382,29 @@ describe("DashboardController", function() {
                 search: jasmine.createSpy("search")
             };
             spyOn($location, "path").and.returnValue(path);
-            $scope.afterSave();
+            $scope.afterSave({
+                hostname: makeName("hostname"),
+                parent: null
+            });
             expect($location.path).toHaveBeenCalledWith("/nodes");
             expect(path.search).toHaveBeenCalledWith({ tab: "devices" });
+        });
+
+        it("calls $location.path if goTo with parent", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            $scope.selectedDevice = id;
+            $scope.convertTo = {
+                goTo: true
+            };
+            spyOn(DiscoveriesManager, "_removeItem");
+            spyOn($location, "path");
+            var parent = makeName("parent");
+            $scope.afterSave({
+                hostname: makeName("hostname"),
+                parent: parent
+            });
+            expect($location.path).toHaveBeenCalledWith("/node/" + parent);
         });
     });
 });

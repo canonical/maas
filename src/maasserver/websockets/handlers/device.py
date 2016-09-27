@@ -17,13 +17,16 @@ from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
 )
+from maasserver.forms_interface import PhysicalInterfaceForm
 from maasserver.models.node import Device
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.node import (
     node_prefetch,
@@ -68,7 +71,13 @@ class DeviceHandler(NodeHandler):
     class Meta(NodeHandler.Meta):
         abstract = False
         queryset = node_prefetch(Device.objects.filter(parent=None))
-        allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
+        allowed_methods = [
+            'list',
+            'get',
+            'set_active',
+            'create',
+            'create_interface',
+            'action']
         exclude = [
             "type",
             "boot_interface",
@@ -126,6 +135,12 @@ class DeviceHandler(NodeHandler):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Device.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+
+    def dehydrate_parent(self, parent):
+        if parent is None:
+            return None
+        else:
+            return parent.system_id
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -231,6 +246,7 @@ class DeviceHandler(NodeHandler):
         new_params = {
             "mac_addresses": self.get_mac_addresses(params),
             "hostname": params.get("hostname"),
+            "parent": params.get("parent"),
             }
 
         if "domain" in params:
@@ -243,6 +259,29 @@ class DeviceHandler(NodeHandler):
             if value is not None
         }
         return super(DeviceHandler, self).preprocess_form(action, new_params)
+
+    def _configure_interface(self, interface, params):
+        """Configure the interface based on the selection."""
+        ip_assignment = params["ip_assignment"]
+        if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
+            subnet = Subnet.objects.get_best_subnet_for_ip(
+                params["ip_address"])
+            sticky_ip = StaticIPAddress.objects.create(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+                ip=params["ip_address"], subnet=subnet, user=self.user)
+            interface.ip_addresses.add(sticky_ip)
+        elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
+            interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
+        elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
+            # Convert an empty string to None.
+            ip_address = params.get("ip_address")
+            if not ip_address:
+                ip_address = None
+
+            # Link to the subnet statically.
+            subnet = Subnet.objects.get(id=params["subnet"])
+            interface.link_subnet(
+                INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_address)
 
     def create(self, params):
         """Create the object from params."""
@@ -258,27 +297,19 @@ class DeviceHandler(NodeHandler):
         # Acquire all of the needed ip address based on the user selection.
         for nic in params["interfaces"]:
             interface = get_Interface_from_list(interfaces, nic["mac"])
-            ip_assignment = nic["ip_assignment"]
-            if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
-                subnet = Subnet.objects.get_best_subnet_for_ip(
-                    nic["ip_address"])
-                sticky_ip = StaticIPAddress.objects.create(
-                    alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-                    ip=nic["ip_address"], subnet=subnet, user=self.user)
-                interface.ip_addresses.add(sticky_ip)
-            elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
-                interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
-            elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
-                # Convert an empty string to None.
-                ip_address = nic.get("ip_address")
-                if not ip_address:
-                    ip_address = None
-
-                # Link to the subnet statically.
-                subnet = Subnet.objects.get(id=nic["subnet"])
-                interface.link_subnet(
-                    INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_address)
+            self._configure_interface(interface, nic)
         return self.full_dehydrate(device_obj)
+
+    def create_interface(self, params):
+        """Create an interface on a device."""
+        device = self.get_object(params)
+        form = PhysicalInterfaceForm(node=device, data=params)
+        if form.is_valid():
+            interface = form.save()
+            self._configure_interface(interface, params)
+            return self.full_dehydrate(reload_object(device))
+        else:
+            raise HandlerValidationError(form.errors)
 
     def action(self, params):
         """Perform the action on the object."""
