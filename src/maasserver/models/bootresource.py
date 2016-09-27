@@ -357,6 +357,8 @@ class BootResource(CleanSave, TimestampedModel):
     architecture = CharField(
         max_length=255, blank=False, validators=[validate_architecture])
 
+    bootloader_type = CharField(max_length=32, blank=True, null=True)
+
     kflavor = CharField(max_length=32, blank=True, null=True)
 
     extra = JSONObjectField(blank=True, default="", editable=False)

@@ -17,6 +17,8 @@ __all__ = [
 
 from datetime import timedelta
 from operator import itemgetter
+import os
+import re
 from subprocess import CalledProcessError
 from textwrap import dedent
 import threading
@@ -301,9 +303,12 @@ class SimpleStreamsHandler:
             'version': series,
             'arch': arch,
             'release': series,
-            'krel': series,
             'os': os,
             }
+        if resource.kflavor is not None:
+            product['kflavor'] = resource.kflavor
+        if resource.bootloader_type is not None:
+            product['bootloader-type'] = resource.bootloader_type
         product.update(resource.extra)
         return product
 
@@ -461,15 +466,26 @@ class BootResourceStore(ObjectStore):
         """Get existing `BootResource` for the given product or create a new
         one if one does not exist."""
         os = get_os_from_product(product)
-        series = product['release']
         arch = product['arch']
-        name = '%s/%s' % (os, series)
-        if 'kflavor' in product and product['kflavor'] != 'generic':
-            subarch = "%s-%s" % (product['subarch'], product['kflavor'])
+        kflavor = product.get('kflavor')
+        bootloader_type = product.get('bootloader-type')
+        if bootloader_type is None:
+            # The rack controller assumes the subarch is the kernel. We need to
+            # include the kflavor in the subarch otherwise the rack will
+            # overwrite the generic kernel with each kernel flavor.
+            subarch = product.get('subarch', 'generic')
+            has_kflavor = (
+                kflavor not in (None, 'generic') and
+                subarch.startswith('hwe-'))
+            if has_kflavor:
+                subarch = "%s-%s" % (subarch, kflavor)
+            architecture = '%s/%s' % (arch, subarch)
+            series = product['release']
         else:
-            subarch = product['subarch']
+            architecture = '%s/generic' % arch
+            series = bootloader_type
 
-        architecture = '%s/%s' % (arch, subarch)
+        name = '%s/%s' % (os, series)
 
         # Allow a generated resource to be replaced by a sycned resource. This
         # gives the ability for maas.io to start providing images that
@@ -497,7 +513,9 @@ class BootResourceStore(ObjectStore):
                 # replaced with this synced image.
                 resource.rtype = BOOT_RESOURCE_TYPE.SYNCED
 
-        resource.kflavor = product.get('kflavor')
+        resource.kflavor = kflavor
+        resource.bootloader_type = bootloader_type
+
         # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
@@ -530,7 +548,7 @@ class BootResourceStore(ObjectStore):
         # For synced resources the filename is the same as the filetype. This
         # is the way the data is from maas.io so we emulate that here.
         filetype = product['ftype']
-        filename = filetype
+        filename = os.path.basename(product['path'])
         rfile = get_one(resource_set.files.filter(filename=filename))
         if rfile is None:
             rfile = BootResourceFile(
@@ -546,8 +564,12 @@ class BootResourceStore(ObjectStore):
         # object store contains additional data that should not be stored into
         # the database. If kpackage exist in the product then we store those
         # values to expose in the simplestreams endpoint on the region.
-        if 'kpackage' in product:
-            rfile.extra['kpackage'] = product['kpackage']
+        # src_{package,release,version} is useful in determining where the
+        # bootloader came from.
+        for extra_key in [
+                'kpackage', 'src_package', 'src_release', 'src_version']:
+            if extra_key in product:
+                rfile.extra[extra_key] = product[extra_key]
 
         # Don't save rfile here, because if new then largefile is None which
         # will cause a ValidationError. The setting of largefile and saving of
@@ -877,6 +899,9 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             # will be downloaded from simplestreams.
             'max_items': 1,
             })
+        # Compile a regex to validate bootloader product names. This only
+        # allows V1 bootloaders.
+        self.bootloader_regex = re.compile('.*:1:.*')
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -889,6 +914,48 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         return self.product_mapping.contains(
             sutil.products_exdata(src, pedigree))
+
+    def _validate_bootloader(self, data, product_name):
+        bootloader_type = data.get('bootloader-type')
+        if bootloader_type is None:
+            # It's not a bootloader nothing to validate
+            return True
+        if self.bootloader_regex.search(product_name) is None:
+            # Only insert V1 bootloaders from the stream
+            return False
+        # Validate MAAS supports the specific bootloader_type, os, arch
+        # combination.
+        SUPPORTED_BOOTLOADERS = {
+            'pxe': [
+                {
+                    'os': 'pxelinux',
+                    'arch': 'i386',
+                }
+            ],
+            'uefi': [
+                {
+                    'os': 'grub-efi-signed',
+                    'arch': 'amd64',
+                },
+                {
+                    'os': 'grub-efi',
+                    'arch': 'arm64',
+                }
+            ],
+            'open-firmware': [
+                {
+                    'os': 'grub-ieee1275',
+                    'arch': 'ppc64el',
+                }
+            ],
+        }
+        for bootloader in SUPPORTED_BOOTLOADERS.get(bootloader_type, []):
+            if (
+                    data.get('os') == bootloader['os'] and
+                    data.get('arch') == bootloader['arch']):
+                return True
+        # Bootloader not supported, ignore
+        return False
 
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
@@ -905,6 +972,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             return
         elif item['ftype'] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
             # Skip filetypes that we don't know about.
+            return
+        elif not self._validate_bootloader(item, product_name):
             return
         else:
             self.store.insert(item, contentsource)

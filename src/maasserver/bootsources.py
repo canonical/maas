@@ -167,7 +167,10 @@ def cache_boot_sources():
                 if not descriptions.is_empty():
                     for spec, item in descriptions.mapping.items():
                         kflavor = item.get('kflavor')
-                        if kflavor not in (None, 'generic'):
+                        has_kflavor = (
+                            kflavor not in (None, 'generic') and
+                            spec.subarch.startswith('hwe-'))
+                        if has_kflavor:
                             subarch = "%s-%s" % (spec.subarch, kflavor)
                         else:
                             subarch = spec.subarch
@@ -178,6 +181,7 @@ def cache_boot_sources():
                             release_codename=item.get('release_codename'),
                             release_title=item.get('release_title'),
                             support_eol=item.get('support_eol'),
+                            bootloader_type=item.get('bootloader-type'),
                             )
                 maaslog.debug(
                     "Image descriptions for %s have been updated.",

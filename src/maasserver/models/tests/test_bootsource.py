@@ -97,6 +97,25 @@ class TestBootSource(MAASServerTestCase):
             [],
             boot_source_dict['selections'])
 
+    def test_to_dict_with_selections_returns_bootloaders(self):
+        keyring_data = b'Some Keyring Data'
+        boot_source = factory.make_BootSource(
+            keyring_data=keyring_data, keyring_filename='')
+        boot_source_selection = factory.make_BootSourceSelection(
+            boot_source=boot_source)
+        bootloaders = []
+        for arch in boot_source_selection.arches:
+            bootloader_type = factory.make_name('bootloader-type')
+            factory.make_BootSourceCache(
+                boot_source=boot_source, bootloader_type=bootloader_type,
+                release=bootloader_type, arch=arch)
+            bootloaders.append(bootloader_type)
+        self.assertItemsEqual([
+            selection['release']
+            for selection in boot_source.to_dict()['selections']
+            if 'bootloader-type' in selection['release']],
+            bootloaders)
+
     def test_compare_dict_without_selections_compares_True_to_self(self):
         boot_source = make_BootSource()
         boot_source_dict = boot_source.to_dict_without_selections()

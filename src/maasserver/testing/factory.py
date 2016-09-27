@@ -1339,7 +1339,8 @@ class Factory(maastesting.factory.Factory):
     def make_BootSourceCache(self, boot_source=None, os=None, arch=None,
                              subarch=None, release=None, label=None,
                              release_codename=None, release_title=None,
-                             support_eol=None, kflavor=None):
+                             support_eol=None, kflavor=None,
+                             bootloader_type=None):
         """Create a new `BootSourceCache`."""
         if boot_source is None:
             boot_source = self.make_BootSource()
@@ -1357,7 +1358,8 @@ class Factory(maastesting.factory.Factory):
             boot_source=boot_source, os=os, arch=arch,
             subarch=subarch, release=release, label=label,
             release_codename=release_codename, release_title=release_title,
-            support_eol=support_eol, kflavor=kflavor)
+            support_eol=support_eol, kflavor=kflavor,
+            bootloader_type=bootloader_type)
 
     def make_many_BootSourceCaches(self, number, **kwargs):
         caches = list()
@@ -1452,7 +1454,7 @@ class Factory(maastesting.factory.Factory):
             total_size=size, content=largeobject)
 
     def make_BootResource(self, rtype=None, name=None, architecture=None,
-                          extra=None, kflavor=None):
+                          extra=None, kflavor=None, bootloader_type=None):
         if rtype is None:
             rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
         if name is None:
@@ -1473,7 +1475,7 @@ class Factory(maastesting.factory.Factory):
                 }
         return BootResource.objects.create(
             rtype=rtype, name=name, architecture=architecture, kflavor=kflavor,
-            extra=extra)
+            bootloader_type=bootloader_type, extra=extra)
 
     def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
@@ -1510,10 +1512,11 @@ class Factory(maastesting.factory.Factory):
 
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
-            extra=None, version=None, label=None, kflavor=None, size=None):
+            extra=None, version=None, label=None, kflavor=None, size=None,
+            bootloader_type=None):
         resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra,
-            kflavor=kflavor)
+            kflavor=kflavor, bootloader_type=bootloader_type)
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
         filetypes = {

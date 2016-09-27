@@ -98,4 +98,16 @@ class BootSource(CleanSave, TimestampedModel):
             selection.to_dict()
             for selection in self.bootsourceselection_set.all()
             ]
+        # Always download all bootloaders from the stream. This will allow
+        # machines to boot and get a 'Booting under direction of MAAS' message
+        # even if boot images for that arch haven't downloaded yet.
+        for bootloader in self.bootsourcecache_set.exclude(
+                bootloader_type=None):
+            data['selections'].append({
+                'os': bootloader.os,
+                'release': bootloader.bootloader_type,
+                'arches': [bootloader.arch],
+                'subarches': ['*'],
+                'labels': ['*'],
+            })
         return data

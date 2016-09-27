@@ -235,7 +235,8 @@ class TestRepoDumper(MAASTestCase):
     """Tests for `RepoDumper`."""
 
     def make_item(self, os=None, release=None, version=None, arch=None,
-                  subarch=None, subarches=None, label=None):
+                  subarch=None, subarches=None, label=None,
+                  bootloader_type=None):
         if os is None:
             os = factory.make_name('os')
         if release is None:
@@ -265,6 +266,8 @@ class TestRepoDumper(MAASTestCase):
             'subarches': ','.join(subarches),
             'label': label,
             }
+        if bootloader_type is not None:
+            item['bootloader-type'] = bootloader_type
         return item, clean_up_repo_item(item)
 
     def test_insert_item_adds_item_per_subarch(self):
@@ -371,6 +374,24 @@ class TestRepoDumper(MAASTestCase):
             os=os, release=release, arch=arch, subarch='generic',
             label=label)
         self.assertEqual(compat_item, boot_images_dict.mapping[image_spec])
+
+    def test_insert_item_sets_release_to_bootloader_type(self):
+        boot_images_dict = BootImageMapping()
+        dumper = RepoDumper(boot_images_dict)
+        bootloader_type = factory.make_name('bootloader-type')
+        item, _ = self.make_item(bootloader_type=bootloader_type)
+        self.patch(
+            download_descriptions, 'products_exdata').return_value = item
+        dumper.insert_item(
+            sentinel.data, sentinel.src, sentinel.target,
+            sentinel.pedigree, sentinel.contentsource)
+        image_specs = [
+            make_image_spec(
+                os=item['os'], release=bootloader_type, arch=item['arch'],
+                subarch=subarch, label=item['label'])
+            for subarch in item['subarches'].split(',')
+        ]
+        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 
     def test_sync_does_not_propagate_ioerror(self):
         mock_sync = self.patch(download_descriptions.BasicMirrorWriter, "sync")

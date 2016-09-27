@@ -43,7 +43,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = (
-            ('resource_set', 'filetype'),
+            ('resource_set', 'filename'),
             )
 
     resource_set = ForeignKey(

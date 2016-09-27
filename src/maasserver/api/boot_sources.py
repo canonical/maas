@@ -50,7 +50,7 @@ class BootSourceHandler(OperationsHandler):
         :param url: The URL of the BootSource.
         :param keyring_filename: The path to the keyring file for this
             BootSource.
-        :param keyring_filename: The GPG keyring for this BootSource,
+        :param keyring_data: The GPG keyring for this BootSource,
             base64-encoded data.
         """
         boot_source = get_object_or_404(

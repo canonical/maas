@@ -111,6 +111,7 @@ from testtools.matchers import (
     ContainsAll,
     Equals,
     HasLength,
+    Not,
 )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
@@ -193,8 +194,10 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             os, series = resource.name.split('/')
         return 'maas:boot:%s:%s:%s:%s' % (os, arch, subarch, series)
 
-    def make_usable_product_boot_resource(self):
-        resource = factory.make_usable_boot_resource()
+    def make_usable_product_boot_resource(
+            self, kflavor=None, bootloader_type=None):
+        resource = factory.make_usable_boot_resource(
+            kflavor=kflavor, bootloader_type=bootloader_type)
         return self.get_product_name_for_resource(resource), resource
 
     def test_streams_other_than_allowed_returns_404(self):
@@ -328,7 +331,22 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             output['products'][product],
             ContainsAll([
                 'versions', 'subarch', 'label', 'version',
-                'arch', 'release', 'krel', 'os']))
+                'arch', 'release', 'os']))
+        # Verify optional fields aren't added
+        self.assertThat(
+            output['products'][product],
+            Not(ContainsAll(['kflavor', 'bootloader_type'])))
+
+    def test_streams_product_download_product_adds_optional_fields(self):
+        kflavor = factory.make_name('kflavor')
+        bootloader_type = factory.make_name('bootloader_type')
+        product, _ = self.make_usable_product_boot_resource(
+            kflavor, bootloader_type)
+        response = self.get_stream_client('maas:v2:download.json')
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEquals(kflavor, output['products'][product]['kflavor'])
+        self.assertEquals(
+            bootloader_type, output['products'][product]['bootloader-type'])
 
     def test_streams_product_download_product_has_valid_values(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -342,7 +360,6 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         self.assertEqual(series, output_product['version'])
         self.assertEqual(arch, output_product['arch'])
         self.assertEqual(series, output_product['release'])
-        self.assertEqual(series, output_product['krel'])
         self.assertEqual(os, output_product['os'])
         for key, value in resource.extra.items():
             self.assertEqual(value, output_product[key])
@@ -585,14 +602,15 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
             AssertConnectionWrapper.connection.connection)
 
 
-def make_product(ftype=None, kflavor=None):
+def make_product(ftype=None, kflavor=None, subarch=None):
     """Make product dictionary that is just like the one provided
     from simplsetreams."""
     if ftype is None:
         ftype = factory.pick_choice(BOOT_RESOURCE_FILE_TYPE_CHOICES)
     if kflavor is None:
         kflavor = 'generic'
-    subarch = factory.make_name('subarch')
+    if subarch is None:
+        subarch = factory.make_name('subarch')
     subarches = [factory.make_name('subarch') for _ in range(3)]
     subarches.insert(0, subarch)
     subarches = ','.join(subarches)
@@ -648,7 +666,7 @@ def make_boot_resource_group_from_product(product):
     resource_set = factory.make_BootResourceSet(
         resource, version=product['version_name'])
     rfile = factory.make_boot_resource_file_with_content(
-        resource_set, filename=product['ftype'],
+        resource_set, filename=product['item_name'],
         filetype=product['ftype'])
     product['sha256'] = rfile.largefile.sha256
     product['size'] = rfile.largefile.total_size
@@ -709,6 +727,31 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(product['kflavor'], resource.kflavor)
         self.assertEqual(product['subarches'], resource.extra['subarches'])
 
+    def test_get_or_create_boot_resource_handles_bootloader(self):
+        osystem = factory.make_name('os')
+        product = {
+            'os': osystem,
+            'arch': factory.make_name('arch'),
+            'bootloader-type': factory.make_name('bootloader-type'),
+            'lablel': factory.make_name('label'),
+            'ftype': factory.pick_choice([
+                BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
+                BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ]),
+            'path': '/path/to/%s' % osystem,
+            'sha256': factory.make_name('sha256'),
+            'src_package': factory.make_name('src_package'),
+            'src_release': factory.make_name('src_release'),
+            'src_version': factory.make_name('src_version'),
+        }
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
+        self.assertEqual(
+            "%s/%s" % (product['os'], product['bootloader-type']),
+            resource.name)
+        self.assertEqual("%s/generic" % product['arch'], resource.architecture)
+        self.assertEqual(product['bootloader-type'], resource.bootloader_type)
+
     def test_get_or_create_boot_resource_gets_resource(self):
         name, architecture, product = make_product()
         expected = factory.make_BootResource(
@@ -747,10 +790,12 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def test_get_or_create_boot_resource_adds_kflavor_to_subarch(self):
         kflavor = factory.make_name('kflavor')
-        _, architecture, product = make_product(kflavor=kflavor)
+        _, architecture, product = make_product(
+            kflavor=kflavor, subarch='hwe-16.04')
         store = BootResourceStore()
         resource = store.get_or_create_boot_resource(product)
         self.assertEqual(architecture, reload_object(resource).architecture)
+        self.assertTrue(architecture.endswith(kflavor))
 
     def test_get_or_create_boot_resources_add_no_kflavor_for_generic(self):
         _, architecture, product = make_product(kflavor='generic')
@@ -789,7 +834,7 @@ class TestBootResourceStore(MAASServerTestCase):
             resource_set.files.all().delete()
         store = BootResourceStore()
         rfile = store.get_or_create_boot_resource_file(resource_set, product)
-        self.assertEqual(product['ftype'], rfile.filename)
+        self.assertEqual(os.path.basename(product['path']), rfile.filename)
         self.assertEqual(product['ftype'], rfile.filetype)
         self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
 
@@ -803,6 +848,38 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(expected, rfile)
         self.assertEqual(product['ftype'], rfile.filetype)
         self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
+
+    def test_get_or_create_boot_resource_file_captures_extra_fields(self):
+        extra_fields = [
+            'kpackage', 'src_package', 'src_release', 'src_version']
+        name, architecture, product = make_product()
+        for extra_field in extra_fields:
+            product[extra_field] = factory.make_name(extra_field)
+        product, resource = make_boot_resource_group_from_product(product)
+        resource_set = resource.sets.first()
+        store = BootResourceStore()
+        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        for extra_field in extra_fields:
+            self.assertEqual(product[extra_field], rfile.extra[extra_field])
+
+    def test_get_or_create_boot_resources_can_handle_duplicate_ftypes(self):
+        name, architecture, product = make_product()
+        product, resource = make_boot_resource_group_from_product(product)
+        resource_set = resource.sets.first()
+        store = BootResourceStore()
+        files = [resource_set.files.first().filename]
+        with post_commit_hooks:
+            for _ in range(3):
+                    item_name = factory.make_name('item_name')
+                    product['item_name'] = item_name
+                    files.append(item_name)
+                    rfile = store.get_or_create_boot_resource_file(
+                        resource_set, product)
+                    rfile.largefile = factory.make_LargeFile()
+                    rfile.save()
+            for rfile in resource_set.files.all():
+                self.assertIn(rfile.filename, files)
+                self.assertEquals(rfile.filetype, product['ftype'])
 
     def test_get_resource_file_log_identifier_returns_valid_ident(self):
         os = factory.make_name('os')
@@ -1001,7 +1078,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 resource_set, filename=other_type, filetype=other_type)
             rfile = factory.make_BootResourceFile(
                 resource_set, other_file.largefile,
-                filename=product['ftype'], filetype=product['ftype'])
+                filename=product['item_name'], filetype=product['ftype'])
             largefile = factory.make_LargeFile()
         product['sha256'] = largefile.sha256
         product['size'] = largefile.total_size
@@ -1793,7 +1870,6 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         }
         products = {
             product: {
-                'krel': 'xenial',
                 'subarch': subarch,
                 'label': 'daily',
                 'os': 'ubuntu',
@@ -1853,6 +1929,32 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockCalledOnce())
 
+    def test_insert_allows_bootloader(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+
+    def test_insert_allows_archive_tar_xz(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+
     def test_insert_ignores_unknown_ftypes(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
@@ -1866,3 +1968,85 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockNotCalled())
+
+    def test_insert_validates_bootloader(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        mock_validate_bootloader = self.patch(
+            boot_resource_repo_writer, '_validate_bootloader')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+        self.assertThat(mock_validate_bootloader, MockCalledOnce())
+
+    def test_validate_bootloader_ignores_non_bootloaders(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        self.assertTrue(
+            boot_resource_repo_writer._validate_bootloader(
+                {}, 'com.ubuntu.maas.daily:1:pxelinux:pxe:i386'))
+
+    def test_validate_bootloader_checks_version(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        version = random.randint(2, 100)
+        product_name = "com.ubuntu.maas.daily:%d:pxelinux:pxe:i386" % version
+        self.assertFalse(
+            boot_resource_repo_writer._validate_bootloader(
+                {'bootloader-type': factory.make_name('bootloader-type')},
+                product_name))
+
+    def test_validate_bootloader_allows_acceptable_bootloaders(self):
+        acceptable_bootloaders = [
+            {
+                'os': 'pxelinux',
+                'arch': 'i386',
+                'bootloader-type': 'pxe',
+            },
+            {
+                'os': 'grub-efi-signed',
+                'arch': 'amd64',
+                'bootloader-type': 'uefi',
+            },
+            {
+                'os': 'grub-efi',
+                'arch': 'arm64',
+                'bootloader-type': 'uefi',
+            },
+            {
+                'os': 'grub-ieee1275',
+                'arch': 'ppc64el',
+                'bootloader-type': 'open-firmware',
+            },
+        ]
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        for bootloader in acceptable_bootloaders:
+            product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+                bootloader['os'], bootloader['bootloader-type'],
+                bootloader['arch'])
+            self.assertTrue(
+                boot_resource_repo_writer._validate_bootloader(
+                    bootloader, product_name),
+                "Failed to validate %s" % product_name)
+
+    def test_validate_bootloader_denies_unacceptable_bootloader(self):
+        bootloader = {
+            'os': factory.make_name('os'),
+            'arch': factory.make_name('arch'),
+            'bootloader-type': factory.make_name('bootloader_type'),
+        }
+        product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+            bootloader['os'], bootloader['bootloader-type'],
+            bootloader['arch'])
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        self.assertFalse(
+            boot_resource_repo_writer._validate_bootloader(
+                bootloader, product_name))

@@ -53,6 +53,8 @@ class BootSourceCache(CleanSave, TimestampedModel):
 
     os = CharField(max_length=32, blank=False, null=False)
 
+    bootloader_type = CharField(max_length=32, blank=True, null=True)
+
     arch = CharField(max_length=32, blank=False, null=False)
 
     subarch = CharField(max_length=32, blank=False, null=False)

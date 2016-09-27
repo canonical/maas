@@ -341,7 +341,7 @@ class BOOT_RESOURCE_FILE_TYPE:
     #: Root Image (gets converted to root-image root-tgz, on the rack)
     ROOT_IMAGE = 'root-image.gz'
 
-    # Root image in SquashFS form, does not need to be converted
+    #: Root image in SquashFS form, does not need to be converted
     SQUASHFS_IMAGE = 'squashfs'
 
     #: Boot Kernel (ISCSI kernel)
@@ -352,6 +352,13 @@ class BOOT_RESOURCE_FILE_TYPE:
 
     #: Boot DTB (ISCSI dtb)
     BOOT_DTB = 'boot-dtb'
+
+    #: An uncompressed bootloader (PXELinux, GRUB, etc)
+    BOOTLOADER = 'bootloader'
+
+    #: tar.xz of files which need to be extracted so the files are usable
+    # by MAAS
+    ARCHIVE_TAR_XZ = 'archive.tar.xz'
 
 
 # Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
@@ -364,6 +371,8 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, "Initial ISCSI Ramdisk"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, "ISCSI Device Tree Blob"),
+    (BOOT_RESOURCE_FILE_TYPE.BOOTLOADER, "Bootloader"),
+    (BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ, "Archives.tar.xz set of files"),
     )
 
 

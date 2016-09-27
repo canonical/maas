@@ -36,7 +36,8 @@ def clean_up_repo_item(item):
     """Return a subset of dict `item` for storing in a boot images dict."""
     keys_to_keep = [
         'content_id', 'product_name', 'version_name', 'path', 'subarches',
-        'release_codename', 'release_title', 'support_eol', 'kflavor']
+        'release_codename', 'release_title', 'support_eol', 'kflavor',
+        'bootloader-type']
     compact_item = {
         key: item[key]
         for key in keys_to_keep
@@ -79,8 +80,12 @@ class RepoDumper(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         os = get_os_from_product(item)
-        arch, subarches = item['arch'], item['subarches']
-        release = item['release']
+        arch = item['arch']
+        subarches = item.get('subarches', 'generic')
+        if item.get('bootloader-type') is None:
+            release = item['release']
+        else:
+            release = item['bootloader-type']
         label = item['label']
         base_image = ImageSpec(os, arch, None, release, label)
         compact_item = clean_up_repo_item(item)
@@ -90,7 +95,7 @@ class RepoDumper(BasicMirrorWriter):
 
         # HWE resources need to map to a specfic resource, and not just to
         # any of the supported subarchitectures for that resource.
-        subarch = item['subarch']
+        subarch = item.get('subarch', 'generic')
         self.boot_images_dict.set(
             base_image._replace(subarch=subarch), compact_item)
 
