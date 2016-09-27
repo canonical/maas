@@ -895,6 +895,7 @@ class TestCurtinUtilities(
         return parsed_result.netloc, parsed_result.path.strip('/')
 
     def test_compose_curtin_archive_config_uses_main_archive_for_i386(self):
+        PackageRepository.objects.all().delete()
         node = self.make_fastpath_node('i386')
         node.osystem = 'ubuntu'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
@@ -910,6 +911,7 @@ class TestCurtinUtilities(
             self.extract_archive_setting(userdata[0]))
 
     def test_compose_curtin_archive_config_uses_main_archive_for_amd64(self):
+        PackageRepository.objects.all().delete()
         node = self.make_fastpath_node('amd64')
         node.osystem = 'ubuntu'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
@@ -925,6 +927,7 @@ class TestCurtinUtilities(
             self.extract_archive_setting(userdata[0]))
 
     def test_compose_curtin_archive_config_uses_main_archive_key(self):
+        PackageRepository.objects.all().delete()
         node = self.make_fastpath_node('amd64')
         node.osystem = 'ubuntu'
         main_url = 'http://us.archive.ubuntu.com/ubuntu'
@@ -965,6 +968,24 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         self.assertEqual(
             userdata['apt']['sources']['archive_key']['key'],
             archive.key)
+
+    def test_compose_curtin_archive_config_disables_pockets(self):
+        PackageRepository.objects.all().delete()
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'],
+            disabled_pockets=['updates', 'backports'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        preseed = yaml.load(userdata[0])
+        archive = PackageRepository.objects.get_default_archive(
+            node.split_arch()[0])
+        self.assertEqual(
+            preseed['apt']['disable_suites'],
+            archive.disabled_pockets)
 
     def test_compose_curtin_archive_config_has_ppa(self):
         node = self.make_fastpath_node('i386')

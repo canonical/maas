@@ -75,6 +75,8 @@ def get_archive_config(node, preserve_sources=False):
             ],
         },
     }
+    if archive.disabled_pockets:
+        archives['apt']['disable_suites'] = archive.disabled_pockets
     if apt_proxy:
         archives['apt']['proxy'] = apt_proxy
     if archive.key:

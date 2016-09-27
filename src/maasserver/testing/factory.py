@@ -1876,13 +1876,11 @@ class Factory(maastesting.factory.Factory):
 
     def make_PackageRepository(
             self, name=None, url=None, arches=None, default=False, key=None,
-            distributions=None, components=None):
+            distributions=None, components=None, disabled_pockets=None):
         if name is None:
             name = self.make_name("name")
         if url is None:
             url = self.make_url(scheme='http')
-        disabled_pockets = [self.make_name(
-            "disabled_pocket%d" % i) for i in range(3)]
         if arches is None:
             arches = random.sample(
                 PackageRepository.KNOWN_ARCHES,
