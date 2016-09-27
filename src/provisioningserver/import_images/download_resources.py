@@ -10,6 +10,7 @@ __all__ = [
 from datetime import datetime
 from gzip import GzipFile
 import os.path
+import tarfile
 
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
@@ -123,6 +124,65 @@ def insert_root_image(store, tag, checksums, size, content_source):
     return [(root_image_path, 'root-image'), (root_tgz_path, 'root-tgz')]
 
 
+def extract_archive_tar(store, name, tag, checksums, size, content_source):
+    """Extract an archive.tar.xz into `store`.
+
+    :param store: A simplestreams `ObjectStore`.
+    :param name: Logical name of the file being inserted.  Only needs to be
+        unique within the scope of this boot image.
+    :param tag: UUID, or "tag," for the file archive.tar.xz file. The
+        archive.tar.xz file along with its contents will be stored in the
+        cache directory under names derived from this tag.
+    :param checksums: A Simplestreams checksums dict, mapping hash algorihm
+        names (such as `sha256`) to the file's respective checksums as
+        computed by those hash algorithms.
+    :param size: Optional size for the file, so Simplestreams knows what size
+        to expect.
+    :param content_source: A Simplestreams `ContentSource` for reading the
+        file.
+    :return: A list of inserted files (file and archive.tar.xz) described
+        as tuples of (path, logical name).  The path lies in the directory
+        managed by `store` and has a filename based on `tag`, not logical name.
+    """
+    maaslog.debug("Inserting archive %s (tag=%s, size=%s).", name, tag, size)
+    extracted_files = []
+    cache_dir = store._fullpath('')
+    # Check if the archive has already been extracted. This is done by scanning
+    # the cache directory for files containing the given tag. Since the tag is
+    # the SHA256 this will always be unique and if files are added/removed from
+    # the archive we'll get a new tag.
+    for root, dirs, files in os.walk(cache_dir):
+        for f in files:
+            if f.endswith(tag):
+                # Strip out the tag
+                filename = f[:-(len(tag) + 1)]
+                if root != cache_dir:
+                    filename = os.path.join(root[len(cache_dir):], filename)
+                # Give full path to cached file
+                filepath = os.path.join(root, f)
+                extracted_files.append((filepath, filename))
+
+    # If no files with the given tag were found we need to extract them.
+    if extracted_files == []:
+        maaslog.debug(
+            "Extracting archive %s (tag=%s, size=%s).", name, tag, size)
+        archive_path = store._fullpath(tag)
+        store.insert(tag, content_source, checksums, mutable=False, size=size)
+        with tarfile.open(archive_path, 'r|*') as tar:
+            for member in tar:
+                if member.isfile():
+                    filename = member.name
+                    filepath = store._fullpath('%s-%s' % (filename, tag))
+                    fo = tar.extractfile(member)
+                    store.insert(filepath, fo, mutable=False)
+                    extracted_files.append((filepath, filename))
+        store.remove(tag)
+
+    # Return the list of sets containing the path to the cache file and the
+    # real filename which should be used.
+    return extracted_files
+
+
 def link_resources(snapshot_path, links, osystem, arch, release, label,
                    subarches):
     """Hardlink entries in the snapshot directory to resources in the cache.
@@ -155,6 +215,9 @@ def link_resources(snapshot_path, links, osystem, arch, release, label,
             link_path = os.path.join(directory, logical_name)
             if os.path.isfile(link_path):
                 os.remove(link_path)
+            base_dir = os.path.dirname(link_path)
+            if not os.path.exists(base_dir):
+                os.makedirs(base_dir)
             os.link(cached_file, link_path)
 
 
@@ -196,18 +259,22 @@ class RepoWriter(BasicMirrorWriter):
         tag = checksums['sha256']
         size = data['size']
         ftype = item['ftype']
-        if ftype == 'root-image.gz':
+        filename = os.path.basename(item['path'])
+        if ftype == 'archive.tar.xz':
+            links = extract_archive_tar(
+                self.store, filename, tag, checksums, size, contentsource)
+        elif ftype == 'root-image.gz':
             links = insert_root_image(
                 self.store, tag, checksums, size, contentsource)
         else:
             links = insert_file(
-                self.store, ftype, tag, checksums, size, contentsource)
+                self.store, filename, tag, checksums, size, contentsource)
 
-        os = get_os_from_product(item)
+        osystem = get_os_from_product(item)
         subarches = self.product_mapping.get(item)
         link_resources(
             snapshot_path=self.root_path, links=links,
-            osystem=os, arch=item['arch'], release=item['release'],
+            osystem=osystem, arch=item['arch'], release=item['release'],
             label=item['label'], subarches=subarches)
 
 
