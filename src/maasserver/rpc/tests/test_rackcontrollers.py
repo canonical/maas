@@ -38,7 +38,10 @@ from maasserver.rpc.rackcontrollers import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -327,6 +330,19 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
             rack_controller.system_id, interface.name, dhcp_ip)
         self.assertEquals(
             dhcp_ip, reload_object(interface.vlan).external_dhcp)
+
+    def test__logs_warning_for_external_dhcp_on_interface_no_vlan(self):
+        rack_controller = factory.make_RackController(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        dhcp_ip = factory.make_ip_address()
+        interface.vlan = None
+        interface.save()
+        logger = self.useFixture(FakeLogger())
+        update_foreign_dhcp(
+            rack_controller.system_id, interface.name, dhcp_ip)
+        self.assertThat(logger.output, DocTestMatches(
+            "...DHCP server on an interface with no VLAN defined..."))
 
     def test__clears_external_dhcp_when_managed_vlan(self):
         rack_controller = factory.make_RackController(interface=False)

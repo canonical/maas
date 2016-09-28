@@ -179,9 +179,16 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
                 if rack_interfaces_serving_dhcp.exists():
                     # Not external. It's a MAAS DHCP server.
                     dhcp_ip = None
-        if interface.vlan.external_dhcp != dhcp_ip:
-            interface.vlan.external_dhcp = dhcp_ip
-            interface.vlan.save()
+        if interface.vlan is None:
+            maaslog.warning(
+                "%s: Detected an external DHCP server on an interface with no "
+                "VLAN defined: '%s': %s" % (
+                    rack_controller.hostname, interface.get_log_string(),
+                    dhcp_ip))
+        else:
+            if interface.vlan.external_dhcp != dhcp_ip:
+                interface.vlan.external_dhcp = dhcp_ip
+                interface.vlan.save()
 
 
 @synchronous
