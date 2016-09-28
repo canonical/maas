@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                 ('mac_address', maasserver.fields.MACAddressField(blank=True, null=True, editable=False)),
                 ('first_seen', models.DateTimeField(editable=False)),
                 ('last_seen', models.DateTimeField(editable=False)),
-                ('hostname', maasserver.fields.DomainNameField(max_length=256, editable=False, null=True)),
+                ('hostname', models.CharField(max_length=256, editable=False, null=True)),
                 ('observer_system_id', models.CharField(max_length=41, editable=False)),
                 ('observer_hostname', maasserver.fields.DomainNameField(max_length=256, editable=False, null=True)),
                 ('observer_interface_name', models.CharField(max_length=255, editable=False)),

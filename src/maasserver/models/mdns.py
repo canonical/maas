@@ -1,8 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model definition for mDNS. (Multicast DNS, or RFC 6762.)
-"""
+"""Model definition for mDNS. (Multicast DNS, or RFC 6762.)"""
 
 __all__ = [
     'MDNS',
@@ -11,17 +10,14 @@ __all__ = [
 
 from django.db.models import (
     CASCADE,
+    CharField,
     ForeignKey,
     IntegerField,
     Manager,
 )
 from maasserver import DefaultMeta
-from maasserver.fields import (
-    DomainNameField,
-    MAASIPAddressField,
-)
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import (
     get_one,
@@ -110,9 +106,8 @@ class MDNS(CleanSave, TimestampedModel):
         verbose_name='IP')
 
     # Hostname observed from mDNS-browse.
-    hostname = DomainNameField(
-        max_length=256, editable=True, null=True, blank=False, unique=False,
-        validators=[validate_domain_name])
+    hostname = CharField(
+        max_length=256, editable=True, null=True, blank=False, unique=False)
 
     # Rack interface the mDNS data was observed on.
     interface = ForeignKey(

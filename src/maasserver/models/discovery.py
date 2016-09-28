@@ -178,7 +178,7 @@ class Discovery(CleanSave, ViewModel):
         on_delete=DO_NOTHING)
 
     # Hostname observed from mDNS-browse.
-    hostname = DomainNameField(
+    hostname = CharField(
         max_length=256, editable=False, null=True, blank=False, unique=False)
 
     observer = ForeignKey(

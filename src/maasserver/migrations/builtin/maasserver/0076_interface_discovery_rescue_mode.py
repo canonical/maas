@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('ip', maasserver.fields.MAASIPAddressField(null=True, blank=True, editable=False, default=None, verbose_name='IP')),
-                ('hostname', maasserver.fields.DomainNameField(null=True, max_length=256)),
+                ('hostname', models.CharField(null=True, max_length=256)),
                 ('count', models.IntegerField(default=1)),
             ],
             options={
