@@ -64,6 +64,8 @@
                     <maas-obj-field type="options" key="space" label="Space" placeholder="Choose space"
                         options="space.id as space.name for space in spaces"
                         label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active discovery"
+                        label-width="two" input-width="three" label-info="When active discovery is enabled, MAAS will &#xa;periodically scan the subnet for active neighbours. &#xa;Only IPv4 subnets support active discovery."></maas-obj-field>
                 </fieldset>
             </maas-obj-form>
         </div>

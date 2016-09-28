@@ -753,9 +753,17 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Called by controller to update the value.
                     scope.updateValue = function(newValue) {
-                        if(attrs.onValue === newValue) {
+                        // WARNING: This code is difficult to unit test, since
+                        // we could not figure out how to get the
+                        // isolateScope() from the transcluded element. Be sure
+                        // to manually test versions of this toggle with and
+                        // without the on-value and off-value attributes, such
+                        // as by verifying that both the on/off toggle on both
+                        // the discovery page and the subnet details page work.
+                        if(attrs.onValue && attrs.onValue === newValue) {
                             switchScope._toggle = true;
-                        } else if(attrs.offValue === newValue) {
+                        } else if(attrs.offValue &&
+                                attrs.offValue === newValue) {
                             switchScope._toggle = false;
                         } else {
                             switchScope._toggle = newValue;
@@ -764,6 +772,13 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
 
                     // Called by controller to get the value.
                     scope.getValue = function() {
+                        // WARNING: This code is difficult to unit test, since
+                        // we could not figure out how to get the
+                        // isolateScope() from the transcluded element. Be sure
+                        // to manually test versions of this toggle with and
+                        // without the on-value and off-value attributes, such
+                        // as by verifying that both the on/off toggle on both
+                        // the discovery page and the subnet details page work.
                         if(switchScope._toggle) {
                             if(attrs.onValue) {
                                 return attrs.onValue;
@@ -774,7 +789,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             if(attrs.offValue) {
                                 return attrs.offValue;
                             } else {
-                                return true;
+                                return false;
                             }
                         }
                     };
