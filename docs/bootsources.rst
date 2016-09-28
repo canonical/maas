@@ -20,7 +20,7 @@ under which you're logged in to the server::
     $ maas $PROFILE boot-sources read
     [
         {
-            "url": "http://images.maas.io/ephemeral-v2/daily/",
+            "url": "http://images.maas.io/ephemeral-v3/daily/",
             "keyring_data": "",
             "resource_uri": "<url omitted for readability>",
             "keyring_filename": "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",

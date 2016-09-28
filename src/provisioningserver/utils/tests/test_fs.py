@@ -31,8 +31,13 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import (
+    age_file,
+    get_write_time,
+)
 import provisioningserver.config
 from provisioningserver.utils.fs import (
+    atomic_copy,
     atomic_delete,
     atomic_symlink,
     atomic_write,
@@ -181,6 +186,51 @@ class TestAtomicWrite(MAASTestCase):
         self.assertRaises(
             TypeError, atomic_write, factory.make_string(),
             factory.make_string())
+
+
+class TestAtomicCopy(MAASTestCase):
+
+    def test_integration(self):
+        loader_contents = factory.make_bytes()
+        loader = self.make_file(contents=loader_contents)
+        destination = self.make_file()
+        atomic_copy(loader, destination)
+        self.assertThat(destination, FileContains(loader_contents))
+
+    def test___installs_new_bootloader(self):
+        contents = factory.make_bytes()
+        loader = self.make_file(contents=contents)
+        install_dir = self.make_dir()
+        dest = os.path.join(install_dir, factory.make_name('loader'))
+        atomic_copy(loader, dest)
+        self.assertThat(dest, FileContains(contents))
+
+    def test__replaces_file_if_changed(self):
+        contents = factory.make_bytes()
+        loader = self.make_file(contents=contents)
+        dest = self.make_file(contents="Old contents")
+        atomic_copy(loader, dest)
+        self.assertThat(dest, FileContains(contents))
+
+    def test__skips_if_unchanged(self):
+        contents = factory.make_bytes()
+        dest = self.make_file(contents=contents)
+        age_file(dest, 100)
+        original_write_time = get_write_time(dest)
+        loader = self.make_file(contents=contents)
+        atomic_copy(loader, dest)
+        self.assertThat(dest, FileContains(contents))
+        self.assertEqual(original_write_time, get_write_time(dest))
+
+    def test__sweeps_aside_dot_new_if_any(self):
+        contents = factory.make_bytes()
+        loader = self.make_file(contents=contents)
+        dest = self.make_file(contents="Old contents")
+        temp_file = '%s.new' % dest
+        factory.make_file(
+            os.path.dirname(temp_file), name=os.path.basename(temp_file))
+        atomic_copy(loader, dest)
+        self.assertThat(dest, FileContains(contents))
 
 
 class TestAtomicDelete(MAASTestCase):

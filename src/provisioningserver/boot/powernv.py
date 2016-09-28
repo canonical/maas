@@ -150,6 +150,6 @@ class PowerNVBootMethod(BootMethod):
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     @typed
-    def install_bootloader(self, destination: str):
+    def link_bootloader(self, destination: str):
         """Does nothing. No extra boot files are required. All of the boot
         files from PXEBootMethod will suffice."""

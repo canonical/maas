@@ -1849,12 +1849,14 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 class TestBootResourceRepoWriter(MAASServerTestCase):
     """Tests for `BootResourceRepoWriter`."""
 
-    def create_simplestream(self, ftypes):
+    def create_simplestream(self, ftypes, stream_version=None):
         version = '16.04'
         arch = 'amd64'
         subarch = 'hwe-x'
-        product = "com.ubuntu.maas.daily:v2:boot:%s:%s:%s" % (
-            version, arch, subarch)
+        if stream_version is None:
+            stream_version = random.choice(['v2', 'v3'])
+        product = "com.ubuntu.maas.daily:%s:boot:%s:%s:%s" % (
+            stream_version, version, arch, subarch)
         version = datetime.now().date().strftime('%Y%m%d.0')
         versions = {
             version: {
@@ -1990,7 +1992,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             BootResourceStore(), None)
         self.assertTrue(
             boot_resource_repo_writer._validate_bootloader(
-                {}, 'com.ubuntu.maas.daily:1:pxelinux:pxe:i386'))
+                {}, 'com.ubuntu.maas.daily:v3:boot:16.04:amd64:hwe-16.04'))
 
     def test_validate_bootloader_checks_version(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2050,3 +2052,32 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         self.assertFalse(
             boot_resource_repo_writer._validate_bootloader(
                 bootloader, product_name))
+
+    def test_insert_validates_ubuntu(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+        ])
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        mock_validate_bootloader = self.patch(
+            boot_resource_repo_writer, '_validate_ubuntu')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+        self.assertThat(mock_validate_bootloader, MockCalledOnce())
+
+    def test_validate_ubuntu_rejects_unknown_version(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream(
+            [BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE],
+            factory.make_name('stream_version'))
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockNotCalled())

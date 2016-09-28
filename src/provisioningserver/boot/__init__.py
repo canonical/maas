@@ -10,12 +10,11 @@ __all__ = [
 
 from abc import (
     ABCMeta,
-    abstractmethod,
     abstractproperty,
 )
 from errno import ENOENT
 from io import BytesIO
-from os import path
+import os
 from typing import (
     Dict,
     List,
@@ -24,12 +23,17 @@ from typing import (
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
+from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import (
     locate_template,
     tftp,
     typed,
+)
+from provisioningserver.utils.fs import (
+    atomic_copy,
+    atomic_symlink,
 )
 from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
@@ -41,6 +45,9 @@ from twisted.internet.defer import (
     returnValue,
 )
 from zope.interface import implementer
+
+
+maaslog = get_maas_logger('bootloaders')
 
 
 @asynchronous
@@ -82,12 +89,6 @@ class BytesReader:
 
 class BootMethodError(Exception):
     """Exception raised for errors from a BootMethod."""
-
-
-class BootMethodInstallError(BootMethodError):
-    """Exception raised for errors from a BootMethod performing
-    install_bootloader.
-    """
 
 
 @typed
@@ -144,6 +145,9 @@ class BootMethod(metaclass=ABCMeta):
     # Arches for which this boot method needs to install boot loaders.
     bootloader_arches = []
 
+    # Bootloader files to symlink into the root tftp directory.
+    bootloader_files = []
+
     @abstractproperty
     def name(self):
         """Name of the boot method."""
@@ -164,9 +168,10 @@ class BootMethod(metaclass=ABCMeta):
     def arch_octet(self):
         """Architecture type that supports this method. Used for the
         dhcpd.conf file that is generated. Must be in the format XX:XX.
+        See http://www.iana.org/assignments/dhcpv6-parameters/
+        dhcpv6-parameters.xhtml#processor-architecture
         """
 
-    @abstractmethod
     def match_path(self, backend, path):
         """Checks path for a file the boot method needs to handle.
 
@@ -174,8 +179,8 @@ class BootMethod(metaclass=ABCMeta):
         :param path: requested path
         :return: dict of match params from path, None if no match
         """
+        return None
 
-    @abstractmethod
     def get_reader(self, backend, kernel_params, **extra):
         """Gets the reader the backend will use for this combination of
         boot method, kernel parameters, and extra parameters.
@@ -186,14 +191,79 @@ class BootMethod(metaclass=ABCMeta):
             parameters generated in another component (for example, see
             `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
+        return None
 
-    @abstractmethod
-    def install_bootloader(self, destination: str):
+    def _link_simplestream_bootloaders(self, stream_path, destination):
+        """Link the bootloaders downloaded from the SimpleStream into the
+        destination(tftp root).
+
+        :param stream_path: The path to the bootloaders in the SimpleStream
+        :param destination: The path to link the bootloaders to
+        """
+        for bootloader_file in self.bootloader_files:
+            bootloader_src = os.path.join(stream_path, bootloader_file)
+            bootloader_dst = os.path.join(destination, bootloader_file)
+            if os.path.exists(bootloader_src):
+                atomic_symlink(bootloader_src, bootloader_dst)
+            else:
+                maaslog.error(
+                    "SimpleStream is missing required bootloader file '%s' "
+                    "from bootloader %s." % (bootloader_file, self.name))
+
+    def _find_and_copy_bootloaders(self, destination, log_missing=True):
+        """Attempt to copy bootloaders from the previous snapshot
+
+        :param destination: The path to link the bootloaders to
+        :param log_missing: Log missing files, default True
+
+        :return: True if all bootloaders have been found and copied, False
+                 otherwise.
+        """
+        boot_sources_base = os.path.realpath(os.path.join(destination, '..'))
+        previous_snapshot = os.path.join(boot_sources_base, 'current')
+        files_found = True
+        for bootloader_file in self.bootloader_files:
+            bootloader_src = os.path.join(previous_snapshot, bootloader_file)
+            bootloader_src = os.path.realpath(bootloader_src)
+            bootloader_dst = os.path.join(destination, bootloader_file)
+            if os.path.exists(bootloader_src):
+                # Copy files if their realpath is inside the previous snapshot
+                # as once we're done the previous snapshot is deleted. Symlinks
+                # to other areas of the filesystem are maintained.
+                if boot_sources_base in bootloader_src:
+                    atomic_copy(bootloader_src, bootloader_dst)
+                else:
+                    atomic_symlink(bootloader_src, bootloader_dst)
+            else:
+                files_found = False
+                if log_missing:
+                    maaslog.error(
+                        "Unable to find a copy of %s in the SimpleStream or a "
+                        "previously downloaded copy. The %s bootloader type "
+                        "may not work." % (bootloader_file, self.name))
+        return files_found
+
+    @typed
+    def link_bootloader(self, destination: str):
         """Installs the required files for this boot method into the
         destination.
 
         :param destination: path to install bootloader
         """
+        # A bootloader can be used for multiple arches but the rack only
+        # stores the bootloader files in the arch listed in the SimpleStream.
+        bootloaders_in_simplestream = False
+        for arch in self.bootloader_arches:
+            stream_path = os.path.join(
+                destination, 'bootloader', self.bios_boot_method, arch)
+            if os.path.exists(stream_path):
+                bootloaders_in_simplestream = True
+                break
+
+        if bootloaders_in_simplestream:
+            self._link_simplestream_bootloaders(stream_path, destination)
+        else:
+            self._find_and_copy_bootloaders(destination)
 
     def __init__(self):
         super(BootMethod, self).__init__()
@@ -204,6 +274,7 @@ class BootMethod(metaclass=ABCMeta):
         # Union types must be checked with issubclass().
         assert issubclass(type(self.template_subdir), Optional[str])
         assert issubclass(type(self.bootloader_arches), List[str])
+        assert issubclass(type(self.bootloader_files), List[str])
         assert issubclass(type(self.arch_octet), Optional[str])
 
     def get_template_dir(self):
@@ -223,7 +294,7 @@ class BootMethod(metaclass=ABCMeta):
         """
         pxe_templates_dir = self.get_template_dir()
         for filename in gen_template_filenames(purpose, arch, subarch):
-            template_name = path.join(pxe_templates_dir, filename)
+            template_name = os.path.join(pxe_templates_dir, filename)
             try:
                 return tempita.Template.from_filename(
                     template_name, encoding="UTF-8")
@@ -292,18 +363,20 @@ class BootMethodRegistry(Registry):
 
 # Import the supported boot methods after defining BootMethod.
 from provisioningserver.boot.pxe import PXEBootMethod
-from provisioningserver.boot.uefi import UEFIBootMethod
+from provisioningserver.boot.uefi_amd64 import UEFIAMD64BootMethod
 from provisioningserver.boot.uefi_arm64 import UEFIARM64BootMethod
-from provisioningserver.boot.powerkvm import PowerKVMBootMethod
+from provisioningserver.boot.open_firmware_ppc64el import (
+    OpenFirmwarePPC64ELBootMethod
+)
 from provisioningserver.boot.powernv import PowerNVBootMethod
 from provisioningserver.boot.windows import WindowsPXEBootMethod
 
 
 builtin_boot_methods = [
     PXEBootMethod(),
-    UEFIBootMethod(),
+    UEFIAMD64BootMethod(),
     UEFIARM64BootMethod(),
-    PowerKVMBootMethod(),
+    OpenFirmwarePPC64ELBootMethod(),
     PowerNVBootMethod(),
     WindowsPXEBootMethod(),
 ]

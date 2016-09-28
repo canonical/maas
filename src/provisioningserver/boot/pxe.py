@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """PXE Boot Method"""
@@ -8,39 +8,23 @@ __all__ = [
     ]
 
 from itertools import repeat
-import os.path
+import os
 import re
+import shutil
 
 from provisioningserver.boot import (
     BootMethod,
     BytesReader,
     get_parameters,
 )
-from provisioningserver.boot.install_bootloader import install_bootloader
-from provisioningserver.utils import typed
-from provisioningserver.utils.fs import atomic_symlink
+from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.utils.fs import (
+    atomic_copy,
+    atomic_symlink,
+)
 
-# Bootloader file names to install.
-BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
 
-# Possible locations in which to find the bootloader files. Search these
-# in this order for each file.  (This exists because locations differ
-# across Ubuntu releases.)
-BOOTLOADER_DIRS = [
-    '/usr/lib/PXELINUX',
-    '/usr/lib/syslinux',
-    '/usr/lib/syslinux/modules/bios'
-]
-
-# List of possible directories where to find additioning bootloader files.
-# The first existing directory will be symlinked to /syslinux/ inside
-# the TFTP root directory.
-SYSLINUX_DIRS = [
-    # Location for syslinux version 6 (the version in Utopic).
-    '/usr/lib/syslinux/modules/bios',
-    # Location for syslinux version 4 (the version in Trusty).
-    '/usr/lib/syslinux'
-]
+maaslog = get_maas_logger('pxe')
 
 
 class ARP_HTYPE:
@@ -85,12 +69,20 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 class PXEBootMethod(BootMethod):
 
-    name = "pxe"
-    bios_boot_method = "pxe"
-    template_subdir = "pxe"
+    name = 'pxe'
+    bios_boot_method = 'pxe'
+    template_subdir = 'pxe'
     bootloader_arches = ['i386', 'amd64']
-    bootloader_path = "pxelinux.0"
-    arch_octet = "00:00"
+    bootloader_path = 'pxelinux.0'
+    bootloader_files = [
+        'pxelinux.0',
+        'chain.c32',
+        'ifcpu64.c32',
+        'ldlinux.c32',
+        'libcom32.c32',
+        'libutil.c32',
+    ]
+    arch_octet = '00:00'
 
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
@@ -120,38 +112,81 @@ class PXEBootMethod(BootMethod):
         namespace = self.compose_template_namespace(kernel_params)
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
-    def locate_bootloader(self, bootloader):
-        """Search BOOTLOADER_DIRS for bootloader.
+    def _link_simplestream_bootloaders(self, stream_path, destination):
+        super()._link_simplestream_bootloaders(stream_path, destination)
 
-        :return: The full file path where the bootloader was found, or None.
-        """
-        for dir in BOOTLOADER_DIRS:
-            filename = os.path.join(dir, bootloader)
-            if os.path.exists(filename):
-                return filename
-        return None
+        # MAAS only requires the bootloader_files listed above to boot.
+        # However some users may want to use extra PXE files in custom
+        # configs or for debug. PXELinux checks / and then /syslinux so
+        # create a symlink to the stream_path which contains all extra PXE
+        # files. This also ensures if upstream ever starts requiring more
+        # modules PXE will continue to work.
+        syslinux_dst = os.path.join(destination, 'syslinux')
+        atomic_symlink(stream_path, syslinux_dst)
 
-    def locate_syslinux_dir(self):
-        """Search for an existing directory among SYSLINUX_DIRS."""
-        for bootloader_dir in SYSLINUX_DIRS:
-            if os.path.exists(bootloader_dir):
-                return bootloader_dir
-        return None
+    def _find_and_copy_bootloaders(self, destination, log_missing=True):
+        boot_sources_base = os.path.realpath(os.path.join(destination, '..'))
+        default_search_path = os.path.join(boot_sources_base, 'current')
+        syslinux_search_path = os.path.join(default_search_path, 'syslinux')
+        # In addition to the default search path search the previous
+        # syslinux subdir as well. Previously MAAS didn't copy all of the
+        # files required for PXE into the root tftp path. Also search the
+        # paths the syslinux-common and pxelinux Ubuntu packages installs files
+        # to on Xenial.
+        search_paths = [
+            default_search_path,
+            syslinux_search_path,
+            '/usr/lib/PXELINUX',
+            '/usr/lib/syslinux/modules/bios',
+        ]
+        files_found = []
+        for search_path in search_paths:
+            for bootloader_file in self.bootloader_files:
+                bootloader_src = os.path.join(search_path, bootloader_file)
+                bootloader_src = os.path.realpath(bootloader_src)
+                bootloader_dst = os.path.join(destination, bootloader_file)
+                if (
+                        os.path.exists(bootloader_src) and
+                        not os.path.exists(bootloader_dst)):
+                    # If the file was found in a previous snapshot copy it as
+                    # once we're done the previous snapshot will be deleted. If
+                    # the file was found elsewhere on the filesystem create a
+                    # symlink so we stay current with that source.
+                    if boot_sources_base in bootloader_src:
+                        atomic_copy(bootloader_src, bootloader_dst)
+                    else:
+                        atomic_symlink(bootloader_src, bootloader_dst)
+                    files_found.append(bootloader_file)
 
-    @typed
-    def install_bootloader(self, destination: str):
-        """Installs the required files and symlinks into the tftproot."""
-        for bootloader in BOOTLOADERS:
-            # locate_bootloader might return None but happy to let that
-            # traceback here is it should never happen unless there's a
-            # serious problem with packaging.
-            bootloader_src = self.locate_bootloader(bootloader)
-            bootloader_dst = os.path.join(destination, bootloader)
-            install_bootloader(bootloader_src, bootloader_dst)
+        missing_files = [
+            bootloader_file for bootloader_file in self.bootloader_files
+            if bootloader_file not in files_found
+        ]
+        if missing_files != []:
+            files_are_missing = True
+            if log_missing:
+                maaslog.error(
+                    "Unable to find a copy of %s in the SimpleStream or in "
+                    "the system search paths %s. The %s bootloader type may "
+                    "not work." %
+                    (', '.join(missing_files), ', '.join(search_paths),
+                     self.name)
+                )
+        else:
+            files_are_missing = False
 
-        # Create /syslinux/ symlink.  PXE linux tries this subdirectory
-        # when trying to fetch files for PXE-booting.
-        bootloader_dir = self.locate_syslinux_dir()
-        if bootloader_dir is not None:
-            atomic_symlink(
-                bootloader_dir, os.path.join(destination, 'syslinux'))
+        syslinux_search_paths = [
+            syslinux_search_path,
+            '/usr/lib/syslinux/modules/bios',
+        ]
+        for search_path in syslinux_search_paths:
+            if os.path.exists(search_path):
+                syslinux_src = os.path.realpath(search_path)
+                syslinux_dst = os.path.join(destination, 'syslinux')
+                if destination in os.path.realpath(syslinux_src):
+                    shutil.copy(bootloader_src, bootloader_dst)
+                else:
+                    atomic_symlink(syslinux_src, syslinux_dst)
+                break
+
+        return files_are_missing

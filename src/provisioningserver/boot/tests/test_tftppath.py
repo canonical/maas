@@ -21,10 +21,12 @@ from provisioningserver.boot.tftppath import (
     is_visible_subdir,
     list_boot_images,
     list_subdirs,
-    locate_tftp_path,
     maas_meta_last_modified,
 )
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+)
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
@@ -55,14 +57,14 @@ class TestTFTPPath(MAASTestCase):
 
     def make_image_dir(self, image_params, tftproot):
         """Fake a boot image matching `image_params` under `tftproot`."""
-        image_dir = locate_tftp_path(
+        image_dir = os.path.join(
+            tftproot,
             compose_image_path(
                 osystem=image_params['osystem'],
                 arch=image_params['architecture'],
                 subarch=image_params['subarchitecture'],
                 release=image_params['release'],
-                label=image_params['label']),
-            tftproot)
+                label=image_params['label']))
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'linux')
         factory.make_file(image_dir, 'initrd.gz')
@@ -117,16 +119,6 @@ class TestTFTPPath(MAASTestCase):
         self.assertThat(
             compose_image_path(osystem, arch, subarch, release, label),
             Not(StartsWith(self.tftproot)))
-
-    def test_locate_tftp_path_prefixes_tftp_root(self):
-        pxefile = factory.make_name('pxefile')
-        self.assertEqual(
-            os.path.join(self.tftproot, pxefile),
-            locate_tftp_path(pxefile, tftproot=self.tftproot))
-
-    def test_locate_tftp_path_returns_root_when_path_is_None(self):
-        self.assertEqual(
-            self.tftproot, locate_tftp_path(None, tftproot=self.tftproot))
 
     def test_list_boot_images_copes_with_missing_directory(self):
         self.assertEqual([], list_boot_images(factory.make_string()))
@@ -451,6 +443,28 @@ class TestTFTPPath(MAASTestCase):
                     "xinstall_path": xi_path,
                     "xinstall_type": xi_type,
                     "supported_subarches": image_resource["subarches"],
+                },
+            ],
+            params)
+
+    def test_extract_image_params_with_bootloader(self):
+        bootloader_type = factory.make_name("bootloader_type")
+        arch = factory.make_name("arch")
+        path = ('bootloader', bootloader_type, arch)
+
+        params = extract_image_params(path, "")
+
+        self.assertItemsEqual(
+            [
+                {
+                    "osystem": "bootloader",
+                    "architecture": arch,
+                    "subarchitecture": "generic",
+                    "release": bootloader_type,
+                    "label": "*",
+                    "purpose": BOOT_IMAGE_PURPOSE.BOOTLOADER,
+                    "xinstall_path": '',
+                    "xinstall_type": '',
                 },
             ],
             params)

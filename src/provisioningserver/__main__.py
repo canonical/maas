@@ -5,7 +5,6 @@
 """Command-line interface for the MAAS provisioning component."""
 
 from provisioningserver import security
-import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
 import provisioningserver.cluster_config_command
 import provisioningserver.register_command

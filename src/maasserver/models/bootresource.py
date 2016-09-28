@@ -174,18 +174,24 @@ class BootResourceManager(Manager):
         resources = BootResource.objects.all()
         matched_resources = set()
         for image in images:
-            if image['osystem'] != 'custom':
-                rtypes = [
-                    BOOT_RESOURCE_TYPE.SYNCED,
-                    BOOT_RESOURCE_TYPE.GENERATED,
-                    ]
-                name = '%s/%s' % (image['osystem'], image['release'])
+            if image['osystem'] == 'bootloader':
+                matching_resources = resources.filter(
+                    rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                    bootloader_type=image['release'],
+                    architecture__startswith=image['architecture'])
             else:
-                rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
-                name = image['release']
-            matching_resources = resources.filter(
-                rtype__in=rtypes, name=name,
-                architecture__startswith=image['architecture'])
+                if image['osystem'] != 'custom':
+                    rtypes = [
+                        BOOT_RESOURCE_TYPE.SYNCED,
+                        BOOT_RESOURCE_TYPE.GENERATED,
+                    ]
+                    name = '%s/%s' % (image['osystem'], image['release'])
+                else:
+                    rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
+                    name = image['release']
+                matching_resources = resources.filter(
+                    rtype__in=rtypes, name=name,
+                    architecture__startswith=image['architecture'])
             for resource in matching_resources:
                 if resource is None:
                     # This shouldn't happen at all, but just to be sure.
@@ -200,7 +206,8 @@ class BootResourceManager(Manager):
                     # set. Making it not a matching resource, as it cannot
                     # exist on the cluster unless it has a set.
                     continue
-                if resource_set.label != image['label']:
+                if (resource_set.label != image['label'] and
+                        image['label'] != '*'):
                     # The label is different so the cluster has a different
                     # version of this set.
                     continue

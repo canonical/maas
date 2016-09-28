@@ -569,6 +569,15 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             'checked': True,
         }], other_images)
 
+    def test_other_images_filters_out_bootloaders(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        factory.make_BootSourceCache(
+            bootloader_type=factory.make_name('bootloader-type'))
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertEquals([], json_obj['other_images'])
+
 
 class TestBootResourceSaveUbuntu(
         MAASTransactionServerTestCase, PatchOSInfoMixin):

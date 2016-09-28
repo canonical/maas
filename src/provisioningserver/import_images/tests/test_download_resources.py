@@ -217,7 +217,8 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY))
+                label=product['label'], subarches=mock.ANY,
+                bootloader_type=None))
 
     def test_inserts_root_image(self):
         product = self.make_product('root-image.gz')
@@ -240,7 +241,8 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY))
+                label=product['label'], subarches=mock.ANY,
+                bootloader_type=None))
 
     def test_inserts_file(self):
         product = self.make_product()
@@ -262,4 +264,87 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY))
+                label=product['label'], subarches=mock.ANY,
+                bootloader_type=None))
+
+
+class TestLinkResources(MAASTestCase):
+    """Tests for `LinkResources`()."""
+
+    def make_files(self, path):
+        tag = factory.make_name('tag')
+        links = []
+        for _ in range(3):
+            filename = factory.make_name('filename')
+            filename_with_tag = '%s-%s' % (filename, tag)
+            factory.make_file(location=path, name=filename_with_tag)
+            filepath = os.path.join(path, filename_with_tag)
+            links.append((filepath, filename))
+        subdir = factory.make_name('subdir')
+        os.makedirs(os.path.join(path, subdir))
+        for _ in range(3):
+            filename = os.path.join(subdir, factory.make_name('filename'))
+            filename_with_tag = '%s-%s' % (filename, tag)
+            factory.make_file(location=path, name=filename_with_tag)
+            filepath = os.path.join(path, filename_with_tag)
+            links.append((filepath, filename))
+        return tag, links
+
+    def test_links_resources(self):
+        with tempdir() as snapshot_path:
+            tag, links = self.make_files(snapshot_path)
+            osystem = factory.make_name('osystem')
+            arch = factory.make_name('arch')
+            release = factory.make_name('release')
+            label = factory.make_name('label')
+            subarches = [factory.make_name('subarch') for _ in range(3)]
+
+            download_resources.link_resources(
+                snapshot_path, links, osystem, arch, release, label, subarches,
+                None)
+
+            for subarch in subarches:
+                for cached_file, logical_name in links:
+                    cached_file_path = os.path.join(snapshot_path, cached_file)
+                    logical_name_path = os.path.join(
+                        snapshot_path, osystem, arch, subarch, release, label,
+                        logical_name)
+                    self.assertTrue(os.path.exists(cached_file_path))
+                    self.assertTrue(os.path.exists(logical_name_path))
+
+    def test_links_bootloader(self):
+        with tempdir() as snapshot_path:
+            tag, links = self.make_files(snapshot_path)
+            osystem = factory.make_name('osystem')
+            arch = factory.make_name('arch')
+            release = factory.make_name('release')
+            label = factory.make_name('label')
+            subarches = [factory.make_name('subarch')]
+            bootloader_type = factory.make_name('bootloader-type')
+
+            download_resources.link_resources(
+                snapshot_path, links, osystem, arch, release, label, subarches,
+                bootloader_type)
+
+            for cached_file, logical_name in links:
+                cached_file_path = os.path.join(snapshot_path, cached_file)
+                logical_name_path = os.path.join(
+                    snapshot_path, 'bootloader', bootloader_type, arch)
+                self.assertTrue(os.path.exists(cached_file_path))
+                self.assertTrue(os.path.exists(logical_name_path))
+
+    def test_bootloader_only_allows_one_subarch(self):
+        with tempdir() as snapshot_path:
+            tag, links = self.make_files(snapshot_path)
+            osystem = factory.make_name('osystem')
+            arch = factory.make_name('arch')
+            release = factory.make_name('release')
+            label = factory.make_name('label')
+            subarches = [factory.make_name('subarch') for _ in range(3)]
+            bootloader_type = factory.make_name('bootloader-type')
+
+            self.assertRaises(
+                AssertionError,
+                download_resources.link_resources,
+                snapshot_path, links, osystem, arch, release, label, subarches,
+                bootloader_type)

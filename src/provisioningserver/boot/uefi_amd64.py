@@ -1,32 +1,28 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""UEFI Boot Method"""
+"""UEFI AMD64 Boot Method"""
 
 __all__ = [
-    'UEFIBootMethod',
+    'UEFIAMD64BootMethod',
     ]
 
 from itertools import repeat
-import os.path
+import os
 import re
 from textwrap import dedent
 
 from provisioningserver.boot import (
     BootMethod,
-    BootMethodInstallError,
     BytesReader,
-    get_main_archive_url,
     get_parameters,
-    utils,
 )
-from provisioningserver.boot.install_bootloader import (
-    install_bootloader,
-    make_destination,
-)
+from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.utils import typed
-from provisioningserver.utils.fs import tempdir
-from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.fs import atomic_symlink
+
+
+maaslog = get_maas_logger('uefi_amd64')
 
 
 CONFIG_FILE = dedent("""
@@ -71,14 +67,15 @@ re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
-class UEFIBootMethod(BootMethod):
+class UEFIAMD64BootMethod(BootMethod):
 
-    name = "uefi"
-    bios_boot_method = "uefi"
-    template_subdir = "uefi"
+    name = 'uefi_amd64'
+    bios_boot_method = 'uefi'
+    template_subdir = 'uefi'
     bootloader_arches = ['amd64']
-    bootloader_path = "bootx64.efi"
-    arch_octet = "00:07"  # AMD64 EFI
+    bootloader_path = 'bootx64.efi'
+    bootloader_files = ['bootx64.efi', 'grubx64.efi']
+    arch_octet = '00:07'
 
     def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
@@ -115,55 +112,44 @@ class UEFIBootMethod(BootMethod):
         namespace = self.compose_template_namespace(kernel_params)
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
+    def _find_and_copy_bootloaders(self, destination, log_missing=True):
+        if not super()._find_and_copy_bootloaders(destination, False):
+            # If a previous copy of the UEFI AMD64 Grub files can't be found
+            # see the files are on the system from an Ubuntu package install.
+            # The package uses a different filename than what MAAS uses so
+            # when we copy make sure the right name is used.
+            missing_files = []
+
+            if os.path.exists('/usr/lib/shim/shim.efi.signed'):
+                atomic_symlink(
+                    '/usr/lib/shim/shim.efi.signed',
+                    os.path.join(destination, 'bootx64.efi'))
+            else:
+                missing_files.append('bootx64.efi')
+
+            if os.path.exists(
+                    '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed'):
+                atomic_symlink(
+                    '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed',
+                    os.path.join(destination, 'grubx64.efi'))
+            else:
+                missing_files.append('grubx64.efi')
+
+            if missing_files != [] and log_missing:
+                maaslog.error(
+                    "Unable to find a copy of %s in the SimpleStream and the "
+                    "packages shim-signed, and grub-efi-amd64-signed are not "
+                    "installed. The %s bootloader type may not work." %
+                    (', '.join(missing_files), self.name))
+                return False
+        return True
+
     @typed
-    def install_bootloader(self, destination: str):
-        """Installs the required files for UEFI booting into the
-        tftproot.
-        """
-        archive_url = get_main_archive_url()
-        with tempdir() as tmp:
-            # Download the shim-signed package
-            data, filename = utils.get_updates_package(
-                'shim-signed', archive_url,
-                'main', 'amd64')
-            if data is None:
-                raise BootMethodInstallError(
-                    'Failed to download shim-signed package from '
-                    'the archive.')
-            shim_output = os.path.join(tmp, filename)
-            with open(shim_output, 'wb') as stream:
-                stream.write(data)
-
-            # Extract the package with dpkg, and install the shim
-            call_and_check(["dpkg", "-x", shim_output, tmp])
-            install_bootloader(
-                os.path.join(tmp, 'usr', 'lib', 'shim', 'shim.efi.signed'),
-                os.path.join(destination, self.bootloader_path))
-
-            # Download the grub-efi-amd64-signed package.
-            data, filename = utils.get_updates_package(
-                'grub-efi-amd64-signed', archive_url, 'main', 'amd64')
-            if data is None:
-                raise BootMethodInstallError(
-                    'Failed to download grub-efi-amd64-signed package from '
-                    'the archive.')
-            grub_output = os.path.join(tmp, filename)
-            with open(grub_output, 'wb') as stream:
-                stream.write(data)
-
-            # Extract the package with dpkg.
-            call_and_check(["dpkg", "-x", grub_output, tmp])
-
-            # Install the grub boot loader.
-            grub_signed = os.path.join(
-                tmp, 'usr', 'lib', 'grub', 'x86_64-efi-signed',
-                'grubnetx64.efi.signed')
-            install_bootloader(
-                grub_signed,
-                os.path.join(destination, 'grubx64.efi'))
-
+    def link_bootloader(self, destination: str):
+        super().link_bootloader(destination)
         config_path = os.path.join(destination, 'grub')
         config_dst = os.path.join(config_path, 'grub.cfg')
-        make_destination(config_path)
+        if not os.path.exists(config_path):
+            os.makedirs(config_path)
         with open(config_dst, 'wb') as stream:
             stream.write(CONFIG_FILE.encode("utf-8"))

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the install_grub command."""
@@ -10,7 +10,6 @@ import os.path
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver.boot.install_grub
-from provisioningserver.boot.tftppath import locate_tftp_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.script import MainScript
 from testtools.matchers import FileExists
@@ -29,6 +28,5 @@ class TestInstallGrub(MAASTestCase):
 
         config_filename = os.path.join('grub', 'grub.cfg')
         self.assertThat(
-            locate_tftp_path(
-                config_filename, tftproot=tftproot),
+            os.path.join(tftproot, config_filename),
             FileExists())

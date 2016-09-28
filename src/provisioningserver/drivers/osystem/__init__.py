@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Osystem Drivers."""
@@ -30,6 +30,8 @@ class BOOT_IMAGE_PURPOSE:
     XINSTALL = 'xinstall'
     #: Usable for diskless boot
     DISKLESS = 'diskless'
+    #: Bootloader for enlistment, commissioning, and deployment
+    BOOTLOADER = 'bootloader'
 
 
 # A cluster-side representation of a Node, relevant to the osystem code,
@@ -200,6 +202,7 @@ class OperatingSystemRegistry(Registry):
 
 
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
 from provisioningserver.drivers.osystem.centos import CentOS
 from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.windows import WindowsOS
@@ -207,6 +210,7 @@ from provisioningserver.drivers.osystem.suse import SUSEOS
 
 builtin_osystems = [
     UbuntuOS(),
+    BootLoaderOS(),
     CentOS(),
     CustomOS(),
     WindowsOS(),

@@ -12,16 +12,16 @@ the mirrored images::
   $ sudo apt-get install simplestreams ubuntu-cloudimage-keyring apache2
 
 Now you can pull the images over using the mirroring tools for simplestreams.
-This example gets the daily trusty (14.04) and precise (12.04) images for the
-amd64/generic and amd64/hwe-t architectures::
+This example gets the daily trusty (14.04) and xenial (16.04) images for the
+amd64 architecture::
 
-  $ sudo sstream-mirror --keyring=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg https://images.maas.io/ephemeral-v2/daily/ /var/www/html/maas/images/ephemeral-v2/daily 'arch=amd64' 'subarch~(generic|hwe-t)' 'release~(trusty|precise)' --max=1
+  $ sudo sstream-mirror --keyring=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg https://images.maas.io/ephemeral-v3/daily/ /var/www/html/maas/images/ephemeral-v3/daily 'arch=amd64' 'release~(trusty|xenial)' --max=1
 
 This may take a while as hundreds of megabytes will be downloaded.
 
 The images will be written to the local disk and you can verify their
 presence by browsing to
-``http://<server>/maas/images/ephemeral-v2/daily/streams/v1/index.sjson``
+``http://<server>/maas/images/ephemeral-v3/daily/streams/v1/index.sjson``
 (replace ``<server>`` with your own server's name).
 
 It is a good idea to configure a ``cron`` job to repeat this import on a
@@ -35,13 +35,13 @@ You can do this using the API or the web UI.  To do this via the API you
 can use the ``maas`` (see :doc:`maascli`) command, logged in as the admin
 user::
 
-  $ maas <profile> boot-sources create url=http://<server>/images/ephemeral-v2/daily/ keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
+  $ maas <profile> boot-sources create url=http://<server>/images/ephemeral-v3/daily/ keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
 
 Note that if you wish to use older images (which change far less frequently,
 but will be lacking security updates), you can use the ``releases`` stream,
 such as::
 
-  $ maas <profile> boot-sources create url=http://<server>/images/ephemeral-v2/releases/ keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
+  $ maas <profile> boot-sources create url=http://<server>/images/ephemeral-v3/releases/ keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
 
 And then initiate the download with::
 

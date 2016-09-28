@@ -4,6 +4,7 @@
 """Generic utilities for dealing with files and the filesystem."""
 
 __all__ = [
+    'atomic_copy',
     'atomic_delete',
     'atomic_symlink',
     'atomic_write',
@@ -22,6 +23,7 @@ __all__ = [
 import codecs
 from contextlib import contextmanager
 import errno
+import filecmp
 from itertools import count
 import os
 from os import (
@@ -30,7 +32,10 @@ from os import (
     stat,
 )
 from random import randint
-from shutil import rmtree
+from shutil import (
+    copyfile,
+    rmtree,
+)
 import string
 from subprocess import (
     PIPE,
@@ -132,6 +137,40 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
     finally:
         if os.path.isfile(temp_file):
             os.remove(temp_file)
+
+
+def are_identical_files(old, new):
+    """Are `old` and `new` identical?
+
+    If `old` does not exist, the two are considered different (`new` is
+    assumed to exist).
+    """
+    if os.path.isfile(old):
+        return filecmp.cmp(old, new, shallow=False)
+    else:
+        return False
+
+
+def atomic_copy(source, destination):
+    """Copy a file at path `source` as `destination` in an atomic fashion.
+
+    copy will be atomic.  If an identical file is already at the destination,
+    it will be left untouched.
+
+    :param source: Source path of the file..
+    :param destination: Destination path of the file.
+    """
+    if are_identical_files(destination, source):
+        return
+
+    # Copy new file next to the old one, to ensure that it is on the
+    # same filesystem.  Once it is, we can replace the old one with an
+    # atomic rename operation.
+    temp_file = '%s.new' % destination
+    if os.path.exists(temp_file):
+        os.remove(temp_file)
+    copyfile(source, temp_file)
+    os.rename(temp_file, destination)
 
 
 def atomic_delete(filename):

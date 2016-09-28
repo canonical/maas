@@ -8,9 +8,8 @@ __all__ = [
     "run",
     ]
 
-import os.path
+import os
 
-from provisioningserver.boot.install_bootloader import make_destination
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.utils.fs import write_text_file
 
@@ -36,6 +35,7 @@ def run(args):
     directory structure.
     """
     with ClusterConfiguration.open() as config:
-        destination_path = make_destination(config.grub_root)
-        destination_file = os.path.join(destination_path, 'grub.cfg')
+        if not os.path.exists(config.grub_root):
+            os.makedirs(config.grub_root)
+        destination_file = os.path.join(config.grub_root, 'grub.cfg')
     write_text_file(destination_file, CONFIG_FILE)

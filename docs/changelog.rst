@@ -1511,7 +1511,7 @@ Major new features
 
  In order to test this images, you need to use the daily image stream.
  This can be changed in the `Settings` page under `Boot Images` to
- `http://maas.ubuntu.com/images/ephemeral-v2/daily/`. Once changed, images
+ `http://maas.ubuntu.com/images/ephemeral-v3/daily/`. Once changed, images
  can be imported from the MAAS Images page. The CentOS image will be
  published in the Releases stream shortly.
 
@@ -2084,7 +2084,7 @@ Minor notable changes
 
  In order to test this images, you need to use the daily image stream.
  This can be changed in the `Settings` page under `Boot Images` to
- `http://maas.ubuntu.com/images/ephemeral-v2/daily/`. Once changed, images
+ `http://maas.ubuntu.com/images/ephemeral-v3/daily/`. Once changed, images
  can be imported from the MAAS Images page.
 
 Known Problems & Workarounds

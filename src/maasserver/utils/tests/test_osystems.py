@@ -70,6 +70,13 @@ class TestOsystems(MAASServerTestCase):
             osystems + [without_releases])
         self.assertItemsEqual(osystems, list_all_usable_osystems())
 
+    def test_list_all_usable_osystems_removes_bootloaders(self):
+        osystems = [make_rpc_osystem() for _ in range(3)]
+        bootloaders = [make_rpc_osystem(name='bootloader') for _ in range(3)]
+        self.patch_gen_all_known_operating_systems(
+            osystems + bootloaders)
+        self.assertItemsEqual(osystems, list_all_usable_osystems())
+
     def test_list_osystem_choices_includes_default(self):
         self.assertEqual(
             [('', 'Default OS')],

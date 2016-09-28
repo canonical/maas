@@ -51,10 +51,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.boot.tests import test_tftppath
-from provisioningserver.boot.tftppath import (
-    compose_image_path,
-    locate_tftp_path,
-)
+from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.cluster import (
     ImportBootImages,
@@ -88,14 +85,14 @@ from twisted.python.failure import Failure
 
 def make_image_dir(image_params, tftp_root):
     """Fake a boot image matching `image_params` under `tftp_root`."""
-    image_dir = locate_tftp_path(
+    image_dir = os.path.join(
+        tftp_root,
         compose_image_path(
             osystem=image_params['osystem'],
             arch=image_params['architecture'],
             subarch=image_params['subarchitecture'],
             release=image_params['release'],
-            label=image_params['label']),
-        tftp_root)
+            label=image_params['label']))
     os.makedirs(image_dir)
     factory.make_file(image_dir, 'linux')
     factory.make_file(image_dir, 'initrd.gz')

@@ -901,7 +901,10 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             })
         # Compile a regex to validate bootloader product names. This only
         # allows V1 bootloaders.
-        self.bootloader_regex = re.compile('.*:1:.*')
+        self.bootloader_regex = re.compile('.*:1:.*', re.IGNORECASE)
+        # Compile a regex to validate Ubuntu product names. This only allows
+        # V2 and V3 Ubuntu products.
+        self.ubuntu_regex = re.compile('.*:v[23]:.*', re.IGNORECASE)
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -915,10 +918,21 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         return self.product_mapping.contains(
             sutil.products_exdata(src, pedigree))
 
+    def _validate_ubuntu(self, data, product_name):
+        osystem = data.get('os')
+        if 'ubuntu' not in osystem.lower():
+            # It's not an Ubuntu product, nothing to validate.
+            return True
+        elif self.ubuntu_regex.search(product_name) is None:
+            # Only insert v2 or v3 Ubuntu products.
+            return False
+        else:
+            return True
+
     def _validate_bootloader(self, data, product_name):
         bootloader_type = data.get('bootloader-type')
         if bootloader_type is None:
-            # It's not a bootloader nothing to validate
+            # It's not a bootloader, nothing to validate
             return True
         if self.bootloader_regex.search(product_name) is None:
             # Only insert V1 bootloaders from the stream
@@ -972,6 +986,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             return
         elif item['ftype'] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
             # Skip filetypes that we don't know about.
+            return
+        elif not self._validate_ubuntu(item, product_name):
             return
         elif not self._validate_bootloader(item, product_name):
             return

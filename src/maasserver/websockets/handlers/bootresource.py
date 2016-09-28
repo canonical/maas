@@ -241,7 +241,8 @@ class BootResourceHandler(Handler):
         """Return formatted other images for selection."""
         resources = self.get_other_synced_resources()
         images = []
-        for image in BootSourceCache.objects.exclude(os='ubuntu'):
+        for image in BootSourceCache.objects.exclude(os='ubuntu').filter(
+                bootloader_type=None):
             resource = self.get_matching_resource_for_image(resources, image)
             title = get_os_release_title(image.os, image.release)
             if title is None:
@@ -475,7 +476,8 @@ class BootResourceHandler(Handler):
                 rack_images))
 
         # Load all the resources and generate the JSON result.
-        resources = self.combine_resources(BootResource.objects.all())
+        resources = self.combine_resources(BootResource.objects.filter(
+            bootloader_type=None))
         json_resources = [
             dict(
                 id=resource.id,

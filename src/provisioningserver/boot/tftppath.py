@@ -7,7 +7,6 @@ __all__ = [
     'compose_image_path',
     'list_boot_images',
     'list_subdirs',
-    'locate_tftp_path',
     ]
 
 import errno
@@ -44,22 +43,6 @@ def compose_image_path(osystem, arch, subarch, release, label):
     """
     # This is a TFTP path, not a local filesystem path, so hard-code the slash.
     return '/'.join([osystem, arch, subarch, release, label])
-
-
-def locate_tftp_path(path, tftproot):
-    """Return the local filesystem path corresponding to `path`.
-
-    The return value gives the filesystem path where you'd have to put
-    a file if you wanted it made available over TFTP as `path`.
-
-    :param path: Path as used in the TFTP protocol for which you want the
-        local filesystem equivalent. Pass `None` to get the root of the TFTP
-        hierarchy.
-    :param tftproot: The TFTP root directory.
-    """
-    if path is None:
-        return tftproot
-    return os.path.join(tftproot, path.lstrip('/'))
 
 
 def is_visible_subdir(directory, subdir):
@@ -152,7 +135,12 @@ def extract_image_params(path, maas_meta):
         items of meta-data that are not elements in the path, such as
         "subarches".
     """
-    osystem, arch, subarch, release, label = path
+    if path[0] == 'bootloader':
+        osystem, release, arch = path
+        subarch = 'generic'
+        label = '*'
+    else:
+        osystem, arch, subarch, release, label = path
     osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
     if osystem_obj is None:
         return []
@@ -236,6 +224,13 @@ def list_boot_images(tftproot):
     # Any directory that doesn't extend this deep isn't a boot image.
     for level in ['arch', 'subarch', 'release', 'label']:
         paths = drill_down(tftproot, paths)
+
+    # Include bootloaders
+    if 'bootloader' in potential_osystems:
+        bootloader_paths = [['bootloader']]
+        for level in ['bootloader_type', 'arch']:
+            bootloader_paths = drill_down(tftproot, bootloader_paths)
+        paths += bootloader_paths
 
     # Get hold of image meta-data stored in the maas.meta file.
     metadata = get_image_metadata(tftproot)

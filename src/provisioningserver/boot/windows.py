@@ -272,7 +272,7 @@ class WindowsPXEBootMethod(BootMethod):
         return self.output_static(kernel_params, path)
 
     @typed
-    def install_bootloader(self, destination: str):
+    def link_bootloader(self, destination: str):
         """Installs the required files for Windows booting into the
         tftproot.
 

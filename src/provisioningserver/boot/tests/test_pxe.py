@@ -8,10 +8,13 @@ __all__ = []
 from collections import OrderedDict
 import os
 import re
-from unittest import mock
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnce,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
 from provisioningserver.boot import (
@@ -20,7 +23,7 @@ from provisioningserver.boot import (
 )
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
-    BOOTLOADERS,
+    maaslog,
     PXEBootMethod,
     re_config_file,
 )
@@ -32,6 +35,10 @@ from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
+from provisioningserver.utils.fs import (
+    atomic_symlink,
+    tempdir,
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -39,7 +46,6 @@ from testtools.matchers import (
     MatchesAll,
     MatchesRegex,
     Not,
-    SamePath,
     StartsWith,
 )
 from twisted.python.filepath import FilePath
@@ -121,65 +127,95 @@ class TestPXEBootMethod(MAASTestCase):
         method = PXEBootMethod()
         self.assertEqual('00:00', method.arch_octet)
 
-    def test_locate_bootloader(self):
-        # Put all the BOOTLOADERS except one in dir1, and the last in
-        # dir2.
-        dir1 = self.make_dir()
-        dir2 = self.make_dir()
-        dirs = [dir1, dir2]
-        self.patch(pxe_module, "BOOTLOADER_DIRS", dirs)
-        self.make_dummy_bootloader_sources(dir1, BOOTLOADERS[:-1])
-        [displaced_loader] = self.make_dummy_bootloader_sources(
-            dir2, BOOTLOADERS[-1:])
+    def test_link_simplestream_bootloaders_creates_syslinux_link(self):
         method = PXEBootMethod()
-        observed = method.locate_bootloader(BOOTLOADERS[-1])
+        with tempdir() as tmp:
+            stream_path = os.path.join(
+                tmp, 'bootloader', method.bios_boot_method,
+                method.bootloader_arches[0])
+            os.makedirs(stream_path)
+            for bootloader_file in method.bootloader_files:
+                factory.make_file(stream_path, bootloader_file)
 
-        self.assertEqual(displaced_loader, observed)
+            method.link_bootloader(tmp)
 
-    def test_locate_bootloader_returns_None_if_not_found(self):
+            for bootloader_file in method.bootloader_files:
+                bootloader_file_path = os.path.join(tmp, bootloader_file)
+                self.assertTrue(os.path.islink(bootloader_file_path))
+            syslinux_link = os.path.join(tmp, 'syslinux')
+            self.assertTrue(os.path.islink(syslinux_link))
+            self.assertEquals(stream_path, os.path.realpath(syslinux_link))
+
+    def test_link_bootloader_copies_previously_downloaded_files(self):
         method = PXEBootMethod()
-        self.assertIsNone(method.locate_bootloader("foo"))
+        with tempdir() as tmp:
+            new_dir = os.path.join(tmp, 'new')
+            current_dir = os.path.join(tmp, 'current')
+            os.makedirs(new_dir)
+            os.makedirs(current_dir)
+            factory.make_file(current_dir, method.bootloader_files[0])
+            for bootloader_file in method.bootloader_files[1:]:
+                factory.make_file(current_dir, bootloader_file)
+            real_syslinux_dir = os.path.join(tmp, 'syslinux')
+            os.makedirs(real_syslinux_dir)
+            atomic_symlink(
+                real_syslinux_dir,
+                os.path.join(current_dir, 'syslinux'))
 
-    def test_install_bootloader_installs_to_destination(self):
-        # Disable the symlink creation.
-        self.patch(pxe_module, "SYSLINUX_DIRS", [])
-        tftproot = self.make_tftp_root()
-        source_dir = self.make_dir()
-        self.patch(pxe_module, "BOOTLOADER_DIRS", [source_dir])
-        self.make_dummy_bootloader_sources(source_dir, BOOTLOADERS)
-        install_bootloader_call = self.patch(pxe_module, "install_bootloader")
+            method.link_bootloader(new_dir)
+
+            for bootloader_file in method.bootloader_files:
+                bootloader_file_path = os.path.join(new_dir, bootloader_file)
+                self.assertTrue(os.path.isfile(bootloader_file_path))
+            syslinux_link = os.path.join(new_dir, 'syslinux')
+            self.assertTrue(os.path.islink(syslinux_link))
+            self.assertEquals(
+                real_syslinux_dir,
+                os.path.realpath(syslinux_link))
+
+    def test_link_bootloader_links_files_found_on_fs(self):
         method = PXEBootMethod()
-        method.install_bootloader(tftproot.path)
+        bootloader_dir = (
+            '/var/lib/maas/boot-resources/snapshot-%s' %
+            factory.make_name('snapshot'))
 
-        expected = [
-            mock.call(
-                os.path.join(source_dir, bootloader),
-                os.path.join(tftproot.path, bootloader)
-            )
-            for bootloader in BOOTLOADERS]
+        def fake_exists(path):
+            if '/usr/lib/syslinux/modules/bios' in path:
+                return True
+            else:
+                return False
+
+        self.patch(pxe_module.os.path, 'exists').side_effect = fake_exists
+        mock_atomic_copy = self.patch(pxe_module, 'atomic_copy')
+        mock_atomic_symlink = self.patch(pxe_module, 'atomic_symlink')
+        mock_shutil_copy = self.patch(pxe_module.shutil, 'copy')
+
+        method.link_bootloader(bootloader_dir)
+
+        self.assertThat(mock_atomic_copy, MockNotCalled())
+        self.assertThat(mock_shutil_copy, MockNotCalled())
+        for bootloader_file in method.bootloader_files:
+            bootloader_src = os.path.join(
+                '/usr/lib/syslinux/modules/bios', bootloader_file)
+            bootloader_dst = os.path.join(bootloader_dir, bootloader_file)
+            self.assertThat(
+                mock_atomic_symlink,
+                MockAnyCall(bootloader_src, bootloader_dst))
         self.assertThat(
-            install_bootloader_call,
-            MockCallsMatch(*expected))
+            mock_atomic_symlink,
+            MockAnyCall(
+                '/usr/lib/syslinux/modules/bios',
+                os.path.join(bootloader_dir, 'syslinux')))
 
-    def test_locate_syslinux_dir_returns_dir(self):
-        dir1 = self.make_dir()
-        dir2 = self.make_dir()
-        dirs = [dir1, dir2]
-        self.patch(pxe_module, "SYSLINUX_DIRS", dirs)
+    def test_link_bootloader_logs_missing_files(self):
         method = PXEBootMethod()
-        found_dir = method.locate_syslinux_dir()
-        self.assertEqual(dir1, found_dir)
-
-    def test_install_bootloader_creates_symlink(self):
-        # Disable the copying of the bootloaders.
-        self.patch(pxe_module, "BOOTLOADERS", [])
-        target_dir = self.make_dir()
-        self.patch(pxe_module, "SYSLINUX_DIRS", [target_dir])
-        tftproot = self.make_tftp_root()
-        method = PXEBootMethod()
-        method.install_bootloader(tftproot.path)
-        syslinux_dir = tftproot.child('syslinux')
-        self.assertThat(syslinux_dir.path, SamePath(target_dir))
+        mock_maaslog = self.patch(maaslog, 'error')
+        # If we don't mock the return value and the test system has the
+        # pxelinux and syslinux-common package installed the fallback kicks
+        # which makes PXE work but this test fail.
+        self.patch(os.path, 'exists').return_value = False
+        method.link_bootloader('foo')
+        self.assertThat(mock_maaslog, MockCalledOnce())
 
 
 def parse_pxe_config(text):

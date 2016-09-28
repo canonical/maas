@@ -37,7 +37,7 @@ def list_all_usable_osystems():
     osystems = [
         osystem
         for osystem in gen_all_known_operating_systems()
-        if len(osystem['releases']) > 0
+        if len(osystem['releases']) > 0 and osystem['name'] != 'bootloader'
         ]
     return sorted(osystems, key=itemgetter('title'))
 

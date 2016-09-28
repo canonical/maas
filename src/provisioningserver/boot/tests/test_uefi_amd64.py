@@ -1,35 +1,37 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.boot.uefi`."""
+"""Tests for `provisioningserver.boot.uefi_amd64`."""
 
 __all__ = []
 
-from contextlib import contextmanager
 import os
 import re
-from unittest.mock import call
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
+from maastesting.matchers import (
+    FileContains,
+    MockAnyCall,
+    MockCalledOnce,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import (
-    BootMethodInstallError,
     BytesReader,
-    uefi as uefi_module,
-    utils,
+    uefi_amd64 as uefi_amd64_module,
 )
 from provisioningserver.boot.testing import (
     TFTPPath,
     TFTPPathAndComponents,
 )
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.boot.uefi import (
+from provisioningserver.boot.uefi_amd64 import (
+    CONFIG_FILE,
     re_config_file,
-    UEFIBootMethod,
+    UEFIAMD64BootMethod,
 )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
+from provisioningserver.utils.fs import tempdir
 from testtools.matchers import (
     ContainsAll,
     IsInstance,
@@ -66,13 +68,14 @@ def compose_config_path(
     return "grub/grub.cfg".encode("ascii")
 
 
-class TestUEFIBootMethodRender(MAASTestCase):
-    """Tests for `provisioningserver.boot.uefi.UEFIBootMethod.render`."""
+class TestUEFIAMD64BootMethodRender(MAASTestCase):
+    """Tests for
+    `provisioningserver.boot_amd64.uefi.UEFIAMD64BootMethod.render`."""
 
     def test_get_reader(self):
         # Given the right configuration options, the UEFI configuration is
         # correctly rendered.
-        method = UEFIBootMethod()
+        method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(purpose="install")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
@@ -97,7 +100,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
-        method = UEFIBootMethod()
+        method = UEFIAMD64BootMethod()
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(purpose="install"),
@@ -116,7 +119,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
     def test_get_reader_with_local_purpose(self):
         # If purpose is "local", the config.localboot.template should be
         # used.
-        method = UEFIBootMethod()
+        method = UEFIAMD64BootMethod()
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
@@ -128,7 +131,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
     def test_get_reader_with_enlist_purpose(self):
         # If purpose is "enlist", the config.enlist.template should be
         # used.
-        method = UEFIBootMethod()
+        method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(
             purpose="enlist", arch="amd64")
         options = {
@@ -146,7 +149,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
     def test_get_reader_with_commissioning_purpose(self):
         # If purpose is "commissioning", the config.commissioning.template
         # should be used.
-        method = UEFIBootMethod()
+        method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(
             purpose="commissioning", arch="amd64")
         options = {
@@ -162,8 +165,9 @@ class TestUEFIBootMethodRender(MAASTestCase):
             ]))
 
 
-class TestUEFIBootMethodRegex(MAASTestCase):
-    """Tests `provisioningserver.boot.uefi.UEFIBootMethod.re_config_file`."""
+class TestUEFIAMD64BootMethodRegex(MAASTestCase):
+    """Tests
+    `provisioningserver.boot.uefi_amd64.UEFIAMD64BootMethod.re_config_file`."""
 
     @staticmethod
     @typed
@@ -255,65 +259,82 @@ class TestUEFIBootMethodRegex(MAASTestCase):
             match.groupdict())
 
 
-class TestUEFIBootMethod(MAASTestCase):
-    """Tests `provisioningserver.boot.uefi.UEFIBootMethod`."""
+class TestUEFIAMD64BootMethod(MAASTestCase):
+    """Tests `provisioningserver.boot.uefi_amd64.UEFIAMD64BootMethod`."""
 
-    def test_install_bootloader_get_package_raises_error(self):
-        method = UEFIBootMethod()
-        self.patch(uefi_module, 'get_main_archive_url')
-        self.patch(utils, 'get_updates_package').return_value = (None, None)
-        self.assertRaises(
-            BootMethodInstallError, method.install_bootloader, "bogus")
+    def test_link_bootloader_creates_grub_cfg(self):
+        method = UEFIAMD64BootMethod()
+        with tempdir() as tmp:
+            stream_path = os.path.join(
+                tmp, 'bootloader', method.bios_boot_method,
+                method.bootloader_arches[0])
+            os.makedirs(stream_path)
+            for bootloader_file in method.bootloader_files:
+                factory.make_file(stream_path, bootloader_file)
 
-    def test_install_bootloader(self):
-        method = UEFIBootMethod()
-        shim_filename = factory.make_name('shim-signed')
-        shim_data = factory.make_bytes()
-        grub_filename = factory.make_name('grub-efi-amd64-signed')
-        grub_data = factory.make_bytes()
-        tmp = self.make_dir()
-        dest = self.make_dir()
+            method.link_bootloader(tmp)
 
-        @contextmanager
-        def tempdir():
-            try:
-                yield tmp
-            finally:
-                pass
+            for bootloader_file in method.bootloader_files:
+                bootloader_file_path = os.path.join(tmp, bootloader_file)
+                self.assertTrue(os.path.islink(bootloader_file_path))
+            grub_file_path = os.path.join(tmp, 'grub', 'grub.cfg')
+            self.assertTrue(grub_file_path, FileContains(CONFIG_FILE))
 
-        mock_get_main_archive_url = self.patch(
-            uefi_module, 'get_main_archive_url')
-        mock_get_main_archive_url.return_value = 'http://archive.ubuntu.com'
-        mock_get_updates_package = self.patch(utils, 'get_updates_package')
-        mock_get_updates_package.side_effect = [
-            (shim_data, shim_filename),
-            (grub_data, grub_filename),
-            ]
-        self.patch(uefi_module, 'call_and_check')
-        self.patch(uefi_module, 'tempdir').side_effect = tempdir
+    def test_link_bootloader_copies_previous_downloaded_files(self):
+        method = UEFIAMD64BootMethod()
+        with tempdir() as tmp:
+            new_dir = os.path.join(tmp, 'new')
+            current_dir = os.path.join(tmp, 'current')
+            os.makedirs(new_dir)
+            os.makedirs(current_dir)
+            for bootloader_file in method.bootloader_files:
+                factory.make_file(current_dir, bootloader_file)
 
-        mock_install_bootloader = self.patch(
-            uefi_module, 'install_bootloader')
+            method.link_bootloader(new_dir)
 
-        method.install_bootloader(dest)
+            for bootloader_file in method.bootloader_files:
+                bootloader_file_path = os.path.join(new_dir, bootloader_file)
+                self.assertTrue(os.path.isfile(bootloader_file_path))
 
-        with open(os.path.join(tmp, shim_filename), 'rb') as stream:
-            saved_shim_data = stream.read()
-        self.assertEqual(shim_data, saved_shim_data)
+    def test_link_bootloader_copies_from_system(self):
+        method = UEFIAMD64BootMethod()
+        bootloader_dir = (
+            '/var/lib/maas/boot-resources/%s' % factory.make_name('snapshot'))
+        # Since the fall back looks for paths on the filesystem we need to
+        # intercept the calls and make sure they were called with the right
+        # arguments otherwise the test environment will interfere.
+        allowed_src_files = [
+            '/usr/lib/shim/shim.efi.signed',
+            '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed',
+        ]
 
-        with open(os.path.join(tmp, grub_filename), 'rb') as stream:
-            saved_grub_data = stream.read()
-        self.assertEqual(grub_data, saved_grub_data)
+        def fake_exists(path):
+            if path in allowed_src_files:
+                return True
+            else:
+                return False
 
-        shim_expected = os.path.join(
-            tmp, "usr", "lib", "shim", "shim.efi.signed")
-        shim_dest_expected = os.path.join(dest, method.bootloader_path)
-        grub_expected = os.path.join(
-            tmp, "usr", "lib", "grub", "x86_64-efi-signed",
-            "grubnetx64.efi.signed")
-        grub_dest_expected = os.path.join(dest, "grubx64.efi")
+        self.patch(uefi_amd64_module.os.path, 'exists').side_effect = (
+            fake_exists)
+        mock_atomic_symlink = self.patch(uefi_amd64_module, 'atomic_symlink')
+
+        method._find_and_copy_bootloaders(bootloader_dir)
+
         self.assertThat(
-            mock_install_bootloader,
-            MockCallsMatch(
-                call(shim_expected, shim_dest_expected),
-                call(grub_expected, grub_dest_expected)))
+            mock_atomic_symlink,
+            MockAnyCall(
+                '/usr/lib/shim/shim.efi.signed',
+                os.path.join(bootloader_dir, 'bootx64.efi')))
+        self.assertThat(
+            mock_atomic_symlink,
+            MockAnyCall(
+                '/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed',
+                os.path.join(bootloader_dir, 'grubx64.efi')))
+
+    def test_link_bootloader_logs_missing_bootloader_files(self):
+        method = UEFIAMD64BootMethod()
+        mock_maaslog = self.patch(uefi_amd64_module.maaslog, 'error')
+        bootloader_dir = (
+            '/var/lib/maas/boot-resources/%s' % factory.make_name('snapshot'))
+        method._find_and_copy_bootloaders(bootloader_dir)
+        self.assertThat(mock_maaslog, MockCalledOnce())

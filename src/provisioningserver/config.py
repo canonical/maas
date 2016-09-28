@@ -161,7 +161,7 @@ logger = logging.getLogger(__name__)
 # Default result for cluster UUID if not set
 UUID_NOT_SET = None
 
-DEFAULT_IMAGES_URL = "http://images.maas.io/ephemeral-v2/daily/"
+DEFAULT_IMAGES_URL = "http://images.maas.io/ephemeral-v3/daily/"
 
 DEFAULT_KEYRINGS_PATH = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 

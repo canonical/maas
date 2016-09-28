@@ -184,7 +184,7 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
 
 
 def link_resources(snapshot_path, links, osystem, arch, release, label,
-                   subarches):
+                   subarches, bootloader_type=None):
     """Hardlink entries in the snapshot directory to resources in the cache.
 
     This creates file entries in the snapshot directory for boot resources
@@ -205,10 +205,22 @@ def link_resources(snapshot_path, links, osystem, arch, release, label,
         architecture and subarchitecture `generic` will typically also support
         the `hwe-*` subarchitectures that denote hardware-enablement kernels
         for older Ubuntu releases.
+    :param bootloader_type: If the resource is a bootloader specify the type of
+        bootloader(pxe, uefi, open-firmware). Bootloader resources are linked
+        under a base 'bootloader' directory instead of the image path.
     """
     for subarch in subarches:
-        directory = os.path.join(
-            snapshot_path, osystem, arch, subarch, release, label)
+        if bootloader_type is None:
+            directory = os.path.join(
+                snapshot_path, osystem, arch, subarch, release, label)
+        else:
+            # Subarches are only supported on Ubuntu. With the path bootloaders
+            # are being put in below having multiple subarches on a bootloader
+            # will cause the contents from one subarch to overwrite the
+            # contents of another.
+            assert(len(subarches) == 1)
+            directory = os.path.join(
+                snapshot_path, 'bootloader', bootloader_type, arch)
         if not os.path.exists(directory):
             os.makedirs(directory)
         for cached_file, logical_name in links:
@@ -275,7 +287,8 @@ class RepoWriter(BasicMirrorWriter):
         link_resources(
             snapshot_path=self.root_path, links=links,
             osystem=osystem, arch=item['arch'], release=item['release'],
-            label=item['label'], subarches=subarches)
+            label=item['label'], subarches=subarches,
+            bootloader_type=item.get('bootloader-type'))
 
 
 def download_boot_resources(path, store, snapshot_path, product_mapping,

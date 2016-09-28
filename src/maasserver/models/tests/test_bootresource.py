@@ -375,6 +375,33 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]))
 
+    def test__returns_bootloader_if_matching(self):
+        resource = factory.make_usable_boot_resource(
+            name="bootloader/uefi", bootloader_type="uefi",
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=subarch,
+            label='*')
+        self.assertItemsEqual(
+            [resource],
+            BootResource.objects.get_resources_matching_boot_images([image]))
+
+    def test__returns_resource_with_wildcard_label(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=subarch,
+            label='*')
+        self.assertItemsEqual(
+            [resource],
+            BootResource.objects.get_resources_matching_boot_images([image]))
+
     def test__returns_empty_list_if_subarch_not_supported_by_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED)

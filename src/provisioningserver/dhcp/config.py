@@ -46,6 +46,7 @@ CONDITIONAL_BOOTLOADER = ("""
            }
 {{else}}
 {{behaviour}} option arch = {{arch_octet}} {
+    # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
@@ -62,6 +63,7 @@ DEFAULT_BOOTLOADER = ("""
            }
 {{else}}
 else {
+    # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
     option path-prefix \"{{path_prefix}}\";
@@ -76,11 +78,10 @@ class DHCPConfigError(Exception):
 
 
 def compose_conditional_bootloader(ipv6, rack_ip=None):
-    default_name = 'uefi' if ipv6 else 'pxe'
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
-        if name != default_name and method.arch_octet is not None:
+        if method.arch_octet is not None:
             url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
             if method.path_prefix:
                 url += method.path_prefix
@@ -92,13 +93,14 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
                 arch_octet=method.arch_octet,
                 bootloader=method.bootloader_path,
                 path_prefix=method.path_prefix,
+                name=method.name,
                 ).strip() + ' '
 
     # The PXEBootMethod is used in an else statement for the generated
     # dhcpd config. This ensures that a booting node that does not
     # provide an architecture octet, or architectures that emulate
-    # pxelinux can still boot.
-    method = BootMethodRegistry.get_item(default_name)
+    # uefi_amd64 or pxelinux can still boot.
+    method = BootMethodRegistry.get_item('uefi_amd64' if ipv6 else 'pxe')
     if method is not None:
         url = ('tftp://[%s]/' if ipv6 else 'tftp://%s/') % rack_ip
         if method.path_prefix:
@@ -109,6 +111,7 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
             ipv6=ipv6, rack_ip=rack_ip, url=url,
             bootloader=method.bootloader_path,
             path_prefix=method.path_prefix,
+            name=method.name,
             ).strip()
     return output.strip()
 
