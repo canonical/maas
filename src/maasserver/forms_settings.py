@@ -24,6 +24,7 @@ from maasserver.fields import (
 )
 from maasserver.models import BootResource
 from maasserver.models.config import (
+    ACTIVE_DISCOVERY_INTERVAL_CHOICES,
     Config,
     DEFAULT_OS,
     DNSSEC_VALIDATION_CHOICES,
@@ -183,6 +184,19 @@ def make_network_discovery_field(*args, **kwargs):
     return field
 
 
+def make_active_discovery_interval_field(*args, **kwargs):
+    """Build and return the network_discovery field."""
+    field = forms.ChoiceField(
+        initial=CONFIG_ITEMS['active_discovery_interval']['default'],
+        choices=ACTIVE_DISCOVERY_INTERVAL_CHOICES,
+        error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'active_discovery_interval', ACTIVE_DISCOVERY_INTERVAL_CHOICES)
+        },
+        **kwargs)
+    return field
+
+
 CONFIG_ITEMS = {
     'maas_name': {
         'default': gethostname(),
@@ -312,17 +326,19 @@ CONFIG_ITEMS = {
     },
     'active_discovery_interval': {
         'default': int(timedelta(hours=3).total_seconds()),
-        'form': forms.IntegerField,
+        'form': make_active_discovery_interval_field,
         'form_kwargs': {
             'label': (
                 "Active discovery interval"),
             'required': False,
             'help_text': (
                 "If network discovery is enabled, MAAS will periodically scan "
-                "each subnet enabled for active discovery after the specified "
-                "number of seconds has elapsed. MAAS will check if this "
-                "interval has elapsed every five minutes. If the interval is "
-                "set to 0, MAAS will not actively scan any subnets."
+                "subnets enabled for active discovery. This helps MAAS "
+                "determine IP address utilization, and discover new devices "
+                "that have not been observed passively. When the specified "
+                "scan period elapses, MAAS will ask each connected rack "
+                "controller to scan for connected neighbours on each "
+                "configured subnet."
             )
         }
     },
