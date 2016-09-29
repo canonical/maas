@@ -14,6 +14,7 @@ from maasserver.enum import (
     KEYS_PROTOCOL_TYPE,
     KEYS_PROTOCOL_TYPE_CHOICES,
 )
+from maasserver.models import Config
 import requests
 
 
@@ -22,6 +23,19 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 class ImportSSHKeysError(Exception):
     """Importing SSH Keys failed."""
+
+
+def get_proxies():
+    """Return HTTP proxies."""
+    proxies = None
+    if Config.objects.get_config('enable_http_proxy'):
+        http_proxy = Config.objects.get_config('http_proxy')
+        if http_proxy:
+            proxies = {
+                'http': http_proxy,
+                'https': http_proxy
+            }
+    return proxies
 
 
 def get_protocol_keys(protocol, auth_id):
@@ -41,7 +55,7 @@ def get_protocol_keys(protocol, auth_id):
 def get_launchpad_ssh_keys(auth_id):
     """Retrieve SSH Keys from launchpad."""
     url = 'https://launchpad.net/~%s/+sshkeys' % auth_id
-    response = requests.get(url)
+    response = requests.get(url, proxies=get_proxies())
     # Check for 404 error which happens for an unknown user
     if response.status_code == http.HTTPStatus.NOT_FOUND:
         raise ImportSSHKeysError(
@@ -55,7 +69,7 @@ def get_launchpad_ssh_keys(auth_id):
 def get_github_ssh_keys(auth_id):
     """Retrieve SSH Keys from github."""
     url = 'https://api.github.com/users/%s/keys' % auth_id
-    response = requests.get(url)
+    response = requests.get(url, proxies=get_proxies())
     # Check for 404 error which happens for an unknown user
     if response.status_code == http.HTTPStatus.NOT_FOUND:
         raise ImportSSHKeysError(

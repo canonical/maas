@@ -10,22 +10,45 @@ import http
 from hypothesis import given
 from hypothesis.strategies import sampled_from
 from maasserver.enum import KEYS_PROTOCOL_TYPE
+from maasserver.models import Config
+from maasserver.models.signals.bootsources import (
+    signals as bootsources_signals,
+)
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.keys import (
     get_github_ssh_keys,
     get_launchpad_ssh_keys,
     get_protocol_keys,
+    get_proxies,
     ImportSSHKeysError,
 )
 import maasserver.utils.keys as keys_module
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
 import requests as requests_module
 from testtools.matchers import Equals
 
 
-class TestKeys(MAASTestCase):
+class TestKeys(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestKeys, self).setUp()
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
+
+    def test_get_proxies_returns_proxies(self):
+        proxy_address = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy_address)
+        proxies = get_proxies()
+        self.assertEqual(
+            (proxy_address, proxy_address),
+            (proxies['http'], proxies['https']))
+
+    def test_get_proxies_returns_None_for_no_proxies(self):
+        proxies = get_proxies()
+        self.assertIsNone(proxies)
 
     @given(sampled_from([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
     def test_get_protocol_keys_attempts_retrival(self, protocol):
@@ -56,7 +79,7 @@ class TestKeys(MAASTestCase):
         mock_requests.return_value.text = key_string
         keys = get_launchpad_ssh_keys(auth_id)
         url = 'https://launchpad.net/~%s/+sshkeys' % auth_id
-        self.expectThat(mock_requests, MockCalledOnceWith(url))
+        self.expectThat(mock_requests, MockCalledOnceWith(url, proxies=None))
         self.expectThat(
             keys, Equals(
                 [key for key in key_string.splitlines() if key]))
@@ -75,7 +98,7 @@ class TestKeys(MAASTestCase):
         mock_requests.return_value.text = key_string
         keys = get_github_ssh_keys(auth_id)
         url = 'https://api.github.com/users/%s/keys' % auth_id
-        self.expectThat(mock_requests, MockCalledOnceWith(url))
+        self.expectThat(mock_requests, MockCalledOnceWith(url, proxies=None))
         self.expectThat(
             keys, Equals(
                 [data['key'] for data in key_string if 'key' in data]))
