@@ -80,5 +80,10 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod("subnet.delete", subnet);
         };
 
+        // Perform a neighbour discovery scan on the subnet.
+        SubnetsManager.prototype.scanSubnet = function(subnet) {
+            return RegionConnection.callMethod("subnet.scan", subnet);
+        };
+
         return new SubnetsManager();
     }]);

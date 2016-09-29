@@ -86,4 +86,17 @@ describe("SubnetsManager", function() {
             );
         });
     });
+
+    describe("scan", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(SubnetsManager.scanSubnet(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "subnet.scan", obj
+            );
+        });
+    });
 });

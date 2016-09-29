@@ -94,7 +94,7 @@ describe("SubnetDetailsController", function() {
         subnet = makeSubnet();
     });
 
-    // Makes the NodesListController
+    // Makes the SubnetDetailsController
     function makeController(loadManagersDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagersDefer)) {
@@ -362,44 +362,6 @@ describe("SubnetDetailsController", function() {
             expect($scope.reverse).toBe(false);
             $scope.sortIPTable(predicate);
             expect($scope.reverse).toBe(true);
-        });
-    });
-
-    describe("deleteButton", function() {
-
-        it("confirms delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
-            $scope.deleteButton();
-            expect($scope.confirmingDelete).toBe(true);
-        });
-
-        it("clears error", function() {
-            var controller = makeControllerResolveSetActiveItem();
-            $scope.error = makeName("error");
-            $scope.deleteButton();
-            expect($scope.error).toBeNull();
-        });
-    });
-
-    describe("cancelDeleteButton", function() {
-
-        it("cancels delete", function() {
-            var controller = makeControllerResolveSetActiveItem();
-            $scope.deleteButton();
-            $scope.cancelDeleteButton();
-            expect($scope.confirmingDelete).toBe(false);
-        });
-    });
-
-    describe("deleteSubnet", function() {
-
-        it("calls deleteSubnet", function() {
-            var controller = makeController();
-            var deleteSubnet = spyOn(SubnetsManager, "deleteSubnet");
-            var defer = $q.defer();
-            deleteSubnet.and.returnValue(defer.promise);
-            $scope.deleteConfirmButton();
-            expect(deleteSubnet).toHaveBeenCalled();
         });
     });
 
@@ -778,5 +740,134 @@ describe("SubnetDetailsController", function() {
 
               expect($scope.deleteStaticRoute).toBeNull();
           });
+    });
+
+    describe("actionRetry", function() {
+
+        it("clears actionError", function() {
+            var controller = makeController();
+            $scope.actionError = {};
+            $scope.actionRetry();
+            expect($scope.actionError).toBeNull();
+        });
+    });
+
+    describe("actionGo", function() {
+
+        it("map_subnet action calls scanSubnet", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var scanSubnet = spyOn(SubnetsManager, "scanSubnet");
+            var defer = $q.defer();
+            result = {
+                result: "Error message from scan.",
+                scan_started_on: ['not empty']
+            };
+            scanSubnet.and.returnValue(defer.promise);
+            $scope.actionOption = {
+                name: "map_subnet",
+                title: "Map subnet"
+            };
+            $scope.actionGo();
+            defer.resolve(result);
+            $scope.$digest();
+            expect(scanSubnet).toHaveBeenCalled();
+            expect($scope.actionOption).toBeNull();
+            expect($scope.actionError).toBeNull();
+        });
+
+        it("actionError populated on scans not started", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var scanSubnet = spyOn(SubnetsManager, "scanSubnet");
+            var defer = $q.defer();
+            result = {
+                result: "Error message from scan.",
+                scan_started_on: []
+            };
+            scanSubnet.and.returnValue(defer.promise);
+            $scope.actionOption = {
+                name: "map_subnet",
+                title: "Map subnet"
+            };
+            $scope.actionGo();
+            defer.resolve(result);
+            $scope.$digest();
+            expect(scanSubnet).toHaveBeenCalled();
+            expect($scope.actionError).toBe("Error message from scan.");
+        });
+
+        it("actionError populated on map_subnet action failure", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.actionOption = {
+                name: "map_subnet",
+                title: "Map subnet"
+            };
+            var defer = $q.defer();
+            spyOn(SubnetsManager, "scanSubnet").and.returnValue(
+                defer.promise);
+            $scope.actionGo();
+            error = 'errorString';
+            $scope.actionOption = null;
+            defer.reject(error);
+            $scope.$digest();
+            expect($scope.actionError).toBe(error);
+        });
+
+        it("delete action calls deleteSubnet", function() {
+            $location.path = jasmine.createSpy('path');
+            var controller = makeControllerResolveSetActiveItem();
+            var deleteSubnet = spyOn(SubnetsManager, "deleteSubnet");
+            var defer = $q.defer();
+            deleteSubnet.and.returnValue(defer.promise);
+            $scope.actionOption = {
+                name: "delete",
+                title: "Delete"
+            };
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect(deleteSubnet).toHaveBeenCalled();
+            expect($location.path).toHaveBeenCalledWith("/networks");
+            expect($scope.actionOption).toBeNull();
+            expect($scope.actionError).toBeNull();
+        });
+
+        it("actionError populated on delete action failure", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.actionOption = {
+                name: "delete",
+                title: "Delete"
+            };
+            var defer = $q.defer();
+            spyOn(SubnetsManager, "deleteSubnet").and.returnValue(
+                defer.promise);
+            $scope.actionGo();
+            error = 'errorString';
+            $scope.actionOption = null;
+            defer.reject(error);
+            $scope.$digest();
+            expect($scope.actionError).toBe(error);
+        });
+    });
+
+    describe("actionChanged", function() {
+
+        it("clears actionError", function() {
+            var controller = makeController();
+            $scope.actionError = {};
+            $scope.actionChanged();
+            expect($scope.actionError).toBeNull();
+        });
+    });
+
+    describe("cancelAction", function() {
+
+        it("clears actionOption and actionError", function() {
+            var controller = makeController();
+            $scope.actionOption = {};
+            $scope.actionError = {};
+            $scope.cancelAction();
+            expect($scope.actionOption).toBeNull();
+            expect($scope.actionError).toBeNull();
+        });
     });
 });

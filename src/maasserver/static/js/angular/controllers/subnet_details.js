@@ -48,6 +48,9 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.fabrics = FabricsManager.getItems();
+        $scope.actionError = null;
+        $scope.actionOption = null;
+        $scope.actionOptions = [];
         $scope.reverse = false;
         $scope.newRange = null;
         $scope.editIPRange = null;
@@ -55,6 +58,15 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.newStaticRoute = null;
         $scope.editStaticRoute = null;
         $scope.deleteStaticRoute = null;
+
+        $scope.MAP_SUBNET_ACTION = {
+            name: "map_subnet",
+            title: "Map Subnet"
+        };
+        $scope.DELETE_ACTION = {
+            name: "delete",
+            title: "Delete"
+        };
 
         // Alloc type mapping.
         var ALLOC_TYPES = {
@@ -167,26 +179,66 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             return UsersManager.isSuperUser();
         };
 
-        // Called when the delete subnet button is pressed.
-        $scope.deleteButton = function() {
-            $scope.error = null;
-            $scope.confirmingDelete = true;
+        $scope.actionRetry = function() {
+            // When we clear actionError, the HTML will be re-rendered to
+            // hide the error message (and the user will be taken back to
+            // the previous action they were performing, since we reset
+            // the actionOption in the error handler.
+            $scope.actionError = null;
         };
 
-        // Called when the cancel delete subnet button is pressed.
-        $scope.cancelDeleteButton = function() {
-            $scope.confirmingDelete = false;
+        // Perform the action.
+        $scope.actionGo = function() {
+            if($scope.actionOption.name === "map_subnet") {
+                SubnetsManager.scanSubnet($scope.subnet).then(function(result) {
+                    if(result && result.scan_started_on.length === 0) {
+                        $scope.actionError =
+                            ManagerHelperService.parseValidationError(
+                                result.result);
+                    } else {
+                        $scope.actionOption = null;
+                        $scope.actionError = null;
+                    }
+                }, function(error) {
+                    $scope.actionError =
+                        ManagerHelperService.parseValidationError(error);
+                });
+            } else if($scope.actionOption.name === "delete") {
+                SubnetsManager.deleteSubnet(
+                    $scope.subnet).then(function(result) {
+                        console.log(result);
+                        $scope.actionOption = null;
+                        $scope.actionError = null;
+                        $location.path("/networks");
+                    }, function(error) {
+                        $scope.actionError =
+                            ManagerHelperService.parseValidationError(error);
+                });
+            }
         };
 
-        // Called when the confirm delete subnet button is pressed.
-        $scope.deleteConfirmButton = function() {
-            SubnetsManager.deleteSubnet($scope.subnet).then(function() {
-                $scope.confirmingDelete = false;
-                $location.path("/networks");
-            }, function(error) {
-                $scope.error =
-                    ManagerHelperService.parseValidationError(error);
-            });
+        // Called when a action is selected.
+        $scope.actionChanged = function() {
+            $scope.actionError = null;
+        };
+
+        // Called when the "Cancel" button is pressed.
+        $scope.cancelAction = function() {
+            $scope.actionOption = null;
+            $scope.actionError = null;
+        };
+
+        // Called when the managers load to populate the actions the user
+        // is allowed to perform.
+        $scope.updateActions = function() {
+            if(UsersManager.isSuperUser()) {
+                $scope.actionOptions = [
+                    $scope.MAP_SUBNET_ACTION,
+                    $scope.DELETE_ACTION
+                ];
+            } else {
+                $scope.actionOptions = [];
+            }
         };
 
         // Called by maas-obj-form before it saves the subnet. The passed
@@ -360,6 +412,9 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
             UsersManager, FabricsManager, StaticRoutesManager
         ]).then(function() {
+
+            $scope.updateActions();
+
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not
             // already the activeItem.
