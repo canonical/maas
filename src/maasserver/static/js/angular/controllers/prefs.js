@@ -9,7 +9,8 @@ angular.module('MAAS').controller('PreferencesController', [
     function(
         $scope, UsersManager, ManagerHelperService) {
             $scope.loading = true;
-            ManagerHelperService.loadManager(UsersManager).then(function() {
-                $scope.loading = false;
-            });
+            ManagerHelperService.loadManager(
+                $scope, UsersManager).then(function() {
+                    $scope.loading = false;
+                });
     }]);

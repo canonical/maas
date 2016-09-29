@@ -47,7 +47,7 @@ describe("PreferencesController", function() {
     it("calls loadManager with correct managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            UsersManager);
+            $scope, UsersManager);
     });
 
     it("sets initial $scope", function() {
