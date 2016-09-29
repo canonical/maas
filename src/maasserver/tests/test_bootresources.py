@@ -20,10 +20,12 @@ from unittest import skip
 from unittest.mock import (
     ANY,
     call,
+    MagicMock,
     Mock,
     sentinel,
 )
 
+from crochet import wait_for
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import (
@@ -57,6 +59,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     COMPONENT,
 )
+from maasserver.listener import PostgresListenerService
 from maasserver.models import (
     BootResource,
     BootResourceFile,
@@ -105,7 +108,10 @@ from provisioningserver.rpc.cluster import (
     ListBootImagesV2,
 )
 from provisioningserver.utils.text import normalise_whitespace
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    DeferredValue,
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -117,9 +123,13 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     Deferred,
     fail,
+    inlineCallbacks,
     succeed,
 )
 from twisted.protocols.amp import UnhandledCommand
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 def make_boot_resource_file_with_stream(size=None):
@@ -923,6 +933,19 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(rfile.largefile.size, len(written_data))
         self.assertEqual(rfile.largefile.size, rfile.largefile.total_size)
 
+    def test_write_content_doesnt_write_if_cancel(self):
+        store = BootResourceStore()
+        size = int(2.5 * store.read_size)
+        rfile, reader, content = make_boot_resource_file_with_stream(size=size)
+        store._cancel_finalize = True
+        store.write_content_thread(rfile.id, reader)
+        self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
+        with rfile.largefile.content.open('rb') as stream:
+            written_data = stream.read()
+        self.assertEqual(b'', written_data)
+        rfile.largefile = reload_object(rfile.largefile)
+        self.assertEqual(rfile.largefile.size, 0)
+
     @skip(
         "XXX blake_r: Skipped because it causes the test that runs after this "
         "to fail. Because this test is not isolated and places a task in the "
@@ -934,6 +957,20 @@ class TestBootResourceStore(MAASServerTestCase):
         with post_commit_hooks:
             store.write_content_thread(rfile.id, reader)
         self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
+
+    def test_delete_content_to_finalize_deletes_items(self):
+        self.useFixture(SignalsDisabled("largefiles"))
+        rfile_one, _, _ = make_boot_resource_file_with_stream()
+        rfile_two, _, _ = make_boot_resource_file_with_stream()
+        store = BootResourceStore()
+        store._content_to_finalize = {
+            rfile_one.id: rfile_one,
+            rfile_two.id: rfile_two,
+        }
+        store.delete_content_to_finalize()
+        self.assertIsNone(reload_object(rfile_one))
+        self.assertIsNone(reload_object(rfile_two))
+        self.assertEquals({}, store._content_to_finalize)
 
     def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -954,6 +991,7 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_perform_write = self.patch(store, 'perform_write')
         mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
         store.finalize()
+        self.assertTrue(store._finalizing)
         self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
         self.expectThat(mock_perform_write, MockCalledOnceWith())
         self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
@@ -968,6 +1006,39 @@ class TestBootResourceStore(MAASServerTestCase):
         store.finalize()
         self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
         self.expectThat(mock_perform_write, MockCalledOnceWith())
+        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+
+    def test_finalize_calls_methods_with_delete_if_cancel_finalize(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store = BootResourceStore()
+        store._content_to_finalize = [sentinel.content]
+        mock_resource_cleaner = self.patch(store, 'resource_cleaner')
+        mock_delete = self.patch(store, 'delete_content_to_finalize')
+        mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
+        store._cancel_finalize = True
+        store.finalize()
+        self.assertFalse(store._finalizing)
+        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
+        self.expectThat(mock_delete, MockCalledOnceWith())
+        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+
+    def test_finalize_calls_delete_after_write_if_cancel_finalize(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store = BootResourceStore()
+        store._content_to_finalize = [sentinel.content]
+        mock_resource_cleaner = self.patch(store, 'resource_cleaner')
+        mock_perform_write = self.patch(store, 'perform_write')
+        mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
+        mock_delete = self.patch(store, 'delete_content_to_finalize')
+
+        def set_cancel():
+            store._cancel_finalize = True
+        mock_perform_write.side_effect = set_cancel
+        store.finalize()
+        self.assertTrue(store._finalizing)
+        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
+        self.expectThat(mock_perform_write, MockCalledOnceWith())
+        self.expectThat(mock_delete, MockCalledOnceWith())
         self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
 
 
@@ -1404,6 +1475,9 @@ class TestImportImages(MAASTransactionServerTestCase):
             }
         product_mapping = ProductMapping()
         store = BootResourceStore()
+        self.patch(
+            bootresources.services,
+            "getServiceNamed").return_value = MagicMock()
         fake_download = self.patch(bootresources, 'download_boot_resources')
         download_all_boot_resources(
             sources=[source], product_mapping=product_mapping, store=store)
@@ -1416,12 +1490,80 @@ class TestImportImages(MAASTransactionServerTestCase):
     def test_download_all_boot_resources_calls_finalize_on_store(self):
         product_mapping = ProductMapping()
         store = BootResourceStore()
+        self.patch(
+            bootresources.services,
+            "getServiceNamed").return_value = MagicMock()
         fake_finalize = self.patch(store, 'finalize')
-        download_all_boot_resources(
+        success = download_all_boot_resources(
             sources=[], product_mapping=product_mapping, store=store)
         self.assertThat(
             fake_finalize,
             MockCalledOnceWith(notify=None))
+        self.assertTrue(success)
+
+    def test_download_all_boot_resources_registers_stop_handler(self):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        listener = MagicMock()
+        self.patch(
+            bootresources.services,
+            "getServiceNamed").return_value = listener
+        self.patch(bootresources, 'download_boot_resources')
+        download_all_boot_resources(
+            sources=[], product_mapping=product_mapping, store=store)
+        self.assertThat(
+            listener.register, MockCalledOnceWith("sys_stop_import", ANY))
+
+    def test_download_all_boot_resources_calls_cancel_finalize(self):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        listener = MagicMock()
+        self.patch(
+            bootresources.services,
+            "getServiceNamed").return_value = listener
+
+        # Call the stop_import function register with the listener.
+        def call_stop(*args, **kwargs):
+            listener.register.call_args[0][1]("sys_stop_import", "")
+        self.patch(
+            bootresources,
+            'download_boot_resources').side_effect = call_stop
+
+        mock_cancel = self.patch(store, "cancel_finalize")
+        mock_finalize = self.patch(store, "finalize")
+        success = download_all_boot_resources(
+            sources=[{
+                'url': '',
+                'keyring': '',
+            }], product_mapping=product_mapping, store=store)
+        self.assertThat(mock_cancel, MockCalledOnce())
+        self.assertThat(mock_finalize, Not(MockCalledOnce()))
+        self.assertFalse(success)
+
+    def test_download_all_boot_resources_calls_cancel_finalize_in_stop(self):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        listener = MagicMock()
+        self.patch(
+            bootresources.services,
+            "getServiceNamed").return_value = listener
+        self.patch(bootresources, 'download_boot_resources')
+
+        # Call the stop_import function when finalize is called.
+        def call_stop(*args, **kwargs):
+            listener.register.call_args[0][1]("sys_stop_import", "")
+        mock_finalize = self.patch(store, "finalize")
+        mock_finalize.side_effect = call_stop
+        mock_cancel = self.patch(store, "cancel_finalize")
+
+        success = download_all_boot_resources(
+            sources=[{
+                'url': '',
+                'keyring': '',
+            }], product_mapping=product_mapping, store=store)
+        self.assertThat(mock_finalize, MockCalledOnce())
+        self.assertThat(mock_cancel, MockCalledOnce())
+        self.assertFalse(success)
 
     def test__import_resources_exits_early_if_lock_held(self):
         set_simplestreams_env = self.patch_autospec(
@@ -1581,6 +1723,38 @@ class TestImportResourcesInThread(MAASTestCase):
             output-...
             """,
             logger.output)
+
+
+class TestStopImportResources(MAASTransactionServerTestCase):
+
+    def make_listener_without_delay(self):
+        listener = PostgresListenerService()
+        self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
+        return listener
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_does_nothing_if_import_not_running(self):
+        mock_defer = self.patch(bootresources, "deferToDatabase")
+        mock_defer.return_value = succeed(False)
+        yield bootresources.stop_import_resources()
+        self.assertThat(mock_defer, MockCalledOnce())
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_stop_import_notification(self):
+        mock_running = self.patch(bootresources, "is_import_resources_running")
+        mock_running.side_effect = [True, True, False]
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_stop_import", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield bootresources.stop_import_resources()
+            yield dv.get(2)
+        finally:
+            yield listener.stopService()
 
 
 class TestImportResourcesService(MAASTestCase):

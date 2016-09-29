@@ -125,6 +125,33 @@ describe("BootResourcesManager", function() {
         });
     });
 
+    describe("stopImport", function() {
+
+        it("calls bootresource.stop_import and sets _data", function(done) {
+            var data = BootResourcesManager._data;
+            var defer = $q.defer();
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                defer.promise);
+
+            var newData = {
+                key: makeName("value")
+            };
+            var sentinel = {};
+            BootResourcesManager.stopImport(sentinel).then(function(pData) {
+                expect(BootResourcesManager._loaded).toBe(true);
+                expect(BootResourcesManager._data).toBe(data);
+                expect(BootResourcesManager._data).toBe(pData);
+                expect(BootResourcesManager._data).toEqual(newData);
+                done();
+            });
+
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "bootresource.stop_import", sentinel);
+            defer.resolve(angular.toJson(newData));
+            $rootScope.$digest();
+        });
+    });
+
     describe("saveUbuntu", function() {
 
         it("calls bootresource.save_ubuntu and sets _data", function(done) {

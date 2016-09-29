@@ -54,6 +54,7 @@ from testtools.matchers import (
     HasLength,
 )
 from twisted.internet import reactor
+from twisted.internet.defer import succeed
 
 
 class PatchOSInfoMixin:
@@ -579,6 +580,22 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertEquals([], json_obj['other_images'])
 
 
+class TestBootResourceStopImport(MAASTransactionServerTestCase):
+
+    def patch_stop_import_resources(self):
+        mock_import = self.patch(bootresource, 'stop_import_resources')
+        mock_import.return_value = succeed(None)
+        return mock_import
+
+    def test_calls_stop_import_and_returns_poll(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        mock_stop_import = self.patch_stop_import_resources()
+        result = handler.stop_import({})
+        self.assertThat(mock_stop_import, MockCalledOnceWith())
+        self.assertEquals(handler.poll({}), result)
+
+
 class TestBootResourceSaveUbuntu(
         MAASTransactionServerTestCase, PatchOSInfoMixin):
 
@@ -587,6 +604,11 @@ class TestBootResourceSaveUbuntu(
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
+
+    def patch_stop_import_resources(self):
+        mock_import = self.patch(bootresource, 'stop_import_resources')
+        mock_import.return_value = succeed(None)
+        return mock_import
 
     def patch_import_resources(self):
         mock_import = self.patch(bootresource, 'import_resources')
@@ -599,14 +621,16 @@ class TestBootResourceSaveUbuntu(
         handler = BootResourceHandler(owner, {})
         self.assertRaises(AssertionError, handler.save_ubuntu, {})
 
-    def test_calls_import_resources(self):
+    def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {})
         sources = [factory.make_BootSource()]
         self.patch_get_os_info_from_boot_sources(sources)
+        mock_stop_import = self.patch_stop_import_resources()
         mock_import = self.patch_import_resources()
         handler.save_ubuntu(
             {'url': sources[0].url, 'releases': [], 'arches': []})
+        self.assertThat(mock_stop_import, MockCalledOnceWith())
         self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
     def test_sets_empty_selections(self):
@@ -614,6 +638,7 @@ class TestBootResourceSaveUbuntu(
         handler = BootResourceHandler(owner, {})
         source = factory.make_BootSource()
         self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
             {'url': source.url, 'releases': [], 'arches': []})
@@ -632,6 +657,7 @@ class TestBootResourceSaveUbuntu(
         source = factory.make_BootSource()
         releases = [factory.make_name('release') for _ in range(3)]
         self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
             {'url': source.url, 'releases': releases, 'arches': []})
@@ -649,6 +675,7 @@ class TestBootResourceSaveUbuntu(
         releases = [factory.make_name('release') for _ in range(3)]
         arches = [factory.make_name('arches') for _ in range(3)]
         self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
             {'url': source.url, 'releases': releases, 'arches': arches})
@@ -670,6 +697,7 @@ class TestBootResourceSaveUbuntu(
         keep_selection = BootSourceSelection.objects.create(
             boot_source=source, os='ubuntu', release=release)
         self.patch_get_os_info_from_boot_sources([source])
+        self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_ubuntu(
             {'url': source.url, 'releases': [release], 'arches': []})
@@ -704,6 +732,11 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
+    def patch_stop_import_resources(self):
+        mock_import = self.patch(bootresource, 'stop_import_resources')
+        mock_import.return_value = succeed(None)
+        return mock_import
+
     def patch_import_resources(self):
         mock_import = self.patch(bootresource, 'import_resources')
         mock_import.side_effect = (
@@ -723,6 +756,7 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             boot_source=source, os='ubuntu')
         other_selection = BootSourceSelection.objects.create(
             boot_source=source, os=factory.make_name('os'))
+        self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_other({'images': []})
         self.assertIsNotNone(reload_object(ubuntu_selection))
@@ -740,6 +774,7 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             factory.make_BootSourceCache(
                 boot_source=source, os=os, release=release, arch=arch)
             images.append('%s/%s/subarch/%s' % (os, arch, release))
+            self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_other({'images': images})
 
@@ -748,11 +783,13 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         self.assertIsNotNone(selection)
         self.assertItemsEqual(arches, selection.arches)
 
-    def test_calls_import_resources(self):
+    def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {})
+        mock_stop_import = self.patch_stop_import_resources()
         mock_import = self.patch_import_resources()
         handler.save_other({'images': []})
+        self.assertThat(mock_stop_import, MockCalledOnceWith())
         self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
 

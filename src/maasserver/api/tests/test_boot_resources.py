@@ -9,6 +9,7 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
     boot_resource_set_to_dict,
@@ -389,6 +390,19 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         response = self.client.post(
             reverse('boot_resources_handler'), {'op': 'import'})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_stop_import_requires_admin(self):
+        response = self.client.post(
+            reverse('boot_resources_handler'), {'op': 'stop_import'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_stop_import_calls_stop_import_resources(self):
+        self.become_admin()
+        mock_stop = self.patch(boot_resources, "stop_import_resources")
+        response = self.client.post(
+            reverse('boot_resources_handler'), {'op': 'stop_import'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(mock_stop, MockCalledOnceWith())
 
 
 class TestBootResourceAPI(APITestCase.ForUser):

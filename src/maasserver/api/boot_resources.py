@@ -23,7 +23,10 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_param
-from maasserver.bootresources import import_resources
+from maasserver.bootresources import (
+    import_resources,
+    stop_import_resources,
+)
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
@@ -222,6 +225,15 @@ class BootResourcesHandler(OperationsHandler):
         import_resources()
         return HttpResponse(
             "Import of boot resources started",
+            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+    @admin_method
+    @operation(idempotent=False)
+    def stop_import(self, request):
+        """Stop import of boot resources."""
+        stop_import_resources()
+        return HttpResponse(
+            "Import of boot resources is being stopped",
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
     @classmethod

@@ -54,6 +54,7 @@ angular.module('MAAS').directive('maasBootImages', [
             controller: function($scope, $rootScope, $element, $document) {
                 $scope.loading = true;
                 $scope.saving = false;
+                $scope.stopping = false;
                 $scope.design = $scope.design || 'page';
                 $scope.bootResources = BootResourcesManager.getData();
                 $scope.ubuntuImages = [];
@@ -539,7 +540,10 @@ angular.module('MAAS').directive('maasBootImages', [
 
                 // Return true if can save the current selection.
                 $scope.canSaveSelection = function() {
-                    return !$scope.saving && $scope.ltsIsSelected();
+                    return (
+                        !$scope.saving &&
+                        !$scope.stopping &&
+                        $scope.ltsIsSelected());
                 };
 
                 // Return the text for the save selection button.
@@ -549,6 +553,32 @@ angular.module('MAAS').directive('maasBootImages', [
                     } else {
                         return "Save selection";
                     }
+                };
+
+                // Return true if can stop current import.
+                $scope.canStopImport = function() {
+                    return !$scope.saving && !$scope.stopping;
+                };
+
+                // Return the text for the stop import button.
+                $scope.getStopImportText = function() {
+                    if($scope.stopping) {
+                        return "Stopping...";
+                    } else {
+                        return "Stop import";
+                    }
+                };
+
+                // Called to stop the import.
+                $scope.stopImport = function() {
+                    if(!$scope.canStopImport()) {
+                        return;
+                    }
+
+                    $scope.stopping = true;
+                    BootResourcesManager.stopImport().then(function() {
+                        $scope.stopping = false;
+                    });
                 };
 
                 // Save the selections into boot selections.

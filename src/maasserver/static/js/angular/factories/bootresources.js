@@ -146,6 +146,18 @@ angular.module('MAAS').factory(
         // can work on this manager just like all the rest.
         BootResourcesManager.prototype.enableAutoReload = function() { };
 
+        // Stop the running image import process.
+        BootResourcesManager.prototype.stopImport = function(params) {
+            var self = this;
+            return RegionConnection.callMethod(
+                "bootresource.stop_import", params).then(
+                    function(newData) {
+                        angular.copy(angular.fromJson(newData), self._data);
+                        self._loaded = true;
+                        return self._data;
+                    });
+        };
+
         // Save the ubuntu options and start the import process.
         BootResourcesManager.prototype.saveUbuntu = function(params) {
             var self = this;

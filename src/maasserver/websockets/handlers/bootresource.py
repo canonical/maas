@@ -14,6 +14,7 @@ from distro_info import UbuntuDistroInfo
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
+    stop_import_resources,
 )
 from maasserver.bootsources import (
     get_os_info_from_boot_sources,
@@ -86,6 +87,7 @@ class BootResourceHandler(Handler):
     class Meta:
         allowed_methods = [
             'poll',
+            'stop_import',
             'save_ubuntu',
             'save_other',
             'fetch',
@@ -543,6 +545,14 @@ class BootResourceHandler(Handler):
             )
 
     @asynchronous(timeout=FOREVER)
+    def stop_import(self, params):
+        """Called to stop the current import process."""
+        d = stop_import_resources()
+        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
+        d.addErrback(log.err, "Failed to stop the image import process.")
+        return d
+
+    @asynchronous(timeout=FOREVER)
     def save_ubuntu(self, params):
         """Called to save the Ubuntu section of the websocket."""
         # Must be administrator.
@@ -580,7 +590,8 @@ class BootResourceHandler(Handler):
                 selection.save()
 
         notify = Deferred()
-        d = deferToDatabase(update_source, params)
+        d = stop_import_resources()
+        d.addCallback(lambda _: deferToDatabase(update_source, params))
         d.addCallback(callOut, import_resources, notify=notify)
         d.addCallback(lambda _: notify)
         d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
@@ -626,7 +637,8 @@ class BootResourceHandler(Handler):
                     arches=arches, subarches=["*"], labels=["*"])
 
         notify = Deferred()
-        d = deferToDatabase(update_selections, params)
+        d = stop_import_resources()
+        d.addCallback(lambda _: deferToDatabase(update_selections, params))
         d.addCallback(callOut, import_resources, notify=notify)
         d.addCallback(lambda _: notify)
         d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))

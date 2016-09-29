@@ -140,9 +140,10 @@
                 </section>
                 <div class="twelve-col" data-ng-if="!source.tooMany">
                     <div class="u-float--right">
-                        <!-- Not supported yet.
-                        <a class="button--base button--inline" data-ng-if="showStopImportButton()">Stop import</a>
-                        -->
+                        <a class="button--base button--inline"
+                            data-ng-if="showStopImportButton()"
+                            data-ng-disabled="!canStopImport()"
+                            data-ng-click="stopImport()">{$ getStopImportText() $}</a>
                         <button class="button--secondary button--inline"
                             data-ng-if="isSuperUser() && showSaveSelection()"
                             data-ng-disabled="!canSaveSelection()"

@@ -1215,6 +1215,16 @@ describe("maasBootImages", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             scope.saving = true;
+            spyOn(scope, "ltsIsSelected").and.returnValue(true);
+            expect(scope.canSaveSelection()).toBe(false);
+        });
+
+        it("returns false if stopping", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.saving = false;
+            scope.stopping = true;
+            spyOn(scope, "ltsIsSelected").and.returnValue(true);
             expect(scope.canSaveSelection()).toBe(false);
         });
 
@@ -1249,6 +1259,74 @@ describe("maasBootImages", function() {
             var scope = directive.isolateScope();
             scope.saving = false;
             expect(scope.getSaveSelectionText()).toBe('Save selection');
+        });
+    });
+
+    describe("canStopImport", function() {
+
+        it("returns false if saving", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.saving = true;
+            expect(scope.canStopImport()).toBe(false);
+        });
+
+        it("returns false if stopping", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.stopping = true;
+            expect(scope.canStopImport()).toBe(false);
+        });
+
+        it("returns true if not saving or stopping", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.saving = false;
+            scope.stopping = false;
+            expect(scope.canStopImport()).toBe(true);
+        });
+    });
+
+    describe("getStopImportText", function() {
+
+        it("returns 'Stopping...' when stopping", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.stopping = true;
+            expect(scope.getStopImportText()).toBe('Stopping...');
+        });
+
+        it("returns 'Stop import' when not stopping", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.stopping = false;
+            expect(scope.getStopImportText()).toBe('Stop import');
+        });
+    });
+
+    describe("stopImport", function() {
+
+        it("does nothing if cannot stop", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            spyOn(scope, "canStopImport").and.returnValue(false);
+            spyOn(BootResourcesManager, "stopImport");
+            scope.stopImport();
+            expect(BootResourcesManager.stopImport).not.toHaveBeenCalled();
+        });
+
+        it("calls BootResourcesManager.stopImport", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var defer = $q.defer();
+            spyOn(scope, "canStopImport").and.returnValue(true);
+            spyOn(BootResourcesManager, "stopImport").and.returnValue(
+                defer.promise);
+            scope.stopImport();
+            expect(scope.stopping).toBe(true);
+            defer.resolve();
+            $scope.$digest();
+            expect(scope.stopping).toBe(false);
         });
     });
 

@@ -24,7 +24,10 @@ from textwrap import dedent
 import threading
 import time
 
-from django.db import connections
+from django.db import (
+    connection,
+    connections,
+)
 from django.db.utils import load_backend
 from django.http import (
     Http404,
@@ -49,6 +52,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     COMPONENT,
 )
+from maasserver.eventloop import services
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
@@ -93,6 +97,7 @@ from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
+    pause,
     synchronous,
 )
 from simplestreams import util as sutil
@@ -413,6 +418,8 @@ class BootResourceStore(ObjectStore):
         """Initialize store."""
         self.cache_current_resources()
         self._content_to_finalize = {}
+        self._finalizing = False
+        self._cancel_finalize = False
 
     def get_resource_identifiers(self, resource):
         """Return os, arch, subarch, and series for the given resource."""
@@ -737,9 +744,13 @@ class BootResourceStore(ObjectStore):
                     return False
 
         # Write chunks until it says its done.
-        while True:
+        while not self._cancel_finalize:
             if write_chunk():
                 break
+
+        # Don't check the checksum if finalization was cancelled.
+        if self._cancel_finalize:
+            return
 
         if not cksummer.check():
             # Calculated sha256 hash from the data does not match, what
@@ -769,10 +780,10 @@ class BootResourceStore(ObjectStore):
                 time.sleep(1)
                 continue
 
-            if len(self._content_to_finalize) == 0:
-                # No more threads to spawn as all of the content has
-                # been de-queued. Let's wait for all the remaining running
-                # threads to finish.
+            if self._cancel_finalize or len(self._content_to_finalize) == 0:
+                # No more threads to spawn because the finalization has been
+                # cancelled or all of the content has been de-queued. Wait for
+                # all the remaining running threads to finish.
                 for thread in threads:
                     thread.join()
                 break
@@ -840,6 +851,13 @@ class BootResourceStore(ObjectStore):
                     "Deleting empty resource %s.", resource)
                 resource.delete()
 
+    @transactional
+    def delete_content_to_finalize(self):
+        """Deletes all content that was set to be finalized."""
+        for rid in self._content_to_finalize.keys():
+            BootResourceFile.objects.filter(id=rid).delete()
+        self._content_to_finalize = {}
+
     def finalize(self, notify=None):
         """Perform the finalization of data into the database.
 
@@ -870,15 +888,42 @@ class BootResourceStore(ObjectStore):
             maaslog.error(error_msg)
             if notify is not None:
                 failure = Failure(Exception(error_msg))
-                reactor.callLater(0, notify.errback, failure)
+                reactor.callFromThread(notify.errback, failure)
             return
-        self.resource_cleaner()
-        # Callback the notify before starting the download of the actual data
-        # for the images.
-        if notify is not None:
-            reactor.callLater(0, notify.callback, None)
-        self.perform_write()
-        self.resource_set_cleaner()
+
+        # Cancel finalize was set before the threading operation is started.
+        if self._cancel_finalize:
+            self.resource_cleaner()
+            self.delete_content_to_finalize()
+            self.resource_set_cleaner()
+            # Callback the notify even though the import was cancelled.
+            if notify is not None:
+                reactor.callFromThread(notify.callback, None)
+        else:
+            self._finalizing = True
+            self.resource_cleaner()
+            # Callback the notify before starting the download of the actual
+            # data for the images.
+            if notify is not None:
+                reactor.callFromThread(notify.callback, None)
+            self.perform_write()
+            if self._cancel_finalize:
+                self.delete_content_to_finalize()
+            self.resource_set_cleaner()
+
+    def cancel_finalize(self, notify=None):
+        """Cancel the finalization. This can be called instead of `finalize` or
+        while `finalize` is running in another thread."""
+        if not self._finalizing:
+            self._cancel_finalize = True
+            self.finalize(notify=notify)
+        else:
+            assert notify is None, (
+                "notify is not supported if finalization already started.")
+            # Finalization is already started so cancel the finalization.
+            # Setting to True triggers that running thread spawning process
+            # to stop, and perform the cleanup.
+            self._cancel_finalize = True
 
 
 class BootResourceRepoWriter(BasicMirrorWriter):
@@ -1027,6 +1072,10 @@ def download_all_boot_resources(
 
     Boot resources are stored into the `BootResource` model.
 
+    This process is long running and can be triggered to be stopped through
+    a postgres notification of `sys_stop_import`. When that notification is
+    recieved the running import will be stopped.
+
     :param sources: List of dicts describing the Simplestreams sources from
         which we should download.
     :param product_mapping: A `ProductMapping` describing the resources to be
@@ -1038,13 +1087,55 @@ def download_all_boot_resources(
     if store is None:
         store = BootResourceStore()
     assert isinstance(store, BootResourceStore)
+
+    lock = threading.Lock()  # Locked used to changed values here.
+    finalizing = False  # True when finalizing is running.
+    stop = False  # True when it should be stopped.
+
+    # Grab the runnning postgres listener service to register the stop handler.
+    listener = services.getServiceNamed("postgres-listener")
+
+    # Allow the import process to be stopped out-of-band.
+    def stop_import(channel, payload):
+        """Called when the import should be stopped."""
+        nonlocal stop
+        # Stop the actual import process.
+        needs_cancel = False
+        with lock:
+            if stop:
+                # Nothing need to be done as stop as already been called.
+                return
+            else:
+                # First time stop has been called. Trigger stop and call cancel
+                # if finalizing already started.
+                stop = True
+                if finalizing:
+                    needs_cancel = True
+        if needs_cancel:
+            store.cancel_finalize()
+    listener.register("sys_stop_import", stop_import)
+
+    # Download all of the metadata first.
     for source in sources:
         maaslog.info("Importing images from source: %s", source['url'])
         download_boot_resources(
             source['url'], store, product_mapping,
             keyring_file=source.get('keyring'))
-    maaslog.debug("Finalizing BootResourceStore.")
-    store.finalize(notify=notify)
+
+    # Start finalizing or cancel finalizing.
+    with lock:
+        stopped = stop
+    if stopped:
+        maaslog.debug(
+            "Finalizing BootResourceStore was cancelled before starting.")
+        store.cancel_finalize(notify=notify)
+    else:
+        maaslog.debug("Finalizing BootResourceStore.")
+        with lock:
+            finalizing = True
+        store.finalize(notify=notify)
+    listener.unregister("sys_stop_import", stop_import)
+    return not stop
 
 
 def set_global_default_releases():
@@ -1163,11 +1254,17 @@ def _import_resources_with_lock(notify=None):
             return
         product_mapping = map_products(image_descriptions)
 
-        download_all_boot_resources(sources, product_mapping, notify=notify)
-        set_global_default_releases()
-        maaslog.info(
-            "Finished importing of boot images from %d source(s).",
-            len(sources))
+        successful = download_all_boot_resources(
+            sources, product_mapping, notify=notify)
+        if successful:
+            set_global_default_releases()
+            maaslog.info(
+                "Finished importing of boot images from %d source(s).",
+                len(sources))
+        else:
+            maaslog.warning(
+                "Importing of boot images from %d source(s) was cancelled.",
+                len(sources))
 
 
 def _import_resources_in_thread(notify=None):
@@ -1211,6 +1308,33 @@ def import_resources(notify=None):
 def is_import_resources_running():
     """Return True if the import process is currently running."""
     return locks.import_images.is_locked()
+
+
+@asynchronous
+@inlineCallbacks
+def stop_import_resources():
+    """Stops the running import process."""
+    running = yield deferToDatabase(
+        transactional(is_import_resources_running))
+    if not running:
+        # Nothing to do as its not running.
+        return
+
+    # Notify for the stop to occur.
+    @transactional
+    def notify():
+        with connection.cursor() as cursor:
+            cursor.execute("NOTIFY sys_stop_import;")
+    yield deferToDatabase(notify)
+
+    # Wait for the importing lock to be released, before saying it has
+    # fully been stopped.
+    while True:
+        running = yield deferToDatabase(
+            transactional(is_import_resources_running))
+        if not running:
+            break
+        yield pause(0.2)
 
 
 # How often the import service runs.
