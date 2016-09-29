@@ -371,10 +371,10 @@ class Subnet(CleanSave, TimestampedModel):
     active_discovery = BooleanField(
         editable=True, blank=False, null=False, default=False)
 
-    def get_ipnetwork(self):
+    def get_ipnetwork(self) -> IPNetwork:
         return IPNetwork(self.cidr)
 
-    def get_ip_version(self):
+    def get_ip_version(self) -> int:
         return self.get_ipnetwork().version
 
     def update_cidr(self, cidr):

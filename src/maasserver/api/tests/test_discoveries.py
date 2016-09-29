@@ -22,6 +22,7 @@ from maasserver.api.discoveries import (
 )
 from maasserver.clusterrpc.utils import RPCResults
 from maasserver.dbviews import register_view
+from maasserver.models import Subnet
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -506,35 +507,46 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         scan_all_rack_networks()
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={}))
+                cluster.ScanNetworks, controllers=None, kwargs={}))
 
     def test__calls_racks_synchronously_with_scan_all(self):
         scan_all_rack_networks(scan_all=True)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={'scan_all': True}))
+                cluster.ScanNetworks, controllers=None,
+                kwargs={'scan_all': True}))
 
     def test__calls_racks_synchronously_with_cidrs(self):
-        scan_all_rack_networks(cidrs=['a', 'b', 'c'])
+        subnet_query = Subnet.objects.filter(
+            staticipaddress__interface__node__in=self.started)
+        cidrs = [
+            IPNetwork(cidr)
+            for cidr in subnet_query.values_list('cidr', flat=True)
+        ]
+        scan_all_rack_networks(cidrs=cidrs)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={'cidrs': ['a', 'b', 'c']}))
+                cluster.ScanNetworks, controllers=self.started,
+                kwargs={'cidrs': cidrs}))
 
     def test__calls_racks_synchronously_with_force_ping(self):
         scan_all_rack_networks(ping=True)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={'force_ping': True}))
+                cluster.ScanNetworks, controllers=None,
+                kwargs={'force_ping': True}))
 
     def test__calls_racks_synchronously_with_threads(self):
         threads = random.randint(1, 99)
         scan_all_rack_networks(threads=threads)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={'threads': threads}))
+                cluster.ScanNetworks, controllers=None,
+                kwargs={'threads': threads}))
 
     def test__calls_racks_synchronously_with_slow(self):
         scan_all_rack_networks(slow=True)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, kwargs={'slow': True}))
+                cluster.ScanNetworks, controllers=None,
+                kwargs={'slow': True}))

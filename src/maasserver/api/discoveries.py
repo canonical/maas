@@ -32,7 +32,10 @@ from maasserver.clusterrpc.utils import (
     RPCResults,
 )
 from maasserver.enum import NODE_PERMISSION
-from maasserver.models import Discovery
+from maasserver.models import (
+    Discovery,
+    RackController,
+)
 from netaddr import IPNetwork
 from piston3.utils import rc
 from provisioningserver.rpc import cluster
@@ -350,17 +353,21 @@ def scan_all_rack_networks(
     :return: dict
     """
     kwargs = {}
+    controllers = None
     if scan_all is not None:
         kwargs['scan_all'] = scan_all
     if cidrs is not None:
         kwargs['cidrs'] = cidrs
+        controllers = list(
+            RackController.objects.filter_by_subnet_cidrs(cidrs))
     if ping is not None:
         kwargs['force_ping'] = ping
     if threads is not None:
         kwargs['threads'] = threads
     if slow is not None:
         kwargs['slow'] = slow
-    rpc_results = call_racks_synchronously(cluster.ScanNetworks, kwargs=kwargs)
+    rpc_results = call_racks_synchronously(
+        cluster.ScanNetworks, controllers=controllers, kwargs=kwargs)
     return rpc_results
 
 

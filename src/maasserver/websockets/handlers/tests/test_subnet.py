@@ -5,12 +5,20 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
+from fixtures import FakeLogger
+from maasserver.api import discoveries as discoveries_module
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+)
 from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
 from testtools import ExpectedException
@@ -108,5 +116,86 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         user.save()
         with ExpectedException(AssertionError, "Permission denied."):
             handler.delete({
+                "id": subnet.id,
+            })
+
+
+class TestSubnetHandlerScan(MAASServerTestCase):
+
+    def setUp(self):
+        self.scan_all_rack_networks = self.patch(
+            discoveries_module.scan_all_rack_networks)
+        self.scan_all_rack_networks.return_value = sentinel.rpc_result
+        self.user_friendly_scan_results = self.patch(
+            discoveries_module.user_friendly_scan_results)
+        self.user_friendly_scan_results.return_value = sentinel.result
+        return super().setUp()
+
+    def test__scan_as_admin_succeeds_and_returns_user_friendly_result(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet(version=4)
+        rack = factory.make_RackController()
+        factory.make_Interface(node=rack, subnet=subnet)
+        cidr = subnet.get_ipnetwork()
+        result = handler.scan({
+            "id": subnet.id,
+        })
+        self.assertThat(result, Equals(sentinel.result))
+        self.assertThat(
+            self.scan_all_rack_networks, MockCalledOnceWith(cidrs=[cidr]))
+        self.assertThat(
+            self.user_friendly_scan_results, MockCalledOnceWith(
+                sentinel.rpc_result))
+
+    def test__scan_as_admin_logs_the_fact_that_a_scan_happened(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet(version=4)
+        rack = factory.make_RackController()
+        factory.make_Interface(node=rack, subnet=subnet)
+        logger = self.useFixture(FakeLogger())
+        cidr = subnet.get_ipnetwork()
+        handler.scan({
+            "id": subnet.id,
+        })
+        self.assertThat(logger.output, DocTestMatches(
+            "User...%s...scan...%s" % (user.username, cidr)))
+
+    def test__scan_ipv6_fails(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet(version=6)
+        with ExpectedException(ValueError, '.*only IPv4.*'):
+            handler.scan({
+                "id": subnet.id,
+            })
+
+    def test__scan_fails_if_no_rack_is_configured_with_subnet(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet(version=4)
+        with ExpectedException(ValueError, '.*must be configured on a rack*'):
+            handler.scan({
+                "id": subnet.id,
+            })
+
+    def test__scan_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.scan({
+                "id": subnet.id,
+            })
+
+    def test__reloads_user(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.scan({
                 "id": subnet.id,
             })

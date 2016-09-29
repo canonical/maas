@@ -1020,7 +1020,12 @@ class Factory(maastesting.factory.Factory):
     def make_Interface(
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
-            ip=None, enabled=True, fabric=None, tags=None, disconnected=False):
+            ip=None, subnet=None, enabled=True, fabric=None, tags=None,
+            disconnected=False):
+        if subnet is None and cluster_interface is not None:
+            subnet = cluster_interface.subnet
+        if subnet is not None and vlan is None:
+            vlan = subnet.vlan
         if name is None:
             if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
                 name = self.make_name('eth')
@@ -1067,11 +1072,11 @@ class Factory(maastesting.factory.Factory):
             node=node, mac_address=mac_address, type=iftype,
             name=name, vlan=vlan, enabled=enabled, tags=tags)
         interface.save()
-        if cluster_interface is not None:
+        if subnet is not None:
             sip = StaticIPAddress.objects.create(
                 ip=ip,
                 alloc_type=IPADDRESS_TYPE.DHCP,
-                subnet=cluster_interface.subnet)
+                subnet=subnet)
             interface.ip_addresses.add(sip)
         if parents:
             for parent in parents:

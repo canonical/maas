@@ -9,12 +9,21 @@ __all__ = [
 
 from maasserver.enum import NODE_PERMISSION
 from maasserver.forms_subnet import SubnetForm
-from maasserver.models.subnet import Subnet
+from maasserver.models import (
+    Discovery,
+    RackController,
+    Subnet,
+)
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from netaddr import IPNetwork
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import IPRangeStatistics
+
+
+maaslog = get_maas_logger("subnet")
 
 
 class SubnetHandler(TimestampedModelHandler):
@@ -36,7 +45,8 @@ class SubnetHandler(TimestampedModelHandler):
             'delete',
             'get',
             'list',
-            'set_active'
+            'set_active',
+            'scan',
         ]
         listen_channels = [
             "subnet",
@@ -64,3 +74,31 @@ class SubnetHandler(TimestampedModelHandler):
         assert self.user.has_perm(
             NODE_PERMISSION.ADMIN, subnet), "Permission denied."
         subnet.delete()
+
+    def scan(self, parameters):
+        """Scan the subnet for connected neighbours.
+
+        :return: user-friendly scan results (as defined by the
+            `user_friendly_scan_results()` function).
+        """
+        # Circular imports.
+        from maasserver.api.discoveries import (
+            scan_all_rack_networks,
+            user_friendly_scan_results,
+        )
+        subnet = self.get_object(parameters)
+        self.user = reload_object(self.user)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, Discovery), "Permission denied."
+        cidr = subnet.get_ipnetwork()
+        if cidr.version != 4:
+            raise ValueError(
+                "Cannot scan subnet: only IPv4 subnets can be scanned.")
+        cidrs = [cidr]
+        if RackController.objects.filter_by_subnet_cidrs(cidrs).count() == 0:
+            raise ValueError("Subnet must be configured on a rack controller.")
+        rpc_results = scan_all_rack_networks(cidrs=[cidr])
+        maaslog.info(
+            "User '%s' initiated a neighbour discovery scan against subnet: "
+            "%s" % (self.user.username, cidr))
+        return user_friendly_scan_results(rpc_results)
