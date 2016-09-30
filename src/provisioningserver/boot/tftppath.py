@@ -98,16 +98,23 @@ def extract_metadata(metadata, params):
 
     :param metadata: contents of the maas.meta file
     :param params: A dict of path components for the image
-        (architecture, subarchitecture, release and label).
+        (architecture, subarchitecture, kflavor, release and label).
     :return: a dict of name/value metadata pairs.  Currently, only
         "subarches" is extracted.
     """
     mapping = BootImageMapping.load_json(metadata)
+    subarch = params["subarchitecture"]
+    split_subarch = subarch.split('-')
+    if len(split_subarch) > 2:
+        kflavor = split_subarch[2]
+    else:
+        kflavor = 'generic'
 
     image = ImageSpec(
         os=params["osystem"],
         arch=params["architecture"],
-        subarch=params["subarchitecture"],
+        subarch=subarch,
+        kflavor=kflavor,
         release=params["release"],
         label=params["label"],
         )

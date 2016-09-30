@@ -68,13 +68,16 @@ def patch_and_capture_env_for_download_all_image_descriptions(testcase):
 
 
 def make_image_spec(
-        os=None, arch=None, subarch=None, release=None, label=None):
+        os=None, arch=None, subarch=None, kflavor=None, release=None,
+        label=None):
     if os is None:
         os = factory.make_name('os')
     if arch is None:
         arch = factory.make_name('arch')
     if subarch is None:
         subarch = factory.make_name('subarch')
+    if kflavor is None:
+        kflavor = factory.make_name('kflavor')
     if release is None:
         release = factory.make_name('release')
     if label is None:
@@ -83,6 +86,7 @@ def make_image_spec(
         os,
         arch,
         subarch,
+        kflavor,
         release,
         label,
         )

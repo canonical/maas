@@ -107,13 +107,13 @@ class TestImagePassesFilter(MAASTestCase):
             }
 
     def test_any_image_passes_none_filter(self):
-        os, arch, subarch, release, label = make_image_spec()
+        os, arch, subarch, _, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
                 None, os, arch, subarch, release, label))
 
     def test_any_image_passes_empty_filter(self):
-        os, arch, subarch, release, label = make_image_spec()
+        os, arch, subarch, kflavor, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
                 [], os, arch, subarch, release, label))
@@ -388,7 +388,7 @@ class TestRepoDumper(MAASTestCase):
         image_specs = [
             make_image_spec(
                 os=item['os'], release=bootloader_type, arch=item['arch'],
-                subarch=subarch, label=item['label'])
+                subarch=subarch, kflavor='bootloader', label=item['label'])
             for subarch in item['subarches'].split(',')
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))

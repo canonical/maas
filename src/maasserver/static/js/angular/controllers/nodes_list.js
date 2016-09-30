@@ -518,6 +518,8 @@ angular.module('MAAS').controller('NodesListController', [
                 // hwe_kernel is optional so only include it if its specified
                 if(angular.isString($scope.tabs[tab].osSelection.hwe_kernel) &&
                    ($scope.tabs[tab].osSelection.hwe_kernel.indexOf('hwe-')
+                    >= 0 ||
+                    $scope.tabs[tab].osSelection.hwe_kernel.indexOf('ga-')
                     >= 0)) {
                     extra.hwe_kernel = $scope.tabs[tab].osSelection.hwe_kernel;
                 }

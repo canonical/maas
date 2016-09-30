@@ -263,7 +263,7 @@ class TestMain(MAASTestCase):
         # Forcing arch to amd64 causes pxelinux.0 to be installed, giving more
         # test coverage.
         self.image = make_image_spec(arch='amd64')
-        self.os, self.arch, self.subarch, \
+        self.os, self.arch, self.subarch, self.kflavor, \
             self.release, self.label = self.image
         self.repo = self.make_simplestreams_repo(self.image)
 
@@ -359,7 +359,7 @@ class TestMain(MAASTestCase):
                     'subarch': image_spec.subarch,
                     'krel': image_spec.release,
                     'label': image_spec.label,
-                    'kflavor': image_spec.subarch,
+                    'kflavor': image_spec.kflavor,
                     'version': os_release,
                     'subarches': [image_spec.subarch],
                     'release': image_spec.release,
@@ -445,13 +445,14 @@ class TestMain(MAASTestCase):
         osystem = self.os
         arch = self.arch
         subarch = self.subarch
+        kflavor = self.kflavor
         release = self.release
         label = self.label
 
         # Run the import code.
         boot_resources.main(args)
 
-        # Verify the reuslts.
+        # Verify the results.
         self.assertThat(os.path.join(self.storage, 'cache'), DirExists())
         current = os.path.join(self.storage, 'current')
         self.assertTrue(os.path.islink(current))
@@ -471,9 +472,11 @@ class TestMain(MAASTestCase):
         self.assertEqual([osystem], list(meta_data))
         self.assertEqual([arch], list(meta_data[osystem]))
         self.assertEqual([subarch], list(meta_data[osystem][arch]))
-        self.assertEqual([release], list(meta_data[osystem][arch][subarch]))
+        self.assertEqual([kflavor], list(meta_data[osystem][arch][subarch]))
         self.assertEqual(
-            [label], list(meta_data[osystem][arch][subarch][release]))
+            [release], list(meta_data[osystem][arch][subarch][kflavor]))
+        self.assertEqual(
+            [label], list(meta_data[osystem][arch][subarch][kflavor][release]))
         self.assertItemsEqual(
             [
                 'content_id',
@@ -483,7 +486,7 @@ class TestMain(MAASTestCase):
                 'version_name',
                 'subarches',
             ],
-            list(meta_data[osystem][arch][subarch][release][label]))
+            list(meta_data[osystem][arch][subarch][kflavor][release][label]))
 
     def test_failed_run_deletes_snapshot(self):
         # Patch out things that we don't want running during the test.  Patch

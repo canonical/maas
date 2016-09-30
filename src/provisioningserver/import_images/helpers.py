@@ -21,6 +21,7 @@ ImageSpec = namedtuple('ImageSpec', [
     'os',
     'arch',
     'subarch',
+    'kflavor',
     'release',
     'label',
     ])

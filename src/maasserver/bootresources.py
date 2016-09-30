@@ -483,7 +483,11 @@ class BootResourceStore(ObjectStore):
             subarch = product.get('subarch', 'generic')
             has_kflavor = (
                 kflavor not in (None, 'generic') and
-                subarch.startswith('hwe-'))
+                (
+                    subarch.startswith('hwe-') or
+                    subarch.startswith('ga-')
+                )
+            )
             if has_kflavor:
                 subarch = "%s-%s" % (subarch, kflavor)
             architecture = '%s/%s' % (arch, subarch)

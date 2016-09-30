@@ -376,39 +376,47 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
             }),
             ("Old style kernel", {
                 "string": "hwe-%s" % release['series'][0],
+                "expected": version_tuple + tuple([1]),
+            }),
+            ("GA kernel", {
+                "string": "ga-%s" % version_str,
+                "expected": version_tuple + tuple([0]),
+            }),
+            ("GA low latency kernel", {
+                "string": "ga-%s-lowlatency" % version_str,
                 "expected": version_tuple + tuple([0]),
             }),
             ("New style kernel", {
                 "string": "hwe-%s" % version_str,
-                "expected": version_tuple + tuple([0]),
+                "expected": version_tuple + tuple([1]),
             }),
             ("New style edge kernel", {
                 "string": "hwe-%s-edge" % version_str,
-                "expected": version_tuple + tuple([1]),
+                "expected": version_tuple + tuple([2]),
             }),
             ("New style low latency kernel", {
                 "string": "hwe-%s-lowlatency" % version_str,
-                "expected": version_tuple + tuple([0]),
+                "expected": version_tuple + tuple([1]),
             }),
             ("New style edge low latency kernel", {
                 "string": "hwe-%s-lowlatency-edge" % version_str,
-                "expected": version_tuple + tuple([1]),
+                "expected": version_tuple + tuple([2]),
             }),
             ("Rolling kernel", {
                 "string": "hwe-rolling",
-                "expected": tuple([999, 999, 0]),
+                "expected": tuple([999, 999, 1]),
             }),
             ("Rolling edge kernel", {
                 "string": "hwe-rolling-edge",
-                "expected": tuple([999, 999, 1]),
+                "expected": tuple([999, 999, 2]),
             }),
             ("Rolling lowlatency kernel", {
                 "string": "hwe-rolling-lowlatency",
-                "expected": tuple([999, 999, 0]),
+                "expected": tuple([999, 999, 1]),
             }),
             ("Rolling lowlatency edge kernel", {
                 "string": "hwe-rolling-lowlatency-edge",
-                "expected": tuple([999, 999, 1]),
+                "expected": tuple([999, 999, 2]),
             }),
         )
 
@@ -462,6 +470,14 @@ class TestValidateHweKernel(MAASServerTestCase):
         hwe_kernel = validate_hwe_kernel(
             'hwe-v', None, 'amd64/generic', 'ubuntu', 'trusty')
         self.assertEqual(hwe_kernel, 'hwe-v')
+
+    def test_validate_hwe_kernel_accepts_ga_kernel(self):
+        self.patch(
+            BootResource.objects,
+            'get_usable_hwe_kernels').return_value = ('ga-16.04',)
+        hwe_kernel = validate_hwe_kernel(
+            'ga-16.04', None, 'amd64/generic', 'ubuntu', 'xenial')
+        self.assertEqual(hwe_kernel, 'ga-16.04')
 
     def test_validate_hwe_kernel_fails_with_nongeneric_arch_and_kernel(self):
         exception_raised = False
@@ -630,7 +646,8 @@ class TestGetReleaseFromDB(MAASServerTestCase):
             if int(release['version'].split('.')[0]) >= 12
         ]
         release = random.choice(supported_releases)
-        subarch = "hwe-%s" % release['version'].split(' ')[0]
+        ga_or_hwe = random.choice(['hwe', 'ga'])
+        subarch = "%s-%s" % (ga_or_hwe, release['version'].split(' ')[0])
         factory.make_BootSourceCache(
             os='ubuntu',
             arch=factory.make_name('arch'),

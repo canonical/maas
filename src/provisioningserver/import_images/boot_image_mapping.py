@@ -17,11 +17,29 @@ def gen_image_spec_with_resource(os, data):
     """Generate image and resource for given operating system and data."""
     for arch in data:
         for subarch in data[arch]:
+            for kflavor in data[arch][subarch]:
+                for release in data[arch][subarch][kflavor]:
+                    for label in data[arch][subarch][kflavor][release]:
+                        image = ImageSpec(
+                            os=os, arch=arch, subarch=subarch,
+                            kflavor=kflavor, release=release, label=label)
+                        resource = data[arch][subarch][kflavor][release][label]
+                        yield image, resource
+
+
+def gen_image_spec_with_resource_legacy(os, data):
+    """Generate image and resource for given operating system and data.
+
+    Prior to 2.1 we didn't store the kflavor. This reads the old format so
+    users aren't forced to reimport all images on upgrade. 'generic' is used
+    as the kflavor as prior to 2.1 MAAS only supported generic kernels."""
+    for arch in data:
+        for subarch in data[arch]:
             for release in data[arch][subarch]:
                 for label in data[arch][subarch][release]:
                     image = ImageSpec(
                         os=os, arch=arch, subarch=subarch,
-                        release=release, label=label)
+                        kflavor='generic', release=release, label=label)
                     resource = data[arch][subarch][release][label]
                     yield image, resource
 
@@ -70,12 +88,13 @@ class BootImageMapping:
         # Keep that format.
         data = {}
         for image, resource in self.items():
-            os, arch, subarch, release, label = image
+            os, arch, subarch, kflavor, release, label = image
             data.setdefault(os, {})
             data[os].setdefault(arch, {})
             data[os][arch].setdefault(subarch, {})
-            data[os][arch][subarch].setdefault(release, {})
-            data[os][arch][subarch][release][label] = resource
+            data[os][arch][subarch].setdefault(kflavor, {})
+            data[os][arch][subarch][kflavor].setdefault(release, {})
+            data[os][arch][subarch][kflavor][release][label] = resource
         return json.dumps(data, sort_keys=True)
 
     @staticmethod
@@ -101,6 +120,11 @@ class BootImageMapping:
                     "ubuntu", data):
                 mapping.setdefault(image, resource)
         elif depth == 6:
+            for os in data:
+                for image, resource in gen_image_spec_with_resource_legacy(
+                        os, data[os]):
+                    mapping.setdefault(image, resource)
+        elif depth == 7:
             for os in data:
                 for image, resource in gen_image_spec_with_resource(
                         os, data[os]):

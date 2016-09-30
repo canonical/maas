@@ -12,7 +12,7 @@ import pipes
 import random
 import re
 import shutil
-from socket import gethostbyname
+import socket
 import subprocess
 import tempfile
 from textwrap import dedent
@@ -337,7 +337,7 @@ class TestGetConfig(PservTestCase):
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         ntp_servers_expected = [
-            server if is_ip_address(server) else gethostbyname(server)
+            server if is_ip_address(server) else socket.gethostbyname(server)
             for network in params['shared_networks']
             for subnet in network['subnets']
             for server in subnet["ntp_servers"]
@@ -518,11 +518,21 @@ class TestGetAddresses(PservTestCase):
             Equals(([address4], [address6])))
 
     def test__ignores_resolution_failures(self):
+        # Some ISPs configure their DNS to resolve to an ads page when a domain
+        # doesn't exist. This ensures resolving fails so the test passes.
+        self.patch(config, '_gen_addresses_where_possible').return_value = []
         self.assertThat(
             config._get_addresses("no-way-this-exists.maas.io"),
             Equals(([], [])))
 
     def test__logs_resolution_failures(self):
+        # Some ISPs configure their DNS to resolve to an ads page when a domain
+        # doesn't exist. This ensures resolving fails so the test passes.
+        exception = socket.gaierror()
+        exception.errno = random.choice(
+            list(config._gen_addresses_where_possible_suppress))
+        exception.strerror = '[Errno ...] ...'
+        self.patch(config, '_gen_addresses').side_effect = exception
         with FakeLogger(config.__name__) as logger:
             config._get_addresses("no-way-this-exists.maas.io")
         self.assertThat(logger.output.strip(), DocTestMatches(

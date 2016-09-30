@@ -15,6 +15,7 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     make_maas_meta,
+    make_maas_meta_legacy,
     make_maas_meta_without_os,
     set_resource,
 )
@@ -81,7 +82,9 @@ class TestBootImageMapping(MAASTestCase):
                 image.os: {
                     image.arch: {
                         image.subarch: {
-                            image.release: {image.label: resource},
+                            image.kflavor: {
+                                image.release: {image.label: resource},
+                            },
                         },
                     },
                 },
@@ -102,21 +105,29 @@ class TestBootImageMapping(MAASTestCase):
                 image.os: {
                     image.arch: {
                         image.subarch: {
-                            image.release: {image.label: resource1},
-                            other_release: {image.label: resource2},
+                            image.kflavor: {
+                                image.release: {image.label: resource1},
+                                other_release: {image.label: resource2},
+                            },
                         },
                     },
                 },
             },
             json.loads(image_dict.dump_json()))
 
+    def test_load_json_result_matches_dump_of_own_data_legacy(self):
+        # Loading the test data and dumping it again should result in
+        # identical test data.
+        mapping = BootImageMapping.load_json(make_maas_meta_legacy())
+        dumped = mapping.dump_json()
+        self.assertEqual(make_maas_meta(), dumped)
+
     def test_load_json_result_matches_dump_of_own_data(self):
         # Loading the test data and dumping it again should result in
         # identical test data.
-        test_meta_file_content = make_maas_meta()
-        mapping = BootImageMapping.load_json(test_meta_file_content)
+        mapping = BootImageMapping.load_json(make_maas_meta())
         dumped = mapping.dump_json()
-        self.assertEqual(test_meta_file_content, dumped)
+        self.assertEqual(make_maas_meta(), dumped)
 
     def test_load_json_result_of_old_data_uses_ubuntu_as_os(self):
         test_meta_file_content = make_maas_meta_without_os()

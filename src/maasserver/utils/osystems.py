@@ -283,8 +283,11 @@ def get_release_from_db(string):
     get_release_from_distro_info does."""
     bsc = BootSourceCache.objects.filter(
         (
-            Q(subarch="hwe-%s" % string) &
-            Q(release_title__startswith=string) | Q(release__startswith=string)
+            (Q(subarch="hwe-%s" % string) | Q(subarch="ga-%s" % string)) &
+            (
+                Q(release_title__startswith=string) |
+                Q(release__startswith=string)
+            )
         ) |
         Q(release__startswith=string) |
         Q(release_title__startswith=string)).first()
@@ -307,15 +310,18 @@ def get_release_version_from_string(string):
     Takes a string input represneting an Ubuntu release, version, or hwe_kernel
     and returns a version tuple. The return value is a three integer tuple
     representing an Ubuntu major, minor values(e.g 16, 4 for Xenial) and a
-    weight. The weight is used to give edge kernels a higher value when
-    compared to a non-edge kernel. Rolling kernels and releases are given a
+    weight. The weight is used to give hwe and edge kernels a higher value when
+    compared to a ga kernels. Rolling kernels and releases are given a
     very high value (999, 999) to always be the higher value during comparison.
 
-    Input: xenial, 16.04, hwe-16.04, hwe-16.04-lowlatency
+    Input: ga-16.04, ga-16.04-lowlatency
     Output: (16, 4, 0)
 
-    Input: hwe-16.04-edge
+    Input: xenial, 16.04, hwe-16.04, hwe-16.04-lowlatency
     Output: (16, 4, 1)
+
+    Input: hwe-16.04-edge
+    Output: (16, 4, 2)
 
     Input: rolling, hwe-rolling, hwe-rolling-lowlatency
     Output: (999, 999, 0)
@@ -328,28 +334,31 @@ def get_release_version_from_string(string):
     if parts_len == 1:
         # Just the release name, e.g xenial or 16.04
         release = string
-        edge = False
+        weight = 0
     elif parts_len == 2:
         # hwe kernel, e.g hwe-x or hwe-16.04
         release = parts[1]
-        edge = False
+        weight = 0
     elif parts_len == 3:
         # hwe edge or lowlatency kernel,
         # e.g hwe-16.04-edge or hwe-16.04-lowlatency
         release = parts[1]
         if parts[2] == 'edge':
-            edge = True
+            weight = 1
         else:
-            edge = False
+            weight = 0
     elif parts_len == 4:
         # hwe edge lowlatency kernel, e.g hwe-16.04-lowlatency-edge
         release = parts[1]
         if parts[3] == 'edge':
-            edge = True
+            weight = 1
         else:
-            edge = False
+            weight = 0
     else:
         raise ValueError("Unknown release or kernel %s!" % string)
+
+    if parts[0] == 'hwe':
+        weight += 1
 
     if release == 'rolling':
         # Rolling kernels are always the latest
@@ -367,12 +376,8 @@ def get_release_version_from_string(string):
         version = ubuntu_release['version'].split(' ')[0]
         # Convert the version into a list of ints
         version = [int(seg) for seg in version.split('.')]
-    if edge:
-        # Ensure edge kernels are viewed as newer than non-edge
-        version += [1]
-    else:
-        version += [0]
-    return tuple(version)
+
+    return tuple(version + [weight])
 
 
 def release_a_newer_than_b(a, b):
@@ -395,6 +400,9 @@ def validate_hwe_kernel(
     os/release/architecture combination, and that the selected hwe_kernel is >=
     min_hwe_kernel. If no hwe_kernel is selected one will be chosen.
     """
+    def validate_kernel_str(kstr):
+        return (kstr.startswith('hwe-') or kstr.startswith('ga-'))
+
     if (not osystem or
        (not architecture or architecture == '') or
        (not distro_series or distro_series == '')):
@@ -409,16 +417,18 @@ def validate_hwe_kernel(
 
     arch, subarch = architecture.split('/')
 
-    if (subarch != 'generic' and
-        ((hwe_kernel and hwe_kernel.startswith('hwe-')) or
-         (min_hwe_kernel and min_hwe_kernel.startswith('hwe-')))):
+    if (
+            subarch != 'generic' and
+            (
+                (hwe_kernel and validate_kernel_str(hwe_kernel)) or
+                (min_hwe_kernel and validate_kernel_str(min_hwe_kernel)))):
         raise ValidationError(
             'Subarchitecture(%s) must be generic when setting hwe_kernel.' %
             subarch)
 
     os_release = osystem + '/' + distro_series
 
-    if hwe_kernel and hwe_kernel.startswith('hwe-'):
+    if hwe_kernel and validate_kernel_str(hwe_kernel):
         usable_kernels = BootResource.objects.get_usable_hwe_kernels(
             os_release, arch)
         if hwe_kernel not in usable_kernels:
@@ -428,13 +438,13 @@ def validate_hwe_kernel(
         if not release_a_newer_than_b(hwe_kernel, distro_series):
             raise ValidationError(
                 '%s is too old to use on %s.' % (hwe_kernel, os_release))
-        if((min_hwe_kernel and min_hwe_kernel.startswith('hwe-')) and
+        if((min_hwe_kernel and validate_kernel_str(min_hwe_kernel)) and
            (not release_a_newer_than_b(hwe_kernel, min_hwe_kernel))):
             raise ValidationError(
                 'hwe_kernel(%s) is older than min_hwe_kernel(%s).' %
                 (hwe_kernel, min_hwe_kernel))
         return hwe_kernel
-    elif(min_hwe_kernel and min_hwe_kernel.startswith('hwe-')):
+    elif(min_hwe_kernel and validate_kernel_str(min_hwe_kernel)):
         kernel_parts = min_hwe_kernel.split('-')
         if len(kernel_parts) == 2:
             kflavor = 'generic'

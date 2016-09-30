@@ -115,12 +115,14 @@ class BootResourceManager(Manager):
             if (resource_set is not None and
                     resource_set.commissionable and
                     resource_set.xinstallable):
-                if 'hwe-' not in resource.architecture:
+                if (
+                        'hwe-' not in resource.architecture and
+                        'ga-' not in resource.architecture):
                     arches.add(resource.architecture)
                 if 'subarches' in resource.extra:
                     arch, _ = resource.split_arch()
                     for subarch in resource.extra['subarches'].split(','):
-                        if 'hwe-' not in subarch:
+                        if 'hwe-' not in subarch and 'ga-' not in subarch:
                             arches.add('%s/%s' % (arch, subarch.strip()))
         return sorted(arches)
 
@@ -230,6 +232,8 @@ class BootResourceManager(Manager):
     def get_usable_hwe_kernels(
             self, name=None, architecture=None, kflavor=None):
         """Return the set of usable kernels for architecture and release."""
+        from maasserver.utils.osystems import get_release_version_from_string
+
         if not name:
             name = ''
         if not architecture:
@@ -245,11 +249,11 @@ class BootResourceManager(Manager):
                not resource_set.xinstallable):
                 continue
             subarch = resource.split_arch()[1]
-            if subarch.startswith("hwe-"):
+            if subarch.startswith("hwe-") or subarch.startswith("ga-"):
                 kernels.add(subarch)
             if "subarches" in resource.extra:
                 for subarch in resource.extra["subarches"].split(","):
-                    if subarch.startswith("hwe-"):
+                    if subarch.startswith("hwe-") or subarch.startswith("ga-"):
                         if kflavor is None:
                             kernels.add(subarch)
                         else:
@@ -265,7 +269,7 @@ class BootResourceManager(Manager):
         # with the first letter of release. This switched in Xenial so this
         # preserves the chronological order of the kernels.
         return sorted(
-            kernels, key=lambda k: (k.replace('hwe-', '')[0].isdigit(), k))
+            kernels, key=lambda k: get_release_version_from_string(k))
 
     def get_kpackage_for_node(self, node):
         """Return the kernel package name for the kernel specified."""

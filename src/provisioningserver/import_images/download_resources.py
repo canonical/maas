@@ -183,8 +183,9 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
     return extracted_files
 
 
-def link_resources(snapshot_path, links, osystem, arch, release, label,
-                   subarches, bootloader_type=None):
+def link_resources(
+        snapshot_path, links, osystem, arch, release, label,
+        subarches, bootloader_type=None):
     """Hardlink entries in the snapshot directory to resources in the cache.
 
     This creates file entries in the snapshot directory for boot resources

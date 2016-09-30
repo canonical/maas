@@ -74,6 +74,7 @@ class TestTFTPPath(MAASTestCase):
             os=image_params["osystem"],
             arch=image_params["architecture"],
             subarch=image_params["subarchitecture"],
+            kflavor="generic",
             release=image_params["release"], label=image_params["label"])
         mapping = BootImageMapping()
         mapping.setdefault(image, image_resource)
@@ -276,7 +277,7 @@ class TestTFTPPath(MAASTestCase):
             subarches=factory.make_name("subarch"),
             other_item=factory.make_name("other"),
             )
-        image = make_image_spec()
+        image = make_image_spec(kflavor='generic')
         mapping = set_resource(image_spec=image, resource=resource)
         metadata = mapping.dump_json()
 
@@ -315,6 +316,32 @@ class TestTFTPPath(MAASTestCase):
             "label": image.label,
             }
         self.assertEqual({}, extract_metadata(metadata, params))
+
+    def test_extract_metadata_parses_kflavor(self):
+        resource = dict(
+            subarches=factory.make_name("subarch"),
+            other_item=factory.make_name("other"),
+            )
+        image = make_image_spec(
+            subarch='hwe-16.04-lowlatency', kflavor='lowlatency')
+        mapping = set_resource(image_spec=image, resource=resource)
+        metadata = mapping.dump_json()
+
+        # Lack of consistency across maas in naming arch vs architecture
+        # and subarch vs subarchitecture means I can't just do a simple
+        # dict parameter expansion here.
+        params = {
+            "osystem": image.os,
+            "architecture": image.arch,
+            "subarchitecture": image.subarch,
+            "release": image.release,
+            "label": image.label,
+            }
+        extracted_data = extract_metadata(metadata, params)
+
+        # We only expect the supported_subarches key from the resource data.
+        expected = dict(supported_subarches=resource["subarches"])
+        self.assertEqual(expected, extracted_data)
 
     def _make_path(self):
         osystem = factory.make_name("os")
@@ -400,8 +427,8 @@ class TestTFTPPath(MAASTestCase):
 
         # Create some maas.meta content.
         image = ImageSpec(
-            os=osystem, arch=arch, subarch=subarch, release=release,
-            label=label)
+            os=osystem, arch=arch, subarch=subarch, kflavor='generic',
+            release=release, label=label)
         image_resource = dict(subarches=factory.make_name("subarches"))
         mapping = BootImageMapping()
         mapping.setdefault(image, image_resource)

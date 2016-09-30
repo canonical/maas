@@ -791,7 +791,7 @@ def create_machine(request):
             # assume 'generic'.
             altered_query_data['architecture'] += '/generic'
 
-    hwe_regex = re.compile('hwe-.+')
+    hwe_regex = re.compile('(hwe|ga)-.+')
     has_arch_with_hwe = (
         given_arch and hwe_regex.search(given_arch) is not None)
     has_subarch_with_hwe = (

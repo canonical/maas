@@ -84,10 +84,12 @@ class RepoDumper(BasicMirrorWriter):
         subarches = item.get('subarches', 'generic')
         if item.get('bootloader-type') is None:
             release = item['release']
+            kflavor = item.get('kflavor', 'generic')
         else:
             release = item['bootloader-type']
+            kflavor = 'bootloader'
         label = item['label']
-        base_image = ImageSpec(os, arch, None, release, label)
+        base_image = ImageSpec(os, arch, None, kflavor, release, label)
         compact_item = clean_up_repo_item(item)
         for subarch in subarches.split(','):
             self.boot_images_dict.setdefault(
@@ -102,8 +104,8 @@ class RepoDumper(BasicMirrorWriter):
         if os == 'ubuntu' and item.get('version') is not None:
             # HWE resources with generic, should map to the HWE that ships with
             # that release. Starting with Xenial kernels changed from using the
-            # naming format hwe-<letter> to hwe-<release>. Look for both.
-            hwe_archs = ["hwe-%s" % item['version'], "hwe-%s" % release[0]]
+            # naming format hwe-<letter> to ga-<version>. Look for both.
+            hwe_archs = ["ga-%s" % item['version'], "hwe-%s" % release[0]]
             if subarch in hwe_archs and 'generic' in subarches:
                 self.boot_images_dict.set(
                     base_image._replace(subarch='generic'), compact_item)
@@ -183,7 +185,8 @@ def boot_merge(destination, additions, filters=None):
         them match any value.
     """
     for image, resource in additions.items():
-        os, arch, subarch, release, label = image
+        # Cannot filter by kflavor so it is excluded in the filtering.
+        os, arch, subarch, _, release, label = image
         if image_passes_filter(
                 filters, os, arch, subarch, release, label):
             # Do not override an existing entry with the same

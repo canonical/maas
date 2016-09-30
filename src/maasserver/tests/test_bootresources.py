@@ -801,7 +801,7 @@ class TestBootResourceStore(MAASServerTestCase):
     def test_get_or_create_boot_resource_adds_kflavor_to_subarch(self):
         kflavor = factory.make_name('kflavor')
         _, architecture, product = make_product(
-            kflavor=kflavor, subarch='hwe-16.04')
+            kflavor=kflavor, subarch=random.choice(['hwe-16.04', 'ga-16.04']))
         store = BootResourceStore()
         resource = store.get_or_create_boot_resource(product)
         self.assertEqual(architecture, reload_object(resource).architecture)
