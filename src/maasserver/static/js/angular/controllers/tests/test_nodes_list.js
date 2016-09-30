@@ -763,8 +763,28 @@ describe("NodesListController", function() {
                 });
             });
 
-        });
+            if(tab === "nodes") {
 
+                // Only used on nodes tab.
+                describe("showSpinner", function() {
+
+                    it("returns false/true based on status codes", function() {
+                        var STATUSES = [1, 9, 12, 14, 17, 19];
+                        var i, controller = makeController();
+                        for(i = 0; i < 20; i++) {
+                            var node = {
+                                status_code: i
+                            };
+                            var expected = false;
+                            if(STATUSES.indexOf(i) > -1) {
+                                expected = true;
+                            }
+                            expect($scope.showSpinner(node)).toBe(expected);
+                        }
+                    });
+                });
+            }
+        });
     });
 
     angular.forEach(["nodes", "devices", "controllers"], function(tab) {

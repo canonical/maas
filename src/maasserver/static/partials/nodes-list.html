@@ -702,6 +702,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <a href="" class="u-align--center" data-ng-click="sortTable('power_state', 'nodes')" data-ng-class="{'is-sorted': tabs.nodes.predicate === 'power_state', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Power</a>
                         </th>
+                        <th class="table-col--3"></th>
                         <th>
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <a href="" data-ng-click="sortTable('status', 'nodes')" data-ng-class="{'is-sorted': tabs.nodes.predicate === 'status', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Status</a>
@@ -750,6 +751,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <td class="powerstate u-align--center">
                             <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span>
                         </td>
+                        <td class="table-col--3"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin"></i></td>
                         <td class="status">{$ node.status $}</td>
                         <td class="table-col--10">{$ node.owner $}</td>
                         <td class="u-align--right">{$ node.cpu_count $}</td>

@@ -21,6 +21,16 @@ angular.module('MAAS').controller('NodesListController', [
             "static": "Static"
         };
 
+        // Statuses that should show spinner.
+        var SPINNER_STATUSES = [
+            1,   // commissioning
+            9,   // deploying
+            12,  // releasing
+            14,  // disk erasing
+            17,  // entering rescue mode
+            19   // exiting rescue mode
+        ];
+
         // Set title and page.
         $rootScope.title = "Machines";
         $rootScope.page = "nodes";
@@ -349,6 +359,11 @@ angular.module('MAAS').controller('NodesListController', [
             updateAllViewableChecked("controllers");
             removeEmptyFilter("controllers");
         });
+
+        // Return true if spinner should be shown.
+        $scope.showSpinner = function(node) {
+            return SPINNER_STATUSES.indexOf(node.status_code) > -1;
+        };
 
         // Shows the current selection.
         $scope.showSelected = function(tab) {
