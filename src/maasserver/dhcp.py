@@ -250,6 +250,7 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
     rack_addresses = StaticIPAddress.objects.filter(
         interface__enabled=True, interface__node=rack, alloc_type__in={
             IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED})
+    rack_addresses = rack_addresses.exclude(subnet__isnull=True)
     rack_addresses = rack_addresses.order_by(
         "subnet__space_id", "subnet__cidr", "ip")
     rack_addresses = rack_addresses.values_list(

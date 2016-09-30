@@ -632,6 +632,17 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
                 (space.id, subnet.get_ipnetwork().version): address.ip,
             }))
 
+    def test__handles_blank_subnet(self):
+        rack = factory.make_RackController()
+        ip = factory.make_ip_address()
+        interface = factory.make_Interface(node=rack)
+        factory.make_StaticIPAddress(
+            interface=interface, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            ip=ip)
+
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({}))
+
     def test__returns_dict_grouped_by_space_and_address_family(self):
         rack = factory.make_RackController()
         space1 = factory.make_Space()
