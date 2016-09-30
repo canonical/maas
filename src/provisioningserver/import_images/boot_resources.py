@@ -275,8 +275,16 @@ def import_images(sources):
 
         product_mapping = map_products(image_descriptions)
 
-        snapshot_path = download_all_boot_resources(
-            sources, storage, product_mapping)
+        try:
+            snapshot_path = download_all_boot_resources(
+                sources, storage, product_mapping)
+        except:
+            # Cleanup snapshots and cache since download failed.
+            maaslog.warning(
+                "Unable to import boot images; cleaning up failed snapshot "
+                "and cache.")
+            cleanup_snapshots_and_cache(storage)
+            raise
 
     maaslog.info("Writing boot image metadata and iSCSI targets.")
     write_snapshot_metadata(snapshot_path, meta_file_content)

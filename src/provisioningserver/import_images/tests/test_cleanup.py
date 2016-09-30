@@ -40,6 +40,11 @@ class TestCleanup(MAASTestCase):
             os.link(cache_path, link_path)
         return cache_path
 
+    def test_list_old_snapshots_returns_all(self):
+        storage = self.make_dir()
+        snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
+        self.assertItemsEqual(snapshots, cleanup.list_old_snapshots(storage))
+
     def test_list_old_snapshots_returns_all_but_current_directory(self):
         storage = self.make_dir()
         snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
@@ -61,6 +66,11 @@ class TestCleanup(MAASTestCase):
             if os.path.exists(snapshot)
             ]
         self.assertEqual([], remaining_snapshots)
+
+    def test_list_unused_cache_files_returns_empty(self):
+        storage = self.make_dir()
+        self.assertItemsEqual(
+            [], cleanup.list_unused_cache_files(storage))
 
     def test_list_unused_cache_files_returns_all_files_nlink_equal_one(self):
         storage = self.make_dir()

@@ -56,6 +56,7 @@ from testtools.content_type import UTF8_TEXT
 from testtools.matchers import (
     DirExists,
     FileExists,
+    Not,
 )
 import yaml
 
@@ -483,6 +484,30 @@ class TestMain(MAASTestCase):
                 'subarches',
             ],
             list(meta_data[osystem][arch][subarch][release][label]))
+
+    def test_failed_run_deletes_snapshot(self):
+        # Patch out things that we don't want running during the test.  Patch
+        # at a low level, so that we exercise all the function calls that a
+        # unit test might not put to the test.
+        self.patch_maaslog()
+        self.patch(boot_resources, 'call_and_check')
+        self.patch(boot_resources, "service_monitor")
+
+        args = self.make_working_args()
+
+        # Cause the import to fail.
+        exception_type = factory.make_exception_type()
+        mock_download = self.patch(
+            boot_resources, "download_all_boot_resources")
+        mock_download.side_effect = exception_type()
+
+        # Run the import code.
+        self.assertRaises(exception_type, boot_resources.main, args)
+
+        # Verify the reuslts.
+        self.assertThat(os.path.join(self.storage, 'cache'), Not(DirExists()))
+        self.assertThat(
+            os.path.join(self.storage, 'current'), Not(DirExists()))
 
     def test_warns_if_no_sources_selected(self):
         self.patch_maaslog()
