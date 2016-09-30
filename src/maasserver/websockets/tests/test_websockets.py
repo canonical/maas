@@ -50,10 +50,19 @@ from twisted.web.server import (
 )
 from twisted.web.test.test_web import (
     DummyChannel,
-    DummyRequest,
+    DummyRequest as DummyRequestBase,
 )
 from zope.interface import implementer
 from zope.interface.verify import verifyObject
+
+
+class DummyRequest(DummyRequestBase):
+
+    content = None
+
+    def _cleanup(self):
+        """Called to cleanup the request."""
+        pass
 
 
 class TestFrameHelpers(MAASTestCase):

@@ -719,6 +719,24 @@ class WebSocketsResource(object):
             transport.protocol = protocol
         protocol.makeConnection(transport)
 
+        # Starting with Twisted 16.3+ `_cleanup` must be called on the request
+        # so the socket is placed back into the reactor. `_cleanup` has always
+        # existed, but was not required to be called until Twisted 16.3+.
+        # `_cleanup` in Twisted 16.3+ checks to ensure that if content is None
+        # to not call close, in previous versions it does not. To make this
+        # code work on both all Twisted versions we must set content to
+        # EmptyContent so an `AttributeError` is not raied when the content is
+        # None. Only then can `_cleanup` be called safely. `finalize` also
+        # exists on the request and is actually the public API, but this
+        # method cannot be called because it will write invalid content to the
+        # socket which will break the websocket connection.
+        if request.content is None:
+            class EmptyContent:
+                def close(*args, **kwargs):
+                    pass
+            request.content = EmptyContent()
+        request._cleanup()
+
         return NOT_DONE_YET
 
 
