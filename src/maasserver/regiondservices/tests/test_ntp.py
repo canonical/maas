@@ -90,16 +90,16 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
     def test__tryUpdate_updates_ntp_server(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
         configuration = yield deferToDatabase(self.make_example_configuration)
-        configure = self.patch_autospec(ntp, "configure")
+        configure_region = self.patch_autospec(ntp, "configure_region")
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
-        self.assertThat(configure, MockCalledOnceWith(
+        self.assertThat(configure_region, MockCalledOnceWith(
             configuration.references, configuration.peers))
         self.assertThat(restartService, MockCalledOnceWith("ntp"))
         # If the configuration has not changed then a second call to
-        # `_tryUpdate` does not result in another call to `configure`.
+        # `_tryUpdate` does not result in another call to `configure_region`.
         yield service._tryUpdate()
-        self.assertThat(configure, MockCalledOnceWith(
+        self.assertThat(configure_region, MockCalledOnceWith(
             configuration.references, configuration.peers))
         self.assertThat(restartService, MockCalledOnceWith("ntp"))
 

@@ -116,16 +116,16 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
         rpc_service, _ = yield prepareRegionForGetControllerType(self)
         servers = {c.address[0] for c in rpc_service.getAllClients()}
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
-        configure = self.patch_autospec(ntp, "configure")
+        configure_rack = self.patch_autospec(ntp, "configure_rack")
         restartService = self.patch_autospec(service_monitor, "restartService")
 
         yield service._tryUpdate()
-        self.assertThat(configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
         self.assertThat(restartService, MockCalledOnceWith("ntp"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure`.
         yield service._tryUpdate()
-        self.assertThat(configure, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
         self.assertThat(restartService, MockCalledOnceWith("ntp"))
 
     @inlineCallbacks
@@ -160,7 +160,7 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
         self.useFixture(MAASRootFixture())
         rpc_service, _ = yield prepareRegionForGetControllerType(self, True)
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
-        self.patch_autospec(ntp, "configure")  # No-op configuration.
+        self.patch_autospec(ntp, "configure_rack")  # No-op configuration.
 
         # There is no most recently applied configuration.
         self.assertThat(service._configuration, Is(None))
@@ -192,7 +192,7 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
     @inlineCallbacks
     def test__tryUpdate_logs_errors_from_broken_method(self):
         rpc_service, _ = yield prepareRegionForGetControllerType(self)
-        self.patch_autospec(ntp, "configure")  # No-op configuration.
+        self.patch_autospec(ntp, "configure_rack")  # No-op configuration.
 
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         broken_method = self.patch_autospec(service, self.method)

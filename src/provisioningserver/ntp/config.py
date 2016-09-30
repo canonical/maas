@@ -4,9 +4,11 @@
 """NTP service configuration."""
 
 __all__ = [
-    "configure",
+    "configure_rack",
+    "configure_region",
 ]
 
+from functools import partial
 from itertools import (
     dropwhile,
     groupby,
@@ -25,7 +27,7 @@ _ntp_conf_name = "ntp.conf"
 _ntp_maas_conf_name = "ntp/maas.conf"
 
 
-def configure(servers, peers):
+def configure(servers, peers, offset):
     """Configure the local NTP server with the given time references.
 
     This writes new ``ntp.conf`` and ``ntp.maas.conf`` files, using ``sudo``
@@ -33,13 +35,27 @@ def configure(servers, peers):
 
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
         -- to use as time references.
+    :param peers: An iterable of peer addresses -- IPv4, IPv6, hostnames -- to
+        use as time references.
+    :param offset: A relative stratum within MAAS's world. A region controller
+        would be 0 and a rack controller would be 1.
     """
-    ntp_maas_conf = _render_ntp_maas_conf(servers, peers).encode("ascii")
+    ntp_maas_conf = _render_ntp_maas_conf(servers, peers, offset)
     ntp_maas_conf_path = get_tentative_path("etc", _ntp_maas_conf_name)
-    sudo_write_file(ntp_maas_conf_path, ntp_maas_conf, mode=0o644)
-    ntp_conf = _render_ntp_conf(ntp_maas_conf_path).encode("ascii")
+    sudo_write_file(
+        ntp_maas_conf_path,
+        ntp_maas_conf.encode("ascii"),
+        mode=0o644)
+    ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
     ntp_conf_path = get_tentative_path("etc", _ntp_conf_name)
-    sudo_write_file(ntp_conf_path, ntp_conf, mode=0o644)
+    sudo_write_file(
+        ntp_conf_path,
+        ntp_conf.encode("ascii"),
+        mode=0o644)
+
+
+configure_region = partial(configure, offset=0)
+configure_rack = partial(configure, offset=1)
 
 
 def _render_ntp_conf(includefile):
@@ -66,17 +82,25 @@ def _render_ntp_conf_from_source(lines, includefile):
     yield "includefile %s\n" % includefile
 
 
-def _render_ntp_maas_conf(servers, peers):
+def _render_ntp_maas_conf(servers, peers, offset):
     """Render ``ntp.maas.conf`` for the given time references.
 
     :param servers: An iterable of server addresses -- IPv4, IPv6, hostnames
         -- to use as time references.
+    :param peers: An iterable of peer addresses -- IPv4, IPv6, hostnames -- to
+        use as time references.
+    :param offset: A relative stratum used when calculating the stratum for
+        orphan mode (see http://support.ntp.org/bin/view/Support/OrphanMode).
     """
     lines = ["# MAAS NTP configuration."]
     servers = map(_normalise_address, servers)
-    lines.extend("server %s" % server for server in servers)
+    lines.extend(
+        "%s %s iburst" % (
+            ("server" if isinstance(server, IPAddress) else "pool"), server)
+        for server in servers)
     peers = map(_normalise_address, peers)
     lines.extend("peer %s" % peer for peer in peers)
+    lines.append("tos orphan {:d}".format(offset + 8))
     lines.append("")  # Add newline at end.
     return "\n".join(lines)
 

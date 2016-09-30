@@ -17,7 +17,7 @@ from maasserver.routablepairs import find_addresses_between_nodes
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.ntp.config import configure
+from provisioningserver.ntp.config import configure_region
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import (
     callOut,
@@ -106,7 +106,7 @@ class RegionNetworkTimeProtocolService(TimerService):
             `_getConfiguration`.
         """
         d = deferToThread(
-            configure, configuration.references, configuration.peers)
+            configure_region, configuration.references, configuration.peers)
         d.addCallback(
             callOut, service_monitor.restartService, "ntp")
         return d

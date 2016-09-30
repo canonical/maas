@@ -10,7 +10,7 @@ __all__ = [
 from datetime import timedelta
 
 import attr
-from provisioningserver.ntp.config import configure
+from provisioningserver.ntp.config import configure_rack
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.region import GetControllerType
 from provisioningserver.service_monitor import service_monitor
@@ -98,7 +98,7 @@ class RackNetworkTimeProtocolService(TimerService):
             `_getConfiguration`.
         """
         if configuration.is_rack and not configuration.is_region:
-            d = deferToThread(configure, configuration.references, ())
+            d = deferToThread(configure_rack, configuration.references, ())
             d.addCallback(callOut, service_monitor.restartService, "ntp")
             return d
 

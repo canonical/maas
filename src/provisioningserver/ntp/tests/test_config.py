@@ -5,6 +5,9 @@
 
 __all__ = []
 
+from functools import partial
+from itertools import chain
+from random import randrange
 import re
 
 from maastesting.factory import factory
@@ -15,6 +18,9 @@ from provisioningserver.ntp import config
 from provisioningserver.path import get_path
 from testtools.matchers import (
     Equals,
+    Is,
+    IsInstance,
+    MatchesStructure,
     StartsWith,
 )
 
@@ -25,20 +31,34 @@ def read_configuration(path):
 
 
 def extract_servers_and_pools(configuration):
+    return [
+        address for _, address, _ in
+        extract_servers_and_pools_full(configuration)
+    ]
+
+
+def extract_servers_and_pools_full(configuration):
     return re.findall(
-        r" ^ \s* (?: server | pool ) \s+ (.+) $ ", configuration,
-        re.VERBOSE | re.MULTILINE)
+        r"^ *(server|pool) +(\S+)(?: +([^\r\n]+))?$",
+        configuration, re.MULTILINE)
 
 
 def extract_peers(configuration):
+    return [
+        address for _, address, _ in
+        extract_peers_full(configuration)
+    ]
+
+
+def extract_peers_full(configuration):
     return re.findall(
-        r" ^ \s* peer \s+ (.+) $ ", configuration,
-        re.VERBOSE | re.MULTILINE)
+        r"^ *(peer) +(\S+)(?: +([^\r\n]+))?$",
+        configuration, re.MULTILINE)
 
 
 def extract_included_files(configuration):
     return re.findall(
-        r" ^ \s* includefile \s+ (.*) $ ", configuration,
+        r" ^ \s* includefile \s+ (\S*) $ ", configuration,
         re.VERBOSE | re.MULTILINE)
 
 
@@ -60,7 +80,8 @@ class TestConfigure(MAASTestCase):
             factory.make_ipv6_address(),
             factory.make_hostname(),
         ]
-        config.configure(servers, peers)
+        offset = randrange(0, 5)
+        config.configure(servers, peers, offset)
         ntp_conf_path = get_path("etc", config._ntp_conf_name)
         ntp_maas_conf_path = get_path("etc", config._ntp_maas_conf_name)
         ntp_conf = read_configuration(ntp_conf_path)
@@ -74,6 +95,28 @@ class TestConfigure(MAASTestCase):
             extract_servers_and_pools(ntp_maas_conf), Equals(servers))
         self.assertThat(
             extract_peers(ntp_maas_conf), Equals(peers))
+        self.assertThat(
+            extract_tos_options(ntp_maas_conf),
+            Equals(["orphan", str(offset + 8)]))
+
+    def test_configure_region_is_alias(self):
+        self.assertThat(config.configure_region, IsInstance(partial))
+        self.assertThat(
+            config.configure_region, MatchesStructure(
+                func=Is(config.configure), args=Equals(()),
+                keywords=Equals({"offset": 0})))
+
+    def test_configure_rack_is_alias(self):
+        self.assertThat(config.configure_rack, IsInstance(partial))
+        self.assertThat(
+            config.configure_rack, MatchesStructure(
+                func=Is(config.configure), args=Equals(()),
+                keywords=Equals({"offset": 1})))
+
+
+def extract_tos_options(configuration):
+    commands = re.findall(r"^ *tos +([^\r\n]+)$", configuration, re.MULTILINE)
+    return list(chain.from_iterable(map(str.split, commands)))
 
 
 class TestRenderNTPConfFromSource(MAASTestCase):
@@ -152,11 +195,17 @@ class TestRenderNTPMAASConf(MAASTestCase):
             factory.make_ipv6_address(),
             factory.make_hostname(),
         ]
-        ntp_maas_conf = config._render_ntp_maas_conf(servers, [])
+        ntp_maas_conf = config._render_ntp_maas_conf(servers, [], 0)
         self.assertThat(ntp_maas_conf, StartsWith(
             '# MAAS NTP configuration.\n'))
-        servers_or_pools = extract_servers_and_pools(ntp_maas_conf)
-        self.assertThat(servers_or_pools, Equals(servers))
+        servers_or_pools = extract_servers_and_pools_full(ntp_maas_conf)
+        # Hostnames are rendered as `pool` commands so that all IP addresses
+        # resolved via DNS are included in clock selection.
+        self.assertThat(servers_or_pools, Equals([
+            ("server", servers[0], "iburst"),
+            ("server", servers[1], "iburst"),
+            ("pool", servers[2], "iburst"),
+        ]))
 
     def test_renders_the_given_peers(self):
         peers = [
@@ -164,11 +213,12 @@ class TestRenderNTPMAASConf(MAASTestCase):
             factory.make_ipv6_address(),
             factory.make_hostname(),
         ]
-        ntp_maas_conf = config._render_ntp_maas_conf([], peers)
+        ntp_maas_conf = config._render_ntp_maas_conf([], peers, 0)
         self.assertThat(ntp_maas_conf, StartsWith(
             '# MAAS NTP configuration.\n'))
-        observed_peers = extract_peers(ntp_maas_conf)
-        self.assertThat(observed_peers, Equals(peers))
+        observed_peers = extract_peers_full(ntp_maas_conf)
+        self.assertThat(observed_peers, Equals(
+            [("peer", peer, "") for peer in peers]))
 
     def test_renders_ipv6_mapped_ipv4_addresses_as_plain_ipv4(self):
         server_as_ipv4 = factory.make_ipv4_address()
@@ -176,11 +226,18 @@ class TestRenderNTPMAASConf(MAASTestCase):
         peer_as_ipv4 = factory.make_ipv4_address()
         peer_as_ipv6 = str(IPAddress(peer_as_ipv4).ipv6())
         ntp_maas_conf = config._render_ntp_maas_conf(
-            [server_as_ipv6], [peer_as_ipv6])
+            [server_as_ipv6], [peer_as_ipv6], 0)
         observed_servers = extract_servers_and_pools(ntp_maas_conf)
         self.assertThat(observed_servers, Equals([server_as_ipv4]))
         observed_peers = extract_peers(ntp_maas_conf)
         self.assertThat(observed_peers, Equals([peer_as_ipv4]))
+
+    def test_configures_orphan_mode(self):
+        offset = randrange(0, 5)
+        ntp_maas_conf = config._render_ntp_maas_conf([], [], offset)
+        self.assertThat(
+            extract_tos_options(ntp_maas_conf),
+            Equals(["orphan", str(offset + 8)]))
 
 
 example_ntp_conf = """\
