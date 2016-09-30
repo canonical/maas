@@ -15,7 +15,6 @@ from datetime import timedelta
 import json
 from json.decoder import JSONDecodeError
 import os
-from pprint import pformat
 import re
 
 from provisioningserver.config import is_dev_environment
@@ -542,8 +541,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         # If the monitoring state has changed, we need to potentially start
         # or stop some services.
         if self._monitoring_state != monitoring_state:
-            state = pformat(monitoring_state)
-            log.msg("New interface monitoring state: \n%s" % state)
+            log.msg("New interface monitoring state: %r" % monitoring_state)
             self._configureNeighbourDiscovery(interfaces, monitoring_state)
             self._configureMDNS(monitoring_state)
             self._monitoring_state = monitoring_state
@@ -575,13 +573,13 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         new_interfaces = monitored_interfaces.difference(self._monitored)
         deleted_interfaces = self._monitored.difference(monitored_interfaces)
         if len(new_interfaces) > 0:
-            log.msg("Starting neighbour discovery for interfaces: %s" % (
-                pformat(new_interfaces)))
+            log.msg("Starting neighbour discovery for interfaces: %r" % (
+                new_interfaces))
             self._startNeighbourDiscoveryServices(new_interfaces)
         if len(deleted_interfaces) > 0:
             log.msg(
-                "Stopping neighbour discovery for interfaces: %s" % (
-                    pformat(deleted_interfaces)))
+                "Stopping neighbour discovery for interfaces: %r" % (
+                    deleted_interfaces))
             self._stopNeighbourDiscoveryServices(deleted_interfaces)
         self._monitored = monitored_interfaces
 
