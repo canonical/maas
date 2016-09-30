@@ -161,7 +161,7 @@
                 <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isDeployError('nodes')">
                     {$ tabs.nodes.selectedItems.length $}
                     <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                    cannot be {$ tabs.nodes.actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                    cannot be {$ tabs.nodes.actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="#/images">images page</a>.
                 </p>
                 <p class="page-header__message page-header__message--error ng-hide" data-ng-show="isSSHKeyError('nodes')">
                     {$ tabs.nodes.selectedItems.length $}
@@ -311,7 +311,7 @@
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="architectures.length">
                 <p class="page-header__message page-header__message--error">
-                    Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="images">images page</a>.
+                    Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="#/images">images page</a>.
                 </p>
             </section>
         </div>
