@@ -423,7 +423,7 @@ CONFIG_ITEMS = {
             'label': (
                 "Erase nodes' disks prior to releasing."),
             'help_text': (
-                "Forces users to always disk erase when releasing.")
+                "Forces users to always erase disks when releasing.")
         }
     },
     'disk_erase_with_secure_erase': {
@@ -432,11 +432,11 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'required': False,
             'label': (
-                "Use secure erase by default when performing disk erasing."),
+                "Use secure erase by default when erasing disks."),
             'help_text': (
                 "Will only be used on devices that support secure erase.  "
-                "Other devices will fallback to full wipe or quick erase "
-                "depending selected options.")
+                "Other devices will fall back to full wipe or quick erase "
+                "depending on the selected options.")
         }
     },
     'disk_erase_with_quick_erase': {
@@ -445,10 +445,10 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'required': False,
             'label': (
-                "Use quick erase by default when performing disk erasing."),
+                "Use quick erase by default when erasing disks."),
             'help_text': (
-                "This is not a secure erase it only wipes the beginning and "
-                "end of devices.")
+                "This is not a secure erase; it wipes only the beginning and "
+                "end of each disk.")
         }
     },
     'boot_images_auto_import': {
@@ -479,7 +479,7 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "Enable MAAS UI usage of Google Analytics. This helps the "
-                "developers of MAAS to identify usage statistics to futher "
+                "developers of MAAS to identify usage statistics to further "
                 "development.")
         }
     },
