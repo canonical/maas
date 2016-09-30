@@ -23,7 +23,7 @@ from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
 )
-from maasserver.server_address import get_maas_facing_server_address
+from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import (
     get_one,
@@ -221,7 +221,7 @@ def get_config(
         boot_purpose = purpose
 
     # Get the service address to the region for that given rack controller.
-    server_address = get_maas_facing_server_address(
+    server_host = get_maas_facing_server_host(
         rack_controller=rack_controller)
 
     # Return the params to the rack controller. Include the system_id only
@@ -236,7 +236,7 @@ def get_config(
         "domain": domain,
         "preseed_url": preseed_url,
         "fs_host": local_ip,
-        "log_host": server_address,
+        "log_host": server_host,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
     }
     if machine is not None:
