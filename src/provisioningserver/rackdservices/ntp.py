@@ -99,7 +99,7 @@ class RackNetworkTimeProtocolService(TimerService):
         """
         if configuration.is_rack and not configuration.is_region:
             d = deferToThread(configure_rack, configuration.references, ())
-            d.addCallback(callOut, service_monitor.restartService, "ntp")
+            d.addCallback(callOut, service_monitor.restartService, "ntp_rack")
             return d
 
     def _configurationApplied(self, configuration):

@@ -64,10 +64,10 @@ class TGTService(AlwaysOnService):
     service_name = "tgt"
 
 
-class NTPService(Service):
-    """Monitored NTP service."""
+class NTPServiceOnRack(Service):
+    """Monitored NTP service on a rack controller host."""
 
-    name = "ntp"
+    name = "ntp_rack"
     service_name = "ntp"
 
     def getExpectedState(self):
@@ -81,8 +81,11 @@ class NTPService(Service):
             return d
 
     def _getExpectedStateForControllerType(self, controller_type):
-        if controller_type["is_rack"] and not controller_type["is_region"]:
-            return SERVICE_STATE.ON, None
+        if controller_type["is_rack"]:
+            if controller_type["is_region"]:
+                return SERVICE_STATE.ANY, "managed by the region."
+            else:
+                return SERVICE_STATE.ON, None
         else:
             return SERVICE_STATE.ANY, None
 
@@ -92,6 +95,6 @@ class NTPService(Service):
 service_monitor = ServiceMonitor(
     DHCPv4Service(),
     DHCPv6Service(),
-    NTPService(),
+    NTPServiceOnRack(),
     TGTService(),
 )

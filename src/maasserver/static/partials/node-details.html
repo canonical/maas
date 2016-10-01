@@ -401,6 +401,13 @@
                                 <span data-ng-if="services.proxy.status_info"> &mdash; {$ services.proxy.status_info $}</span>
                             </span>
                         </li>
+                        <li class="list__item" data-ng-if="services.ntp_region">
+                            <span>
+                                <span class="icon icon--{$ getServiceClass(services.ntp_region) $}"></span>
+                                &nbsp;ntp
+                                <span data-ng-if="services.ntp_region.status_info"> &mdash; {$ services.ntp_region.status_info $}</span>
+                            </span>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -454,11 +461,11 @@
                                 <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
                             </span>
                         </li>
-                        <li class="list__item">
+                        <li class="list__item" data-ng-if="services.ntp_rack">
                             <span>
-                                <span class="icon icon--{$ getServiceClass(services.ntp) $}"></span>
+                                <span class="icon icon--{$ getServiceClass(services.ntp_rack) $}"></span>
                                 &nbsp;ntp
-                                <span data-ng-if="services.ntp.status_info"> &mdash; {$ services.ntp.status_info $}</span>
+                                <span data-ng-if="services.ntp_rack.status_info"> &mdash; {$ services.ntp_rack.status_info $}</span>
                             </span>
                         </li>
                     </ul>

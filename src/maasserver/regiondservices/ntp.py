@@ -108,7 +108,7 @@ class RegionNetworkTimeProtocolService(TimerService):
         d = deferToThread(
             configure_region, configuration.references, configuration.peers)
         d.addCallback(
-            callOut, service_monitor.restartService, "ntp")
+            callOut, service_monitor.restartService, "ntp_region")
         return d
 
     def _configurationApplied(self, configuration):

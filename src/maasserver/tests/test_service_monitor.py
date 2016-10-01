@@ -34,7 +34,8 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["bind9", "ntp", "proxy"], service_monitor._services)
+            ["bind9", "ntp_region", "proxy"],
+            service_monitor._services)
 
 
 class TestProxyService(MAASTransactionServerTestCase):
@@ -70,7 +71,7 @@ class TestProxyService(MAASTransactionServerTestCase):
         os.environ['MAAS_PROXY_CONFIG_DIR'] = "/tmp/%s" % factory.make_name()
         expected_state = yield maybeDeferred(service.getExpectedState)
         self.assertEqual(
-            (SERVICE_STATE.OFF, "No configuration file present."),
+            (SERVICE_STATE.OFF, "no configuration file present."),
             expected_state)
         del os.environ['MAAS_PROXY_CONFIG_DIR']
 

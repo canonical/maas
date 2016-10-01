@@ -26,7 +26,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 REGION_SERVICES = frozenset({
     "regiond",
     "bind9",
-    "ntp",
+    "ntp_region",
     "proxy",
 })
 
@@ -39,7 +39,7 @@ RACK_SERVICES = frozenset({
     "tgt",
     "dhcpd",
     "dhcpd6",
-    "ntp",
+    "ntp_rack",
 })
 
 # Statuses that should be set on each service when node is marked dead. NOTE
@@ -54,7 +54,8 @@ DEAD_STATUSES = {
     "tgt": SERVICE_STATUS.UNKNOWN,
     "dhcpd": SERVICE_STATUS.DEAD,
     "dhcpd6": SERVICE_STATUS.DEAD,
-    "ntp": SERVICE_STATUS.DEAD,
+    "ntp_region": SERVICE_STATUS.DEAD,
+    "ntp_rack": SERVICE_STATUS.DEAD,
 }
 
 

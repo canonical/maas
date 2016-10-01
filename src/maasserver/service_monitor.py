@@ -29,10 +29,10 @@ class BIND9Service(AlwaysOnService):
     service_name = "bind9"
 
 
-class NTPService(AlwaysOnService):
-    """Monitored NTP service."""
+class NTPServiceOnRegion(AlwaysOnService):
+    """Monitored NTP service on a region controller host."""
 
-    name = "ntp"
+    name = "ntp_region"
     service_name = "ntp"
 
 
@@ -53,7 +53,7 @@ class ProxyService(Service):
                 return (SERVICE_STATE.OFF,
                         "disabled, alternate proxy is configured in settings.")
             elif proxyconfig.is_config_present() is False:
-                return (SERVICE_STATE.OFF, "No configuration file present.")
+                return (SERVICE_STATE.OFF, "no configuration file present.")
             else:
                 return (SERVICE_STATE.ON, None)
 
@@ -64,6 +64,6 @@ class ProxyService(Service):
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
     BIND9Service(),
-    NTPService(),
+    NTPServiceOnRegion(),
     ProxyService(),
 )

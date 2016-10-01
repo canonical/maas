@@ -19,7 +19,7 @@ from provisioningserver.service_monitor import (
     DHCPService,
     DHCPv4Service,
     DHCPv6Service,
-    NTPService,
+    NTPServiceOnRack,
     service_monitor,
     TGTService,
 )
@@ -108,15 +108,15 @@ class TestTGTService(MAASTestCase):
         self.assertEqual((SERVICE_STATE.ON, None), tgt.getExpectedState())
 
 
-class TestNTPService(MAASTestCase):
+class TestNTPServiceOnRack(MAASTestCase):
 
     def test_name_and_service_name(self):
-        ntp = NTPService()
+        ntp = NTPServiceOnRack()
         self.assertEqual("ntp", ntp.service_name)
-        self.assertEqual("ntp", ntp.name)
+        self.assertEqual("ntp_rack", ntp.name)
 
 
-class TestNTPService_Scenarios(MAASTestCase):
+class TestNTPServiceOnRack_Scenarios(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -124,37 +124,41 @@ class TestNTPService_Scenarios(MAASTestCase):
         ("rack", dict(
             is_region=False, is_rack=True,
             expected_state=SERVICE_STATE.ON,
+            expected_info=None,
         )),
         ("region", dict(
             is_region=True, is_rack=False,
             expected_state=SERVICE_STATE.ANY,
+            expected_info=None,
         )),
         ("region+rack", dict(
             is_region=True, is_rack=True,
             expected_state=SERVICE_STATE.ANY,
+            expected_info="managed by the region.",
         )),
         ("machine", dict(
             is_region=False, is_rack=False,
             expected_state=SERVICE_STATE.ANY,
+            expected_info=None,
         )),
     )
 
     def setUp(self):
-        super(TestNTPService_Scenarios, self).setUp()
+        super(TestNTPServiceOnRack_Scenarios, self).setUp()
         return prepareRegionForGetControllerType(
             self, is_region=self.is_region, is_rack=self.is_rack)
 
     @inlineCallbacks
     def test_getExpectedState(self):
-        ntp = NTPService()
+        ntp = NTPServiceOnRack()
         self.assertThat(
             (yield ntp.getExpectedState()),
-            Equals((self.expected_state, None)))
+            Equals((self.expected_state, self.expected_info)))
 
 
 class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcpd", "dhcpd6", "ntp", "tgt"],
+            ["dhcpd", "dhcpd6", "ntp_rack", "tgt"],
             service_monitor._services)

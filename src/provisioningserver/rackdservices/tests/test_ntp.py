@@ -121,12 +121,12 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
 
         yield service._tryUpdate()
         self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
-        self.assertThat(restartService, MockCalledOnceWith("ntp"))
+        self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure`.
         yield service._tryUpdate()
         self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
-        self.assertThat(restartService, MockCalledOnceWith("ntp"))
+        self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_region_is_not_available(self):

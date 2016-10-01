@@ -95,13 +95,13 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         yield service._tryUpdate()
         self.assertThat(configure_region, MockCalledOnceWith(
             configuration.references, configuration.peers))
-        self.assertThat(restartService, MockCalledOnceWith("ntp"))
+        self.assertThat(restartService, MockCalledOnceWith("ntp_region"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure_region`.
         yield service._tryUpdate()
         self.assertThat(configure_region, MockCalledOnceWith(
             configuration.references, configuration.peers))
-        self.assertThat(restartService, MockCalledOnceWith("ntp"))
+        self.assertThat(restartService, MockCalledOnceWith("ntp_region"))
 
 
 class TestRegionNetworkTimeProtocolService_Errors(
