@@ -114,6 +114,18 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertThat(Discovery.objects.first().subnet, Equals(subnet))
         self.assertThat(Discovery.objects.count(), Equals(1))
 
+    def test__is_external_dhcp(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
+        factory.make_Discovery(interface=iface, ip="10.0.0.1")
+        discovery = Discovery.objects.first()
+        self.assertThat(discovery.is_external_dhcp, Equals(False))
+        iface.vlan.external_dhcp = '10.0.0.1'
+        iface.vlan.save()
+        discovery = Discovery.objects.first()
+        self.assertThat(discovery.is_external_dhcp, Equals(True))
+
 
 class TestDiscoveryManagerClear(MAASServerTestCase):
     """Tests for `DiscoveryManager.clear` """

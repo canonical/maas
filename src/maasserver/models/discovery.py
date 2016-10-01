@@ -14,6 +14,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
+    NullBooleanField,
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultViewMeta
@@ -219,6 +220,9 @@ class Discovery(CleanSave, ViewModel):
         on_delete=DO_NOTHING)
 
     subnet_cidr = CIDRField(
+        blank=True, unique=False, editable=False, null=True)
+
+    is_external_dhcp = NullBooleanField(
         blank=True, unique=False, editable=False, null=True)
 
     objects = DiscoveryManager()

@@ -68,6 +68,10 @@ maasserver_discovery = dedent("""\
         -- (this may or may not have an associated VLAN interface on the rack;
         -- we can sometimes see traffic from unconfigured VLANs.)
         vlan.id AS vlan_id,
+        CASE
+            WHEN neigh.ip = vlan.external_dhcp THEN TRUE
+            ELSE FALSE
+        END AS is_external_dhcp,
         subnet.id AS subnet_id,
         subnet.cidr AS subnet_cidr,
         MASKLEN(subnet.cidr) AS subnet_prefixlen

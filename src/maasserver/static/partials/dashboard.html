@@ -73,7 +73,8 @@
                         <div data-ng-if="discovery.discovery_id !== selectedDevice"
                             data-ng-dblclick="toggleSelected(discovery.discovery_id)">
                             <div class="table__data table-col--20">
-                                {$ getDiscoveryName(discovery) $} <i class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP"></i>
+                                {$ getDiscoveryName(discovery) $}
+                                <i data-ng-show="discovery.is_external_dhcp === true" class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP."></i>
                             </div>
                             <div class="table__data table-col--20" data-ng-if="column === 'mac'">
                                 {$ discovery.mac_address $}

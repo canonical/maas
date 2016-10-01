@@ -24,7 +24,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
         super().setUp()
         register_view("maasserver_discovery")
 
-    def dehydrate_discovery(self, discovery, for_list=False):
+    def dehydrate_discovery(self, discovery: Discovery, for_list=False):
         data = {
             "discovery_id": discovery.discovery_id,
             "fabric": discovery.fabric_id,
@@ -32,6 +32,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
             "hostname": discovery.hostname,
             "id": discovery.id,
             "ip": discovery.ip,
+            "is_external_dhcp": discovery.is_external_dhcp,
             "mdns": discovery.mdns_id,
             "mac_address": discovery.mac_address,
             "mac_organization": discovery.mac_organization,
