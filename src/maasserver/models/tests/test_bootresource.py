@@ -649,9 +649,9 @@ class TestGetUsableKernels(MAASServerTestCase):
                 name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 architecture="%s/%s" % (self.arch, self.subarch))
         self.assertEqual(
-            self.kernels,
-            BootResource.objects.get_usable_hwe_kernels(
-                self.name, self.arch),
+            sorted(self.kernels),
+            sorted(BootResource.objects.get_usable_hwe_kernels(
+                self.name, self.arch)),
             "%s should return %s as its usable kernel" % (
                 self.name, self.kernels))
         self.assertEqual(

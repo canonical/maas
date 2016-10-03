@@ -376,7 +376,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
             }),
             ("Old style kernel", {
                 "string": "hwe-%s" % release['series'][0],
-                "expected": version_tuple + tuple([1]),
+                "expected": version_tuple + tuple([0]),
             }),
             ("GA kernel", {
                 "string": "ga-%s" % version_str,

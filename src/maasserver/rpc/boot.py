@@ -7,6 +7,7 @@ __all__ = [
     "get_config",
 ]
 
+from django.core.exceptions import ValidationError
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models import (
     BootResource,
@@ -29,6 +30,7 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+from maasserver.utils.osystems import validate_hwe_kernel
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.twisted import synchronous
@@ -157,7 +159,12 @@ def get_config(
         elif(subarch == "generic" and
              purpose == "commissioning" and
              machine.min_hwe_kernel):
-            subarch = machine.min_hwe_kernel
+            try:
+                subarch = validate_hwe_kernel(
+                    None, machine.min_hwe_kernel, machine.architecture,
+                    osystem, series)
+            except ValidationError:
+                subarch = "no-such-kernel"
 
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options

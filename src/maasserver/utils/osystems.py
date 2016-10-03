@@ -357,7 +357,10 @@ def get_release_version_from_string(string):
     else:
         raise ValueError("Unknown release or kernel %s!" % string)
 
-    if parts[0] == 'hwe':
+    # hwe kernels should only have a higher weight when using the new format
+    # which is hwe-<version>. This ensures the old format maps to the ga
+    # kernel.
+    if parts[0] == 'hwe' and len(parts[1]) > 1:
         weight += 1
 
     if release == 'rolling':

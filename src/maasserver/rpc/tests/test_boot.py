@@ -500,13 +500,42 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.COMMISSIONING,
-            min_hwe_kernel="hwe-v")
+            min_hwe_kernel="hwe-16.10")
+        arch = node.split_arch()[0]
+        ubuntu = factory.make_default_ubuntu_release_bootable(arch)
+        factory.make_usable_boot_resource(
+            name=ubuntu.name, architecture="%s/hwe-16.10" % arch,
+            kflavor='generic', rtype=BOOT_RESOURCE_TYPE.SYNCED)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertEqual(
-            "hwe-v",
-            observed_config["subarch"])
+        self.assertEqual("hwe-16.10", observed_config["subarch"])
+
+    def test__commissioning_node_uses_min_hwe_kernel_converted(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.COMMISSIONING,
+            min_hwe_kernel="hwe-x")
+        arch = node.split_arch()[0]
+        factory.make_default_ubuntu_release_bootable(arch)
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertEqual("hwe-16.04", observed_config["subarch"])
+
+    def test__commissioning_node_uses_min_hwe_kernel_reports_missing(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.COMMISSIONING,
+            min_hwe_kernel="hwe-x")
+        mac = node.get_boot_interface().mac_address
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac)
+        self.assertEqual("no-such-kernel", observed_config["subarch"])
 
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         distro_series = random.choice(["trusty", "vivid", "wily", "xenial"])
