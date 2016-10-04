@@ -127,7 +127,7 @@ maasserver_routable_pairs = dedent("""\
         ON ifia_right.interface_id = if_right.id
      WHERE if_left.enabled AND sip_left.ip IS NOT NULL
        AND if_right.enabled AND sip_right.ip IS NOT NULL
-       AND inet_same_family(sip_left.ip, sip_right.ip)
+       AND family(sip_left.ip) = family(sip_right.ip)
     """)
 
 
