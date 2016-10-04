@@ -352,6 +352,17 @@ JSON_POWER_TYPE_PARAMETERS = [
         'ip_extractor': make_ip_extractor('power_address'),
     },
     {
+        'name': 'wedge',
+        'description': "Facebook's Wedge",
+        'fields': [
+            make_json_field('power_address', "IP address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field(
+                'power_pass', "Power password", field_type='password'),
+        ],
+        'ip_extractor': make_ip_extractor('power_address'),
+    },
+    {
         'name': 'ucsm',
         'description': "Cisco UCS Manager",
         'fields': [

@@ -173,7 +173,7 @@ class TestRegistries(MAASTestCase):
 
         # make sure fake packages are reported missing
         power_types = list(drivers.gen_power_types())
-        self.assertEqual(16, len(power_types))
+        self.assertEqual(17, len(power_types))
         self.assertItemsEqual(
             ['fake-package-one', 'fake-package-two'],
             power_types[-1].get('missing_packages'))

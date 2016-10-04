@@ -23,6 +23,7 @@ QUERY_POWER_TYPES = [
     'amt',
     'hmc',
     'ipmi',
+    'wedge',
     'moonshot',
     'mscm',
     'msftocs',

@@ -340,6 +340,7 @@ class PowerDriverRegistry(Registry):
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
+from provisioningserver.drivers.power.wedge import WedgePowerDriver
 from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
@@ -357,6 +358,7 @@ power_drivers = [
     AMTPowerDriver(),
     APCPowerDriver(),
     DLIPowerDriver(),
+    WedgePowerDriver(),
     FenceCDUPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
