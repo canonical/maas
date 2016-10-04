@@ -28,10 +28,24 @@ class TestEvent(MAASTestCase):
         event.registerHandler(sentinel.handler)
         self.assertItemsEqual([sentinel.handler], event.handlers)
 
+    def test_registerHandler_during_fire(self):
+        event = Event()
+        event.registerHandler(event.registerHandler)
+        event.fire(sentinel.otherHandler)
+        self.assertItemsEqual(
+            [event.registerHandler, sentinel.otherHandler],
+            event.handlers)
+
     def test_unregisterHandler(self):
         event = Event()
         event.registerHandler(sentinel.handler)
         event.unregisterHandler(sentinel.handler)
+        self.assertItemsEqual([], event.handlers)
+
+    def test_unregisterHandler_during_fire(self):
+        event = Event()
+        event.registerHandler(event.unregisterHandler)
+        event.fire(event.unregisterHandler)
         self.assertItemsEqual([], event.handlers)
 
     def test_fire_calls_all_handlers(self):

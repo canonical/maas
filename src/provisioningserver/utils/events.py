@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Event-related utilities."""
@@ -22,12 +22,14 @@ class Event:
 
     def unregisterHandler(self, handler):
         """Unregister handler from event."""
-        if handler in self.handlers:
-            self.handlers.remove(handler)
+        self.handlers.discard(handler)
 
     def fire(self, *args, **kwargs):
         """Fire the event."""
-        for handler in self.handlers:
+        # Shallow-copy the set to avoid "size changed during iteration"
+        # errors. This is a fast operation: faster than switching to an
+        # immutable set or using thread-safe locks (and won't deadlock).
+        for handler in self.handlers.copy():
             handler(*args, **kwargs)
 
 
