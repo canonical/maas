@@ -20,7 +20,9 @@ from maasserver.models import (
     Config,
 )
 from maasserver.models.signals import bootsources
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -31,7 +33,10 @@ from maasserver.utils.orm import (
     reload_object,
 )
 from maasserver.utils.version import get_maas_version_ui
-from maasserver.websockets.base import HandlerError
+from maasserver.websockets.base import (
+    HandlerError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maastesting.matchers import (
@@ -169,8 +174,38 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 'name': release,
                 'title': release,
                 'checked': False,
+                'deleted': False,
             }
             for release in releases
+        ], json_obj['ubuntu']['releases'])
+
+    def test_shows_ubuntu_selected_and_deleted_release_options(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        sources = [factory.make_BootSource()]
+        releases = [factory.make_name('release') for _ in range(3)]
+        selected_release = releases.pop()
+        factory.make_BootSourceSelection(
+            boot_source=sources[0], os='ubuntu', release=selected_release,
+            arches=['*'], subarches=['*'], labels=['*'])
+        self.patch_get_os_info_from_boot_sources(sources, releases=releases)
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertItemsEqual([
+            {
+                'name': release,
+                'title': release,
+                'checked': False,
+                'deleted': False,
+            }
+            for release in releases
+        ] + [
+            {
+                'name': selected_release,
+                'title': selected_release,
+                'checked': True,
+                'deleted': True,
+            }
         ], json_obj['ubuntu']['releases'])
 
     def test_shows_ubuntu_architecture_options(self):
@@ -186,8 +221,38 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 'name': arch,
                 'title': arch,
                 'checked': False,
+                'deleted': False,
             }
             for arch in arches
+        ], json_obj['ubuntu']['arches'])
+
+    def test_shows_ubuntu_select_and_deleted_architecture_options(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        sources = [factory.make_BootSource()]
+        arches = [factory.make_name('arch') for _ in range(3)]
+        selected_arch = arches.pop()
+        factory.make_BootSourceSelection(
+            boot_source=sources[0], os='ubuntu', release=['*'],
+            arches=[selected_arch], subarches=['*'], labels=['*'])
+        self.patch_get_os_info_from_boot_sources(sources, arches=arches)
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertItemsEqual([
+            {
+                'name': arch,
+                'title': arch,
+                'checked': False,
+                'deleted': False,
+            }
+            for arch in arches
+        ] + [
+            {
+                'name': selected_arch,
+                'title': selected_arch,
+                'checked': True,
+                'deleted': True,
+            }
         ], json_obj['ubuntu']['arches'])
 
     def test__returns_region_import_running_True(self):
@@ -551,6 +616,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 cache.os, cache.arch, cache.subarch, cache.release),
             'title': '%s/%s' % (cache.os, cache.release),
             'checked': False,
+            'deleted': False,
         }], other_images)
 
     def test_other_images_returns_image_checked_when_synced(self):
@@ -568,6 +634,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 cache.os, cache.arch, cache.subarch, cache.release),
             'title': '%s/%s' % (cache.os, cache.release),
             'checked': True,
+            'deleted': False,
         }], other_images)
 
     def test_other_images_filters_out_bootloaders(self):
@@ -909,6 +976,7 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': release,
                 'title': release,
                 'checked': False,
+                'deleted': False,
             }
             for release in releases
         ], observed['releases'])
@@ -917,6 +985,7 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': arch,
                 'title': arch,
                 'checked': False,
+                'deleted': False,
             }
             for arch in arches
         ], observed['arches'])
@@ -950,6 +1019,7 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': release,
                 'title': title,
                 'checked': False,
+                'deleted': False,
             }
         ], observed['releases'])
         self.assertItemsEqual([
@@ -957,6 +1027,7 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': arch,
                 'title': arch,
                 'checked': False,
+                'deleted': False,
             }
         ], observed['arches'])
 
@@ -989,6 +1060,7 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': release,
                 'title': title,
                 'checked': False,
+                'deleted': False,
             }
         ], observed['releases'])
         self.assertItemsEqual([
@@ -996,5 +1068,46 @@ class TestBootResourceFetch(MAASServerTestCase):
                 'name': arch,
                 'title': arch,
                 'checked': False,
+                'deleted': False,
             }
         ], observed['arches'])
+
+
+class TestBootResourceDeleteImage(MAASServerTestCase):
+
+    def test_asserts_is_admin(self):
+        owner = factory.make_User()
+        handler = BootResourceHandler(owner, {})
+        self.assertRaises(AssertionError, handler.delete_image, {})
+
+    def test_raises_ValidationError_when_id_missing(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        self.assertRaises(HandlerValidationError, handler.delete_image, {})
+
+    def test_makes_correct_calls_for_downloading_resources(self):
+        self.useFixture(SignalsDisabled("bootsources"))
+        self.useFixture(SignalsDisabled("largefiles"))
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        os = factory.make_name("os")
+        release = factory.make_name("release")
+        arch = factory.make_name("arch")
+        subarches = [
+            factory.make_name("subarch")
+            for _ in range(3)
+        ]
+        resources = [
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name="%s/%s" % (os, release),
+                architecture="%s/%s" % (arch, subarch))
+            for subarch in subarches
+        ]
+        selection = factory.make_BootSourceSelection(
+            os=os, release=release, arches=[arch], subarches=subarches,
+            labels=['*'])
+        handler.delete_image({'id': resources[0].id})
+        self.assertItemsEqual(
+            [], reload_objects(BootResource, resources))
+        self.assertIsNone(reload_object(selection))

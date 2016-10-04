@@ -87,6 +87,7 @@ describe("maasBootImages", function() {
         });
         expect(scope.generatedImages).toEqual([]);
         expect(scope.customImages).toEqual([]);
+        expect(scope.ubuntuDeleteId).toBeNull();
     });
 
     it("clears loading once polling and user manager loaded", function() {
@@ -663,10 +664,12 @@ describe("maasBootImages", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var lts = {
-                title: '16.04 LTS'
+                title: '16.04 LTS',
+                deleted: false
             };
             var nonLTS = {
-                title: '16.10'
+                title: '16.10',
+                deleted: false
             };
             scope.bootResources = {
                 ubuntu: {
@@ -676,14 +679,35 @@ describe("maasBootImages", function() {
             expect(scope.getUbuntuLTSReleases()).toEqual([lts]);
         });
 
+        it("filters deleted releases", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var lts = {
+                title: '16.04 LTS',
+                deleted: false
+            };
+            var deletedLTS = {
+                title: '12.04 LTS',
+                deleted: true
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    releases: [lts, deletedLTS]
+                }
+            };
+            expect(scope.getUbuntuLTSReleases()).toEqual([lts]);
+        });
+
         it("filters new sources to LTS", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var lts = {
-                title: '16.04 LTS'
+                title: '16.04 LTS',
+                deleted: false
             };
             var nonLTS = {
-                title: '16.10'
+                title: '16.10',
+                deleted: false
             };
             scope.bootResources = {
                 ubuntu: {
@@ -702,10 +726,12 @@ describe("maasBootImages", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var lts = {
-                title: '16.04 LTS'
+                title: '16.04 LTS',
+                deleted: false
             };
             var nonLTS = {
-                title: '16.10'
+                title: '16.10',
+                deleted: false
             };
             scope.bootResources = {
                 ubuntu: {
@@ -715,14 +741,35 @@ describe("maasBootImages", function() {
             expect(scope.getUbuntuNonLTSReleases()).toEqual([nonLTS]);
         });
 
+        it("filters deleted releases", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var nonLTS = {
+                title: '16.10',
+                deleted: false
+            };
+            var deleted = {
+                title: '15.04',
+                deleted: true
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    releases: [nonLTS, deleted]
+                }
+            };
+            expect(scope.getUbuntuNonLTSReleases()).toEqual([nonLTS]);
+        });
+
         it("filters new sources to non-LTS", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             var lts = {
-                title: '16.04 LTS'
+                title: '16.04 LTS',
+                deleted: false
             };
             var nonLTS = {
-                title: '16.10'
+                title: '16.10',
+                deleted: false
             };
             scope.bootResources = {
                 ubuntu: {
@@ -740,8 +787,12 @@ describe("maasBootImages", function() {
         it("returns bootResources arches", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            var arch1 = {};
-            var arch2 = {};
+            var arch1 = {
+                deleted: false
+            };
+            var arch2 = {
+                deleted: false
+            };
             scope.bootResources = {
                 ubuntu: {
                     arches: [arch1, arch2]
@@ -750,11 +801,32 @@ describe("maasBootImages", function() {
             expect(scope.getArchitectures()).toEqual([arch1, arch2]);
         });
 
+        it("filters deleted arches", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var arch1 = {
+                deleted: false
+            };
+            var arch2 = {
+                deleted: true
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    arches: [arch1, arch2]
+                }
+            };
+            expect(scope.getArchitectures()).toEqual([arch1]);
+        });
+
         it("returns new sources arches", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
-            var arch1 = {};
-            var arch2 = {};
+            var arch1 = {
+                deleted: false
+            };
+            var arch2 = {
+                deleted: false
+            };
             scope.bootResources = {
                 ubuntu: {
                     arches: []
@@ -919,7 +991,9 @@ describe("maasBootImages", function() {
             var icon = makeName("icon");
             var size = makeName("size");
             var status = makeName("status");
+            var resourceId = makeInteger(0, 100);
             scope.bootResources.resources = [{
+                id: resourceId,
                 rtype: 0,
                 name: 'ubuntu/' + release.name,
                 arch: arch.name,
@@ -937,7 +1011,8 @@ describe("maasBootImages", function() {
                 arch: arch.title,
                 size: size,
                 status: status,
-                beingDeleted: false
+                beingDeleted: false,
+                resourceId: resourceId
             }]);
         });
 
@@ -1527,6 +1602,131 @@ describe("maasBootImages", function() {
             defer.resolve();
             $scope.$digest();
             expect(scope.saving).toBe(false);
+        });
+    });
+
+    describe("canBeRemoved", function() {
+
+        it("returns false if no resourceId", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            expect(scope.canBeRemoved({})).toBe(false);
+        });
+
+        it("returns true when title matches a deleted release", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var title = makeName("title");
+            var release = {
+                title: title,
+                deleted: true
+            };
+            var image = {
+                resourceId: makeInteger(0, 100),
+                title: title
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    releases: [release]
+                }
+            };
+            expect(scope.canBeRemoved(image)).toBe(true);
+        });
+
+        it("returns true when arch matches a deleted arch", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var title = makeName("title");
+            var archName = makeName("arch");
+            var release = {
+                title: title,
+                deleted: false
+            };
+            var arch = {
+                name: archName,
+                deleted: true
+            };
+            var image = {
+                resourceId: makeInteger(0, 100),
+                title: title,
+                arch: archName
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    releases: [release],
+                    arches: [arch]
+                }
+            };
+            expect(scope.canBeRemoved(image)).toBe(true);
+        });
+
+        it("returns false when release and arch not deleted", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var title = makeName("title");
+            var archName = makeName("arch");
+            var release = {
+                title: title,
+                deleted: false
+            };
+            var arch = {
+                name: archName,
+                deleted: false
+            };
+            var image = {
+                resourceId: makeInteger(0, 100),
+                title: title,
+                arch: archName
+            };
+            scope.bootResources = {
+                ubuntu: {
+                    releases: [release],
+                    arches: [arch]
+                }
+            };
+            expect(scope.canBeRemoved(image)).toBe(false);
+        });
+    });
+
+    describe("deleteImage", function() {
+
+        it("sets ubuntuDeleteId", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {
+                resourceId: makeInteger(0, 100)
+            };
+            scope.deleteImage(image);
+            expect(scope.ubuntuDeleteId).toBe(image.resourceId);
+        });
+
+        it("clears ubuntuDeleteId", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {
+                resourceId: makeInteger(0, 100)
+            };
+            scope.deleteImage(image);
+            scope.deleteImage();
+            expect(scope.ubuntuDeleteId).toBeNull();
+        });
+    });
+
+    describe("confirmDeleteImage", function() {
+
+        it("calls deleteImage and clears ubuntuDeleteId", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {
+                resourceId: makeInteger(0, 100)
+            };
+            scope.deleteImage(image);
+            spyOn(BootResourcesManager, "deleteImage");
+            scope.confirmDeleteImage();
+            expect(BootResourcesManager.deleteImage).toHaveBeenCalledWith({
+                id: image.resourceId
+            });
+            expect(scope.ubuntuDeleteId).toBeNull();
         });
     });
 });

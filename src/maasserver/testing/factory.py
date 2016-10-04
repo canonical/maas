@@ -1395,7 +1395,7 @@ class Factory(maastesting.factory.Factory):
             label_count = random.randint(1, 10)
             labels = [self.make_name("label") for _ in range(label_count)]
         boot_source_selection = BootSourceSelection(
-            boot_source=boot_source, release=release, arches=arches,
+            boot_source=boot_source, os=os, release=release, arches=arches,
             subarches=subarches, labels=labels)
         boot_source_selection.save()
         return boot_source_selection

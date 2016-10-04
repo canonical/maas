@@ -187,5 +187,17 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod("bootresource.fetch", source);
         };
 
+        // Delete an image.
+        BootResourcesManager.prototype.deleteImage = function(params) {
+            var self = this;
+            return RegionConnection.callMethod(
+                "bootresource.delete_image", params).then(
+                    function(newData) {
+                        angular.copy(angular.fromJson(newData), self._data);
+                        self._loaded = true;
+                        return self._data;
+                    });
+        };
+
         return new BootResourcesManager();
     }]);

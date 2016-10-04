@@ -125,16 +125,36 @@
                                 <i class="icon icon--error"></i> Select at least one 14.04+ LTS release and one architecture.
                             </div>
                         </div>
-                        <div class="table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']">
+                        <div class="table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']"
+                            data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
                             <div class="table__data table-col--2">
                                 <i class="icon {$ image.icon $}"></i>
                             </div>
                             <div class="table__data table-col--23">
-                                {$ image.title $}
+                                {$ image.title $} <i class="icon icon--warning tooltip"
+                                    aria-label="Image no longer exists at the source."
+                                    data-ng-if="canBeRemoved(image)"></i>
                             </div>
                             <div class="table__data table-col--15">{$ image.arch $}</div>
                             <div class="table__data table-col--20">{$ image.size $}</div>
-                            <div class="table__data table-col--30">{$ image.status $}</div>
+                            <div class="table__data table-col--37">{$ image.status $}</div>
+                            <div class="table__data table-col--3">
+                                <div class="table__controls" data-ng-if="isSuperUser() && canBeRemoved(image)">
+                                    <a class="icon icon--delete tooltip" aria-label="Remove"
+                                        data-ng-click="deleteImage(image)">Remove</a>
+                                </div>
+                            </div>
+                            <div class="table__dropdown" data-ng-if="canBeRemoved(image) && ubuntuDeleteId === image.resourceId">
+                                <div class="table__row is-active">
+                                    <div class="table__data u-float--left u-margin--top-tiny">
+                                          <p><span class="icon icon--warning u-margin--right-small"></span>Are you sure you want to remove this image?</p>
+                                    </div>
+                                    <div class="table__data u-float--right">
+                                          <a class="button--base button--inline" data-ng-click="deleteImage()">Cancel</a>
+                                          <button class="button--primary button--inline" data-ng-click="confirmDeleteImage()">Remove</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </main>
                 </section>

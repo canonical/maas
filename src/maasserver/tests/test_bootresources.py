@@ -1235,7 +1235,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
 
         self.assertEqual('', logger.output)
 
-    def test_resource_cleaner_removes_old_boot_resources(self):
+    def test_resource_cleaner_removes_boot_resources_without_sets(self):
         with transaction.atomic():
             resources = [
                 factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -1247,6 +1247,83 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             os, series = resource.name.split('/')
             arch, subarch = resource.split_arch()
             self.assertFalse(
+                BootResource.objects.has_synced_resource(
+                    os, arch, subarch, series))
+
+    def test_resource_cleaner_removes_boot_resources_not_in_selections(self):
+        self.useFixture(SignalsDisabled("bootsources"))
+        self.useFixture(SignalsDisabled("largefiles"))
+        with transaction.atomic():
+            # Make random selection as one is required, and empty set of
+            # selections will not delete anything.
+            factory.make_BootSourceSelection()
+            resources = [
+                factory.make_usable_boot_resource(
+                    rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                for _ in range(3)
+                ]
+        store = BootResourceStore()
+        store.resource_cleaner()
+        for resource in resources:
+            os, series = resource.name.split('/')
+            arch, subarch = resource.split_arch()
+            self.assertFalse(
+                BootResource.objects.has_synced_resource(
+                    os, arch, subarch, series))
+
+    def test_resource_cleaner_removes_extra_subarch_boot_resource(self):
+        self.useFixture(SignalsDisabled("bootsources"))
+        self.useFixture(SignalsDisabled("largefiles"))
+        with transaction.atomic():
+            # Make selection that will keep both subarches.
+            arch = factory.make_name("arch")
+            selection = factory.make_BootSourceSelection(
+                arches=[arch], subarches=['*'], labels=['*'])
+            # Create first subarch for selection.
+            subarch_one = factory.make_name('subarch')
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name='%s/%s' % (selection.os, selection.release),
+                architecture='%s/%s' % (arch, subarch_one))
+            # Create second subarch for selection.
+            subarch_two = factory.make_name('subarch')
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name='%s/%s' % (selection.os, selection.release),
+                architecture='%s/%s' % (arch, subarch_two))
+        store = BootResourceStore()
+        store._resources_to_delete = [
+            '%s/%s/%s/%s' % (
+                selection.os, arch, subarch_two, selection.release)]
+        store.resource_cleaner()
+        self.assertTrue(
+            BootResource.objects.has_synced_resource(
+                selection.os, arch, subarch_one, selection.release))
+        self.assertFalse(
+            BootResource.objects.has_synced_resource(
+                selection.os, arch, subarch_two, selection.release))
+
+    def test_resource_cleaner_keeps_boot_resources_in_selections(self):
+        self.useFixture(SignalsDisabled("bootsources"))
+        with transaction.atomic():
+            resources = [
+                factory.make_usable_boot_resource(
+                    rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                for _ in range(3)
+                ]
+            for resource in resources:
+                os, series = resource.name.split('/')
+                arch, subarch = resource.split_arch()
+                resource_set = resource.get_latest_set()
+                factory.make_BootSourceSelection(
+                    os=os, release=series, arches=[arch],
+                    subarches=[subarch], labels=[resource_set.label])
+        store = BootResourceStore()
+        store.resource_cleaner()
+        for resource in resources:
+            os, series = resource.name.split('/')
+            arch, subarch = resource.split_arch()
+            self.assertTrue(
                 BootResource.objects.has_synced_resource(
                     os, arch, subarch, series))
 

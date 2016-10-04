@@ -58,6 +58,7 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
+    BootSourceSelection,
     Config,
     LargeFile,
 )
@@ -79,6 +80,7 @@ from maasserver.utils.version import get_maas_version_ui
 from provisioningserver.config import is_dev_environment
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
+    image_passes_filter,
 )
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
@@ -802,9 +804,39 @@ class BootResourceStore(ObjectStore):
             thread.start()
             threads.append(thread)
 
+    def _other_resources_exists(self, os, arch, subarch, series):
+        """Return `True` when simplestreams provided an image with the same
+        os, arch, series combination.
+
+        This is used to remove the extra subarches when they are deleted
+        from the simplestreams, but if the whole image is deleted from
+        simplestreams then all subarches for that image will remain. See'
+        `resource_cleaner`.
+        """
+        # Filter all resources to only those that should remain.
+        related_resources = BootResource.objects.all()
+        for deleted_ident in self._resources_to_delete:
+            deleted_os, deleted_arch, deleted_subarch, deleted_series = (
+                deleted_ident.split('/'))
+            related_resources = related_resources.exclude(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name='%s/%s' % (deleted_os, deleted_series),
+                architecture='%s/%s' % (deleted_arch, deleted_subarch))
+        # Filter the remaining resources to those related to this os,
+        # arch, series.
+        related_resources = related_resources.filter(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name='%s/%s' % (os, series),
+            architecture__startswith=arch)
+        return related_resources.exists()
+
     @transactional
     def resource_cleaner(self):
         """Removes all of the `BootResource`'s that were not synced."""
+        # Grab all the current selections from the BootSourceSelection.
+        selections = [
+            selection.to_dict()
+            for selection in BootSourceSelection.objects.all()
+        ]
         for ident in self._resources_to_delete:
             os, arch, subarch, series = ident.split('/')
             name = '%s/%s' % (os, series)
@@ -814,10 +846,38 @@ class BootResourceStore(ObjectStore):
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,
                     name=name, architecture=architecture))
             if delete_resource is not None:
-                maaslog.debug(
-                    "Deleting boot image %s.",
-                    self.get_resource_identity(delete_resource))
-                delete_resource.delete()
+                resource_set = delete_resource.get_latest_set()
+                if resource_set is not None:
+                    # It is possible that the image was removed from
+                    # simplestreams but the user still wants that image to
+                    # exist. This is done by looking at the selections. If any
+                    # selection matches this resource then we keep it,
+                    # otherwise we remove it. Extra subarches for an image
+                    # are not kept when simplestreams is still providing that
+                    # os, arch, series combination.
+                    if (not image_passes_filter(
+                            selections, os, arch, subarch,
+                            series, resource_set.label) or
+                            self._other_resources_exists(
+                                os, arch, subarch, series)):
+                        # It was selected for removal.
+                        maaslog.debug(
+                            "Deleting boot image %s.",
+                            self.get_resource_identity(delete_resource))
+                        delete_resource.delete()
+                    else:
+                        maaslog.info(
+                            "Boot image %s no longer exists in stream, but "
+                            "remains in selections. To delete this image "
+                            "remove its selection.",
+                            self.get_resource_identity(delete_resource))
+                else:
+                    # No resource set on the boot resource so it should be
+                    # removed as it has not files.
+                    maaslog.debug(
+                        "Deleting boot image %s.",
+                        self.get_resource_identity(delete_resource))
+                    delete_resource.delete()
 
     @transactional
     def resource_set_cleaner(self):

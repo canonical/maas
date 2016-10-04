@@ -83,6 +83,7 @@ angular.module('MAAS').directive('maasBootImages', [
                 };
                 $scope.generatedImages = [];
                 $scope.customImages = [];
+                $scope.ubuntuDeleteId = null;
 
                 // Return true if the authenticated user is super user.
                 $scope.isSuperUser = function() {
@@ -268,7 +269,8 @@ angular.module('MAAS').directive('maasBootImages', [
                     }
                     var filtered = [];
                     angular.forEach(releases, function(release) {
-                        if(release.title.indexOf('LTS') !== -1) {
+                        if(!release.deleted &&
+                            release.title.indexOf('LTS') !== -1) {
                             filtered.push(release);
                         }
                     });
@@ -283,7 +285,8 @@ angular.module('MAAS').directive('maasBootImages', [
                     }
                     var filtered = [];
                     angular.forEach(releases, function(release) {
-                        if(release.title.indexOf('LTS') === -1) {
+                        if(!release.deleted &&
+                            release.title.indexOf('LTS') === -1) {
                             filtered.push(release);
                         }
                     });
@@ -296,7 +299,13 @@ angular.module('MAAS').directive('maasBootImages', [
                     if($scope.source.isNew) {
                         arches = $scope.source.arches;
                     }
-                    return arches;
+                    var filtered = [];
+                    angular.forEach(arches, function(arch) {
+                        if(!arch.deleted) {
+                            filtered.push(arch);
+                        }
+                    });
+                    return filtered;
                 };
 
                 // Return true if the source has this selected.
@@ -375,6 +384,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     var resource = getResource(
                                         release.name, arch.name);
                                     if(angular.isObject(resource)) {
+                                        image.resourceId = resource.id;
                                         image.icon = (
                                             'icon--status-' + resource.icon);
                                         image.size = resource.size;
@@ -718,6 +728,50 @@ angular.module('MAAS').directive('maasBootImages', [
                     BootResourcesManager.saveOther(params).then(function() {
                         $scope.saving = false;
                     });
+                };
+
+                // Return True if the Ubuntu image can be removed.
+                $scope.canBeRemoved = function(image) {
+                    // Image must have a resourceId to be able to be removed.
+                    if(!angular.isNumber(image.resourceId)) {
+                        return false;
+                    }
+
+                    // If the release or architecture is set to deleted
+                    // then this image can be deleted.
+                    var i;
+                    var releases = $scope.bootResources.ubuntu.releases;
+                    var arches = $scope.bootResources.ubuntu.arches;
+                    for(i = 0; i < releases.length; i++) {
+                        var release = releases[i];
+                        if(release.deleted && image.title === release.title) {
+                            return true;
+                        }
+                    }
+                    for(i = 0; i < arches.length; i++) {
+                        var arch = arches[i];
+                        if(arch.deleted && image.arch === arch.name) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                // Deletes the give image.
+                $scope.deleteImage = function(image) {
+                    if(angular.isObject(image)) {
+                        $scope.ubuntuDeleteId = image.resourceId;
+                    } else {
+                        $scope.ubuntuDeleteId = null;
+                    }
+                };
+
+                // Deletes the give image.
+                $scope.confirmDeleteImage = function() {
+                    // Delete the image by its resourceId.
+                    BootResourcesManager.deleteImage(
+                        {id: $scope.ubuntuDeleteId});
+                    $scope.ubuntuDeleteId = null;
                 };
 
                 // Start polling now that the directive is viewable and ensure

@@ -45,6 +45,7 @@ from maasserver.utils.version import get_maas_version_ui
 from maasserver.websockets.base import (
     Handler,
     HandlerError,
+    HandlerValidationError,
 )
 from provisioningserver.config import (
     DEFAULT_IMAGES_URL,
@@ -52,6 +53,7 @@ from provisioningserver.config import (
 )
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
+    image_passes_filter,
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.utils.fs import tempdir
@@ -91,6 +93,7 @@ class BootResourceHandler(Handler):
             'save_ubuntu',
             'save_other',
             'fetch',
+            'delete_image',
         ]
 
     def format_ubuntu_sources(self):
@@ -127,14 +130,26 @@ class BootResourceHandler(Handler):
         releases = []
         all_releases, selected_releases = self.get_ubuntu_release_selections()
         for release in sorted(list(self.ubuntu_releases), reverse=True):
-            if all_releases or release in selected_releases:
+            checked = False
+            if release in selected_releases:
                 checked = True
-            else:
-                checked = False
+                selected_releases.remove(release)
+            if not checked and all_releases:
+                checked = True
             releases.append({
                 'name': release,
                 'title': format_ubuntu_distro_series(release),
                 'checked': checked,
+                'deleted': False,
+                })
+        # If any selections still exist then they have been removed from the
+        # stream but the selection still exists.
+        for release in selected_releases:
+            releases.append({
+                'name': release,
+                'title': format_ubuntu_distro_series(release),
+                'checked': True,
+                'deleted': True,
                 })
         return releases
 
@@ -157,14 +172,26 @@ class BootResourceHandler(Handler):
         arches = []
         all_arches, selected_arches = self.get_ubuntu_arch_selections()
         for arch in sorted(list(self.ubuntu_arches)):
-            if all_arches or arch in selected_arches:
+            checked = False
+            if arch in selected_arches:
                 checked = True
-            else:
-                checked = False
+                selected_arches.remove(arch)
+            if not checked and all_arches:
+                checked = True
             arches.append({
                 'name': arch,
                 'title': arch,
                 'checked': checked,
+                'deleted': False,
+                })
+        # If any selections still exist then they have been removed from the
+        # stream but the selection still exists.
+        for arch in selected_arches:
+            arches.append({
+                'name': arch,
+                'title': arch,
+                'checked': True,
+                'deleted': True,
                 })
         return arches
 
@@ -254,6 +281,7 @@ class BootResourceHandler(Handler):
                     image.os, image.arch, image.subarch, image.release),
                 'title': title,
                 'checked': True if resource else False,
+                'deleted': False,
             })
         return images
 
@@ -683,11 +711,13 @@ class BootResourceHandler(Handler):
                     'release_title',
                     format_ubuntu_distro_series(image_spec.release)),
                 'checked': False,
+                'deleted': False,
             }
             arches[image_spec.arch] = {
                 'name': image_spec.arch,
                 'title': image_spec.arch,
                 'checked': False,
+                'deleted': False,
             }
         if len(releases) == 0 or len(arches) == 0:
             raise HandlerError(err_msg)
@@ -695,3 +725,30 @@ class BootResourceHandler(Handler):
             'releases': list(releases.values()),
             'arches': list(arches.values()),
         })
+
+    def delete_image(self, params):
+        """Delete `BootResource` by its ID."""
+        # Must be administrator.
+        assert self.user.is_superuser, "Permission denied."
+        if 'id' not in params:
+            raise HandlerValidationError({
+                'id': ['This field is required.']
+            })
+        # Convert resource into a set of resources that make up this image.
+        # An image in UI is a set of resource each with different subarches
+        # and kflavor.
+        resource = BootResource.objects.get(id=params['id'])
+        os, release = resource.name.split('/')
+        arch, subarch = resource.architecture.split('/')
+        resources = BootResource.objects.filter(
+            name=resource.name, architecture__startswith=arch)
+        # Remove the selection that provides the initial resource. All other
+        # resources will come from the same selection.
+        for selection in BootSourceSelection.objects.all():
+            if image_passes_filter(
+                    [selection.to_dict()], os, arch, subarch, release, '*'):
+                # This selection provided this image, remove it.
+                selection.delete()
+        # Remove the whole set of resources.
+        resources.delete()
+        return self.poll({})
