@@ -2402,6 +2402,124 @@ class TestDHCPConfigNTPListener(
             yield listener.stopService()
 
 
+class TestDHCPConfigNTPExternalListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test for the DHCP triggers code.
+
+    This tests the notifications issued by the database when NTP is configured
+    for external-only, or vice-versa.
+    """
+
+    def set_ntp_external_only(self, external_only):
+        return deferToDatabase(
+            Config.objects.set_config, "ntp_external_only",
+            bool(external_only))
+
+    def clear_ntp_external_only(self):
+        return deferToDatabase(
+            lambda: Config.objects.filter(name="ntp_external_only").delete())
+
+    def make_racks(self):
+        return [
+            self.create_vlan({
+                "dhcp_on": True,
+                "primary_rack": self.create_rack_controller(),
+                "secondary_rack": self.create_rack_controller(),
+            }),
+            self.create_vlan({
+                "dhcp_on": True,
+                "primary_rack": self.create_rack_controller(),
+                "secondary_rack": None,
+            }),
+        ]
+
+    def listen_for_sys_dhcp(self, *rack_ids):
+        """Create a database listener for 'sys_dhcp_$id' for each rack.
+
+        Return the listener and a mapping from the given rack IDs to the
+        DeferredValues that will capture messages.
+        """
+        dsetter = lambda dv: (lambda *args: dv.set(args))
+        dvalues = {rack_id: DeferredValue() for rack_id in rack_ids}
+        listener = self.make_listener_without_delay()
+        for rack_id, dv in dvalues.items():
+            listener.register("sys_dhcp_%s" % rack_id, dsetter(dv))
+        return listener, dvalues
+
+    def wait_for_dvalues(self, dvalues):
+        d = DeferredList(
+            (dv.get(timeout=2) for dv in dvalues),
+            consumeErrors=True)
+
+        def unpack(results):
+            # Return the first failure, if there is one. We do this in
+            # preference to fireOnOneErrback=True because at this point we
+            # know that all the Deferreds that went into the DeferredList have
+            # fired; fireOnOneErrback may result in the test completing before
+            # all have fired, about which the test runner will complain.
+            for success, result in results:
+                if not success:
+                    return result
+
+        return d.addCallback(unpack)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_alerts_all_racks_when_ntp_external_only_set(self):
+        yield self.clear_ntp_external_only()
+        yield deferToDatabase(register_system_triggers)
+
+        vlan1, vlan2 = yield deferToDatabase(self.make_racks)
+        listener, rack_dvs = self.listen_for_sys_dhcp(
+            vlan1.primary_rack_id, vlan1.secondary_rack_id,
+            vlan2.primary_rack_id)
+
+        yield listener.startService()
+        try:
+            yield self.set_ntp_external_only(True)
+            yield self.wait_for_dvalues(rack_dvs.values())
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_alerts_all_racks_when_ntp_external_only_updated(self):
+        ntp_external_only = factory.pick_bool()
+        yield self.set_ntp_external_only(ntp_external_only)
+        yield deferToDatabase(register_system_triggers)
+
+        vlan1, vlan2 = yield deferToDatabase(self.make_racks)
+        listener, rack_dvs = self.listen_for_sys_dhcp(
+            vlan1.primary_rack_id, vlan1.secondary_rack_id,
+            vlan2.primary_rack_id)
+
+        yield listener.startService()
+        try:
+            yield self.set_ntp_external_only(not ntp_external_only)
+            yield self.wait_for_dvalues(rack_dvs.values())
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_alerts_all_racks_when_ntp_server_deleted(self):
+        ntp_external_only = factory.pick_bool()
+        yield self.set_ntp_external_only(ntp_external_only)
+        yield deferToDatabase(register_system_triggers)
+
+        vlan1, vlan2 = yield deferToDatabase(self.make_racks)
+        listener, rack_dvs = self.listen_for_sys_dhcp(
+            vlan1.primary_rack_id, vlan1.secondary_rack_id,
+            vlan2.primary_rack_id)
+
+        yield listener.startService()
+        try:
+            yield self.clear_ntp_external_only()
+            yield self.wait_for_dvalues(rack_dvs.values())
+        finally:
+            yield listener.stopService()
+
+
 class TestDNSDomainListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin,
         DNSHelpersMixin):

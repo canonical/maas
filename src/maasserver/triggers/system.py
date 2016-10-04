@@ -788,6 +788,8 @@ DHCP_CONFIG_NTP_SERVERS_INSERT = dedent("""\
     BEGIN
       IF NEW.name = 'ntp_servers' THEN
         PERFORM sys_dhcp_update_all_vlans();
+      ELSIF NEW.name = 'ntp_external_only' THEN
+        PERFORM sys_dhcp_update_all_vlans();
       END IF;
       RETURN NEW;
     END;
@@ -798,7 +800,8 @@ DHCP_CONFIG_NTP_SERVERS_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_update()
     RETURNS trigger as $$
     BEGIN
-      IF OLD.name = 'ntp_servers' OR NEW.name = 'ntp_servers' THEN
+      IF OLD.name IN ('ntp_servers', 'ntp_external_only')
+      OR NEW.name IN ('ntp_servers', 'ntp_external_only') THEN
         IF OLD.value != NEW.value THEN
           PERFORM sys_dhcp_update_all_vlans();
         END IF;
@@ -812,7 +815,7 @@ DHCP_CONFIG_NTP_SERVERS_DELETE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_config_ntp_servers_delete()
     RETURNS trigger as $$
     BEGIN
-      IF OLD.name = 'ntp_servers' THEN
+      IF OLD.name IN ('ntp_servers', 'ntp_external_only') THEN
         PERFORM sys_dhcp_update_all_vlans();
       END IF;
       RETURN NEW;
@@ -1125,7 +1128,7 @@ def register_system_triggers():
     register_trigger(
         "maasserver_dhcpsnippet", "sys_dhcp_snippet_delete", "delete")
 
-    # - Config/ntp_servers
+    # - Config/ntp_servers (and ntp_external_only)
     register_procedure(DHCP_CONFIG_NTP_SERVERS_INSERT)
     register_trigger(
         "maasserver_config", "sys_dhcp_config_ntp_servers_insert", "insert")
