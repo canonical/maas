@@ -16,10 +16,7 @@ from maasserver.enum import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.partition import (
-    MAX_PARTITION_SIZE_FOR_MBR,
-    PARTITION_ALIGNMENT_SIZE,
-)
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.models.partitiontable import (
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
@@ -500,7 +497,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 mount_point="/",
                 ))
 
-    def test__creates_layout_with_maximum_mbr_partition_size(self):
+    def test__creates_layout_with_large_gpt_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=3 * (1024 ** 4))
@@ -509,18 +506,12 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
 
         # Validate partition table.
         partition_table = boot_disk.get_partitiontable()
-        self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
         # Validate root partition.
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[0]
         self.assertIsNotNone(root_partition)
-        self.assertEqual(
-            round_size_to_nearest_block(
-                MAX_PARTITION_SIZE_FOR_MBR,
-                PARTITION_ALIGNMENT_SIZE,
-                False),
-            root_partition.size)
         self.assertThat(
             root_partition.get_effective_filesystem(),
             MatchesStructure.byEquality(
@@ -1118,7 +1109,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 mount_point="/",
                 ))
 
-    def test__creates_layout_with_multiple_mbr_partitions(self):
+    def test__creates_layout_with_large_gpt_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=7 * (1024 ** 4))
@@ -1133,11 +1124,9 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             filesystems__partition=root_partition)
         self.assertIsNotNone(volume_group)
         self.assertEqual(
-            4, partition_table.partitions.count(),
-            "Should have 4 partitions.")
-        expected_size = round_size_to_nearest_block(
-            MAX_PARTITION_SIZE_FOR_MBR, PARTITION_ALIGNMENT_SIZE, False)
-        self.assertEqual(expected_size, root_partition.size)
+            1, partition_table.partitions.count(),
+            "Should have 1 partition.")
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
 
 class TestBcacheStorageLayoutBase(MAASServerTestCase):

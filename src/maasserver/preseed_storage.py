@@ -17,6 +17,7 @@ from maasserver.enum import (
 )
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import (
+    GPT_REQUIRED_SIZE,
     INITIAL_PARTITION_OFFSET,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
@@ -206,6 +207,8 @@ class CurtinStorageGenerator:
                 disk_operation["ptable"] = "gpt"
                 if node_arch == "ppc64el":
                     add_prep_partition = True
+            elif block_device.size >= GPT_REQUIRED_SIZE:
+                disk_operation["ptable"] = "gpt"
             else:
                 disk_operation["ptable"] = "msdos"
 

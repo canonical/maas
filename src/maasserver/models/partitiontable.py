@@ -47,6 +47,10 @@ PARTITION_TABLE_EXTRA_SPACE = (
 # on ppc64el and will fail to boot.
 PREP_PARTITION_SIZE = 8 * 1024 * 1024  # 8MiB
 
+# 2 TiB disks require GPT partition tables so the whole disk can be used. MBR
+# is forced on the boot disk unless the disk is larger than 2TiB.
+GPT_REQUIRED_SIZE = 2 * 1024 * 1024 * 1024 * 1024
+
 
 class PartitionTable(CleanSave, TimestampedModel):
     """A partition table on a block device.
@@ -162,10 +166,16 @@ class PartitionTable(CleanSave, TimestampedModel):
                             })
                 else:
                     # Don't even check if its 'pxe', because we always fallback
-                    # to MBR.
+                    # to MBR unless the disk is larger than 2TiB in that case
+                    # it is GPT.
+                    disk_size = self.block_device.size
                     if not self.table_type:
-                        self.table_type = PARTITION_TABLE_TYPE.MBR
-                    elif self.table_type != PARTITION_TABLE_TYPE.MBR:
+                        if disk_size >= GPT_REQUIRED_SIZE:
+                            self.table_type = PARTITION_TABLE_TYPE.GPT
+                        else:
+                            self.table_type = PARTITION_TABLE_TYPE.MBR
+                    elif (disk_size < GPT_REQUIRED_SIZE and
+                            self.table_type != PARTITION_TABLE_TYPE.MBR):
                         raise ValidationError({
                             "table_type": [
                                 "Partition table on this node's boot disk "

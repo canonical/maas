@@ -181,6 +181,15 @@ class TestPartitionTable(MAASServerTestCase):
             block_device=BlockDevice.objects.get(id=boot_disk.id))
         self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
+    def test_save_sets_table_type_to_gpt_for_2tib_boot(self):
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=2 * 1024 * 1024 * 1024 * 1024)
+        partition_table = factory.make_PartitionTable(
+            block_device=BlockDevice.objects.get(id=boot_disk.id))
+        self.assertEqual(
+            PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
@@ -220,6 +229,14 @@ class TestPartitionTable(MAASServerTestCase):
                 "Partition table on this node's boot disk must "
                 "be using 'MBR'."],
             }, error.message_dict)
+
+    def test_save_allows_gpt_on_2tib_boot_disk_pxe(self):
+        node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=2 * 1024 * 1024 * 1024 * 1024)
+        # ValidationError should not be raised.
+        factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
 
     def test_save_force_mbr_on_boot_disk_pxe_force_gpt_on_boot_disk_uefi(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
