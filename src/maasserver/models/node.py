@@ -2338,7 +2338,14 @@ class Node(CleanSave, TimestampedModel):
         # the issue this will cause.
         if self.power_state != POWER_STATE.OFF:
             try:
-                self._stop(self.owner)
+                # Node.stop() has synchronous and asynchronous parts, so catch
+                # exceptions arising synchronously, and chain callbacks to the
+                # Deferred it returns for the asynchronous (post-commit) bits.
+                stopping = self._stop(self.owner)
+                # If there's an error, reset the node's status.
+                stopping.addErrback(
+                    callOutToDatabase, Node._set_status, self.system_id,
+                    status=self.status)
             except Exception as ex:
                 maaslog.error(
                     "%s: Unable to shut node down: %s", self.hostname,
