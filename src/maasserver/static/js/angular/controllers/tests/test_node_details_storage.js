@@ -537,8 +537,28 @@ describe("NodeStorageController", function() {
 
     describe("isBootDiskDisabled", function() {
 
+        it("returns true when not superuser", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return false; };
+            $scope.node.status = "Ready";
+            var disk = { type: "physical" };
+
+            expect($scope.isBootDiskDisabled(disk, "available")).toBe(true);
+        });
+
+        it("returns true when not node not ready", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Deploying";
+            var disk = { type: "physical" };
+
+            expect($scope.isBootDiskDisabled(disk, "available")).toBe(true);
+        });
+
         it("returns true if not physical", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Ready";
             var disk = { type: "virtual" };
 
             expect($scope.isBootDiskDisabled(disk, "available")).toBe(true);
@@ -546,6 +566,8 @@ describe("NodeStorageController", function() {
 
         it("returns false if in available", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Ready";
             var disk = { type: "physical" };
 
             expect($scope.isBootDiskDisabled(disk, "available")).toBe(false);
@@ -553,13 +575,26 @@ describe("NodeStorageController", function() {
 
         it("returns true when used and no partitions", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Ready";
             var disk = { type: "physical", has_partitions: false };
 
             expect($scope.isBootDiskDisabled(disk, "used")).toBe(true);
         });
 
-        it("returns false when used and partitions", function() {
+        it("returns false when ready, used and partitions", function() {
             var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Ready";
+            var disk = { type: "physical", has_partitions: true };
+
+            expect($scope.isBootDiskDisabled(disk, "used")).toBe(false);
+        });
+
+        it("returns false when allocated, used and partitions", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $scope.node.status = "Allocated";
             var disk = { type: "physical", has_partitions: true };
 
             expect($scope.isBootDiskDisabled(disk, "used")).toBe(false);

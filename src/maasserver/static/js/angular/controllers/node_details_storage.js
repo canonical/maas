@@ -599,6 +599,19 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Return true if the item can be a boot disk.
         $scope.isBootDiskDisabled = function(item, section) {
+            // Only superusers can change the boot disk.
+            if(!$scope.isSuperUser()) {
+                return true;
+            }
+
+            // Not ready or allocated so the boot disk cannot be changed.
+            if (angular.isObject($scope.node) &&
+                ["Ready", "Allocated"].indexOf(
+                    $scope.node.status) === -1) {
+                return true;
+            }
+
+            // Only physical disks can be the boot disk.
             if(item.type !== "physical") {
                 return true;
             }
