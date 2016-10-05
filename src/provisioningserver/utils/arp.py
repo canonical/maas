@@ -376,9 +376,7 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
             raise ActionScriptError("Required argument: interface")
         network_monitor = subprocess.Popen(
             ["sudo", "--non-interactive", "/usr/lib/maas/maas-network-monitor",
-             args.interface], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL
-        )
+             args.interface], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
         infile = network_monitor.stdout
     else:
         if args.input_file == '-':

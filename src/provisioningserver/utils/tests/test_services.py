@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from functools import partial
 import threading
 from unittest.mock import (
     call,
@@ -31,10 +32,10 @@ from provisioningserver.utils.services import (
     JSONPerLineProtocol,
     MDNSResolverService,
     NeighbourDiscoveryService,
-    NeighbourObservationProtocol,
     NetworksMonitoringLock,
     NetworksMonitoringService,
     ProcessProtocolService,
+    ProtocolForObserveARP,
 )
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -366,16 +367,16 @@ class TestJSONPerLineProtocol(MAASTestCase):
             yield proto.done
 
 
-class TestNeighbourObservationProtocol(MAASTestCase):
-    """Tests for `NeighbourObservationProtocol`."""
+class TestProtocolForObserveARP(MAASTestCase):
+    """Tests for `ProtocolForObserveARP`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_adds_interface(self):
         callback = Mock()
         ifname = factory.make_name('eth')
-        proto = NeighbourObservationProtocol(ifname, callback=callback)
-        proto.connectionMade()
+        proto = ProtocolForObserveARP(ifname, callback=callback)
+        proto.makeConnection(Mock(pid=None))
         proto.outReceived(b"{}\n")
         self.expectThat(
             callback, MockCallsMatch(call([{"interface": ifname}])))
@@ -388,7 +389,7 @@ class MockProcessProtocolService(ProcessProtocolService):
         self._callback = Mock()
 
     def getDescription(self):
-        return "%s mock ProcessProtocolService" % self.__class__.__name__
+        return self.__class__.__name__
 
     def createProcessProtocol(self):
         return JSONPerLineProtocol(callback=self._callback)
@@ -406,10 +407,10 @@ class FalseProcessProtocolService(MockProcessProtocolService):
         return [b"/bin/false"]
 
 
-class CatProcessProtocolService(MockProcessProtocolService):
+class SleepProcessProtocolService(MockProcessProtocolService):
 
     def getProcessParameters(self):
-        return [b"/bin/cat"]
+        return [b"/bin/sleep", b"7"]
 
 
 class EchoProcessProtocolService(MockProcessProtocolService):
@@ -425,7 +426,13 @@ class MockJSONProtocol(JSONPerLineProtocol):
 class TestProcessProtocolService(MAASTestCase):
     """Tests for `JSONPerLineProtocol`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=15)
+
+    def setUp(self):
+        super(TestProcessProtocolService, self).setUp()
+        # Alter timings of terminateProcess so we don't have to wait so long.
+        self.patch(services, "terminateProcess", partial(
+            services.terminateProcess, quit_after=0.2, kill_after=0.4))
 
     def test__base_class_cannot_be_used(self):
         with ExpectedException(TypeError):
@@ -433,32 +440,68 @@ class TestProcessProtocolService(MAASTestCase):
 
     @inlineCallbacks
     def test__starts_and_stops_process(self):
-        service = CatProcessProtocolService()
-        service.startService()
-        self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
-        yield service.stopService()
-        result = yield service._protocol.done
-        self.assertThat(result, Is(None))
+        service = SleepProcessProtocolService()
+        with TwistedLoggerFixture() as logger:
+            service.startService()
+            self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
+            yield service.stopService()
+            result = yield service._protocol.done
+            self.assertThat(result, Is(None))
+        self.assertThat(logger.output, DocTestMatches(
+            "SleepProcessProtocolService started.\n"
+            "-...-\n"
+            "SleepProcessProtocolService ..."
+        ))
         with ExpectedException(ProcessExitedAlready):
             service._process.signalProcess("INT")
 
     @inlineCallbacks
     def test__handles_normal_process_exit(self):
+        # If the spawned process exits with an exit code of zero this is
+        # logged as "ended normally".
         service = TrueProcessProtocolService()
-        service.startService()
-        yield service.stopService()
-        result = yield service._protocol.done
-        self.assertThat(result, Is(None))
+        with TwistedLoggerFixture() as logger:
+            service.startService()
+            yield service._protocol.done
+            yield service.stopService()
+        self.assertThat(logger.output, Equals(
+            "TrueProcessProtocolService started.\n"
+            "---\n"
+            "TrueProcessProtocolService ended normally."
+        ))
 
     @inlineCallbacks
-    def test__handles_abnormal_process_exit(self):
-        service = FalseProcessProtocolService()
+    def test__handles_terminated_process_exit(self):
+        # During service stop the spawned process can be terminated with a
+        # signal. This is logged with a slightly different error message.
+        service = SleepProcessProtocolService()
         with TwistedLoggerFixture() as logger:
             service.startService()
             yield service.stopService()
+        self.assertThat(logger.output, Equals(
+            "SleepProcessProtocolService started.\n"
+            "---\n"
+            "SleepProcessProtocolService was terminated."
+        ))
+
+    @inlineCallbacks
+    def test__handles_abnormal_process_exit(self):
+        # If the spawned process exits with a non-zero exit code this is
+        # logged as "a probable error".
+        service = FalseProcessProtocolService()
+        with TwistedLoggerFixture() as logger:
+            service.startService()
             result = yield service._protocol.done
             self.assertThat(result, Is(None))
-        self.assertThat(logger.output, DocTestMatches("... failed..."))
+            yield service.stopService()
+        self.assertThat(logger.output, DocTestMatches(
+            "FalseProcessProtocolService started.\n"
+            "---\n"
+            "FalseProcessProtocolService failed.\n"
+            "Traceback (most recent call last):\n"
+            "...: A process has ended with a probable error "
+            "condition: process ended with exit code 1."
+        ))
 
     @inlineCallbacks
     def test__calls_protocol_callback(self):
@@ -503,6 +546,24 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
         yield service._protocol.done
         service.stopService()
+
+    @inlineCallbacks
+    def test__protocol_logs_stderr(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+        ifname = factory.make_name('eth')
+        service = NeighbourDiscoveryService(ifname, lambda _: None)
+        protocol = service.createProcessProtocol()
+        reactor.spawnProcess(protocol, b"sh", (b"sh", b"-c", b"exec cat >&2"))
+        protocol.transport.write(
+            b"Lines written to stderr are logged\n"
+            b"with a prefix, with no exceptions.\n")
+        protocol.transport.closeStdin()
+        yield protocol.done
+        self.assertThat(logger.output, Equals(
+            "observe-arp[%s]: Lines written to stderr are logged\n"
+            "---\n"
+            "observe-arp[%s]: with a prefix, with no exceptions."
+            % (ifname, ifname)))
 
 
 class TestMDNSResolverService(MAASTestCase):

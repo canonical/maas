@@ -29,6 +29,8 @@ from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
     deferred,
+    ProcessGroupLeaderMixin,
+    terminateProcess,
 )
 from twisted.application.internet import TimerService
 from twisted.application.service import MultiService
@@ -40,7 +42,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.error import (
     ProcessDone,
-    ProcessExitedAlready,
+    ProcessTerminated,
 )
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
@@ -64,6 +66,7 @@ class JSONPerLineProtocol(ProcessProtocol):
         self.done = Deferred()
 
     def connectionMade(self):
+        super().connectionMade()
         self._outbuf = b''
         self._errbuf = b''
 
@@ -118,19 +121,52 @@ class JSONPerLineProtocol(ProcessProtocol):
             self.done.errback(reason)
 
 
-class NeighbourObservationProtocol(JSONPerLineProtocol):
+class ProtocolForObserveARP(
+        ProcessGroupLeaderMixin, JSONPerLineProtocol):
+    """Protocol used when spawning `maas-rack observe-arp`.
+
+    The difference between `JSONPerLineProtocol` and `ProtocolForObserveARP`
+    is that the neighbour observation protocol needs to insert the interface
+    metadata into the resultant object before the callback.
+
+    This also ensures that the spawned process is configured as a process
+    group leader for its own process group.
+    """
 
     def __init__(self, interface, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.interface = interface
 
     def objectReceived(self, obj):
-        # The only difference between the JSONPerLineProtocol and the
-        # NeighbourObservationProtocol is that the neighbour observation
-        # protocol needs to insert the interface metadata into the resultant
-        # object before the callback.
         obj['interface'] = self.interface
         super().objectReceived(obj)
+
+    def errLineReceived(self, line):
+        line = line.decode("utf-8").rstrip()
+        log.msg("observe-arp[%s]:" % self.interface, line)
+
+
+class ProtocolForObserveMDNS(
+        ProcessGroupLeaderMixin, JSONPerLineProtocol):
+    """Protocol used when spawning `maas-rack observe-mdns`.
+
+    This ensures that the spawned process is configured as a process group
+    leader for its own process group.
+
+    The spawned process is assumed to be `avahi-browse` which prints a
+    somewhat inane "Got SIG***, quitting" message when signalled. We do want
+    to see if it has something useful to say so we filter out lines from
+    stderr matching this pattern. Other lines are logged with the prefix
+    "observe-mdns".
+    """
+
+    _re_ignore_stderr = re.compile(
+        "^Got SIG[A-Z]+, quitting[.]")
+
+    def errLineReceived(self, line):
+        line = line.decode("utf-8").rstrip()
+        if self._re_ignore_stderr.match(line) is None:
+            log.msg("observe-mdns:", line)
 
 
 class ProcessProtocolService(TimerService, metaclass=ABCMeta):
@@ -138,6 +174,7 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
     def __init__(self, interval=60.0):
         super().__init__(interval, self.startProcess)
         self._process = self._protocol = None
+        self._stopping = False
 
     @deferred
     def startProcess(self):
@@ -154,6 +191,8 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
     def _processEnded(self, failure):
         if failure is None:
             log.msg("%s ended normally." % self.getDescription())
+        elif failure.check(ProcessTerminated) and self._stopping:
+            log.msg("%s was terminated." % self.getDescription())
         else:
             log.err(failure, "%s failed." % self.getDescription())
 
@@ -181,21 +220,16 @@ class ProcessProtocolService(TimerService, metaclass=ABCMeta):
         This MUST be overridden in subclasses.
         """
 
-    def stopProcess(self):
-        try:
-            self._process.signalProcess("INT")
-        except ProcessExitedAlready:
-            pass
+    def startService(self):
+        """Starts the neighbour observation service."""
+        self._stopping = False
+        return super().startService()
 
     def stopService(self):
         """Stops the neighbour observation service."""
-        if self._process is not None:
-            self._process.loseConnection()
-            # We don't care about the result; we just want to make sure the
-            # process is dead.
-            # XXX this causes us to log errors such as:
-            #     mDNS resolver process failed.
-            # reactor.callFromThread(self.stopProcess)
+        self._stopping = True
+        if self._process is not None and self._process.pid is not None:
+            terminateProcess(self._process.pid, self._protocol.done)
         return super().stopService()
 
 
@@ -219,27 +253,8 @@ class NeighbourDiscoveryService(ProcessProtocolService):
         ]
 
     def createProcessProtocol(self):
-        return NeighbourObservationProtocol(
+        return ProtocolForObserveARP(
             self.ifname, callback=self.callback)
-
-
-class MDNSProcessProtocol(JSONPerLineProtocol):
-    """Variant of `JSONPerLineProtocol` that massages stderr.
-
-    The spawned process is assumed to be `avahi-browse` which prints a
-    somewhat inane "Got SIG***, quitting" message when signalled. We do want
-    to see if it has something useful to say so we filter out lines from
-    stderr matching this pattern. Other lines are logged with the prefix
-    "observe-mdns".
-    """
-
-    _re_ignore_stderr = re.compile(
-        "^Got SIG[A-Z]+, quitting[.]")
-
-    def errLineReceived(self, line):
-        line = line.decode("utf-8").rstrip()
-        if self._re_ignore_stderr.match(line) is None:
-            log.msg("observe-mdns:", line)
 
 
 class MDNSResolverService(ProcessProtocolService):
@@ -260,7 +275,7 @@ class MDNSResolverService(ProcessProtocolService):
         ]
 
     def createProcessProtocol(self):
-        return MDNSProcessProtocol(callback=self.callback)
+        return ProtocolForObserveMDNS(callback=self.callback)
 
 
 class NetworksMonitoringLock(NamedLock):

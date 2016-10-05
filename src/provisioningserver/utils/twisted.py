@@ -965,7 +965,8 @@ def makeDeferredWithProcessProtocol():
     return done, protocol
 
 
-def terminateProcess(pid, done, *, quit_after=5.0, kill_after=10.0):
+def terminateProcess(
+        pid, done, *, term_after=0.0, quit_after=5.0, kill_after=10.0):
     """Terminate the given process.
 
     A "sensible" way to terminate a process. Does the following:
@@ -1011,7 +1012,7 @@ def terminateProcess(pid, done, *, quit_after=5.0, kill_after=10.0):
             pass  # Already exited.
 
     killers = (
-        reactor.callLater(0.0, kill, signal.SIGTERM),
+        reactor.callLater(term_after, kill, signal.SIGTERM),
         reactor.callLater(quit_after, killpg, signal.SIGQUIT),
         reactor.callLater(kill_after, killpg, signal.SIGKILL),
     )
