@@ -282,10 +282,12 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'label': "Addresses of NTP servers",
             'required': False,
-            'help_text': (
-                "NTP servers, specified as IP addresses or hostnames, to be "
-                "used as time references for MAAS itself and the machines "
-                "MAAS deploys, e.g. ntp.ubuntu.com"),
+            'help_text': normalise_whitespace("""\
+                NTP servers, specified as IP addresses or hostnames delimited
+                by commas and/or spaces, to be used as time references for
+                MAAS itself, the machines MAAS deploys, and devices that make
+                use of MAAS's DHCP services.
+            """),
         }
     },
     'ntp_external_only': {

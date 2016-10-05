@@ -599,6 +599,19 @@ class HostListFormFieldTest(MAASTestCase):
         input = ','.join(hostnames)
         self.assertEqual(' '.join(hostnames), HostListFormField().clean(input))
 
+    def test_accepts_misc(self):
+        servers = {
+            "::1",
+            "1::",
+            "1::2",
+            "1:2::3",
+            "1::2:3",
+            "1:2::3:4",
+            "::127.0.0.1",
+        }
+        input = ','.join(servers)
+        self.assertEqual(' '.join(servers), HostListFormField().clean(input))
+
     def test_rejects_invalid_ipv4_address(self):
         input = "%s 12.34.56.999" % factory.make_hostname()
         error = self.assertRaises(

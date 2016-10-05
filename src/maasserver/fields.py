@@ -610,6 +610,10 @@ class HostListFormField(forms.CharField):
         looks_like_ip = self.pt_ip.match(value) is not None
         if looks_like_ip:
             return self._clean_addr(value)
+        elif ":" in value:
+            # This is probably an IPv6 address. It's definitely not a
+            # hostname.
+            return self._clean_addr(value)
         else:
             return self._clean_host(value)
 
