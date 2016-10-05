@@ -23,6 +23,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
 )
+from provisioningserver.utils.url import compose_URL
 import yaml
 
 # Default port for RSYSLOG
@@ -37,8 +38,9 @@ def get_apt_proxy_for_node(node):
                 not http_proxy.isspace()):
             return http_proxy
         else:
-            return "http://%s:8000/" % get_maas_facing_server_host(
-                node.get_boot_rack_controller())
+            return compose_URL(
+                "http://:8000/", get_maas_facing_server_host(
+                    node.get_boot_rack_controller()))
     else:
         return None
 

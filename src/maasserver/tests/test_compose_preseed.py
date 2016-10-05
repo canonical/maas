@@ -40,6 +40,55 @@ from testtools.matchers import (
 import yaml
 
 
+class TestAptProxy(MAASServerTestCase):
+
+    scenarios = (
+        ("ipv6", dict(
+            rack='2001:db8::1',
+            result='http://[2001:db8::1]:8000/',
+            enable=True,
+            http_proxy='')),
+        ("ipv4", dict(
+            rack='10.0.1.1',
+            result='http://10.0.1.1:8000/',
+            enable=True,
+            http_proxy='')),
+        ("name", dict(
+            rack='example.com',
+            result='http://example.com:8000/',
+            enable=True,
+            http_proxy='')),
+        ("override", dict(
+            rack='wrong.com',
+            result='http://example.com:111/',
+            enable=True,
+            http_proxy='http://example.com:111/')),
+        ("disabled", dict(
+            rack='example.com',
+            result=None,
+            enable=False,
+            http_proxy='')),
+    )
+
+    def test__returns_correct_url(self):
+        import maasserver.compose_preseed as cp_module
+
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+        # Force the server host to be our test data.
+        self.patch(
+            cp_module,
+            'get_maas_facing_server_host').return_value = self.rack
+        # Now setup the configuration and arguments, and see what we get back.
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        Config.objects.set_config("enable_http_proxy", self.enable)
+        Config.objects.set_config("http_proxy", self.http_proxy)
+        actual = get_apt_proxy_for_node(node)
+        self.assertEqual(self.result, actual)
+
+
 class TestComposePreseed(MAASServerTestCase):
 
     def assertSystemInfo(self, config):
