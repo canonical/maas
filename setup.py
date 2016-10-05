@@ -68,7 +68,8 @@ setup(
         ('/usr/sbin',
             ['scripts/maas-dhcp-helper']),
         ('/usr/lib/maas',
-            ['scripts/maas-network-monitor']),
+            ['scripts/maas-dhcp-monitor',
+             'scripts/maas-network-monitor']),
     ],
 
     classifiers=[
