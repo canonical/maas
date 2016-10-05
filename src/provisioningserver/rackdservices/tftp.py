@@ -25,6 +25,7 @@ from provisioningserver.events import (
     send_event_node_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import (
@@ -66,6 +67,9 @@ from twisted.internet.defer import (
 from twisted.internet.task import deferLater
 from twisted.python import log
 from twisted.python.filepath import FilePath
+
+
+maaslog = get_maas_logger("tftp")
 
 
 def get_boot_image(params):
@@ -191,6 +195,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
                     d.addErrback(
                         log.err,
                         "Failed to mark machine failed: %s" % description)
+                else:
+                    maaslog.error(
+                        "Enlistment failed to boot %s; missing required boot "
+                        "image %s/%s/%s/%s." % (
+                            params["remote_ip"],
+                            params['osystem'], params["arch"],
+                            params["subarch"], params["release"]))
                 params["label"] = "no-such-image"
             else:
                 params["label"] = boot_image["label"]

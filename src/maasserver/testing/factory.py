@@ -1541,6 +1541,33 @@ class Factory(maastesting.factory.Factory):
                 resource_set, filename=filetype, filetype=filetype, size=None)
         return resource
 
+    def make_incomplete_boot_resource(
+            self, rtype=None, name=None, architecture=None,
+            extra=None, version=None, label=None, kflavor=None, size=None,
+            bootloader_type=None):
+        resource = self.make_BootResource(
+            rtype=rtype, name=name, architecture=architecture, extra=extra,
+            kflavor=kflavor, bootloader_type=bootloader_type)
+        resource_set = self.make_BootResourceSet(
+            resource, version=version, label=label)
+        filetypes = {
+            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+        }
+        filetypes.add(random.choice([
+            BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+        ]))
+        filetypes.add(random.choice(XINSTALL_TYPES))
+        for filetype in filetypes:
+            # Create a half completed file.
+            size = 512
+            content = factory.make_bytes(256)
+            self.make_boot_resource_file_with_content(
+                resource_set, filename=filetype, filetype=filetype,
+                size=size, content=content)
+        return resource
+
     def make_default_ubuntu_release_bootable(self, arch=None):
         if arch is None:
             arch = self.make_name('arch')

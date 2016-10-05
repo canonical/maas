@@ -111,7 +111,7 @@ class BootResourceManager(Manager):
         """
         arches = set()
         for resource in self.all():
-            resource_set = resource.get_latest_set()
+            resource_set = resource.get_latest_complete_set()
             if (resource_set is not None and
                     resource_set.commissionable and
                     resource_set.xinstallable):
@@ -132,7 +132,7 @@ class BootResourceManager(Manager):
         name = '%s/%s' % (osystem, series)
         resources = self.filter(name=name).order_by('architecture')
         for resource in resources:
-            resource_set = resource.get_latest_set()
+            resource_set = resource.get_latest_complete_set()
             if resource_set is not None and resource_set.commissionable:
                 yield resource
 
@@ -243,7 +243,7 @@ class BootResourceManager(Manager):
                 architecture__startswith=architecture, name__startswith=name):
             if kflavor is not None and resource.kflavor != kflavor:
                 continue
-            resource_set = resource.get_latest_set()
+            resource_set = resource.get_latest_complete_set()
             if(resource_set is None or
                not resource_set.commissionable or
                not resource_set.xinstallable):
@@ -283,7 +283,7 @@ class BootResourceManager(Manager):
 
         resource = self.filter(name=os_release, architecture=hwe_arch).first()
         if resource:
-            latest_set = resource.get_latest_set()
+            latest_set = resource.get_latest_complete_set()
             if latest_set:
                 kernel = latest_set.files.filter(
                     filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).first()
@@ -314,7 +314,7 @@ class BootResourceManager(Manager):
         resources = []
         for resource in self.filter(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name__in=lts_releases):
-            resource_set = resource.get_latest_set()
+            resource_set = resource.get_latest_complete_set()
             if resource_set is not None and resource_set.commissionable:
                 resources.append(resource)
 

@@ -147,8 +147,10 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_usable_architectures(self):
         arches = [
             '%s/%s' % (factory.make_name('arch'), factory.make_name('subarch'))
-            for _ in range(3)
+            for _ in range(4)
             ]
+        incomplete_arch = arches.pop()
+        factory.make_incomplete_boot_resource(architecture=incomplete_arch)
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         usable_arches = BootResource.objects.get_usable_architectures()
@@ -187,6 +189,8 @@ class TestBootResourceManager(MAASServerTestCase):
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
         resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        factory.make_incomplete_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         not_commissionable = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
@@ -643,6 +647,11 @@ class TestGetUsableKernels(MAASServerTestCase):
                 factory.make_usable_boot_resource(
                     name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
                     architecture="%s/%s" % (self.arch, i), kflavor=kflavor)
+                factory.make_incomplete_boot_resource(
+                    name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                    architecture="%s/%s" % (
+                        self.arch, factory.make_name("incomplete")),
+                    kflavor=kflavor)
         else:
             generic_kernels = self.kernels
             factory.make_usable_boot_resource(
