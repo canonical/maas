@@ -10,6 +10,7 @@ __all__ = [
 from collections import namedtuple
 import struct
 
+from netaddr import EUI
 from provisioningserver.utils.network import (
     bytes_to_int,
     hex_str_to_bytes,
@@ -33,6 +34,7 @@ VLAN_HEADER_LEN = 4
 
 class ETHERTYPE:
     """Enumeration to represent ethertypes that MAAS needs to understand."""
+    IPV4 = hex_str_to_bytes('0800')
     ARP = hex_str_to_bytes('0806')
     VLAN = hex_str_to_bytes('8100')
 
@@ -92,6 +94,16 @@ class Ethernet:
         self.src_mac = packet.src_mac
         self.dst_mac = packet.dst_mac
         self.time = time
+
+    @property
+    def src_eui(self):
+        """Returns a netaddr.EUI representing the source MAC address."""
+        return EUI(bytes_to_int(self.src_mac))
+
+    @property
+    def dst_eui(self):
+        """Returns a netaddr.EUI representing the destination MAC address."""
+        return EUI(bytes_to_int(self.dst_mac))
 
     def is_valid(self):
         """Returns True if this is a valid Ethernet packet, False otherwise."""

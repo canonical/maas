@@ -27,7 +27,7 @@ from twisted.internet.task import Clock
 
 class TestRackNetworksMonitoringService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(debug=False, timeout=5)
 
     @inlineCallbacks
     def test_runs_refresh_first_time(self):

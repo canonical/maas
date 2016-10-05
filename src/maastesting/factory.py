@@ -654,5 +654,72 @@ class Factory:
             strings += [release['series'], version_str]
         return random.choice(strings)
 
+    def make_dhcp_packet(
+            self, transaction_id: bytes = None,
+            truncated: bool=False, truncated_option_value: bool=False,
+            bad_cookie: bool=False, truncated_option_length: bool=False,
+            include_server_identifier: bool=False, server_ip: str="127.1.1.1",
+            include_end_option: bool=True) -> bytes:
+        """Returns a [possibly invalid] DHCP packet."""
+        if transaction_id is None:
+            transaction_id = self.make_bytes(size=4)
+        options = b''
+        if include_server_identifier:
+            # 0x36 == 54 (Server Identifier option)
+            ip_bytes = int(IPAddress(server_ip).value).to_bytes(4, "big")
+            options += b"\x36\x04" + ip_bytes
+        if truncated_option_value:
+            options += b"\x36\x04\x7f\x01"
+            include_end_option = False
+        if truncated_option_length:
+            options += b"\x36"
+            include_end_option = False
+        # Currently, we only validation the transaction ID, and the fact that
+        # the reply packet has a "Server Identifier" option. This might be
+        # considered a bug, but in practice it works out.
+        packet = (
+            # Message type: 0x02 (BOOTP operation: reply).
+            b'\x02'
+            # Hardware type: Ethernet
+            b'\x01'
+            # Hardware address length: 6
+            b'\x06'
+            # Hops: 0
+            b'\x00' +
+            # Transaction ID
+            transaction_id +
+            # Seconds
+            b'\x00\x00'
+            # Flags
+            b'\x00\x00'
+            # Client IP address: 0.0.0.0
+            b'\x00\x00\x00\x00'
+            # Your (client) IP address: 0.0.0.0
+            b'\x00\x00\x00\x00'
+            # Next server IP address: 0.0.0.0
+            b'\x00\x00\x00\x00'
+            # Relay agent IP address: 0.0.0.0
+            b'\x00\x00\x00\x00' +
+            # Client hardware address
+            b'\x01\x02\x03\x04\x05\x06'
+            # Hardware address padding
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' +
+            # Server host name
+            (b'\x00' * 67) +
+            # Boot filename
+            (b'\x00' * 125) +
+            # Cookie
+            (b'\x63\x82\x53\x63' if not bad_cookie else b'xxxx') +
+            # "DHCP Offer" option
+            b'\x35\x01\x02' +
+            options +
+            # End options.
+            (b'\xff' if include_end_option else b'')
+        )
+        if truncated:
+            packet = packet[:200]
+        return packet
+
+
 # Create factory singleton.
 factory = Factory()

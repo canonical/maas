@@ -7,10 +7,10 @@ __all__ = [
     "DHCPProbeService",
     ]
 
-
 from datetime import timedelta
 import socket
 
+from provisioningserver.config import is_dev_environment
 from provisioningserver.dhcp.detect import probe_interface
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -21,15 +21,19 @@ from provisioningserver.utils.twisted import (
     retries,
 )
 from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    maybeDeferred,
+)
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
+from twisted.python import log
 
 
 maaslog = get_maas_logger("dhcp.probe")
 
 
-class DHCPProbeService(TimerService, object):
+class DHCPProbeService(TimerService):
     """Service to probe for DHCP servers on the rack controller interface's.
 
     Built on top of Twisted's `TimerService`.
@@ -45,6 +49,9 @@ class DHCPProbeService(TimerService, object):
             self.check_interval, self.try_probe_dhcp)
         self.clock = reactor
         self.client_service = client_service
+
+    def log(self, string):
+        log.msg(string, system=type(self).__name__)
 
     def _get_interfaces(self):
         """Return the interfaces for this rack controller."""
@@ -81,10 +88,7 @@ class DHCPProbeService(TimerService, object):
         return d
 
     @inlineCallbacks
-    def probe_dhcp(self):
-        """Find all the interfaces on this rack controller and probe for
-        DHCP servers.
-        """
+    def _tryGetClient(self):
         client = None
         for elapsed, remaining, wait in retries(15, 5, self.clock):
             try:
@@ -92,31 +96,46 @@ class DHCPProbeService(TimerService, object):
                 break
             except NoConnectionsAvailable:
                 yield pause(wait, self.clock)
-        else:
+        return client
+
+    @inlineCallbacks
+    def probe_dhcp(self):
+        """Find all the interfaces on this rack controller and probe for
+        DHCP servers.
+        """
+        client = yield self._tryGetClient()
+        if client is None:
             maaslog.error(
-                "Can't initiate DHCP probe, no RPC connection to region.")
+                "Can't initiate DHCP probe; no RPC connection to region.")
             return
 
         # Iterate over interfaces and probe each one.
         interfaces = yield self._get_interfaces()
+        self.log(
+            "Probe for external DHCP servers started on interfaces: %s." % (
+                ', '.join(interfaces)))
         for interface in interfaces:
             try:
-                servers = yield deferToThread(probe_interface, interface)
-            except socket.error:
-                maaslog.error(
-                    "Failed to probe sockets; did you configure authbind as "
-                    "per HACKING.txt?")
-                break
+                servers = yield maybeDeferred(probe_interface, interface)
+            except socket.error as e:
+                error = (
+                    "Failed to probe for external DHCP servers on interface "
+                    "'%s'." % interface)
+                if is_dev_environment():
+                    error += " (Did you configure authbind per HACKING.txt?)"
+                log.err(e, error, system=type(self).__name__)
+                continue
             else:
                 if len(servers) > 0:
-                    # Only send one, if it gets cleared out then the
-                    # next detection pass will send a different one, if it
-                    # still exists.
+                    # XXX For now, only send the region one server, since
+                    # it can only track one per VLAN (this could be considered
+                    # a bug).
                     yield self._inform_region_of_dhcp(
                         client, interface, servers.pop())
                 else:
                     yield self._inform_region_of_dhcp(
                         client, interface, None)
+        self.log("External DHCP probe complete.")
 
     @inlineCallbacks
     def try_probe_dhcp(self):

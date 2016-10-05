@@ -7,7 +7,6 @@ __all__ = []
 
 
 from unittest.mock import (
-    call,
     Mock,
     sentinel,
 )
@@ -17,7 +16,6 @@ from maastesting.matchers import (
     get_mock_calls,
     HasLength,
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
@@ -32,6 +30,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.task import Clock
 
 
@@ -73,28 +72,7 @@ class TestDHCPProbeService(PservTestCase):
         # Now there were two calls.
         self.assertThat(get_mock_calls(probe_dhcp), HasLength(2))
 
-    def test_probe_is_initiated_in_new_thread(self):
-        clock = Clock()
-        interface_name = factory.make_name("eth")
-        interfaces = {
-            interface_name: {
-                "enabled": True,
-            }
-        }
-
-        deferToThread = self.patch(dhcp_probe_service, 'deferToThread')
-        deferToThread.side_effect = [
-            defer.succeed(interfaces),
-            defer.succeed(None),
-        ]
-        service = DHCPProbeService(Mock(), clock)
-        service.startService()
-        self.assertThat(
-            deferToThread, MockCallsMatch(
-                call(dhcp_probe_service.get_all_interfaces_definition),
-                call(dhcp_probe_service.probe_interface, interface_name)))
-
-    @defer.inlineCallbacks
+    @inlineCallbacks
     def test_exits_gracefully_if_cant_report_foreign_dhcp_server(self):
         clock = Clock()
         interface_name = factory.make_name("eth")
@@ -109,8 +87,10 @@ class TestDHCPProbeService(PservTestCase):
             dhcp_probe_service, 'deferToThread')
         deferToThread.side_effect = [
             defer.succeed(interfaces),
-            defer.succeed(['192.168.0.100']),
         ]
+        probe_interface = self.patch(
+            dhcp_probe_service, 'probe_interface')
+        probe_interface.return_value = ['192.168.0.100']
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
@@ -154,7 +134,7 @@ class TestDHCPProbeService(PservTestCase):
                 "Unable to probe for DHCP servers: %s",
                 error_message))
 
-    @defer.inlineCallbacks
+    @inlineCallbacks
     def test_reports_foreign_dhcp_servers_to_region(self):
         clock = Clock()
         interface_name = factory.make_name("eth")
@@ -172,9 +152,10 @@ class TestDHCPProbeService(PservTestCase):
         foreign_dhcp_ip = factory.make_ipv4_address()
         deferToThread.side_effect = [
             defer.succeed(interfaces),
-            defer.succeed([foreign_dhcp_ip]),
         ]
-
+        probe_interface = self.patch(
+            dhcp_probe_service, 'probe_interface')
+        probe_interface.return_value = [foreign_dhcp_ip]
         client = getRegionClient()
         rpc_service = Mock()
         rpc_service.getClient.return_value = client
@@ -192,7 +173,7 @@ class TestDHCPProbeService(PservTestCase):
                 interface_name=interface_name,
                 dhcp_ip=foreign_dhcp_ip))
 
-    @defer.inlineCallbacks
+    @inlineCallbacks
     def test_reports_lack_of_foreign_dhcp_servers_to_region(self):
         clock = Clock()
         interface_name = factory.make_name("eth")
@@ -209,8 +190,10 @@ class TestDHCPProbeService(PservTestCase):
             dhcp_probe_service, 'deferToThread')
         deferToThread.side_effect = [
             defer.succeed(interfaces),
-            defer.succeed([]),
         ]
+        probe_interface = self.patch(
+            dhcp_probe_service, 'probe_interface')
+        probe_interface.return_value = []
 
         client = getRegionClient()
         rpc_service = Mock()

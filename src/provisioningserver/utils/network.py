@@ -32,6 +32,7 @@ from socket import (
     getaddrinfo,
     IPPROTO_TCP,
 )
+import struct
 
 from netaddr import (
     EUI,
@@ -726,7 +727,7 @@ def ip_range_within_network(ip_range, network):
 
 
 def inet_ntop(value):
-    """Convert IPv4 and IPv6 addresses from binary to text form.
+    """Convert IPv4 and IPv6 addresses from integer to text form.
     (See also inet_ntop(3), the C function with the same name and function.)"""
     return str(IPAddress(value))
 
@@ -784,7 +785,20 @@ def hex_str_to_bytes(data):
 
 
 def ipv4_to_bytes(ipv4_address):
+    """Converts the specified IPv4 address (in text or integer form) to bytes.
+    """
     return bytes.fromhex("%08x" % IPAddress(ipv4_address).value)
+
+
+def bytes_to_ipaddress(ip_address_bytes):
+    if len(ip_address_bytes) == 4:
+        return IPAddress(struct.unpack('!L', ip_address_bytes)[0])
+    if len(ip_address_bytes) == 16:
+        most_significant, least_significant = struct.unpack(
+            "!QQ", ip_address_bytes)
+        return IPAddress((most_significant << 64) | least_significant)
+    else:
+        raise ValueError("Invalid IP address size: expected 4 or 16 bytes.")
 
 
 def format_eui(eui):
