@@ -9,6 +9,7 @@ from datetime import (
     datetime,
     timedelta,
 )
+import time
 
 from maasserver.dbviews import register_view
 from maasserver.models.discovery import Discovery
@@ -46,7 +47,9 @@ class TestDiscoveryHandler(MAASServerTestCase):
             "subnet_cidr": discovery.subnet_cidr,
             "vid": discovery.vid,
             "vlan": discovery.vlan_id,
-            "first_seen": dehydrate_datetime(discovery.first_seen),
+            "first_seen": str(
+                time.mktime(discovery.first_seen.timetuple()) +
+                discovery.first_seen.microsecond / 1e6),
             "last_seen": dehydrate_datetime(discovery.last_seen)
         }
         return data
@@ -90,3 +93,25 @@ class TestDiscoveryHandler(MAASServerTestCase):
         self.assertEquals(
             expected_discoveries,
             handler.list({}))
+
+    def test_list_starts_after_first_seen(self):
+        user = factory.make_User()
+        handler = DiscoveryHandler(user, {})
+        now = datetime.now()
+        factory.make_Discovery(created=now)
+        d4 = factory.make_Discovery(created=(now + timedelta(days=4)))
+        d3 = factory.make_Discovery(created=(now + timedelta(days=3)))
+        factory.make_Discovery(created=(now + timedelta(days=1)))
+        factory.make_Discovery(created=(now + timedelta(days=2)))
+        first_seen = now + timedelta(days=2)
+        first_seen = str(
+            time.mktime(first_seen.timetuple()) + first_seen.microsecond / 1e6)
+        # Test for the expected order independent of how the database
+        # decided to sort.
+        expected_discoveries = [
+            self.dehydrate_discovery(discovery, for_list=True)
+            for discovery in [d3, d4]
+            ]
+        self.assertEquals(
+            expected_discoveries,
+            handler.list({"start": first_seen}))

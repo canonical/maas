@@ -7,6 +7,9 @@ __all__ = [
     "DiscoveryHandler",
     ]
 
+from datetime import datetime
+import time
+
 from maasserver.models import Discovery
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.viewmodel import ViewModelHandler
@@ -22,10 +25,6 @@ class DiscoveryHandler(ViewModelHandler):
         queryset = (
             Discovery.objects.by_unknown_ip_and_mac()
         )
-        # This batch key isn't guaranteed to be stable, since newly-discovered
-        # items can come in as the new first-items in the query. But that's why
-        # we're also going to poll. But using row_number() seems to be a good
-        # compromise for now.
         batch_key = 'first_seen'
         pk = 'discovery_id'
         allowed_methods = [
@@ -33,13 +32,31 @@ class DiscoveryHandler(ViewModelHandler):
             'get',
         ]
 
+    def list(self, params):
+        """List objects.
+
+        :param start: A value of the `batch_key` column and NOT `pk`. They are
+            often the same but that is not a certainty. Make sure the client
+            also understands this distinction.
+        :param offset: Offset into the queryset to return.
+        :param limit: Maximum number of objects to return.
+        """
+        if "start" in params:
+            params["start"] = datetime.fromtimestamp(float(params['start']))
+        return super(DiscoveryHandler, self).list(params)
+
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["mac_organization"] = obj.mac_organization
         return data
 
-    def dehydrate_last_seen(self, datetime):
-        return dehydrate_datetime(datetime)
+    def dehydrate_last_seen(self, obj):
+        return dehydrate_datetime(obj)
 
-    def dehydrate_first_seen(self, datetime):
-        return dehydrate_datetime(datetime)
+    def dehydrate_first_seen(self, obj):
+        # This is rendered all they way to microseconds so its always
+        # unique. This is because each discovery item is always created in
+        # is own transaction. If this changes then the barch key needs to
+        # be changed to something that is ordered and unique.
+        return str(
+            time.mktime(obj.timetuple()) + obj.microsecond / 1e6)

@@ -68,10 +68,10 @@
                         </div>
                     </div>
                     <div class="table__row"
-                        data-ng-repeat="discovery in discoveredDevices track by discovery.discovery_id"
-                        data-ng-class="{'is-active' : discovery.discovery_id === selectedDevice}">
-                        <div data-ng-if="discovery.discovery_id !== selectedDevice"
-                            data-ng-dblclick="toggleSelected(discovery.discovery_id)">
+                        data-ng-repeat="discovery in discoveredDevices | orderBy:'-last_seen' track by discovery.first_seen"
+                        data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
+                        <div data-ng-if="discovery.first_seen !== selectedDevice"
+                            data-ng-dblclick="toggleSelected(discovery.first_seen)">
                             <div class="table__data table-col--20">
                                 {$ getDiscoveryName(discovery) $}
                                 <i data-ng-show="discovery.is_external_dhcp === true" class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP."></i>
@@ -93,10 +93,10 @@
                             </div>
                             <div class="table__data table-col--3">
                                 <i class="icon icon--open tooltip" aria-label="Open"
-                                    data-ng-click="toggleSelected(discovery.discovery_id)">Open</i>
+                                    data-ng-click="toggleSelected(discovery.first_seen)">Open</i>
                             </div>
                         </div>
-                        <maas-obj-form data-ng-if="discovery.discovery_id === selectedDevice"
+                        <maas-obj-form data-ng-if="discovery.first_seen === selectedDevice"
                             obj="convertTo" manager="proxyManager" pre-process="preProcess"
                             after-save="afterSave" table-form="true" save-on-blur="false">
                             <div class="table__data table-col--20">
@@ -106,7 +106,7 @@
                             <div class="table__data table-col--77"></div>
                             <div class="table__data table-col--3">
                                 <i class="icon icon--close tooltip" aria-label="Close"
-                                    data-ng-click="toggleSelected(discovery.discovery_id)">Close</i>
+                                    data-ng-click="toggleSelected(discovery.first_seen)">Close</i>
                             </div>
                             <div class="table__dropdown">
                                 <div class="table__row is-active">

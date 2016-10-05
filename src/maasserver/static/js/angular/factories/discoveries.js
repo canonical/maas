@@ -21,7 +21,8 @@ angular.module('MAAS').factory(
         function DiscoveriesManager() {
             PollingManager.call(this);
 
-            this._pk = "discovery_id";
+            this._pk = "first_seen";
+            this._batchKey = "first_seen";
             this._handler = "discovery";
 
             // Poll every 10 seconds when its empty as its okay for

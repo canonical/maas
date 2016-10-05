@@ -22,6 +22,7 @@ from maasserver.models import (
     Domain,
     Fabric,
     Node,
+    RackController,
     VersionedTextFile,
 )
 from maasserver.storage_layouts import STORAGE_LAYOUTS
@@ -131,7 +132,6 @@ class RandomInterfaceFactory:
                 interface=interface)
 
 
-@transactional
 def populate(seed="sampledata"):
     """Populate the database with example data.
 
@@ -158,7 +158,26 @@ def populate(seed="sampledata"):
 
     """
     random.seed(seed)
+    populate_main()
+    for _ in range(120):
+        make_discovery()
 
+
+@transactional
+def make_discovery():
+    """Make a discovery in its own transaction so each last_seen time
+    is different."""
+    random_rack = random.choice(RackController.objects.all())
+    random_interface = random.choice(random_rack.interface_set.all())
+    random_subnet = random.choice(random_interface.vlan.subnet_set.all())
+    factory.make_Discovery(
+        interface=random_interface,
+        ip=factory.pick_ip_in_Subnet(random_subnet))
+
+
+@transactional
+def populate_main():
+    """Populate the main data all in one transaction."""
     admin = factory.make_admin(
         username="admin", password="test", completed_intro=False)  # noqa
     user1, _ = factory.make_user_with_keys(
@@ -281,14 +300,6 @@ def populate(seed="sampledata"):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.2",
             subnet=subnet_3, interface=bond0_10)
-        # Add some discovery devices for rack interfaces
-        for _ in range(3):
-            factory.make_Discovery(
-                interface=eth0, ip=factory.pick_ip_in_Subnet(subnet_1))
-            factory.make_Discovery(
-                interface=eth1, ip=factory.pick_ip_in_Subnet(subnet_1))
-            factory.make_Discovery(
-                interface=eth2, ip=factory.pick_ip_in_Subnet(subnet_2))
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
@@ -323,14 +334,6 @@ def populate(seed="sampledata"):
     factory.make_StaticIPAddress(
         alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.3",
         subnet=subnet_3, interface=bond0_10)
-    # Add some discovery devices for rack interfaces
-    for _ in range(3):
-        factory.make_Discovery(
-            interface=eth0, ip=factory.pick_ip_in_Subnet(subnet_1))
-        factory.make_Discovery(
-            interface=eth1, ip=factory.pick_ip_in_Subnet(subnet_1))
-        factory.make_Discovery(
-            interface=eth2, ip=factory.pick_ip_in_Subnet(subnet_2))
 
     # Region controller (happy-region)
     #   eth0     - fabric 0 - untagged

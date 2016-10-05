@@ -17,7 +17,8 @@ describe("DiscoveriesManager", function() {
     }));
 
     it("set requires attributes", function() {
-        expect(DiscoveriesManager._pk).toBe("discovery_id");
+        expect(DiscoveriesManager._pk).toBe("first_seen");
+        expect(DiscoveriesManager._batchKey).toBe("first_seen");
         expect(DiscoveriesManager._handler).toBe("discovery");
         expect(DiscoveriesManager._pollEmptyTimeout).toBe(5000);
     });

@@ -195,7 +195,7 @@ describe("DashboardController", function() {
             };
             DomainsManager._items = [defaultDomain];
             var discovered = {
-                discovery_id: id,
+                first_seen: id,
                 hostname: makeName("hostname"),
                 subnet: makeInteger(0, 100)
             };
@@ -226,7 +226,7 @@ describe("DashboardController", function() {
             };
             DomainsManager._items = [defaultDomain];
             var discovered = {
-                discovery_id: id,
+                first_seen: id,
                 hostname: makeName("hostname"),
                 subnet: null
             };
@@ -259,7 +259,7 @@ describe("DashboardController", function() {
             };
             DomainsManager._items = [defaultDomain];
             var discovered = {
-                discovery_id: id,
+                first_seen: id,
                 hostname: makeName("hostname"),
                 subnet: makeInteger(0, 100),
                 mac_address: makeName("mac"),
@@ -301,7 +301,7 @@ describe("DashboardController", function() {
             };
             DomainsManager._items = [defaultDomain];
             var discovered = {
-                discovery_id: id,
+                first_seen: id,
                 hostname: makeName("hostname"),
                 subnet: makeInteger(0, 100),
                 mac_address: makeName("mac"),
