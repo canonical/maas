@@ -4,15 +4,16 @@
 """NTP related functionality."""
 
 __all__ = [
+    "get_peers_for",
     "get_servers_for",
 ]
 
 from collections import defaultdict
-import random
 from typing import (
     FrozenSet,
     Iterable,
     Mapping,
+    Optional,
     Sequence,
 )
 
@@ -29,9 +30,9 @@ from provisioningserver.utils.text import split_string_list
 
 
 @typed
-def get_servers_for(node: Node) -> FrozenSet[str]:
+def get_servers_for(node: Optional[Node]) -> FrozenSet[str]:
     """Return NTP servers to use for the given node."""
-    if node.is_region_controller or _ntp_external_only():
+    if node is None or node.is_region_controller or _ntp_external_only():
         routable_addrs = _get_external_servers()
     elif node.is_rack_controller:
         # Point the rack back at all the region controllers.
@@ -55,6 +56,23 @@ def get_servers_for(node: Node) -> FrozenSet[str]:
         routable_addrs = _reduce_routable_address_map(routable_addrs_map)
     # Return a frozenset of strings, be they IP addresses or hostnames.
     return frozenset(map(str, routable_addrs))
+
+
+def get_peers_for(node: Node) -> FrozenSet[str]:
+    """Return NTP peers to use for the given node.
+
+    For all node types other than region or region+rack controllers, this
+    returns the empty set.
+    """
+    if node is None:
+        return frozenset()
+    elif node.is_region_controller:
+        peer_regions = RegionController.objects.exclude(id=node.id)
+        peer_addresses_map = _get_routable_address_map(peer_regions, node)
+        peer_addresses = _reduce_routable_address_map(peer_addresses_map)
+        return frozenset(map(str, peer_addresses))
+    else:
+        return frozenset()
 
 
 @typed
@@ -104,8 +122,10 @@ def _group_addresses_by_right_node(addresses) -> AddressMap:
 @typed
 def _reduce_routable_address_map(
         routable_addrs_map: AddressMap) -> Iterable[IPAddress]:
-    """Choose one routable address per destination node at random.
+    """Choose one routable address per destination node.
 
-    XXX: This may change to be more stable.
+    The result is stable, preferring IPv6 over IPv4, and then the highest
+    address numberically. (In fact it relies on the ordering provided by
+    `netaddr.IPAddress`, which is basically that.)
     """
-    return map(random.choice, routable_addrs_map.values())
+    return map(max, routable_addrs_map.values())

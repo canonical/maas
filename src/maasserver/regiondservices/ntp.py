@@ -7,18 +7,15 @@ __all__ = [
     "RegionNetworkTimeProtocolService",
 ]
 
-from collections import defaultdict
 from datetime import timedelta
 
 import attr
-from maasserver.models.config import Config
+from maasserver import ntp
 from maasserver.models.node import RegionController
-from maasserver.routablepairs import find_addresses_between_nodes
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.ntp.config import configure_region
-from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import (
     callOut,
     synchronous,
@@ -55,35 +52,17 @@ class RegionNetworkTimeProtocolService(TimerService):
         subsequently obtained configuration objects, allowing this service to
         determine whether a change needs to be applied to the NTP server.
         """
-        return _Configuration(self._getReferences(), self._getPeers())
-
-    @synchronous
-    def _getReferences(self):
-        """Return an immutable set of configured NTP servers."""
-        ntp_servers = Config.objects.get_config("ntp_servers")
-        return frozenset(split_string_list(ntp_servers))
-
-    @synchronous
-    def _getPeers(self):
-        """Return an immutable set of peer IP addresses."""
         try:
             this_region = RegionController.objects.get_running_controller()
         except RegionController.DoesNotExist:
-            return frozenset()  # Probably a transient error.
+            # Treat this as a transient error.
+            references = ntp.get_servers_for(None)
+            peers = ntp.get_peers_for(None)
         else:
-            peer_regions = RegionController.objects.exclude(id=this_region.id)
-            peer_addresses = defaultdict(list)
-            for _, _, peer_region, peer_address in (
-                    find_addresses_between_nodes({this_region}, peer_regions)):
-                peer_addresses[peer_region].append(peer_address)
-            return frozenset(
-                min(peer_addresses, key=self._peerAddressSortKey).format()
-                for peer_addresses in peer_addresses.values())
+            references = ntp.get_servers_for(this_region)
+            peers = ntp.get_peers_for(this_region)
 
-    @staticmethod
-    def _peerAddressSortKey(address):
-        """A key that would sort IPv6 before IPv4, then address order."""
-        return (0 if address.version == 6 else 1), address.value
+        return _Configuration(references, peers)
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the NTP server if the configuration changes.

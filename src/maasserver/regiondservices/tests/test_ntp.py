@@ -149,40 +149,6 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         super(TestRegionNetworkTimeProtocolService_Database, self).setUp()
         register_view("maasserver_routable_pairs")
 
-    def test__getReferences_returns_frozenset_of_ntp_servers(self):
-        service = ntp.RegionNetworkTimeProtocolService(reactor)
-
-        # Configure example time references.
-        ntp_servers = {factory.make_name("ntp-server") for _ in range(5)}
-        Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
-
-        observed = service._getReferences()
-        expected = frozenset(ntp_servers)
-
-        self.assertThat(observed, IsInstance(frozenset))
-        self.assertThat(observed, Equals(expected))
-
-    def test__getPeers_returns_frozenset_of_peer_ip_addresses(self):
-        service = ntp.RegionNetworkTimeProtocolService(reactor)
-
-        # Put all addresses in the same space so they're mutually routable.
-        space = factory.make_Space()
-        # Populate the database with "this" region and example peers.
-        region, addr4, addr6 = make_region_with_address(space)
-        self.useFixture(MAASIDFixture(region.system_id))
-        peer1, addr1_4, addr1_6 = make_region_with_address(space)
-        peer2, addr2_4, addr2_6 = make_region_with_address(space)
-        peer3, addr3_4, addr3_6 = make_region_with_address(space)
-
-        # Delete the third peer's IPv6 address; the reason for this will
-        # become apparent very soon...
-        addr3_6.delete()
-
-        # IPv6 peers are preferred, but IPv4 addresses will be returned when
-        # there are no IPv6 addresses available for the given peer.
-        self.assertThat(service._getPeers(), Equals(
-            {addr1_6.ip, addr2_6.ip, addr3_4.ip}))
-
     def test__getConfiguration_returns_configuration_object(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
 
