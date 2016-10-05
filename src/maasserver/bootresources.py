@@ -1295,9 +1295,10 @@ def _import_resources_with_lock(notify=None):
     create_gnupg_home()
 
     # Ensure that boot sources exist.
-    if not ensure_boot_source_definition():
-        # Nothing was created so cache the boot sources before import.
-        cache_boot_sources()
+    ensure_boot_source_definition()
+
+    # Cache the boot sources before import.
+    cache_boot_sources()
 
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
