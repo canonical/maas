@@ -498,9 +498,18 @@ class Region(RPCProtocol):
         """Get the type of the node specified by its system identifier.
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.RequestRackRefresh`.
+        :py:class:`~provisioningserver.rpc.region.GetControllerType`.
         """
         return deferToDatabase(nodes.get_controller_type, system_id)
+
+    @region.GetTimeConfiguration.responder
+    def get_time_configuration(self, system_id):
+        """Get settings to use for configuring NTP for the given node.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetTimeConfiguration`.
+        """
+        return deferToDatabase(nodes.get_time_configuration, system_id)
 
 
 @transactional

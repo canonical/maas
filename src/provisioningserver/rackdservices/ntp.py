@@ -12,7 +12,10 @@ from datetime import timedelta
 import attr
 from provisioningserver.ntp.config import configure_rack
 from provisioningserver.rpc import exceptions
-from provisioningserver.rpc.region import GetControllerType
+from provisioningserver.rpc.region import (
+    GetControllerType,
+    GetTimeConfiguration,
+)
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.twisted import callOut
 from twisted.application.internet import TimerService
@@ -60,22 +63,16 @@ class RackNetworkTimeProtocolService(TimerService):
         subsequently obtained configuration objects, allowing this service to
         determine whether a change needs to be applied to the NTP server.
         """
-        references = yield self._getReferences()
-        controller_type = yield self._getControllerType()
-        return _Configuration(
-            references, is_region=controller_type["is_region"],
-            is_rack=controller_type["is_rack"])
-
-    def _getReferences(self):
-        """Return an immutable set of configured NTP servers."""
-        clients = self._rpc_service.getAllClients()
-        addresses = (client.address for client in clients)
-        return frozenset(host for host, port in addresses)
-
-    def _getControllerType(self):
-        """Deferred, returning dict with `is_region` and `is_rack` bools."""
         client = self._rpc_service.getClient()
-        return client(GetControllerType, system_id=client.localIdent)
+        time_configuation = yield client(
+            GetTimeConfiguration, system_id=client.localIdent)
+        controller_type = yield client(
+            GetControllerType, system_id=client.localIdent)
+        return _Configuration(
+            references=time_configuation["servers"],
+            peers=time_configuation["peers"],
+            is_region=controller_type["is_region"],
+            is_rack=controller_type["is_rack"])
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the NTP server if the configuration changes.
@@ -98,7 +95,8 @@ class RackNetworkTimeProtocolService(TimerService):
             `_getConfiguration`.
         """
         if configuration.is_rack and not configuration.is_region:
-            d = deferToThread(configure_rack, configuration.references, ())
+            d = deferToThread(
+                configure_rack, configuration.references, configuration.peers)
             d.addCallback(callOut, service_monitor.restartService, "ntp_rack")
             return d
 
@@ -117,6 +115,8 @@ class _Configuration:
 
     # Addresses or hostnames of reference time servers.
     references = attr.ib(convert=frozenset)
+    # Addresses of peer time servers.
+    peers = attr.ib(convert=frozenset)
 
     # The type of this controller. It's fair to assume that is_rack is true,
     # but check nevertheless before applying this configuration.

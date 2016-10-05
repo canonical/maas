@@ -16,7 +16,10 @@ import json
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from maasserver import exceptions
+from maasserver import (
+    exceptions,
+    ntp,
+)
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminMachineWithMACAddressesForm
@@ -271,7 +274,7 @@ def request_node_info_by_mac_address(mac_address):
 def get_controller_type(system_id):
     """Get the type of the node specified by its system identifier.
 
-    :param system_id: system_id of node to commission.
+    :param system_id: system_id of node.
     :return: See `GetControllerType`.
     """
     try:
@@ -282,4 +285,23 @@ def get_controller_type(system_id):
         return {
             "is_region": node.is_region_controller,
             "is_rack": node.is_rack_controller,
+        }
+
+
+@synchronous
+@transactional
+def get_time_configuration(system_id):
+    """Get settings to use for configuring NTP for the given node.
+
+    :param system_id: system_id of node.
+    :return: See `GetTimeConfiguration`.
+    """
+    try:
+        node = Node.objects.get(system_id=system_id)
+    except Node.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+    else:
+        return {
+            "servers": ntp.get_servers_for(node),
+            "peers": ntp.get_peers_for(node),
         }

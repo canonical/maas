@@ -17,6 +17,7 @@ __all__ = [
     "GetControllerType",
     "GetDiscoveryState",
     "GetProxies",
+    "GetTimeConfiguration",
     "Identify",
     "ListNodePowerParameters",
     "MarkNodeFailed",
@@ -560,6 +561,24 @@ class GetControllerType(amp.Command):
     response = [
         (b"is_region", amp.Boolean()),
         (b"is_rack", amp.Boolean()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
+
+
+class GetTimeConfiguration(amp.Command):
+    """Get settings to use for configuring NTP for a given system identifier.
+
+    :since: 2.1
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+    ]
+    response = [
+        (b"servers", amp.ListOf(amp.Unicode())),
+        (b"peers", amp.ListOf(amp.Unicode())),
     ]
     errors = {
         NoSuchNode: b"NoSuchNode",

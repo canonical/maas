@@ -11,8 +11,10 @@ from json import dumps
 from operator import attrgetter
 import random
 from random import randint
+from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
+from maasserver import ntp
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -25,6 +27,7 @@ from maasserver.rpc.nodes import (
     commission_node,
     create_node,
     get_controller_type,
+    get_time_configuration,
     list_cluster_nodes_power_parameters,
     mark_node_failed,
     request_node_info_by_mac_address,
@@ -562,4 +565,47 @@ class TestGetControllerType_Scenarios(MAASServerTestCase):
             get_controller_type(node.system_id), Equals({
                 "is_region": self.is_region,
                 "is_rack": self.is_rack,
+            }))
+
+
+class TestGetTimeConfiguration(MAASServerTestCase):
+    """Tests for `get_controller_type`."""
+
+    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchNode, get_time_configuration,
+            factory.make_name('system_id'))
+
+
+class TestGetTimeConfiguration_Scenarios(MAASServerTestCase):
+    """Scenario tests for `get_time_configuration`."""
+
+    scenarios = (
+        ("rack", dict(
+            node_type=NODE_TYPE.RACK_CONTROLLER,
+        )),
+        ("region", dict(
+            node_type=NODE_TYPE.REGION_CONTROLLER,
+        )),
+        ("region+rack", dict(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        )),
+        ("machine", dict(
+            node_type=NODE_TYPE.MACHINE,
+        )),
+        ("machine", dict(
+            node_type=NODE_TYPE.DEVICE,
+        )),
+    )
+
+    def test__calls_through_to_ntp_module_returns_servers_and_peers(self):
+        get_servers_for = self.patch(ntp, "get_servers_for")
+        get_servers_for.return_value = frozenset({sentinel.server})
+        get_peers_for = self.patch(ntp, "get_peers_for")
+        get_peers_for.return_value = frozenset({sentinel.peer})
+        node = factory.make_Node(node_type=self.node_type)
+        self.assertThat(
+            get_time_configuration(node.system_id), Equals({
+                "servers": frozenset({sentinel.server}),
+                "peers": frozenset({sentinel.peer}),
             }))

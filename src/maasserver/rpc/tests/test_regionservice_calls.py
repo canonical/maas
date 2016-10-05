@@ -43,7 +43,10 @@ from maasserver.rpc import (
     leases as leases_module,
     regionservice,
 )
-from maasserver.rpc.nodes import get_controller_type
+from maasserver.rpc.nodes import (
+    get_controller_type,
+    get_time_configuration,
+)
 from maasserver.rpc.regionservice import Region
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
@@ -77,6 +80,7 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
     GetControllerType,
     GetProxies,
+    GetTimeConfiguration,
     Identify,
     ListNodePowerParameters,
     MarkNodeFailed,
@@ -1308,4 +1312,42 @@ class TestRegionProtocol_GetControllerType(MAASTransactionServerTestCase):
     def test_raises_NoSuchNode_when_node_does_not_exist(self):
         arguments = {"system_id": factory.make_name("id")}
         d = call_responder(Region(), GetControllerType, arguments)
+        return assert_fails_with(d, NoSuchNode)
+
+
+class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
+
+    def test_get_time_configuration_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetTimeConfiguration.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_get_time_configuration(self):
+        example_response = {
+            "servers": [
+                factory.make_ipv4_address(),
+                factory.make_ipv6_address(),
+                factory.make_hostname(),
+            ],
+            "peers": [
+                factory.make_ipv4_address(),
+                factory.make_ipv6_address(),
+            ],
+        }
+        deferToDatabase = self.patch(regionservice, 'deferToDatabase')
+        deferToDatabase.return_value = succeed(example_response)
+        system_id = factory.make_name("id")
+        response = yield call_responder(
+            Region(), GetTimeConfiguration, {'system_id': system_id})
+        self.assertThat(response, Equals(example_response))
+        self.assertThat(deferToDatabase, MockCalledOnceWith(
+            get_time_configuration, system_id))
+
+    @wait_for_reactor
+    def test_raises_NoSuchNode_when_node_does_not_exist(self):
+        arguments = {"system_id": factory.make_name("id")}
+        d = call_responder(Region(), GetTimeConfiguration, arguments)
         return assert_fails_with(d, NoSuchNode)

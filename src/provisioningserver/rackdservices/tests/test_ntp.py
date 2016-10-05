@@ -5,8 +5,6 @@
 
 __all__ = []
 
-import random
-
 import attr
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
@@ -19,17 +17,17 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from maastesting.twisted import TwistedLoggerFixture
-from provisioningserver.rackdservices import ntp
-from provisioningserver.rackdservices.testing import (
-    prepareRegionForGetControllerType,
+from maastesting.twisted import (
+    always_succeed_with,
+    TwistedLoggerFixture,
 )
+from provisioningserver import services
+from provisioningserver.rackdservices import ntp
 from provisioningserver.rpc import (
-    common,
     exceptions,
     region,
 )
-from provisioningserver.rpc.testing.doubles import FakeConnectionToRegion
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
 from testtools.matchers import (
     Equals,
@@ -38,47 +36,42 @@ from testtools.matchers import (
     MatchesStructure,
 )
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import inlineCallbacks
 
 
-@attr.s
-class FakeConnectionToRegionForGetControllerType(FakeConnectionToRegion):
+def prepareRegion(
+        test, *, is_region=False, is_rack=True, servers=None, peers=None):
+    """Set up a mock region controller.
 
-    controller_type = attr.ib(
-        default=(("is_region", False), ("is_rack", False)))
+    It responds to `GetControllerType` and `GetTimeConfiguration`.
 
-    def callRemote(self, cmd, system_id):
-        assert cmd is region.GetControllerType, (
-            "cmd must be GetControllerType, got: %r" % (cmd,))
-        return succeed(dict(self.controller_type))
+    :return: The running RPC service, and the protocol instance.
+    """
+    fixture = test.useFixture(MockLiveClusterToRegionRPCFixture())
+    protocol, connecting = fixture.makeEventLoop(
+        region.GetControllerType, region.GetTimeConfiguration)
+    protocol.RegisterRackController.side_effect = always_succeed_with(
+        {"system_id": factory.make_name("maas-id")})
+    protocol.GetControllerType.side_effect = always_succeed_with(
+        {"is_region": is_region, "is_rack": is_rack})
+    protocol.GetTimeConfiguration.side_effect = always_succeed_with({
+        "servers": [] if servers is None else servers,
+        "peers": [] if peers is None else peers,
+    })
+
+    def connected(teardown):
+        test.addCleanup(teardown)
+        return services.getServiceNamed("rpc"), protocol
+
+    return connecting.addCallback(connected)
 
 
 @attr.s
 class StubClusterClientService:
-    """A stub `ClusterClientService` service."""
-
-    addresses = attr.ib(default=frozenset(), convert=frozenset)
-    controller_type = attr.ib(
-        default=(("is_region", False), ("is_rack", False)))
-
-    def getAllClients(self):
-        return [
-            common.Client(FakeConnectionToRegionForGetControllerType(
-                address=address, controller_type=self.controller_type))
-            for address in self.addresses
-        ]
+    """A stub `ClusterClientService` service that's never connected."""
 
     def getClient(self):
-        if len(self.addresses) == 0:
-            raise exceptions.NoConnectionsAvailable()
-        else:
-            address = random.choice(list(self.addresses))
-            conn = FakeConnectionToRegionForGetControllerType(
-                address=address, controller_type=self.controller_type)
-            return common.Client(conn)
+        raise exceptions.NoConnectionsAvailable()
 
 
 class TestRackNetworkTimeProtocolService(MAASTestCase):
@@ -96,36 +89,52 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
             StubClusterClientService(), reactor)
         self.assertThat(service.step, Equals(30.0))
 
+    def make_servers_and_peers(self):
+        return (
+            frozenset({
+                factory.make_ipv4_address(),
+                factory.make_ipv6_address(),
+                factory.make_hostname(),
+            }),
+            frozenset({
+                factory.make_ipv4_address(),
+                factory.make_ipv6_address(),
+            }),
+        )
+
     @inlineCallbacks
     def test__getConfiguration_returns_configuration_object(self):
         is_region, is_rack = factory.pick_bool(), factory.pick_bool()
-        rpc_service, _ = yield prepareRegionForGetControllerType(
-            self, is_region, is_rack)
+        servers, peers = self.make_servers_and_peers()
+        rpc_service, protocol = yield prepareRegion(
+            self, is_region=is_region, is_rack=is_rack,
+            servers=servers, peers=peers)
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         observed = yield service._getConfiguration()
 
         self.assertThat(observed, IsInstance(ntp._Configuration))
         self.assertThat(
             observed, MatchesStructure.byEquality(
-                references={c.address[0] for c in rpc_service.getAllClients()},
-                is_region=is_region, is_rack=is_rack))
+                references=servers, peers=peers, is_region=is_region,
+                is_rack=is_rack))
 
     @inlineCallbacks
     def test__tryUpdate_updates_ntp_server(self):
         self.useFixture(MAASRootFixture())
-        rpc_service, _ = yield prepareRegionForGetControllerType(self)
-        servers = {c.address[0] for c in rpc_service.getAllClients()}
+        servers, peers = self.make_servers_and_peers()
+        rpc_service, _ = yield prepareRegion(
+            self, servers=servers, peers=peers)
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         configure_rack = self.patch_autospec(ntp, "configure_rack")
         restartService = self.patch_autospec(service_monitor, "restartService")
 
         yield service._tryUpdate()
-        self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure_rack, MockCalledOnceWith(servers, peers))
         self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure`.
         yield service._tryUpdate()
-        self.assertThat(configure_rack, MockCalledOnceWith(servers, ()))
+        self.assertThat(configure_rack, MockCalledOnceWith(servers, peers))
         self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
 
     @inlineCallbacks
@@ -144,7 +153,7 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_rack_is_not_recognised(self):
         self.useFixture(MAASRootFixture())
-        rpc_service, protocol = yield prepareRegionForGetControllerType(self)
+        rpc_service, protocol = yield prepareRegion(self)
         protocol.GetControllerType.side_effect = exceptions.NoSuchNode
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         self.patch_autospec(service, "_maybeApplyConfiguration")
@@ -158,7 +167,7 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
     @inlineCallbacks
     def test_is_silent_does_nothing_but_saves_config_when_is_region(self):
         self.useFixture(MAASRootFixture())
-        rpc_service, _ = yield prepareRegionForGetControllerType(self, True)
+        rpc_service, _ = yield prepareRegion(self, is_region=True)
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
         self.patch_autospec(ntp, "configure_rack")  # No-op configuration.
 
@@ -173,6 +182,8 @@ class TestRackNetworkTimeProtocolService(MAASTestCase):
         # controller, and the rack should not attempt to manage the NTP server
         # on a region+rack.
         self.assertThat(service._configuration, IsInstance(ntp._Configuration))
+        # The configuration was not applied.
+        self.assertThat(ntp.configure_rack, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
         self.assertThat(logger.output, Equals(""))
 
@@ -191,7 +202,7 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
 
     @inlineCallbacks
     def test__tryUpdate_logs_errors_from_broken_method(self):
-        rpc_service, _ = yield prepareRegionForGetControllerType(self)
+        rpc_service, _ = yield prepareRegion(self)
         self.patch_autospec(ntp, "configure_rack")  # No-op configuration.
 
         service = ntp.RackNetworkTimeProtocolService(rpc_service, reactor)
