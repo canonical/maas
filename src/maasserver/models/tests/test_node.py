@@ -1536,7 +1536,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         self.patch(Node, '_set_status_expires')
-        self.patch(node, '_stop').return_value = None
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         node_result = factory.make_NodeResult_for_installation(node=node)
         self.assertEqual(
             [node_result], list(NodeResult.objects.filter(
@@ -1704,7 +1705,8 @@ class TestNode(MAASServerTestCase):
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        self.patch(node, '_stop').return_value = None
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         node.set_netboot(on=False)
         with post_commit_hooks:
             node.release()
@@ -1713,7 +1715,8 @@ class TestNode(MAASServerTestCase):
     def test_release_logs_user_request(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
-        self.patch(node, "_stop").return_value = None
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.release(owner)
@@ -1726,7 +1729,8 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.osystem = factory.make_name('os')
         node.distro_series = factory.make_name('series')
-        self.patch(node, "_stop").return_value = None
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         with post_commit_hooks:
             node.release()
         self.assertEqual("", node.osystem)
@@ -1777,6 +1781,8 @@ class TestNode(MAASServerTestCase):
         release_auto_ips = self.patch_autospec(
             node, "release_auto_ips")
         self.patch(Node, '_set_status_expires')
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         with post_commit_hooks:
             node.release()
         self.assertThat(release_auto_ips, MockCalledOnceWith())
@@ -1818,7 +1824,7 @@ class TestNode(MAASServerTestCase):
         node_stop.side_effect = factory.make_exception()
 
         try:
-            with transaction.atomic():
+            with post_commit_hooks:
                 node.release()
         except node_stop.side_effect.__class__:
             # We don't care about the error here, so suppress it. It
@@ -1832,7 +1838,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         mock_clear = self.patch(node, "_clear_acquired_filesystems")
-        self.patch(node, "_stop").return_value = None
+        self.patch(node, '_stop')
+        self.patch(node, '_set_status')
         with post_commit_hooks:
             node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
@@ -3611,7 +3618,8 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         self.assertItemsEqual(other_nodes, Node.objects.all())
 
     def test_children_get_deleted_when_parent_is_released(self):
-        self.patch(Node, "_stop").return_value = None
+        self.patch(Node, '_stop')
+        self.patch(Node, '_set_status')
         owner = factory.make_User()
         # Create children.
         parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)

@@ -1391,7 +1391,8 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_POST_release_returns_modified_machines(self):
         owner = self.user
-        self.patch(Machine, "_stop").return_value = None
+        self.patch(Machine, '_stop')
+        self.patch(Machine, '_set_status')
         acceptable_states = [NODE_STATUS.READY] + RELEASABLE_STATUSES
         machines = [
             factory.make_Node_with_Interface_on_Subnet(
