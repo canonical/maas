@@ -6,6 +6,7 @@
 __all__ = [
     "configure_rack",
     "configure_region",
+    "normalise_address",
 ]
 
 from functools import partial
@@ -58,6 +59,23 @@ configure_region = partial(configure, offset=0)
 configure_rack = partial(configure, offset=1)
 
 
+def normalise_address(address):
+    """Normalise an IP address into a form suitable for the `ntp` daemon.
+
+    It seems to prefer non-mapped IPv4 addresses, for example. Hostnames are
+    passed through.
+    """
+    try:
+        address = IPAddress(address)
+    except AddrFormatError:
+        return address  # Hostname.
+    else:
+        if address.is_ipv4_mapped():
+            return address.ipv4()
+        else:
+            return address
+
+
 def _render_ntp_conf(includefile):
     """Render ``ntp.conf`` based on the existing configuration.
 
@@ -93,12 +111,12 @@ def _render_ntp_maas_conf(servers, peers, offset):
         orphan mode (see http://support.ntp.org/bin/view/Support/OrphanMode).
     """
     lines = ["# MAAS NTP configuration."]
-    servers = map(_normalise_address, servers)
+    servers = map(normalise_address, servers)
     lines.extend(
         "%s %s iburst" % (
             ("server" if isinstance(server, IPAddress) else "pool"), server)
         for server in servers)
-    peers = map(_normalise_address, peers)
+    peers = map(normalise_address, peers)
     lines.extend("peer %s" % peer for peer in peers)
     lines.append("tos orphan {:d}".format(offset + 8))
     lines.append("")  # Add newline at end.
@@ -168,20 +186,3 @@ def _clean_whitespace(lines):
         if not blank:
             yield from lines
             yield "\n"
-
-
-def _normalise_address(address):
-    """Normalise an IP address into a form suitable for the `ntp` daemon.
-
-    It seems to prefer non-mapped IPv4 addresses, for example. Hostnames are
-    passed through.
-    """
-    try:
-        address = IPAddress(address)
-    except AddrFormatError:
-        return address  # Hostname.
-    else:
-        if address.is_ipv4_mapped():
-            return address.ipv4()
-        else:
-            return address

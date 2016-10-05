@@ -10,6 +10,8 @@ __all__ = [
 from itertools import chain
 
 from maasserver import ntp
+from netaddr import IPAddress
+from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 
 
@@ -47,9 +49,15 @@ def generate_ntp_configuration(node):
           - 102.10.10.10
           - ntp.ubuntu.com
 
-    but MAAS does not yet distinguish between pool and non-pool servers, and
-    so this returns a single set of time references.
+    MAAS assumes that IP addresses are "servers" and hostnames/FQDNs "pools".
     """
     ntp_servers = ntp.get_servers_for(node)
     if len(ntp_servers) >= 1:
-        yield "ntp", {"servers": sorted(ntp_servers)}
+        # Separate out IP addresses from the rest.
+        addrs, other = set(), set()
+        for ntp_server in map(normalise_address, ntp_servers):
+            bucket = addrs if isinstance(ntp_server, IPAddress) else other
+            bucket.add(ntp_server)
+        servers = [addr.format() for addr in sorted(addrs)]
+        pools = sorted(other)  # Hostnames and FQDNs only.
+        yield "ntp", {"servers": servers, "pools": pools}

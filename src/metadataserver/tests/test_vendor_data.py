@@ -14,6 +14,7 @@ from metadataserver.vendor_data import (
     generate_system_info,
     get_vendor_data,
 )
+from netaddr import IPAddress
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -55,7 +56,8 @@ class TestGetVendorData(MAASServerTestCase):
         vendor_data = get_vendor_data(node)
         self.assertThat(vendor_data, ContainsDict({
             "ntp": Equals({
-                "servers": ["bar", "foo"],
+                "servers": [],
+                "pools": ["bar", "foo"],
             }),
         }))
 
@@ -104,12 +106,15 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
 
     def test_external_only_yields_all_ntp_servers_when_defined(self):
         Config.objects.set_config("ntp_external_only", True)
-        ntp_servers = factory.make_hostname(), factory.make_hostname()
+        ntp_hosts = factory.make_hostname(), factory.make_hostname()
+        ntp_addrs = factory.make_ipv4_address(), factory.make_ipv6_address()
+        ntp_servers = ntp_hosts + ntp_addrs
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
         configuration = generate_ntp_configuration(node=factory.make_Node())
         self.assertThat(dict(configuration), Equals({
             "ntp": {
-                "servers": sorted(ntp_servers),
+                "servers": sorted(ntp_addrs, key=IPAddress),
+                "pools": sorted(ntp_hosts),
             },
         }))
 
@@ -148,9 +153,9 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         configuration = generate_ntp_configuration(machine)
         self.assertThat(dict(configuration), Equals({
             "ntp": {
-                "servers": sorted((
-                    rack_primary_address.ip,
-                    rack_secondary_address.ip,
-                )),
+                "servers": sorted(
+                    (rack_primary_address.ip, rack_secondary_address.ip),
+                    key=IPAddress),
+                "pools": [],
             },
         }))

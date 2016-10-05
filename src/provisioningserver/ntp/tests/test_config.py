@@ -114,6 +114,35 @@ class TestConfigure(MAASTestCase):
                 keywords=Equals({"offset": 1})))
 
 
+class TestNormaliseAddress(MAASTestCase):
+    """Tests for `p.ntp.config.normalise_address`."""
+
+    def test_returns_hostnames_unchanged(self):
+        hostname = factory.make_hostname()
+        self.assertThat(config.normalise_address(hostname), Equals(hostname))
+
+    def test_returns_ipv4_addresses_as_IPAddress(self):
+        address = factory.make_ipv4_address()
+        normalised = config.normalise_address(address)
+        self.assertThat(normalised, IsInstance(IPAddress))
+        self.assertThat(normalised.version, Equals(4))
+        self.assertThat(str(normalised), Equals(address))
+
+    def test_returns_ipv6_addresses_as_IPAddress(self):
+        address = factory.make_ipv6_address()
+        normalised = config.normalise_address(address)
+        self.assertThat(normalised, IsInstance(IPAddress))
+        self.assertThat(normalised.version, Equals(6))
+        self.assertThat(str(normalised), Equals(address))
+
+    def test_renders_ipv6_mapped_ipv4_addresses_as_plain_ipv4(self):
+        address_as_ipv4 = factory.make_ipv4_address()
+        address_as_ipv6 = str(IPAddress(address_as_ipv4).ipv6())
+        normalised = config.normalise_address(address_as_ipv6)
+        self.assertThat(normalised, IsInstance(IPAddress))
+        self.assertThat(str(normalised), Equals(address_as_ipv4))
+
+
 def extract_tos_options(configuration):
     commands = re.findall(r"^ *tos +([^\r\n]+)$", configuration, re.MULTILINE)
     return list(chain.from_iterable(map(str.split, commands)))
