@@ -34,6 +34,13 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
             },
             power: function(node) {
                 return node.power_state;
+            },
+            release: function(node) {
+                if(node.status_code === 6 || node.status_code === 9) {
+                    return node.osystem + "/" + node.distro_series;
+                } else {
+                    return '';
+                }
             }
         };
 

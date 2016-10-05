@@ -340,4 +340,31 @@ describe("nodesFilter", function() {
             [matchingNode]);
     });
 
+    it("matches using release mapping function", function() {
+        var deployingNode = {
+            status_code: 9,
+            osystem: 'ubuntu',
+            distro_series: 'xenial'
+        };
+        var deployedNode = {
+            status_code: 6,
+            osystem: 'ubuntu',
+            distro_series: 'xenial'
+        };
+        var allocatedNode = {
+            status_code: 5,
+            osystem: 'ubuntu',
+            distro_series: 'xenial'
+        };
+        var deployedOtherNode = {
+            status_code: 6,
+            osystem: 'ubuntu',
+            distro_series: 'trusty'
+        };
+        var nodes = [
+            deployingNode, deployedNode, allocatedNode, deployedOtherNode];
+        expect(nodesFilter(nodes, "release:ubuntu/xenial")).toEqual(
+            [deployingNode, deployedNode]);
+    });
+
 });

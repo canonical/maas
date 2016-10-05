@@ -569,6 +569,16 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </ul>
                 </div>
             </div>
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.release.length">
+                <h4 class="accordion__tab-title maas-accordion-tab">OS/Release</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="release in tabs.nodes.metadata.release | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('release', release.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('release', release.name, 'nodes')">{$ getReleaseTitle(release.name) $} ({$ release.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.tags.length">
                 <h4 class="accordion__tab-title maas-accordion-tab">Tags</h4>
                 <div class="accordion__tab-content">

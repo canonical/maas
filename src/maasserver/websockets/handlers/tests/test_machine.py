@@ -250,6 +250,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "storage",
                 "storage_tags",
                 "node_type_display",
+                "osystem",
+                "distro_series",
             ]
             for key in list(data):
                 if key not in allowed_fields:
@@ -973,7 +975,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 10,
+            query_10_count, 12,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

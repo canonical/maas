@@ -1015,10 +1015,20 @@ class TestNode(MAASServerTestCase):
         osystem = Config.objects.get_config('default_osystem')
         self.assertEqual(osystem, node.get_osystem())
 
+    def test_get_osystem_returns_passed_default(self):
+        node = factory.make_Node(osystem='')
+        default = factory.make_name("default")
+        self.assertEqual(default, node.get_osystem(default=default))
+
     def test_get_distro_series_returns_default_series(self):
         node = factory.make_Node(distro_series='')
         series = Config.objects.get_config('default_distro_series')
         self.assertEqual(series, node.get_distro_series())
+
+    def test_get_distro_series_returns_passed_default(self):
+        node = factory.make_Node(osystem='')
+        default = factory.make_name("default")
+        self.assertEqual(default, node.get_distro_series(default=default))
 
     def test_get_effective_license_key_returns_node_value(self):
         license_key = factory.make_name('license_key')

@@ -61,6 +61,9 @@ def node_prefetch(queryset):
 
 class NodeHandler(TimestampedModelHandler):
 
+    default_osystem = None
+    default_distro_series = None
+
     class Meta:
         abstract = True
         pk = 'system_id'
@@ -138,9 +141,11 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
         ]
+        data["osystem"] = obj.get_osystem(
+            default=self.default_osystem)
+        data["distro_series"] = obj.get_distro_series(
+            default=self.default_distro_series)
         if not for_list:
-            data["osystem"] = obj.get_osystem()
-            data["distro_series"] = obj.get_distro_series()
             data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
 
             data["power_type"] = obj.power_type

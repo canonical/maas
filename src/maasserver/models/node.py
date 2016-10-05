@@ -1951,15 +1951,17 @@ class Node(CleanSave, TimestampedModel):
         global_value = Config.objects.get_config('kernel_opts')
         return None, global_value
 
-    def get_osystem(self):
+    def get_osystem(self, default=None):
         """Return the operating system to install that node."""
         use_default_osystem = (self.osystem is None or self.osystem == '')
         if use_default_osystem:
-            return Config.objects.get_config('default_osystem')
+            if default is None:
+                default = Config.objects.get_config('default_osystem')
+            return default
         else:
             return self.osystem
 
-    def get_distro_series(self):
+    def get_distro_series(self, default=None):
         """Return the distro series to install that node."""
         use_default_osystem = (
             self.osystem is None or
@@ -1968,7 +1970,9 @@ class Node(CleanSave, TimestampedModel):
             self.distro_series is None or
             self.distro_series == '')
         if use_default_osystem and use_default_distro_series:
-            return Config.objects.get_config('default_distro_series')
+            if default is None:
+                default = Config.objects.get_config('default_distro_series')
+            return default
         else:
             return self.distro_series
 

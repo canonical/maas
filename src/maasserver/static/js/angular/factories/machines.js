@@ -28,7 +28,14 @@ angular.module('MAAS').factory(
                 "subnets": null,
                 "fabrics": null,
                 "spaces": null,
-                "storage_tags": null
+                "storage_tags": null,
+                "release": function(machine) {
+                    if(machine.status_code === 6 || machine.status_code === 9) {
+                        return machine.osystem + "/" + machine.distro_series;
+                    } else {
+                        return '';
+                    }
+                }
             };
 
             // Listen for notify events for the machine object.

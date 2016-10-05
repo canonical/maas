@@ -152,6 +152,28 @@ describe("NodesListController", function() {
         });
     });
 
+    describe("getReleaseTitle", function() {
+        it("returns release title from osinfo", function() {
+            var controller = makeController();
+            $scope.osinfo = {
+                releases: [
+                    ['ubuntu/xenial', 'Ubuntu Xenial']
+                ]
+            };
+            expect($scope.getReleaseTitle('ubuntu/xenial')).toBe(
+                'Ubuntu Xenial');
+        });
+
+        it("returns release name when not in osinfo", function() {
+            var controller = makeController();
+            $scope.osinfo = {
+                releases: []
+            };
+            expect($scope.getReleaseTitle('ubuntu/xenial')).toBe(
+                'ubuntu/xenial');
+        });
+    });
+
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Machines");
@@ -178,6 +200,13 @@ describe("NodesListController", function() {
         ]);
         expect($scope.addHardwareScope).toBeNull();
         expect($scope.loading).toBe(true);
+    });
+
+    it("calls startPolling when scope created", function() {
+        spyOn(GeneralManager, "startPolling");
+        var controller = makeController();
+        expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+            "osinfo");
     });
 
     it("calls stopPolling when scope destroyed", function() {
@@ -826,35 +855,6 @@ describe("NodesListController", function() {
                     $scope.actionOptionSelected(tab);
                     expect($scope.tabs[tab].previous_search).toBe(search);
                 });
-
-                it("action deploy calls startPolling for osinfo", function() {
-                    var controller = makeController();
-                    $scope.tabs[tab].actionOption = {
-                        "name": "deploy"
-                    };
-                    spyOn(GeneralManager, "startPolling");
-                    $scope.actionOptionSelected(tab);
-                    expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                        "osinfo");
-                });
-
-                it("changing away from deploy calls startPolling for osinfo",
-                    function() {
-                        var controller = makeController();
-                        $scope.tabs[tab].actionOption = {
-                            "name": "deploy"
-                        };
-                        spyOn(GeneralManager, "startPolling");
-                        spyOn(GeneralManager, "stopPolling");
-                        $scope.actionOptionSelected(tab);
-
-                        $scope.tabs[tab].actionOption = {
-                            "name": "acquire"
-                        };
-                        $scope.actionOptionSelected(tab);
-                        var expected = expect(GeneralManager.stopPolling);
-                        expected.toHaveBeenCalledWith("osinfo");
-                    });
 
                 it("calls hide on addHardwareScope", function() {
                     var controller;

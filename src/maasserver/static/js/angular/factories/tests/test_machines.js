@@ -35,7 +35,7 @@ describe("MachinesManager", function() {
     it("set requires attributes", function() {
         expect(Object.keys(MachinesManager._metadataAttributes)).toEqual(
             ["status", "owner", "tags", "zone", "subnets", "fabrics",
-            "spaces", "storage_tags"]);
+            "spaces", "storage_tags", "release"]);
     });
 
     describe("mountSpecialFilesystem", function() {

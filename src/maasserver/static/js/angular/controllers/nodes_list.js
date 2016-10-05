@@ -433,14 +433,6 @@ angular.module('MAAS').controller('NodesListController', [
             updateActionErrorCount(tab);
             enterViewSelected(tab);
 
-            var actionOption = $scope.tabs[tab].actionOption;
-            if(angular.isObject(actionOption) &&
-                actionOption.name === "deploy") {
-                GeneralManager.startPolling("osinfo");
-            } else {
-                GeneralManager.stopPolling("osinfo");
-            }
-
             // Hide the add hardware/device section.
             if (tab === 'nodes') {
                 if(angular.isObject($scope.addHardwareScope)) {
@@ -496,7 +488,6 @@ angular.module('MAAS').controller('NodesListController', [
             resetActionProgress(tab);
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
-            GeneralManager.stopPolling("osinfo");
         };
 
         // Perform the action on all nodes.
@@ -606,6 +597,17 @@ angular.module('MAAS').controller('NodesListController', [
             return UsersManager.isSuperUser();
         };
 
+        // Returns the release title from osinfo.
+        $scope.getReleaseTitle = function(os_release) {
+            for(i = 0; i < $scope.osinfo.releases.length; i++) {
+                var release = $scope.osinfo.releases[i];
+                if(release[0] === os_release) {
+                    return release[1];
+                }
+            }
+            return os_release;
+        };
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
@@ -615,6 +617,9 @@ angular.module('MAAS').controller('NodesListController', [
             function() {
                 $scope.loading = false;
             });
+
+        // Start polling for the os information.
+        GeneralManager.startPolling("osinfo");
 
         // Stop polling and save the current filter when the scope is destroyed.
         $scope.$on("$destroy", function() {

@@ -52,6 +52,7 @@ from maasserver.forms_interface import (
 from maasserver.forms_interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.config import Config
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
 from maasserver.models.node import (
@@ -163,6 +164,17 @@ class MachineHandler(NodeHandler):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
+
+    def list(self, params):
+        """List objects.
+
+        Caches default_osystem and default_distro_series so only 2 queries are
+        made for the whole list of nodes.
+        """
+        self.default_osystem = Config.objects.get_config('default_osystem')
+        self.default_distro_series = Config.objects.get_config(
+            'default_distro_series')
+        return super(MachineHandler, self).list(params)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
