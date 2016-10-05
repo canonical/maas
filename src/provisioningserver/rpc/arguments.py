@@ -6,8 +6,10 @@
 __all__ = [
     "Bytes",
     "Choice",
-    "StructureAsJSON",
+    "IPAddress",
+    "IPNetwork",
     "ParsedURL",
+    "StructureAsJSON",
 ]
 
 import collections

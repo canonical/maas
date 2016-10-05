@@ -5,8 +5,6 @@
 
 __all__ = []
 
-from unittest.mock import sentinel
-
 from maasserver.dbviews import register_view
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
@@ -101,14 +99,14 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
     def test_external_only_yields_nothing_when_no_ntp_servers_defined(self):
         Config.objects.set_config("ntp_external_only", True)
         Config.objects.set_config("ntp_servers", "")
-        configuration = generate_ntp_configuration(node=sentinel.ignored)
+        configuration = generate_ntp_configuration(node=factory.make_Node())
         self.assertThat(dict(configuration), Equals({}))
 
     def test_external_only_yields_all_ntp_servers_when_defined(self):
         Config.objects.set_config("ntp_external_only", True)
         ntp_servers = factory.make_hostname(), factory.make_hostname()
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
-        configuration = generate_ntp_configuration(node=sentinel.ignored)
+        configuration = generate_ntp_configuration(node=factory.make_Node())
         self.assertThat(dict(configuration), Equals({
             "ntp": {
                 "servers": sorted(ntp_servers),

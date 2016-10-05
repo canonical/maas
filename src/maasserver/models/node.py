@@ -1040,6 +1040,14 @@ class Node(CleanSave, TimestampedModel):
             ]
 
     @property
+    def is_machine(self):
+        return self.node_type == NODE_TYPE.MACHINE
+
+    @property
+    def is_device(self):
+        return self.node_type == NODE_TYPE.DEVICE
+
+    @property
     def power_type(self):
         return '' if self.bmc is None else self.bmc.power_type
 

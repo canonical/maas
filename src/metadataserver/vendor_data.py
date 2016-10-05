@@ -7,16 +7,10 @@ __all__ = [
     'get_vendor_data',
     ]
 
-from collections import defaultdict
 from itertools import chain
-import random
 
-from maasserver.models.config import Config
-from maasserver.routablepairs import find_addresses_between_nodes
-from provisioningserver.utils.text import (
-    make_gecos_field,
-    split_string_list,
-)
+from maasserver import ntp
+from provisioningserver.utils.text import make_gecos_field
 
 
 def get_vendor_data(node):
@@ -56,36 +50,6 @@ def generate_ntp_configuration(node):
     but MAAS does not yet distinguish between pool and non-pool servers, and
     so this returns a single set of time references.
     """
-    ntp_external_only = Config.objects.get_config("ntp_external_only")
-    if ntp_external_only:
-        ntp_servers = Config.objects.get_config("ntp_servers")
-        ntp_servers = set(split_string_list(ntp_servers))
-    else:
-        # Point the node back to its primary and secondary rack controllers as
-        # a source of time information.
-        rack_controllers = node.get_boot_rack_controllers()
-        routable_addrs = find_addresses_between_nodes([node], rack_controllers)
-        routable_addrs_by_rack = _group_addresses_by_right_node(routable_addrs)
-        # Choose one routable address per rack at random.
-        ntp_servers = {
-            random.choice(address).format()
-            for address in routable_addrs_by_rack.values()
-        }
-
+    ntp_servers = ntp.get_servers_for(node)
     if len(ntp_servers) >= 1:
         yield "ntp", {"servers": sorted(ntp_servers)}
-
-
-def _group_addresses_by_right_node(addresses):
-    """Group `addresses` by the "right" node.
-
-    Effectively this assumes that there is only one "left" node and thus
-    ignores it; it's only concerned with grouping addresses on the "right".
-
-    :param addresses: The output from `find_addresses_between_nodes`.
-    :return: A dict mapping "right" nodes to a list of their IP addresses.
-    """
-    collated = defaultdict(list)
-    for _, _, right_node, right_ip in addresses:
-        collated[right_node].append(right_ip)
-    return collated

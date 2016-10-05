@@ -786,6 +786,46 @@ class TestNode(MAASServerTestCase):
         rack = factory.make_RackController()
         self.assertTrue(rack.is_controller)
 
+    def test_is_machine_machine(self):
+        machine = factory.make_Node()
+        self.assertTrue(machine.is_machine)
+
+    def test_is_machine_device(self):
+        device = factory.make_Device()
+        self.assertFalse(device.is_machine)
+
+    def test_is_machine_region_controller(self):
+        region = factory.make_RegionController()
+        self.assertFalse(region.is_machine)
+
+    def test_is_machine_region_rack_controller(self):
+        region_rack = factory.make_RegionRackController()
+        self.assertFalse(region_rack.is_machine)
+
+    def test_is_machine_rack_controller(self):
+        rack = factory.make_RackController()
+        self.assertFalse(rack.is_machine)
+
+    def test_is_device_machine(self):
+        machine = factory.make_Node()
+        self.assertFalse(machine.is_device)
+
+    def test_is_device_device(self):
+        device = factory.make_Device()
+        self.assertTrue(device.is_device)
+
+    def test_is_device_region_controller(self):
+        region = factory.make_RegionController()
+        self.assertFalse(region.is_device)
+
+    def test_is_device_region_rack_controller(self):
+        region_rack = factory.make_RegionRackController()
+        self.assertFalse(region_rack.is_device)
+
+    def test_is_device_rack_controller(self):
+        rack = factory.make_RackController()
+        self.assertFalse(rack.is_device)
+
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
         self.assertThat(
