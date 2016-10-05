@@ -802,6 +802,11 @@ def get_eui_organization(eui):
         registration = eui.oui.registration()
         # Note that `registration` is not a dictionary, so we can't use .get().
         return registration['org']
+    except UnicodeError:
+        # See bug #1628761. Due to corrupt data in the OUI database, and/or
+        # the fact that netaddr assumes all the data is ASCII, sometimes
+        # netaddr will raise an exception during this process.
+        return None
     except NotRegisteredError:
         # This could happen for locally-administered MACs.
         return None

@@ -14,6 +14,7 @@ from socket import (
     IPPROTO_TCP,
 )
 from unittest import mock
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -206,6 +207,14 @@ class TestGetMACOrganization(MAASTestCase):
     def test_get_eui_organization(self):
         organization = get_eui_organization(EUI("48:51:b7:00:00:00"))
         self.assertThat(organization, Equals("Intel Corporate"))
+
+    def test_get_eui_organization_returns_None_for_UnicodeError(self):
+        mock_eui = Mock()
+        mock_eui.oui = Mock()
+        mock_eui.oui.registration = Mock()
+        mock_eui.oui.registration.side_effect = UnicodeError
+        organization = get_eui_organization(mock_eui)
+        self.assertThat(organization, Is(None))
 
     def test_get_eui_organization_returns_none_for_invalid_mac(self):
         organization = get_eui_organization(EUI("FF:FF:b7:00:00:00"))
