@@ -18,7 +18,7 @@ angular.module('MAAS').controller('NetworksListController', [
         var filterBySpace = $filter('filterBySpace');
 
         // Set title and page.
-        $rootScope.title = "Networks";
+        $rootScope.title = "Subnets";
         $rootScope.page = "networks";
 
         // Set the initial value of $scope.groupBy based on the URL

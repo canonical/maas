@@ -60,7 +60,7 @@ describe("NetworksListController", function() {
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
-        expect($rootScope.title).toBe("Networks");
+        expect($rootScope.title).toBe("Subnets");
         expect($rootScope.page).toBe("networks");
     });
 
