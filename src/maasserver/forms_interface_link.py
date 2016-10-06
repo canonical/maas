@@ -25,6 +25,7 @@ from maasserver.models import (
     BondInterface,
     Interface,
     StaticIPAddress,
+    Subnet,
 )
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -73,7 +74,11 @@ class InterfaceLinkForm(forms.Form):
                 'invalid_choice': compose_invalid_choice_text(
                     'mode', mode_choices),
             })
-        self.fields['subnet'].queryset = self.instance.vlan.subnet_set.all()
+        if self.instance.vlan is None:
+            self.fields['subnet'].queryset = Subnet.objects.none()
+        else:
+            self.fields['subnet'].queryset = (
+                self.instance.vlan.subnet_set.all())
 
     def clean(self):
         for interface_set in self.instance.interface_set.all():

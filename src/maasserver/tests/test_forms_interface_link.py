@@ -43,6 +43,13 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test__sets_subnet_queryset_to_empty_on_interface_wihtout_vlan(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface.vlan = None
+        interface.save()
+        form = InterfaceLinkForm(instance=interface, data={})
+        self.assertItemsEqual([], form.fields["subnet"].queryset)
+
     def test__sets_subnet_queryset_to_subnets_on_interface_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnets = [
