@@ -285,6 +285,10 @@ class RepoWriter(BasicMirrorWriter):
 
         osystem = get_os_from_product(item)
         subarches = self.product_mapping.get(item)
+        if item.get('rolling', False):
+            subarch_parts = item['subarch'].split('-')
+            subarch_parts[1] = 'rolling'
+            subarches.append('-'.join(subarch_parts))
         link_resources(
             snapshot_path=self.root_path, links=links,
             osystem=osystem, arch=item['arch'], release=item['release'],

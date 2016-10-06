@@ -186,6 +186,9 @@ class TestRepoWriter(MAASTestCase):
         if ftype is None:
             ftype = factory.make_name('ftype')
         return {
+            'content_id': 'maas:v2:download',
+            'product_name': factory.make_string(),
+            'version_name': datetime.utcnow().strftime('%Y%m%d'),
             'sha256': factory.make_name('sha256'),
             'size': random.randint(2, 2**16),
             'ftype': ftype,
@@ -198,11 +201,13 @@ class TestRepoWriter(MAASTestCase):
 
     def test_inserts_archive(self):
         product = self.make_product('archive.tar.xz')
-        # Mock in test data
-        repo_writer = download_resources.RepoWriter(None, None, None)
+        product_mapping = ProductMapping()
+        subarch = factory.make_name('subarch')
+        product_mapping.add(product, subarch)
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
-        self.patch(repo_writer, 'product_mapping')
         mock_extract_archive_tar = self.patch(
             download_resources, 'extract_archive_tar')
         mock_link_resources = self.patch(download_resources, 'link_resources')
@@ -217,16 +222,18 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY,
+                label=product['label'], subarches=[subarch],
                 bootloader_type=None))
 
     def test_inserts_root_image(self):
         product = self.make_product('root-image.gz')
-        # Mock in test data
-        repo_writer = download_resources.RepoWriter(None, None, None)
+        product_mapping = ProductMapping()
+        subarch = factory.make_name('subarch')
+        product_mapping.add(product, subarch)
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
-        self.patch(repo_writer, 'product_mapping')
         mock_insert_root_image = self.patch(
             download_resources, 'insert_root_image')
         mock_link_resources = self.patch(download_resources, 'link_resources')
@@ -241,16 +248,18 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY,
+                label=product['label'], subarches=[subarch],
                 bootloader_type=None))
 
     def test_inserts_file(self):
         product = self.make_product()
-        # Mock in test data
-        repo_writer = download_resources.RepoWriter(None, None, None)
+        product_mapping = ProductMapping()
+        subarch = factory.make_name('subarch')
+        product_mapping.add(product, subarch)
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
-        self.patch(repo_writer, 'product_mapping')
         mock_insert_file = self.patch(download_resources, 'insert_file')
         mock_link_resources = self.patch(download_resources, 'link_resources')
         repo_writer.insert_item(product, None, None, None, None)
@@ -264,7 +273,33 @@ class TestRepoWriter(MAASTestCase):
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=mock.ANY,
+                label=product['label'], subarches=[subarch],
+                bootloader_type=None))
+
+    def test_inserts_rolling_links(self):
+        product = self.make_product()
+        product['subarch'] = 'hwe-16.04'
+        product['rolling'] = True
+        product_mapping = ProductMapping()
+        product_mapping.add(product, 'hwe-16.04')
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
+        self.patch(
+            download_resources, 'products_exdata').return_value = product
+        mock_insert_file = self.patch(download_resources, 'insert_file')
+        mock_link_resources = self.patch(download_resources, 'link_resources')
+        repo_writer.insert_item(product, None, None, None, None)
+        self.assertThat(
+            mock_insert_file,
+            MockCalledOnceWith(
+                mock.ANY, os.path.basename(product['path']), product['sha256'],
+                {'sha256': product['sha256']}, product['size'], None))
+        self.assertThat(
+            mock_link_resources,
+            MockCalledOnceWith(
+                snapshot_path=None, links=mock.ANY, osystem=product['os'],
+                arch=product['arch'], release=product['release'],
+                label=product['label'], subarches=['hwe-16.04', 'hwe-rolling'],
                 bootloader_type=None))
 
 

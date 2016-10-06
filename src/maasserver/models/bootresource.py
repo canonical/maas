@@ -9,6 +9,7 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    BooleanField,
     CharField,
     Count,
     IntegerField,
@@ -251,6 +252,11 @@ class BootResourceManager(Manager):
             subarch = resource.split_arch()[1]
             if subarch.startswith("hwe-") or subarch.startswith("ga-"):
                 kernels.add(subarch)
+                if resource.rolling:
+                    subarch_parts = subarch.split('-')
+                    subarch_parts[1] = 'rolling'
+                    kernels.add('-'.join(subarch_parts))
+
             if "subarches" in resource.extra:
                 for subarch in resource.extra["subarches"].split(","):
                     if subarch.startswith("hwe-") or subarch.startswith("ga-"):
@@ -275,6 +281,21 @@ class BootResourceManager(Manager):
         """Return the kernel package name for the kernel specified."""
         if not node.hwe_kernel:
             return None
+        elif 'hwe-rolling' in node.hwe_kernel:
+            kparts = node.hwe_kernel.split('-')
+            if kparts[-1] == 'edge':
+                if len(kparts) == 3:
+                    kflavor = 'generic'
+                else:
+                    kflavor = kparts[-2]
+                return 'linux-%s-hwe-rolling-edge' % kflavor
+            else:
+                if len(kparts) == 2:
+                    kflavor = 'generic'
+                else:
+                    kflavor = kparts[-1]
+                return 'linux-%s-hwe-rolling' % kflavor
+
         arch = node.split_arch()[0]
         os_release = node.get_osystem() + '/' + node.get_distro_series()
         # Before hwe_kernel was introduced the subarchitecture was the
@@ -371,6 +392,14 @@ class BootResource(CleanSave, TimestampedModel):
     bootloader_type = CharField(max_length=32, blank=True, null=True)
 
     kflavor = CharField(max_length=32, blank=True, null=True)
+
+    # The hwe-rolling kernel is a meta-package which depends on the latest
+    # kernel available. Instead of placing a duplicate kernel in the stream
+    # SimpleStreams adds a boolean field to indicate that the hwe-rolling
+    # kernel meta-package points to this kernel. When the rolling field is set
+    # true MAAS allows users to deploy the hwe-rolling kernel by using this
+    # BootResource kernel and instructs Curtin to install the meta-package.
+    rolling = BooleanField(blank=False, null=False, default=False)
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 

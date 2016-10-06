@@ -606,19 +606,19 @@ class TestGetUsableKernels(MAASServerTestCase):
             "name": "ubuntu/trusty",
             "arch": "amd64",
             "subarch": "generic",
-            "kernels": ["hwe-t", "hwe-u", "hwe-v"],
+            "kernels": ["hwe-t", "hwe-u", "hwe-v", "hwe-rolling"],
             }),
         ("ubuntu/vivid", {
             "name": "ubuntu/vivid",
             "arch": "i386",
             "subarch": "generic",
-            "kernels": ["hwe-v"],
+            "kernels": ["hwe-v", "hwe-rolling"],
             }),
         ("ubuntu/precise", {
             "name": "ubuntu/precise",
             "arch": "armfh",
             "subarch": "generic",
-            "kernels": ["hwe-p", "hwe-t", "hwe-v"],
+            "kernels": ["hwe-p", "hwe-t", "hwe-v", "hwe-rolling"],
             }),
         ("ubuntu/wily", {
             "name": "ubuntu/wily",
@@ -630,7 +630,9 @@ class TestGetUsableKernels(MAASServerTestCase):
             "name": "ubuntu/xenial",
             "arch": "amd64",
             "subarch": "generic",
-            "kernels": ["hwe-16.04", "hwe-16.04-lowlatency"],
+            "kernels": [
+                "hwe-16.04", "hwe-16.04-lowlatency", "hwe-rolling",
+                "hwe-rolling-lowlatency"],
             }),
         )
 
@@ -646,7 +648,8 @@ class TestGetUsableKernels(MAASServerTestCase):
                     generic_kernels.append(i)
                 factory.make_usable_boot_resource(
                     name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                    architecture="%s/%s" % (self.arch, i), kflavor=kflavor)
+                    architecture="%s/%s" % (self.arch, i), kflavor=kflavor,
+                    rolling=True)
                 factory.make_incomplete_boot_resource(
                     name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
                     architecture="%s/%s" % (
@@ -656,7 +659,7 @@ class TestGetUsableKernels(MAASServerTestCase):
             generic_kernels = self.kernels
             factory.make_usable_boot_resource(
                 name=self.name, rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                architecture="%s/%s" % (self.arch, self.subarch))
+                architecture="%s/%s" % (self.arch, self.subarch), rolling=True)
         self.assertEqual(
             sorted(self.kernels),
             sorted(BootResource.objects.get_usable_hwe_kernels(
@@ -689,6 +692,23 @@ class TestGetKpackageForNode(MAASServerTestCase):
         self.assertEqual(
             "linux-image-generic-lts-trusty",
             BootResource.objects.get_kpackage_for_node(node))
+
+    def test__returns_hwe_rolling(self):
+        node = factory.make_Node()
+        for hwe_kernel, kpackage in (
+                ['hwe-rolling', 'linux-generic-hwe-rolling'],
+                ['hwe-rolling-lowlatency', 'linux-lowlatency-hwe-rolling'],
+                ['hwe-rolling-edge', 'linux-generic-hwe-rolling-edge'],
+                [
+                    'hwe-rolling-lowlatency-edge',
+                    'linux-lowlatency-hwe-rolling-edge'],):
+            node.hwe_kernel = hwe_kernel
+            self.assertEqual(
+                kpackage, BootResource.objects.get_kpackage_for_node(node))
+
+    def test__returns_none(self):
+        node = factory.make_Node()
+        self.assertIsNone(BootResource.objects.get_kpackage_for_node(node))
 
 
 class TestBootResource(MAASServerTestCase):

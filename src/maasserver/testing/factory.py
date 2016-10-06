@@ -1458,8 +1458,9 @@ class Factory(maastesting.factory.Factory):
             sha256=sha256, size=len(content),
             total_size=size, content=largeobject)
 
-    def make_BootResource(self, rtype=None, name=None, architecture=None,
-                          extra=None, kflavor=None, bootloader_type=None):
+    def make_BootResource(
+            self, rtype=None, name=None, architecture=None, extra=None,
+            kflavor=None, bootloader_type=None, rolling=False):
         if rtype is None:
             rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
         if name is None:
@@ -1480,7 +1481,7 @@ class Factory(maastesting.factory.Factory):
                 }
         return BootResource.objects.create(
             rtype=rtype, name=name, architecture=architecture, kflavor=kflavor,
-            bootloader_type=bootloader_type, extra=extra)
+            bootloader_type=bootloader_type, extra=extra, rolling=rolling)
 
     def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
@@ -1518,10 +1519,10 @@ class Factory(maastesting.factory.Factory):
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
             extra=None, version=None, label=None, kflavor=None, size=None,
-            bootloader_type=None):
+            bootloader_type=None, rolling=False):
         resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra,
-            kflavor=kflavor, bootloader_type=bootloader_type)
+            kflavor=kflavor, bootloader_type=bootloader_type, rolling=rolling)
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
         filetypes = {

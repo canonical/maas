@@ -316,6 +316,8 @@ class SimpleStreamsHandler:
             product['kflavor'] = resource.kflavor
         if resource.bootloader_type is not None:
             product['bootloader-type'] = resource.bootloader_type
+        if resource.rolling:
+            product['rolling'] = resource.rolling
         product.update(resource.extra)
         return product
 
@@ -491,7 +493,12 @@ class BootResourceStore(ObjectStore):
                 )
             )
             if has_kflavor:
-                subarch = "%s-%s" % (subarch, kflavor)
+                if 'edge' in subarch:
+                    subarch_parts = subarch.split('-')
+                    subarch_parts.insert(-1, kflavor)
+                    subarch = '-'.join(subarch_parts)
+                else:
+                    subarch = "%s-%s" % (subarch, kflavor)
             architecture = '%s/%s' % (arch, subarch)
             series = product['release']
         else:
@@ -528,6 +535,7 @@ class BootResourceStore(ObjectStore):
 
         resource.kflavor = kflavor
         resource.bootloader_type = bootloader_type
+        resource.rolling = product.get('rolling', False)
 
         # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to

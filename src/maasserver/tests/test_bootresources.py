@@ -205,9 +205,9 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         return 'maas:boot:%s:%s:%s:%s' % (os, arch, subarch, series)
 
     def make_usable_product_boot_resource(
-            self, kflavor=None, bootloader_type=None):
+            self, kflavor=None, bootloader_type=None, rolling=False):
         resource = factory.make_usable_boot_resource(
-            kflavor=kflavor, bootloader_type=bootloader_type)
+            kflavor=kflavor, bootloader_type=bootloader_type, rolling=rolling)
         return self.get_product_name_for_resource(resource), resource
 
     def test_streams_other_than_allowed_returns_404(self):
@@ -351,12 +351,13 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         kflavor = factory.make_name('kflavor')
         bootloader_type = factory.make_name('bootloader_type')
         product, _ = self.make_usable_product_boot_resource(
-            kflavor, bootloader_type)
+            kflavor, bootloader_type, True)
         response = self.get_stream_client('maas:v2:download.json')
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEquals(kflavor, output['products'][product]['kflavor'])
         self.assertEquals(
             bootloader_type, output['products'][product]['bootloader-type'])
+        self.assertTrue(output['products'][product]['rolling'])
 
     def test_streams_product_download_product_has_valid_values(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -638,6 +639,7 @@ def make_product(ftype=None, kflavor=None, subarch=None):
         'kpackage': factory.make_name('kpackage'),
         'item_name': name,
         'path': '/path/to/%s' % name,
+        'rolling': factory.pick_bool(),
         }
     name = '%s/%s' % (product['os'], product['release'])
     if kflavor == 'generic':
@@ -736,6 +738,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(architecture, resource.architecture)
         self.assertEqual(product['kflavor'], resource.kflavor)
         self.assertEqual(product['subarches'], resource.extra['subarches'])
+        self.assertEqual(product['rolling'], resource.rolling)
 
     def test_get_or_create_boot_resource_handles_bootloader(self):
         osystem = factory.make_name('os')
