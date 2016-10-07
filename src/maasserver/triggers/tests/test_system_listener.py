@@ -3194,6 +3194,29 @@ class TestDNSConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_config_dnssec_validation_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "dnssec_validation", "no")
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration dnssec_validation set to %s"
+                % json.dumps("no")))
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_config_default_dns_ttl_insert(self):
         default_dns_ttl_new = random.randint(10, 1000)
         yield deferToDatabase(register_system_triggers)
@@ -3268,6 +3291,33 @@ class TestDNSConfigListener(
                 "Configuration upstream_dns changed from %s to %s"
                 % (json.dumps(upstream_dns_old),
                    json.dumps(upstream_dns_new))))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_dnssec_validation_update(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "dnssec_validation", "no")
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "dnssec_validation", "yes")
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration dnssec_validation changed from %s to %s"
+                % (json.dumps("no"),
+                   json.dumps("yes"))))
 
     @wait_for_reactor
     @inlineCallbacks
