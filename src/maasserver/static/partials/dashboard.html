@@ -35,8 +35,8 @@
             <div class="table">
                 <header class="table__head">
                     <div class="table__row">
-                        <div class="table__header table-col--20">Name</div>
-                        <div class="table__header table-col--20">
+                        <div class="table__header table-col--37">Name</div>
+                        <div class="table__header table-col--15">
                             <a class="table__header-link"
                                data-ng-click="column = 'mac'"
                                data-ng-class="{'is-active': column === 'mac'}">Mac</a>
@@ -45,8 +45,8 @@
                                data-ng-click="column = 'manufacturer'"
                                data-ng-class="{'is-active': column === 'manufacturer'}">Manufacturer</a>
                         </div>
-                        <div class="table__header table-col--20">IP</div>
-                        <div class="table__header table-col--20">Rack</div>
+                        <div class="table__header table-col--13">IP</div>
+                        <div class="table__header table-col--15">Rack</div>
                         <div class="table__header table-col--20">Last seen</div>
                     </div>
                 </header>
@@ -72,23 +72,23 @@
                         data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
                         <div data-ng-if="discovery.first_seen !== selectedDevice"
                             data-ng-dblclick="toggleSelected(discovery.first_seen)">
-                            <div class="table__data table-col--20">
+                            <div class="table__data table-col--37">
                                 {$ getDiscoveryName(discovery) $}
                                 <i data-ng-show="discovery.is_external_dhcp === true" class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP."></i>
                             </div>
-                            <div class="table__data table-col--20" data-ng-if="column === 'mac'">
+                            <div class="table__data table-col--15" data-ng-if="column === 'mac'">
                                 {$ discovery.mac_address $}
                             </div>
-                            <div class="table__data table-col--20" data-ng-if="column === 'manufacturer'">
+                            <div class="table__data table-col--15" data-ng-if="column === 'manufacturer'">
                                 {$ discovery.mac_organization || 'Unknown' $}
                             </div>
-                            <div class="table__data table-col--20 u-text--truncate">
+                            <div class="table__data table-col--13 u-text--truncate">
                                 {$ discovery.ip $}
                             </div>
-                            <div class="table__data table-col--17">
+                            <div class="table__data table-col--15">
                                 {$ discovery.observer_hostname $}
                             </div>
-                            <div class="table__data table-col--20">
+                            <div class="table__data table-col--17">
                                 <time>{$ discovery.last_seen $}</time>
                             </div>
                             <div class="table__data table-col--3">
