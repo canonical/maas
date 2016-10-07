@@ -656,7 +656,8 @@ class RegionServer(Region):
 
             # Rack controller is now registered. Log this status.
             log.msg(
-                "Rack controller '%s' has been registered." % self.ident)
+                "Process [%s] - registered rack controller '%s'." % (
+                    os.getpid(), self.ident))
 
             # Done registering the rack controller and connection.
             return {'system_id': self.ident}

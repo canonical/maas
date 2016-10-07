@@ -18,12 +18,14 @@ from django.db.models import Q
 from maasserver import (
     locks,
     worker_user,
+    is_master_process,
 )
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     Node,
     NodeGroupToRackController,
     RackController,
+    RegionController,
     StaticIPAddress,
 )
 from maasserver.models.node import typecast_node
@@ -91,21 +93,31 @@ def register(
     if interfaces is None:
         interfaces = {}
 
+    this_region = RegionController.objects.get_running_controller()
     node = find(system_id, hostname, interfaces)
     if node is None:
         node = RackController.objects.create(hostname=hostname)
-        maaslog.info("Created new rack controller '%s'.", node.hostname)
-    elif node.is_rack_controller:
         maaslog.info(
-            "Registering existing rack controller '%s'.", node.hostname)
+            "New rack controller '%s' was created by region '%s' upon "
+            "first connection.",
+            node.hostname, this_region.hostname)
+    elif node.is_rack_controller:
+        if is_master_process():
+            # Only the master process logs to the maaslog.
+            maaslog.info(
+                "Existing rack controller '%s' has connected to region '%s'.",
+                node.hostname, this_region.hostname)
     elif node.is_region_controller:
         maaslog.info(
-            "Converting '%s' into a region and rack controller.",
+            "Region controller '%s' converted into a region and rack "
+            "controller.",
             node.hostname)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.save()
     else:
-        maaslog.info("Converting '%s' into a rack controller.", node.hostname)
+        maaslog.info(
+            "Region controller '%s' converted '%s' into a rack controller.",
+            this_region.hostname, node.hostname)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 

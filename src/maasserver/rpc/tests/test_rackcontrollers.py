@@ -23,6 +23,7 @@ from maasserver.models import (
     Node,
     NodeGroupToRackController,
     RackController,
+    RegionController,
 )
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.timestampedmodel import now
@@ -111,6 +112,14 @@ class TestHandleUpgrade(MAASServerTestCase):
 
 class TestRegisterRackController(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestRegisterRackController, self).setUp()
+        self.this_region = factory.make_RegionController()
+        mock_running = self.patch(
+            RegionController.objects,
+            "get_running_controller")
+        mock_running.return_value = self.this_region
+
     def test_sets_owner_to_worker_when_none(self):
         node = factory.make_Node()
         rack_registered = register(system_id=node.system_id)
@@ -155,12 +164,14 @@ class TestRegisterRackController(MAASServerTestCase):
         register(system_id=node.system_id)
         self.assertEqual(node_type, node.node_type)
 
-    def test_logs_finding_existing_node(self):
+    def test_logs_finding_existing_node_when_master(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+        self.patch(rackcontrollers, "is_master_process").return_value = True
         register(system_id=node.system_id)
         self.assertEqual(
-            "Registering existing rack controller '%s'." % node.hostname,
+            "Existing rack controller '%s' has connected to region '%s'." % (
+                node.hostname, self.this_region.hostname),
             logger.output.strip())
 
     def test_converts_region_controller(self):
@@ -174,7 +185,8 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Converting '%s' into a region and rack controller.\n" %
+            "Region controller '%s' converted into a region and "
+            "rack controller.\n" %
             node.hostname, logger.output)
 
     def test_converts_existing_node(self):
@@ -187,7 +199,8 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id)
         self.assertEqual(
-            "Converting '%s' into a rack controller.\n" % node.hostname,
+            "Region controller '%s' converted '%s' into a rack "
+            "controller.\n" % (self.this_region.hostname, node.hostname),
             logger.output)
 
     def test_creates_new_rackcontroller(self):
@@ -210,7 +223,9 @@ class TestRegisterRackController(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         register(hostname=hostname)
         self.assertEqual(
-            "Created new rack controller '%s'." % hostname,
+            "New rack controller '%s' was created by region '%s' upon first "
+            "connection." % (
+                hostname, self.this_region.hostname),
             logger.output.strip())
 
     def test_sets_interfaces(self):

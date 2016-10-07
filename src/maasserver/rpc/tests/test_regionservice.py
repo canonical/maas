@@ -381,11 +381,17 @@ class TestRegionServer(MAASTransactionServerTestCase):
             RegisterRackController.commandName)
         self.assertIsNotNone(responder)
 
+    @inlineCallbacks
     def installFakeRegionAdvertisingService(self):
+        region = yield deferToDatabase(
+            transactional(factory.make_RegionController))
+        self.patch(
+            RegionController.objects,
+            "get_running_controller").return_value = region
         service = RegionAdvertisingService()
         service.setName("rpc-advertise")
         service.advertising.set(RegionAdvertising(
-            region_id=factory.make_name("region-id"),
+            region_id=region.system_id,
             process_id=randint(1000, 9999)))
         service.setServiceParent(eventloop.services)
         self.addCleanup(service.disownServiceParent)
@@ -393,7 +399,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_returns_system_id(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -409,7 +415,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_updates_interfaces(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -440,7 +446,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_calls_handle_upgrade(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -460,7 +466,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_sets_ident(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -475,7 +481,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_calls_addConnectionFor(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -494,7 +500,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_sets_hosts(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -510,7 +516,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_sets_hostIsRemote_calls_registerConnection(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         rack_controller = yield deferToDatabase(factory.make_RackController)
         protocol = self.make_Region()
         protocol.transport = MagicMock()
@@ -537,7 +543,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_creates_new_rack(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         protocol = self.make_Region()
         protocol.transport = MagicMock()
         hostname = factory.make_hostname()
@@ -553,7 +559,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_register_raises_CannotRegisterRackController_when_it_cant(self):
-        self.installFakeRegionAdvertisingService()
+        yield self.installFakeRegionAdvertisingService()
         patched_create = self.patch(RackController.objects, 'create')
         patched_create.side_effect = IntegrityError()
         hostname = factory.make_name("hostname")
