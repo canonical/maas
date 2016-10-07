@@ -273,7 +273,7 @@ coverage.data:
 	@$(error Use `$(MAKE) test+coverage` to generate coverage data, \
 	    or invoke a test script using the `--with-coverage` flag)
 
-lint: lint-py lint-py-imports lint-js lint-doc lint-rst
+lint: lint-py lint-py-complexity lint-py-imports lint-js lint-doc lint-rst
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -283,19 +283,27 @@ lint-css:
 	@find $(sources) -type f \
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
 
-# Python lint checks are time-intensive, so we run them in parallel.  It may
-# make things matters worse if the files need to be read from disk, though, so
-# this may need more tuning.
-# The -n50 -P4 setting roughly doubled speed on a high-end system with SSD and
-# all the files in cache.
-lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
+# Python lint checks are time-intensive, but flake8 now knows how to run
+# parallel jobs, and does so by default.
+lint-py: sources = \
+    setup.py $(wildcard contrib/*.py) src templates twisted utilities etc
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
+	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
+	    | xargs -r0 bin/flake8 --ignore=E123,E402,E731 --isolated
+
+# Ignore tests when checking complexity. The maximum complexity ought to
+# be close to 10 but MAAS has many functions that are over that so we
+# start with a much higher number. Over time we can ratchet it down.
+lint-py-complexity: maximum=26
+lint-py-complexity: sources = \
+    setup.py $(wildcard contrib/*.py) src templates twisted utilities etc
+lint-py-complexity: bin/flake8
+	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
-	  ! -path 'src/provisioningserver/twisted/*' ! -path 'ez_setup.py' \
-	  ! -path 'src/maasserver/data/*' -print0 \
-	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
-	    --config=/dev/null
+	  ! -path '*/tests/*' ! -path '*/testing/*' ! -name 'testing.py' \
+	  -print0 | xargs -r0 bin/flake8 --ignore=E123,E402,E731 \
+	              --isolated --max-complexity=$(maximum)
 
 # Statically check imports against policy.
 lint-py-imports:
@@ -449,6 +457,7 @@ define phony_targets
   lint-doc
   lint-js
   lint-py
+  lint-py-complexity
   lint-py-imports
   lint-rst
   lxd
