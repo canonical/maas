@@ -312,6 +312,21 @@ def fix_twisted_internet_tcp():
     twisted.internet.tcp._resolveIPv6 = new_resolveIPv6
 
 
+def augment_twisted_deferToThreadPool():
+    """Wrap every function deferred to a thread in `synchronous`."""
+    from twisted.internet import threads
+    from twisted.internet.threads import deferToThreadPool
+    from provisioningserver.utils.twisted import ISynchronous, synchronous
+
+    def new_deferToThreadPool(reactor, threadpool, f, *args, **kwargs):
+        """Variant of Twisted's that wraps all functions in `synchronous`."""
+        func = f if ISynchronous.providedBy(f) else synchronous(f)
+        return deferToThreadPool(reactor, threadpool, func, *args, **kwargs)
+
+    if threads.deferToThreadPool.__module__ != __name__:
+        threads.deferToThreadPool = new_deferToThreadPool
+
+
 def add_patches_to_txtftp():
     add_term_error_code_to_tftp()
     fix_tftp_requests()
@@ -322,3 +337,4 @@ def add_patches_to_twisted():
     fix_twisted_web_http_Request()
     fix_twisted_web_server_addressToTuple()
     fix_twisted_internet_tcp()
+    augment_twisted_deferToThreadPool()

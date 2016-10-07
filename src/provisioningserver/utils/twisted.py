@@ -36,7 +36,11 @@ from functools import (
     partial,
     wraps,
 )
-from itertools import repeat
+from itertools import (
+    chain,
+    repeat,
+    starmap,
+)
 from operator import attrgetter
 import os
 from os import (
@@ -198,6 +202,13 @@ def synchronous(func):
 
     :raises AssertionError: When called inside the reactor thread.
     """
+    try:
+        # A function or method; see PEP 3155.
+        func_name = func.__qualname__
+    except AttributeError:
+        # An instance with a __call__ method.
+        func_name = type(func).__qualname__
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         # isInIOThread() can return True if the reactor has previously been
@@ -208,7 +219,16 @@ def synchronous(func):
                 "Function %s(...) must not be called in the "
                 "reactor thread." % func.__name__)
         else:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            if isinstance(result, Deferred):
+                args_reprs = chain(
+                    map(repr, args), starmap(
+                        "{}={!r}".format, kwargs.items()))
+                raise TypeError(
+                    "Synchronous call returned a Deferred: %s(%s)"
+                    % (func_name, ", ".join(args_reprs)))
+            else:
+                return result
 
     # This makes it possible to reliably determine programmatically if a
     # function has been decorated with @synchronous.

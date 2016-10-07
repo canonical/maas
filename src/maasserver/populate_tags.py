@@ -119,8 +119,7 @@ def populate_tags(tag):
                     "credentials": creds,
                     "nodes": list(chunked_node_ids[idx]),
                 })
-        [d] = _do_populate_tags(connected_racks)
-        return d
+        return _do_populate_tags(connected_racks)
 
 
 def _get_or_create_auth_token(user):

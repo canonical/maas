@@ -233,7 +233,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
             protocols.append(protocol)
         tag = factory.make_Tag(populate=False)
 
-        d = populate_tags(tag)
+        [d] = populate_tags(tag)
 
         # `d` is a testing-only convenience. We must wait for it to fire, and
         # we must do that from the reactor thread.

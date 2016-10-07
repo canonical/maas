@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Stuff relating to threads in the MAAS Region Controller.
@@ -30,9 +30,11 @@ from provisioningserver.utils.twisted import (
     ThreadPool,
     ThreadUnpool,
 )
-from twisted.internet import reactor
+from twisted.internet import (
+    reactor,
+    threads,
+)
 from twisted.internet.defer import DeferredSemaphore
-from twisted.internet.threads import deferToThreadPool
 
 
 max_threads_for_default_pool = 50
@@ -135,7 +137,7 @@ def install_database_unpool(maxthreads=max_threads_for_database_pool):
 
 def deferToDatabase(func, *args, **kwargs):
     """Call `func` in a thread where database activity is permitted."""
-    return deferToThreadPool(
+    return threads.deferToThreadPool(
         reactor, reactor.threadpoolForDatabase,
         func, *args, **kwargs)
 

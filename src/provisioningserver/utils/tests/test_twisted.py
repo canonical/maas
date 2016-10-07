@@ -273,6 +273,33 @@ class TestSynchronousDecorator(MAASTestCase):
         self.assertThat(synchronous(return_args), Provides(ISynchronous))
 
 
+class TestSynchronousDecoratorSychronously(MAASTestCase):
+    """Test `synchronous` outside of the reactor thread."""
+
+    def test__raises_TypeError_when_call_returns_Deferred(self):
+        @synchronous
+        def deferSomething(*args, **kwargs):
+            return Deferred()
+
+        a, b = factory.make_name("a"), factory.make_name("b")
+        error = self.assertRaises(TypeError, deferSomething, a, b=b)
+        self.assertThat(str(error), Equals(
+            "Synchronous call returned a Deferred: %s(%r, b=%r)"
+            % (deferSomething.__qualname__, a, b)))
+
+    def test__raises_TypeError_when_callable_returns_Deferred(self):
+        class Something:
+            def __call__(self, *args, **kwargs):
+                return Deferred()
+
+        something = Something()
+        a, b = factory.make_name("a"), factory.make_name("b")
+        error = self.assertRaises(TypeError, synchronous(something), a, b=b)
+        self.assertThat(str(error), Equals(
+            "Synchronous call returned a Deferred: %s(%r, b=%r)"
+            % (Something.__qualname__, a, b)))
+
+
 class TestRetries(MAASTestCase):
 
     def assertRetry(
