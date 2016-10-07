@@ -972,7 +972,7 @@ describe("maasBootImages", function() {
                 title: release.title,
                 arch: arch.title,
                 size: '-',
-                status: 'Queued for download',
+                status: 'Selected for download',
                 beingDeleted: false
             }]);
         });
@@ -1048,7 +1048,7 @@ describe("maasBootImages", function() {
                 title: release.title,
                 arch: arch.name,
                 size: size,
-                status: 'Queued for deletion',
+                status: 'Will be deleted',
                 beingDeleted: true
             }]);
         });
@@ -1076,7 +1076,7 @@ describe("maasBootImages", function() {
                 title: image.title,
                 arch: arch,
                 size: '-',
-                status: 'Queued for download',
+                status: 'Selected for download',
                 beingDeleted: false
             }]);
         });
@@ -1149,7 +1149,7 @@ describe("maasBootImages", function() {
                 title: image.title,
                 arch: arch,
                 size: size,
-                status: 'Queued for deletion',
+                status: 'Will be deleted',
                 beingDeleted: true
             }]);
         });

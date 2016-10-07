@@ -378,7 +378,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                         title: release.title,
                                         arch: arch.title,
                                         size: '-',
-                                        status: 'Queued for download',
+                                        status: 'Selected for download',
                                         beingDeleted: false
                                     };
                                     var resource = getResource(
@@ -406,7 +406,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                 title: resource.title,
                                 arch: resource.arch,
                                 size: resource.size,
-                                status: 'Queued for deletion',
+                                status: 'Will be deleted',
                                 beingDeleted: true
                             };
                             $scope.ubuntuImages.push(image);
@@ -454,7 +454,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     title: otherImage.title,
                                     arch: name_split[1],
                                     size: '-',
-                                    status: 'Queued for download',
+                                    status: 'Selected for download',
                                     beingDeleted: false
                                 };
                                 var resource = getResource(
@@ -480,7 +480,7 @@ angular.module('MAAS').directive('maasBootImages', [
                             title: resource.title,
                             arch: resource.arch,
                             size: resource.size,
-                            status: 'Queued for deletion',
+                            status: 'Will be deleted',
                             beingDeleted: true
                         };
                         $scope.otherImages.push(image);
