@@ -181,7 +181,8 @@ class AccountAPITest(APITestCase.ForUser):
 
     def test_create_authorisation_token(self):
         # The api operation create_authorisation_token returns a json dict
-        # with the consumer_key, the token_key and the token_secret in it.
+        # with the consumer_key, the token_key, the token_secret and the
+        # consumer_name in it.
         response = self.client.post(
             reverse('account_handler'), {'op': 'create_authorisation_token'})
         self.assertEqual(http.client.OK, response.status_code)
@@ -189,11 +190,27 @@ class AccountAPITest(APITestCase.ForUser):
             'application/json; charset=utf-8', response["content-type"])
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(
-            ['consumer_key', 'token_key', 'token_secret'],
+            ['consumer_key', 'name', 'token_key', 'token_secret'],
             sorted(parsed_result))
         self.assertIsInstance(parsed_result['consumer_key'], str)
         self.assertIsInstance(parsed_result['token_key'], str)
         self.assertIsInstance(parsed_result['token_secret'], str)
+        self.assertIsInstance(parsed_result['name'], str)
+
+    def test_create_authorisation_token_with_token_name(self):
+        # The api operation create_authorisation_token can also accept
+        # a new name for the generated token.
+        token_name = 'Test_Token'
+        response = self.client.post(
+            reverse('account_handler'), {
+                'op': 'create_authorisation_token',
+                'name': token_name
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            'application/json; charset=utf-8', response["content-type"])
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(parsed_result['name'], token_name)
 
     def test_delete_authorisation_token_not_found(self):
         # If the provided token_key does not exist (for the currently
@@ -209,9 +226,131 @@ class AccountAPITest(APITestCase.ForUser):
         # delete_authorisation_token. It it is not present in the request's
         # parameters, the api returns a 'Bad Request' (400) error.
         response = self.client.post(
-            reverse('account_handler'), {'op': 'delete_authorisation_token'})
+            reverse('account_handler'), {
+                'op': 'delete_authorisation_token'
+            })
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_update_authorisation_token(self):
+        token_name_orig = 'Test_Token'
+        token_name_updated = 'Test_Token update'
+        response_creation = self.client.post(
+            reverse('account_handler'), {
+                'op': 'create_authorisation_token',
+                'name': token_name_orig
+            })
+        parsed_creation_response = json_load_bytes(response_creation.content)
+        created_token = ":".join([
+            parsed_creation_response['consumer_key'],
+            parsed_creation_response['token_key'],
+            parsed_creation_response['token_secret']
+        ])
+        self.client.post(
+            reverse('account_handler'), {
+                'op': 'update_token_name', 'token': created_token,
+                'name': token_name_updated
+            })
+        response_list = self.client.get(
+            reverse('account_handler'), {
+                'op': 'list_authorisation_tokens'
+            })
+        parsed_list_response = json_load_bytes(response_list.content)
+        for token in parsed_list_response:
+            if token['token'] == created_token:
+                self.assertEqual(token['name'], token_name_updated)
+
+    def test_update_authorisation_token_with_token_key(self):
+        # We use only "token_key" portion of the authorisation token
+        # to update the token name.
+        token_name_orig = 'Test_Token'
+        token_name_updated = 'Test_Token update'
+        response_creation = self.client.post(
+            reverse('account_handler'), {
+                'op': 'create_authorisation_token',
+                'name': token_name_orig
+            })
+        parsed_creation_response = json_load_bytes(response_creation.content)
+        created_token = ":".join([
+            parsed_creation_response['consumer_key'],
+            parsed_creation_response['token_key'],
+            parsed_creation_response['token_secret']
+        ])
+        self.client.post(
+            reverse('account_handler'), {
+                'op': 'update_token_name',
+                'token': parsed_creation_response['token_key'],
+                'name': token_name_updated
+            })
+        response_list = self.client.get(
+            reverse('account_handler'), {
+                'op': 'list_authorisation_tokens'
+            })
+        parsed_list_response = json_load_bytes(response_list.content)
+        for token in parsed_list_response:
+            if token['token'] == created_token:
+                self.assertEqual(token['name'], token_name_updated)
+
+    def test_update_authorisation_token_name_not_found(self):
+        # If the provided token_key does not exist (for the currently
+        # logged-in user), the api returns a 'Not Found' (404) error.
+        response = self.client.post(
+            reverse('account_handler'), {
+                'op': 'update_token_name', 'token': 'no-such-token',
+                'name': 'test_name'
+            })
+
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
+
+    def test_update_authorisation_token_name_bad_request_no_token(self):
+        # `token` and `name` are mandatory parameters when calling
+        # update_token_name. If it is not present in the request's
+        # parameters, the api returns a 'Bad Request' (400) error.
+        response = self.client.post(
+            reverse('account_handler'), {
+                'op': 'update_token_name'
+            })
+
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_list_tokens(self):
+        token1_name = "Test Token 1"
+        response_creation = self.client.post(
+            reverse('account_handler'), {
+                'op': 'create_authorisation_token',
+                'name': token1_name
+            })
+        parsed_creation_response = json_load_bytes(response_creation.content)
+        response = self.client.get(
+            reverse('account_handler'), {
+                'op': 'list_authorisation_tokens'
+            })
+        parsed_list_response = json_load_bytes(response.content)
+        self.assertEqual(len(json_load_bytes(response.content)), 2)
+        for token in parsed_list_response:
+            if token['name'] == token1_name:
+                token_fields = token['token'].split(":")
+                self.assertEqual(
+                    token_fields[0],
+                    parsed_creation_response['consumer_key'])
+                self.assertEqual(
+                    token_fields[1],
+                    parsed_creation_response['token_key'])
+                self.assertEqual(
+                    token_fields[2],
+                    parsed_creation_response['token_secret'])
+
+    def test_list_tokens_format(self):
+        self.client.post(
+            reverse('account_handler'), {'op': 'create_authorisation_token'})
+        response = self.client.get(
+            reverse('account_handler'), {'op': 'list_authorisation_tokens'})
+        parsed_list_response = json_load_bytes(response.content)
+        self.assertIsInstance(parsed_list_response, list)
+        for token in parsed_list_response:
+            self.assertEqual(['name', 'token'], sorted(token))
+            self.assertIsInstance(token['name'], str)
+            self.assertIsInstance(token['token'], str)
 
 
 class TestSSHKeyHandlers(APITestCase.ForUser):

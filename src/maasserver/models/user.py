@@ -29,17 +29,21 @@ SYSTEM_USERS = [
 GENERIC_CONSUMER = 'MAAS consumer'
 
 
-def create_auth_token(user):
+def create_auth_token(user, consumer_name=None):
     """Create new Token and Consumer (OAuth authorisation) for `user`.
 
     :param user: The user to create a token for.
     :type user: User
+    :param consumer_name: Name of the consumer to be assigned to the newly
+     generated token.
     :return: The created Token.
     :rtype: piston.models.Token
 
     """
+    if consumer_name is None:
+        consumer_name = GENERIC_CONSUMER
     consumer = Consumer.objects.create(
-        user=user, name=GENERIC_CONSUMER, status='accepted')
+        user=user, name=consumer_name, status='accepted')
     consumer.generate_random_codes()
     # This is a 'generic' consumer aimed to service many clients, hence
     # we don't authenticate the consumer with key/secret key.

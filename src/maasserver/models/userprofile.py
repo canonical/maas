@@ -92,7 +92,7 @@ class UserProfile(CleanSave, Model):
 
         return get_auth_tokens(self.user)
 
-    def create_authorisation_token(self):
+    def create_authorisation_token(self, consumer_name=None):
         """Create a new Token and its related Consumer (OAuth authorisation).
 
         :return: A tuple containing the Consumer and the Token that were
@@ -103,7 +103,7 @@ class UserProfile(CleanSave, Model):
         # Avoid circular imports.
         from maasserver.models.user import create_auth_token
 
-        token = create_auth_token(self.user)
+        token = create_auth_token(self.user, consumer_name)
         return token.consumer, token
 
     def delete_authorisation_token(self, token_key):
@@ -118,6 +118,21 @@ class UserProfile(CleanSave, Model):
             Token, user=self.user, token_type=Token.ACCESS, key=token_key)
         token.consumer.delete()
         token.delete()
+
+    def modify_consumer_name(self, token_key, consumer_name):
+        """Modify consumer name of an existing token key.
+
+        :param token_key: The key of the token to be deleted.
+        :type token_key: string
+        :param consumer_name: Name of the token consumer.
+        :type consumer_name: string
+        :raises: `django.http.Http404`
+        """
+        token = get_object_or_404(
+            Token, user=self.user, token_type=Token.ACCESS, key=token_key)
+        token.consumer.name = consumer_name
+        token.consumer.save()
+        token.save()
 
     def __str__(self):
         return self.user.username

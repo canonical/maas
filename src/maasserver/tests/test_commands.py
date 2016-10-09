@@ -427,3 +427,59 @@ class TestApikeyCommand(MAASServerTestCase):
             self, 'apikey', username=user.username, delete=token_string)
         self.assertIn(
             "No matching api key found", error_text)
+
+    def test_success_modify_apikey_name(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        fake_api_key_name = "Test Key Name"
+        user = factory.make_User()
+        existing_token = get_one(
+            user.userprofile.get_authorisation_tokens())
+        token_string = convert_tuple_to_string(
+            get_creds_tuple(existing_token))
+        call_command(
+            'apikey', username=user.username, update=token_string,
+            api_key_name=fake_api_key_name, stderr=stderr, stdout=stdout)
+        self.assertThat(stderr, IsEmpty)
+
+    def test_api_key_rejects_update_of_nonexistent_key(self):
+        stderr = StringIO()
+        user = factory.make_User()
+        fake_api_key_name = "Test Key Name"
+        existing_token = get_one(
+            user.userprofile.get_authorisation_tokens())
+        token_string = convert_tuple_to_string(
+            get_creds_tuple(existing_token))
+        call_command(
+            'apikey', username=user.username, delete=token_string,
+            stderr=stderr)
+        self.assertThat(stderr, IsEmpty)
+
+        # Try to update the deleted token.
+        error_text = assertCommandErrors(
+            self, 'apikey', username=user.username, update=token_string,
+            api_key_name=fake_api_key_name)
+        self.assertIn(
+            "No matching api key found", error_text)
+
+    def test_api_key_rejects_update_without_key_name(self):
+        user = factory.make_User()
+        existing_token = get_one(
+            user.userprofile.get_authorisation_tokens())
+        token_string = convert_tuple_to_string(
+            get_creds_tuple(existing_token))
+        error_text = assertCommandErrors(
+            self, 'apikey', username=user.username, update=token_string)
+        self.assertIn("Should specify new name", error_text)
+
+    def test_api_key_update_and_generate_mutually_exclusive_options(self):
+        user = factory.make_User()
+        fake_api_key_name = "Test Key Name"
+        existing_token = get_one(
+            user.userprofile.get_authorisation_tokens())
+        token_string = convert_tuple_to_string(
+            get_creds_tuple(existing_token))
+        error_text = assertCommandErrors(
+            self, 'apikey', username=user.username, generate=True,
+            api_key_name=fake_api_key_name, update=token_string)
+        self.assertIn("Specify one of --generate or --update.", error_text)
