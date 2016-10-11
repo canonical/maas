@@ -17,7 +17,7 @@ from maasserver.enum import (
     IPRANGE_TYPE,
     RDNS_MODE,
 )
-from maasserver.exceptions import MAASException
+from maasserver.exceptions import UnresolvableHost
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import separate_fqdn
@@ -83,10 +83,6 @@ def get_hostname_dnsdata_mapping(domain):
     return DNSData.objects.get_hostname_dnsdata_mapping(domain)
 
 
-class DNSException(MAASException):
-    """An error occured when setting up MAAS's DNS server."""
-
-
 WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
@@ -141,7 +137,7 @@ def get_dns_server_addresses(rack_controller=None, ipv4=True, ipv6=True):
         iplist = get_maas_facing_server_addresses(
             rack_controller, ipv4=ipv4, ipv6=ipv6)
     except socket.error as e:
-        raise DNSException(
+        raise UnresolvableHost(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
             "Make sure that the configuration setting for the MAAS URL has "

@@ -22,6 +22,7 @@ from typing import (
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -444,9 +445,6 @@ def get_dhcp_configure_for(
         ip_version: int, rack_controller, vlan, subnets: list,
         ntp_servers: Union[list, dict], domain, dhcp_snippets: Iterable=None):
     """Get the DHCP configuration for `ip_version`."""
-    # Circular imports.
-    from maasserver.dns.zonegenerator import get_dns_server_address
-
     try:
         maas_dns_server = get_dns_server_address(
             rack_controller, ipv4=(ip_version == 4), ipv6=(ip_version == 6))

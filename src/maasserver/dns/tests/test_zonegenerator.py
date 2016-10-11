@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 from maasserver import server_address
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
-    DNSException,
     get_dns_search_paths,
     get_dns_server_address,
     get_hostname_dnsdata_mapping,
@@ -32,6 +31,7 @@ from maasserver.enum import (
     NODE_STATUS,
     RDNS_MODE,
 )
+from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
     Config,
     Domain,
@@ -97,7 +97,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         self.patch(
             zonegenerator, 'get_maas_facing_server_addresses',
             FakeMethod(failure=socket.error))
-        self.assertRaises(DNSException, get_dns_server_address)
+        self.assertRaises(UnresolvableHost, get_dns_server_address)
 
     def test_get_dns_server_address_logs_warning_if_ip_is_localhost(self):
         logger = self.patch(zonegenerator, 'logger')
