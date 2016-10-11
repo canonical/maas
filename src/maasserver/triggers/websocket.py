@@ -687,6 +687,50 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+# Procedure that is called when an IP range is created to update its related
+# subnet.
+IP_RANGE_SUBNET_INSERT_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.subnet_id IS NOT NULL THEN
+        PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when an IP range is updated to update its related
+# subnet.
+IP_RANGE_SUBNET_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.subnet_id != NEW.subnet_id THEN
+        IF OLD.subnet_id IS NOT NULL THEN
+          PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+        END IF;
+      END IF;
+      IF NEW.subnet_id IS NOT NULL THEN
+        PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when an IP range is deleted to update its related
+# subnet.
+IP_RANGE_SUBNET_DELETE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.subnet_id IS NOT NULL THEN
+        PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 # Procedure that is called when a DNSData entry is changed.
 DNSDATA_DOMAIN_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -1133,6 +1177,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_staticipaddress",
         "ipaddress_domain_delete_notify", "delete")
+
+    # IP range subnet notifications
+    register_procedure(
+        IP_RANGE_SUBNET_INSERT_NOTIFY % 'iprange_subnet_insert_notify')
+    register_procedure(
+        IP_RANGE_SUBNET_UPDATE_NOTIFY % 'iprange_subnet_update_notify')
+    register_procedure(
+        IP_RANGE_SUBNET_DELETE_NOTIFY % 'iprange_subnet_delete_notify')
+    register_trigger(
+        "maasserver_iprange",
+        "iprange_subnet_insert_notify", "insert")
+    register_trigger(
+        "maasserver_iprange",
+        "iprange_subnet_update_notify", "update")
+    register_trigger(
+        "maasserver_iprange",
+        "iprange_subnet_delete_notify", "delete")
 
     # DNSData table
     register_procedure(

@@ -99,6 +99,9 @@ class TestTriggers(MAASServerTestCase):
             "dhcpsnippet_dhcpsnippet_create_notify",
             "dhcpsnippet_dhcpsnippet_update_notify",
             "dhcpsnippet_dhcpsnippet_delete_notify",
+            "iprange_iprange_subnet_insert_notify",
+            "iprange_iprange_subnet_update_notify",
+            "iprange_iprange_subnet_delete_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
