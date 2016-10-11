@@ -244,8 +244,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.ipRangeConfirmDelete = function() {
             IPRangesManager.deleteItem($scope.deleteIPRange).then(function() {
                 $scope.deleteIPRange = null;
-                // Reload the subnet after deleting the IP range.
-                $scope.subnet = SubnetsManager.getItem($scope.subnet.id);
             });
         };
 

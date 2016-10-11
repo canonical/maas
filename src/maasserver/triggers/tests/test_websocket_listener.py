@@ -13,6 +13,7 @@ from unittest import skip
 from crochet import wait_for
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_TYPE,
 )
 from maasserver.listener import PostgresListenerService
@@ -2722,6 +2723,127 @@ class TestDHCPSnippetListener(
             yield deferToDatabase(self.delete_dhcp_snippet, snippet.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % snippet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestIPRangeSubnetListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_iprange tables that notifies affected subnets."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        subnet = yield deferToDatabase(
+            self.create_subnet, {
+                "cidr": '192.168.0.0/24',
+                "gateway_ip": '192.168.0.1',
+                "dns_servers": [],
+                })
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            iprange = yield deferToDatabase(
+                self.create_iprange, {
+                    "type": IPRANGE_TYPE.DYNAMIC,
+                    "subnet": subnet,
+                    "start_ip": '192.168.0.100',
+                    "end_ip": '192.168.0.110',
+                    })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % iprange.subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        iprange = yield deferToDatabase(self.create_iprange)
+        new_end_ip = factory.pick_ip_in_IPRange(iprange)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_iprange,
+                iprange.id, {"end_ip": new_end_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % iprange.subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_on_old_and_new_subnet_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        old_subnet = yield deferToDatabase(
+            self.create_subnet, {
+                "cidr": '192.168.0.0/24',
+                "gateway_ip": '192.168.0.1',
+                "dns_servers": [],
+                })
+        new_subnet = yield deferToDatabase(
+            self.create_subnet, {
+                "cidr": '192.168.1.0/24',
+                "gateway_ip": '192.168.1.1',
+                "dns_servers": [],
+                })
+        iprange = yield deferToDatabase(
+            self.create_iprange, {
+                "type": IPRANGE_TYPE.DYNAMIC,
+                "subnet": old_subnet,
+                "start_ip": '192.168.0.100',
+                "end_ip": '192.168.0.110',
+                })
+        dvs = [DeferredValue(), DeferredValue()]
+
+        def set_defer_value(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    break
+
+        listener = PostgresListenerService()
+        listener.register("subnet", set_defer_value)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_iprange, iprange.id, {
+                "type": IPRANGE_TYPE.DYNAMIC,
+                "subnet": new_subnet,
+                "start_ip": '192.168.1.10',
+                "end_ip": '192.168.1.150',
+                })
+            yield dvs[0].get(timeout=2)
+            yield dvs[1].get(timeout=2)
+            self.assertItemsEqual([
+                ('update', '%s' % old_subnet.id),
+                ('update', '%s' % new_subnet.id),
+                ], [dvs[0].value, dvs[1].value])
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        iprange = yield deferToDatabase(self.create_iprange)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_iprange, iprange.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % iprange.subnet.id), dv.value)
         finally:
             yield listener.stopService()
 

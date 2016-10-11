@@ -601,15 +601,12 @@ describe("SubnetDetailsController", function() {
 
         it("calls deleteItem and clears deleteIPRange on resolve", function() {
             var controller = makeController();
-            var subnet = makeSubnet();
             var range = {};
-            $scope.subnet = subnet;
             $scope.deleteIPRange = range;
 
             var defer = $q.defer();
             spyOn(IPRangesManager, "deleteItem").and.returnValue(
                 defer.promise);
-            spyOn(SubnetsManager, "getItem");
             $scope.ipRangeConfirmDelete();
 
             expect(IPRangesManager.deleteItem).toHaveBeenCalledWith(range);
@@ -617,7 +614,6 @@ describe("SubnetDetailsController", function() {
             $scope.$digest();
 
             expect($scope.deleteIPRange).toBeNull();
-            expect(SubnetsManager.getItem).toHaveBeenCalledWith(subnet.id);
         });
     });
 });
