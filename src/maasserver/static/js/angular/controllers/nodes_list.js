@@ -608,6 +608,21 @@ angular.module('MAAS').controller('NodesListController', [
             return os_release;
         };
 
+        // Returns the status text to show on the node listing.
+        $scope.getStatusText = function(node) {
+            var showRelease = ['Deploying', 'Deployed'];
+            if(showRelease.indexOf(node.status) === -1) {
+                return node.status;
+            } else {
+                var releaseTitle = $scope.getReleaseTitle(
+                    node.osystem + '/' + node.distro_series);
+                if(node.osystem === "ubuntu") {
+                    releaseTitle = releaseTitle.split('"')[0].trim();
+                }
+                return node.status + ' ' + releaseTitle;
+            }
+        };
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.

@@ -762,7 +762,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span>
                         </td>
                         <td class="table-col--3"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin"></i></td>
-                        <td class="status">{$ node.status $}</td>
+                        <td class="status u-text--truncate">{$ getStatusText(node) $}</td>
                         <td class="table-col--10">{$ node.owner $}</td>
                         <td class="u-align--right">{$ node.cpu_count $}</td>
                         <td class="u-align--right">{$ node.memory $}</td>

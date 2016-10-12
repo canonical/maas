@@ -174,6 +174,65 @@ describe("NodesListController", function() {
         });
     });
 
+    describe("getStatusText", function() {
+        it("returns status text when not deployed or deploying", function() {
+            var controller = makeController();
+            var node = {
+                status: makeName("status")
+            };
+
+            expect($scope.getStatusText(node)).toBe(node.status);
+        });
+
+        it("returns status with release title when deploying", function() {
+            var controller = makeController();
+            var node = {
+                status: "Deploying",
+                osystem: "ubuntu",
+                distro_series: "xenial"
+            };
+            $scope.osinfo = {
+                releases: [
+                    ['ubuntu/xenial', 'Ubuntu Xenial']
+                ]
+            };
+            expect($scope.getStatusText(node)).toBe(
+                'Deploying Ubuntu Xenial');
+        });
+
+        it("returns status with release title when deployed", function() {
+            var controller = makeController();
+            var node = {
+                status: "Deployed",
+                osystem: "ubuntu",
+                distro_series: "xenial"
+            };
+            $scope.osinfo = {
+                releases: [
+                    ['ubuntu/xenial', 'Ubuntu Xenial']
+                ]
+            };
+            expect($scope.getStatusText(node)).toBe(
+                'Deployed Ubuntu Xenial');
+        });
+
+        it("returns status with release title without codename", function() {
+            var controller = makeController();
+            var node = {
+                status: "Deployed",
+                osystem: "ubuntu",
+                distro_series: "xenial"
+            };
+            $scope.osinfo = {
+                releases: [
+                    ['ubuntu/xenial', 'Ubuntu 16.04 LTS "Xenial Xerus"']
+                ]
+            };
+            expect($scope.getStatusText(node)).toBe(
+                'Deployed Ubuntu 16.04 LTS');
+        });
+    });
+
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Machines");
