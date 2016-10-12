@@ -9,6 +9,7 @@ __all__ = [
 
 from django.conf import settings
 from django.http import HttpResponse
+from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
@@ -43,21 +44,7 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'power_type',
     'power_state',
     'ip_addresses',
-    ('interface_set', (
-        'id',
-        'name',
-        'type',
-        'vlan',
-        'mac_address',
-        'parents',
-        'children',
-        'tags',
-        'enabled',
-        'links',
-        'params',
-        'discovered',
-        'effective_mtu',
-        )),
+    ('interface_set', DISPLAYED_INTERFACE_FIELDS),
     'zone',
     'status_action',
     'node_type',

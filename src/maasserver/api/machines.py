@@ -24,6 +24,7 @@ from formencode.validators import (
     StringBool,
 )
 from maasserver import locks
+from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     AnonNodeHandler,
@@ -111,21 +112,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'tag_names',
     'address_ttl',
     'ip_addresses',
-    ('interface_set', (
-        'id',
-        'name',
-        'type',
-        'vlan',
-        'mac_address',
-        'parents',
-        'children',
-        'tags',
-        'enabled',
-        'links',
-        'params',
-        'discovered',
-        'effective_mtu',
-        )),
+    ('interface_set', DISPLAYED_INTERFACE_FIELDS),
     'zone',
     'disable_ipv4',
     'constraints_by_type',

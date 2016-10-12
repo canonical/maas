@@ -6,6 +6,7 @@ __all__ = [
     "DevicesHandler",
     ]
 
+from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     NodeHandler,
@@ -35,21 +36,7 @@ DISPLAYED_DEVICE_FIELDS = (
     'tag_names',
     'address_ttl',
     'ip_addresses',
-    ('interface_set', (
-        'id',
-        'name',
-        'type',
-        'vlan',
-        'mac_address',
-        'parents',
-        'children',
-        'tags',
-        'enabled',
-        'links',
-        'params',
-        'discovered',
-        'effective_mtu',
-        )),
+    ('interface_set', DISPLAYED_INTERFACE_FIELDS),
     'zone',
     'node_type',
     'node_type_name',

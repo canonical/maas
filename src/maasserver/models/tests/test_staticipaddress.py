@@ -20,6 +20,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
+    IPADDRESS_TYPE_CHOICES_DICT,
     IPRANGE_TYPE,
 )
 from maasserver.exceptions import (
@@ -1062,3 +1063,19 @@ class TestRenderJSON(MAASServerTestCase):
         node_summary = json["node_summary"]
         self.expectThat(node_summary["system_id"], Equals(node.system_id))
         self.expectThat(node_summary["node_type"], Equals(node.node_type))
+
+
+class TestAllocTypeName(MAASServerTestCase):
+
+    def test__provides_human_readable_values_for_known_types(self):
+        ip = factory.make_StaticIPAddress()
+        self.assertThat(
+            ip.alloc_type_name,
+            Equals(IPADDRESS_TYPE_CHOICES_DICT[ip.alloc_type]))
+
+    def test__returns_empty_string_for_unknown_types(self):
+        ip = factory.make_StaticIPAddress()
+        ip.alloc_type = randint(2**16, 2**32)
+        self.assertThat(
+            ip.alloc_type_name,
+            Equals(""))

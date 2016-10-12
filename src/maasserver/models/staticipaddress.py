@@ -558,6 +558,11 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         strtype = type_names.get(self.alloc_type, '%s' % self.alloc_type)
         return "%s:type=%s" % (self.ip, strtype)
 
+    @property
+    def alloc_type_name(self):
+        """Returns a human-readable representation of the `alloc_type`."""
+        return IPADDRESS_TYPE_CHOICES_DICT.get(self.alloc_type, "")
+
     def get_node(self):
         """Return the Node of the first Interface connected to this IP
         address."""
