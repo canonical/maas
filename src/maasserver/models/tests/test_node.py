@@ -1798,10 +1798,7 @@ class TestNode(MAASServerTestCase):
         }
         uncontrolled_power_types = (
             all_power_types.difference(QUERY_POWER_TYPES))
-        # manual cannot be stopped, so discard this option.
-        uncontrolled_power_types.discard("manual")
         power_type = random.choice(list(uncontrolled_power_types))
-        self.assertNotEqual("manual", power_type)
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, owner=owner, owner_data=owner_data,

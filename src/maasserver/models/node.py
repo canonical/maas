@@ -2343,9 +2343,11 @@ class Node(CleanSave, TimestampedModel):
                 # Deferred it returns for the asynchronous (post-commit) bits.
                 stopping = self._stop(self.owner)
                 # If there's an error, reset the node's status.
-                stopping.addErrback(
-                    callOutToDatabase, Node._set_status, self.system_id,
-                    status=self.status)
+                # Check for None (_stop returns None for manual power type).
+                if stopping is not None:
+                    stopping.addErrback(
+                        callOutToDatabase, Node._set_status, self.system_id,
+                        status=self.status)
             except Exception as ex:
                 maaslog.error(
                     "%s: Unable to shut node down: %s", self.hostname,
