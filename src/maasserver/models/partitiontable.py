@@ -51,6 +51,11 @@ PREP_PARTITION_SIZE = 8 * 1024 * 1024  # 8MiB
 # is forced on the boot disk unless the disk is larger than 2TiB.
 GPT_REQUIRED_SIZE = 2 * 1024 * 1024 * 1024 * 1024
 
+# The amount of space required to be reserved for the bios_grub partition.
+# bios_grub partition is required on amd64 architectures when grub is used
+# on the boot disk and the disk is larger than GPT_REQUIRED_SIZE.
+BIOS_GRUB_PARTITION_SIZE = 1 * 1024 * 1024  # 1MiB
+
 
 class PartitionTable(CleanSave, TimestampedModel):
     """A partition table on a block device.
@@ -90,6 +95,10 @@ class PartitionTable(CleanSave, TimestampedModel):
         node_arch, _ = self.block_device.node.split_arch()
         if node_arch == "ppc64el":
             extra_space += PREP_PARTITION_SIZE
+        elif (node_arch == "amd64" and
+                self.block_device.node.bios_boot_method != "uefi" and
+                self.block_device.size >= GPT_REQUIRED_SIZE):
+            extra_space += BIOS_GRUB_PARTITION_SIZE
         return extra_space
 
     def get_used_size(self, ignore_partitions=[]):

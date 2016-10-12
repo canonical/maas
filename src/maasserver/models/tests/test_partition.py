@@ -6,7 +6,6 @@
 __all__ = []
 
 import random
-from unittest import skip
 from unittest.mock import sentinel
 from uuid import uuid4
 
@@ -25,6 +24,7 @@ from maasserver.models.partition import (
     PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.models.partitiontable import (
+    BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
@@ -306,15 +306,37 @@ class TestPartition(MAASServerTestCase):
             self.expectThat(idx, Equals(partition.get_partition_number()))
             idx += 1
 
-    @skip("XXX: GavinPanella 2016-04-12 bug=1569365: Fails spuriously.")
     def test_get_partition_number_returns_starting_at_2_for_ppc64el(self):
         node = factory.make_Node(
-            architecture="ppc64el/generic", bios_boot_method="uefi")
+            architecture="ppc64el/generic", bios_boot_method="uefi",
+            with_boot_disk=False)
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(
                 (MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE +
                 PREP_PARTITION_SIZE))
+        node.boot_disk = block_device
+        node.save()
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT)
+        partitions = [
+            partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
+            for _ in range(4)
+        ]
+        idx = 2
+        for partition in partitions:
+            self.expectThat(idx, Equals(partition.get_partition_number()))
+            idx += 1
+
+    def test_get_partition_number_returns_starting_at_2_for_amd64_gpt(self):
+        node = factory.make_Node(
+            architecture="amd64/generic", bios_boot_method="pxe",
+            with_boot_disk=False)
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=(
+                (2 * (1024 ** 4)) + PARTITION_TABLE_EXTRA_SPACE +
+                BIOS_GRUB_PARTITION_SIZE))
         node.boot_disk = block_device
         node.save()
         partition_table = factory.make_PartitionTable(

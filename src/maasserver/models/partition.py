@@ -172,20 +172,29 @@ class Partition(CleanSave, TimestampedModel):
 
     def get_partition_number(self):
         """Return the partition number in the table."""
+        # Circular imports.
+        from maasserver.models.partitiontable import GPT_REQUIRED_SIZE
         # Sort manually instead of with `order_by`, this will prevent django
         # from making a query if the partitions are already cached.
         partitions_in_table = self.partition_table.partitions.all()
         partitions_in_table = sorted(partitions_in_table, key=attrgetter('id'))
         idx = partitions_in_table.index(self)
         if self.partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
-            # ppc64el machines get part1 skipped when this partition is on
-            # the boot disk. This is because the prep partition is part1 and
-            # is added when the preseed for storage is generated.
+            # In some instances the first partition is skipped because it
+            # is used by the machine architecture for a specific reason.
+            #   * ppc64el - reserved for prep partition
+            #   * amd64 (disk >= 2TiB) - reserved for bios_grub partition
             node = self.get_node()
             arch, _ = node.split_arch()
             boot_disk = node.get_boot_disk()
+            bios_boot_method = node.get_bios_boot_method()
             if (arch == "ppc64el" and
                     self.partition_table.block_device.id == boot_disk.id):
+                return idx + 2
+            elif (arch == "amd64" and
+                    self.partition_table.block_device.id == boot_disk.id and
+                    bios_boot_method != "uefi" and
+                    boot_disk.size >= GPT_REQUIRED_SIZE):
                 return idx + 2
             else:
                 return idx + 1

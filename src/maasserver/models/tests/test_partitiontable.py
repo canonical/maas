@@ -20,6 +20,7 @@ from maasserver.models.partition import (
     PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.models.partitiontable import (
+    BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
@@ -55,6 +56,20 @@ class TestPartitionTable(MAASServerTestCase):
             round_size_to_nearest_block(
                 partition_table.block_device.size -
                 PARTITION_TABLE_EXTRA_SPACE - PREP_PARTITION_SIZE,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
+            partition_table.get_size())
+
+    def test_get_size_returns_block_device_size_minus_amd64_gpt(self):
+        node = factory.make_Node(architecture="amd64/generic")
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=2 * (1024 ** 4))
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                partition_table.block_device.size -
+                PARTITION_TABLE_EXTRA_SPACE - BIOS_GRUB_PARTITION_SIZE,
                 PARTITION_ALIGNMENT_SIZE,
                 False),
             partition_table.get_size())
@@ -146,6 +161,16 @@ class TestPartitionTable(MAASServerTestCase):
             block_device=block_device)
         self.assertEquals(
             PARTITION_TABLE_EXTRA_SPACE + PREP_PARTITION_SIZE,
+            partition_table.get_overhead_size())
+
+    def test_get_overhead_size_for_amd64_gpt(self):
+        node = factory.make_Node(architecture="amd64/generic")
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node, size=2 * (1024 ** 4))
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        self.assertEquals(
+            PARTITION_TABLE_EXTRA_SPACE + BIOS_GRUB_PARTITION_SIZE,
             partition_table.get_overhead_size())
 
     def test_get_available_size(self):

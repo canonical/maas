@@ -17,6 +17,7 @@ from maasserver.enum import (
 )
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import (
+    BIOS_GRUB_PARTITION_SIZE,
     GPT_REQUIRED_SIZE,
     INITIAL_PARTITION_OFFSET,
     PARTITION_TABLE_EXTRA_SPACE,
@@ -118,6 +119,15 @@ class CurtinStorageGenerator:
             self.boot_disk.id == block_device.id and
             arch == "ppc64el")
 
+    def _requires_bios_grub_partition(self, block_device):
+        """Return True if block device requires the bios_grub partition."""
+        arch, _ = self.node.split_arch()
+        bios_boot_method = self.node.get_bios_boot_method()
+        return (
+            arch == "amd64" and
+            bios_boot_method != "uefi" and
+            block_device.size >= GPT_REQUIRED_SIZE)
+
     def _add_partition_operations(self):
         """Add all the partition operations.
 
@@ -126,14 +136,16 @@ class CurtinStorageGenerator:
         """
         for block_device in self.node.blockdevice_set.order_by('id'):
             requires_prep = self._requires_prep_partition(block_device)
+            requires_bios_grub = self._requires_bios_grub_partition(
+                block_device)
             partition_table = block_device.get_partitiontable()
             if partition_table is not None:
                 partitions = list(partition_table.partitions.order_by('id'))
                 for idx, partition in enumerate(partitions):
-                    # If this is the last partition and prep partition is
-                    # required then set boot_disk_first_partition so extra
-                    # space can be removed.
-                    if requires_prep and idx == 0:
+                    # If this is the first partition and prep or bios_grub
+                    # partition is required then set boot_disk_first_partition
+                    # so partition creation can occur in the correct order.
+                    if (requires_prep or requires_bios_grub) and idx == 0:
                         self.boot_disk_first_partition = partition
                     self.operations["partition"].append(partition)
 
@@ -195,6 +207,7 @@ class CurtinStorageGenerator:
         # Set the partition table type if a partition table exists or if this
         # is the boot disk.
         add_prep_partition = False
+        add_bios_grub_partition = False
         partition_table = block_device.get_partitiontable()
         if partition_table is not None:
             disk_operation["ptable"] = self._get_ptable_type(
@@ -207,8 +220,10 @@ class CurtinStorageGenerator:
                 disk_operation["ptable"] = "gpt"
                 if node_arch == "ppc64el":
                     add_prep_partition = True
-            elif block_device.size >= GPT_REQUIRED_SIZE:
+            elif (block_device.size >= GPT_REQUIRED_SIZE and
+                    node_arch == "amd64"):
                 disk_operation["ptable"] = "gpt"
+                add_bios_grub_partition = True
             else:
                 disk_operation["ptable"] = "msdos"
 
@@ -221,9 +236,15 @@ class CurtinStorageGenerator:
             disk_operation["grub_device"] = True
         self.storage_config.append(disk_operation)
 
-        # Add the prep partition at the end of the disk when it is required.
+        # Add the prep partition at the beginning of the disk
+        # when it is required.
         if add_prep_partition:
             self._generate_prep_partition(block_device.get_name())
+
+        # Add the bios_grub partition at the beginning of the disk
+        # when it is required.
+        if add_bios_grub_partition:
+            self._generate_bios_grub_partition(block_device.get_name())
 
     def _get_ptable_type(self, partition_table):
         """Return the value for the "ptable" entry in the physical operation.
@@ -254,6 +275,20 @@ class CurtinStorageGenerator:
         }
         self.storage_config.append(partition_operation)
 
+    def _generate_bios_grub_partition(self, device_name):
+        """Generate the bios_grub partition at the beginning of the device."""
+        partition_operation = {
+            "id": "%s-part1" % (device_name),
+            "type": "partition",
+            "number": 1,
+            "offset": "%dB" % INITIAL_PARTITION_OFFSET,
+            "size": "%dB" % BIOS_GRUB_PARTITION_SIZE,
+            "device": device_name,
+            "wipe": "zero",
+            "flag": "bios_grub",
+        }
+        self.storage_config.append(partition_operation)
+
     def _generate_partition_operations(self):
         """Generate all partition operations."""
         for partition in self.operations["partition"]:
@@ -261,7 +296,16 @@ class CurtinStorageGenerator:
                 # This is the first partition in the boot disk and add prep
                 # partition at the beginning of the partition table.
                 device_name = partition.partition_table.block_device.get_name()
-                self._generate_prep_partition(device_name)
+                if self._requires_prep_partition(
+                        partition.partition_table.block_device):
+                    self._generate_prep_partition(device_name)
+                elif self._requires_bios_grub_partition(
+                        partition.partition_table.block_device):
+                    self._generate_bios_grub_partition(device_name)
+                else:
+                    raise ValueError(
+                        "boot_disk_first_partition set when prep and "
+                        "bios_grub partition are not required.")
                 self._generate_partition_operation(
                     partition, include_initial=False)
             else:

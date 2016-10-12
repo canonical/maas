@@ -22,6 +22,7 @@ from maasserver.models.filesystemgroup import (
     VolumeGroup,
 )
 from maasserver.models.partitiontable import (
+    BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
@@ -546,6 +547,14 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
             ptable: gpt
             path: /dev/disk/by-id/wwn-0x55cd2e400009bf84
             grub_device: true
+          - id: sdb-part1
+            type: partition
+            number: 1
+            size: 1048576B
+            device: sdb
+            wipe: zero
+            offset: 4194304B
+            flag: bios_grub
           - id: sda-part1
             name: sda-part1
             type: partition
@@ -570,13 +579,14 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
 
     def test__renders_expected_output(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, with_boot_disk=False)
+            status=NODE_STATUS.ALLOCATED, architecture="amd64/generic",
+            with_boot_disk=False)
         first_disk = factory.make_PhysicalBlockDevice(
             node=node, size=8 * 1024 ** 3, name="sda",
             model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
         boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=8 * 1024 ** 4, name="sdb",
-            id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84")
+            node=node, size=2 * 1024 ** 4, name="sdb",
+            id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84")  # 2 TiB
         node.boot_disk = boot_disk
         node.save()
         partition_table = factory.make_PartitionTable(
@@ -585,6 +595,77 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
             size=(8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/", mount_options=(
+                "rw,relatime,errors=remount-ro,data=journal"))
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestGPTPXELargeBootDiskLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+            grub_device: true
+          - id: sda-part1
+            type: partition
+            number: 1
+            size: 1048576B
+            device: sda
+            wipe: zero
+            offset: 4194304B
+            flag: bios_grub
+          - id: sda-part2
+            name: sda-part2
+            type: partition
+            number: 2
+            uuid: 6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398
+            size: 8581545984B
+            device: sda
+            wipe: superblock
+          - id: sda-part2_format
+            type: format
+            fstype: ext4
+            label: root
+            uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
+            volume: sda-part2
+          - id: sda-part2_mount
+            type: mount
+            path: /
+            options: rw,relatime,errors=remount-ro,data=journal
+            device: sda-part2_format
+        """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="amd64/generic",
+            with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=2 * 1024 ** 4, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 2 TiB
+        node.boot_disk = boot_disk
+        node.save()
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=(
+                (8 * 1024 ** 3) -
+                PARTITION_TABLE_EXTRA_SPACE -
+                BIOS_GRUB_PARTITION_SIZE),
             bootable=False)
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
