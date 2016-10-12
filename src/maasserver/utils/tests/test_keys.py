@@ -84,10 +84,11 @@ class TestKeys(MAASServerTestCase):
             keys, Equals(
                 [key for key in key_string.splitlines() if key]))
 
-    def test_get_launchpad_crashes_for_user_not_found(self):
+    @given(sampled_from([http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE]))
+    def test_get_launchpad_crashes_for_user_not_found(self, error):
         auth_id = factory.make_name('auth_id')
         mock_requests = self.patch(requests_module, 'get')
-        mock_requests.return_value.status_code = http.HTTPStatus.NOT_FOUND
+        mock_requests.return_value.status_code = error
         self.assertRaises(ImportSSHKeysError, get_launchpad_ssh_keys, auth_id)
 
     def test_get_protocol_keys_returns_github_keys(self):
@@ -103,8 +104,9 @@ class TestKeys(MAASServerTestCase):
             keys, Equals(
                 [data['key'] for data in key_string if 'key' in data]))
 
-    def test_get_github_crashes_for_user_not_found(self):
+    @given(sampled_from([http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE]))
+    def test_get_github_crashes_for_user_not_found(self, error):
         auth_id = factory.make_name('auth_id')
         mock_requests = self.patch(requests_module, 'get')
-        mock_requests.return_value.status_code = http.HTTPStatus.NOT_FOUND
+        mock_requests.return_value.status_code = error
         self.assertRaises(ImportSSHKeysError, get_github_ssh_keys, auth_id)

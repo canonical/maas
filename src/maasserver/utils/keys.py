@@ -57,7 +57,9 @@ def get_launchpad_ssh_keys(auth_id):
     url = 'https://launchpad.net/~%s/+sshkeys' % auth_id
     response = requests.get(url, proxies=get_proxies())
     # Check for 404 error which happens for an unknown user
-    if response.status_code == http.HTTPStatus.NOT_FOUND:
+    # or 410 for page gone.
+    if response.status_code in (
+            http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE):
         raise ImportSSHKeysError(
             "Unable to import SSH keys. "
             "launchpad user %s doesn't exist." % (auth_id))
@@ -71,7 +73,9 @@ def get_github_ssh_keys(auth_id):
     url = 'https://api.github.com/users/%s/keys' % auth_id
     response = requests.get(url, proxies=get_proxies())
     # Check for 404 error which happens for an unknown user
-    if response.status_code == http.HTTPStatus.NOT_FOUND:
+    # or 410 for page gone.
+    if response.status_code in (
+            http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE):
         raise ImportSSHKeysError(
             "Unable to import SSH keys. "
             "github user %s doesn't exist." % (auth_id))
