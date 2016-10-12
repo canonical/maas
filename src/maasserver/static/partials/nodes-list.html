@@ -695,7 +695,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <tr>
                         <th class="table-col--3">
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-checked="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="check-all"></label>
                         </th>
                         <th colspan="2" class="u-align--left">
@@ -746,7 +746,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         data-ng-class="{ 'table--error': !supportsAction(node, 'nodes'), selected: node.$selected }">
                         <td class="table-col--3">
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="{$ node.fqdn $}"></label>
                         </td>
                         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -790,7 +790,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <tr>
                     <th class="table-col--3">
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-checked="tabs.devices.allViewableChecked" id="check-all-devices" data-ng-disabled="hasActionsInProgress('devices')" />
                         <label for="check-all-devices" class="checkbox-label"></label>
                     </th>
                     <th class="table-col--24">
@@ -822,7 +822,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                     data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), selected: device.$selected }">
                     <td class="table-col--3">
-                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                         <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                     </td>
                     <td class="table-col--24">{$ device.fqdn $}</td>
@@ -854,7 +854,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <tr>
                     <th class="table-col--2">
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('controllers')" data-ng-model="tabs.controllers.allViewableChecked" id="check-all-controllers" data-ng-disabled="hasActionsInProgress('controllers')" />
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('controllers')" data-ng-checked="tabs.controllers.allViewableChecked" id="check-all-controllers" data-ng-disabled="hasActionsInProgress('controllers')" />
                         <label for="check-all-controllers" class="checkbox-label"></label>
                     </th>
                     <th class="table-col--19">
@@ -884,7 +884,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
                     data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), selected: controller.$selected }">
                     <td class="table-col--2">
-                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-model="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-checked="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
                         <label for="{$ controller.fqdn $}" class="checkbox-label"></label>
                     </td>
                     <td class="table-col--19">

@@ -9,9 +9,14 @@
  */
 
 angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
-    function($interpolateProvider, $routeProvider) {
+    function($interpolateProvider, $routeProvider, $httpProvider) {
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');
+
+        // Set the $httpProvider to send the csrftoken in the header of any
+        // http request.
+        $httpProvider.defaults.xsrfCookieName = 'csrftoken';
+        $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken';
 
         // Helper that wrappers the templateUrl to append the files version
         // to the path. Used to override client cache.
