@@ -669,7 +669,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertDocTestMatches(
             "Service '%s' is %s but not in the expected state of "
             "'%s', its current state is '%s'." % (
-                service.service_name, SERVICE_STATE.ON,
+                service.service_name, SERVICE_STATE.ON.value,
                 service_monitor.SYSTEMD_PROCESS_STATE[SERVICE_STATE.ON],
                 invalid_process_state),
             maaslog.output)
@@ -729,7 +729,7 @@ class TestServiceMonitor(MAASTestCase):
         self.assertDocTestMatches(
             "Service '%s' is %s but not in the expected state of "
             "'%s', its current state is '%s'." % (
-                service.service_name, SERVICE_STATE.DEAD,
+                service.service_name, SERVICE_STATE.DEAD.value,
                 service_monitor.SYSTEMD_PROCESS_STATE[SERVICE_STATE.DEAD],
                 invalid_process_state),
             maaslog.output)
@@ -807,16 +807,15 @@ class TestServiceMonitor(MAASTestCase):
             with FakeLogger(
                     "maas.service_monitor", level=logging.INFO) as maaslog:
                 yield service_monitor._ensureService(service)
-        lint_sucks = (
-            service.service_name,
-            service.service_name,
-            SERVICE_STATE.OFF,
-            "waiting",
-        )
-        self.assertDocTestMatches("""\
+        self.assertDocTestMatches(
+            """\
             Service '%s' is not on, it will be started.
             Service '%s' failed to start. Its current state is '%s' and '%s'.
-            """ % lint_sucks, maaslog.output)
+            """ % (
+                service.service_name, service.service_name,
+                SERVICE_STATE.OFF.value, "waiting",
+            ),
+            maaslog.output)
 
     @inlineCallbacks
     def test__ensureService_does_nothing_when_any_state_expected(self):

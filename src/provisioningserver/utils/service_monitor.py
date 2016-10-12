@@ -313,7 +313,7 @@ class ServiceMonitor:
                 "Service '%s' has been restarted. Its current state "
                 "is '%s' and '%s'." % (
                     service.service_name,
-                    state.active_state,
+                    state.active_state.value,
                     state.process_state))
             returnValue(state)
 
@@ -461,12 +461,11 @@ class ServiceMonitor:
                 maaslog.warning(
                     "Service '%s' is %s but not in the expected state of "
                     "'%s', its current state is '%s'.",
-                    service.service_name, state.active_state,
+                    service.service_name, state.active_state.value,
                     expected_process_state, state.process_state)
             else:
                 maaslog.debug(
-                    "Service '%s' is %s and '%s'.",
-                    service.service_name,
+                    "Service '%s' is %s and '%s'.", service.service_name,
                     state.active_state, state.process_state)
         else:
             # Service is not at its expected active state. Log the action that
@@ -489,12 +488,12 @@ class ServiceMonitor:
                 error_msg = (
                     "Service '%s' failed to %s. Its current state "
                     "is '%s' and '%s'." % (
-                        service.service_name, action, state.active_state,
-                        state.process_state))
+                        service.service_name, action,
+                        state.active_state.value, state.process_state))
                 maaslog.error(error_msg)
                 raise ServiceActionError(error_msg)
             else:
                 maaslog.info(
-                    "Service '%s' has been %s and is '%s'." % (
-                        service.service_name, log_action, state.process_state))
+                    "Service '%s' has been %s and is '%s'.",
+                    service.service_name, log_action, state.process_state)
         returnValue(state)
