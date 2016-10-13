@@ -86,6 +86,8 @@ from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.event import Event
 import maasserver.models.interface as interface_module
 from maasserver.models.node import (
+    DefaultGateways,
+    GatewayDefinition,
     generate_node_system_id,
     PowerInfo,
     typecast_node,
@@ -4287,6 +4289,38 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertItemsEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address)
         self.assertEqual(set([True]), clearing_config)
+
+    def test__clear_networking_configuration_clears_gateways(self):
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        ipv4_subnet = factory.make_Subnet(
+            cidr="192.168.0.0/24", gateway_ip="192.168.0.1")
+        ipv6_subnet = factory.make_Subnet(
+            cidr="2001:db8::/64", gateway_ip="2001:db8::1")
+        static_ipv4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic0,
+            subnet=ipv4_subnet)
+        static_ipv6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=nic1,
+            subnet=ipv6_subnet)
+        node.gateway_link_ipv4 = static_ipv4
+        node.gateway_link_ipv6 = static_ipv6
+        node.save()
+        node = reload_object(node)
+        expected_gateways = DefaultGateways(
+            GatewayDefinition(
+                interface_id=nic0.id, subnet_id=ipv4_subnet.id,
+                gateway_ip=ipv4_subnet.gateway_ip),
+            GatewayDefinition(
+                interface_id=nic1.id, subnet_id=ipv6_subnet.id,
+                gateway_ip=ipv6_subnet.gateway_ip)
+        )
+        self.assertThat(
+            node.get_default_gateways(), Equals(expected_gateways))
+        node._clear_networking_configuration()
+        self.assertThat(node.gateway_link_ipv4, Equals(None))
+        self.assertThat(node.gateway_link_ipv6, Equals(None))
 
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)

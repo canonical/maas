@@ -2675,6 +2675,8 @@ class Node(CleanSave, TimestampedModel):
         commissioned. This allows the new commissioning data to create a new
         networking configuration.
         """
+        self.gateway_link_ipv4 = None
+        self.gateway_link_ipv6 = None
         interfaces = self.interface_set.all()
         for interface in interfaces:
             interface.clear_all_links(clearing_config=True)
