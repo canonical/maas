@@ -77,12 +77,12 @@ describe("SubnetsManager", function() {
     describe("delete", function() {
 
         it("calls the region with expected parameters", function() {
-            var obj = {};
+            var obj = {"id": "expected", "not_the_id": "unexpected"};
             var result = {};
             spyOn(RegionConnection, "callMethod").and.returnValue(result);
             expect(SubnetsManager.deleteSubnet(obj)).toBe(result);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "subnet.delete", obj
+                "subnet.delete", {"id": "expected"}
             );
         });
     });
@@ -90,12 +90,12 @@ describe("SubnetsManager", function() {
     describe("scan", function() {
 
         it("calls the region with expected parameters", function() {
-            var obj = {};
+            var obj = {"id": "expected", "not_the_id": "unexpected"};
             var result = {};
             spyOn(RegionConnection, "callMethod").and.returnValue(result);
             expect(SubnetsManager.scanSubnet(obj)).toBe(result);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
-                "subnet.scan", obj
+                "subnet.scan", {"id": "expected"}
             );
         });
     });
