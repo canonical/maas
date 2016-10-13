@@ -15,8 +15,8 @@ __all__ = [
     ]
 
 from collections import namedtuple
+import json
 import os.path
-from pipes import quote
 from urllib.parse import (
     urlencode,
     urlparse,
@@ -590,8 +590,8 @@ def get_escape_singleton():
     """Return a singleton containing methods to escape various formats used in
     the preseed templates.
     """
-    Escape = namedtuple('Escape', 'shell')
-    return Escape(shell=quote)
+    Escape = namedtuple('Escape', 'json')
+    return Escape(json=json.dumps)
 
 
 class PreseedTemplate(tempita.Template):

@@ -6,8 +6,8 @@
 __all__ = []
 
 import http.client
+import json
 import os
-from pipes import quote
 from unittest.mock import sentinel
 from urllib.parse import urlparse
 
@@ -80,6 +80,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from maastesting.testcase import MAASTestCase
 from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -488,14 +489,21 @@ class TestNodePreseedContext(
             context['third_party_drivers'])
 
 
-class TestPreseedTemplate(MAASServerTestCase):
+class TestPreseedTemplate(MAASTestCase):
     """Tests for class:`PreseedTemplate`."""
 
-    def test_escape_shell(self):
-        template = PreseedTemplate("{{var|escape.shell}}")
-        var = "$ ! ()"
-        observed = template.substitute(var=var)
-        self.assertEqual(quote(var), observed)
+    scenarios = [
+        (name, dict(var=var, expected=json.dumps(var))) for name, var in (
+            ('plain', '$ ! ()'),
+            ('quote', "$ ' ()"),
+            ('double', '$ " ()'),
+        )
+    ]
+
+    def test_escape_json(self):
+        template = PreseedTemplate("{{var|escape.json}}")
+        observed = template.substitute(var=self.var)
+        self.assertEqual(self.expected, observed)
 
 
 class TestRenderPreseed(
@@ -850,6 +858,69 @@ class TestCurtinUtilities(
                     "debconf_selections:",
                 ]
             ))
+
+    def test_get_curtin_config_with_ipv4_rack_url(self):
+        primary_rack = self.rpc_rack_controller
+        primary_rack.url = 'http://192.168.1.1:5240/'
+        primary_rack.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=primary_rack)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        yaml_conf = yaml.safe_load(config)
+        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
+        self.assertEqual(
+            "%smetadata/latest/by-id/%s/" % (
+                primary_rack.url, node.system_id),
+            yaml_conf['late_commands']['maas'][2])
+        self.assertTrue('debconf_selections' in yaml_conf)
+
+    def test_get_curtin_config_with_ipv6_rack_url(self):
+        primary_rack = self.rpc_rack_controller
+        primary_rack.url = 'http://[2001:db8::1]:5240/'
+        primary_rack.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=primary_rack)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        yaml_conf = yaml.safe_load(config)
+        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
+        self.assertEqual(
+            "%smetadata/latest/by-id/%s/" % (
+                primary_rack.url, node.system_id),
+            yaml_conf['late_commands']['maas'][2])
+        self.assertTrue('debconf_selections' in yaml_conf)
+
+    def test_get_curtin_config_with_name_rack_url(self):
+        primary_rack = self.rpc_rack_controller
+        primary_rack.url = 'http://%s:5240/' % factory.make_name('host')
+        primary_rack.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=primary_rack)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        yaml_conf = yaml.safe_load(config)
+        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
+        self.assertEqual(
+            "%smetadata/latest/by-id/%s/" % (
+                primary_rack.url, node.system_id),
+            yaml_conf['late_commands']['maas'][2])
+        self.assertTrue('debconf_selections' in yaml_conf)
+
+    def test_get_curtin_config_with_quote_rack_url(self):
+        primary_rack = self.rpc_rack_controller
+        primary_rack.url = 'http://%s:5240/' % factory.make_name("ho'st")
+        primary_rack.save()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=primary_rack)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        yaml_conf = yaml.safe_load(config)
+        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
+        self.assertEqual(
+            "%smetadata/latest/by-id/%s/" % (primary_rack.url, node.system_id),
+            yaml_conf['late_commands']['maas'][2])
+        self.assertTrue('debconf_selections' in yaml_conf)
 
     def make_fastpath_node(self, main_arch=None):
         """Return a `Node`, with FPI enabled, and the given main architecture.
