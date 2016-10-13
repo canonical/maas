@@ -9,6 +9,7 @@ __all__ = [
 
 from django.contrib.auth.models import User
 from maasserver.models.user import SYSTEM_USERS
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
@@ -37,7 +38,7 @@ class UserHandler(Handler):
     def get_queryset(self):
         """Return `QuerySet` for users only viewable by `user`."""
         users = super(UserHandler, self).get_queryset()
-        if self.user.is_superuser:
+        if reload_object(self.user).is_superuser:
             # Super users can view all users, except for the built-in users
             return users.exclude(username__in=SYSTEM_USERS)
         else:
@@ -49,7 +50,7 @@ class UserHandler(Handler):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         obj = super(UserHandler, self).get_object(params)
-        if self.user.is_superuser:
+        if reload_object(self.user).is_superuser:
             # Super user can get any user.
             return obj
         elif obj == self.user:

@@ -53,6 +53,7 @@ from maasserver.forms_interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
+from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
 from maasserver.models.node import (
@@ -63,7 +64,10 @@ from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    reload_object,
+    transactional,
+)
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerError,
@@ -112,6 +116,7 @@ class MachineHandler(NodeHandler):
             'delete_partition',
             'delete_volume_group',
             'delete_cache_set',
+            'delete_filesystem',
             'create_partition',
             'create_cache_set',
             'create_bcache',
@@ -250,7 +255,7 @@ class MachineHandler(NodeHandler):
     def create(self, params):
         """Create the object from params."""
         # Only admin users can perform create.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         # Create the object, then save the power parameters because the
@@ -270,7 +275,7 @@ class MachineHandler(NodeHandler):
     def update(self, params):
         """Update the object from params."""
         # Only admin users can perform update.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         # Update the node with the form. The form will not update the
@@ -322,7 +327,7 @@ class MachineHandler(NodeHandler):
 
     def _preflight_special_filesystem_modifications(self, op, machine):
         """Check that `machine` is okay for special fs modifications."""
-        if self.user.is_superuser:
+        if reload_object(self.user).is_superuser:
             statuses_permitted = {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
         else:
             statuses_permitted = {NODE_STATUS.ALLOCATED}
@@ -345,7 +350,9 @@ class MachineHandler(NodeHandler):
         if node.status not in [NODE_STATUS.ALLOCATED, NODE_STATUS.READY]:
             raise HandlerError(
                 "Node must be allocated or ready to edit storage")
-        if not self.user.is_superuser and node.owner_id != self.user.id:
+        if (
+                not reload_object(self.user).is_superuser and
+                node.owner_id != self.user.id):
             raise HandlerPermissionError()
 
         if partition_id:
@@ -455,7 +462,7 @@ class MachineHandler(NodeHandler):
     def update_disk(self, params):
         """Update disk information."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -483,7 +490,7 @@ class MachineHandler(NodeHandler):
 
     def delete_disk(self, params):
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -494,7 +501,7 @@ class MachineHandler(NodeHandler):
 
     def delete_partition(self, params):
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -506,7 +513,7 @@ class MachineHandler(NodeHandler):
 
     def delete_volume_group(self, params):
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -519,7 +526,7 @@ class MachineHandler(NodeHandler):
 
     def delete_cache_set(self, params):
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -530,10 +537,27 @@ class MachineHandler(NodeHandler):
                 raise CacheSet.DoesNotExist()
             cache_set.delete()
 
+    def delete_filesystem(self, params):
+        # Only admin users can perform delete.
+        if not reload_object(self.user).is_superuser:
+            raise HandlerPermissionError()
+        node = self.get_object(params)
+        blockdevice_id = params.get('blockdevice_id')
+        partition_id = params.get('partition_id')
+        filesystem_id = params.get('filesystem_id')
+        if partition_id is None:
+            blockdevice = BlockDevice.objects.get(node=node, id=blockdevice_id)
+            fs = Filesystem.objects.get(
+                block_device=blockdevice, id=filesystem_id)
+        else:
+            partition = Partition.objects.get(id=partition_id)
+            fs = Filesystem.objects.get(partition=partition, id=filesystem_id)
+        fs.delete()
+
     def create_partition(self, params):
         """Create a partition."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -555,7 +579,7 @@ class MachineHandler(NodeHandler):
     def create_cache_set(self, params):
         """Create a cache set."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -580,7 +604,7 @@ class MachineHandler(NodeHandler):
     def create_bcache(self, params):
         """Create a bcache."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -616,7 +640,7 @@ class MachineHandler(NodeHandler):
     def create_raid(self, params):
         """Create a RAID."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -635,7 +659,7 @@ class MachineHandler(NodeHandler):
     def create_volume_group(self, params):
         """Create a volume group."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -648,7 +672,7 @@ class MachineHandler(NodeHandler):
     def create_logical_volume(self, params):
         """Create a logical volume."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -674,7 +698,7 @@ class MachineHandler(NodeHandler):
     def set_boot_disk(self, params):
         """Set the disk as the boot disk."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -718,7 +742,7 @@ class MachineHandler(NodeHandler):
     def create_physical(self, params):
         """Create physical interface."""
         # Only admin users can perform create.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -733,7 +757,7 @@ class MachineHandler(NodeHandler):
     def create_vlan(self, params):
         """Create VLAN interface."""
         # Only admin users can perform create.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -749,7 +773,7 @@ class MachineHandler(NodeHandler):
     def create_bond(self, params):
         """Create bond interface."""
         # Only admin users can perform create.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -764,7 +788,7 @@ class MachineHandler(NodeHandler):
     def create_bridge(self, params):
         """Create bridge interface."""
         # Only admin users can perform create.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -782,7 +806,7 @@ class MachineHandler(NodeHandler):
     def update_interface(self, params):
         """Update the interface."""
         # Only admin users can perform update.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -798,7 +822,7 @@ class MachineHandler(NodeHandler):
     def delete_interface(self, params):
         """Delete the interface."""
         # Only admin users can perform delete.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -808,7 +832,7 @@ class MachineHandler(NodeHandler):
     def link_subnet(self, params):
         """Create or update the link."""
         # Only admin users can perform update.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)
@@ -830,7 +854,7 @@ class MachineHandler(NodeHandler):
     def unlink_subnet(self, params):
         """Delete the link."""
         # Only admin users can perform unlink.
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         node = self.get_object(params)

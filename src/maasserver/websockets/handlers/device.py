@@ -217,7 +217,7 @@ class DeviceHandler(NodeHandler):
     def get_object(self, params):
         """Get object by using the `pk` in `params`."""
         obj = super(DeviceHandler, self).get_object(params)
-        if self.user.is_superuser or obj.owner == self.user:
+        if reload_object(self.user).is_superuser or obj.owner == self.user:
             return obj
         raise HandlerDoesNotExistError(params[self._meta.pk])
 

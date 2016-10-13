@@ -16,6 +16,7 @@ from maasserver.models.config import (
     Config,
     get_default_config,
 )
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     Handler,
     HandlerDoesNotExistError,
@@ -73,7 +74,7 @@ class ConfigHandler(Handler):
 
     def update(self, params):
         """Update a config value."""
-        assert self.user.is_superuser, "Permission denied."
+        assert reload_object(self.user).is_superuser, "Permission denied."
         if 'name' not in params:
             raise HandlerPKError("Missing name in params")
         if 'value' not in params:

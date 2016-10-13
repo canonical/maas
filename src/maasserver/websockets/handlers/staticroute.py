@@ -10,6 +10,7 @@ __all__ = [
 from django.core.exceptions import PermissionDenied
 from maasserver.forms_staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -35,18 +36,18 @@ class StaticRouteHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create a static route."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise PermissionDenied()
         return super(StaticRouteHandler, self).create(params)
 
     def update(self, params):
         """Update this static route."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise PermissionDenied()
         return super(StaticRouteHandler, self).update(params)
 
     def delete(self, params):
         """Delete this static route."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise PermissionDenied()
         return super(StaticRouteHandler, self).delete(params)

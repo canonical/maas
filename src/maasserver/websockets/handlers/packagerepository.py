@@ -9,6 +9,7 @@ __all__ = [
 
 from maasserver.forms_packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -32,18 +33,18 @@ class PackageRepositoryHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().create(params)
 
     def update(self, params):
         """Update the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().update(params)
 
     def delete(self, params):
         """Delete the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().delete(params)

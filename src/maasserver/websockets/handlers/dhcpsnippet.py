@@ -11,6 +11,7 @@ from email.utils import format_datetime
 
 from maasserver.forms_dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerPermissionError,
     HandlerValidationError,
@@ -61,25 +62,25 @@ class DHCPSnippetHandler(TimestampedModelHandler):
 
     def create(self, params):
         """Create the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().create(params)
 
     def update(self, params):
         """Update the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().update(params)
 
     def delete(self, params):
         """Delete the object from params iff admin."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
         return super().delete(params)
 
     def revert(self, params):
         """Revert a value to a previous state."""
-        if not self.user.is_superuser:
+        if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
         dhcp_snippet = self.get_object(params)

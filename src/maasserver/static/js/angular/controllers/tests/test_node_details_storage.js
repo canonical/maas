@@ -163,6 +163,7 @@ describe("NodeStorageController", function() {
                 partition_table_type: makeName("partition_table_type"),
                 used_for: "Unmounted ext4 formatted filesystem.",
                 filesystem: {
+                    id: 0,
                     is_format_fstype: true,
                     fstype: "ext4",
                     mount_point: null,
@@ -188,6 +189,7 @@ describe("NodeStorageController", function() {
                 partition_table_type: makeName("partition_table_type"),
                 used_for: "ext4 formatted filesystem mounted at /.",
                 filesystem: {
+                    id: 1,
                     is_format_fstype: true,
                     fstype: "ext4",
                     mount_point: "/",
@@ -227,6 +229,7 @@ describe("NodeStorageController", function() {
                         size_human: "512 GB",
                         type: "partition",
                         filesystem: {
+                            id: 2,
                             is_format_fstype: true,
                             fstype: "ext4",
                             mount_point: "/mnt",
@@ -307,6 +310,7 @@ describe("NodeStorageController", function() {
                 mount_options: disks[2].filesystem.mount_options,
                 block_id: disks[2].id,
                 partition_id: null,
+                filesystem_id: disks[2].filesystem.id,
                 original_type: disks[2].type,
                 original: disks[2],
                 $selected: false
@@ -320,6 +324,7 @@ describe("NodeStorageController", function() {
                 mount_options: disks[3].partitions[1].filesystem.mount_options,
                 block_id: disks[3].id,
                 partition_id: disks[3].partitions[1].id,
+                filesystem_id: disks[3].partitions[1].filesystem.id,
                 original_type: "partition",
                 original: disks[3].partitions[1],
                 $selected: false
@@ -970,21 +975,22 @@ describe("NodeStorageController", function() {
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
         });
 
-        it("calls MachinesManager.deleteDisk for disk", function() {
+        it("calls MachinesManager.deleteFilesystem for disk", function() {
             var controller = makeController();
             var filesystem = {
                 original_type: "physical",
-                original: {
-                    id: makeInteger(0, 100)
-                }
+                block_id: makeInteger(0, 100),
+                partition_id: makeInteger(0, 100),
+                filesystem_id: makeInteger(0, 100)
             };
             $scope.filesystems = [filesystem];
-            spyOn(MachinesManager, "deleteDisk");
+            spyOn(MachinesManager, "deleteFilesystem");
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemConfirmDelete(filesystem);
-            expect(MachinesManager.deleteDisk).toHaveBeenCalledWith(
-                node, filesystem.original.id);
+            expect(MachinesManager.deleteFilesystem).toHaveBeenCalledWith(
+                node, filesystem.block_id, filesystem.partition_id,
+                filesystem.filesystem_id);
             expect($scope.filesystems).toEqual([]);
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
         });
@@ -3037,33 +3043,34 @@ describe("NodeStorageController", function() {
                     name: name
                 }
             };
-            spyOn(MachinesManager, "updateDisk");
+            spyOn(MachinesManager, "updateFilesystem");
 
             $scope.availableConfirmEdit(disk);
             expect(disk.name).toBe(name);
-            expect(MachinesManager.updateDisk).toHaveBeenCalled();
+            expect(MachinesManager.updateFilesystem).toHaveBeenCalled();
         });
 
         it("calls updateDisks with new name for logical volume", function() {
             var controller = makeController();
-            var id = makeInteger(0, 100);
             var disk = {
                 name: "vg0-lvnew",
                 type: "virtual",
                 parent_type: "lvm-vg",
-                block_id: id,
+                block_id: makeInteger(0, 100),
+                partition_id: makeInteger(0, 100),
                 $options: {
-                    mountPoint: ""
+                    fstype: "",
+                    mountPoint: "",
+                    mountOptions: ""
                 },
                 original: {
                     name: "vg0-lvold"
                 }
             };
-            spyOn(MachinesManager, "updateDisk");
+            spyOn(MachinesManager, "updateFilesystem");
 
             $scope.availableConfirmEdit(disk);
-            expect(MachinesManager.updateDisk).toHaveBeenCalledWith(
-                node, id, { name: "lvnew" });
+            expect(MachinesManager.updateFilesystem).toHaveBeenCalled();
         });
 
     });

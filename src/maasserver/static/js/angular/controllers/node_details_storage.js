@@ -226,6 +226,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "mount_options": disk.filesystem.mount_options,
                         "block_id": disk.id,
                         "partition_id": null,
+                        "filesystem_id": disk.filesystem.id,
                         "original_type": disk.type,
                         "original": disk
                     };
@@ -246,6 +247,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                                 partition.filesystem.mount_options,
                             "block_id": disk.id,
                             "partition_id": partition.id,
+                            "filesystem_id": partition.filesystem.id,
                             "original_type": "partition",
                             "original": partition
                         });
@@ -759,8 +761,9 @@ angular.module('MAAS').controller('NodeStorageController', [
                     $scope.node, filesystem.original.id);
             } else {
                 // Delete the disk.
-                MachinesManager.deleteDisk(
-                    $scope.node, filesystem.original.id);
+                MachinesManager.deleteFilesystem(
+                    $scope.node, filesystem.block_id, filesystem.partition_id,
+                    filesystem.filesystem_id);
             }
 
             var idx = $scope.filesystems.indexOf(filesystem);
@@ -1094,7 +1097,10 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
 
             // Save the options.
-            MachinesManager.updateDisk($scope.node, disk.block_id, params);
+            MachinesManager.updateFilesystem(
+                $scope.node, disk.block_id, disk.partition_id,
+                disk.$options.fstype, disk.$options.mountPoint,
+                disk.$options.mountOptions);
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.

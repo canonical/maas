@@ -539,6 +539,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {})
         filesystem = factory.make_Filesystem()
         self.assertEqual({
+            "id": filesystem.id,
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
             "mount_options": filesystem.mount_options,
@@ -1583,6 +1584,44 @@ class TestMachineHandler(MAASServerTestCase):
             'cache_set_id': cache_set.id,
             })
         self.assertIsNone(reload_object(cache_set))
+
+    def test_delete_filesystem_deletes_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_BlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            block_device=block_device, fstype=FILESYSTEM_TYPE.EXT4)
+        handler.delete_filesystem({
+            'system_id': node.system_id,
+            'blockdevice_id': block_device.id,
+            'filesystem_id': filesystem.id,
+            })
+        self.assertIsNone(reload_object(filesystem))
+        self.assertIsNotNone(reload_object(block_device))
+
+    def test_delete_filesystem_deletes_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition = factory.make_Partition(node=node)
+        filesystem = factory.make_Filesystem(
+            partition=partition, fstype=FILESYSTEM_TYPE.EXT4)
+        handler.delete_filesystem({
+            'system_id': node.system_id,
+            'partition_id': partition.id,
+            'filesystem_id': filesystem.id,
+            })
+        self.assertIsNone(reload_object(filesystem))
+        self.assertIsNotNone(reload_object(partition))
 
     def test_create_partition(self):
         user = factory.make_admin()

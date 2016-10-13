@@ -547,6 +547,36 @@ describe("NodesManager", function() {
             });
     });
 
+    describe("deleteFilesystem", function() {
+
+        it("calls machine.delete_filesystem with correct params",
+            function(done) {
+                var machine = makemachine();
+                var blockdevice_id = makeInteger(0, 100);
+                var partition_id = makeInteger(0, 100);
+                var filesystem_id = makeInteger(0, 100);
+                webSocket.returnData.push(makeFakeResponse("deleted"));
+                MachinesManager.deleteFilesystem(
+                        machine, blockdevice_id, partition_id,
+                        filesystem_id).then(
+                    function() {
+                        var sentObject = angular.fromJson(
+                            webSocket.sentData[0]);
+                        expect(sentObject.method).toBe(
+                            "machine.delete_filesystem");
+                        expect(sentObject.params.system_id).toBe(
+                            machine.system_id);
+                        expect(sentObject.params.blockdevice_id).toBe(
+                            blockdevice_id);
+                        expect(sentObject.params.partition_id).toBe(
+                            partition_id);
+                        expect(sentObject.params.filesystem_id).toBe(
+                            filesystem_id);
+                        done();
+                    });
+            });
+    });
+
     describe("createPartition", function() {
 
         it("calls machine.create_partition with correct params",

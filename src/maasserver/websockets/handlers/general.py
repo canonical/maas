@@ -24,6 +24,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
+from maasserver.utils.orm import reload_object
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -119,7 +120,7 @@ class GeneralHandler(Handler):
 
     def _node_actions(self, params, node_type):
         # Only admins can perform controller actions
-        if (not self.user.is_superuser and node_type in [
+        if (not reload_object(self.user).is_superuser and node_type in [
                 NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
             return {}
@@ -127,7 +128,7 @@ class GeneralHandler(Handler):
         actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():
             if (action.node_permission == NODE_PERMISSION.ADMIN and
-                    not self.user.is_superuser):
+                    not reload_object(self.user).is_superuser):
                 continue
             elif node_type in action.for_type:
                 actions[name] = action

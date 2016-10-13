@@ -216,6 +216,20 @@ angular.module('MAAS').service(
                 return RegionConnection.callMethod(method, params);
             };
 
+        // Delete a filesystem.
+        NodesManager.prototype.deleteFilesystem = function(
+            node, blockdevice_id, partition_id, filesystem_id) {
+                var self = this;
+                var method = this._handler + ".delete_filesystem";
+                var params = {
+                    system_id: node.system_id,
+                    blockdevice_id: blockdevice_id,
+                    partition_id: partition_id,
+                    filesystem_id: filesystem_id
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
         // Create a new partition.
         NodesManager.prototype.createPartition = function(
             node, block_id, size, params) {

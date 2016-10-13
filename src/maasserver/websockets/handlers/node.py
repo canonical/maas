@@ -329,6 +329,7 @@ class NodeHandler(TimestampedModelHandler):
         if filesystem is None:
             return None
         return {
+            "id": filesystem.id,
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
             "mount_options": filesystem.mount_options,
