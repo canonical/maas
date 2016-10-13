@@ -63,7 +63,7 @@
         <section id="profile" class="eight-col u-border--bottom">
             <h2>User details</h2>
             <div class="eight-col">
-                <form method="post">{% csrf_token %}
+                <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul>
                         {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
@@ -75,7 +75,7 @@
         <section id="password" class="eight-col">
             <h2>Password</h2>
             <div class="eight-col">
-                <form method="post">{% csrf_token %}
+                <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul>
                         {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
