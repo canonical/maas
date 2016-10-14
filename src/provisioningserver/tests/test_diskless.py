@@ -132,7 +132,9 @@ class TestHelpers(DisklessTestMixin, MAASTestCase):
         link_path = factory.make_name('link_path')
         create_diskless_link(system_id, link_path)
         self.assertEqual(
-            link_path, os.readlink(os.path.join(storage_dir, system_id)))
+            link_path,
+            os.path.basename(os.readlink(os.path.join(storage_dir, system_id)))
+        )
 
     def test_create_diskless_link_error_on_already_exists(self):
         system_id = factory.make_name('system_id')
@@ -175,7 +177,8 @@ class TestHelpers(DisklessTestMixin, MAASTestCase):
         self.configure_diskless_storage()
         link_path = factory.make_name('link_path')
         create_diskless_link(system_id, link_path)
-        self.assertEqual(link_path, read_diskless_link(system_id))
+        self.assertEqual(
+            link_path, os.path.basename(read_diskless_link(system_id)))
 
     def test_read_diskless_link_uses_lexists(self):
         system_id = factory.make_name('system_id')

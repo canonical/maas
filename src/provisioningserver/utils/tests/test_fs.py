@@ -298,6 +298,22 @@ class TestAtomicSymlink(MAASTestCase):
             [],
             os.listdir(target_dir))
 
+    def test_atomic_symlink_uses_relative_path(self):
+        filename = self.make_file(contents=factory.make_string())
+        link_name = factory.make_name('link')
+        target = os.path.join(os.path.dirname(filename), link_name)
+        atomic_symlink(filename, target)
+        self.assertEquals(os.path.basename(filename), os.readlink(target))
+        self.assertTrue(os.path.samefile(filename, target))
+
+    def test_atomic_symlink_uses_relative_path_for_directory(self):
+        target_path = self.make_dir()  # The target is a directory.
+        link_path = os.path.join(self.make_dir(), factory.make_name("sub"))
+        atomic_symlink(target_path, link_path)
+        self.assertThat(os.readlink(link_path), Equals(
+            os.path.relpath(target_path, os.path.dirname(link_path))))
+        self.assertTrue(os.path.samefile(target_path, link_path))
+
 
 class TestIncrementalWrite(MAASTestCase):
     """Test `incremental_write`."""

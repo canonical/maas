@@ -195,9 +195,10 @@ def create_provisional_symlink(src_dir, dst):
     """
     for attempt in count(1):
         rnd = randint(0, 999999)  # Inclusive range.
-        src = os.path.join(src_dir, ".temp.%06d" % rnd)
+        link_name = os.path.join(src_dir, ".temp.%06d" % rnd)
+        rel_src = os.path.relpath(dst, os.path.dirname(link_name))
         try:
-            os.symlink(dst, src)
+            os.symlink(rel_src, link_name)
         except OSError as error:
             # If we've already tried 100 times to create the
             # symlink, give up, and re-raise the most recent
@@ -211,22 +212,22 @@ def create_provisional_symlink(src_dir, dst):
         else:
             # The symlink was created successfully, so return
             # its full path.
-            return src
+            return link_name
 
 
-def atomic_symlink(source, name):
-    """Create a symbolic link pointing to `source` named `name`.
+def atomic_symlink(source, link_name):
+    """Create a symbolic link pointing to `source` named `link_name`.
 
     This method is meant to be a drop-in replacement for `os.symlink`.
 
     The symlink creation will be atomic.  If a file/symlink named
     `name` already exists, it will be overwritten.
     """
-    prov = create_provisional_symlink(os.path.dirname(name), source)
+    prov = create_provisional_symlink(os.path.dirname(link_name), source)
     # Move the provisionally created symlink into the desired
     # end location, clobbering any existing link.
     try:
-        os.rename(prov, name)
+        os.rename(prov, link_name)
     except:
         # Remove the provisionally created symlink so that
         # garbage does not accumulate.

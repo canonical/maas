@@ -81,7 +81,7 @@ def read_diskless_link(system_id):
     link_path = compose_diskless_link_path(system_id)
     if not os.path.lexists(link_path):
         return None
-    return os.readlink(link_path)
+    return os.path.realpath(link_path)
 
 
 def get_diskless_target(system_id):

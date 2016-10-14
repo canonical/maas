@@ -163,12 +163,13 @@ class TestUpdateCurrentSymlink(MAASTestCase):
     def make_test_dirs(self):
         storage_dir = self.make_dir()
         target_dir = os.path.join(storage_dir, factory.make_name("target"))
+        os.makedirs(target_dir)
         return storage_dir, target_dir
 
     def assertLinkIsUpdated(self, storage_dir, target_dir):
         boot_resources.update_current_symlink(storage_dir, target_dir)
         link_path = os.path.join(storage_dir, "current")
-        self.assertEqual(target_dir, os.readlink(link_path))
+        self.assertTrue(os.path.samefile(target_dir, link_path))
 
     def test_creates_current_symlink(self):
         storage_dir, target_dir = self.make_test_dirs()
@@ -176,8 +177,10 @@ class TestUpdateCurrentSymlink(MAASTestCase):
 
     def test_creates_current_symlink_when_link_exists(self):
         storage_dir = self.make_dir()
-        self.assertLinkIsUpdated(storage_dir, "target01")
-        self.assertLinkIsUpdated(storage_dir, "target02")
+        for target_dir in ['target01', 'target02']:
+            target_dir = os.path.join(storage_dir, target_dir)
+            os.makedirs(target_dir)
+            self.assertLinkIsUpdated(storage_dir, target_dir)
 
     def test_creates_current_symlink_when_temp_link_exists(self):
         symlink_real = os.symlink
@@ -201,11 +204,12 @@ class TestUpdateCurrentSymlink(MAASTestCase):
         randint.side_effect = lambda a, b: randint.call_count
 
         storage_dir, target_dir = self.make_test_dirs()
+        base_target_dir = os.path.basename(target_dir)
         self.assertLinkIsUpdated(storage_dir, target_dir)
         self.assertThat(symlink, MockCallsMatch(
-            call(target_dir, os.path.join(storage_dir, ".temp.000001")),
-            call(target_dir, os.path.join(storage_dir, ".temp.000002")),
-            call(target_dir, os.path.join(storage_dir, ".temp.000003")),
+            call(base_target_dir, os.path.join(storage_dir, ".temp.000001")),
+            call(base_target_dir, os.path.join(storage_dir, ".temp.000002")),
+            call(base_target_dir, os.path.join(storage_dir, ".temp.000003")),
         ))
 
     def test_fails_when_creating_temp_link_exists_a_lot(self):
@@ -238,7 +242,8 @@ class TestUpdateCurrentSymlink(MAASTestCase):
             storage_dir, target_dir)
         self.assertIs(error, symlink.side_effect)
         # No intermediate files are left behind.
-        self.assertEqual([], os.listdir(storage_dir))
+        self.assertEqual(
+            [os.path.basename(target_dir)], os.listdir(storage_dir))
 
 
 def checksum_sha256(data):
