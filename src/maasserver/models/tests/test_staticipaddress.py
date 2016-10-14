@@ -600,16 +600,14 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         staticip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=iface,
             subnet=subnet)
-        discovered = factory.make_StaticIPAddress(
+        factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=iface,
             subnet=subnet)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.domain)
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, 30, {staticip.ip}, node.node_type),
-            "%s.%s" % (iface.name, node.fqdn): HostnameIPMapping(
-                node.system_id, 30, {discovered.ip}, node.node_type)}
+                node.system_id, 30, {staticip.ip}, node.node_type)}
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_prefers_bond_with_no_boot_interface(self):
@@ -828,9 +826,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, 30, {sip0.ip}, node.node_type),
-            "%s.%s" % (iface1.name, node.fqdn): HostnameIPMapping(
-                node.system_id, 30, {sip1.ip}, node.node_type)}
+                node.system_id, 30, {sip0.ip}, node.node_type)}
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_returns_correct_bond_ip(self):
@@ -877,8 +873,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {bond_sip.ip}, node.node_type),
-            "%s.%s" % (iface1.name, node.fqdn): HostnameIPMapping(
-                node.system_id, 30, {sip1.ip}, node.node_type),
             }
         self.assertEqual(expected_mapping, mapping)
 

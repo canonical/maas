@@ -420,7 +420,8 @@ class StaticIPAddressManager(Manager):
                 node.node_type,
                 """ + ttl_clause + """ AS ttl,
                 staticip.ip,
-                interface.name
+                interface.name,
+                alloc_type != 6 /* DISCOVERED */ AS assigned
             FROM
                 maasserver_interface AS interface
             JOIN maasserver_node AS node ON
@@ -457,6 +458,7 @@ class StaticIPAddressManager(Manager):
                 host(staticip.ip) != ''
             ORDER BY
                 node.hostname,
+                assigned DESC, /* Return all assigned IPs for a node first. */
                 interface.id
             """
         # We get user reserved et al mappings first, so that we can overwrite
@@ -467,6 +469,7 @@ class StaticIPAddressManager(Manager):
         iface_is_boot = defaultdict(bool, {
             hostname: True for hostname in mapping.keys()
         })
+        assigned_ips = defaultdict(bool)
         cursor.execute(sql_query, query_parms)
         # The records from the query provide, for each hostname (after
         # stripping domain), the boot and non-boot interface ip address in ipv4
@@ -485,16 +488,22 @@ class StaticIPAddressManager(Manager):
             if is_boot == iface_is_boot[fqdn]:
                 mapping[fqdn].ips.add(ip)
         # Next, get all the addresses, on all the interfaces, and add the ones
-        # that are not already present on the FQDN as $IFACE.$FQDN.
+        # that are not already present on the FQDN as $IFACE.$FQDN.  Exclude
+        # any discovered addresses once there are any non-discovered addresses.
         cursor.execute(iface_sql_query, (domain_or_subnet.id,))
         for (fqdn, system_id, node_type, ttl,
-                ip, iface_name) in cursor.fetchall():
-            if ip not in mapping[fqdn].ips:
-                name = "%s.%s" % (iface_name, fqdn)
-                mapping[name].node_type = node_type
-                mapping[name].system_id = system_id
-                mapping[name].ttl = ttl
-                mapping[name].ips.add(ip)
+                ip, iface_name, assigned) in cursor.fetchall():
+            if assigned:
+                assigned_ips[fqdn] = True
+            # If this is an assigned IP, or there are NO assigned IPs on the
+            # node, then consider adding the IP.
+            if assigned or not assigned_ips[fqdn]:
+                if ip not in mapping[fqdn].ips:
+                    name = "%s.%s" % (iface_name, fqdn)
+                    mapping[name].node_type = node_type
+                    mapping[name].system_id = system_id
+                    mapping[name].ttl = ttl
+                    mapping[name].ips.add(ip)
         return mapping
 
     def filter_by_ip_family(self, family):
