@@ -18,7 +18,6 @@ __all__ = [
     'ip_range_within_network',
     ]
 
-
 import codecs
 from collections import namedtuple
 from operator import attrgetter
@@ -33,6 +32,12 @@ from socket import (
     IPPROTO_TCP,
 )
 import struct
+from typing import (
+    Iterable,
+    List,
+    Optional,
+    TypeVar,
+)
 
 from netaddr import (
     EUI,
@@ -68,6 +73,14 @@ ENI_PARSED_METHODS = [
 ]
 
 
+# Type hints for `outer_range` parameter (get_unused_ranges()).
+OuterRange = TypeVar('OuterRange', IPRange, IPNetwork, bytes, str)
+
+# Could be an `netaddr.IPAddress`, or something we could convert to one if it
+# were passed into the `netaddr.IPAddress` constructor.
+MaybeIPAddress = TypeVar('MaybeIPAddress', IPAddress, bytes, str, int)
+
+
 class IPRANGE_TYPE:
     """Well-known purpose types for IP ranges."""
     UNUSED = 'unused'
@@ -81,6 +94,8 @@ class MAASIPRange(IPRange):
     specified. Capable of storing a string to indicate the purpose of
     the range."""
     def __init__(self, start, end=None, flags=0, purpose=None):
+        if purpose is None:
+            purpose = set()
         if end is None:
             end = start
         if type(start) == IPRange:
@@ -124,15 +139,20 @@ class MAASIPRange(IPRange):
         return json
 
 
-def _deduplicate_sorted_maasipranges(ranges):
-    """Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
+def _combine_overlapping_maasipranges(
+        ranges: Iterable[MAASIPRange]) -> List[MAASIPRange]:
+    """Returns the specified ranges after combining any overlapping ranges.
+
+    Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
     list where any adjacent overlapping ranges have been combined into a single
-    range."""
+    range.
+    """
     new_ranges = []
     previous_min = None
     previous_max = None
     for item in ranges:
         if previous_min is not None and previous_max is not None:
+            # Check for an overlapping range.
             min_overlaps = previous_min <= item.first <= previous_max
             max_overlaps = previous_min <= item.last <= previous_max
             if min_overlaps or max_overlaps:
@@ -147,10 +167,39 @@ def _deduplicate_sorted_maasipranges(ranges):
     return new_ranges
 
 
-def normalize_ipranges(ranges):
+def _coalesce_adjacent_purposes(
+        ranges: Iterable[MAASIPRange]) -> List[MAASIPRange]:
+    """Combines and returns adjacent ranges that have an identical purpose.
+
+    Given a sorted list of `MAASIPRange` objects, returns a new (sorted)
+    list where any adjacent ranges with identical purposes have been combined
+    into a single range.
+    """
+    new_ranges = []
+    previous_first = None
+    previous_last = None
+    previous_purpose = None
+    for item in ranges:
+        if previous_purpose is not None and previous_last is not None:
+            adjacent_and_identical = (
+                item.first == (previous_last + 1) and
+                item.purpose == previous_purpose
+            )
+            if adjacent_and_identical:
+                new_ranges.pop()
+                item = make_iprange(previous_first, item.last, item.purpose)
+        previous_first = item.first
+        previous_last = item.last
+        previous_purpose = item.purpose
+        new_ranges.append(item)
+    return new_ranges
+
+
+def _normalize_ipranges(ranges: Iterable) -> List[MAASIPRange]:
     """Converts each object in the list of ranges to an MAASIPRange, if
     the object is not already a MAASIPRange. Then, returns a sorted list
-    of those MAASIPRange objects."""
+    of those MAASIPRange objects.
+    """
     new_ranges = []
     for item in ranges:
         if not isinstance(item, MAASIPRange):
@@ -159,11 +208,15 @@ def normalize_ipranges(ranges):
     return sorted(new_ranges)
 
 
-class IPRangeStatistics(object):
-    """Class to encapsulate statistics we want to display about a given
-    `MAASIPSet`, which must be a set returned from
-    `MAASIPSet.get_full_range()`. That is, the set must include a `MAASIPRange`
-    to cover every possible IP address present in the desired range."""
+class IPRangeStatistics:
+    """Encapsulates statistics about a MAASIPSet.
+
+    This class calculates statistics about a `MAASIPSet`, which must be a
+    set returned from `MAASIPSet.get_full_range()`. That is, the set must
+    include a `MAASIPRange` to cover every possible IP address present in the
+    desired range.
+    """
+
     def __init__(self, full_maasipset):
         self.ranges = full_maasipset
         self.first_address_value = self.ranges.first
@@ -319,17 +372,38 @@ class IPRangeStatistics(object):
 class MAASIPSet(set):
 
     def __init__(self, ranges, cidr=None):
-        self.ranges = normalize_ipranges(ranges)
-        self.ranges = _deduplicate_sorted_maasipranges(self.ranges)
         self.cidr = cidr
-        super(MAASIPSet, self).__init__(set(self.ranges))
+        self.ranges = ranges
+        self._condense()
+        super().__init__(set(self.ranges))
 
-    def find(self, search):
+    def _condense(self):
+        """Condenses the `ranges` ivar in this `MAASIPSet` by:
+
+        (1) Ensuring range set is is sorted list of MAASIPRange objects.
+        (2) De-duplicate set by combining overlapping IP ranges.
+        (3) Combining adjacent ranges with an identical purpose.
+        """
+        self.ranges = _normalize_ipranges(self.ranges)
+        self.ranges = _combine_overlapping_maasipranges(self.ranges)
+        self.ranges = _coalesce_adjacent_purposes(self.ranges)
+
+    def __ior__(self, other):
+        """Return self |= other."""
+        self.ranges.extend(list(other.ranges))
+        self._condense()
+        # Replace the underlying set with the new ranges.
+        super().clear()
+        super().__ior__(set(self.ranges))
+        return self
+
+    def find(self, search) -> Optional[MAASIPRange]:
         """Searches the list of IPRange objects until it finds the specified
         search parameter, and returns the range it belongs to if found.
         (If the search parameter is a range, returns the result based on
         matching the searching for the range containing the first IP address
-        within that range.)"""
+        within that range.)
+        """
         if isinstance(search, IPRange):
             for item in self.ranges:
                 if (item.first <= search.first <= item.last and
@@ -344,7 +418,7 @@ class MAASIPSet(set):
         return None
 
     @property
-    def first(self):
+    def first(self) -> Optional[MAASIPRange]:
         """Returns the first IP address in this set."""
         if len(self.ranges) > 0:
             return self.ranges[0].first
@@ -352,16 +426,18 @@ class MAASIPSet(set):
             return None
 
     @property
-    def last(self):
+    def last(self) -> Optional[MAASIPRange]:
         """Returns the last IP address in this set."""
         if len(self.ranges) > 0:
             return self.ranges[-1].last
         else:
             return None
 
-    def ip_has_purpose(self, ip, purpose):
+    def ip_has_purpose(self, ip, purpose) -> bool:
         """Returns True if the specified IP address has the specified purpose
         in this set; False otherwise.
+
+        :raises: ValueError if the IP address is not within this range.
         """
         range = self.find(ip)
         if range is None:
@@ -370,20 +446,24 @@ class MAASIPSet(set):
                     ip, self.first, self.last))
         return purpose in range.purpose
 
-    def is_unused(self, ip):
+    def is_unused(self, ip) -> bool:
         """Returns True if the specified IP address (which must be within the
-        ranges in this set) is unused; False otherwise."""
+        ranges in this set) is unused; False otherwise.
+
+        :raises: ValueError if the IP address is not within this range.
+        """
         return self.ip_has_purpose(ip, IPRANGE_TYPE.UNUSED)
 
-    def includes_purpose(self, purpose):
+    def includes_purpose(self, purpose) -> bool:
         """Returns True if the specified purpose is found inside any of the
-        ranges in this set, otherwise returns False"""
+        ranges in this set, otherwise returns False.
+        """
         for item in self.ranges:
             if purpose in item.purpose:
                 return True
         return False
 
-    def get_first_unused_ip(self):
+    def get_first_unused_ip(self) -> int:
         """Returns the integer value of the first unused IP address in the set.
         """
         for item in self.ranges:
@@ -391,8 +471,15 @@ class MAASIPSet(set):
                 return item.first
         return None
 
-    def get_largest_unused_block(self):
-        """Find the largest unused block of addresses in this set."""
+    def get_largest_unused_block(self) -> Optional[MAASIPRange]:
+        """Find the largest unused block of addresses in this set.
+
+        An IP range is considered unused if it has a purpose of
+        `IPRANGE_TYPE.UNUSED`.
+
+        :returns: a `MAASIPRange` if the largest unused block was found,
+            or None if no IP addresses are unused.
+        """
         class NullIPRange:
             """Throwaway class to represent an empty IP range."""
             def __init__(self):
@@ -419,7 +506,9 @@ class MAASIPSet(set):
     def __contains__(self, item):
         return bool(self.find(item))
 
-    def get_unused_ranges(self, outer_range, comment=IPRANGE_TYPE.UNUSED):
+    def get_unused_ranges(
+            self, outer_range: OuterRange,
+            comment=IPRANGE_TYPE.UNUSED) -> 'MAASIPSet':
         """Calculates and returns a list of unused IP ranges, based on
         the supplied range of desired addresses.
 
@@ -493,10 +582,14 @@ class MAASIPSet(set):
         return '%s(%s)' % (self.__class__.__name__, item_repr)
 
 
-def make_ipaddress(input):
-    """Returns an `IPAddress` object for the specified input, or `None` if
-    `bool(input)` is `False`. Returns `input` if it is already an
-    `IPAddress.`"""
+def make_ipaddress(input: Optional[MaybeIPAddress]) -> Optional[IPAddress]:
+    """Returns an `IPAddress` object for the specified input.
+
+    This method should often be used in place of `netaddr.IPAddress(input)`,
+    if the input could be `None`.
+
+    :return: an IPAddress, or or `None` if `bool(input)` is None.
+    """
     if input:
         if isinstance(input, IPAddress):
             return input
@@ -525,7 +618,8 @@ def make_iprange(first, second=None, purpose="unknown"):
 
 
 def make_network(
-        ip_address, netmask_or_bits, cidr=False, **kwargs):
+        ip_address: MaybeIPAddress, netmask_or_bits: int,
+        cidr=False, **kwargs) -> IPNetwork:
     """Construct an `IPNetwork` with the given address and netmask or width.
 
     This is a thin wrapper for the `IPNetwork` constructor.  It's here because
@@ -547,7 +641,7 @@ def make_network(
     return network
 
 
-def find_ip_via_arp(mac):
+def find_ip_via_arp(mac: str) -> str:
     """Find the IP address for `mac` by reading the output of arp -n.
 
     Returns `None` if the MAC is not found.
@@ -568,7 +662,7 @@ def find_ip_via_arp(mac):
     return None
 
 
-def find_mac_via_arp(ip):
+def find_mac_via_arp(ip: str) -> str:
     """Find the MAC address for `ip` by reading the output of arp -n.
 
     Returns `None` if the IP is not found.
@@ -609,7 +703,7 @@ def find_mac_via_arp(ip):
     return None
 
 
-def clean_up_netifaces_address(address, interface):
+def clean_up_netifaces_address(address: str, interface: str):
     """Strip extraneous matter from `netifaces` IPv6 address.
 
     Each link-local IPv6 address we get from `netifaces` has a "zone index": a
@@ -622,10 +716,10 @@ def clean_up_netifaces_address(address, interface):
     return address.replace('%' + interface, '')
 
 
-def get_all_addresses_for_interface(interface):
+def get_all_addresses_for_interface(interface: str) -> Iterable[str]:
     """Yield all IPv4 and IPv6 addresses for an interface as `IPAddress`es.
 
-    IPv4 addresses will be yielded first, followed by v6 addresses.
+    IPv4 addresses will be yielded first, followed by IPv6 addresses.
 
     :param interface: The name of the interface whose addresses we
         should retrieve.
@@ -645,7 +739,7 @@ def get_all_addresses_for_interface(interface):
                     inet6_address["addr"], interface)
 
 
-def get_all_interface_addresses():
+def get_all_interface_addresses() -> Iterable[str]:
     """For each network interface, yield its addresses."""
     for interface in netifaces.interfaces():
         for address in get_all_addresses_for_interface(interface):

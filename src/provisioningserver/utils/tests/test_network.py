@@ -70,6 +70,7 @@ from provisioningserver.utils.network import (
 from provisioningserver.utils.shell import call_and_check
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     Equals,
     HasLength,
     Is,
@@ -803,6 +804,43 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u['10.0.0.1'].purpose, Contains('unused'))
         self.assertThat(u['10.0.0.2'].purpose, Not(Contains('unused')))
         self.assertThat(u['10.0.0.254'].purpose, Contains('unused'))
+
+    def test__supports_ior(self):
+        s1 = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        s2 = MAASIPSet(['10.0.0.1', '10.0.0.3', '10.0.0.5', '10.0.0.7'])
+        s1 |= s2
+        self.assertThat(s1, ContainsAll({
+            ip for ip in IPRange('10.0.0.1', '10.0.0.8')}))
+
+    def test__ior_coalesces_adjacent_ranges(self):
+        s1 = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        s2 = MAASIPSet(['10.0.0.1', '10.0.0.3', '10.0.0.5', '10.0.0.7'])
+        s1 |= s2
+        # Since all these IP addresses are adjacent (and have the same
+        # purpose), we should present them as a single entity. That is,
+        # it will appear to the user as "10.0.0.1 through 10.0.0.8".
+        self.assertThat(s1.ranges, HasLength(1))
+        self.assertThat(str(IPAddress(s1.first)), Equals("10.0.0.1"))
+        self.assertThat(str(IPAddress(s1.last)), Equals("10.0.0.8"))
+
+    def test__ior_doesnt_combine_adjacent_ranges_with_different_purposes(self):
+        s1 = MAASIPSet([
+            make_iprange('10.0.0.2', purpose="foo"),
+            make_iprange('10.0.0.4', purpose="foo"),
+            make_iprange('10.0.0.6', purpose="foo"),
+            make_iprange('10.0.0.8', purpose="foo")])
+        s2 = MAASIPSet([
+            make_iprange('10.0.0.1', purpose="bar"),
+            make_iprange('10.0.0.3', purpose="bar"),
+            make_iprange('10.0.0.5', purpose="bar"),
+            make_iprange('10.0.0.7', purpose="bar")])
+        s1 |= s2
+        # Expect the individual addresses to be preserved in unique ranges,
+        # since adjacent addresses have different purposes and thus will not
+        # be combined.
+        self.assertThat(s1.ranges, HasLength(8))
+        self.assertThat(str(IPAddress(s1.first)), Equals("10.0.0.1"))
+        self.assertThat(str(IPAddress(s1.last)), Equals("10.0.0.8"))
 
 
 class TestIPRangeStatistics(MAASTestCase):
