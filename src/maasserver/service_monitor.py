@@ -27,6 +27,7 @@ class BIND9Service(AlwaysOnService):
 
     name = "bind9"
     service_name = "bind9"
+    snap_service_name = "bind9"
 
 
 class NTPServiceOnRegion(AlwaysOnService):
@@ -34,6 +35,7 @@ class NTPServiceOnRegion(AlwaysOnService):
 
     name = "ntp_region"
     service_name = "ntp"
+    snap_service_name = "ntp"
 
 
 class ProxyService(Service):
@@ -41,6 +43,7 @@ class ProxyService(Service):
 
     name = "proxy"
     service_name = "maas-proxy"
+    snap_service_name = "proxy"
 
     def getExpectedState(self):
 

@@ -24,9 +24,13 @@ from collections import (
     namedtuple,
 )
 import enum
+import os
 
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.utils import typed
+from provisioningserver.utils import (
+    snappy,
+    typed,
+)
 from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import (
@@ -140,7 +144,11 @@ class Service(metaclass=ABCMeta):
 
     @abstractproperty
     def service_name(self):
-        """Name of the service for upstart or systemd."""
+        """Name of the service for systemd."""
+
+    @abstractproperty
+    def snap_service_name(self):
+        """Name of the service when inside snap."""
 
     @abstractmethod
     def getExpectedState(self):
@@ -186,8 +194,17 @@ class ServiceMonitor:
         "failed": SERVICE_STATE.DEAD,
     }
 
+    # Used to convert the supervisor state to the `SERVICE_STATE` enum.
+    SUPERVISOR_TO_STATE = {
+        "STARTING": SERVICE_STATE.ON,
+        "RUNNING": SERVICE_STATE.ON,
+        "STOPPED": SERVICE_STATE.OFF,
+        "FATAL": SERVICE_STATE.DEAD,
+        "EXITED": SERVICE_STATE.DEAD,
+    }
+
     # Used to log when the process state is not expected for the active state.
-    SYSTEMD_PROCESS_STATE = {
+    PROCESS_STATE = {
         SERVICE_STATE.ON: "running",
         SERVICE_STATE.OFF: "dead",
         SERVICE_STATE.DEAD: "Result: exit-code",
@@ -348,8 +365,8 @@ class ServiceMonitor:
         yield self._performServiceAction(service, "reload")
 
     @asynchronous
-    def _execServiceAction(self, service_name, action):
-        """Perform the action with the service command.
+    def _execSystemDServiceAction(self, service_name, action):
+        """Perform the action with the systemctl command.
 
         :return: tuple (exit code, std-output, std-error)
         """
@@ -363,26 +380,57 @@ class ServiceMonitor:
         d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
         return d.addCallback(decode)
 
+    @asynchronous
+    def _execSupervisorServiceAction(self, service_name, action):
+        """Perform the action with the run-supervisorctl command.
+
+        :return: tuple (exit code, std-output, std-error)
+        """
+        env = select_c_utf8_bytes_locale()
+        cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
+        cmd = (cmd, action, service_name)
+
+        def decode(result):
+            out, err, code = result
+            return code, out.decode("utf-8"), err.decode("utf-8")
+
+        d = getProcessOutputAndValue(cmd[0], cmd[1:], env=env)
+        return d.addCallback(decode)
+
     @inlineCallbacks
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
         lock = self._getServiceLock(service.name)
+        if snappy.running_in_snap():
+            exec_action = self._execSupervisorServiceAction
+            service_name = service.snap_service_name
+        else:
+            exec_action = self._execSystemDServiceAction
+            service_name = service.service_name
         exit_code, output, error = yield lock.run(
-            self._execServiceAction, service.service_name, action)
+            exec_action, service_name, action)
         if exit_code != 0:
             error_msg = (
                 "Service '%s' failed to %s: %s" % (
-                    service.service_name, action, error))
+                    service.name, action, error))
             maaslog.error(error_msg)
             raise ServiceActionError(error_msg)
 
-    @inlineCallbacks
     def _loadServiceState(self, service):
+        """Return service status."""
+        if snappy.running_in_snap():
+            return self._loadSupervisorServiceState(service)
+        else:
+            return self._loadSystemDServiceState(service)
+
+    @inlineCallbacks
+    def _loadSystemDServiceState(self, service):
         """Return service status from systemd."""
         # Ignore the exit_code because systemd will return 0 for anything
         # other than a active service.
         exit_code, output, error = (
-            yield self._execServiceAction(service.service_name, "status"))
+            yield self._execSystemDServiceAction(
+                service.service_name, "status"))
 
         # Parse the output of the command to determine the active status and
         # the current state of the service.
@@ -434,6 +482,37 @@ class ServiceMonitor:
                 service.service_name))
 
     @inlineCallbacks
+    def _loadSupervisorServiceState(self, service):
+        """Return service status from supervisor."""
+        exit_code, output, error = (
+            yield self._execSupervisorServiceAction(
+                service.snap_service_name, "status"))
+        # Anything above 3 is a bad error. The error codes below 3
+        # do not provide a distinction between dead and fatal, so the parsed
+        # string is used instead.
+        if exit_code > 3:
+            raise ServiceParsingError(
+                "Unable to parse the output from supervisor for service '%s'; "
+                "supervisorctl exited '%d': %s" % (
+                    service.name, exit_code, output))
+        output_split = output.split()
+        name, status = output_split[0], output_split[1]
+        if name != service.snap_service_name:
+            raise ServiceParsingError(
+                "Unable to parse the output from supervisor for service '%s'; "
+                "supervisorctl returned status for '%s' instead of '%s'" % (
+                    service.name, name, service.snap_service_name))
+        active_state_enum = self.SUPERVISOR_TO_STATE.get(status)
+        if active_state_enum is None:
+            raise ServiceParsingError(
+                "Unable to parse the output from supervisor for service '%s'; "
+                "supervisorctl returned status as '%s'" % (
+                    service.name, status))
+        # Supervisor doesn't provide a process status, so make sure its correct
+        # based on the active_state.
+        returnValue((active_state_enum, self.PROCESS_STATE[active_state_enum]))
+
+    @inlineCallbacks
     def _ensureService(self, service):
         """Ensure that the service is set to the correct state.
 
@@ -456,7 +535,7 @@ class ServiceMonitor:
         state = yield self.getServiceState(service.name, now=True)
         if state.active_state in expected_states:
             expected_process_state = (
-                self.SYSTEMD_PROCESS_STATE[state.active_state])
+                self.PROCESS_STATE[state.active_state])
             if state.process_state != expected_process_state:
                 maaslog.warning(
                     "Service '%s' is %s but not in the expected state of "

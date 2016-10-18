@@ -49,12 +49,14 @@ class DHCPv4Service(DHCPService):
 
     name = "dhcpd"
     service_name = "maas-dhcpd"
+    snap_service_name = "dhcpd"
 
 
 class DHCPv6Service(DHCPService):
 
     name = "dhcpd6"
     service_name = "maas-dhcpd6"
+    snap_service_name = "dhcpd6"
 
 
 class TGTService(AlwaysOnService):
@@ -62,6 +64,7 @@ class TGTService(AlwaysOnService):
 
     name = "tgt"
     service_name = "tgt"
+    snap_service_name = "tgt"
 
 
 class NTPServiceOnRack(Service):
@@ -69,6 +72,7 @@ class NTPServiceOnRack(Service):
 
     name = "ntp_rack"
     service_name = "ntp"
+    snap_service_name = "ntp"
 
     def getExpectedState(self):
         try:

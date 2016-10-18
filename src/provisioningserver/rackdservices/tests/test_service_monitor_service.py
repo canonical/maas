@@ -113,7 +113,8 @@ class TestServiceMonitorService(MAASTestCase):
         self.addCleanup((yield connecting))
 
         class ExampleService(AlwaysOnService):
-            name = service_name = factory.make_name("service")
+            name = service_name = snap_service_name = (
+                factory.make_name("service"))
 
         service = ExampleService()
         # Inveigle this new service into the service monitor.
