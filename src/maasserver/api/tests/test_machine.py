@@ -15,6 +15,7 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
 from maasserver.api import machines as machines_module
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_TYPE,
@@ -1335,9 +1336,11 @@ class TestMachineAPI(APITestCase.ForUser):
 
 
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):
-    '''The following TestMachineAPI tests require APITransactionTestCase,
-        and thus, have been separated from the TestMachineAPI above.
-    '''
+    """The following TestMachineAPI tests require APITransactionTestCase."""
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         self.patch(node_module, 'power_driver_check')

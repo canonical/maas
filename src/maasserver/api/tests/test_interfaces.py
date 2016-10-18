@@ -9,6 +9,7 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -17,7 +18,10 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import Interface
-from maasserver.testing.api import APITestCase
+from maasserver.testing.api import (
+    APITestCase,
+    APITransactionTestCase,
+)
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
@@ -735,7 +739,7 @@ class TestInterfacesAPIForControllers(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content)
 
 
-class TestNodeInterfaceAPI(APITestCase.ForUser):
+class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node(interface=True)
@@ -1047,6 +1051,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
                     }))
 
     def test_link_subnet_creates_link_on_device(self):
+        register_view("maasserver_discovery")
         parent = factory.make_Node()
         device = factory.make_Device(
             owner=self.user, parent=parent)

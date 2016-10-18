@@ -15,6 +15,7 @@ from unittest.mock import sentinel
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from maasserver import locks
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -135,9 +136,13 @@ class TestStaticIPAddressManager(MAASServerTestCase):
 
 class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
     """The following TestStaticIPAddressManager tests require
-        MAASTransactionServerTestCase, and thus have been separated
-        from the TestStaticIPAddressManager above.
+    MAASTransactionServerTestCase, and thus have been separated from the
+    TestStaticIPAddressManager above.
     """
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test_allocate_new_returns_ip_in_correct_range(self):
         with transaction.atomic():
@@ -334,7 +339,7 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
                 StaticIPAddress.objects.allocate_new,
                 subnet)
         self.assertEqual(
-            "No more IPs available in subnet: %s" % subnet.cidr,
+            "No more IPs available in subnet: %s." % subnet.cidr,
             str(e))
 
 

@@ -6,14 +6,20 @@
 __all__ = []
 
 
+from datetime import (
+    datetime,
+    timedelta,
+)
 import random
 
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from fixtures import FakeLogger
 from hypothesis import given
 from hypothesis.strategies import integers
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -21,6 +27,7 @@ from maasserver.enum import (
     RDNS_MODE,
     RDNS_MODE_CHOICES,
 )
+from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models.subnet import (
     create_cidr,
     Subnet,
@@ -28,12 +35,16 @@ from maasserver.models.subnet import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import DocTestMatches
 from netaddr import (
     AddrFormatError,
     IPAddress,
     IPNetwork,
 )
-from provisioningserver.utils.network import inet_ntop
+from provisioningserver.utils.network import (
+    inet_ntop,
+    MAASIPRange,
+)
 from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
@@ -609,6 +620,30 @@ class SubnetTest(MAASServerTestCase):
             subnet.delete()
 
 
+class SubnetLabelTest(MAASServerTestCase):
+
+    def test__returns_cidr_for_null_name(self):
+        network = factory.make_ip4_or_6_network()
+        subnet = Subnet(name=None, cidr=network)
+        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+
+    def test__returns_cidr_for_empty_name(self):
+        network = factory.make_ip4_or_6_network()
+        subnet = Subnet(name="", cidr=network)
+        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+
+    def test__returns_cidr_if_name_is_cidr(self):
+        network = factory.make_ip4_or_6_network()
+        subnet = Subnet(name=str(network), cidr=network)
+        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+
+    def test__returns_name_and_cidr_if_name_is_different(self):
+        network = factory.make_ip4_or_6_network()
+        subnet = Subnet(name=factory.make_string(prefix="net"), cidr=network)
+        self.assertThat(subnet.label, Equals(
+            "%s (%s)" % (subnet.name, str(subnet.cidr))))
+
+
 class SubnetIPRangeTest(MAASServerTestCase):
 
     def test__finds_used_ranges_includes_allocated_ip(self):
@@ -707,6 +742,26 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Contains(gateway_ip_1))
         self.assertThat(s, Contains(gateway_ip_2))
 
+    def get__get_iprange_usage_includes_neighbours_on_request(self):
+        register_view("maasserver_discovery")
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        factory.make_Discovery(ip="10.0.0.1", interface=rackif)
+        iprange = subnet.get_iprange_usage(with_neighbours=True)
+        self.assertThat(iprange, Contains(
+            MAASIPRange("10.0.0.1", purpose="neighbour")))
+
+    def get__get_iprange_usage_excludes_neighbours_by_default(self):
+        register_view("maasserver_discovery")
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        factory.make_Discovery(ip="10.0.0.1", interface=rackif)
+        iprange = subnet.get_iprange_usage(with_neighbours=True)
+        self.assertThat(iprange, Not(Contains(
+            MAASIPRange("10.0.0.1", purpose="neighbour"))))
+
 
 class TestRenderJSONForRelatedIPs(MAASServerTestCase):
 
@@ -785,3 +840,140 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
             subnet.get_dynamic_range_for_ip(end_ip), Equals(dynamic_range))
         self.assertThat(
             subnet.get_dynamic_range_for_ip(random_ip), Equals(dynamic_range))
+
+
+class TestSubnetGetMAASIPSetForNeighbours(MAASServerTestCase):
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
+    def test__returns_observed_neighbours(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        factory.make_Discovery(ip="10.0.0.1", interface=rackif)
+        ipset = subnet.get_maasipset_for_neighbours()
+        self.assertThat(ipset, Contains("10.0.0.1"))
+        self.assertThat(ipset, Not(Contains("10.0.0.2")))
+
+    def test__excludes_neighbours_with_static_ip_addresses(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        factory.make_Discovery(ip="10.0.0.1", interface=rackif)
+        factory.make_StaticIPAddress(ip="10.0.0.1", cidr="10.0.0.0/30")
+        ipset = subnet.get_maasipset_for_neighbours()
+        self.assertThat(ipset, Not(Contains("10.0.0.1")))
+        self.assertThat(ipset, Not(Contains("10.0.0.2")))
+
+
+class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
+    def test__returns_least_recently_seen_neighbour(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        now = datetime.now()
+        yesterday = now - timedelta(days=1)
+        factory.make_Discovery(
+            ip="10.0.0.1", interface=rackif, updated=now)
+        factory.make_Discovery(
+            ip="10.0.0.2", interface=rackif, updated=yesterday)
+        discovery = subnet.get_least_recently_seen_unknown_neighbour()
+        self.assertThat(discovery.ip, Equals("10.0.0.2"))
+
+    def test__returns_none_if_no_neighbours(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        ip = subnet.get_least_recently_seen_unknown_neighbour()
+        self.assertThat(ip, Is(None))
+
+
+class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
+    def test__raises_if_no_free_addresses(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip="10.0.0.1",
+            dns_servers=["10.0.0.2"])
+        with ExpectedException(
+                StaticIPAddressExhaustion,
+                "No more IPs available in subnet: 10.0.0.0/30."):
+            subnet.get_next_ip_for_allocation()
+
+    def test__allocates_next_free_address(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.1"))
+
+    def test__avoids_gateway_ip(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=None)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.2"))
+
+    def test__avoids_excluded_addresses(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        ip = subnet.get_next_ip_for_allocation(exclude_addresses=["10.0.0.1"])
+        self.assertThat(ip, Equals("10.0.0.2"))
+
+    def test__avoids_dns_servers(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=["10.0.0.1"])
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.2"))
+
+    def test__avoids_observed_neighbours(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        factory.make_Discovery(ip="10.0.0.1", interface=rackif)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.2"))
+
+    def test__logs_if_suggests_previously_observed_neighbour(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        now = datetime.now()
+        yesterday = now - timedelta(days=1)
+        factory.make_Discovery(
+            ip="10.0.0.1", interface=rackif, updated=now)
+        factory.make_Discovery(
+            ip="10.0.0.2", interface=rackif, updated=yesterday)
+        logger = self.useFixture(FakeLogger("maas"))
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertThat(logger.output, DocTestMatches(
+            "Next IP address...observed previously..."
+        ))
+
+    def test__uses_smallest_free_range_when_not_considering_neighbours(self):
+        # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/29", gateway_ip=None, dns_servers=None)
+        # With .4 in use, the free ranges are {1, 2, 3}, {5, 6}. So MAAS should
+        # select 10.0.0.5, since that is the first address in the smallest
+        # available range.
+        factory.make_StaticIPAddress(ip="10.0.0.4", cidr="10.0.0.0/29")
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.5"))

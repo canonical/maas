@@ -597,7 +597,7 @@ def make_ipaddress(input: Optional[MaybeIPAddress]) -> Optional[IPAddress]:
     return None
 
 
-def make_iprange(first, second=None, purpose="unknown"):
+def make_iprange(first, second=None, purpose="unknown") -> MAASIPRange:
     """Returns a MAASIPRange (which is compatible with IPRange) for the
     specified range of addresses.
 

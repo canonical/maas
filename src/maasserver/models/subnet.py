@@ -8,6 +8,12 @@ __all__ = [
     'Subnet',
 ]
 
+from operator import attrgetter
+from typing import (
+    Iterable,
+    Optional,
+)
+
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
@@ -34,6 +40,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     MAASAPIException,
+    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
@@ -50,16 +57,24 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
     MAASIPSet,
     make_ipaddress,
     make_iprange,
+    MaybeIPAddress,
     parse_integer,
 )
+
+
+maaslog = get_maas_logger("subnet")
 
 # Note: since subnets can be referenced in the API by name, if this regex is
 # updated, then the regex in urls_api.py also needs to be udpated.
 SUBNET_NAME_VALIDATOR = RegexValidator('^[.: \w/-]+$')
+
+# Typing for list of IP addresses to exclude.
+IPAddressExcludeList = Optional[Iterable[MaybeIPAddress]]
 
 
 def get_default_vlan():
@@ -371,6 +386,19 @@ class Subnet(CleanSave, TimestampedModel):
     active_discovery = BooleanField(
         editable=True, blank=False, null=False, default=False)
 
+    @property
+    def label(self):
+        """Returns a human-friendly label for this subnet."""
+        cidr = str(self.cidr)
+        # Note: there is a not-NULL check for the 'name' field, so this only
+        # applies to unsaved objects.
+        if self.name is None or self.name == "":
+            return cidr
+        if cidr not in self.name:
+            return "%s (%s)" % (self.name, self.cidr)
+        else:
+            return self.name
+
     def get_ipnetwork(self) -> IPNetwork:
         return IPNetwork(self.cidr)
 
@@ -427,9 +455,11 @@ class Subnet(CleanSave, TimestampedModel):
                 "IP range. (Delete the dynamic range or disable DHCP first.)")
         super().delete(*args, **kwargs)
 
-    def _get_ranges_for_allocated_ips(self, ipnetwork, ignore_discovered_ips):
-        """Returns a set of IPrange objects created from the set of allocated
-        StaticIPAddress objects.."""
+    def _get_ranges_for_allocated_ips(
+            self, ipnetwork: IPNetwork, ignore_discovered_ips: bool) -> set:
+        """Returns a set of MAASIPRange objects created from the set of allocated
+        StaticIPAddress objects.
+        """
         # Note, the original implementation used .exclude() to filter,
         # but we'll filter at runtime so that prefetch_related in the
         # websocket works properly.
@@ -442,14 +472,20 @@ class Subnet(CleanSave, TimestampedModel):
                     ranges.add(make_iprange(ip, purpose="assigned-ip"))
         return ranges
 
-    def get_ipranges_in_use(self, exclude_addresses=[], ranges_only=False,
-                            ignore_discovered_ips=False):
+    def get_ipranges_in_use(
+            self, exclude_addresses: IPAddressExcludeList=None,
+            ranges_only: bool=False,
+            ignore_discovered_ips: bool=False) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
         :param exclude_addresses: Additional addresses to consider "in use".
         :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
+        :param ranges_only: if True, filters out gateway IPs, static routes,
+            DNS servers, and `exclude_addresses`.
         """
+        if exclude_addresses is None:
+            exclude_addresses = []
         ranges = set()
         network = self.get_ipnetwork()
         if network.version == 6:
@@ -506,40 +542,129 @@ class Subnet(CleanSave, TimestampedModel):
         return self.get_ipranges_not_in_use(
             ranges_only=False, ignore_discovered_ips=True)
 
-    def get_ipranges_not_in_use(self, exclude_addresses=[], ranges_only=False,
-                                ignore_discovered_ips=False):
+    def get_ipranges_not_in_use(
+            self, exclude_addresses: IPAddressExcludeList=None,
+            ranges_only: bool=False, ignore_discovered_ips: bool=False,
+            with_neighbours: bool=False) -> MAASIPSet:
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
         :param exclude_addresses: An iterable of addresses not to use.
         :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
         """
+        if exclude_addresses is None:
+            exclude_addresses = []
         ranges = self.get_ipranges_in_use(
             exclude_addresses=exclude_addresses,
             ranges_only=ranges_only,
             ignore_discovered_ips=ignore_discovered_ips)
+        if with_neighbours:
+            ranges |= self.get_maasipset_for_neighbours()
         unused = ranges.get_unused_ranges(self.get_ipnetwork())
         return unused
 
-    def get_iprange_usage(self):
+    def get_maasipset_for_neighbours(self) -> MAASIPSet:
+        """Return the observed neighbours in this subnet.
+
+        :return: MAASIPSet of neighbours (with the "neighbour" purpose).
+        """
+        # Circular imports.
+        from maasserver.models import Discovery
+        # Note: we only need unknown IP addresses here, because the known
+        # IP addresses should already be covered by get_ipranges_in_use().
+        neighbours = Discovery.objects.filter(subnet=self).by_unknown_ip()
+        neighbour_set = {
+            make_iprange(neighbour.ip, purpose="neighbour")
+            for neighbour in neighbours
+        }
+        return MAASIPSet(neighbour_set)
+
+    def get_least_recently_seen_unknown_neighbour(self):
+        """
+        Returns the least recently seen unknown neighbour or this subnet.
+
+        Useful when allocating an IP address, to safeguard against assigning
+        an address another host is still using.
+
+        :return: a `maasserver.models.Discovery` object
+        """
+        # Circular imports.
+        from maasserver.models import Discovery
+        return Discovery.objects.filter(
+            subnet=self).by_unknown_ip().order_by('last_seen').first()
+
+    def get_iprange_usage(self, with_neighbours=False) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.
         (This prevents a potential race condition that could occur if an IP
         address is allocated or deallocated between calls.)
 
-        :returns: A tuple indicating the (reserved, unreserved) ranges."""
+        :returns: A tuple indicating the (reserved, unreserved) ranges.
+        """
         reserved_ranges = self.get_ipranges_in_use()
+        if with_neighbours is True:
+            reserved_ranges |= self.get_maasipset_for_neighbours()
         return reserved_ranges.get_full_range(self.get_ipnetwork())
+
+    def get_next_ip_for_allocation(
+            self, exclude_addresses: Optional[Iterable]=None,
+            avoid_observed_neighbours: bool=True):
+        """Heuristic to return the "best" address from this subnet to use next.
+
+        :param exclude_addresses: Optional list of addresses to exclude.
+        :param avoid_observed_neighbours: Optional parameter to specify if
+            known observed neighbours should be avoided. This parameter is not
+            intended to be specified by a caller in production code; it is used
+            internally to recursively call this method if the first allocation
+            attempt fails.
+        """
+        if exclude_addresses is None:
+            exclude_addresses = []
+        free_ranges = self.get_ipranges_not_in_use(
+            exclude_addresses=exclude_addresses,
+            with_neighbours=avoid_observed_neighbours)
+        if len(free_ranges) == 0 and avoid_observed_neighbours is True:
+            # Try again recursively, but this time consider neighbours to be
+            # "free" IP addresses. (We'll pick the least recently seen IP.)
+            return self.get_next_ip_for_allocation(
+                exclude_addresses, avoid_observed_neighbours=False)
+        elif len(free_ranges) == 0:
+            raise StaticIPAddressExhaustion(
+                "No more IPs available in subnet: %s." % self.cidr)
+        # The first time through this function, we aren't trying to avoid
+        # observed neighbours. In fact, `free_ranges` only contains completely
+        # unused ranges. So we don't need to check for the least recently seen
+        # neighbour on the first pass.
+        if avoid_observed_neighbours is False:
+            # We tried considering neighbours as "in-use" addresses, but the
+            # subnet is still full. So make an educated guess about which IP
+            # address is least likely to be in-use.
+            discovery = self.get_least_recently_seen_unknown_neighbour()
+            if discovery is not None:
+                maaslog.warning(
+                    "Next IP address to allocate from '%s' has been observed "
+                    "previously: %s was last claimed by %s via %s at %s." % (
+                        self.label, discovery.ip, discovery.mac_address,
+                        discovery.observer_interface.get_log_string(),
+                        discovery.last_seen))
+                return str(discovery.ip)
+        # The purpose of this is to that we ensure we always get an IP address
+        # from the *smallest* free contiguous range. This way, larger ranges
+        # can be preserved in case they need to be used for applications
+        # requiring them.
+        free_range = min(free_ranges, key=attrgetter('num_addresses'))
+        return str(IPAddress(free_range.first))
 
     def render_json_for_related_ips(
             self, with_username=True, with_node_summary=True):
         """Render a representation of this subnet's related IP addresses,
         suitable for converting to JSON. Optionally exclude user and node
         information."""
+        ip_addresses = self.staticipaddress_set.all()
         return sorted([
             ip.render_json(
                 with_username=with_username,
                 with_node_summary=with_node_summary)
-            for ip in self.staticipaddress_set.all()
+            for ip in ip_addresses
             if ip.ip
             ], key=lambda json: IPAddress(json['ip']))
 

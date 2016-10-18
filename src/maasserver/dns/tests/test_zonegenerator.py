@@ -5,6 +5,7 @@
 
 __all__ = []
 
+
 import random
 import socket
 from unittest.mock import (
@@ -15,6 +16,7 @@ from unittest.mock import (
 from urllib.parse import urlparse
 
 from maasserver import server_address
+from maasserver.dbviews import register_view
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
@@ -41,7 +43,11 @@ from maasserver.models.dnsdata import HostnameRRsetMapping
 from maasserver.models.staticipaddress import HostnameIPMapping
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
@@ -498,9 +504,14 @@ class TestZoneGenerator(MAASServerTestCase):
             MatchesSetwise(*expected_zones))
 
 
-class TestZoneGeneratorTTL(MAASServerTestCase):
+class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
     """Tests for TTL in :class:ZoneGenerator`."""
 
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
+    @transactional
     def test_domain_ttl_overrides_global(self):
         global_ttl = random.randint(100, 199)
         Config.objects.set_config('default_dns_ttl', global_ttl)
@@ -525,6 +536,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual(
             expected_reverse.items(), zones[1]._mapping.items())
 
+    @transactional
     def test_node_ttl_overrides_domain(self):
         global_ttl = random.randint(100, 199)
         Config.objects.set_config('default_dns_ttl', global_ttl)
@@ -551,6 +563,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual(
             expected_reverse.items(), zones[1]._mapping.items())
 
+    @transactional
     def test_dnsresource_address_does_not_affect_addresses_when_node_set(self):
         # If a node has the same FQDN as a DNSResource, then we use whatever
         # address_ttl there is on the Node (whether None, or not) rather than
@@ -583,6 +596,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual(
             expected_reverse.items(), zones[1]._mapping.items())
 
+    @transactional
     def test_dnsresource_address_overrides_domain(self):
         # DNSResource.address_ttl _does_, however, override Domain.ttl for
         # addresses that do not have nodes associated with them.
@@ -619,6 +633,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual(
             expected_reverse.items(), zones[1]._mapping.items())
 
+    @transactional
     def test_dnsdata_inherits_global(self):
         # If there is no ttl on the DNSData or Domain, then we get the global
         # value.
@@ -641,6 +656,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual([], zones[1]._mapping.items())
         self.assertEqual(None, dnsdata.ttl)
 
+    @transactional
     def test_dnsdata_inherits_domain(self):
         # If there is no ttl on the DNSData, but is on Domain, then we get the
         # domain value.
@@ -663,6 +679,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         self.assertItemsEqual([], zones[1]._mapping.items())
         self.assertEqual(None, dnsdata.ttl)
 
+    @transactional
     def test_dnsdata_overrides_domain(self):
         # If DNSData has a ttl, we use that in preference to anything else.
         global_ttl = random.randint(100, 199)

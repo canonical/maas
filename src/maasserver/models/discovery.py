@@ -155,6 +155,10 @@ class Discovery(CleanSave, ViewModel):
         verbose_name = "Discovery"
         verbose_name_plural = "Discoveries"
 
+    def __str__(self):
+        return "<Discovery: %s at %s via %s>" % (
+            self.ip, self.last_seen, self.observer_interface.get_log_string())
+
     discovery_id = CharField(
         max_length=256, editable=False, null=True, blank=False, unique=True)
 

@@ -42,7 +42,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE_CHOICES_DICT,
 )
 from maasserver.exceptions import (
-    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
@@ -279,20 +278,8 @@ class StaticIPAddressManager(Manager):
         return deferToDatabase(
             transactional(self._find_free_ip), *args, **kwargs)
 
-    def _find_free_ip(self, subnet, exclude_addresses=[]):
-        """Helper function that finds a free IP address using a lock."""
-        # The purpose of sorting here is so that we ensure we always get an
-        # IP address from the *smallest* free contiguous range. This way,
-        # larger ranges can be preserved in case they need to be used for
-        # applications requiring them.
-        free_ranges = sorted(list(
-            subnet.get_ipranges_not_in_use(
-                exclude_addresses=exclude_addresses)
-            ), key=lambda x: x.num_addresses)
-        if len(free_ranges) == 0:
-            raise StaticIPAddressExhaustion(
-                "No more IPs available in subnet: %s" % subnet.cidr)
-        return str(IPAddress(free_ranges[0].first))
+    def _find_free_ip(self, subnet, exclude_addresses=None):
+        return subnet.get_next_ip_for_allocation(exclude_addresses)
 
     def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
         """Return hostname mappings for `StaticIPAddress` entries.

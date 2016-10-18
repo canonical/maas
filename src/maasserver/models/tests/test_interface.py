@@ -16,6 +16,7 @@ from django.core.exceptions import (
 from django.db import transaction
 from django.http import Http404
 from fixtures import FakeLogger
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -55,6 +56,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import (
     get_one,
     reload_object,
+    transactional,
 )
 from maastesting.djangotestcase import CountQueries
 from maastesting.matchers import (
@@ -1957,8 +1959,12 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 address, " on " + other_interface.node.fqdn))
 
 
-class TestLinkSubnet(MAASServerTestCase):
+class TestLinkSubnet(MAASTransactionServerTestCase):
     """Tests for `Interface.link_subnet`."""
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test__AUTO_creates_link_to_AUTO_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2033,6 +2039,7 @@ class TestLinkSubnet(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
 
+    @transactional
     def test__STATIC_picks_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2238,8 +2245,13 @@ class TestUnlinkSubnet(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=None).first())
 
 
-class TestUpdateIPAddress(MAASServerTestCase):
+class TestUpdateIPAddress(MAASTransactionServerTestCase):
     """Tests for `Interface.update_ip_address`."""
+
+    @transactional
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test__switch_dhcp_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2271,6 +2283,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
+    @transactional
     def test__switch_dhcp_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
@@ -2320,6 +2333,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
+    @transactional
     def test__switch_auto_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
@@ -2369,6 +2383,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
 
+    @transactional
     def test__switch_link_up_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
@@ -2492,6 +2507,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(subnet, new_static_ip.subnet)
         self.assertEqual(new_ip_address, new_static_ip.ip)
 
+    @transactional
     def test__switch_static_to_another_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network(slash=24)
@@ -2562,6 +2578,10 @@ class TestUpdateLinkById(MAASServerTestCase):
 
 class TestClaimAutoIPs(MAASTransactionServerTestCase):
     """Tests for `Interface.claim_auto_ips`."""
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test__claims_all_auto_ip_addresses(self):
         with transaction.atomic():

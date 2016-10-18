@@ -9,6 +9,7 @@ import http.client
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -18,10 +19,16 @@ from maasserver.models import (
     DNSResource,
     StaticIPAddress,
 )
-from maasserver.testing.api import APITestCase
+from maasserver.testing.api import (
+    APITestCase,
+    APITransactionTestCase,
+)
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import (
+    reload_object,
+    transactional,
+)
 from maastesting.matchers import DocTestMatches
 from netaddr import IPAddress
 from testtools.matchers import (
@@ -206,13 +213,18 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
         self.assertEqual(expected, observed)
 
 
-class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
+class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
 
     scenarios = (
         ("normal", {"force": None}),
         ("without_force", {"force": False}),
         ("with_force", {"force": True}),
     )
+
+    @transactional
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     @property
     def force_should_work(self):
@@ -245,6 +257,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
             params["force"] = str(self.force)
         return self.client.post(reverse('ipaddresses_handler'), params)
 
+    @transactional
     def test_POST_release_rejects_invalid_ip(self):
         response = self.post_release_request("1690.254.0.1")
         expected_status = self.expected_status(http.client.BAD_REQUEST)
@@ -258,6 +271,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
                 "Force-releasing an IP address requires admin privileges.",
                 response.content.decode("utf-8"))
 
+    @transactional
     def test_POST_release_allows_admin_to_release_other_users_ip(self):
         factory.make_StaticIPAddress(
             user=factory.make_User(), alloc_type=IPADDRESS_TYPE.USER_RESERVED,
@@ -279,6 +293,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
                 response.content.decode("utf-8"),
                 Equals(""))
 
+    @transactional
     def test_POST_release_allows_admin_to_release_sticky_ip(self):
         # Make an "orphaned" IP address, like the one in bug #1630034.
         static_ip = factory.make_StaticIPAddress(
@@ -300,6 +315,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
                 response.content.decode("utf-8"),
                 Equals(""))
 
+    @transactional
     def test_POST_release_deallocates_address(self):
         ipaddress = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
@@ -310,6 +326,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
         if not self.expect_forbidden:
             self.assertIsNone(reload_object(ipaddress))
 
+    @transactional
     def test_POST_release_deletes_unknown_interface(self):
         subnet = factory.make_Subnet()
         unknown_nic = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
@@ -323,6 +340,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
         if not self.expect_forbidden:
             self.assertIsNone(reload_object(unknown_nic))
 
+    @transactional
     def test_POST_release_does_not_delete_interfaces_linked_to_nodes(self):
         node = factory.make_Node()
         attached_nic = factory.make_Interface(node=node)
@@ -334,6 +352,7 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
         self.post_release_request(ipaddress.ip)
         self.assertEqual(attached_nic, reload_object(attached_nic))
 
+    @transactional
     def test_POST_release_does_not_delete_other_IPs_I_own(self):
         ipaddress = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
@@ -346,12 +365,16 @@ class TestIPAddressesReleaseAPI(APITestCase.ForUserAndAdmin):
         self.assertIsNotNone(reload_object(other_address))
 
 
-class TestIPAddressesReserveAPI(APITestCase.ForUser):
+class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
 
     scenarios = (
         ("with_ip_param", {"ip_param": "ip"}),
         ("with_ip_address_param", {"ip_param": "ip_address"}),
     )
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def post_reservation_request(
             self, subnet=None, ip_address=None, network=None, mac=None,

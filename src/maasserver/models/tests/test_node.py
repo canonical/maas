@@ -36,6 +36,7 @@ from maasserver.clusterrpc.power import (
 )
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
+from maasserver.dbviews import register_view
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -110,7 +111,10 @@ from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
 )
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+)
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -4129,8 +4133,12 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
 
 
-class TestNodeNetworking(MAASServerTestCase):
+class TestNodeNetworking(MAASTransactionServerTestCase):
     """Tests for methods on the `Node` related to networking."""
+
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
 
     def test__create_acquired_bridges_doesnt_call_on_bridge(self):
         mock_create_acquired_bridge = self.patch(
@@ -4174,6 +4182,7 @@ class TestNodeNetworking(MAASServerTestCase):
             mock_create_acquired_bridge,
             MockCalledOnceWith(bridge_stp=bridge_stp, bridge_fd=bridge_fd))
 
+    @transactional
     def test_claim_auto_ips_works_with_multiple_auto_on_the_same_subnet(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
@@ -4707,6 +4716,10 @@ class TestGetDefaultGateways(MAASServerTestCase):
 class TestGetDefaultDNSServers(MAASServerTestCase):
     """Tests for `Node.get_default_dns_servers`."""
 
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
     def make_Node_with_RackController(
             self, ipv4=True, ipv6=True, ipv4_gateway=True, ipv6_gateway=True,
             ipv4_subnet_dns=None, ipv6_subnet_dns=None):
@@ -4717,12 +4730,12 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         if ipv4:
-            gateway_ip = None if ipv4_gateway else ""
+            gateway_ip = RANDOM if ipv4_gateway else ""
             v4_subnet = factory.make_Subnet(
                 version=4, vlan=vlan, dns_servers=ipv4_subnet_dns,
                 gateway_ip=gateway_ip)
         if ipv6:
-            gateway_ip = None if ipv6_gateway else ""
+            gateway_ip = RANDOM if ipv6_gateway else ""
             v6_subnet = factory.make_Subnet(
                 version=6, vlan=vlan, dns_servers=ipv6_subnet_dns,
                 gateway_ip=gateway_ip)
@@ -4874,12 +4887,13 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), Equals([ipv6_subnet_dns]))
 
 
-class TestNode_Start(MAASServerTestCase):
+class TestNode_Start(MAASTransactionServerTestCase):
     """Tests for Node.start()."""
 
     def setUp(self):
         super(TestNode_Start, self).setUp()
         self.patch_autospec(node_module, 'power_driver_check')
+        register_view("maasserver_discovery")
 
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh"):

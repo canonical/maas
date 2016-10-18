@@ -152,6 +152,10 @@ with open("/proc/sys/kernel/pid_max") as fd:
 # is a reasonable value for the argument.
 undefined = object()
 
+# Use `RANDOM` instead of `None` for default factory arguments when `None`
+# is a reasonable value for the argument and a random value is desired.
+RANDOM = object()
+
 
 class Messages:
     """A class to record messages published by Django messaging
@@ -717,8 +721,6 @@ class Factory(maastesting.factory.Factory):
             *args, node_type=NODE_TYPE.MACHINE, **kwargs)
         return typecast_node(machine, Machine)
 
-    UNDEFINED = float('NaN')
-
     def _get_exclude_list(self, subnet):
         ip_addresses = [
             IPAddress(ip) for ip in StaticIPAddress.objects.filter(
@@ -729,7 +731,7 @@ class Factory(maastesting.factory.Factory):
             ip_addresses.append(IPAddress(subnet.gateway_ip))
         return ip_addresses
 
-    def make_StaticIPAddress(self, ip=UNDEFINED,
+    def make_StaticIPAddress(self, ip=undefined,
                              alloc_type=IPADDRESS_TYPE.AUTO, interface=None,
                              user=None, subnet=None, dnsresource=None,
                              cidr=None, hostname=None, **kwargs):
@@ -761,7 +763,7 @@ class Factory(maastesting.factory.Factory):
             if subnet is None:
                 subnet = self.make_Subnet(cidr=cidr, vlan=vlan)
 
-        if ip is self.UNDEFINED:
+        if ip is undefined:
             # See the above comment about subnets and USER_RESERVED for some
             # hints as to why we think this behaviour exists.
             if not subnet and alloc_type == IPADDRESS_TYPE.USER_RESERVED:
@@ -847,7 +849,7 @@ class Factory(maastesting.factory.Factory):
         return space
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
-                    gateway_ip=None, dns_servers=None, host_bits=None,
+                    gateway_ip=RANDOM, dns_servers=None, host_bits=None,
                     fabric=None, vid=None, dhcp_on=False, version=None,
                     rdns_mode=RDNS_MODE.DEFAULT, allow_proxy=True):
         if name is None:
@@ -861,7 +863,7 @@ class Factory(maastesting.factory.Factory):
             network = factory.make_ip4_or_6_network(
                 version=version, host_bits=host_bits)
             cidr = str(network.cidr)
-        if gateway_ip is None:
+        if gateway_ip is RANDOM:
             network = IPNetwork(cidr) if network is None else network
             gateway_ip = inet_ntop(network.first + 1)
         if dns_servers is None:
