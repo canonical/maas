@@ -53,6 +53,7 @@ class IPRangesHandler(OperationsHandler):
         :param start_ip: Start IP address of this range (inclusive).
         :param end_ip: End IP address of this range (inclusive).
         :param subnet: Subnet this range is associated with. (optional)
+        :param comment: A description of this range. (optional)
 
         Returns 403 if standard users tries to create a dynamic IP range.
         """
@@ -98,6 +99,7 @@ class IPRangeHandler(OperationsHandler):
 
         :param start_ip: Start IP address of this range (inclusive).
         :param end_ip: End IP address of this range (inclusive).
+        :param comment: A description of this range. (optional)
 
         Returns 403 if not owner of IP range.
         Returns 404 if the IP Range is not found.

@@ -11,6 +11,7 @@ from collections import defaultdict
 import json
 
 from distro_info import UbuntuDistroInfo
+from django.core.exceptions import ValidationError
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -681,8 +682,13 @@ class BootResourceHandler(Handler):
         # Must be administrator.
         assert self.user.is_superuser, "Permission denied."
         # Build a source, but its not saved into the database.
-        source = self.get_bootsource(
-            params, from_db=False).to_dict_without_selections()
+        boot_source = self.get_bootsource(params, from_db=False)
+        try:
+            # Validate the boot source fields without committing it.
+            boot_source.clean_fields()
+        except ValidationError as error:
+            raise HandlerValidationError(error)
+        source = boot_source.to_dict_without_selections()
 
         # FIXME: This modifies the environment of the entire process, which is
         # Not Cool. We should integrate with simplestreams in a more

@@ -19,6 +19,12 @@ amd64 architecture::
 
 This may take a while as hundreds of megabytes will be downloaded.
 
+As of MAAS 2.1 bootloaders are now included in the simplestream. In order for
+MAAS to work bootloaders must be mirrored as well. It is recommended that all
+bootloaders are mirrored::
+
+  $ sudo sstream-mirror --keyring=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg https://images.maas.io/ephemeral-v3/daily/ /var/www/html/maas/images/ephemeral-v3/daily 'os~(grub*|pxelinux)' --max=1
+
 The images will be written to the local disk and you can verify their
 presence by browsing to
 ``http://<server>/maas/images/ephemeral-v3/daily/streams/v1/index.sjson``

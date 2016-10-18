@@ -876,7 +876,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         mock_download = self.patch(
             bootresource, "download_all_image_descriptions")
         mock_download.return_value = BootImageMapping()
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         expected_source = {
             'url': url,
@@ -907,7 +907,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             bootresource, "download_all_image_descriptions")
         exc = factory.make_exception()
         mock_download.side_effect = exc
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         error = self.assertRaises(HandlerError, handler.fetch, {
             'url': url,
@@ -930,13 +930,21 @@ class TestBootResourceFetch(MAASServerTestCase):
         set_resource(mapping, not_ubuntu)
 
         mock_download.return_value = mapping
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         error = self.assertRaises(HandlerError, handler.fetch, {
             'url': url,
             'keyring_data': keyring_data,
         })
         self.assertEqual("Mirror provides no Ubuntu images.", str(error))
+
+    def test_raises_error_on_invalid_field(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        self.assertRaises(HandlerValidationError, handler.fetch, {
+            'url': factory.make_string(),
+            'keyring_data': factory.make_string(),
+        })
 
     def test_returns_releases_and_arches(self):
         owner = factory.make_admin()
@@ -965,7 +973,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             set_resource(mapping, spec, {})
 
         mock_download.return_value = mapping
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         observed = json.loads(handler.fetch({
             'url': url,
@@ -1008,7 +1016,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         set_resource(mapping, spec, {'release_title': title})
 
         mock_download.return_value = mapping
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         observed = json.loads(handler.fetch({
             'url': url,
@@ -1049,7 +1057,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         set_resource(mapping, spec, {})
 
         mock_download.return_value = mapping
-        url = factory.make_url()
+        url = factory.make_url(scheme=random.choice(['http', 'https']))
         keyring_data = factory.make_string()
         observed = json.loads(handler.fetch({
             'url': url,
