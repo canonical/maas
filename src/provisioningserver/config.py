@@ -161,9 +161,15 @@ logger = logging.getLogger(__name__)
 # Default result for cluster UUID if not set
 UUID_NOT_SET = None
 
-DEFAULT_IMAGES_URL = "http://images.maas.io/ephemeral-v3/daily/"
+# Default images URL can be overridden by the environment.
+DEFAULT_IMAGES_URL = os.getenv(
+    "MAAS_DEFAULT_IMAGES_URL",
+    "http://images.maas.io/ephemeral-v3/daily/")
 
-DEFAULT_KEYRINGS_PATH = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+# Default images keyring filepath can be overridden by the environment.
+DEFAULT_KEYRINGS_PATH = os.getenv(
+    "MAAS_IMAGES_KEYRING_FILEPATH",
+    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
 
 
 class BootSourceSelection(Schema):

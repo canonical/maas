@@ -3,6 +3,8 @@
 
 """Setuptools installer for MAAS."""
 
+from distutils.core import Command
+from glob import glob
 from os.path import (
     dirname,
     join,
@@ -12,6 +14,7 @@ from setuptools import (
     find_packages,
     setup,
 )
+from setuptools.command.build_py import build_py
 
 # The directory in which setup.py lives.
 here = dirname(__file__)
@@ -22,6 +25,47 @@ def read(filename):
     path = join(here, filename)
     with open(path, "r") as fin:
         return fin.read().strip()
+
+
+def import_jsenums():
+    """Import jsenums module without needing maasserver in the sys.path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "maasserver.utils.jsenums", "src/maasserver/utils/jsenums.py")
+    jsenums = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(jsenums)
+    return jsenums
+
+
+class EnumJSCommand(Command):
+    """A custom command to run generate enum.js from all the enum.py files."""
+
+    description = "generate enum.js from all the enum.py files"
+    user_options = []
+
+    def initialize_options(self):
+        # Do nothing.
+        pass
+
+    def finalize_options(self):
+        # Do nothing.
+        pass
+
+    def run(self):
+        """Run command."""
+        py_files = glob('src/*/enum.py')
+        jsenums = import_jsenums()
+        js_content = jsenums.dump(py_files)
+        with open('src/maasserver/static/js/enums.js', 'w') as fp:
+            fp.write(js_content)
+
+
+class BuildPyCommand(build_py):
+    """Override build_py to call enum_js."""
+
+    def run(self):
+        self.run_command('enum_js')
+        super().run()
 
 
 setup(
@@ -35,6 +79,10 @@ setup(
     author="MAAS Developers",
     author_email="maas-devel@lists.launchpad.net",
 
+    cmdclass={
+        'enum_js': EnumJSCommand,
+        'build_py': BuildPyCommand,
+    },
     packages=find_packages(
         where='src',
         exclude=[
