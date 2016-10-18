@@ -28,9 +28,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from collections import OrderedDict
-
-
 __all__ = [
     'ISCParseException',
     'make_isc_string',
@@ -38,6 +35,7 @@ __all__ = [
     'read_isc_file',
 ]
 
+from collections import OrderedDict
 import copy
 
 

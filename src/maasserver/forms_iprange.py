@@ -2,14 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPRange form."""
-from maasserver.models import Subnet
-
 
 __all__ = [
     "IPRangeForm",
 ]
 
 from maasserver.forms import MAASModelForm
+from maasserver.models import Subnet
 from maasserver.models.iprange import IPRange
 
 

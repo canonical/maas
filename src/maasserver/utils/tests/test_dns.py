@@ -3,6 +3,8 @@
 
 """Test DNS utilities."""
 
+__all__ = []
+
 from math import pow
 
 from django.core.exceptions import ValidationError
@@ -11,17 +13,12 @@ from maasserver.utils.dns import (
     validate_domain_name,
     validate_hostname,
 )
+from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
     HasLength,
 )
-
-
-__all__ = []
-
-
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
 
 
 class TestHostnameValidator(MAASTestCase):

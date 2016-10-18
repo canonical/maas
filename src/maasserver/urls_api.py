@@ -2,11 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
-from maasserver.api.discoveries import (
-    DiscoveriesHandler,
-    DiscoveryHandler,
-)
-
 
 __all__ = []
 
@@ -52,6 +47,10 @@ from maasserver.api.devices import (
 from maasserver.api.dhcpsnippets import (
     DHCPSnippetHandler,
     DHCPSnippetsHandler,
+)
+from maasserver.api.discoveries import (
+    DiscoveriesHandler,
+    DiscoveryHandler,
 )
 from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordHandler,

@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for IP addresses API."""
-from testtools.matchers import HasLength
-
 
 __all__ = []
 
@@ -26,7 +24,10 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches
 from netaddr import IPAddress
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    HasLength,
+)
 
 
 class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):

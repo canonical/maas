@@ -2,15 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Template model."""
-from maasserver.models import VersionedTextFile
-from testtools.matchers import Equals
-
 
 __all__ = []
 
-
+from maasserver.models import VersionedTextFile
 from maasserver.models.template import Template
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.matchers import Equals
 
 
 class TemplateTest(MAASServerTestCase):

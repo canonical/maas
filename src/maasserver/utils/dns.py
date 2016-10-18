@@ -3,6 +3,10 @@
 
 """DNS-related utilities."""
 
+__all__ = [
+    'validate_hostname',
+    ]
+
 import re
 
 from django.core.exceptions import ValidationError
@@ -10,11 +14,6 @@ from netaddr import (
     AddrConversionError,
     IPAddress,
 )
-
-
-__all__ = [
-    'validate_hostname',
-    ]
 
 
 def validate_domain_name(name):

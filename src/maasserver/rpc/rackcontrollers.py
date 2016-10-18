@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to rack controllers."""
-from provisioningserver.rpc.exceptions import NoSuchNode
-
 
 __all__ = [
     "handle_upgrade",
@@ -16,9 +14,9 @@ from typing import Optional
 
 from django.db.models import Q
 from maasserver import (
+    is_master_process,
     locks,
     worker_user,
-    is_master_process,
 )
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
@@ -36,6 +34,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 

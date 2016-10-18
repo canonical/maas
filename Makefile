@@ -285,8 +285,7 @@ lint-css:
 
 # Python lint checks are time-intensive, but flake8 now knows how to run
 # parallel jobs, and does so by default.
-lint-py: sources = \
-    setup.py $(wildcard contrib/*.py) src templates twisted utilities etc
+lint-py: sources = setup.py src templates twisted
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
@@ -296,8 +295,7 @@ lint-py: bin/flake8
 # be close to 10 but MAAS has many functions that are over that so we
 # start with a much higher number. Over time we can ratchet it down.
 lint-py-complexity: maximum=26
-lint-py-complexity: sources = \
-    setup.py $(wildcard contrib/*.py) src templates twisted utilities etc
+lint-py-complexity: sources = setup.py src templates twisted
 lint-py-complexity: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
@@ -306,8 +304,12 @@ lint-py-complexity: bin/flake8
 	              --isolated --max-complexity=$(maximum)
 
 # Statically check imports against policy.
+lint-py-imports: sources = setup.py src templates twisted
 lint-py-imports:
 	@utilities/check-imports
+	@find $(sources) -name '*.py' \
+	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
+	  -print0 | xargs -r0 utilities/find-early-imports
 
 lint-doc:
 	@utilities/doc-lint

@@ -1,3 +1,8 @@
+__all__ = [
+    'geturl',
+    'read_config',
+    ]
+
 from email.utils import parsedate
 import sys
 import time
@@ -7,12 +12,6 @@ import urllib.request
 
 import oauthlib.oauth1 as oauth
 import yaml
-
-
-__all__ = [
-    'geturl',
-    'read_config',
-    ]
 
 
 def read_config(url, creds):
