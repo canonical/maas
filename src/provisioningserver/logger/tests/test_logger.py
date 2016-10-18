@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for log.py"""
@@ -9,19 +9,19 @@ import logging
 import logging.handlers
 
 from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import log
 from provisioningserver.logger.log import (
     get_maas_logger,
     MAASLogger,
 )
-from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     HasLength,
     IsInstance,
 )
 
 
-class TestGetMAASLogger(PservTestCase):
+class TestGetMAASLogger(MAASTestCase):
 
     def test_root_logger_logs_to_syslog(self):
         root_logger = get_maas_logger()

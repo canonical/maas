@@ -29,9 +29,9 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
 )
+from maastesting.testcase import MAASTestCase
 from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     DocTestMatches,
     Equals,
@@ -39,7 +39,7 @@ from testtools.matchers import (
 )
 
 
-class TestProcessResponse(PservTestCase):
+class TestProcessResponse(MAASTestCase):
 
     def setUp(self):
         super(TestProcessResponse, self).setUp()
@@ -95,7 +95,7 @@ class EqualsXML(Equals):
         return super(EqualsXML, self).match(self.normalise(other))
 
 
-class TestMergeDetailsCleanly(PservTestCase):
+class TestMergeDetailsCleanly(MAASTestCase):
 
     do_merge_details = staticmethod(tags.merge_details_cleanly)
 
@@ -352,7 +352,7 @@ class TestMergeDetails(TestMergeDetailsCleanly):
             self.logger.output)
 
 
-class TestGenBatchSlices(PservTestCase):
+class TestGenBatchSlices(MAASTestCase):
 
     def test_batch_of_1_no_things(self):
         self.assertSequenceEqual(
@@ -395,7 +395,7 @@ class TestGenBatchSlices(PservTestCase):
             self.assertIn(max(lens) - min(lens), (0, 1))
 
 
-class TestGenBatches(PservTestCase):
+class TestGenBatches(MAASTestCase):
 
     def test_batch_of_1_no_things(self):
         self.assertSequenceEqual(
@@ -436,7 +436,7 @@ class TestGenBatches(PservTestCase):
             self.assertIn(max(lens) - min(lens), (0, 1))
 
 
-class TestGenNodeDetails(PservTestCase):
+class TestGenNodeDetails(MAASTestCase):
 
     def fake_merge_details(self):
         """Modify `merge_details` to return a simple textual token.
@@ -472,7 +472,7 @@ class TestGenNodeDetails(PservTestCase):
             get_details_for_nodes.mock_calls)
 
 
-class TestTagUpdating(PservTestCase):
+class TestTagUpdating(MAASTestCase):
 
     def setUp(self):
         super(TestTagUpdating, self).setUp()

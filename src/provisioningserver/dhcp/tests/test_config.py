@@ -27,6 +27,7 @@ from maastesting.matchers import (
     DocTestMatches,
     GreaterThanOrEqual,
 )
+from maastesting.testcase import MAASTestCase
 import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
@@ -37,7 +38,6 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network,
 )
 from provisioningserver.testing.network import does_HOSTALIASES_work_here
-from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import select_c_utf8_locale
@@ -232,7 +232,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
             "`%s` failed." % command)
 
 
-class TestGetConfig(PservTestCase):
+class TestGetConfig(MAASTestCase):
     """Tests for `get_config`."""
 
     scenarios = [
@@ -475,7 +475,7 @@ class TestGetConfig(PservTestCase):
                     Contains(expected))
 
 
-class TestComposeConditionalBootloader(PservTestCase):
+class TestComposeConditionalBootloader(MAASTestCase):
     """Tests for `compose_conditional_bootloader`."""
 
     def test__composes_bootloader_section_v4(self):
@@ -507,7 +507,7 @@ class TestComposeConditionalBootloader(PservTestCase):
                 pass
 
 
-class TestGetAddresses(PservTestCase):
+class TestGetAddresses(MAASTestCase):
     """Tests for `_get_addresses`."""
 
     def test__ip_addresses_are_passed_through(self):

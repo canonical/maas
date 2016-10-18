@@ -12,7 +12,10 @@ from random import choice
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
@@ -25,12 +28,11 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
-from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from twisted.internet import defer
 
 
-class TestCoerceHostname(PservTestCase):
+class TestCoerceHostname(MAASTestCase):
 
     def test_replaces_international_characters(self):
         self.assertEqual("abc-123", coerce_to_valid_hostname("abc青い空123"))
@@ -53,7 +55,7 @@ class TestCoerceHostname(PservTestCase):
         self.assertIsNone(coerce_to_valid_hostname('a' * 65))
 
 
-class TestCreateNode(PservTestCase):
+class TestCreateNode(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -185,7 +187,7 @@ class TestCreateNode(PservTestCase):
                 "exists.", macs))
 
 
-class TestCommissionNode(PservTestCase):
+class TestCommissionNode(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

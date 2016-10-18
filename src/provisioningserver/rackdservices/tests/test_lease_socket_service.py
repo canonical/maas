@@ -16,7 +16,10 @@ from unittest.mock import (
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
@@ -24,7 +27,6 @@ from provisioningserver.rackdservices.lease_socket_service import (
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import (
     DeferredValue,
     pause,
@@ -43,7 +45,7 @@ from twisted.internet.protocol import DatagramProtocol
 from twisted.internet.threads import deferToThread
 
 
-class TestLeaseSocketService(PservTestCase):
+class TestLeaseSocketService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

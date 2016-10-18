@@ -21,7 +21,10 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from maastesting.twisted import (
     extract_result,
     TwistedLoggerFixture,
@@ -37,14 +40,13 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
 )
-from provisioningserver.testing.testcase import PservTestCase
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
 from twisted.protocols.amp import UnhandledCommand
 
 
-class TestPeriodicImageDownloadService(PservTestCase):
+class TestPeriodicImageDownloadService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -196,7 +198,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
             logger.output)
 
 
-class TestGetBootSources(PservTestCase):
+class TestGetBootSources(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

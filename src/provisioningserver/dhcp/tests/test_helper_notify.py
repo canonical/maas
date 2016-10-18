@@ -11,12 +11,14 @@ from unittest.mock import sentinel
 
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
-from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import DeferredValue
 from testtools.matchers import (
@@ -30,7 +32,7 @@ from twisted.internet import (
 )
 
 
-class TestDHCPNotify(PservTestCase):
+class TestDHCPNotify(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

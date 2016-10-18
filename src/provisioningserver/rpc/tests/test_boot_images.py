@@ -17,7 +17,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.import_images import boot_resources
@@ -40,7 +43,6 @@ from provisioningserver.testing.config import (
     BootSourcesFixture,
     ClusterConfigurationFixture,
 )
-from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
 from testtools.matchers import (
     Equals,
@@ -68,7 +70,7 @@ def make_sources():
     return sources, hosts
 
 
-class TestListBootImages(PservTestCase):
+class TestListBootImages(MAASTestCase):
 
     def setUp(self):
         super(TestListBootImages, self).setUp()
@@ -101,7 +103,7 @@ class TestListBootImages(PservTestCase):
             MockNotCalled())
 
 
-class TestReloadBootImages(PservTestCase):
+class TestReloadBootImages(MAASTestCase):
 
     def test__sets_CACHED_BOOT_IMAGES(self):
         self.patch(
@@ -114,14 +116,14 @@ class TestReloadBootImages(PservTestCase):
             boot_images.CACHED_BOOT_IMAGES, fake_boot_images)
 
 
-class TestGetHostsFromSources(PservTestCase):
+class TestGetHostsFromSources(MAASTestCase):
 
     def test__returns_set_of_hosts_from_sources(self):
         sources, hosts = make_sources()
         self.assertItemsEqual(hosts, get_hosts_from_sources(sources))
 
 
-class TestFixSourcesForCluster(PservTestCase):
+class TestFixSourcesForCluster(MAASTestCase):
 
     def set_maas_url(self, url):
         self.useFixture(ClusterConfigurationFixture(maas_url=url))
@@ -187,7 +189,7 @@ class TestFixSourcesForCluster(PservTestCase):
             observed[0]['url'])
 
 
-class TestRunImport(PservTestCase):
+class TestRunImport(MAASTestCase):
 
     def make_archive_url(self, name=None):
         if name is None:
@@ -265,7 +267,7 @@ class TestRunImport(PservTestCase):
         self.assertThat(fake_reload, MockCalledOnceWith())
 
 
-class TestImportBootImages(PservTestCase):
+class TestImportBootImages(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -373,7 +375,7 @@ class TestImportBootImages(PservTestCase):
             MockNotCalled())
 
 
-class TestIsImportBootImagesRunning(PservTestCase):
+class TestIsImportBootImagesRunning(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

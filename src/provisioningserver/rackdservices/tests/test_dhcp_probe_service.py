@@ -18,7 +18,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.testcase import MAASTwistedRunTest
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from provisioningserver.rackdservices import dhcp_probe_service
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
@@ -28,13 +31,12 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.testing.testcase import PservTestCase
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.task import Clock
 
 
-class TestDHCPProbeService(PservTestCase):
+class TestDHCPProbeService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 

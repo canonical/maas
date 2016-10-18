@@ -35,7 +35,6 @@ from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
 )
-from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import (
     AllMatch,
@@ -161,7 +160,7 @@ class TestReloadZone(MAASTestCase):
         self.assertFalse(actions.bind_reload_zones(sentinel.zone))
 
 
-class TestConfiguration(PservTestCase):
+class TestConfiguration(MAASTestCase):
     """Tests for the `bind_write_*` functions."""
 
     def setUp(self):
