@@ -54,7 +54,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         node = factory.make_Node()
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
-            node.system_id, random.randint(0, 100), user,
+            node.system_id, random.randint(user.id, user.id + 100), user,
             NODE_PERMISSION.VIEW)
 
     def test__return_block_device_by_name(self):
@@ -141,7 +141,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         node = factory.make_Node()
         self.assertRaises(
             Http404, BlockDevice.objects.get_block_device_or_404,
-            node.system_id, random.randint(0, 100), user,
+            node.system_id, random.randint(user.id, user.id + 100), user,
             NODE_PERMISSION.VIEW)
 
     def test__returns_device_when_admin(self):
