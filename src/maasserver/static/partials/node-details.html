@@ -574,7 +574,7 @@
                         </header>
                         <main class="table__body" data-selected-rows>
                             <div class="table__row"
-                                data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && isNodeEditingAllowed(), noEdit: cannotEditInterface(interface) }"
+                                data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (isNodeEditingAllowed() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
                                 data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:!isNodeEditingAllowed() | removeInterfaceParents:newBridgeInterface:!isNodeEditingAllowed()">
                                 <div class="table__data table-col--3">
                                     <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
@@ -588,7 +588,7 @@
                                 <div class="table__data table-col--12" data-ng-show="column == 'name'">
                                     <span data-ng-if="!isEditing(interface)">{$ interface.name $}</span>
                                     <input type="text" class="table__input"
-                                        data-ng-if="isEditing(interface)"
+                                        data-ng-if="isEditing(interface) && interface.type != 'vlan'"
                                         data-ng-model="editInterface.name"
                                         data-ng-class="{ 'has-error': isInterfaceNameInvalid(editInterface) }">
                                 </div>
@@ -624,17 +624,17 @@
                                     </span>
                                 </div>
                                 <div class="table__data table-col--8">
-                                    <div class="table__controls u-align--right" data-ng-if="isNodeEditingAllowed()">
+                                    <div class="table__controls u-align--right" data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
                                         <a class="icon icon--add tooltip"
                                             aria-label="Add Alias or VLAN"
-                                            data-ng-if="!isController && (canAddAlias(interface) || canAddVLAN(interface))"
+                                            data-ng-if="canAddAliasOrVLAN(interface)"
                                             data-ng-click="quickAdd(interface)"></a>
                                         <a class="icon icon--edit tooltip"
                                             data-ng-if="!cannotEditInterface(interface)"
                                             aria-label="Edit"
                                             data-ng-click="edit(interface)"></a>
                                         <a class="icon icon--delete tooltip u-margin--left"
-                                            data-ng-if="!isController"
+                                            data-ng-if="canBeRemoved()"
                                             aria-label="Remove"
                                             data-ng-click="quickRemove(interface)"></a>
                                     </div>
@@ -653,7 +653,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div data-ng-show="isNodeEditingAllowed()">
+                                <div data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
                                     <div class="table__dropdown">
                                         <div class="table__row form form--stack u-padding--top u-padding--right u-padding--left box-sizing" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                                             <div data-ng-if="isShowingAdd()" class="table__row--indent">
@@ -742,14 +742,14 @@
                                                             data-ng-model="editInterface.mac_address"
                                                             data-ng-class="{ 'has-error': isMACAddressInvalid(editInterface.mac_address, true) }">
                                                     </div>
-                                                    <div class="form__group">
+                                                    <div class="form__group" data-ng-if="!isLimitedEditingAllowed(interface)">
                                                         <label class="two-col" data-ng-if="interface.type != 'alias'">Tags</label>
                                                             <div class="form__group-input three-col last-col" data-ng-if="interface.type != 'alias'">
                                                                 <tags-input ng-model="editInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                             </div>
                                                     </div>
                                                 </div>
-                                                <div class="form__fieldset six-col last-col">
+                                                <div class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
                                                     <div class="form__group">
                                                         <label for="fabric" class="two-col">Fabric</label>
                                                         <select name="fabric" class="three-col"

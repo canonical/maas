@@ -45,6 +45,7 @@ from maasserver.forms_interface import (
     AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
     BridgeInterfaceForm,
+    DeployedInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -811,7 +812,10 @@ class MachineHandler(NodeHandler):
 
         node = self.get_object(params)
         interface = Interface.objects.get(node=node, id=params["interface_id"])
-        interface_form = InterfaceForm.get_interface_form(interface.type)
+        if node.status == NODE_STATUS.DEPLOYED:
+            interface_form = DeployedInterfaceForm
+        else:
+            interface_form = InterfaceForm.get_interface_form(interface.type)
         form = interface_form(instance=interface, data=params)
         if form.is_valid():
             interface = form.save()

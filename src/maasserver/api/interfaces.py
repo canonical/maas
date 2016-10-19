@@ -26,6 +26,7 @@ from maasserver.forms_interface import (
     BondInterfaceForm,
     BridgeInterfaceForm,
     ControllerInterfaceForm,
+    DeployedInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -73,8 +74,21 @@ ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.BROKEN)
 
 
 def raise_error_for_invalid_state_on_allocated_operations(
-        node, user, operation):
-    if node.status not in ALLOWED_STATES:
+        node, user, operation, extra_states=None):
+    """Raises `NodeStateViolation` when the status of the node is not
+    READY or BROKEN.
+
+    :param node: Node to check status.
+    :param user: User performing the operation.
+    :param operation: Nice name of the operation.
+    :param extra_states: Extra states that the node can be in when checking
+        the status of the node.
+    :type extra_states: `Iterable`.
+    """
+    allowed = list(ALLOWED_STATES)
+    if extra_states is not None:
+        allowed.extend(extra_states)
+    if node.status not in allowed:
         raise NodeStateViolation(
             "Cannot %s interface because the machine is not Ready or "
             "Broken." % operation)
@@ -378,6 +392,11 @@ class InterfaceHandler(OperationsHandler):
     def update(self, request, system_id, interface_id):
         """Update interface on node.
 
+        Machines must has status of Ready or Broken to have access to all
+        options. Machines with Deployed status can only have the name and/or
+        mac_address updated for an interface. This is intented to allow a bad
+        interface to be replaced while the machine remains deployed.
+
         Fields for physical interface:
 
         :param name: Name of the interface.
@@ -477,12 +496,15 @@ class InterfaceHandler(OperationsHandler):
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                node, request.user, "update interface")
+                node, request.user, "update interface",
+                extra_states=[NODE_STATUS.DEPLOYED])
         if node.is_controller:
             if interface.type == INTERFACE_TYPE.VLAN:
                 raise MAASAPIForbidden(
                     "Cannot modify VLAN interface on controller.")
             interface_form = ControllerInterfaceForm
+        elif node.status == NODE_STATUS.DEPLOYED:
+            interface_form = DeployedInterfaceForm
         else:
             interface_form = InterfaceForm.get_interface_form(interface.type)
         # For VLAN interface we cast parents to parent. As a VLAN can only

@@ -908,6 +908,32 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         self.assertEqual('mynewname', parsed_device['name'])
         self.assertEqual(4096, parsed_device['block_size'])
 
+    def test_update_deployed_physical_block_device_as_admin(self):
+        """Update deployed physical block device.
+
+        PUT /api/2.0/nodes/{system_id}/blockdevice/{id}
+        """
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=self.user)
+        block_device = factory.make_PhysicalBlockDevice(
+            node=node,
+            name='myblockdevice',
+            size=MIN_BLOCK_DEVICE_SIZE,
+            block_size=1024)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.put(uri, {
+            'name': 'mynewname',
+            'block_size': 4096
+        })
+        block_device = reload_object(block_device)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(parsed_device['id'], block_device.id)
+        self.assertEqual('mynewname', parsed_device['name'])
+        self.assertEqual(1024, parsed_device['block_size'])
+
     def test_update_virtual_block_device_as_admin(self):
         """Check update block device with a virtual one.
 

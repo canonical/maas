@@ -2537,6 +2537,22 @@ class UpdatePhysicalBlockDeviceForm(MAASModelForm):
         ]
 
 
+class UpdateDeployedPhysicalBlockDeviceForm(MAASModelForm):
+    """For updating physical block device on deployed machine."""
+
+    name = forms.CharField(required=False)
+    id_path = AbsolutePathField(required=False)
+
+    class Meta:
+        model = PhysicalBlockDevice
+        fields = [
+            "name",
+            "model",
+            "serial",
+            "id_path",
+        ]
+
+
 class UpdateVirtualBlockDeviceForm(MAASModelForm):
     """For updating virtual block device."""
 

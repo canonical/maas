@@ -20,6 +20,7 @@ from maasserver.forms_interface import (
     BondInterfaceForm,
     BridgeInterfaceForm,
     ControllerInterfaceForm,
+    DeployedInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -102,6 +103,27 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 name=interface.name, vlan=None, enabled=interface.enabled))
+
+
+class DeployedInterfaceFormTest(MAASServerTestCase):
+
+    def test__updates_interface(self):
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name='eth0')
+        new_name = 'eth1'
+        new_mac = factory.make_mac_address()
+        form = DeployedInterfaceForm(
+            instance=interface,
+            data={
+                'name': new_name,
+                'mac_address': new_mac,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=new_name, mac_address=new_mac))
 
 
 class PhysicalInterfaceFormTest(MAASServerTestCase):

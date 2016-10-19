@@ -12,6 +12,7 @@ from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
+    UpdateDeployedPhysicalBlockDeviceForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
@@ -242,6 +243,40 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
             id_path=id_path,
             size=size,
             block_size=block_size,
+            ))
+
+
+class TestUpdateDeployedPhysicalBlockDeviceForm(MAASServerTestCase):
+
+    def test_requires_no_fields(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        form = UpdateDeployedPhysicalBlockDeviceForm(
+            instance=block_device, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertItemsEqual([], form.errors.keys())
+
+    def test_updates_deployed_physical_block_device(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        name = factory.make_name("sd")
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        id_path = factory.make_absolute_path()
+        form = UpdateDeployedPhysicalBlockDeviceForm(
+            instance=block_device, data={
+                'name': name,
+                'model': model,
+                'serial': serial,
+                'id_path': id_path,
+                })
+        self.assertTrue(form.is_valid(), form.errors)
+        block_device = form.save()
+        self.assertThat(block_device, MatchesStructure.byEquality(
+            name=name,
+            model=model,
+            serial=serial,
+            id_path=id_path,
+            size=block_device.size,
+            block_size=block_device.block_size,
             ))
 
 

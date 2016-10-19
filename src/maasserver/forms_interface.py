@@ -187,6 +187,17 @@ class ControllerInterfaceForm(MAASModelForm):
         return interface
 
 
+class DeployedInterfaceForm(MAASModelForm):
+    """Interface update form for machines when deployed."""
+
+    class Meta:
+        model = Interface
+        fields = (
+            'name',
+            'mac_address',
+            )
+
+
 class PhysicalInterfaceForm(InterfaceForm):
     """Form used to create/edit a physical interface."""
 

@@ -2326,6 +2326,20 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(new_name, interface.name)
         self.assertEqual(new_vlan, interface.vlan)
 
+    def test_update_interface_for_deployed_node(self):
+        user = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        new_name = factory.make_name("name")
+        handler.update_interface({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "name": new_name,
+            })
+        interface = reload_object(interface)
+        self.assertEqual(new_name, interface.name)
+
     def test_update_interface_raises_ValidationError(self):
         user = factory.make_admin()
         node = factory.make_Node()

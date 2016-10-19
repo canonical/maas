@@ -2027,6 +2027,45 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("canAddAliasOrVLAN", function() {
+
+        it("returns false if isController", function() {
+            var controller = makeController();
+            $parentScope.isController = true;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "canAddAlias").and.returnValue(true);
+            spyOn($scope, "canAddVLAN").and.returnValue(true);
+            expect($scope.canAddAliasOrVLAN({})).toBe(false);
+        });
+
+        it("returns false if no node editing", function() {
+            var controller = makeController();
+            $parentScope.isController = false;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(false);
+            spyOn($scope, "canAddAlias").and.returnValue(true);
+            spyOn($scope, "canAddVLAN").and.returnValue(true);
+            expect($scope.canAddAliasOrVLAN({})).toBe(false);
+        });
+
+        it("returns true if can edit alias", function() {
+            var controller = makeController();
+            $parentScope.isController = false;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "canAddAlias").and.returnValue(true);
+            spyOn($scope, "canAddVLAN").and.returnValue(false);
+            expect($scope.canAddAliasOrVLAN({})).toBe(true);
+        });
+
+        it("returns true if can edit VLAN", function() {
+            var controller = makeController();
+            $parentScope.isController = false;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            spyOn($scope, "canAddAlias").and.returnValue(false);
+            spyOn($scope, "canAddVLAN").and.returnValue(true);
+            expect($scope.canAddAliasOrVLAN({})).toBe(true);
+        });
+    });
+
     describe("canAddAlias", function() {
 
         it("returns false if nic undefined", function() {
@@ -2362,6 +2401,30 @@ describe("NodeNetworkingController", function() {
                 type: type
             };
             expect($scope.getRemoveTypeText(nic)).toBe(type);
+        });
+    });
+
+    describe("canBeRemoved", function() {
+
+        it("false if isController", function() {
+            var controller = makeController();
+            $parentScope.isController = true;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            expect($scope.canBeRemoved()).toBe(false);
+        });
+
+        it("false if no node editing", function() {
+            var controller = makeController();
+            $parentScope.isController = false;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(false);
+            expect($scope.canBeRemoved()).toBe(false);
+        });
+
+        it("true if node can be edited", function() {
+            var controller = makeController();
+            $parentScope.isController = false;
+            spyOn($scope, "isNodeEditingAllowed").and.returnValue(true);
+            expect($scope.canBeRemoved()).toBe(true);
         });
     });
 
@@ -2932,6 +2995,35 @@ describe("NodeNetworkingController", function() {
             expect($scope.isDisabled()).toBe(true);
             $scope.node = {status: "Broken"};
             expect($scope.isDisabled()).toBe(true);
+        });
+    });
+
+    describe("isLimitedEditingAllowed", function() {
+
+        it("returns false when not superuser", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return false; };
+            expect($scope.isLimitedEditingAllowed()).toBe(false);
+        });
+
+        it("returns false when isController", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $parentScope.isController = true;
+            expect($scope.isLimitedEditingAllowed()).toBe(false);
+        });
+
+        it("returns true when deployed and not vlan", function() {
+            var controller = makeController();
+            $scope.isSuperUser = function() { return true; };
+            $parentScope.isController = false;
+            $scope.node = {
+                status: "Deployed"
+            };
+            var nic = {
+                type: "physical"
+            };
+            expect($scope.isLimitedEditingAllowed(nic)).toBe(true);
         });
     });
 

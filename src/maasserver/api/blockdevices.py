@@ -22,6 +22,7 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
+    UpdateDeployedPhysicalBlockDeviceForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
@@ -227,6 +228,11 @@ class BlockDeviceHandler(OperationsHandler):
     def update(self, request, system_id, device_id):
         """Update block device on a machine.
 
+        Machines must have a status of Ready to have access to all options.
+        Machines with Deployed status can only have the name, model, serial,
+        and/or id_path updated for a block device. This is intented to allow a
+        bad block device to be replaced while the machine remains deployed.
+
         Fields for physical block device:
 
         :param name: Name of the block device.
@@ -252,18 +258,27 @@ class BlockDeviceHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
-        if node.status != NODE_STATUS.READY:
+        if node.status not in [NODE_STATUS.READY, NODE_STATUS.DEPLOYED]:
             raise NodeStateViolation(
                 "Cannot update block device because the machine is not Ready.")
-        if device.type == 'physical':
-            form = UpdatePhysicalBlockDeviceForm(
-                instance=device, data=request.data)
-        elif device.type == 'virtual':
-            form = UpdateVirtualBlockDeviceForm(
-                instance=device, data=request.data)
+        if node.status == NODE_STATUS.DEPLOYED:
+            if device.type == 'physical':
+                form = UpdateDeployedPhysicalBlockDeviceForm(
+                    instance=device, data=request.data)
+            else:
+                raise NodeStateViolation(
+                    "Cannot update virtual block device because the machine "
+                    "is Deployed.")
         else:
-            raise ValueError(
-                'Cannot update block device of type %s' % device.type)
+            if device.type == 'physical':
+                form = UpdatePhysicalBlockDeviceForm(
+                    instance=device, data=request.data)
+            elif device.type == 'virtual':
+                form = UpdateVirtualBlockDeviceForm(
+                    instance=device, data=request.data)
+            else:
+                raise ValueError(
+                    'Cannot update block device of type %s' % device.type)
         if form.is_valid():
             return form.save()
         else:

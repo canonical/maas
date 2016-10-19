@@ -877,6 +877,24 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
+    def test_update_deployed_machine_interface(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        new_name = factory.make_name("name")
+        new_mac = factory.make_mac_address()
+        uri = get_interface_uri(interface)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "mac_address": new_mac,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertEqual(new_name, parsed_interface["name"])
+        self.assertEqual(new_mac, parsed_interface["mac_address"])
+
     def test_update_physical_interface(self):
         self.become_admin()
         for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
@@ -963,9 +981,13 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_read_409_when_not_ready_or_broken(self):
+    def test_update_409_when_not_ready_broken_or_deployed(self):
         self.become_admin()
-        for status in STATUSES:
+        statuses = list(STATUSES)
+        # Update is the only call that a deployed node can have called on
+        # its interface.
+        statuses.remove(NODE_STATUS.DEPLOYED)
+        for status in statuses:
             node = factory.make_Node(interface=True, status=status)
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)

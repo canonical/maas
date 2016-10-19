@@ -556,6 +556,23 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return true;
         };
 
+        // Return true if only the name or mac address of an interface can
+        // be edited.
+        $scope.isLimitedEditingAllowed = function(nic) {
+            if (!$scope.isSuperUser()) {
+                // If the user is not the superuser, pretend it's not Ready.
+                return false;
+            }
+            if ($scope.$parent.isController) {
+                // Controllers never in limited mode.
+                return false;
+            }
+            return (
+                angular.isObject($scope.node) &&
+                $scope.node.status === "Deployed" &&
+                nic.type !== "vlan");
+        };
+
         // Return true if the networking information cannot be edited.
         // (it can't be changed when the node is in any state other
         // than Ready or Broken and the user is not a superuser)
@@ -903,6 +920,17 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return $scope.selectedMode === SELECTION_MODE.ADD;
         };
 
+        // Return true if either an alias or VLAN can be added.
+        $scope.canAddAliasOrVLAN = function(nic) {
+            if($scope.$parent.isController) {
+                return false;
+            } else if (!$scope.isNodeEditingAllowed()) {
+                return false;
+            } else {
+                return $scope.canAddAlias(nic) || $scope.canAddVLAN(nic);
+            }
+        };
+
         // Return true if the alias can be added to interface.
         $scope.canAddAlias = function(nic) {
             if(!angular.isObject(nic)) {
@@ -948,6 +976,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             } else {
                 return nic.type;
             }
+        };
+
+        // Return true if the interface can be removed.
+        $scope.canBeRemoved = function() {
+            return (
+                !$scope.$parent.isController &&
+                $scope.isNodeEditingAllowed());
         };
 
         // Enter remove mode.
