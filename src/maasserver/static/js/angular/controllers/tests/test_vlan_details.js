@@ -20,10 +20,8 @@ describe("VLANDetailsController", function() {
             name: null,
             dhcp_on: true,
             space_ids: [2001],
-            primary_rack: primaryController.id,
-            secondary_rack: secondaryController.id,
-            primary_rack_sid: primaryController.system_id,
-            secondary_rack_sid: secondaryController.system_id,
+            primary_rack: primaryController.system_id,
+            secondary_rack: secondaryController.system_id,
             rack_sids: []
         };
         VLANsManager._items.push(vlan);
@@ -281,24 +279,20 @@ describe("VLANDetailsController", function() {
 
     it("updates primaryRack variable when controller changes", function() {
         vlan.primary_rack = 0;
-        vlan.primary_rack_sid = null;
         var controller = makeControllerResolveSetActiveItem();
         expect(controller.primaryRack).toBe(null);
         expect(controller.secondaryRack).toBe(secondaryController);
-        vlan.primary_rack = primaryController.id;
-        vlan.primary_rack_sid = primaryController.system_id;
+        vlan.primary_rack = primaryController.system_id;
         $scope.$digest();
         expect(controller.primaryRack).toBe(primaryController);
     });
 
     it("updates secondaryRack variable when controller changes", function() {
         vlan.secondary_rack = 0;
-        vlan.secondary_rack_sid = null;
         var controller = makeControllerResolveSetActiveItem();
         expect(controller.primaryRack).toBe(primaryController);
         expect(controller.secondaryRack).toBe(null);
-        vlan.secondary_rack = secondaryController.id;
-        vlan.secondary_rack_sid = secondaryController.system_id;
+        vlan.secondary_rack = secondaryController.system_id;
         $scope.$digest();
         expect(controller.secondaryRack).toBe(secondaryController);
     });
@@ -375,9 +369,7 @@ describe("VLANDetailsController", function() {
     it("performAction for enable_dhcp not called if racks are missing",
     function() {
         vlan.primary_rack = 0;
-        vlan.primary_rack_sid = null;
         vlan.secondary_rack = 0;
-        vlan.secondary_rack_sid = null;
         var controller = makeControllerResolveSetActiveItem();
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         // This will populate the default values for the racks with

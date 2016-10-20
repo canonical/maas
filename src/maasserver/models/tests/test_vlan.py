@@ -6,7 +6,6 @@
 __all__ = []
 
 import random
-import re
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
@@ -19,11 +18,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from testtools.matchers import (
-    Equals,
-    Is,
-    MatchesStructure,
-)
+from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
 
 
@@ -182,71 +177,6 @@ class TestVLAN(MAASServerTestCase):
         vlan.delete()
         self.assertEqual(
             reload_object(subnet).vlan, fabric.get_default_vlan())
-
-
-class TestVLANConfigureDHCP(MAASServerTestCase):
-
-    def _regex(self, string):
-        """Returns an escaped regular expression for the given string, which
-        will match the given string anywhere in the input to the regex.
-        """
-        return ".*" + re.escape(string) + ".*"
-
-    def test__unconfigures_dhcp(self):
-        primary = factory.make_RackController()
-        secondary = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        vlan.dhcp_on = True
-        vlan.primary_rack = primary
-        vlan.secondary_rack = secondary
-        vlan.configure_dhcp([])
-        self.assertThat(vlan.dhcp_on, Equals(False))
-        self.assertThat(vlan.primary_rack, Is(None))
-        self.assertThat(vlan.secondary_rack, Is(None))
-
-    def test__configures_dhcp_with_one_controller(self):
-        primary = factory.make_RackController()
-        secondary = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        vlan.dhcp_on = False
-        vlan.primary_rack = primary
-        vlan.secondary_rack = secondary
-        vlan.configure_dhcp([primary])
-        self.assertThat(vlan.dhcp_on, Equals(True))
-        self.assertThat(vlan.primary_rack, Is(primary))
-        self.assertThat(vlan.secondary_rack, Is(None))
-
-    def test__configures_dhcp_with_two_controllers(self):
-        primary = factory.make_RackController()
-        secondary = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        vlan.configure_dhcp([primary, secondary])
-        self.assertThat(vlan.dhcp_on, Equals(True))
-        self.assertThat(vlan.primary_rack, Is(primary))
-        self.assertThat(vlan.secondary_rack, Is(secondary))
-
-    def test__rejects_non_list(self):
-        vlan = factory.make_VLAN()
-        with ExpectedException(
-                AssertionError, self._regex(VLAN.MUST_SPECIFY_LIST_ERROR)):
-            vlan.configure_dhcp(1)
-
-    def test__rejects_three_item_list(self):
-        rack1 = factory.make_RackController()
-        rack2 = factory.make_RackController()
-        rack3 = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        with ExpectedException(
-                ValueError, self._regex(
-                    VLAN.INVALID_NUMBER_OF_CONTROLLERS_ERROR % 3)):
-            vlan.configure_dhcp([rack1, rack2, rack3])
-
-    def test__rejects_list_with_duplicate_items(self):
-        rack = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        with ExpectedException(
-                ValidationError, self._regex(VLAN.DUPLICATE_CONTROLLER_ERROR)):
-            vlan.configure_dhcp([rack, rack])
 
 
 class TestVLANVidValidation(MAASServerTestCase):

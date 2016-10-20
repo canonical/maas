@@ -300,15 +300,15 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                                 "sort_key": nic.fabric.name + "|" +
                                     $scope.getVLANText(nic.vlan)
                             };
-                            if(nic.vlan.primary_rack_sid) {
+                            if(nic.vlan.primary_rack) {
                                 vlanRecord.primary_rack =
                                     ControllersManager.getItemFromList(
-                                        nic.vlan.primary_rack_sid);
+                                        nic.vlan.primary_rack);
                             }
-                            if(nic.vlan.secondary_rack_sid) {
+                            if(nic.vlan.secondary_rack) {
                                 vlanRecord.secondary_rack =
                                     ControllersManager.getItemFromList(
-                                        nic.vlan.secondary_rack_sid);
+                                        nic.vlan.secondary_rack);
                             }
                             vlanTable.push(vlanRecord);
                         }

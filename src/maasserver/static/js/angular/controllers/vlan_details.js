@@ -344,15 +344,15 @@ angular.module('MAAS').controller('VLANDetailsController', [
             if(!angular.isObject(vlan)) {
                 return;
             }
-            if(vlan.primary_rack_sid) {
+            if(vlan.primary_rack) {
                 vm.primaryRack = ControllersManager.getItemFromList(
-                    vlan.primary_rack_sid);
+                    vlan.primary_rack);
             } else {
                 vm.primaryRack = null;
             }
-            if(vlan.secondary_rack_sid) {
+            if(vlan.secondary_rack) {
                 vm.secondaryRack = ControllersManager.getItemFromList(
-                    vlan.secondary_rack_sid);
+                    vlan.secondary_rack);
             } else {
                 vm.secondaryRack = null;
             }

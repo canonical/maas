@@ -16,11 +16,11 @@ from maasserver.forms_vlan import VLANForm
 from maasserver.models import (
     Fabric,
     IPRange,
-    RackController,
     Subnet,
     VLAN,
 )
 from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -56,13 +56,19 @@ class VLANHandler(TimestampedModelHandler):
             "vlan",
         ]
 
+    def dehydrate_primary_rack(self, rack):
+        if rack is None:
+            return None
+        else:
+            return rack.system_id
+
+    def dehydrate_secondary_rack(self, rack):
+        if rack is None:
+            return None
+        else:
+            return rack.system_id
+
     def dehydrate(self, obj, data, for_list=False):
-        # We need the system_id for each controller, since that's how we
-        # need to look them up inside the Javascript controller.
-        if obj.primary_rack is not None:
-            data["primary_rack_sid"] = obj.primary_rack.system_id
-        if obj.secondary_rack is not None:
-            data["secondary_rack_sid"] = obj.secondary_rack.system_id
         nodes = {
             interface.node
             for interface in obj.interface_set.all()
@@ -171,9 +177,14 @@ class VLANHandler(TimestampedModelHandler):
             raise ValueError(
                 "Cannot configure DHCP: At least one dynamic range is "
                 "required.")
-        controllers = [
-            RackController.objects.get(system_id=system_id)
-            for system_id in parameters['controllers']
-        ]
-        vlan.configure_dhcp(controllers)
-        vlan.save()
+        controllers = parameters.get('controllers', [])
+        data = {
+            "dhcp_on": True if len(controllers) > 0 else False,
+            "primary_rack": controllers[0] if len(controllers) > 0 else None,
+            "secondary_rack": controllers[1] if len(controllers) > 1 else None,
+        }
+        form = VLANForm(instance=vlan, data=data)
+        if form.is_valid():
+            form.save()
+        else:
+            raise HandlerValidationError(form.errors)
