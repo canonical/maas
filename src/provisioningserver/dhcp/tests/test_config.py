@@ -471,6 +471,72 @@ class TestGetConfig(MAASTestCase):
                     Contains(expected))
 
 
+class Test_process_shared_network_v6(MAASTestCase):
+    """Tests for `_process_network_parameters_v6`."""
+
+    scenarios = (
+        ('singleton', dict(
+            expected={
+                'ip_range_high': '2001:db8:3:1::ffff',
+                'ip_range_low': '2001:db8:3:1::',
+                'failover_peer': None},
+            rack_addrs=[netaddr.IPAddress('2001:db8:3:280::2')],
+            failover_peers=[])),
+        ('primary', dict(
+            expected={
+                'ip_range_high': '2001:db8:3:1::7fff',
+                'ip_range_low': '2001:db8:3:1::',
+                'failover_peer': 'failover-vlan-5020'},
+            rack_addrs=[netaddr.IPAddress('2001:db8:3:280::2')],
+            failover_peers=[{
+                'mode': 'primary',
+                'peer_address': '2001:db8:3:0:1::',
+                'name': 'failover-vlan-5020',
+                'address': '2001:db8:3:280::2'}])),
+        ('secondary', dict(
+            expected={
+                'ip_range_high': '2001:db8:3:1::ffff',
+                'ip_range_low': '2001:db8:3:1::8000',
+                'failover_peer': 'failover-vlan-5020'},
+            rack_addrs=[netaddr.IPAddress('2001:db8:3:0:1::')],
+            failover_peers=[{
+                'mode': 'secondary',
+                'address': '2001:db8:3:0:1::',
+                'name': 'failover-vlan-5020',
+                'peer_address': '2001:db8:3:280::2'}])))
+
+    def test__adjusts_parameters_for_primary(self):
+        shared_networks = [
+            {
+                'name': 'vlan-5020',
+                'subnets': [
+                    {
+                        'domain_name': 'maas.example.com',
+                        'pools': [{
+                            'ip_range_high': '2001:db8:3:1::ffff',
+                            'ip_range_low': '2001:db8:3:1::',
+                            'failover_peer': self.expected['failover_peer']}],
+                        'dns_servers': [],
+                        'subnet_mask': 'ffff:ffff:ffff:ffff::',
+                        'ntp_servers': [],
+                        'broadcast_ip': '2001:db8:3::ffff:ffff:ffff:ffff',
+                        'router_ip': 'fe80::1',
+                        'subnet': '2001:db8:3::',
+                        'subnet_cidr': '2001:db8:3::/64',
+                        'dhcp_snippets': []
+                    }],
+            }]
+        self.patch(
+            config, 'compose_conditional_bootloader').return_value = ""
+        self.patch(
+            config, '_get_addresses').return_value = (
+                [''], ['2001:db8:280::2'])
+        actual = config._process_network_parameters_v6(
+            self.rack_addrs, self.failover_peers, shared_networks)
+        self.assertDictEqual(
+            actual[0]['subnets'][0]['pools'][0], self.expected)
+
+
 class TestComposeConditionalBootloader(MAASTestCase):
     """Tests for `compose_conditional_bootloader`."""
 

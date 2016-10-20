@@ -161,6 +161,10 @@ class IPRange(CleanSave, TimestampedModel):
             if end_ip not in cidr:
                 raise ValidationError(
                     "End IP address must be within subnet: %s." % cidr)
+        if (start_ip.version == 6 and self.type == IPRANGE_TYPE.DYNAMIC and
+                netaddr.IPRange(start_ip, end_ip).size < 256):
+            raise ValidationError(
+                "IPv6 dynamic range must be at least 256 addresses in size.")
         self.clean_prevent_dupes_and_overlaps()
 
     @property

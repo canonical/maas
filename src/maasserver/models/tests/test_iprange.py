@@ -134,6 +134,20 @@ class IPRangeTest(MAASServerTestCase):
                 ValidationError, '.*End IP address must not be less than.*'):
             iprange.save()
 
+    def test__requires_256_addresses_for_ipv6_dynamic(self):
+        subnet = factory.make_Subnet(
+            cidr='2001:db8::/64', gateway_ip='fe80::1', dns_servers=[])
+        iprange = IPRange(
+            start_ip='2001:db8::', end_ip='2001:db8::fe',
+            user=factory.make_User(), subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            comment="This is a comment.")
+        with ExpectedException(
+                ValidationError,
+                ".*IPv6 dynamic range must be "
+                "at least 256 addresses in size."):
+            iprange.save()
+
     def test__requires_type(self):
         subnet = make_plain_subnet()
         iprange = IPRange(

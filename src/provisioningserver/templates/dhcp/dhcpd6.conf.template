@@ -50,8 +50,8 @@ shared-network {{shared_network["name"]}} {
            option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
            {{endif}}
 
-           default-lease-time 600;
-           max-lease-time 600;
+           default-lease-time 1800;
+           max-lease-time 1800;
            #
            # Subnet DHCP snippets
            #

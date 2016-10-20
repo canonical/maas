@@ -20,6 +20,7 @@ from typing import Sequence
 from netaddr import (
     IPAddress,
     IPNetwork,
+    IPRange,
 )
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils import (
@@ -296,6 +297,35 @@ def get_config_v6(
         IPAddress(addr)
         for addr in net_utils.get_all_interface_addresses()]
 
+    shared_networks = _process_network_parameters_v6(
+        rack_addrs, failover_peers, shared_networks)
+
+    try:
+        return template.substitute(
+            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
+            failover_peers=failover_peers, shared_networks=shared_networks,
+            platform_codename=platform_codename,
+            omapi_key=omapi_key, **helpers)
+    except (KeyError, NameError) as error:
+        raise DHCPConfigError(
+            "Failed to render DHCP configuration.") from error
+
+
+def _process_network_parameters_v6(
+        rack_addrs, failover_peers, shared_networks):
+    """Preprocess shared_networks prior to rendering the template.
+
+    This is a separate function, partly for readability, and partly for ease
+    of testing.
+
+    :param rack_addrs: a list of IPAddress values for the interfaces on this
+        rack controller.
+    :param failover_peers: failover_peers from get_config_v6.
+    :param shared_networks: shared_networks from get_config_v6.
+    :return: an updated shared_networks, suitable for rendering the template.
+    """
+    peers = {x["name"]: x for x in failover_peers}
+
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:
             cidr = IPNetwork(subnet['subnet_cidr'])
@@ -312,13 +342,18 @@ def get_config_v6(
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
             subnet["ntp_servers_ipv6"] = ", ".join(ntp_servers_ipv6)
-
-    try:
-        return template.substitute(
-            global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
-            failover_peers=failover_peers, shared_networks=shared_networks,
-            platform_codename=platform_codename,
-            omapi_key=omapi_key, **helpers)
-    except (KeyError, NameError) as error:
-        raise DHCPConfigError(
-            "Failed to render DHCP configuration.") from error
+            for pool in subnet["pools"]:
+                peer = pool.get("failover_peer", None)
+                if peer is not None:
+                    ip_range = IPRange(
+                        pool["ip_range_low"],
+                        pool["ip_range_high"])
+                    if peers[peer]["mode"] == "primary":
+                        pool["ip_range_high"] = str(
+                            IPAddress(
+                                ip_range.first + int(ip_range.size / 2) - 1))
+                    else:
+                        pool["ip_range_low"] = str(
+                            IPAddress(
+                                ip_range.first + int(ip_range.size / 2)))
+    return shared_networks
