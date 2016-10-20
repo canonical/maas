@@ -27,6 +27,7 @@ from maastesting.testcase import (
 )
 from provisioningserver.dhcp.testing.config import (
     DHCPConfigNameResolutionDisabled,
+    fix_shared_networks_failover,
     make_failover_peer_config,
     make_global_dhcp_snippets,
     make_host,
@@ -62,6 +63,8 @@ class TestDHCPState(MAASTestCase):
             make_shared_network()
             for _ in range(3)
         ]
+        shared_networks = fix_shared_networks_failover(
+            shared_networks, failover_peers)
         hosts = [
             make_host()
             for _ in range(3)
@@ -548,6 +551,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host()
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()
@@ -590,6 +595,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host()
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()
@@ -638,6 +645,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host()
         interface = make_interface()
         dhcp_snippets = make_global_dhcp_snippets()
@@ -692,6 +701,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host(dhcp_snippets=[])
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()
@@ -752,6 +763,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         old_hosts = [
             make_host(dhcp_snippets=[])
             for _ in range(3)
@@ -824,6 +837,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         old_hosts = [
             make_host(dhcp_snippets=[])
             for _ in range(3)
@@ -893,20 +908,26 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_sudo_write_file().side_effect = (
             ExternalProcessError(1, "sudo something"))
         self.patch_restartService()
+        failover_peers = [make_failover_peer_config()]
+        shared_networks = fix_shared_networks_failover(
+            [make_shared_network()], failover_peers)
         with ExpectedException(exceptions.CannotConfigureDHCP):
             yield self.configure(
                 factory.make_name('key'),
-                [make_failover_peer_config()], [make_shared_network()],
+                failover_peers, shared_networks,
                 [make_host()], [make_interface()], make_global_dhcp_snippets())
 
     @inlineCallbacks
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
         self.patch_restartService().side_effect = ServiceActionError()
+        failover_peers = [make_failover_peer_config()]
+        shared_networks = fix_shared_networks_failover(
+            [make_shared_network()], failover_peers)
         with ExpectedException(exceptions.CannotConfigureDHCP):
             yield self.configure(
                 factory.make_name('key'),
-                [make_failover_peer_config()], [make_shared_network()],
+                failover_peers, shared_networks,
                 [make_host()], [make_interface()], make_global_dhcp_snippets())
 
     @inlineCallbacks
@@ -944,11 +965,14 @@ class TestConfigureDHCP(MAASTestCase):
     def test__does_not_log_ServiceActionError_when_restarting(self):
         self.patch_sudo_write_file()
         self.patch_restartService().side_effect = ServiceActionError()
+        failover_peers = [make_failover_peer_config()]
+        shared_networks = fix_shared_networks_failover(
+            [make_shared_network()], failover_peers)
         with FakeLogger("maas") as logger:
             with ExpectedException(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name('key'),
-                    [make_failover_peer_config()], [make_shared_network()],
+                    failover_peers, shared_networks,
                     [make_host()], [make_interface()],
                     make_global_dhcp_snippets())
         self.assertDocTestMatches("", logger.output)
@@ -958,11 +982,14 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_sudo_write_file()
         self.patch_restartService().side_effect = (
             factory.make_exception("DHCP is on strike today"))
+        failover_peers = [make_failover_peer_config()]
+        shared_networks = fix_shared_networks_failover(
+            [make_shared_network()], failover_peers)
         with FakeLogger("maas") as logger:
             with ExpectedException(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name('key'),
-                    [make_failover_peer_config()], [make_shared_network()],
+                    failover_peers, shared_networks,
                     [make_host()], [make_interface()],
                     make_global_dhcp_snippets())
         self.assertDocTestMatches(
@@ -995,6 +1022,8 @@ class TestValidateDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host()
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()
@@ -1010,6 +1039,8 @@ class TestValidateDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
+        [shared_network] = fix_shared_networks_failover(
+            [shared_network], [failover_peers])
         host = make_host()
         interface = make_interface()
         global_dhcp_snippets = make_global_dhcp_snippets()

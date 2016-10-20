@@ -52,6 +52,7 @@ from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import (
     DHCPConfigNameResolutionDisabled,
+    fix_shared_networks_failover,
     make_failover_peer_config,
     make_host,
     make_interface,
@@ -1807,6 +1808,8 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
+        shared_networks = fix_shared_networks_failover(
+            shared_networks, failover_peers)
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1859,6 +1862,8 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         ip_low, ip_high = factory.make_ip_range(network)
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
+        shared_networks = fix_shared_networks_failover(
+            shared_networks, failover_peers)
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1920,6 +1925,8 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
+        shared_networks = fix_shared_networks_failover(
+            shared_networks, failover_peers)
         hosts = [make_host()]
         interfaces = [make_interface()]
 
@@ -1960,6 +1967,8 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
         omapi_key = factory.make_name('key')
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
+        shared_networks = fix_shared_networks_failover(
+            shared_networks, failover_peers)
         hosts = [make_host()]
         interfaces = [make_interface()]
 

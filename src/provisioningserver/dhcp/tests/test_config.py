@@ -32,6 +32,7 @@ import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import (
+    fix_shared_networks_failover,
     make_failover_peer_config,
     make_global_dhcp_snippets,
     make_host,
@@ -140,13 +141,8 @@ def make_sample_params_only(ipv6=False):
         for _ in range(3)
     ]
 
-    # Fix-up failover peers referenced in pools so that they refer to a
-    # predefined peer; `dhcpd -t` will otherwise reject the configuration.
-    for shared_network in shared_networks:
-        for subnet in shared_network["subnets"]:
-            for pool in subnet["pools"]:
-                peer = random.choice(failover_peers)
-                pool["failover_peer"] = peer["name"]
+    shared_networks = fix_shared_networks_failover(
+        shared_networks, failover_peers)
 
     return {
         'omapi_key': b64encode(factory.make_bytes()).decode("ascii"),

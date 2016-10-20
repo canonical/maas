@@ -5,6 +5,7 @@
 
 __all__ = [
     'DHCPConfigNameResolutionDisabled',
+    'fix_shared_networks_failover',
     'make_failover_peer_config',
     'make_global_dhcp_snippets',
     'make_host',
@@ -23,6 +24,17 @@ from maastesting.factory import factory
 from netaddr import IPAddress
 from provisioningserver.dhcp import config
 from testtools.monkey import patch
+
+
+def fix_shared_networks_failover(shared_networks, failover_peers):
+    # Fix-up failover peers referenced in pools so that they refer to a
+    # predefined peer; `dhcpd -t` will otherwise reject the configuration.
+    for shared_network in shared_networks:
+        for subnet in shared_network["subnets"]:
+            for pool in subnet["pools"]:
+                peer = random.choice(failover_peers)
+                pool["failover_peer"] = peer["name"]
+    return shared_networks
 
 
 def make_subnet_pool(
