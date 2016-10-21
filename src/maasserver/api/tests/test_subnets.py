@@ -427,7 +427,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
         self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
 
     def test__returns_empty_list_for_full_ipv6_subnet(self):
-        network = factory.make_ipv6_network()
+        network = factory.make_ipv6_network(slash=random.randint(112, 119))
         subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
         network = subnet.get_ipnetwork()
         first_address = inet_ntop(network.first + 2)  # Skip gateway, network.
