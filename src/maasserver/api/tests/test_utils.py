@@ -7,6 +7,7 @@ __all__ = []
 
 from collections import namedtuple
 
+from django.forms import CharField
 from django.http import QueryDict
 from maasserver.api.utils import (
     extract_bool,
@@ -15,6 +16,7 @@ from maasserver.api.utils import (
     get_oauth_token,
     get_overridden_query_dict,
 )
+from maasserver.config_forms import DictCharField
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -93,6 +95,24 @@ class TestGetOverridedQueryDict(MAASTestCase):
         data = {key1: data_value1, key2: data_value2}
         results = get_overridden_query_dict(defaults, data, [key1])
         self.assertEqual([data_value2], results.getlist(key2))
+
+    def test_expands_dict_fields(self):
+        field_name = factory.make_name('field_name')
+        sub_fields = {
+            factory.make_name('sub_field'): CharField() for _ in range(3)
+        }
+        fields = {
+            field_name: DictCharField(sub_fields)
+        }
+        defaults = {
+            "%s_%s" % (field_name, field): factory.make_name('subfield')
+            for field in sub_fields.keys()
+        }
+        data = {field_name: DictCharField(fields)}
+        results = get_overridden_query_dict(defaults, data, fields)
+        expected = {key: [value] for key, value in defaults.items()}
+        expected.update(fields)
+        self.assertItemsEqual(expected, results)
 
 
 def make_fake_request(auth_header):

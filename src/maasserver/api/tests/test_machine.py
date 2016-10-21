@@ -850,7 +850,7 @@ class TestMachineAPI(APITestCase.ForUser):
         # The api allows the updating of a Machine.
         machine = factory.make_Node(
             hostname='diane', owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self), power_type='manual')
         response = self.client.put(
             self.get_machine_uri(machine), {'hostname': 'francis'})
         parsed_result = json_load_bytes(response.content)
@@ -867,7 +867,8 @@ class TestMachineAPI(APITestCase.ForUser):
         hostname = factory.make_name('hostname')
         arch = make_usable_architecture(self)
         machine = factory.make_Node(
-            hostname=hostname, owner=self.user, architecture=arch)
+            hostname=hostname, owner=self.user, architecture=arch,
+            power_type='manual')
         response = self.client.put(
             self.get_machine_uri(machine),
             {'architecture': arch})
@@ -890,7 +891,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
         field = factory.make_string()
         response = self.client.put(
             self.get_machine_uri(machine),
@@ -908,7 +910,11 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type=original_power_type,
             architecture=make_usable_architecture(self))
         response = self.client.put(
-            self.get_machine_uri(machine), {'power_type': new_power_type})
+            self.get_machine_uri(machine),
+            {
+                'power_type': new_power_type,
+                'power_parameters_skip_check': 'true',
+            })
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
@@ -932,7 +938,8 @@ class TestMachineAPI(APITestCase.ForUser):
         # provides the URI for this Machine.
         machine = factory.make_Node(
             hostname='diane', owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
         response = self.client.put(
             self.get_machine_uri(machine), {'hostname': 'francis'})
         parsed_result = json_load_bytes(response.content)
@@ -948,7 +955,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             hostname='diane', owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
         response = self.client.put(
             self.get_machine_uri(machine), {'hostname': '.'})
         parsed_result = json_load_bytes(response.content)
@@ -1001,8 +1009,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user,
-            power_type=factory.pick_power_type(),
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
         response = self.client.put(
             self.get_machine_uri(machine),
             {'cpu_count': 1, 'memory': 1024})
@@ -1109,7 +1117,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_parameters={})
         new_param = factory.make_string()
         new_value = factory.make_string()
         response = self.client.put(
@@ -1125,7 +1134,11 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_PUT_updates_power_parameters_empty_string(self):
         self.become_admin()
-        power_parameters = {factory.make_string(): factory.make_string()}
+        power_parameters = {
+            'power_address': factory.make_url(),
+            'power_id': factory.make_name('power_id'),
+            'power_pass': factory.make_name('power_pass'),
+        }
         machine = factory.make_Node(
             owner=self.user,
             power_type='virsh',
@@ -1133,22 +1146,17 @@ class TestMachineAPI(APITestCase.ForUser):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_machine_uri(machine),
-            {'power_parameters_power_id': ''})
+            {'power_parameters_power_pass': ''})
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            {
-                'power_id': '',
-                'power_pass': '',
-                'power_address': '',
-            },
-            reload_object(machine).power_parameters)
+            '', reload_object(machine).power_parameters['power_pass'])
 
     def test_PUT_sets_zone(self):
         self.become_admin()
         new_zone = factory.make_Zone()
         machine = factory.make_Node(
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self), power_type='manual')
 
         response = self.client.put(
             self.get_machine_uri(machine), {'zone': new_zone.name})
@@ -1161,7 +1169,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         new_name = factory.make_name()
         machine = factory.make_Node(
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self), power_type='manual')
         old_zone = machine.zone
 
         response = self.client.put(
@@ -1190,7 +1198,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         zone = factory.make_Zone()
         machine = factory.make_Node(
-            zone=zone, architecture=make_usable_architecture(self))
+            zone=zone, architecture=make_usable_architecture(self),
+            power_type='manual')
 
         response = self.client.put(self.get_machine_uri(machine), {})
 
@@ -1226,7 +1235,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
         response = self.client.put(
             reverse('machine_handler', args=[machine.system_id]),
             {'swap_size': 5 * 1000 ** 3})  # Making sure we overflow 32 bits
@@ -1239,7 +1249,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.user,
-            architecture=make_usable_architecture(self))
+            architecture=make_usable_architecture(self),
+            power_type='manual')
 
         response = self.client.put(
             reverse('machine_handler', args=[machine.system_id]),

@@ -87,6 +87,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         architecture = make_usable_architecture(self)
         power_type = 'ipmi'
         power_parameters = {
+            "power_address": factory.make_ip_address(),
             "power_user": factory.make_name("power-user"),
             "power_pass": factory.make_name("power-pass"),
             }
@@ -95,14 +96,16 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
             {
                 'hostname': hostname,
                 'architecture': architecture,
-                'power_type': 'manual',
+                'power_type': power_type,
                 'mac_addresses': factory.make_mac_address(),
                 'power_parameters': json.dumps(power_parameters),
-                'power_type': power_type,
             })
+        # Add the default values.
+        power_parameters['power_driver'] = 'LAN_2_0'
+        power_parameters['mac_address'] = ''
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
-        self.assertEqual(power_parameters, machine.power_parameters)
+        self.assertItemsEqual(power_parameters, machine.power_parameters)
         self.assertEqual(power_type, machine.power_type)
 
     def test_POST_create_creates_machine_with_arch_only(self):
@@ -454,23 +457,29 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
         self.assertEqual([], machines_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
-        new_power_address = factory.make_string()
+        new_power_address = factory.make_url()
+        new_power_id = factory.make_name('power_id')
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
-                'power_type': 'manual',
+                'power_type': 'virsh',
                 'power_parameters': json.dumps(
-                    {"power_address": new_power_address}),
+                    {
+                        "power_address": new_power_address,
+                        "power_id": new_power_id,
+                    }),
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
-
         machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
-        self.assertEqual(
-            (http.client.OK, {"power_address": new_power_address},
-             'manual'),
-            (response.status_code, machine.power_parameters,
-             machine.power_type))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual('virsh', machine.power_type)
+        self.assertItemsEqual(
+            {
+                'power_pass': '',
+                'power_id': new_power_id,
+                'power_address': new_power_address,
+            }, machine.power_parameters)
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(

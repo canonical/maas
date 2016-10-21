@@ -523,7 +523,7 @@ class TestHandler(MAASServerTestCase):
 
     def test_update_with_form_updates_node(self):
         arch = make_usable_architecture(self)
-        node = factory.make_Node(architecture=arch)
+        node = factory.make_Node(architecture=arch, power_type='manual')
         hostname = factory.make_name("hostname")
         handler = self.make_nodes_handler(
             fields=['hostname'], form=AdminMachineForm)
@@ -539,7 +539,7 @@ class TestHandler(MAASServerTestCase):
 
     def test_update_with_form_uses_form_from_get_form_class(self):
         arch = make_usable_architecture(self)
-        node = factory.make_Node(architecture=arch)
+        node = factory.make_Node(architecture=arch, power_type='manual')
         hostname = factory.make_name("hostname")
         handler = self.make_nodes_handler(fields=['hostname'])
         self.patch(

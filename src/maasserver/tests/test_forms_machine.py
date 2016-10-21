@@ -373,7 +373,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'architecture': arch,
                 'power_type': power_type,
                 'power_parameters_field': power_parameters_field,
-                'power_parameters_skip_check': True,
+                'power_parameters_skip_check': 'true',
                 },
             instance=node)
         form.save()
@@ -393,6 +393,7 @@ class TestAdminMachineForm(MAASServerTestCase):
             data={
                 'hostname': hostname,
                 'architecture': arch,
+                'power_parameters_skip_check': 'true',
                 },
             instance=node)
         node = form.save()
@@ -407,6 +408,7 @@ class TestAdminMachineForm(MAASServerTestCase):
             data={
                 'hostname': hostname,
                 'architecture': arch,
+                'power_parameters_skip_check': 'true',
                 },
             instance=node)
         node = form.save()
@@ -422,6 +424,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 'hostname': hostname,
                 'architecture': arch,
                 'power_type': power_type,
+                'power_parameters_skip_check': 'true',
                 },
             instance=node)
         node = form.save()

@@ -237,6 +237,7 @@ class MachineHandler(NodeHandler):
         new_params["hostname"] = params.get("hostname")
         new_params["architecture"] = params.get("architecture")
         new_params["power_type"] = params.get("power_type")
+        new_params["power_parameters"] = params.get("power_parameters")
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
         if "domain" in params:
@@ -259,13 +260,8 @@ class MachineHandler(NodeHandler):
         if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
-        # Create the object, then save the power parameters because the
-        # form will not save this information.
         data = super(NodeHandler, self).create(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
-        node_obj.power_type = params.get("power_type", '')
-        node_obj.power_parameters = params.get("power_parameters", {})
-        node_obj.save()
 
         # Start the commissioning process right away, which has the
         # desired side effect of initializing the node's power state.
@@ -279,16 +275,13 @@ class MachineHandler(NodeHandler):
         if not reload_object(self.user).is_superuser:
             raise HandlerPermissionError()
 
-        # Update the node with the form. The form will not update the
-        # power_type or power_parameters, so we perform that here.
         data = super(NodeHandler, self).update(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
-        node_obj.power_type = params.get("power_type", '')
-        node_obj.power_parameters = params.get("power_parameters", {})
 
         # Update the tags for the node and disks.
         self.update_tags(node_obj, params['tags'])
         node_obj.save()
+
         return self.full_dehydrate(node_obj)
 
     def mount_special(self, params):

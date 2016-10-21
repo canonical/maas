@@ -238,9 +238,10 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'virsh',
         'description': 'Virsh (virtual systems)',
         'fields': [
-            make_json_field('power_address', "Power address"),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field(
-                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE),
+                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE,
+                required=True),
             make_json_field(
                 'power_pass', "Power password (optional)",
                 required=False, field_type='password'),
@@ -258,10 +259,11 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'power_uuid', "VM UUID (if known)", required=False,
                 scope=POWER_PARAMETER_SCOPE.NODE),
-            make_json_field('power_address', "VMware hostname"),
-            make_json_field('power_user', "VMware username"),
+            make_json_field('power_address', "VMware hostname", required=True),
+            make_json_field('power_user', "VMware username", required=True),
             make_json_field(
-                'power_pass', "VMware password", field_type='password'),
+                'power_pass', "VMware password", field_type='password',
+                required=True),
             make_json_field(
                 'power_port', "VMware API port (optional)", required=False),
             make_json_field(
@@ -273,9 +275,10 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'fence_cdu',
         'description': 'Sentry Switch CDU',
         'fields': [
-            make_json_field('power_address', "Power address"),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field(
-                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE),
+                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE,
+                required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
@@ -288,8 +291,9 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field(
                 'power_driver', "Power driver", field_type='choice',
-                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0),
-            make_json_field('power_address', "IP address"),
+                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0,
+                required=True),
+            make_json_field('power_address', "IP address", required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
@@ -302,13 +306,13 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'moonshot',
         'description': 'HP Moonshot - iLO4 (IPMI)',
         'fields': [
-            make_json_field('power_address', "Power address"),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
             make_json_field(
                 'power_hwaddress', "Power hardware address",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -317,14 +321,16 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'SeaMicro 15000',
         'fields': [
             make_json_field(
-                'system_id', "System ID", scope=POWER_PARAMETER_SCOPE.NODE),
-            make_json_field('power_address', "Power address"),
+                'system_id', "System ID", scope=POWER_PARAMETER_SCOPE.NODE,
+                required=True),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
             make_json_field(
                 'power_control', "Power control type", field_type='choice',
-                choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi'),
+                choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi',
+                required=True),
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -334,7 +340,7 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
-            make_json_field('power_address', "Power address")
+            make_json_field('power_address', "Power address", required=True)
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -343,8 +349,9 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Digital Loggers, Inc. PDU',
         'fields': [
             make_json_field(
-                'outlet_id', "Outlet ID", scope=POWER_PARAMETER_SCOPE.NODE),
-            make_json_field('power_address', "Power address"),
+                'outlet_id', "Outlet ID", scope=POWER_PARAMETER_SCOPE.NODE,
+                required=True),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
@@ -355,7 +362,7 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'wedge',
         'description': "Facebook's Wedge",
         'fields': [
-            make_json_field('power_address', "IP address"),
+            make_json_field('power_address', "IP address", required=True),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
@@ -367,8 +374,9 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': "Cisco UCS Manager",
         'fields': [
             make_json_field(
-                'uuid', "Server UUID", scope=POWER_PARAMETER_SCOPE.NODE),
-            make_json_field('power_address', "URL for XML API"),
+                'uuid', "Server UUID", scope=POWER_PARAMETER_SCOPE.NODE,
+                required=True),
+            make_json_field('power_address', "URL for XML API", required=True),
             make_json_field('power_user', "API user"),
             make_json_field(
                 'power_pass', "API password", field_type='password'),
@@ -380,7 +388,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'mscm',
         'description': "HP Moonshot - iLO Chassis Manager",
         'fields': [
-            make_json_field('power_address', "IP for MSCM CLI API"),
+            make_json_field(
+                'power_address', "IP for MSCM CLI API", required=True),
             make_json_field('power_user', "MSCM CLI API user"),
             make_json_field(
                 'power_pass', "MSCM CLI API password", field_type='password'),
@@ -388,7 +397,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'node_id',
                 "Node ID - Must adhere to cXnY format "
                 "(X=cartridge number, Y=node number).",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -396,14 +405,14 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'msftocs',
         'description': "Microsoft OCS - Chassis Manager",
         'fields': [
-            make_json_field('power_address', "Power address"),
+            make_json_field('power_address', "Power address", required=True),
             make_json_field('power_port', "Power port"),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
             make_json_field(
                 'blade_id', "Blade ID (Typically 1-24)",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -411,10 +420,10 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'apc',
         'description': "American Power Conversion (APC) PDU",
         'fields': [
-            make_json_field('power_address', "IP for APC PDU"),
+            make_json_field('power_address', "IP for APC PDU", required=True),
             make_json_field(
                 'node_outlet', "APC PDU node outlet number (1-16)",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
             make_json_field(
                 'power_on_delay', "Power ON outlet delay (seconds)",
                 default='5'),
@@ -425,16 +434,16 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'hmc',
         'description': "IBM Hardware Management Console (HMC)",
         'fields': [
-            make_json_field('power_address', "IP for HMC"),
+            make_json_field('power_address', "IP for HMC", required=True),
             make_json_field('power_user', "HMC username"),
             make_json_field(
                 'power_pass', "HMC password", field_type='password'),
             make_json_field(
                 'server_name', "HMC Managed System server name",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
             make_json_field(
                 'lpar', "HMC logical partition",
-                scope=POWER_PARAMETER_SCOPE.NODE),
+                scope=POWER_PARAMETER_SCOPE.NODE, required=True),
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
@@ -442,11 +451,13 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'nova',
         'description': 'OpenStack Nova',
         'fields': [
-            make_json_field('nova_id', "Host UUID"),
-            make_json_field('os_tenantname', "Tenant name"),
-            make_json_field('os_username', "Username"),
-            make_json_field('os_password', "Password", field_type='password'),
-            make_json_field('os_authurl', "Auth URL"),
+            make_json_field('nova_id', "Host UUID", required=True),
+            make_json_field('os_tenantname', "Tenant name", required=True),
+            make_json_field('os_username', "Username", required=True),
+            make_json_field(
+                'os_password', "Password", field_type='password',
+                required=True),
+            make_json_field('os_authurl', "Auth URL", required=True),
         ],
     },
 ]

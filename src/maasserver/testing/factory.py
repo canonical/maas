@@ -381,8 +381,6 @@ class Factory(maastesting.factory.Factory):
             zone = self.make_Zone()
         if power_type is None:
             power_type = 'virsh'
-        if power_parameters is None:
-            power_parameters = {}
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
         if power_state_updated is undefined:
@@ -443,7 +441,8 @@ class Factory(maastesting.factory.Factory):
             bmc_ip_address = self.pick_ip_in_Subnet(ip_address.subnet)
             node.power_parameters = {
                 "power_address": "qemu+ssh://user@%s/system" % (
-                    factory.ip_to_url_format(bmc_ip_address))
+                    factory.ip_to_url_format(bmc_ip_address)),
+                "power_id": factory.make_name("power_id"),
             }
             node.save()
 

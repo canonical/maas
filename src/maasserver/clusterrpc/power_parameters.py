@@ -65,12 +65,16 @@ def make_form_field(json_field):
             json_field['name'], json_field['choices'])
         extra_parameters = {
             'choices': json_field['choices'],
-            'initial': json_field['default'],
             'error_messages': {
                 'invalid_choice': invalid_choice_message},
             }
     else:
         extra_parameters = {}
+
+    default = json_field.get('default')
+    if default is not None:
+        extra_parameters['initial'] = default
+
     form_field = field_class(
         label=json_field['label'], required=json_field['required'],
         **extra_parameters)
@@ -111,13 +115,20 @@ def add_power_type_parameters(
          'missing_packages': missing_packages})
 
 
-def get_power_type_parameters_from_json(json_power_type_parameters):
+def get_power_type_parameters_from_json(
+        json_power_type_parameters, initial_power_params=None,
+        skip_check=False):
     """Return power type parameters.
 
     :param json_power_type_parameters: Power type parameters expressed
         as a JSON string or as set of JSONSchema-verifiable objects.
         Will be validated using jsonschema.validate().
     :type json_power_type_parameters: JSON string or iterable.
+    :param initial_power_params: Power paramaters that were already set, any
+        field which matches will have its initial value set.
+    :type initial_power_params: dict
+    :param skip_check: Whether the field should be checked or not.
+    :type skip_check: bool
     :return: A dict of power parameters for all power types, indexed by
         power type name.
     """
@@ -127,19 +138,27 @@ def get_power_type_parameters_from_json(json_power_type_parameters):
         '': DictCharField(
             [], required=False, skip_check=True),
     }
+    if initial_power_params is None:
+        initial_power_params = []
     for power_type in json_power_type_parameters:
         fields = []
+        has_required_field = False
         for json_field in power_type['fields']:
+            field_name = json_field['name']
+            if field_name in initial_power_params:
+                json_field['default'] = initial_power_params[field_name]
+            has_required_field = has_required_field or json_field['required']
             fields.append((
                 json_field['name'], make_form_field(json_field)))
-        params = DictCharField(fields, required=False, skip_check=True)
+        params = DictCharField(
+            fields, required=has_required_field, skip_check=skip_check)
         power_parameters[power_type['name']] = params
     return power_parameters
 
 
-def get_power_type_parameters():
+def get_power_type_parameters(initial_power_params=None, skip_check=False):
     return get_power_type_parameters_from_json(
-        get_all_power_types_from_clusters())
+        get_all_power_types_from_clusters(), initial_power_params, skip_check)
 
 
 def get_power_type_choices():

@@ -303,7 +303,7 @@ class TestPowerParameters(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual({}, parsed_params)
+        self.assertEqual(node.power_parameters, parsed_params)
 
     def test_power_parameters_requires_admin(self):
         node = factory.make_Node()
