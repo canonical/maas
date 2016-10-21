@@ -4,17 +4,11 @@
 """Django settings for maas project."""
 
 import os
-from sys import stdout
 
 import django.template.base
 from maas import fix_up_databases
 from maas.monkey import patch_get_script_prefix
 from maasserver.config import RegionConfiguration
-from provisioningserver.logger import (
-    DEFAULT_LOG_FORMAT,
-    DEFAULT_LOG_FORMAT_DATE,
-    DEFAULT_LOG_LEVEL,
-)
 
 
 def _read_timezone(tzfilename='/etc/timezone'):
@@ -313,57 +307,19 @@ if DEBUG:
     )
 
 # See http://docs.djangoproject.com/en/dev/topics/logging for more details on
-# how to customize the logging configuration.
-#
-# NOTE CAREFULLY that django.utils.log.DEFAULT_LOGGING is applied *before*
-# applying the configuration below. This means that you need to mentally
-# combine the settings in both DEFAULT_LOGGING and LOGGING to understand the
-# resultant behaviour.
+# how to customize the logging configuration. At present all logging config is
+# handled elsewhere. Add ONLY Django-specific logging configration here.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-        'suppress_deprecated': {
-            '()': 'maas.SuppressDeprecated',
-        },
-    },
-    'formatters': {
-        'simple': {
-            'format': DEFAULT_LOG_FORMAT,
-            'datefmt': DEFAULT_LOG_FORMAT_DATE,
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'filters': ['require_debug_true', 'suppress_deprecated'],
-            'class': 'logging.StreamHandler',
-        },
-        'stdout': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-            'filters': ['suppress_deprecated'],
-            'stream': stdout,
-        },
-    },
-    'root': {
-        'handlers': ['stdout'],
-        'level': DEFAULT_LOG_LEVEL,
-    },
-    # Do *not* set any options for the `maas` logger here because config done
-    # elsewhere -- by configure_root_logger() -- will be clobbered.
     'loggers': {
-        'urllib3': {
-            'level': 'WARN',
-        },
-        'nose': {
-            'level': 'WARN',
+        # Django logs request errors but these are confusing because MAAS
+        # automatically retries some requests if they're as a result of
+        # serialisation failures and the like, plus MAAS itself logs request
+        # failures but only once the request can no longer be retried. To
+        # avoid log spam we limit `django.request` to critical events only.
+        'django.request': {
+            'level': 'CRITICAL',
         },
     },
 }

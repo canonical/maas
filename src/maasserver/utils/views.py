@@ -29,8 +29,6 @@ from piston3.models import Nonce
 from piston3.oauth import OAuthError
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
-from twisted.python import log
-from twisted.python.failure import Failure
 from twisted.web import wsgi
 
 
@@ -150,10 +148,9 @@ class WebApplicationHandler(WSGIHandler):
         if is_retryable_failure(exc_value):
             self.__retry.add(response)
         else:
-            # Log the error to the regiond.log.
-            failure = Failure(
-                exc_value=exc_value, exc_type=exc_type, exc_tb=exc_traceback)
-            log.err(failure, _why="500 Error - %s" % request.path)
+            logger.error(
+                "500 Internal Server Error @ %s" % request.path,
+                exc_info=exc_info)
         # Return the response regardless. This means that we'll get Django's
         # error page when there's a persistent retryable failure.
         return response

@@ -61,7 +61,7 @@ class TestRegionServiceMaker(MAASTestCase):
         super(TestRegionServiceMaker, self).setUp()
         self.patch(eventloop.loop, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
-        self.patch_autospec(logger, "basicConfig")
+        self.patch_autospec(logger, "configure")
         # Enable database access in the reactor just for these tests.
         asynchronous(enable_all_database_connections, timeout=5)()
         import_websocket_handlers()
@@ -113,7 +113,9 @@ class TestRegionServiceMaker(MAASTestCase):
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
-        self.assertThat(logger.basicConfig, MockCalledOnceWith())
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     @asynchronous(timeout=5)

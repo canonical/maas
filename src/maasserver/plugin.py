@@ -10,6 +10,7 @@ __all__ = [
 import time
 
 from maasserver.monkey import add_patches_to_django
+from provisioningserver import logger
 from provisioningserver.monkey import add_patches_to_twisted
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
@@ -17,16 +18,13 @@ from provisioningserver.utils.debug import (
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
-from twisted.python import (
-    log,
-    usage,
-)
+from twisted.python import log
 from twisted.python.threadable import isInIOThread
 from zope.interface import implementer
 
 
-class Options(usage.Options):
-    """Command line options for the MAAS Region Controller."""
+class Options(logger.VerbosityOptions):
+    """Command-line options for `regiond`."""
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -44,10 +42,9 @@ class RegionServiceMaker:
         threads.install_default_pool()
         threads.install_database_pool()
 
-    def _configureLogging(self):
+    def _configureLogging(self, verbosity: int):
         # Get something going with the logs.
-        from provisioningserver import logger
-        logger.basicConfig()
+        logger.configure(verbosity, logger.LoggingMode.TWISTD)
 
     def _configureDjango(self):
         # Some region services use the ORM at class-load time: force Django to
@@ -106,7 +103,7 @@ class RegionServiceMaker:
         add_patches_to_twisted()
         add_patches_to_django()
         self._configureThreads()
-        self._configureLogging()
+        self._configureLogging(options["verbosity"])
         self._configureDjango()
         self._configureReactor()
         self._configureCrochet()

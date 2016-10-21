@@ -8,7 +8,6 @@ __all__ = [
     "import_settings",
 ]
 
-import logging
 import sys
 import warnings
 
@@ -71,18 +70,3 @@ def fix_up_databases(databases):
                         "ATOMIC_REQUESTS is set to %r; overriding to True."
                         % (atomic_requests,), RuntimeWarning, 2)
             database["ATOMIC_REQUESTS"] = True
-
-
-class SuppressDeprecated(logging.Filter):
-    """Filter that suppresses Django removal warnings."""
-
-    def filter(self, record):
-        WARNINGS_TO_SUPPRESS = [
-            'RemovedInDjango19Warning',
-            'RemovedInDjango110Warning',
-        ]
-        # Return false to suppress message.
-        return not any([
-            warn in record.getMessage()
-            for warn in WARNINGS_TO_SUPPRESS
-        ])

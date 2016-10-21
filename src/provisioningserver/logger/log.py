@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Logging for MAAS, redirects to syslog."""
@@ -8,7 +8,6 @@ __all__ = [
     ]
 
 import logging
-from logging.handlers import SysLogHandler
 
 
 class MAASLogger(logging.getLoggerClass()):
@@ -42,24 +41,3 @@ def get_maas_logger(syslog_tag=None):
     maaslog.__class__ = MAASLogger
 
     return maaslog
-
-
-def configure_root_logger():
-    # Configure the "root" handler. This is the only place where we need to
-    # add the syslog handler and configure levels and formatting; sub-handlers
-    # propagate up to this handler.
-    root = get_maas_logger()
-    if len(root.handlers) == 0:
-        # It has not yet been configured.
-        handler = SysLogHandler(
-            "/dev/log", facility=SysLogHandler.LOG_DAEMON)
-        handler.setFormatter(logging.Formatter(
-            "%(name)s: [%(levelname)s] %(message)s"))
-        root.addHandler(handler)
-        root.setLevel(logging.INFO)
-        # Don't propagate logs up to the root logger.
-        root.propagate = 0
-    return root
-
-
-configure_root_logger()

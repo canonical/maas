@@ -4,6 +4,7 @@
 """Twisted Application Plugin code for the MAAS provisioning server"""
 
 __all__ = [
+    "Options",
     "ProvisioningServiceMaker",
 ]
 
@@ -11,6 +12,7 @@ from errno import ENOPROTOOPT
 import socket
 from socket import error as socket_error
 
+from provisioningserver import logger
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.monkey import (
     add_patches_to_twisted,
@@ -23,14 +25,13 @@ from twisted.application.internet import TCPServer
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
-from twisted.python import usage
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 from zope.interface import implementer
 
 
-class Options(usage.Options):
-    """Command line options for the provisioning server."""
+class Options(logger.VerbosityOptions):
+    """Command line options for `rackd`."""
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -178,10 +179,9 @@ class ProvisioningServiceMaker:
         import crochet
         crochet.no_setup()
 
-    def _configureLogging(self):
+    def _configureLogging(self, verbosity: int):
         # Get something going with the logs.
-        from provisioningserver import logger
-        logger.basicConfig()
+        logger.configure(verbosity, logger.LoggingMode.TWISTD)
 
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
@@ -190,7 +190,7 @@ class ProvisioningServiceMaker:
         add_patches_to_twisted()
 
         self._configureCrochet()
-        self._configureLogging()
+        self._configureLogging(options["verbosity"])
 
         with ClusterConfiguration.open() as config:
             tftp_root = config.tftp_root

@@ -61,7 +61,7 @@ def make_function_call_script(function, *args, **kwargs):
 # Built-in script to run lshw.
 LSHW_SCRIPT = dedent("""\
     #!/bin/sh
-    sudo /usr/bin/lshw -xml
+    sudo -n /usr/bin/lshw -xml
     """)
 
 # Built-in script to run `ip addr`

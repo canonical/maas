@@ -7,69 +7,239 @@ __all__ = []
 
 import logging
 import logging.handlers
+import pathlib
+import re
+import subprocess
+import sys
 
 from maastesting.factory import factory
+from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from provisioningserver.logger import log
+from provisioningserver.logger import (
+    log,
+    LoggingMode,
+)
 from provisioningserver.logger.log import (
     get_maas_logger,
     MAASLogger,
 )
-from testtools.matchers import (
-    HasLength,
-    IsInstance,
-)
+from provisioningserver.utils import typed
+from provisioningserver.utils.shell import select_c_utf8_locale
+from testtools.content import text_content
 
 
-class TestGetMAASLogger(MAASTestCase):
+here = pathlib.Path(__file__).parent
 
-    def test_root_logger_logs_to_syslog(self):
-        root_logger = get_maas_logger()
-        self.assertThat(root_logger.handlers, HasLength(1))
-        [handler] = root_logger.handlers
-        self.assertThat(handler, IsInstance(logging.handlers.SysLogHandler))
 
-    def test_root_logger_defaults_to_info(self):
-        root_logger = get_maas_logger()
-        self.assertEqual(logging.INFO, root_logger.level)
+@typed
+def log_something(name: str, *, verbosity: int, mode: LoggingMode):
+    env = dict(select_c_utf8_locale(), PYTHONPATH=":".join(sys.path))
+    script = here.parent.joinpath("testing", "logsomething.py")
+    args = "--name", name, "--verbosity", "%d" % verbosity, "--mode", mode.name
+    cmd = (sys.executable, str(script)) + args
+    output = subprocess.check_output(cmd, env=env, stderr=subprocess.STDOUT)
+    return output.decode("utf-8")
 
-    def test_does_not_log_twice(self):
-        maas_logger = get_maas_logger()
-        maas_foo_logger = get_maas_logger("foo")
 
-        all_handlers = []
-        # In previous versions of get_maas_logger(), the all_handlers list
-        # would end up containing two handlers, because a new SysLogHandler
-        # was added to each logger. This means that logging to the "maas.foo"
-        # logger would emit a message to syslog via its handler, then the log
-        # record would be propagated up to the "maas" logger (which we're
-        # calling the root logger in this context) where its handler would
-        # then emit another message to syslog.
-        all_handlers.extend(maas_logger.handlers)
-        all_handlers.extend(maas_foo_logger.handlers)
-        self.expectThat(all_handlers, HasLength(1))
+# Matches lines like: 2016-10-18 14:23:55 [namespace#level] message
+find_log_lines_re = re.compile(
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [[](.*?)(?:#(.*))?[]] (.*)$",
+    re.MULTILINE)
 
-        # Intercept calls to `emit` on each handler above.
-        log_records = []
-        for handler in all_handlers:
-            self.patch(handler, "emit", log_records.append)
 
-        maas_foo_logger.info("A message from the Mekon")
+def find_log_lines(text):
+    """Find logs in `text` that match `find_log_lines_re`.
 
-        self.assertThat(log_records, HasLength(1))
+    Checks for well-formed date/times but throws them away.
+    """
+    return [
+        (ns, level, line) for (ts, ns, level, line) in
+        find_log_lines_re.findall(text)
+    ]
 
-    def test_sets_custom_formatting(self):
-        logger = get_maas_logger("foo.bar")
-        [handler] = get_maas_logger().handlers
-        log_records = []
-        self.patch(handler, "emit", log_records.append)
 
-        robot_name = factory.make_name("Robot")
-        logger.info("Hello there %s!", robot_name)
+class TestLogging(MAASTestCase):
+    """Test logging in MAAS as configured by `p.logger.configure`.
 
-        self.assertEqual(
-            "maas.foo.bar: [INFO] Hello there %s!" % robot_name,
-            "\n---\n".join(map(handler.format, log_records)))
+    The "twistd" tests reflect usage under `twistd`.
+
+    The "command" tests reflect usage at an interactive terminal, like when
+    invoking `maas-rackd`. The chief difference here is that neither stdout
+    nor stderr are wrapped.
+    """
+
+    def test__twistd_default_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=2, mode=LoggingMode.TWISTD)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'info', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `logging`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'info', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+            ('stdout', 'info', 'Printing to stdout.'),
+            ('stderr', 'error', 'Printing to stderr.'),
+            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+
+    def test__twistd_high_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=3, mode=LoggingMode.TWISTD)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'debug', 'From `twisted.logger`.'),
+            (name, 'info', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, '', 'From `twisted.python.log`.'),
+            (name, 'debug', 'From `logging`.'),
+            (name, 'info', 'From `logging`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'debug', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'info', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+            ('stdout', 'info', 'Printing to stdout.'),
+            ('stderr', 'error', 'Printing to stderr.'),
+            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+
+    def test__twistd_low_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=1, mode=LoggingMode.TWISTD)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+            ('stderr', 'error', 'Printing to stderr.'),
+            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+
+    def test__twistd_lowest_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=0, mode=LoggingMode.TWISTD)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+            ('stderr', 'error', 'Printing to stderr.'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+
+    def test__command_default_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=2, mode=LoggingMode.COMMAND)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'info', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `logging`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'info', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+        self.assertThat(logged, DocTestMatches("""\
+        ...
+        Printing to stdout.
+        Printing to stderr.
+        This is a warning!
+        """))
+
+    def test__command_high_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=3, mode=LoggingMode.COMMAND)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'debug', 'From `twisted.logger`.'),
+            (name, 'info', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, '', 'From `twisted.python.log`.'),
+            (name, 'debug', 'From `logging`.'),
+            (name, 'info', 'From `logging`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'debug', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'info', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+        self.assertThat(logged, DocTestMatches("""\
+        ...
+        Printing to stdout.
+        Printing to stderr.
+        This is a warning!
+        """))
+
+    def test__command_low_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=1, mode=LoggingMode.COMMAND)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'warn', 'From `twisted.logger`.'),
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, 'warn', 'From `logging`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+        self.assertThat(logged, DocTestMatches("""\
+        ...
+        Printing to stdout.
+        Printing to stderr.
+        This is a warning!
+        """))
+
+    def test__command_lowest_verbosity(self):
+        name = factory.make_name("log.name")
+        logged = log_something(name, verbosity=0, mode=LoggingMode.COMMAND)
+        self.addDetail("logged", text_content(logged))
+        observed = find_log_lines(logged)
+        expected = [
+            (name, 'error', 'From `twisted.logger`.'),
+            (name, 'error', 'From `logging`.'),
+            ('maas.' + name, 'error', 'From `get_maas_logger`.'),
+        ]
+        self.assertSequenceEqual(expected, observed)
+        self.assertThat(logged, DocTestMatches("""\
+        ...
+        Printing to stdout.
+        Printing to stderr.
+        This is a warning!
+        """))
+
+
+class TestMAASLogger(MAASTestCase):
+    """Tests for the logger returned by `get_maas_logger`."""
 
     def test_sets_logger_name(self):
         self.patch(log, 'SysLogHandler')
@@ -103,7 +273,6 @@ class TestGetMAASLogger(MAASTestCase):
         self.assertIsInstance(maaslog, MAASLogger)
 
     def test_doesnt_affect_general_logger_class(self):
-        self.patch(log, 'SysLogHandler')
         self.patch(logging, 'Formatter')
         name = factory.make_string()
         get_maas_logger(name)
@@ -111,7 +280,6 @@ class TestGetMAASLogger(MAASTestCase):
             MAASLogger, logging.getLoggerClass())
 
     def test_general_logger_class_accepts_exceptions(self):
-        self.patch(log, 'SysLogHandler')
         self.patch(logging, 'Formatter')
         name = factory.make_string()
         get_maas_logger(name)

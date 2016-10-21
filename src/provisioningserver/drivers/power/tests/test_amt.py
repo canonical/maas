@@ -113,11 +113,9 @@ class TestAMTPowerDriver(MAASTestCase):
                      "amt.wsman-state.xml"), 'rb') as fd:
             tree = etree.fromstring(fd.read())
             power_states = {'on': '2', 'off': '8', 'restart': '10'}
-            print(etree.tostring(tree))
             [state] = tree.xpath(
                 '//p:PowerState', namespaces=tree.nsmap)
             state.text = power_states[power_change]
-            print(etree.tostring(tree))
 
             self.assertEqual(result, etree.tostring(tree))
 

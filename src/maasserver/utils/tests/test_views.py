@@ -12,6 +12,7 @@ from random import (
     randint,
     random,
 )
+import sys
 from unittest.mock import (
     ANY,
     call,
@@ -43,6 +44,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.views import HttpResponseConflict
 from maastesting.matchers import (
+    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
 )
@@ -60,7 +62,6 @@ from testtools.matchers import (
 )
 from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
-from twisted.python import log
 from twisted.web import wsgi
 
 
@@ -103,7 +104,7 @@ class TestLogFunctions(MAASTestCase):
                 request, attempt, elapsed, remaining, pause)
 
         self.assertEqual(
-            "DEBUG: Attempt #%d for %s failed; will retry in %.0fms (%.1fs "
+            "debug: Attempt #%d for %s failed; will retry in %.0fms (%.1fs "
             "now elapsed, %.1fs remaining)\n" % (
                 attempt, request.path, pause * 1000.0, elapsed, remaining),
             logger.output)
@@ -118,7 +119,7 @@ class TestLogFunctions(MAASTestCase):
             views.log_final_failed_attempt(request, attempt, elapsed)
 
         self.assertEqual(
-            "ERROR: Attempt #%d for %s failed; giving up (%.1fs elapsed in "
+            "error: Attempt #%d for %s failed; giving up (%.1fs elapsed in "
             "total)\n" % (attempt, request.path, elapsed),
             logger.output)
 
@@ -255,19 +256,27 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         handler = views.WebApplicationHandler()
         request = make_request()
         request.path = factory.make_name("path")
+
+        # Capture an exc_info tuple with traceback.
         exc_type = factory.make_exception_type()
-        exc_info = exc_type, exc_type(), None
-        mock_err = self.patch(log, "err")
-        handler.handle_uncaught_exception(
-            request=request, resolver=get_resolver(None), exc_info=exc_info)
-        # Cannot use MockCalledOnceWith as the Failure objects will not match
-        # even with them created the same. Must check the contents of the
-        # failure.
-        failure = mock_err.call_args[0][0]
-        _why = mock_err.call_args_list[0][1]['_why']
-        self.expectThat(failure.type, Equals(exc_type))
-        self.expectThat(failure.value, Equals(exc_info[1]))
-        self.expectThat(_why, Equals("500 Error - %s" % request.path))
+        exc_msg = factory.make_name("message")
+        try:
+            raise exc_type(exc_msg)
+        except exc_type:
+            exc_info = sys.exc_info()
+
+        with FakeLogger(views.__name__, logging.ERROR) as logger:
+            handler.handle_uncaught_exception(
+                request=request, resolver=get_resolver(None),
+                exc_info=exc_info)
+
+        self.assertThat(
+            logger.output, DocTestMatches("""\
+            500 Internal Server Error @ %s
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...: %s
+            """ % (request.path, exc_msg)))
 
     def test__get_response_catches_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")

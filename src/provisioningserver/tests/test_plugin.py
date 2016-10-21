@@ -81,7 +81,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture())
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
-        self.patch_autospec(logger, "basicConfig")
+        self.patch_autospec(logger, "configure")
         self.tempdir = self.make_dir()
 
     def test_init(self):
@@ -108,7 +108,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "Not all services are named.")
         self.assertEqual(service, provisioningserver.services)
         self.assertThat(crochet.no_setup, MockCalledOnceWith())
-        self.assertThat(logger.basicConfig, MockCalledOnceWith())
+        self.assertThat(
+            logger.configure, MockCalledOnceWith(
+                options["verbosity"], logger.LoggingMode.TWISTD))
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = (

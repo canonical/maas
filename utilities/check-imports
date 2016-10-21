@@ -181,10 +181,12 @@ RackControllerUtilsFS = files(
 RackControllerCommissioningSnippets = files(
     "src/provisioningserver/templates/commissioning-user-data/"
     "snippets/**/*.py")
+RackControllerLogging = files(
+    "src/provisioningserver/logger/*.py")
 RackController = (
     files("src/provisioningserver/**/*.py") -
     files("src/provisioningserver/twisted/**/*.py") -
-    RackControllerConfig - RackControllerUtilsInit -
+    RackControllerConfig - RackControllerUtilsInit - RackControllerLogging -
     RackControllerUtilsFS - RackControllerCommissioningSnippets)
 RackControllerRule = Rule(
     Allow("apiclient.creds.*"),
@@ -370,6 +372,13 @@ checks = [
             Allow("snippets.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
+        ),
+    ),
+    (
+        RackControllerLogging,
+        RackControllerRule | Rule(
+            Allow("django.utils.log"),
+            Allow("django.utils.deprecation.*"),
         ),
     ),
     #

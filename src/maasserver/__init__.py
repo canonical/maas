@@ -63,7 +63,11 @@ def execute_from_command_line():
     from twisted.internet import reactor
     assert not reactor.running, "The reactor has been started too early."
     reactor.callFromThread(orm.disable_all_database_connections)
-
+    # Configure logging; Django is no longer responsible for this. Behave as
+    # if we're always at an interactive terminal (i.e. do not wrap stdout or
+    # stderr with log machinery).
+    from provisioningserver import logger
+    logger.configure(mode=logger.LoggingMode.COMMAND)
     # Hand over to Django.
     from django.core import management
     management.execute_from_command_line()
