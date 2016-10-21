@@ -20,14 +20,14 @@ angular.module('MAAS').filter('filterSource', ['ValidationService',
 
 angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
-    'SubnetsManager', 'IPRangesManager', 'SpacesManager', 'VLANsManager',
+    'SubnetsManager', 'SpacesManager', 'VLANsManager',
     'UsersManager', 'FabricsManager', 'StaticRoutesManager',
     'ManagerHelperService', 'ErrorService', 'ConverterService',
     function(
         $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
-        IPRangesManager, SpacesManager, VLANsManager, UsersManager,
-        FabricsManager, StaticRoutesManager,
-        ManagerHelperService, ErrorService, ConverterService) {
+        SpacesManager, VLANsManager, UsersManager, FabricsManager,
+        StaticRoutesManager, ManagerHelperService, ErrorService,
+        ConverterService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -41,8 +41,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.subnet = null;
         $scope.subnets = SubnetsManager.getItems();
         $scope.subnetManager = SubnetsManager;
-        $scope.ipranges = IPRangesManager.getItems();
-        $scope.iprangeManager = IPRangesManager;
         $scope.staticRoutes = StaticRoutesManager.getItems();
         $scope.staticRoutesManager = StaticRoutesManager;
         $scope.spaces = SpacesManager.getItems();
@@ -52,9 +50,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.actionOption = null;
         $scope.actionOptions = [];
         $scope.reverse = false;
-        $scope.newRange = null;
-        $scope.editIPRange = null;
-        $scope.deleteIPRange = null;
         $scope.newStaticRoute = null;
         $scope.editStaticRoute = null;
         $scope.deleteStaticRoute = null;
@@ -254,81 +249,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             return subnet;
         };
 
-        // Called to start adding a new IP range.
-        $scope.addRange = function(type) {
-            $scope.newRange = {
-                type: type,
-                subnet: $scope.subnet.id,
-                start_ip: "",
-                end_ip: "",
-                comment: ""
-            };
-            if(type === "dynamic") {
-                $scope.newRange.comment = "Dynamic";
-            }
-        };
-
-        // Cancel adding the new IP range.
-        $scope.cancelAddRange = function() {
-            $scope.newRange = null;
-        };
-
-        // Return true if the IP range can be modified by the
-        // authenticated user.
-        $scope.ipRangeCanBeModified = function(range) {
-            if($scope.isSuperUser()) {
-                return true;
-            } else {
-                // Can only modify reserved and same user.
-                return (
-                    range.type === "reserved" &&
-                    range.user === UsersManager.getAuthUser().id);
-            }
-        };
-
-        // Return true if the IP range is in edit mode.
-        $scope.isIPRangeInEditMode = function(range) {
-            return $scope.editIPRange === range;
-        };
-
-        // Toggle edit mode for the IP range.
-        $scope.ipRangeToggleEditMode = function(range) {
-            $scope.deleteIPRange = null;
-            if($scope.isIPRangeInEditMode(range)) {
-                $scope.editIPRange = null;
-            } else {
-                $scope.editIPRange = range;
-            }
-        };
-
-        // Clear edit mode for the IP range.
-        $scope.ipRangeClearEditMode = function() {
-            $scope.editIPRange = null;
-        };
-
-        // Return true if the IP range is in delete mode.
-        $scope.isIPRangeInDeleteMode = function(range) {
-            return $scope.deleteIPRange === range;
-        };
-
-        // Enter delete mode for the IP range.
-        $scope.ipRangeEnterDeleteMode = function(range) {
-            $scope.editIPRange = null;
-            $scope.deleteIPRange = range;
-        };
-
-        // Exit delete mode for the IP range.
-        $scope.ipRangeCancelDelete = function() {
-            $scope.deleteIPRange = null;
-        };
-
-        // Perform the delete operation on the IP range.
-        $scope.ipRangeConfirmDelete = function() {
-            IPRangesManager.deleteItem($scope.deleteIPRange).then(function() {
-                $scope.deleteIPRange = null;
-            });
-        };
-
         // Called to start adding a new static route.
         $scope.addStaticRoute = function() {
             $scope.editStaticRoute = null;
@@ -409,7 +329,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
-            SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
+            SubnetsManager, SpacesManager, VLANsManager,
             UsersManager, FabricsManager, StaticRoutesManager
         ]).then(function() {
 

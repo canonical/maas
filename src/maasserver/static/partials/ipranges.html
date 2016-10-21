@@ -1,0 +1,120 @@
+<div class="twelve-col">
+    <div class="table table--hover u-margin--bottom">
+        <header class="table__head">
+            <div class="table__row">
+                <div class="table__header table-col--20">Start IP Address</div>
+                <div class="table__header table-col--20">End IP Address</div>
+                <div class="table__header table-col--10">Owner</div>
+                <div class="table__header table-col--10">Type</div>
+                <div class="table__header table-col--34">Comment</div>
+            </div>
+        </header>
+        <main class="table__body">
+            <div class="table__row"
+		data-ng-if="mode === 'subnet'"
+		data-ng-repeat="iprange in (subnetIPRanges = ipranges | filterBySubnet:obj | orderBy:'start_ip')"
+                data-ng-class="{ 'is-active': isIPRangeInEditMode(iprange) || isIPRangeInDeleteMode(iprange)}">
+		<div class="table__data table-col--20">{$ iprange.start_ip $}</div>
+                <div class="table__data table-col--20">{$ iprange.end_ip $}</div>
+                <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user_username $}</div>
+                <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved" $}</div>
+                <div class="table__data table-col--31">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</div>
+                <div class="table__data table-col--9">
+                    <div class="table__controls" data-ng-if="ipRangeCanBeModified(iprange)">
+                        <a class="icon icon--edit u-margin--right tooltip" aria-label="Edit row"
+                            data-ng-click="ipRangeToggleEditMode(iprange)">Edit</a>
+                        <a class="icon icon--delete tooltip u-margin--right-small" aria-label="Remove"
+                            data-ng-click="ipRangeEnterDeleteMode(iprange)">Remove</a>
+                    </div>
+                </div>
+                <div class="table__dropdown" data-ng-if="isIPRangeInDeleteMode(iprange)">
+                    <div class="table__row is-active">
+                        <div class="table__data">
+                              <p><span class="icon icon--warning u-margin--right-small"></span>Ensure all in-use IP addresses are registered in MAAS before releasing this range to avoid potential collisions. Are you sure you want to remove this IP range?</p>
+                        </div>
+                        <div class="table__data u-float--right">
+                              <a class="button--base button--inline" data-ng-click="ipRangeCancelDelete()">Cancel</a>
+                              <button class="button--primary button--inline" data-ng-click="ipRangeConfirmDelete()">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table__dropdown" data-ng-if="isIPRangeInEditMode(iprange)">
+                    <div class="table__row is-active">
+                        <maas-obj-form obj="iprange" manager="iprangeManager" table-form="true"
+                            save-on-blur="false" after-save="ipRangeClearEditMode">
+                            <div class="table__data table-col--100">
+                                <div class="six-col">
+                                    <maas-obj-field type="text" key="start_ip" label="Start IP address"
+                                        label-width="two" input-width="three"></maas-obj-field>
+                                </div>
+                                <div class="six-col last-col">
+                                    <maas-obj-field type="text" key="end_ip" label="End IP address"
+                                        label-width="two" input-width="three"></maas-obj-field>
+                                </div>
+                                <maas-obj-field data-ng-if="iprange.type !== 'dynamic'"
+                                    type="text" key="comment" label="Purpose" placeholder="Purpose for IP range (optional)"
+                                    label-width="two" input-width="nine"></maas-obj-field>
+                                <div data-ng-if="iprange.type === 'dynamic'">
+                                    <div class="form__group">
+                                        <label class="two-col form__group-label" for="purpose">Purpose</label>
+                                        <div class="form__group-input nine-col">
+                                            <input type="text" id="purpose" value="Dynamic" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__dropdown">
+                                <div class="table__row is-active">
+                                    <div class="table__data u-float--left">
+                                        <maas-obj-errors></maas-obj-errors>
+                                    </div>
+                                    <div class="table__data u-float--right">
+                                        <a class="button--base button--inline" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</a>
+                                        <button class="button--primary button--inline" maas-obj-save>Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </maas-obj-form>
+                    </div>
+                </div>
+            </div>
+            <div class="table__row" data-ng-if="subnetIPRanges.length === 0 && !newRange">
+                <div class="table__data table-col-100">No IP ranges have been reserved for this subnet.</div>
+            </div>
+            <div class="table__row is-active form form--stack" data-ng-if="newRange">
+                <maas-obj-form obj="newRange" manager="iprangeManager" manager-method="createItem"
+                    table-form="true" save-on-blur="false" after-save="cancelAddRange">
+                    <div class="table__data table-col--100">
+                        <div class="form__fieldset six-col">
+                            <maas-obj-field type="text" key="start_ip" label="Start IP address"
+                                label-width="two" input-width="three"></maas-obj-field>
+                        </div>
+                        <div class="form__fieldset six-col last-col">
+                            <maas-obj-field type="text" key="end_ip" label="End IP address"
+                                label-width="two" input-width="three"></maas-obj-field>
+                        </div>
+                    </div>
+                    <div class="table__dropdown">
+                        <div class="table__row is-active">
+                            <div class="table__data u-float--left">
+                                <maas-obj-errors></maas-obj-errors>
+                            </div>
+                            <div class="table__data u-float--right">
+                                <a class="button--base button--inline" data-ng-click="cancelAddRange()">Cancel</a>
+                                <button class="button--primary button--inline" maas-obj-save>Reserve</button>
+                            </div>
+                        </div>
+                    </div>
+                </maas-obj-form>
+            </div>
+        </main>
+    </div>
+    <a class="button--secondary button--inline"
+      data-ng-if="mode === 'subnet'"
+      data-ng-disabled="newRange"
+      data-ng-click="addRange('reserved')">Reserve range</a>
+    <a class="button--secondary button--inline"
+      data-ng-if="isSuperUser()"
+      data-ng-disabled="newRange"
+      data-ng-click="addRange('dynamic')">Reserve dynamic range</a>
+</div>

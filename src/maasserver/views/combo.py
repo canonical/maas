@@ -104,6 +104,7 @@ MERGE_VIEWS = {
             "js/angular/directives/sticky_header.js",
             "js/angular/directives/placeholder.js",
             "js/angular/directives/version_reloader.js",
+            "js/angular/directives/ipranges.js",
             "js/angular/filters/nodes.js",
             "js/angular/filters/by_fabric.js",
             "js/angular/filters/by_vlan.js",
