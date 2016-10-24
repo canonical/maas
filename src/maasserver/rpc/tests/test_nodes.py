@@ -7,7 +7,6 @@ __all__ = []
 
 from datetime import timedelta
 import json
-from json import dumps
 from operator import attrgetter
 import random
 from random import randint
@@ -79,17 +78,13 @@ class TestCreateNode(MAASServerTestCase):
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
-        power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
 
-        node = create_node(
-            architecture, power_type, power_parameters,
-            mac_addresses)
+        node = create_node(architecture, 'manual', {}, mac_addresses)
 
         self.assertEqual(
             (
                 architecture,
-                power_type,
+                'manual',
                 {},
             ),
             (
@@ -113,17 +108,14 @@ class TestCreateNode(MAASServerTestCase):
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
         hostname = factory.make_hostname()
-        power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
 
         node = create_node(
-            architecture, power_type, power_parameters,
-            mac_addresses, hostname=hostname)
+            architecture, 'manual', {}, mac_addresses, hostname=hostname)
 
         self.assertEqual(
             (
                 architecture,
-                power_type,
+                'manual',
                 {},
                 hostname
             ),
@@ -149,7 +141,7 @@ class TestCreateNode(MAASServerTestCase):
             "Microsoft Windows",
             ])
         power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
+        power_parameters = {}
 
         with ExpectedException(ValidationError):
             create_node(
@@ -164,17 +156,15 @@ class TestCreateNode(MAASServerTestCase):
         architecture = make_usable_architecture(self)
         hostname = factory.make_hostname()
         domain = factory.make_Domain()
-        power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
 
         node = create_node(
-            architecture, power_type, power_parameters,
-            mac_addresses, domain=domain.name, hostname=hostname)
+            architecture, 'manual', {}, mac_addresses, domain=domain.name,
+            hostname=hostname)
 
         self.assertEqual(
             (
                 architecture,
-                power_type,
+                'manual',
                 {},
                 domain.id,
                 hostname,
@@ -198,7 +188,7 @@ class TestCreateNode(MAASServerTestCase):
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
         power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
+        power_parameters = {}
 
         with ExpectedException(ValidationError):
             create_node(
@@ -211,7 +201,7 @@ class TestCreateNode(MAASServerTestCase):
         self.assertRaises(
             ValidationError, create_node,
             architecture="spam/eggs", power_type="scrambled",
-            power_parameters=dumps({}),
+            power_parameters={},
             mac_addresses=[factory.make_mac_address()])
 
     def test__raises_error_if_node_already_exists(self):
@@ -220,8 +210,8 @@ class TestCreateNode(MAASServerTestCase):
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
-        power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
+        power_type = 'manual'
+        power_parameters = {}
 
         create_node(
             architecture, power_type, power_parameters,
@@ -236,20 +226,20 @@ class TestCreateNode(MAASServerTestCase):
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
-        power_type = random.choice(self.power_types)['name']
         power_parameters = {
-            factory.make_name('key'): factory.make_name('value')
-            for _ in range(3)
+            'power_address': factory.make_url(),
+            'power_pass': factory.make_name('power_pass'),
+            'power_id': factory.make_name('power_id'),
         }
 
         node = create_node(
-            architecture, power_type, dumps(power_parameters),
+            architecture, 'virsh', power_parameters,
             mac_addresses)
 
         # Reload the object from the DB so that we're sure its power
         # parameters are being persisted.
         node = reload_object(node)
-        self.assertEqual(power_parameters, node.power_parameters)
+        self.assertItemsEqual(power_parameters, node.power_parameters)
 
     def test__forces_generic_subarchitecture_if_missing(self):
         self.prepare_rack_rpc()
@@ -257,13 +247,9 @@ class TestCreateNode(MAASServerTestCase):
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self, subarch_name='generic')
-        power_type = random.choice(self.power_types)['name']
-        power_parameters = dumps({})
 
         arch, subarch = architecture.split('/')
-        node = create_node(
-            arch, power_type, power_parameters,
-            mac_addresses)
+        node = create_node(arch, 'manual', {}, mac_addresses)
 
         self.assertEqual(architecture, node.architecture)
 

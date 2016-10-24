@@ -222,10 +222,6 @@ def create_node(
     form = AdminMachineWithMACAddressesForm(data_query_dict)
     if form.is_valid():
         node = form.save()
-        # We have to explicitly save the power parameters; the form
-        # won't do it for us.
-        node.power_parameters = json.loads(power_parameters)
-        node.save()
         return node
     else:
         raise ValidationError(form.errors)

@@ -165,6 +165,15 @@ class TestFormWithDictCharField(MAASServerTestCase):
             {'char_field': char_value, 'multi_field': None},
             form.cleaned_data)
 
+    def test_DictCharField_sets_default_value_for_subfields(self):
+        default_value = factory.make_name('default_value')
+        multi_field = DictCharField(
+            [('field_a', forms.CharField(
+                label='Field a', initial=default_value))],
+            required=False)
+        self.assertEquals(
+            default_value, multi_field.clean_sub_fields('')['field_a'])
+
 
 class TestUtilities(MAASServerTestCase):
 

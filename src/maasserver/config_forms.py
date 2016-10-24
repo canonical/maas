@@ -186,6 +186,9 @@ class DictCharField(forms.MultiValueField):
                 field_value = value[index]
             except IndexError:
                 field_value = None
+            # Set the field_value to the default value if not set.
+            if field_value is None and field.initial not in (None, ''):
+                field_value = field.initial
             # Check the field's 'required' field instead of the global
             # 'required' field to allow subfields to be required or not.
             if field.required and field_value in validators.EMPTY_VALUES:

@@ -16,6 +16,7 @@ __all__ = [
 
 from django.http import QueryDict
 from formencode.validators import Invalid
+from maasserver.config_forms import DictCharField
 from maasserver.exceptions import (
     MAASAPIValidationError,
     Unauthorized,
@@ -149,11 +150,23 @@ def get_overridden_query_dict(defaults, data, fields):
     """
     # Create a writable query dict.
     new_data = QueryDict('').copy()
+    # If the fields are a dict of django Fields see if one is a DictCharField.
+    # DictCharField must have their values prefixed with the DictField name in
+    # the returned data or defaults don't get carried.
+    if isinstance(fields, dict):
+        acceptable_fields = []
+        for field_name, field in fields.items():
+            acceptable_fields.append(field_name)
+            if isinstance(field, DictCharField):
+                for sub_field in field.names:
+                    acceptable_fields.append("%s_%s" % (field_name, sub_field))
+    else:
+        acceptable_fields = fields
     # Missing fields will be taken from the node's current values.  This
     # is to circumvent Django's ModelForm (form created from a model)
     # default behaviour that requires all the fields to be defined.
     for k, v in defaults.items():
-        if k in fields:
+        if k in acceptable_fields:
             new_data.setlist(k, listify(v))
     # We can't use update here because data is a QueryDict and 'update'
     # does not replaces the old values with the new as one would expect.

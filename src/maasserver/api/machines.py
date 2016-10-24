@@ -30,7 +30,6 @@ from maasserver.api.nodes import (
     OwnerDataMixin,
     PowerMixin,
     PowersMixin,
-    store_node_power_parameters,
 )
 from maasserver.api.support import (
     admin_method,
@@ -737,8 +736,6 @@ def create_machine(request):
     form = Form(data=altered_query_data, request=request)
     if form.is_valid():
         machine = form.save()
-        # Hack in the power parameters here.
-        store_node_power_parameters(machine, request)
         maaslog.info("%s: Enlisted new machine", machine.hostname)
         return machine
     else:

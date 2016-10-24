@@ -36,6 +36,7 @@ __all__ = [
 
 from collections import Counter
 from functools import partial
+import json
 import pipes
 import re
 
@@ -244,6 +245,27 @@ class WithPowerMixin:
         return power_type
 
     @staticmethod
+    def _get_power_parameters(form, data, machine):
+        if data is None:
+            data = {}
+
+        power_parameters = data.get(
+            'power_parameters', form.initial.get('power_parameters', {}))
+
+        if isinstance(power_parameters, str):
+            try:
+                power_parameters = json.loads(power_parameters)
+            except json.JSONDecodeError:
+                raise ValidationError("Failed to parse JSON power_parameters")
+
+        # Integrate the machines existing power_parameters if unset by form.
+        if machine:
+            for key, value in machine.power_parameters.items():
+                if power_parameters.get(key) is None:
+                    power_parameters[key] = value
+        return power_parameters
+
+    @staticmethod
     def set_up_power_type(form, data, machine=None):
         """Set up the 'power_type' and 'power_parameters' fields.
 
@@ -254,10 +276,18 @@ class WithPowerMixin:
         choices = [BLANK_CHOICE] + get_power_type_choices()
         form.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
-        form.fields['power_parameters'] = get_power_type_parameters()[
-            power_type]
-        if form.instance is not None and form.instance.power_type != '':
-            form.initial['power_type'] = form.instance.power_type
+        power_parameters = WithPowerMixin._get_power_parameters(
+            form, data, machine)
+        skip_check = (
+            form.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
+        form.fields['power_parameters'] = get_power_type_parameters(
+            power_parameters, skip_check=skip_check)[power_type]
+        if form.instance is not None:
+            if form.instance.power_type != '':
+                form.initial['power_type'] = form.instance.power_type
+            if form.instance.power_parameters != '':
+                for key, value in power_parameters.items():
+                    form.initial['power_parameters_%s' % key] = value
 
     @staticmethod
     def check_power_type(form, cleaned_data):
@@ -280,8 +310,9 @@ class WithPowerMixin:
 
             # If power_type is not set and power_parameters_skip_check is not
             # on, reset power_parameters (set it to the empty string).
-            if cleaned_data.get('power_type', '') == '':
-                cleaned_data['power_parameters'] = ''
+            power_type = cleaned_data.get('power_type', '')
+            if power_type == '':
+                cleaned_data['power_parameters'] = {}
         return cleaned_data
 
     @staticmethod

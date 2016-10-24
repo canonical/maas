@@ -20,6 +20,7 @@ from maasserver.clusterrpc.power_parameters import (
 )
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
@@ -69,6 +70,42 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
             json_parameters)
         for name, field in power_type_parameters.items():
             self.assertIsInstance(field, DictCharField)
+
+    def test__overrides_defaults(self):
+        name = factory.make_name('name')
+        field_name = factory.make_name('field_name')
+        new_default = factory.make_name('new default')
+        json_parameters = [{
+            'name': name,
+            'description': factory.make_name('description'),
+            'fields': [{
+                'name': field_name,
+                'label': factory.make_name('field label'),
+                'field_type': factory.make_name('field type'),
+                'default': factory.make_name('field default'),
+                'required': False,
+            }],
+        }]
+        power_type_parameters = get_power_type_parameters_from_json(
+            json_parameters, {field_name: new_default})
+        self.assertEqual(
+            new_default, power_type_parameters[name].fields[0].initial)
+
+    def test__manual_does_not_require_power_params(self):
+        json_parameters = [{
+            'name': 'manual',
+            'description': factory.make_name('description'),
+            'fields': [{
+                'name': factory.make_name('field name'),
+                'label': factory.make_name('field label'),
+                'field_type': factory.make_name('field type'),
+                'default': factory.make_name('field default'),
+                'required': False,
+            }],
+        }]
+        power_type_parameters = get_power_type_parameters_from_json(
+            json_parameters)
+        self.assertFalse(power_type_parameters['manual'].required)
 
 
 class TestMakeFormField(MAASServerTestCase):
@@ -136,6 +173,17 @@ class TestMakeFormField(MAASServerTestCase):
         self.assertEqual(
             (json_field['label'], json_field['required']),
             (django_field.label, django_field.required))
+
+    def test__sets_initial_to_default(self):
+        json_field = {
+            'name': 'some_field',
+            'label': 'Some Field',
+            'field_type': 'string',
+            'required': False,
+            'default': 'some default',
+        }
+        django_field = make_form_field(json_field)
+        self.assertEquals(json_field['default'], django_field.initial)
 
 
 class TestMakeJSONField(MAASServerTestCase):

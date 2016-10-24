@@ -40,6 +40,7 @@ class TestControllerForm(MAASServerTestCase):
         form = ControllerForm(
             data={
                 'power_type': power_type,
+                'power_parameters_skip_check': 'true',
             },
             instance=rack)
         rack = form.save()
@@ -51,12 +52,12 @@ class TestControllerForm(MAASServerTestCase):
         form = ControllerForm(
             data={
                 'power_parameters_field': power_parameters_field,
-                'power_parameters_skip_check': True,
+                'power_parameters_skip_check': 'true',
             },
             instance=rack)
         rack = form.save()
         self.assertEqual(
-            {'field': power_parameters_field}, rack.power_parameters)
+            power_parameters_field, rack.power_parameters['field'])
 
     def test__sets_zone(self):
         rack = factory.make_RackController()
@@ -64,6 +65,7 @@ class TestControllerForm(MAASServerTestCase):
         form = ControllerForm(
             data={
                 'zone': zone.name,
+                'power_parameters_skip_check': 'true',
             },
             instance=rack)
         rack = form.save()

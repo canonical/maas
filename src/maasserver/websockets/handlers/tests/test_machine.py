@@ -1094,7 +1094,7 @@ class TestMachineHandler(MAASServerTestCase):
     def test_update_raises_validation_error_for_invalid_architecture(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
-        node = factory.make_Node(interface=True)
+        node = factory.make_Node(interface=True, power_type='manual')
         node_data = self.dehydrate_node(node, handler)
         arch = factory.make_name("arch")
         node_data["architecture"] = arch
@@ -1144,7 +1144,8 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True, architecture=architecture, power_type='manual')
         tags = [
             factory.make_Tag(definition='').name
             for _ in range(3)
@@ -1158,7 +1159,8 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True, architecture=architecture, power_type='manual')
         tags = []
         for _ in range(3):
             tag = factory.make_Tag(definition='')
@@ -1175,7 +1177,8 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(interface=True, architecture=architecture)
+        node = factory.make_Node(
+            interface=True, architecture=architecture, power_type='manual')
         tag_name = factory.make_name("tag")
         node_data = self.dehydrate_node(node, handler)
         node_data["tags"].append(tag_name)
