@@ -15,7 +15,10 @@ from provisioningserver.dhcp.detect import probe_interface
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import ReportForeignDHCPServer
-from provisioningserver.utils.network import get_all_interfaces_definition
+from provisioningserver.utils.network import (
+    get_all_interfaces_definition,
+    has_ipv4_address,
+)
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -50,8 +53,11 @@ class DHCPProbeService(TimerService):
         self.clock = reactor
         self.client_service = client_service
 
-    def log(self, string):
-        log.msg(string, system=type(self).__name__)
+    def log(self, *args, **kwargs):
+        log.msg(*args, **kwargs, system=type(self).__name__)
+
+    def err(self, *args, **kwargs):
+        log.err(*args, **kwargs, system=type(self).__name__)
 
     def _get_interfaces(self):
         """Return the interfaces for this rack controller."""
@@ -59,7 +65,13 @@ class DHCPProbeService(TimerService):
         d.addCallback(lambda interfaces: [
             name
             for name, info in interfaces.items()
-            if info["enabled"]
+            # No IPv4 address (unfortunately) means that MAAS cannot probe
+            # this interface. This is because ultimately the DHCP probe
+            # mechanism must send out a unicast UDP packet from the
+            # interface in order to receive a response, and the TCP/IP
+            # stack will drop packets coming back from the server if an
+            # unexpected address is used.
+            if info["enabled"] and has_ipv4_address(interfaces, name)
         ])
         return d
 
@@ -123,7 +135,7 @@ class DHCPProbeService(TimerService):
                     "'%s'." % interface)
                 if is_dev_environment():
                     error += " (Did you configure authbind per HACKING.txt?)"
-                log.err(e, error, system=type(self).__name__)
+                self.err(e, error)
                 continue
             else:
                 if len(servers) > 0:
@@ -146,5 +158,6 @@ class DHCPProbeService(TimerService):
             maaslog.error(
                 "Unable to probe for DHCP servers: %s",
                 str(error))
+            self.err(error, "Unable to probe for DHCP servers.")
         else:
             maaslog.debug("Finished periodic DHCP probe.")

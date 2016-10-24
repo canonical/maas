@@ -1171,6 +1171,23 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
     return interfaces
 
 
+def has_ipv4_address(interfaces: dict, interface: str) -> bool:
+    """Returns True if the specified interface has an IPv4 address assigned.
+
+    If no addresses are assigned, or only addresses with other address families
+    are assigned (IPv6), returns False.
+
+    :param interfaces: The output of `get_all_interfaces_definition()`.
+    :param interface: The interface name to check.
+    """
+    links = interfaces[interface]["links"]
+    address_families = {
+        IPAddress(link['address'].split('/')[0]).version
+        for link in links
+    }
+    return 4 in address_families
+
+
 def is_loopback_address(hostname):
     """Determine if the given hostname appears to be a loopback address.
 

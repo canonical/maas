@@ -51,6 +51,7 @@ from provisioningserver.utils.network import (
     get_eui_organization,
     get_interface_children,
     get_mac_organization,
+    has_ipv4_address,
     hex_str_to_bytes,
     inet_ntop,
     interface_children,
@@ -1470,6 +1471,49 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }),
         })
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
+
+
+class TestHasIPv4Address(MAASTestCase):
+    """Tests for `has_ipv4_address()`."""
+
+    def make_interfaces(self, name, address=None):
+        links = []
+        if address is not None:
+            links.append({
+                'address': address,
+                'mode': 'static'
+            })
+        return {
+            name: {
+                'enabled': True,
+                'links': links,
+                'mac_address': '52:54:00:e7:d9:2c',
+                'monitored': True,
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            }
+        }
+
+    def test__returns_false_for_no_ip_address(self):
+        ifname = factory.make_name('eth')
+        self.assertThat(
+            has_ipv4_address(self.make_interfaces(ifname), ifname),
+            Equals(False))
+
+    def test__returns_false_for_ipv6_address(self):
+        ifname = factory.make_name('eth')
+        address = "%s/64" % factory.make_ipv6_address()
+        self.assertThat(
+            has_ipv4_address(self.make_interfaces(ifname, address), ifname),
+            Equals(False))
+
+    def test__returns_true_for_ipv4_address(self):
+        ifname = factory.make_name('eth')
+        address = "%s/24" % factory.make_ipv4_address()
+        self.assertThat(
+            has_ipv4_address(self.make_interfaces(ifname, address), ifname),
+            Equals(True))
 
 
 class TestGetInterfaceChildren(MAASTestCase):
