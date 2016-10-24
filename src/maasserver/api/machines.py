@@ -941,7 +941,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         """
         machine = create_machine(request)
         if request.user.is_superuser:
-            machine.accept_enlistment(request.user)
+            d = machine.start_commissioning(request.user)
+            # Silently ignore errors to prevent 500 errors. The commissioning
+            # callbacks have their own logging. This fixes LP1600328.
+            d.addErrback(lambda _: None)
         return machine
 
     def _check_system_ids_exist(self, system_ids):

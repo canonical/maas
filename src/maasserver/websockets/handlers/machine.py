@@ -265,7 +265,10 @@ class MachineHandler(NodeHandler):
 
         # Start the commissioning process right away, which has the
         # desired side effect of initializing the node's power state.
-        node_obj.start_commissioning(self.user)
+        d = node_obj.start_commissioning(self.user)
+        # Silently ignore errors to prevent tracebacks. The commissioning
+        # callbacks have their own logging. This fixes LP1600328.
+        d.addErrback(lambda _: None)
 
         return self.full_dehydrate(node_obj)
 

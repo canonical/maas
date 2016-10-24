@@ -51,7 +51,10 @@ from maasserver.enum import (
     POWER_STATE,
     SERVICE_STATUS,
 )
-from maasserver.exceptions import NodeStateViolation
+from maasserver.exceptions import (
+    NodeStateViolation,
+    PowerProblem,
+)
 from maasserver.models import (
     bmc as bmc_module,
     BondInterface,
@@ -61,6 +64,7 @@ from maasserver.models import (
     Controller,
     Device,
     Domain,
+    EventType,
     Fabric,
     Interface,
     LicenseKey,
@@ -5024,6 +5028,37 @@ class TestNode_Start(MAASTransactionServerTestCase):
             ["This node cannot be deployed because it needs a separate "
              "/boot partition.  Mount /boot on a device to be able to "
              "deploy this node."], node.storage_layout_issues())
+
+
+class TestGetBMCClientConnectionInfo(MAASServerTestCase):
+
+    def test__returns_bmc_identifiers(self):
+        node = factory.make_Node()
+
+        mock_bmcs = self.patch(node.bmc, 'get_client_identifiers')
+        fake_bmc_id = factory.make_name('system_id')
+        mock_bmcs.return_value = [fake_bmc_id]
+
+        mock_fallbacks = self.patch(node, 'get_boot_rack_controllers')
+        fake_fallback_id = factory.make_name('system_id')
+        fallback = MagicMock()
+        fallback.system_id = fake_fallback_id
+        mock_fallbacks.return_value = [fallback]
+
+        self.assertEquals(
+            ([fake_bmc_id], [fake_fallback_id]),
+            node._get_bmc_client_connection_info())
+
+    def test__creates_event_on_error(self):
+        node = factory.make_Node()
+
+        self.assertRaises(PowerProblem, node._get_bmc_client_connection_info)
+        event_type = EventType.objects.get(
+            name=EVENT_TYPES.NODE_POWER_QUERY_FAILED)
+        event = node.event_set.get(type=event_type)
+        self.assertEquals(
+            ('No rack controllers can access the BMC of node: %s' %
+             node.hostname), event.description)
 
 
 class TestNode_Stop(MAASServerTestCase):

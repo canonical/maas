@@ -3084,9 +3084,12 @@ class Node(CleanSave, TimestampedModel):
             for rack in self.get_boot_rack_controllers()
         ]
         if len(client_idents) == 0 and len(fallback_idents) == 0:
-            raise PowerProblem(
-                "No rack controllers can access the BMC of node: %s" % (
-                    self.hostname))
+            err_msg = "No rack controllers can access the BMC of node: %s" % (
+                self.hostname)
+            self._register_request_event(
+                self.owner, EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                "Failed to query node's BMC", err_msg)
+            raise PowerProblem(err_msg)
         return client_idents, fallback_idents
 
     @transactional

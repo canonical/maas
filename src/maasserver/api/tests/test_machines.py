@@ -204,6 +204,28 @@ class TestMachinesAPI(APITestCase.ForUser):
             "Select a valid choice. %s is not one of the "
             "available choices." % power_type, validation_errors[0])
 
+    def test_POST_handles_error_when_unable_to_access_bmc(self):
+        # Regression test for LP1600328
+        self.become_admin()
+        power_address = factory.make_ip_address()
+        power_id = factory.make_name('power_id')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'power_type': 'virsh',
+                'power_parameters_power_address': power_address,
+                'power_parameters_power_id': power_id,
+            })
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        machine = Machine.objects.get(system_id=parsed_result['system_id'])
+        self.assertEqual('virsh', parsed_result['power_type'])
+        self.assertEqual(
+            power_address, machine.power_parameters['power_address'])
+        self.assertEqual(power_id, machine.power_parameters['power_id'])
+
     def test_GET_lists_machines(self):
         # The api allows for fetching the list of Machines.
         machine1 = factory.make_Node()
