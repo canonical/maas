@@ -103,6 +103,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "postgres-listener",
             "rack-controller",
             "region-controller",
+            "reverse-dns",
             "rpc",
             "rpc-advertise",
             "service-monitor",

@@ -13,14 +13,22 @@ from socket import (
     gaierror,
     IPPROTO_TCP,
 )
+from typing import List
 from unittest import mock
-from unittest.mock import Mock
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    MockCalledOnce,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
+from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
@@ -51,6 +59,7 @@ from provisioningserver.utils.network import (
     get_eui_organization,
     get_interface_children,
     get_mac_organization,
+    getDefaultIResolver,
     has_ipv4_address,
     hex_str_to_bytes,
     inet_ntop,
@@ -64,11 +73,14 @@ from provisioningserver.utils.network import (
     make_iprange,
     make_network,
     parse_integer,
+    preferred_hostnames_sort_key,
     resolve_host_to_addrinfo,
     resolve_hostname,
     resolves_to_loopback_address,
+    reverseResolve,
 )
 from provisioningserver.utils.shell import call_and_check
+from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -78,6 +90,13 @@ from testtools.matchers import (
     MatchesDict,
     MatchesSetwise,
     Not,
+)
+from twisted.internet.defer import inlineCallbacks
+from twisted.names.error import (
+    AuthoritativeDomainError,
+    DNSQueryTimeoutError,
+    DomainError,
+    ResolverError,
 )
 
 
@@ -1776,6 +1795,7 @@ class TestAnnotateWithDefaultMonitoredInterfaces(MAASTestCase):
 
 
 class TestIsLoopbackAddress(MAASTestCase):
+
     def test_handles_ipv4_loopback(self):
         network = IPNetwork('127.0.0.0/8')
         address = factory.pick_ip_in_network(network)
@@ -1825,6 +1845,7 @@ class TestIsLoopbackAddress(MAASTestCase):
 
 
 class TestResolvesToLoopbackAddress(MAASTestCase):
+
     def test_resolves_hostnames(self):
         gai = self.patch(socket, 'getaddrinfo')
         gai.return_value = ((
@@ -1844,3 +1865,237 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
         self.assertEqual(resolves_to_loopback_address(name), False)
         self.assertThat(
             gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
+
+
+class TestGetDefaultIResolver(MAASTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.createResolver = self.patch(
+            network_module, "createResolver")
+
+    def test__uses_twisted_createResolver_by_default(self):
+        self.createResolver.return_value = sentinel.default_resolver
+        resolver = getDefaultIResolver()
+        self.assertThat(self.createResolver, MockCalledOnceWith())
+        self.assertThat(resolver, Is(sentinel.default_resolver))
+
+    def test__falls_back_to_localhost_based_resolver(self):
+        self.createResolver.side_effect = [
+            ValueError, sentinel.localhost_resolver]
+        resolver = getDefaultIResolver()
+        self.assertThat(resolver, Is(sentinel.localhost_resolver))
+        self.assertThat(self.createResolver, MockCallsMatch(
+            call(), call(servers=[('127.0.0.1', 53)])
+        ))
+
+
+class TestPreferredHostnamesSortKey(MAASTestCase):
+    """Tests for `preferred_hostnames_sort_key()`."""
+
+    def test__sorts_flat_names(self):
+        names = ('c', 'b', 'a', 'z')
+        self.assertThat(
+            sorted(names, key=preferred_hostnames_sort_key),
+            Equals(['a', 'b', 'c', 'z'])
+        )
+
+    def test__sorts_more_qualified_names_first(self):
+        names = (
+            'diediedie.archive.ubuntu.com',
+            'wpps.org.za',
+            'ubuntu.com',
+            'ubuntu.sets.a.great.example.com',
+        )
+        self.assertThat(
+            sorted(names, key=preferred_hostnames_sort_key),
+            Equals([
+                'ubuntu.sets.a.great.example.com',
+                'diediedie.archive.ubuntu.com',
+                'wpps.org.za',
+                'ubuntu.com',
+            ])
+        )
+
+    def test__sorts_by_domains_then_hostnames_within_each_domain(self):
+        names = (
+            'www.ubuntu.com',
+            'maas.ubuntu.com',
+            'us.archive.ubuntu.com',
+            'uk.archive.ubuntu.com',
+            'foo.maas.ubuntu.com',
+            'archive.ubuntu.com',
+            'maas-xenial',
+            'juju-xenial',
+        )
+        self.assertThat(
+            sorted(names, key=preferred_hostnames_sort_key),
+            Equals([
+                'uk.archive.ubuntu.com',
+                'us.archive.ubuntu.com',
+                'foo.maas.ubuntu.com',
+                'archive.ubuntu.com',
+                'maas.ubuntu.com',
+                'www.ubuntu.com',
+                'juju-xenial',
+                'maas-xenial',
+            ])
+        )
+
+    def test__sorts_by_tlds_first(self):
+        names = (
+            'com.za',
+            'com.com',
+            'com.org',
+            'www.ubuntu.org',
+            'www.ubuntu.com',
+            'www.ubuntu.za',
+        )
+        self.assertThat(
+            sorted(names, key=preferred_hostnames_sort_key),
+            Equals([
+                'www.ubuntu.com',
+                'www.ubuntu.org',
+                'www.ubuntu.za',
+                'com.com',
+                'com.org',
+                'com.za',
+            ])
+        )
+
+    def test__ignores_trailing_periods(self):
+        names = (
+            'com.za.',
+            'com.com',
+            'com.org.',
+            'www.ubuntu.org',
+            'www.ubuntu.com.',
+            'www.ubuntu.za',
+        )
+        self.assertThat(
+            sorted(names, key=preferred_hostnames_sort_key),
+            Equals([
+                'www.ubuntu.com.',
+                'www.ubuntu.org',
+                'www.ubuntu.za',
+                'com.com',
+                'com.org.',
+                'com.za.',
+            ])
+        )
+
+
+class TestReverseResolveMixIn:
+    """Test fixture mix-in for unit tests calling `reverseResolve()`."""
+
+    def set_fake_twisted_dns_reply(self, hostnames: List[str]):
+        """Sets up the rrset data structure for the mock resolver.
+
+        This method must be called for any test cases in this suite which
+        intend to test the data being returned.
+        """
+        rrset = []
+        data = (rrset,)
+        for hostname in hostnames:
+            rr = Mock()
+            rr.payload = Mock()
+            rr.payload.name = Mock()
+            rr.payload.name.name = Mock()
+            rr.payload.name.name.decode = Mock()
+            rr.payload.name.name.decode.return_value = hostname
+            rrset.append(rr)
+        self.reply = data
+
+    @inlineCallbacks
+    def mock_lookupPointer(self, ip, timeout=None):
+        self.timeout = timeout
+        yield
+        return self.reply
+
+    def get_mock_iresolver(self):
+        resolver = Mock()
+        resolver.lookupPointer = Mock()
+        resolver.lookupPointer.side_effect = self.mock_lookupPointer
+        return resolver
+
+    def setUp(self):
+        super().setUp()
+        self.timeout = object()
+        self.getDefaultIResolver = self.patch(
+            network_module.getDefaultIResolver)
+        self.resolver = self.get_mock_iresolver()
+        self.lookupPointer = self.resolver.lookupPointer
+        self.getDefaultIResolver.return_value = self.resolver
+
+
+class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
+    """Tests for `reverseResolve`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=30)
+
+    @inlineCallbacks
+    def test__uses_resolver_from_getDefauldIResolver_by_default(self):
+        self.set_fake_twisted_dns_reply([])
+        yield reverseResolve(factory.make_ip_address())
+        self.assertThat(self.getDefaultIResolver, MockCalledOnceWith())
+
+    @inlineCallbacks
+    def test__uses_passed_in_IResolver_if_specified(self):
+        self.set_fake_twisted_dns_reply([])
+        some_other_resolver = self.get_mock_iresolver()
+        yield reverseResolve(
+            factory.make_ip_address(), resolver=some_other_resolver)
+        self.assertThat(self.getDefaultIResolver, MockNotCalled())
+        self.assertThat(some_other_resolver.lookupPointer, MockCalledOnce())
+
+    @inlineCallbacks
+    def test__returns_single_domain(self):
+        reverse_dns_reply = ['example.com']
+        self.set_fake_twisted_dns_reply(reverse_dns_reply)
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Equals(reverse_dns_reply))
+
+    @inlineCallbacks
+    def test__returns_multiple_sorted_domains(self):
+        reverse_dns_reply = ['ubuntu.com', 'example.com']
+        self.set_fake_twisted_dns_reply(reverse_dns_reply)
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Equals(
+            sorted(reverse_dns_reply, key=preferred_hostnames_sort_key)))
+
+    @inlineCallbacks
+    def test__empty_list_for_empty_rrset(self):
+        reverse_dns_reply = []
+        self.set_fake_twisted_dns_reply(reverse_dns_reply)
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Equals(reverse_dns_reply))
+
+    @inlineCallbacks
+    def test__returns_empty_list_for_domainerror(self):
+        self.lookupPointer.side_effect = DomainError
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Equals([]))
+
+    @inlineCallbacks
+    def test__returns_empty_list_for_authoritativedomainerror(self):
+        self.lookupPointer.side_effect = AuthoritativeDomainError
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Equals([]))
+
+    @inlineCallbacks
+    def test__returns_none_for_dnsquerytimeouterror(self):
+        self.lookupPointer.side_effect = DNSQueryTimeoutError(None)
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Is(None))
+
+    @inlineCallbacks
+    def test__returns_none_for_resolvererror(self):
+        self.lookupPointer.side_effect = ResolverError
+        result = yield reverseResolve(factory.make_ip_address())
+        self.expectThat(result, Is(None))
+
+    @inlineCallbacks
+    def test__raises_for_unhandled_error(self):
+        self.lookupPointer.side_effect = TypeError
+        with ExpectedException(TypeError):
+            yield reverseResolve(factory.make_ip_address())

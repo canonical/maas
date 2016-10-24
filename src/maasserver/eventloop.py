@@ -143,6 +143,13 @@ def make_ActiveDiscoveryService(postgresListener):
     return ActiveDiscoveryService(reactor, postgresListener)
 
 
+def make_ReverseDNSService(postgresListener):
+    from maasserver.regiondservices.reverse_dns import (
+        ReverseDNSService
+    )
+    return ReverseDNSService(postgresListener)
+
+
 def make_NetworkTimeProtocolService():
     from maasserver.regiondservices import ntp
     return ntp.RegionNetworkTimeProtocolService(reactor)
@@ -267,6 +274,11 @@ class RegionEventLoop:
         "active-discovery": {
             "only_on_master": True,
             "factory": make_ActiveDiscoveryService,
+            "requires": ["postgres-listener"],
+        },
+        "reverse-dns": {
+            "only_on_master": True,
+            "factory": make_ReverseDNSService,
             "requires": ["postgres-listener"],
         },
         "rack-controller": {

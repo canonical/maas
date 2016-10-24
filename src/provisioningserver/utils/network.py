@@ -11,12 +11,13 @@ __all__ = [
     'get_all_interface_addresses',
     'is_loopback_address',
     'make_network',
+    'reverseResolve',
     'resolve_host_to_addrinfo',
     'resolve_hostname',
     'resolves_to_loopback_address',
     'intersect_iprange',
     'ip_range_within_network',
-    ]
+]
 
 import codecs
 from collections import namedtuple
@@ -56,6 +57,15 @@ from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import synchronous
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.interfaces import IResolver
+from twisted.names.client import createResolver
+from twisted.names.error import (
+    AuthoritativeDomainError,
+    DNSQueryTimeoutError,
+    DomainError,
+    ResolverError,
+)
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -71,6 +81,9 @@ ENI_PARSED_METHODS = [
     "manual",
     "dhcp",
 ]
+
+
+REVERSE_RESOLVE_RETRIES = (1, 2, 4, 8, 16)
 
 
 # Type hints for `outer_range` parameter (get_unused_ranges()).
@@ -1225,3 +1238,89 @@ def resolves_to_loopback_address(hostname):
         return any(
             is_loopback_address(sockaddr[0])
             for _, _, _, _, sockaddr in addrinfo)
+
+
+def getDefaultIResolver() -> IResolver:
+    """Get a new `IResolver` based on default resolver settings on this host.
+
+    That is, the Twisted default settings for the resolver will be used: first
+    /etc/hosts will be checked, then the DNS servers /etc/resolv.conf will be
+    queried.
+
+    If a resolver fails to be set up this way, a resolver will be created
+    pointing to 127.0.0.1:53 (perhaps a dnsmasq or similar setup is in use),
+    per the twisted behavior when using their globally-cached resolver.
+    """
+    # Rather than calling getResolver() here (which creates a global, cached
+    # resolver), we create a new resolver each time. This is in case the
+    # contents of /etc/hosts or /etc/resolv.conf have changed. (Doing this
+    # should not be slow, but we do negate the benefits of the in-memory cache
+    # in Twisted's global resolver.)
+    try:
+        return createResolver()
+    except ValueError:
+        # Mimic the behavior of the Twisted `getResolver()` function in case
+        # the resolver cannot be created. (presumably, because there was an
+        # error parsing /etc/resolv.conf or similar).
+        return createResolver(servers=[('127.0.0.1', 53)])
+
+
+def preferred_hostnames_sort_key(fqdn: str):
+    """Return the sort key for the given FQDN, to sort in "preferred" order."""
+    fqdn = fqdn.rstrip('.')
+    subdomains = fqdn.split('.')
+    # Sort by TLDs first.
+    subdomains.reverse()
+    key = (
+        # First, prefer "more qualified" hostnames. (Since the sort will be
+        # ascending, we need to negate this.) For example, if a reverse lookup
+        # returns `[www.ubuntu.com, ubuntu.com]`, we prefer `www.ubuntu.com`,
+        # even though 'w' sorts after 'u'.
+        -len(subdomains),
+        # Second, sort by domain components.
+        subdomains
+    )
+    return key
+
+
+@inlineCallbacks
+def reverseResolve(
+        ip: MaybeIPAddress, resolver: IResolver=None) -> Optional[List[str]]:
+    """Using the specified IResolver, reverse-resolves the specifed `ip`.
+
+    :return: a sorted list of resolved hostnames (which the specified IP
+        address reverse-resolves to). If the DNS lookup appeared to succeed,
+        but no hostnames were found, returns an empty list. If the DNS lookup
+        timed out or an error occurred, returns None.
+    """
+    if resolver is None:
+        resolver = getDefaultIResolver()
+    ip = IPAddress(ip)
+    try:
+        data = yield resolver.lookupPointer(
+            ip.reverse_dns, timeout=REVERSE_RESOLVE_RETRIES)
+        # I love the concise way in which I can ask the Twisted data structure
+        # what the list of hostnames is. This is great.
+        results = sorted(
+            (rr.payload.name.name.decode("idna") for rr in data[0]),
+            key=preferred_hostnames_sort_key
+        )
+    except AuthoritativeDomainError:
+        # "Failed to reverse-resolve '%s': authoritative failure." % ip
+        # This means the name didn't resolve, so return an empty list.
+        return []
+    except DomainError:
+        # "Failed to reverse-resolve '%s': no records found." % ip
+        # This means the name didn't resolve, so return an empty list.
+        return []
+    except DNSQueryTimeoutError:
+        # "Failed to reverse-resolve '%s': timed out." % ip
+        # Don't return an empty list since this implies a temporary failure.
+        pass
+    except ResolverError:
+        # "Failed to reverse-resolve '%s': rejected by local resolver." % ip
+        # Don't return an empty list since this could be temporary (unclear).
+        pass
+    else:
+        return results
+    return None

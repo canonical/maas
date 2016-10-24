@@ -1033,6 +1033,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_iprange", "iprange_delete_notify", "delete")
 
+    # Neighbour table
+    register_procedure(
+        render_notification_procedure(
+            'neighbour_create_notify', 'neighbour_create', 'NEW.ip'))
+    register_procedure(
+        render_notification_procedure(
+            'neighbour_update_notify', 'neighbour_update', 'NEW.ip'))
+    register_procedure(
+        render_notification_procedure(
+            'neighbour_delete_notify', 'neighbour_delete', 'OLD.ip'))
+    register_trigger(
+        "maasserver_neighbour", "neighbour_create_notify", "insert")
+    register_trigger(
+        "maasserver_neighbour", "neighbour_update_notify", "update")
+    register_trigger(
+        "maasserver_neighbour", "neighbour_delete_notify", "delete")
+
     # StaticRoute table
     register_procedure(
         render_notification_procedure(
