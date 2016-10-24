@@ -55,7 +55,8 @@ maasserver_discovery = dedent("""\
         neigh.created AS first_seen,
         GREATEST(neigh.updated, mdns.updated) AS last_seen,
         mdns.id AS mdns_id,
-        mdns.hostname AS hostname,
+        -- Trust reverse-DNS more than multicast DNS.
+        COALESCE(rdns.hostname, mdns.hostname) AS hostname,
         node.id AS observer_id,
         node.system_id AS observer_system_id,
         node.hostname AS observer_hostname, -- This will be the rack hostname.
@@ -81,6 +82,7 @@ maasserver_discovery = dedent("""\
     JOIN maasserver_vlan vlan ON iface.vlan_id = vlan.id
     JOIN maasserver_fabric fabric ON vlan.fabric_id = fabric.id
     LEFT OUTER JOIN maasserver_mdns mdns ON mdns.ip = neigh.ip
+    LEFT OUTER JOIN maasserver_rdns rdns ON rdns.ip = neigh.ip
     LEFT OUTER JOIN maasserver_subnet subnet ON (
         vlan.id = subnet.vlan_id
         -- This checks if the IP address is within a known subnet.
@@ -90,7 +92,8 @@ maasserver_discovery = dedent("""\
         neigh.mac_address,
         neigh.ip,
         neigh.updated DESC, -- We want the most recently seen neighbour.
-        mdns.updated DESC, -- We want the most recently seen hostname.
+        rdns.updated DESC, -- We want the most recently seen reverse DNS entry.
+        mdns.updated DESC, -- We want the most recently seen mDNS hostname.
         subnet_prefixlen DESC -- We want the best-match CIDR.
     """)
 

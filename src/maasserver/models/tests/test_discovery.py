@@ -126,6 +126,28 @@ class TestDiscoveryModel(MAASServerTestCase):
         discovery = Discovery.objects.first()
         self.assertThat(discovery.is_external_dhcp, Equals(True))
 
+    def test__exposes_mdns_when_nothing_better_available(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        ip = factory.make_ip_address(ipv6=False)
+        mdns_hostname = factory.make_hostname()
+        factory.make_Discovery(interface=iface, ip=ip)
+        factory.make_MDNS(hostname=mdns_hostname, ip=ip, interface=iface)
+        discovery = Discovery.objects.first()
+        self.assertThat(discovery.hostname, Equals(mdns_hostname))
+
+    def test__prefers_rdns_to_mdns(self):
+        rack = factory.make_RackController()
+        iface = factory.make_Interface(node=rack)
+        ip = factory.make_ip_address(ipv6=False)
+        mdns_hostname = factory.make_hostname()
+        rdns_hostname = factory.make_hostname()
+        factory.make_Discovery(interface=iface, ip=ip)
+        factory.make_MDNS(hostname=mdns_hostname, ip=ip, interface=iface)
+        factory.make_RDNS(hostname=rdns_hostname, ip=ip, observer=rack)
+        discovery = Discovery.objects.first()
+        self.assertThat(discovery.hostname, Equals(rdns_hostname))
+
 
 class TestDiscoveryManagerClear(MAASServerTestCase):
     """Tests for `DiscoveryManager.clear` """
