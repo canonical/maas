@@ -101,7 +101,9 @@ def make_subnet_config(network=None, pools=None, ipv6=False,
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
         if ipv6 is True:
-            network = factory.make_ipv6_network()
+            network = factory.make_ipv6_network(
+                # The dynamic range must be at least 256 hosts in size.
+                slash=random.randint(112, 120))
         else:
             network = factory.make_ipv4_network()
     if pools is None:
