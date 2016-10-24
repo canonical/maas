@@ -112,6 +112,7 @@ from maasserver.models.interface import (
 )
 from maasserver.models.node import typecast_node
 from maasserver.models.partition import MIN_PARTITION_SIZE
+from maasserver.models.rdns import RDNS
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.utils.converters import round_size_to_nearest_block
@@ -955,13 +956,31 @@ class Factory(maastesting.factory.Factory):
             self, hostname=None, ip=None, interface=None, updated=None,
             created=None):
         if hostname is None:
-            hostname = factory.make_name()
+            hostname = factory.make_hostname()
         if interface is None:
             rack = factory.make_RackController()
             interface = factory.make_Interface(node=rack)
         mdns = MDNS(hostname=hostname, ip=ip, interface=interface)
         mdns.save(_updated=updated, _created=created)
         return mdns
+
+    def make_RDNS(
+            self, ip=None, hostname=None, observer=None, hostnames=None,
+            updated=None, created=None):
+        if observer is None:
+            observer = RegionController.objects.first()
+            if observer is None:
+                observer = factory.make_RegionController()
+        if hostname is None:
+            hostname = factory.make_hostname()
+        if hostnames is None:
+            hostnames = [hostname]
+        if ip is None:
+            ip = factory.make_ip_address()
+        rdns = RDNS(
+            hostname=hostname, hostnames=hostnames, ip=ip, observer=observer)
+        rdns.save(_updated=updated, _created=created)
+        return rdns
 
     def make_Discovery(self, hostname=None, *args, **kwargs):
         # A Discovery is created indirectly, by creating each object that

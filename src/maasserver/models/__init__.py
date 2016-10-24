@@ -52,6 +52,7 @@ __all__ = [
     'PhysicalInterface',
     'RackController',
     'RAID',
+    'RDNS',
     'RegionController',
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
@@ -145,6 +146,7 @@ from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
