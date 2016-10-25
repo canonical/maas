@@ -62,10 +62,14 @@ class CurtinNetworkGenerator:
             self.addr_family_present[4] = True
         default_dns_servers = self.node.get_default_dns_servers(
             ipv4=self.addr_family_present[4], ipv6=self.addr_family_present[6])
+        search_list = [self.node.domain.name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != self.node.domain.name]
         self.network_config.append({
             "type": "nameserver",
             "address": default_dns_servers,
-            "search": sorted(get_dns_search_paths()),
+            "search": search_list,
         })
 
         network_config = {
