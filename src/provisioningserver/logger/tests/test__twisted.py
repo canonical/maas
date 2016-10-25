@@ -15,8 +15,12 @@ from unittest.mock import (
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from provisioningserver.logger._twisted import LegacyLogObserverWrapper
+from provisioningserver.logger._twisted import (
+    LegacyLogger,
+    LegacyLogObserverWrapper,
+)
 from testtools.matchers import (
+    AfterPreprocessing,
     AllMatch,
     Contains,
     ContainsAll,
@@ -26,11 +30,13 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesAll,
+    MatchesDict,
     MatchesSetwise,
     Not,
 )
 from twisted import logger
 from twisted.python import log
+from twisted.python.failure import Failure
 
 
 def ContainsDictByEquality(expected):
@@ -238,3 +244,110 @@ class TestLegacyLogObserverWrapper_Installation(MAASTestCase):
             self.assertThat(
                 logger.globalLogPublisher._observers,
                 ContainsAll(log.theLogPublisher._legacyObservers))
+
+
+def formatTimeStatic(when):
+    """Just return <when>."""
+    return "<when>"
+
+
+class TestLegacyLogger(MAASTestCase):
+
+    def test__logs_messages(self):
+        events = []
+        namespace = factory.make_name("namespace")
+        modern_logger = logger.Logger(namespace, self, events.append)
+        legacy_logger = LegacyLogger(modern_logger)
+        message = factory.make_name("message")
+        keywords = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+
+        legacy_logger.msg(message, **keywords)
+
+        expected = {
+            'log_format': Equals('{_message_0}'),
+            'log_level': Equals(logger.LogLevel.info),
+            'log_logger': Is(modern_logger),
+            'log_namespace': Equals(namespace),
+            'log_source': Is(self),
+            'log_time': IsInstance(float),
+            '_message_0': Equals(message),
+        }
+        expected.update({
+            key: Equals(value)
+            for key, value in keywords.items()
+        })
+        self.assertThat(events, HasLength(1))
+        self.assertThat(events[0], MatchesDict(expected))
+        self.assertThat(
+            logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
+            Equals("<when> [%s#info] %s\n" % (namespace, message)))
+
+    def test__logs_multiple_messages(self):
+        events = []
+        modern_logger = logger.Logger(observer=events.append)
+        legacy_logger = LegacyLogger(modern_logger)
+        messages = [
+            factory.make_name("message"),
+            factory.make_name("message"),
+            factory.make_name("message"),
+        ]
+
+        legacy_logger.msg(*messages)
+
+        expected = {
+            "_message_0": messages[0],
+            "_message_1": messages[1],
+            "_message_2": messages[2],
+            "log_format": "{_message_0} {_message_1} {_message_2}",
+        }
+        self.assertThat(events, HasLength(1))
+        self.assertThat(events[0], ContainsDictByEquality(expected))
+        self.assertThat(
+            logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
+            Equals("<when> [%s#info] %s\n" % (__name__, " ".join(messages))))
+
+    def test__logs_errors(self):
+        events = []
+        namespace = factory.make_name("namespace")
+        modern_logger = logger.Logger(namespace, self, events.append)
+        legacy_logger = LegacyLogger(modern_logger)
+        message = factory.make_name("message")
+        exception_type = factory.make_exception_type()
+        keywords = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+
+        try:
+            raise exception_type()
+        except exception_type:
+            legacy_logger.err(None, message, **keywords)
+
+        expected = {
+            'log_failure': MatchesAll(
+                IsInstance(Failure),
+                AfterPreprocessing(
+                    (lambda failure: failure.value),
+                    IsInstance(exception_type),
+                ),
+            ),
+            'log_format': Equals('{_why}'),
+            'log_level': Equals(logger.LogLevel.critical),
+            'log_logger': Is(modern_logger),
+            'log_namespace': Equals(namespace),
+            'log_source': Is(self),
+            'log_time': IsInstance(float),
+            '_why': Equals(message),
+        }
+        expected.update({
+            key: Equals(value)
+            for key, value in keywords.items()
+        })
+        self.assertThat(events, HasLength(1))
+        self.assertThat(events[0], MatchesDict(expected))
+        self.assertThat(
+            logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
+            Equals("<when> [%s#critical] %s\n" % (namespace, message)))

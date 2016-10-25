@@ -48,3 +48,33 @@ class LegacyLogObserverWrapper(logger.LegacyLogObserverWrapper):
                 level=("-" if level is None else level.name))
         # Up-call, which will apply some more transformations.
         return super().__call__(event)
+
+
+class LegacyLogger:
+    """Looks like a stripped-down `t.p.log` module, logs to a `Logger`.
+
+    Use this with code that cannot easily be changed to use `twisted.logger`
+    but over which we want a greater degree of control.
+    """
+
+    def __init__(self, logger: logger.Logger):
+        super(LegacyLogger, self).__init__()
+        self.logger = logger
+
+    def msg(self, *message, **kwargs):
+        """Write a message to the log.
+
+        See `twisted.python.log.msg`. This allows multiple messages to be
+        supplied but says that this "only works (sometimes) by accident". Here
+        we make sure it works all the time on purpose.
+        """
+        fmt = " ".join("{_message_%d}" % i for i, _ in enumerate(message))
+        kwargs.update({"_message_%d" % i: m for i, m in enumerate(message)})
+        self.logger.info(fmt, **kwargs)
+
+    def err(self, _stuff=None, _why=None, **kwargs):
+        """Write a failure to the log.
+
+        See `twisted.python.log.err`.
+        """
+        self.logger.failure("{_why}", _stuff, _why=_why, **kwargs)
