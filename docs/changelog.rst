@@ -8,6 +8,8 @@ Changelog
 Issues fixed in this release
 ----------------------------
 
+LP: #1636251    resolv.conf search path doesn't match the domain for the host.
+
 LP: #1615686    Single-IP dynamic ranges resulted in internal errors.
 
 2.0.0

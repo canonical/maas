@@ -201,7 +201,11 @@ class AssertNetworkConfigMixin:
     def collectDNSConfig(self, node):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
             repr(node.get_default_dns_servers()))
-        dns_searches = sorted(get_dns_search_paths())
+        domain_name = node.domain.name
+        dns_searches = [domain_name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != domain_name]
         for dns_name in dns_searches:
             config += "   - %s\n" % dns_name
         return config
@@ -210,8 +214,13 @@ class AssertNetworkConfigMixin:
 class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
     def test__renders_expected_output(self):
+        # Force it to have a domain name in the middle of two others.  This
+        # will confirm that sorting is working correctly.
+        factory.make_Domain('aaa')
+        domain = factory.make_Domain('bbb')
+        factory.make_Domain('ccc')
         node = factory.make_Node_with_Interface_on_Subnet(
-            interface_count=2)
+            interface_count=2, domain=domain)
         for iface in node.interface_set.filter(enabled=True):
             factory.make_StaticIPAddress(
                 interface=iface,
