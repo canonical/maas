@@ -66,9 +66,9 @@ import warnings
 
 import crochet
 from provisioningserver.config import is_dev_environment
+from provisioningserver.logger._twisted import LegacyLogObserverWrapper
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.utils import typed
-from provisioningserver.utils.twisted import LegacyLogObserverWrapperForMAAS
 from twisted import logger as twistedModern
 from twisted.python import log as twistedLegacy
 import twisted.python.usage
@@ -236,7 +236,7 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     # namespace and level by the legacy logger in `t.python.log`. This needs
     # to be injected into the `t.p.log` module in order to process events as
     # they move from the legacy to the modern systems.
-    LegacyLogObserverWrapperForMAAS.install()
+    LegacyLogObserverWrapper.install()
 
     # Prevent `crochet` from initialising Twisted's logging.
     warn_unless(hasattr(crochet._main, "_startLoggingWithObserver"), (

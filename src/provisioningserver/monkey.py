@@ -327,12 +327,6 @@ def augment_twisted_deferToThreadPool():
         threads.deferToThreadPool = new_deferToThreadPool
 
 
-def install_twisted_legacy_log_observer_wrapper():
-    """Install `LegacyLogObserverWrapperForMAAS`."""
-    from provisioningserver.utils import twisted
-    twisted.LegacyLogObserverWrapperForMAAS.install()
-
-
 def add_patches_to_txtftp():
     add_term_error_code_to_tftp()
     fix_tftp_requests()
@@ -344,4 +338,3 @@ def add_patches_to_twisted():
     fix_twisted_web_server_addressToTuple()
     fix_twisted_internet_tcp()
     augment_twisted_deferToThreadPool()
-    install_twisted_legacy_log_observer_wrapper()
