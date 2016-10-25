@@ -5,6 +5,8 @@ Changelog
 1.9.5
 =====
 
+LP: #1636251    [1.9] resolv.conf search path doesn't match the domain for the host.
+
 LP: #1603590    [1.9] MAAS does not allow link-local address for default gateway on ipv6 subnet.
 
 1.9.4

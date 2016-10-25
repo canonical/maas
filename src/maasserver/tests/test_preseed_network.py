@@ -213,7 +213,11 @@ class AssertNetworkConfigMixin:
     def collectDNSConfig(self, node):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
             get_dns_server_address(nodegroup=node.nodegroup))
-        dns_searches = sorted(get_dns_search_paths())
+        domain_name = node.fqdn.split('.', 1)[1]
+        dns_searches = [domain_name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != domain_name]
         for dns_name in dns_searches:
             config += "   - %s\n" % dns_name
         return config
@@ -222,8 +226,14 @@ class AssertNetworkConfigMixin:
 class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 
     def test__renders_expected_output(self):
+        factory.make_NodeGroup(
+            name=factory.make_name('aaa'))
+        nodegroup = factory.make_NodeGroup(
+            name=factory.make_name('bbb'))
+        factory.make_NodeGroup(
+            name=factory.make_name('ccc'))
         node = factory.make_Node_with_Interface_on_Subnet(
-            interface_count=2)
+            interface_count=2, nodegroup=nodegroup)
         for iface in node.interface_set.filter(enabled=True):
             factory.make_StaticIPAddress(
                 interface=iface,

@@ -58,10 +58,15 @@ class CurtinNetworkGenerator:
         # Order the network_config where dependencies come first.
         self._order_config_dependency()
 
+        domain_name = self.node.fqdn.split('.', 1)[1]
+        search_list = [domain_name] + [
+            name
+            for name in sorted(get_dns_search_paths())
+            if name != domain_name]
         self.network_config.append({
             "type": "nameserver",
             "address": get_dns_server_address(nodegroup=self.node.nodegroup),
-            "search": sorted(get_dns_search_paths()),
+            "search": search_list,
         })
 
         network_config = {
