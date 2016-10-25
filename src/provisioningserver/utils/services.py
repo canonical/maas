@@ -18,7 +18,7 @@ import os
 import re
 
 from provisioningserver.config import is_dev_environment
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.fs import (
     get_maas_provision_command,

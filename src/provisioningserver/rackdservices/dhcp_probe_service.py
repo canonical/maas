@@ -12,7 +12,7 @@ import socket
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.dhcp.detect import probe_interface
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import ReportForeignDHCPServer
 from provisioningserver.utils.network import (

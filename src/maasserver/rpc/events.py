@@ -17,7 +17,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.utils.orm import transactional
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.utils.twisted import synchronous
 

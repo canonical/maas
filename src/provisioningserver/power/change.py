@@ -19,7 +19,7 @@ from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
 )
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import query
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (

@@ -18,7 +18,7 @@ from subprocess import (
 )
 from textwrap import dedent
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     parse_key_value_file,
     typed,

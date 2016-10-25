@@ -21,7 +21,7 @@ from provisioningserver.boot import (
     get_remote_mac,
 )
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress

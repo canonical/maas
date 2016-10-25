@@ -25,7 +25,7 @@ from provisioningserver.events import (
     send_event_node_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import (

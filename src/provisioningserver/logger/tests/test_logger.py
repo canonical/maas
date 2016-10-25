@@ -5,8 +5,6 @@
 
 __all__ = []
 
-import logging
-import logging.handlers
 import pathlib
 import re
 import subprocess
@@ -15,14 +13,7 @@ import sys
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
-from provisioningserver.logger import (
-    log,
-    LoggingMode,
-)
-from provisioningserver.logger.log import (
-    get_maas_logger,
-    MAASLogger,
-)
+from provisioningserver.logger import LoggingMode
 from provisioningserver.utils import typed
 from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import text_content
@@ -236,52 +227,3 @@ class TestLogging(MAASTestCase):
         Printing to stderr.
         This is a warning!
         """))
-
-
-class TestMAASLogger(MAASTestCase):
-    """Tests for the logger returned by `get_maas_logger`."""
-
-    def test_sets_logger_name(self):
-        self.patch(log, 'SysLogHandler')
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        maaslog = get_maas_logger(name)
-        self.assertEqual("maas.%s" % name, maaslog.name)
-
-    def test_returns_same_logger_if_called_twice(self):
-        self.patch(log, 'SysLogHandler')
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        maaslog = get_maas_logger(name)
-        maaslog_2 = get_maas_logger(name)
-        self.assertIs(maaslog, maaslog_2)
-
-    def test_exception_calls_disallowed(self):
-        self.patch(log, 'SysLogHandler')
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        maaslog = get_maas_logger(name)
-        self.assertRaises(
-            NotImplementedError, maaslog.exception,
-            factory.make_string())
-
-    def test_returns_MAASLogger_instances(self):
-        self.patch(log, 'SysLogHandler')
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        maaslog = get_maas_logger(name)
-        self.assertIsInstance(maaslog, MAASLogger)
-
-    def test_doesnt_affect_general_logger_class(self):
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        get_maas_logger(name)
-        self.assertIsNot(
-            MAASLogger, logging.getLoggerClass())
-
-    def test_general_logger_class_accepts_exceptions(self):
-        self.patch(logging, 'Formatter')
-        name = factory.make_string()
-        get_maas_logger(name)
-        other_logger = logging.getLogger()
-        self.assertIsNone(other_logger.exception(factory.make_string()))

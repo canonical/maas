@@ -7,7 +7,7 @@ __all__ = [
     "RackNetworksMonitoringService",
 ]
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.region import (
     GetDiscoveryState,
     ReportMDNSEntries,

@@ -20,7 +20,7 @@ from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.events import EVENT_DETAILS
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 
 
 maaslog = get_maas_logger('models.event')

@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import urllib
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
     encode_multipart_data,
     geturl,

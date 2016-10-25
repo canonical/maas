@@ -4,14 +4,142 @@
 """Twisted-specific logging stuff."""
 
 __all__ = [
-    'LegacyLogObserverWrapper',
+    "configure_twisted_logging",
+    "LegacyLogger",
+    "VerbosityOptions",
 ]
 
-from twisted import logger
-from twisted.python import log
+import sys
+import warnings
+
+import crochet
+from provisioningserver.logger._common import (
+    DEFAULT_LOG_FORMAT_DATE,
+    DEFAULT_LOG_VERBOSITY,
+    DEFAULT_LOG_VERBOSITY_LEVELS,
+    get_module_for_file,
+    LoggingMode,
+    warn_unless,
+)
+from provisioningserver.utils import typed
+from twisted import logger as twistedModern
+from twisted.python import (
+    log as twistedLegacy,
+    usage,
+)
+
+# Map verbosity numbers to `twisted.logger` levels.
+DEFAULT_TWISTED_VERBOSITY_LEVELS = {
+    # verbosity: level
+    0: twistedModern.LogLevel.error,
+    1: twistedModern.LogLevel.warn,
+    2: twistedModern.LogLevel.info,
+    3: twistedModern.LogLevel.debug,
+}
+
+# Belt-n-braces.
+assert (
+    DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
+        "Twisted verbosity map does not match expectations.")
 
 
-class LegacyLogObserverWrapper(logger.LegacyLogObserverWrapper):
+@typed
+def configure_twisted_logging(verbosity: int, mode: LoggingMode):
+    """Configure Twisted's legacy logging system.
+
+    We do this because it's what `twistd` uses. When we switch to `twist` we
+    can update this.
+
+    :param verbosity: See `get_logging_level`.
+    :param mode: The mode in which to configure logging. See `LoggingMode`.
+    """
+    # Convert `verbosity` into a Twisted `LogLevel`.
+    level = get_twisted_logging_level(verbosity)
+    # `LogLevel` is comparable, but this saves overall computation.
+    levels = {
+        ll for ll in twistedModern.LogLevel.iterconstants()
+        if ll >= level
+    }
+
+    def filterByLevel(event, levels=levels):
+        """Only log if event's level is in `levels`."""
+        if event.get("log_level") in levels:
+            return twistedModern.PredicateResult.maybe
+        else:
+            return twistedModern.PredicateResult.no
+
+    # A list of markers for noise.
+    noisy = (
+        {"log_system": "-", "log_text": "Log opened."},
+        {"log_system": "-", "log_text": "Main loop terminated."},
+    )
+
+    def filterByNoise(event, noisy=noisy):
+        """Only log if event is not noisy."""
+        for noise in noisy:
+            if all(key in event and event[key] == noise[key] for key in noise):
+                return twistedModern.PredicateResult.no
+        else:
+            return twistedModern.PredicateResult.maybe
+
+    predicates = filterByLevel, filterByNoise
+
+    # When `twistd` starts the reactor it initialises the legacy logging
+    # system. Intercept this to wrap the observer in a level filter. We can
+    # use this same approach when not running under `twistd` too.
+    def startLoggingWithObserver(observer, setStdout=1):
+        observer = twistedModern.FilteringLogObserver(observer, predicates)
+        reallyStartLoggingWithObserver(observer, setStdout)
+
+    reallyStartLoggingWithObserver = twistedLegacy.startLoggingWithObserver
+    twistedLegacy.startLoggingWithObserver = startLoggingWithObserver
+
+    # Customise warnings behaviour. Ensure that nothing else — neither the
+    # standard library's `logging` module nor Django — clobbers this later.
+    warn_unless(warnings.showwarning.__module__ == warnings.__name__, (
+        "The warnings module has already been modified; please investigate!"))
+    if mode == LoggingMode.TWISTD:
+        twistedModern.globalLogBeginner.showwarning = show_warning_via_twisted
+        twistedLegacy.theLogPublisher.showwarning = show_warning_via_twisted
+    else:
+        twistedModern.globalLogBeginner.showwarning = warnings.showwarning
+        twistedLegacy.theLogPublisher.showwarning = warnings.showwarning
+
+    # Globally override Twisted's log date format. It's tricky to get to the
+    # FileLogObserver that twistd installs so that we can modify its config
+    # alone, but we actually do want to make a global change anyway.
+    warn_unless(hasattr(twistedLegacy.FileLogObserver, "timeFormat"), (
+        "No FileLogObserver.timeFormat attribute found; please investigate!"))
+    twistedLegacy.FileLogObserver.timeFormat = DEFAULT_LOG_FORMAT_DATE
+
+    # Install a wrapper so that log events from `t.logger` are logged with a
+    # namespace and level by the legacy logger in `t.python.log`. This needs
+    # to be injected into the `t.p.log` module in order to process events as
+    # they move from the legacy to the modern systems.
+    LegacyLogObserverWrapper.install()
+
+    # Prevent `crochet` from initialising Twisted's logging.
+    warn_unless(hasattr(crochet._main, "_startLoggingWithObserver"), (
+        "No _startLoggingWithObserver function found; please investigate!"))
+    crochet._main._startLoggingWithObserver = None
+
+    # Turn off some inadvisable defaults in Twisted and elsewhere.
+    from twisted.internet.protocol import AbstractDatagramProtocol, Factory
+    warn_unless(hasattr(AbstractDatagramProtocol, "noisy"), (
+        "No AbstractDatagramProtocol.noisy attribute; please investigate!"))
+    AbstractDatagramProtocol.noisy = False
+    warn_unless(hasattr(Factory, "noisy"), (
+        "No Factory.noisy attribute; please investigate!"))
+    Factory.noisy = False
+
+    # Start Twisted logging if we're running a command. Use `sys.__stdout__`,
+    # the original standard out stream when this process was started. This
+    # bypasses any wrapping or redirection that may have been done elsewhere.
+    if mode == LoggingMode.COMMAND:
+        twistedLegacy.startLogging(sys.__stdout__, setStdout=False)
+
+
+class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
     """Ensure that `log_system` is set in the event.
 
     This mimics what `twisted.logger.formatEventAsClassicLogText` does when
@@ -32,10 +160,10 @@ class LegacyLogObserverWrapper(logger.LegacyLogObserverWrapper):
         Inject this wrapper into the `t.python.log` module then remove and
         re-add all the legacy observers so that they're re-wrapped.
         """
-        log.LegacyLogObserverWrapper = cls
-        for observer in log.theLogPublisher.observers:
-            log.theLogPublisher.removeObserver(observer)
-            log.theLogPublisher.addObserver(observer)
+        twistedLegacy.LegacyLogObserverWrapper = cls
+        for observer in twistedLegacy.theLogPublisher.observers:
+            twistedLegacy.theLogPublisher.removeObserver(observer)
+            twistedLegacy.theLogPublisher.addObserver(observer)
 
     def __call__(self, event):
         # Be defensive: `system` could be missing or could have a value of
@@ -57,7 +185,7 @@ class LegacyLogger:
     but over which we want a greater degree of control.
     """
 
-    def __init__(self, logger: logger.Logger):
+    def __init__(self, logger: twistedModern.Logger):
         super(LegacyLogger, self).__init__()
         self.logger = logger
 
@@ -78,3 +206,75 @@ class LegacyLogger:
         See `twisted.python.log.err`.
         """
         self.logger.failure("{_why}", _stuff, _why=_why, **kwargs)
+
+
+class VerbosityOptions(usage.Options):
+    """Command-line logging verbosity options."""
+
+    _verbosity_max = max(DEFAULT_TWISTED_VERBOSITY_LEVELS)
+    _verbosity_min = min(DEFAULT_TWISTED_VERBOSITY_LEVELS)
+
+    def __init__(self):
+        super(VerbosityOptions, self).__init__()
+        self["verbosity"] = DEFAULT_LOG_VERBOSITY
+        self.longOpt.sort()  # https://twistedmatrix.com/trac/ticket/8866
+
+    def opt_verbose(self):
+        """Increase logging verbosity."""
+        self["verbosity"] = min(
+            self._verbosity_max, self["verbosity"] + 1)
+
+    opt_v = opt_verbose
+
+    def opt_quiet(self):
+        """Decrease logging verbosity."""
+        self["verbosity"] = max(
+            self._verbosity_min, self["verbosity"] - 1)
+
+    opt_q = opt_quiet
+
+
+@typed
+def get_twisted_logging_level(verbosity: int):  # -> LogLevel
+    """Return the Twisted logging level corresponding to `verbosity`.
+
+    The level returned should be treated as *inclusive*. For example
+    `LogLevel.info` means that informational messages ought to be logged as
+    well as messages of a higher level.
+
+    :param verbosity: 0, 1, 2, or 3, meaning very quiet logging, quiet
+        logging, normal logging, and verbose/debug logging.
+    """
+    levels = DEFAULT_TWISTED_VERBOSITY_LEVELS
+    v_min, v_max = min(levels), max(levels)
+    if verbosity > v_max:
+        return levels[v_max]
+    elif verbosity < v_min:
+        return levels[v_min]
+    else:
+        return levels[verbosity]
+
+
+def show_warning_via_twisted(
+        message, category, filename, lineno, file=None, line=None):
+    """Replacement for `warnings.showwarning` that logs via Twisted."""
+    if file is None:
+        # Try to find a module name with which to log this warning.
+        module = get_module_for_file(filename)
+        logger = twistedModern.Logger(
+            "global" if module is None else module.__name__)
+        # `message` is/can be an instance of `category`, so stringify.
+        logger.warn(
+            "{category}: {message}", message=str(message),
+            category=category.__qualname__, filename=filename,
+            lineno=lineno, line=line)
+    else:
+        # It's not clear why and when `file` will be specified, but try to
+        # honour the intention.
+        warning = warnings.formatwarning(
+            message, category, filename, lineno, line)
+        try:
+            file.write(warning)
+            file.flush()
+        except OSError:
+            pass  # We tried.

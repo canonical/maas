@@ -10,7 +10,7 @@ __all__ = [
 
 from datetime import timedelta
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.query import query_all_nodes
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (

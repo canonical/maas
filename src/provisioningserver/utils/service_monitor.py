@@ -26,7 +26,7 @@ from collections import (
 import enum
 import os
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     snappy,
     typed,

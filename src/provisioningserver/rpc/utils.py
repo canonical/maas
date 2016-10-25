@@ -11,7 +11,7 @@ __all__ = [
 import json
 import re
 
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
