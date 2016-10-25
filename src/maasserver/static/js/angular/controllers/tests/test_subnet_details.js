@@ -70,10 +70,11 @@ describe("SubnetDetailsController", function() {
     }));
 
     // Load any injected managers and services.
-    var SubnetsManager, IPRangesManager, StaticRoutesManager, SpacesManager;
-    var VLANsManager, FabricsManager, UsersManager, HelperService;
-    var ErrorService, ConverterService;
+    var ConfigsManager, SubnetsManager, IPRangesManager, StaticRoutesManager;
+    var SpacesManager, VLANsManager, FabricsManager, UsersManager;
+    var HelperService, ErrorService, ConverterService;
     beforeEach(inject(function($injector) {
+        ConfigsManager = $injector.get("ConfigsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         IPRangesManager = $injector.get("IPRangesManager");
         StaticRoutesManager = $injector.get("StaticRoutesManager");
@@ -109,6 +110,7 @@ describe("SubnetDetailsController", function() {
             $rootScope: $rootScope,
             $routeParams: $routeParams,
             $location: $location,
+            ConfigsManager: ConfigsManager,
             SubnetsManager: SubnetsManager,
             IPRangesManager: IPRangesManager,
             SpacesManager: SpacesManager,
@@ -126,6 +128,8 @@ describe("SubnetDetailsController", function() {
         var setActiveDefer = $q.defer();
         spyOn(SubnetsManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
+        spyOn(ConfigsManager, "getItemFromList").and.returnValue(
+            {'value': "", 'choices': []});
         var defer = $q.defer();
         var controller = makeController(defer);
         $routeParams.subnet_id = subnet.id;
@@ -149,14 +153,16 @@ describe("SubnetDetailsController", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [
-                    SubnetsManager, IPRangesManager, SpacesManager,
-                    VLANsManager, FabricsManager
+                    ConfigsManager, SubnetsManager, IPRangesManager,
+                    SpacesManager, VLANsManager, FabricsManager
                 ]);
     });
 
     it("raises error if subnet identifier is invalid", function() {
         spyOn(SubnetsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
+        spyOn(ConfigsManager, "getItemFromList").and.returnValue(
+            {'value': "", 'choices': []});
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
@@ -175,6 +181,8 @@ describe("SubnetDetailsController", function() {
     it("doesn't call setActiveItem if subnet is loaded", function() {
         spyOn(SubnetsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
+        spyOn(ConfigsManager, "getItemFromList").and.returnValue(
+            {'value': "", 'choices': []});
         var defer = $q.defer();
         var controller = makeController(defer);
         SubnetsManager._activeItem = subnet;
@@ -191,6 +199,8 @@ describe("SubnetDetailsController", function() {
     it("calls setActiveItem if subnet is not active", function() {
         spyOn(SubnetsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
+        spyOn(ConfigsManager, "getItemFromList").and.returnValue(
+            {'value': "", 'choices': []});
         var defer = $q.defer();
         var controller = makeController(defer);
         $routeParams.subnet_id = subnet.id;

@@ -7,7 +7,10 @@ __all__ = []
 
 import random
 
-from maasserver.forms_settings import CONFIG_ITEMS
+from maasserver.forms_settings import (
+    CONFIG_ITEMS,
+    get_config_field,
+)
 from maasserver.models.config import (
     Config,
     get_default_config,
@@ -33,7 +36,7 @@ class TestConfigHandler(MAASServerTestCase):
             obj.name: obj
             for obj in config_objs
         }
-        return [
+        config_keys = [
             {
                 'name': key,
                 'value': (
@@ -42,6 +45,11 @@ class TestConfigHandler(MAASServerTestCase):
             }
             for key in config_keys
         ]
+        for config_key in config_keys:
+            config_field = get_config_field(config_key['name'])
+            if hasattr(config_field, 'choices'):
+                config_key['choices'] = config_field.choices
+        return config_keys
 
     def test_get(self):
         user = factory.make_User()

@@ -10,6 +10,7 @@ __all__ = [
 from django.core.exceptions import ValidationError
 from maasserver.forms_settings import (
     CONFIG_ITEMS,
+    get_config_field,
     get_config_form,
 )
 from maasserver.models.config import (
@@ -33,6 +34,17 @@ class ConfigHandler(Handler):
             "config",
             ]
 
+    def _include_choice(self, config_key):
+        config_field = get_config_field(config_key['name'])
+        if hasattr(config_field, 'choices'):
+            config_key['choices'] = config_field.choices
+        return config_key
+
+    def _include_choices(self, config_keys):
+        for config_key in config_keys:
+            self._include_choice(config_key)
+        return config_keys
+
     def list(self, params):
         """List all the configuration values."""
         defaults = get_default_config()
@@ -43,15 +55,16 @@ class ConfigHandler(Handler):
             for obj in config_objs
         }
         self.cache["loaded_pks"].update(config_keys)
-        return [
+        config_keys = [
             {
                 'name': key,
                 'value': (
                     config_objs[key].value
-                    if key in config_objs else defaults.get(key, ''))
+                    if key in config_objs else defaults.get(key, '')),
             }
             for key in config_keys
         ]
+        return self._include_choices(config_keys)
 
     def get(self, params):
         """Get a config value."""
@@ -61,10 +74,10 @@ class ConfigHandler(Handler):
         if name not in CONFIG_ITEMS:
             raise HandlerDoesNotExistError(name)
         self.cache["loaded_pks"].update({name, })
-        return {
+        return self._include_choice({
             'name': name,
             'value': Config.objects.get_config(name),
-        }
+        })
 
     def _fix_validation_error(self, name, errors):
         """Map the field name to the value field, which is what is used
@@ -88,10 +101,10 @@ class ConfigHandler(Handler):
             except ValidationError as e:
                 self._fix_validation_error(name, e.error_dict)
                 raise HandlerValidationError(e.error_dict)
-            return {
+            return self._include_choice({
                 'name': name,
                 'value': Config.objects.get_config(name),
-            }
+            })
         else:
             self._fix_validation_error(name, form.errors)
             raise HandlerValidationError(form.errors)
@@ -105,7 +118,7 @@ class ConfigHandler(Handler):
             action = "update"
         else:
             action = "create"
-        return (self._meta.handler_name, action, {
+        return (self._meta.handler_name, action, self._include_choice({
             'name': config.name,
             'value': config.value,
-        })
+        }))

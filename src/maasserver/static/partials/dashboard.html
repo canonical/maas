@@ -24,7 +24,8 @@
             <div class="u-float--right" data-ng-if="networkDiscovery">
                 <maas-obj-form obj="networkDiscovery" manager="configManager" inline="true">
                     <maas-obj-field type="onoffswitch" key="value" label="Device discovery"
-                        on-value="enabled" off-value="disabled" subtle="false"></maas-obj-field>
+			on-value="enabled" off-value="disabled" subtle="false"
+			label-info="When enabled, MAAS will use passive techniques, such as listening to&#xa; ARP requests and mDNS advertisements, to observe networks attached&#xa; to rack controllers.  Active subnet mapping can also be enabled in the&#xa; Device discovery section of the Settings page."></maas-obj-field>
                 </maas-obj-form>
             </div>
         </div>

@@ -69,6 +69,8 @@
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
                 <fieldset class="form__fieldset six-col last-col">
+                    <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
+                        label-width="two" input-width="three" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $} to discover hosts that have not been discovered passively."></maas-obj-field>
                     <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                         options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
                         label-width="two" input-width="three"></maas-obj-field>
@@ -78,8 +80,6 @@
                     <maas-obj-field type="options" key="space" label="Space" placeholder="Choose space"
                         options="space.id as space.name for space in spaces"
                         label-width="two" input-width="three"></maas-obj-field>
-                    <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active discovery"
-                        label-width="two" input-width="three" label-info="When active discovery is enabled, MAAS will &#xa;periodically scan the subnet for active neighbours. &#xa;Only IPv4 subnets support active discovery."></maas-obj-field>
                 </fieldset>
             </maas-obj-form>
         </div>

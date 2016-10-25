@@ -20,13 +20,13 @@ angular.module('MAAS').filter('filterSource', ['ValidationService',
 
 angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
-    'SubnetsManager', 'SpacesManager', 'VLANsManager',
+    'ConfigsManager', 'SubnetsManager', 'SpacesManager', 'VLANsManager',
     'UsersManager', 'FabricsManager', 'StaticRoutesManager',
     'ManagerHelperService', 'ErrorService', 'ConverterService',
     function(
-        $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
-        SpacesManager, VLANsManager, UsersManager, FabricsManager,
-        StaticRoutesManager, ManagerHelperService, ErrorService,
+        $scope, $rootScope, $routeParams, $filter, $location, ConfigsManager,
+        SubnetsManager, SpacesManager, VLANsManager, UsersManager,
+        FabricsManager, StaticRoutesManager, ManagerHelperService, ErrorService,
         ConverterService) {
 
         // Set title and page.
@@ -39,6 +39,8 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
+        $scope.active_discovery_data = null;
+        $scope.active_discovery_interval = null;
         $scope.subnets = SubnetsManager.getItems();
         $scope.subnetManager = SubnetsManager;
         $scope.staticRoutes = StaticRoutesManager.getItems();
@@ -329,11 +331,20 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
-            SubnetsManager, SpacesManager, VLANsManager,
+            ConfigsManager, SubnetsManager, SpacesManager, VLANsManager,
             UsersManager, FabricsManager, StaticRoutesManager
         ]).then(function() {
 
             $scope.updateActions();
+            $scope.active_discovery_data = ConfigsManager.getItemFromList(
+                "active_discovery_interval");
+            // Find active discovery interval
+            angular.forEach(
+                $scope.active_discovery_data.choices, function(choice) {
+                    if(choice[0] === $scope.active_discovery_data.value) {
+                        $scope.active_discovery_interval = choice[1];
+                    }
+                });
 
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not

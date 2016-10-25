@@ -311,18 +311,14 @@ CONFIG_ITEMS = {
         'default': 'enabled',
         'form': make_network_discovery_field,
         'form_kwargs': {
-            'label': (
-                "Host discovery and network observation"),
+            'label': "",
             'required': False,
             'help_text': (
-                "If network discovery is enabled, MAAS will use passive "
-                "techniques to observe networks attached to rack controllers, "
-                "such as listening to ARP requests and mDNS advertisements. "
-                "Each subnet can be configured for active neighbour "
-                "discovery, which will cause MAAS to periodically scan for "
-                "neighbours on that subnet. If network discovery is "
-                "disabled, MAAS will neither listen for any neighbours, nor "
-                "actively scan any subnets."
+                "When enabled, MAAS will use passive techniques, such as "
+                "listening to ARP requests and mDNS advertisements, to "
+                "observe networks attached to rack controllers.  Active "
+                "subnet mapping will also be available to be enabled on the "
+                "configured subnets."
             )
         }
     },
@@ -331,16 +327,12 @@ CONFIG_ITEMS = {
         'form': make_active_discovery_interval_field,
         'form_kwargs': {
             'label': (
-                "Active discovery interval"),
+                "Active subnet mapping interval"),
             'required': False,
             'help_text': (
-                "If network discovery is enabled, MAAS will periodically scan "
-                "subnets enabled for active discovery. This helps MAAS "
-                "determine IP address utilization, and discover new devices "
-                "that have not been observed passively. When the specified "
-                "scan period elapses, MAAS will ask each connected rack "
-                "controller to scan for connected neighbours on each "
-                "configured subnet."
+                "When enabled, each rack will scan the enabled for active "
+                "mapping subnets to discover hosts that have not been "
+                "discovered passively."
             )
         }
     },
