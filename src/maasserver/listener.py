@@ -34,7 +34,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
-from twisted.python import log
+from twisted.logger import Logger
 from twisted.python.failure import Failure
 from zope.interface import implementer
 
@@ -96,6 +96,7 @@ class PostgresListenerService(Service, object):
         self.connecting = None
         self.disconnecting = None
         self.registeredChannels = False
+        self.log = Logger(__name__, self)
 
     def startService(self):
         """Start the listener."""
@@ -118,18 +119,12 @@ class PostgresListenerService(Service, object):
         return self.connection.connection.closed == 0
 
     def logPrefix(self):
-        """Return nice name for twisted logging."""
-        return "maas.websocket.listener"
+        """Return nice name for twisted logging.
 
-    def logMsg(self, *args, **kwargs):
-        """Helper to log message with the correct logPrefix."""
-        kwargs['system'] = self.logPrefix()
-        log.msg(*args, **kwargs)
-
-    def logErr(self, *args, **kwargs):
-        """Helper to log error with the correct logPrefix."""
-        kwargs['system'] = self.logPrefix()
-        log.err(*args, **kwargs)
+        This is required to satisfy `IReadDescriptor`, which inherits from
+        `ILoggingContext`.
+        """
+        return self.log.namespace
 
     def isSystemChannel(self, channel):
         """Return True if channel is a system channel."""
@@ -276,11 +271,12 @@ class PostgresListenerService(Service, object):
                     "pending disconnection has finished.")
 
             def cb_connect(_):
-                self.logMsg("Listening for database notifications.")
+                self.log.info("Listening for database notifications.")
 
             def eb_connect(failure):
-                msgFormat = "Unable to connect to database: %(error)s"
-                self.logMsg(format=msgFormat, error=failure.getErrorMessage())
+                self.log.error(
+                    "Unable to connect to database: {error}",
+                    error=failure.getErrorMessage())
                 if failure.check(CancelledError):
                     return failure
                 elif self.autoReconnect:
@@ -334,11 +330,11 @@ class PostgresListenerService(Service, object):
         """Reconnect when the connection is lost."""
         self.connection = None
         if reason.check(error.ConnectionDone):
-            self.logMsg("Connection closed.")
+            self.log.debug("Connection closed.")
         elif reason.check(error.ConnectionLost):
-            self.logMsg("Connection lost.")
+            self.log.debug("Connection lost.")
         else:
-            self.logErr(reason, "Connection lost.")
+            self.log.failure("Connection lost.", reason)
         if self.autoReconnect:
             reactor.callLater(3, self.tryConnection)
 
@@ -415,7 +411,8 @@ class PostgresListenerService(Service, object):
         except PostgresListenerNotifyError:
             # Log the error and continue processing the remaining
             # notifications.
-            self.logErr()
+            self.log.failure(
+                "Failed to convert channel {channel!r}.", channel=channel)
         else:
             defers = []
             handlers = self.listeners[channel]
@@ -423,6 +420,8 @@ class PostgresListenerService(Service, object):
             # limit concurrency here? Perhaps even do one at a time.
             for handler in handlers:
                 d = defer.maybeDeferred(handler, action, payload)
-                d.addErrback(self.logErr)
+                d.addErrback(lambda failure: self.log.failure(
+                    "Failure while handling notification to {channel!r}: "
+                    "{payload!r}", failure, channel=channel, payload=payload))
                 defers.append(d)
             return defer.DeferredList(defers)

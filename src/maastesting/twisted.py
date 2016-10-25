@@ -12,17 +12,13 @@ __all__ = [
 
 from copy import copy
 import inspect
-import operator
 from textwrap import dedent
 
 from fixtures import Fixture
 from testtools.deferredruntest import CaptureTwistedLogs
 from testtools.twistedsupport._deferred import extract_result
 from twisted.internet import defer
-from twisted.logger import (
-    globalLogPublisher,
-    LegacyLogObserverWrapper,
-)
+from twisted.logger import LogLevel
 from twisted.python import log
 
 
@@ -49,26 +45,39 @@ class TwistedLoggerFixture(Fixture):
 
     def __init__(self):
         super(TwistedLoggerFixture, self).__init__()
-        self.logs = []
+        self.events = []
 
     def dump(self):
         """Return all logs as a string."""
         return "\n---\n".join(
-            log.textFromEventDict(event) for event in self.logs)
+            log.textFromEventDict(event) for event in self.events)
 
     # For compatibility with fixtures.FakeLogger.
     output = property(dump)
 
+    @property
+    def errors(self):
+        """Return events that are at `LogLevel.error` or above."""
+        return [
+            event for event in self.events
+            if "log_level" in event and
+            event["log_level"] is not None and
+            event["log_level"] >= LogLevel.error
+        ]
+
     def containsError(self):
-        return any(log["isError"] for log in self.logs)
+        return any(event["isError"] for event in self.events)
 
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
-        observer = LegacyLogObserverWrapper(self.logs.append)
-        self.addCleanup(
-            operator.setitem, globalLogPublisher._observers,
-            slice(None), globalLogPublisher._observers[:])
-        globalLogPublisher._observers[:] = [observer]
+        # First remove all observers via the legacy API.
+        for observer in list(log.theLogPublisher.observers):
+            self.addCleanup(log.theLogPublisher.addObserver, observer)
+            log.theLogPublisher.removeObserver(observer)
+        # Now add our observer, again via the legacy API. This ensures that
+        # it's wrapped with whatever legacy wrapper we've installed.
+        self.addCleanup(log.theLogPublisher.removeObserver, self.events.append)
+        log.theLogPublisher.addObserver(self.events.append)
 
 
 def always_succeed_with(result):

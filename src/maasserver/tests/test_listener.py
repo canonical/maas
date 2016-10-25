@@ -28,16 +28,20 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
+    DocTestMatches,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
 )
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError
 from testtools import ExpectedException
 from testtools.matchers import (
+    ContainsDict,
     Equals,
+    HasLength,
     Is,
     IsInstance,
     Not,
@@ -51,6 +55,7 @@ from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
 )
+from twisted.logger import LogLevel
 from twisted.python.failure import Failure
 
 
@@ -165,16 +170,17 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         startConnection = self.patch(listener, "startConnection")
         startConnection.side_effect = exception_type(exception_message)
-        mock_logMsg = self.patch(listener, "logMsg")
 
-        with ExpectedException(exception_type):
-            yield listener.tryConnection()
+        with TwistedLoggerFixture() as logger:
+            with ExpectedException(exception_type):
+                yield listener.tryConnection()
 
-        self.assertThat(
-            mock_logMsg,
-            MockCalledOnceWith(
-                format="Unable to connect to database: %(error)s",
-                error=exception_message))
+        self.assertThat(logger.events, HasLength(1))
+        self.assertThat(logger.events[0], ContainsDict({
+            "log_format": Equals("Unable to connect to database: {error}"),
+            "log_level": Equals(LogLevel.error),
+            "error": Equals(exception_message),
+        }))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -303,36 +309,37 @@ class TestPostgresListenerService(MAASServerTestCase):
     def test__tryConnection_logs_success(self):
         listener = PostgresListenerService()
 
-        mock_logMsg = self.patch(listener, "logMsg")
-        yield listener.tryConnection()
-        try:
-            self.assertThat(
-                mock_logMsg,
-                MockCalledOnceWith("Listening for database notifications."))
-        finally:
-            yield listener.stopService()
+        with TwistedLoggerFixture() as logger:
+            yield listener.tryConnection()
+            try:
+                self.assertThat(logger.output, Equals(
+                    "Listening for database notifications."))
+            finally:
+                yield listener.stopService()
 
     @wait_for_reactor
     def test__connectionLost_logs_reason(self):
         listener = PostgresListenerService()
-        self.patch(listener, "logErr")
+        failure = Failure(factory.make_exception("Treason!"))
 
-        failure = Failure(factory.make_exception())
-
-        listener.connectionLost(failure)
+        with TwistedLoggerFixture() as logger:
+            listener.connectionLost(failure)
 
         self.assertThat(
-            listener.logErr, MockCalledOnceWith(
-                failure, "Connection lost."))
+            logger.output, DocTestMatches("""\
+            Connection lost.
+            Traceback (most recent call last):...
+            Failure: maastesting.factory.TestException#...: Treason!
+            """))
 
     @wait_for_reactor
     def test__connectionLost_does_not_log_reason_when_lost_cleanly(self):
         listener = PostgresListenerService()
-        self.patch(listener, "logErr")
 
-        listener.connectionLost(Failure(error.ConnectionDone()))
+        with TwistedLoggerFixture() as logger:
+            listener.connectionLost(Failure(error.ConnectionDone()))
 
-        self.assertThat(listener.logErr, MockNotCalled())
+        self.assertThat(logger.errors, HasLength(0))
 
     def test_register_adds_channel_and_handler(self):
         listener = PostgresListenerService()
