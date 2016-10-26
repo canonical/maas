@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', '$cookies', 'ZonesManager', 'MachinesManager',
+    '$scope', '$http', 'ZonesManager', 'MachinesManager',
     'GeneralManager', 'DomainsManager', 'RegionConnection',
     'ManagerHelperService', 'ValidationService', function(
-        $scope, $http, $cookies, ZonesManager, MachinesManager,
+        $scope, $http, ZonesManager, MachinesManager,
         GeneralManager, DomainsManager, RegionConnection,
         ManagerHelperService, ValidationService) {
 
@@ -554,8 +554,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 url: 'api/2.0/machines/?op=add_chassis',
                 data: $.param(params),
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFTOKEN': $cookies.csrftoken
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
             }).then(function() {
                 if(addAnother) {

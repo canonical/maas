@@ -130,6 +130,11 @@
                             </div>
                         </div>
                     </fieldset>
+                    <fieldset class="form__fieldset" data-ng-if="tabs.nodes.actionOption.name === 'release'">
+                        <div class="form__group">
+                            <span data-maas-release-options="tabs.nodes.releaseOptions"></span>
+                        </div>
+                    </fieldset>
                     <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'set-zone'">
                         <div class="form__group">
                             <label for="zone" class="form__group-label">Select Zone</label>

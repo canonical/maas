@@ -10,13 +10,12 @@ describe("AddHardwareController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $timeout, $http, $cookies, $q;
+    var $controller, $rootScope, $timeout, $http, $q;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
         $timeout = $injector.get("$timeout");
         $http = $injector.get("$http");
-        $cookies = $injector.get("$cookies");
         $q = $injector.get("$q");
     }));
 
@@ -69,7 +68,6 @@ describe("AddHardwareController", function() {
             $scope: $scope,
             $timeout: $timeout,
             $http: $http,
-            $cookies: $cookies,
             ZonesManager: ZonesManager,
             MachinesManager: MachinesManager,
             GeneralManager: GeneralManager,
@@ -733,7 +731,6 @@ describe("AddHardwareController", function() {
         });
 
         it("calls $http with correct parameters", function() {
-            $cookies.csrftoken = makeName("csrf");
             $scope.saveChassis(false);
 
             var parameters = $scope.chassis.power.parameters;
@@ -744,8 +741,7 @@ describe("AddHardwareController", function() {
                 url: 'api/2.0/machines/?op=add_chassis',
                 data: $.param(parameters),
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFTOKEN': $cookies.csrftoken
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
         });

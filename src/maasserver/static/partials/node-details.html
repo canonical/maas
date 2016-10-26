@@ -74,6 +74,11 @@
                                 </div>
                             </div>
                         </fieldset>
+                        <fieldset class="form__fieldset" data-ng-if="actionOption.name === 'release'">
+                            <div class="form__group">
+                                <span data-maas-release-options="releaseOptions"></span>
+                            </div>
+                        </fieldset>
                         <div class="page-header__controls">
                             <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
                             <button class="button--primary button--inline" data-ng-click="actionGo()">Go</button>
