@@ -123,6 +123,7 @@ from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
     get_failed_status,
     is_failed_status,
+    MONITORED_STATUSES,
     NODE_FAILURE_MONITORED_STATUS_TIMEOUTS,
     NODE_TRANSITIONS,
 )
@@ -1462,7 +1463,15 @@ class Node(CleanSave, TimestampedModel):
                     self.hostname, error)
 
     def save(self, *args, **kwargs):
+        # Reset the status_expires if not a monitored status. This prevents
+        # a race condition seen in LP1603563 where an old status_expires caused
+        # the node to do in a FAILED_RELEASING state due to an old
+        # status_expire being set.
+        if self.status not in MONITORED_STATUSES:
+            self.status_expires = None
+
         super(Node, self).save(*args, **kwargs)
+
         # We let hostname be blank for the initial save, but fix it before the
         # save completes.  This is because set_random_hostname() operates by
         # trying to re-save the node with a random hostname, and retrying until

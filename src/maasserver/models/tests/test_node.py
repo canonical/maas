@@ -2624,6 +2624,15 @@ class TestNode(MAASServerTestCase):
             "Invalid transition: Retired -> Allocated.",
             node.save)
 
+    def test_save_resets_status_expires_on_non_monitored_status(self):
+        # Regression test for LP:1603563
+        node = factory.make_Node(status=NODE_STATUS.RELEASING)
+        Node._set_status_expires(node.system_id, 60)
+        node.status = NODE_STATUS.READY
+        node.save()
+        node = reload_object(node)
+        self.assertIsNone(node.status_expires)
+
     def test_full_clean_checks_architecture_for_installable_nodes(self):
         device = factory.make_Device(architecture='')
         # Set type here so we don't cause exception while creating object
