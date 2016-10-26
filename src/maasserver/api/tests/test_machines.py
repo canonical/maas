@@ -204,6 +204,23 @@ class TestMachinesAPI(APITestCase.ForUser):
             "Select a valid choice. %s is not one of the "
             "available choices." % power_type, validation_errors[0])
 
+    def test_POST_new_handles_empty_str_power_parameters(self):
+        # Regression test for LP:1636858
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'power_type': '',
+                'power_parameters': '',
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
+        machine = Machine.objects.get(system_id=system_id)
+        self.assertEquals('', machine.power_type)
+        self.assertItemsEqual({}, machine.power_parameters)
+
     def test_POST_handles_error_when_unable_to_access_bmc(self):
         # Regression test for LP1600328
         self.become_admin()
@@ -242,7 +259,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_GET_machines_issues_constant_number_of_queries(self):
         # XXX: GavinPanella 2014-10-03 bug=1377335
-        self.skip("Unreliable; something is causing varying counts.")
+        self.skipTest("Unreliable; something is causing varying counts.")
 
         for _ in range(10):
             factory.make_Node_with_Interface_on_Subnet()
