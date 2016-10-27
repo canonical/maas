@@ -330,6 +330,30 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {nodes[pick]},
             {'subnets': ["space:%s" % subnets[pick].space.name]})
 
+    def test_subnets_filters_by_multiple_not_space_arguments(self):
+        # Create 3 different subnets (will be on 3 random spaces)
+        subnets = [
+            factory.make_Subnet()
+            for _ in range(3)
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+            ]
+        expected_selection = randint(0, len(subnets) - 1)
+        expected_node = nodes[expected_selection]
+        # Remove the expected subnet from the list of subnets; we'll use the
+        # remaining subnets to filter the list.
+        del subnets[expected_selection]
+        self.assertConstrainedNodes(
+            {expected_node},
+            {
+                'not_subnets': [
+                    "space:%s" % subnet.space.name
+                    for subnet in subnets
+                ]
+            })
+
     def test_subnets_filters_by_ip(self):
         subnets = [
             factory.make_Subnet()
