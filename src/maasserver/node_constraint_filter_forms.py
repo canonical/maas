@@ -99,6 +99,17 @@ NETWORKING_CONSTRAINT_NAMES = {
     'not_tag',
 }
 
+IGNORED_FIELDS = {
+    'comment',
+    'bridge_all',
+    'bridge_stp',
+    'bridge_fd',
+    'dry_run',
+    'verbose',
+    'op',
+    'agent_name',
+}
+
 
 def interfaces_validator(constraint_map):
     """Validate the given LabeledConstraintMap object."""
@@ -525,7 +536,7 @@ class AcquireNodeForm(RenamableFieldsForm):
     interfaces = LabeledConstraintMapField(
         validators=[interfaces_validator], label="Interfaces", required=False)
 
-    ignore_unknown_constraints = True
+    ignore_unknown_constraints = False
 
     @classmethod
     def Strict(cls, *args, **kwargs):
@@ -623,8 +634,9 @@ class AcquireNodeForm(RenamableFieldsForm):
             unknown_constraints = set(
                 self.data).difference(set(self.field_mapping.values()))
             for constraint in unknown_constraints:
-                msg = "No such constraint."
-                self._errors[constraint] = self.error_class([msg])
+                if constraint not in IGNORED_FIELDS:
+                    msg = "Unable to allocate a machine. No such constraint."
+                    self._errors[constraint] = self.error_class([msg])
         return super(AcquireNodeForm, self).clean()
 
     def describe_constraint(self, field_name):

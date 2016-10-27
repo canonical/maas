@@ -659,17 +659,21 @@ class TestMachinesAPI(APITestCase.ForUser):
         })
         self.assertEqual(http.client.CONFLICT, response.status_code)
 
-    def test_POST_allocate_ignores_unknown_constraint(self):
-        machine = factory.make_Node(
+    def test_POST_allocate_does_not_ignore_unknown_constraint(self):
+        factory.make_Node(
             status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
+        unknown_constraint = factory.make_string()
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
-            factory.make_string(): factory.make_string(),
+            unknown_constraint: factory.make_string(),
         })
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertEqual(
+            {unknown_constraint:
+                ["Unable to allocate a machine. No such constraint."]},
+            parsed_result)
 
     def test_POST_allocate_allocates_machine_by_name(self):
         # Positive test for name constraint.

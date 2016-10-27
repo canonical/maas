@@ -1196,6 +1196,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
         found.
         """
         form = AcquireNodeForm(data=request.data)
+        # XXX AndresRodriguez 2016-10-27: If new params are added and are not
+        # constraints, these need to be added to IGNORED_FIELDS in
+        # src/maasserver/node_constraint_filter_forms.py.
         comment = get_optional_param(request.POST, 'comment')
         maaslog.info(
             "Request from user %s to acquire a machine with constraints %s",

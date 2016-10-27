@@ -220,13 +220,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
         data = {'unknown_constraint': 'boo'}
         form = AcquireNodeForm.Strict(data=data)
         self.assertEqual(
-            (False, {'unknown_constraint': ["No such constraint."]}),
+            (False,
+                {'unknown_constraint':
+                    ["Unable to allocate a machine. No such constraint."]}),
             (form.is_valid(), form.errors))
 
-    def test_not_strict_does_not_check_unknown_constraints(self):
+    def test_not_strict_check_unknown_constraints(self):
         data = {'unknown_constraint': 'boo'}
         form = AcquireNodeForm(data=data)
-        self.assertTrue(form.is_valid())
+        self.assertFalse(form.is_valid())
 
     def assertConstrainedNodes(self, nodes, data):
         form = AcquireNodeForm(data=data)
