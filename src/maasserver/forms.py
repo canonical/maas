@@ -253,10 +253,14 @@ class WithPowerMixin:
             'power_parameters', form.initial.get('power_parameters', {}))
 
         if isinstance(power_parameters, str):
-            try:
-                power_parameters = json.loads(power_parameters)
-            except json.JSONDecodeError:
-                raise ValidationError("Failed to parse JSON power_parameters")
+            if power_parameters.strip() == '':
+                power_parameters = {}
+            else:
+                try:
+                    power_parameters = json.loads(power_parameters)
+                except json.JSONDecodeError:
+                    raise ValidationError(
+                        "Failed to parse JSON power_parameters")
 
         # Integrate the machines existing power_parameters if unset by form.
         if machine:
