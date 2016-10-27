@@ -609,22 +609,22 @@
                                     <span data-ng-if="!isEditing(interface)">{$ getInterfaceTypeText(interface) $}</span>
                                 </div>
                                 <div class="table__data table-col--14">
-                                    <span data-ng-if="!isEditing(interface)">{$ interface.fabric.name $}</span>
+                                    <span data-ng-if="!isEditing(interface)">{$ interface.fabric.name || "Disconnected" $}</span>
                                 </div>
                                 <div class="table__data table-col--14">
                                     <span data-ng-if="!isEditing(interface)">{$ getVLANText(interface.vlan) $}</span>
                                 </div>
                                 <div class="table__data table-col--18">
-                                    <span data-ng-if="!isEditing(interface)">{$ getSubnetText(interface.subnet) $}</span>
+                                    <span data-ng-if="!isEditing(interface) && interface.fabric">{$ getSubnetText(interface.subnet) $}</span>
                                     <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
                                         {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                     </span>
                                 </div>
                                 <div class="table__data table-col--19">
-                                    <span data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address">
+                                    <span data-ng-if="!isEditing(interface) && !interface.discovered[0].ip_address && interface.fabric">
                                         {$ interface.ip_address $} ({$ getLinkModeText(interface) $})
                                     </span>
-                                    <span data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address">
+                                    <span data-ng-if="!isEditing(interface) && interface.discovered[0].ip_address && interface.fabric">
                                         {$ interface.discovered[0].ip_address $} (DHCP)
                                     </span>
                                 </div>

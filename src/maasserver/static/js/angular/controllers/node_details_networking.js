@@ -1279,13 +1279,19 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if(macAddress === "") {
                 macAddress = $scope.newBondInterface.primary.mac_address;
             }
+            var vlan_id, vlan = $scope.newBondInterface.primary.vlan;
+            if(angular.isObject(vlan)) {
+                vlan_id = vlan.id;
+            } else {
+                vlan_id = null;
+            }
             var params = {
                 name: $scope.newBondInterface.name,
                 mac_address: macAddress,
                 tags: $scope.newBondInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
-                vlan: $scope.newBondInterface.primary.vlan.id,
+                vlan: vlan_id,
                 bond_mode: $scope.newBondInterface.mode,
                 bond_lacp_rate: $scope.newBondInterface.lacpRate,
                 bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy

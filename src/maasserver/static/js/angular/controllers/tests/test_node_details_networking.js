@@ -3496,6 +3496,54 @@ describe("NodeNetworkingController", function() {
             expect($scope.selectedInterfaces).toEqual([]);
             expect($scope.selectedMode).toBeNull();
         });
+
+        it("calls createBondInterface even when disconnected", function() {
+            var controller = makeController();
+            var nic1 = {
+                id: makeInteger(0, 100),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: null
+            };
+            var nic2 = {
+                id: makeInteger(101, 200),
+                link_id: makeInteger(0, 100),
+                type: "physical",
+                vlan: null
+            };
+            $scope.interfaces = [nic1, nic2];
+            $scope.interfaceLinksMap = {};
+            $scope.interfaceLinksMap[nic1.id] = {};
+            $scope.interfaceLinksMap[nic1.id][nic1.link_id] = nic1;
+            $scope.interfaceLinksMap[nic2.id] = {};
+            $scope.interfaceLinksMap[nic2.id][nic2.link_id] = nic2;
+            $scope.toggleInterfaceSelect(nic1);
+            $scope.toggleInterfaceSelect(nic2);
+            $scope.showCreateBond();
+
+            spyOn(MachinesManager, "createBondInterface").and.returnValue(
+                $q.defer().promise);
+            spyOn($scope, "cannotAddBond").and.returnValue(false);
+            $scope.newBondInterface.name = "bond0";
+            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            $scope.addBond();
+
+            expect(MachinesManager.createBondInterface).toHaveBeenCalledWith(
+                node, {
+                    name: "bond0",
+                    mac_address: "00:11:22:33:44:55",
+                    tags: [],
+                    parents: [nic1.id, nic2.id],
+                    vlan: null,
+                    bond_mode: "active-backup",
+                    bond_lacp_rate: "slow",
+                    bond_xmit_hash_policy: "layer2"
+                });
+            expect($scope.interfaces).toEqual([]);
+            expect($scope.newBondInterface).toEqual({});
+            expect($scope.selectedInterfaces).toEqual([]);
+            expect($scope.selectedMode).toBeNull();
+        });
     });
 
     describe("canCreateBridge", function() {
