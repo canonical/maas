@@ -40,15 +40,15 @@ NETWORK_DISCOVERY_CHOICES = [
 ]
 
 ACTIVE_DISCOVERY_INTERVAL_CHOICES = [
-    (int(timedelta(minutes=10).total_seconds()), "Every 10 minutes"),
-    (int(timedelta(minutes=30).total_seconds()), "Every 30 minutes"),
-    (int(timedelta(hours=1).total_seconds()), "Every hour"),
-    (int(timedelta(hours=3).total_seconds()), "Every 3 hours"),
-    (int(timedelta(hours=6).total_seconds()), "Every 6 hours"),
-    (int(timedelta(hours=12).total_seconds()), "Every 12 hours"),
-    (int(timedelta(days=1).total_seconds()), "Every day"),
+    (0, "Never (disabled)"),
     (int(timedelta(days=7).total_seconds()), "Every week"),
-    (0, "Disabled (suppress active scanning)"),
+    (int(timedelta(days=1).total_seconds()), "Every day"),
+    (int(timedelta(hours=12).total_seconds()), "Every 12 hours"),
+    (int(timedelta(hours=6).total_seconds()), "Every 6 hours"),
+    (int(timedelta(hours=3).total_seconds()), "Every 3 hours"),
+    (int(timedelta(hours=1).total_seconds()), "Every hour"),
+    (int(timedelta(minutes=30).total_seconds()), "Every 30 minutes"),
+    (int(timedelta(minutes=10).total_seconds()), "Every 10 minutes"),
 ]
 
 

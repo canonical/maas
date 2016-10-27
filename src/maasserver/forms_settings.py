@@ -314,9 +314,9 @@ CONFIG_ITEMS = {
             'label': "",
             'required': False,
             'help_text': (
-                "When enabled, MAAS will use passive techniques, such as "
-                "listening to ARP requests and mDNS advertisements, to "
-                "observe networks attached to rack controllers.  Active "
+                "When enabled, MAAS will use passive techniques (such as "
+                "listening to ARP requests and mDNS advertisements) to "
+                "observe networks attached to rack controllers. Active "
                 "subnet mapping will also be available to be enabled on the "
                 "configured subnets."
             )
@@ -330,9 +330,9 @@ CONFIG_ITEMS = {
                 "Active subnet mapping interval"),
             'required': False,
             'help_text': (
-                "When enabled, each rack will scan the enabled for active "
-                "mapping subnets to discover hosts that have not been "
-                "discovered passively."
+                "When enabled, each rack will scan subnets enabled for active "
+                "mapping. This helps ensure discovery information is accurate "
+                "and complete."
             )
         }
     },

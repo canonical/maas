@@ -2,16 +2,28 @@
 cd $(dirname $0)
 cd ..
 
-get_ip() {
-    ping -c 1 "$1" | head -1 | tr '(' ')' | cut -d')' -f 2
+function get_ip {
+    ping -c 1 "$1" 2> /dev/null | head -1 | tr '(' ')' | cut -d')' -f 2
 }
 
-trim () {
+function trim {
     read -rd '' $1 <<<"${!1}"
 }
 
-die () {
-    echo "$@"
+function echo_stderr {
+    echo "$@" 1>&2
+}
+
+function usage {
+    echo_stderr "Usage:"
+    echo_stderr "    $0 <hostname>"
+    echo_stderr "        [-v|--verbose] [-f|--force] [--web] [--skip-python]"
+    echo_stderr "        [--skip-restart] [-h|-?|--help]"
+}
+
+function die {
+    usage
+    echo_stderr "$@"
     exit 1
 }
 
@@ -19,27 +31,93 @@ if [ "$1" == "" ]; then
     die "You must supply a hostname."
 fi
 
+DO_PYTHON=1
+DO_RESTART=1
+VERBOSE=0
+FORCE=0
+
 hostname="$1"
 shift
 
-src_directories="maascli maasserver provisioningserver metadataserver"
-remote_src_base=/usr/lib/python3/dist-packages
-rsync_options=rlptvz
-ssh_run="ssh -oBatchMode=yes -l root $hostname"
+while [ "$*" != "" ]; do
+    if [ "$1" == "--skip-python" ]; then
+        DO_PYTHON=0
+        shift
+    fi
+    if [ "$1" == "--skip-restart" ]; then
+        DO_RESTART=0
+        shift
+    fi
+    if [ "$1" == "--web" ]; then
+        DO_RESTART=0
+        DO_PYTHON=0
+        shift
+    fi
+    if [ "$1" == "-v" -o "$1" == "--verbose" ]; then
+        let VERBOSE=$VERBOSE+1
+        shift
+    fi
+    if [ "$1" == "-f" -o "$1" == "--force" ]; then
+        FORCE=1
+        shift
+    fi
+    if [ "$1" == "-h" -o "$1" == "-?" -o "$1" == "--help" ]; then
+        usage
+        exit 0
+        shift
+    fi
+done
 
-echo "Checking $hostname..."
-maas_version=$($ssh_run "dpkg -s maas-region-api | grep ^Version") \
+if [ $DO_PYTHON -gt 0 ]; then
+    src_directories="maascli maasserver provisioningserver metadataserver"
+else
+    src_directories="maasserver/static"
+fi
+
+remote_src_base=/usr/lib/python3/dist-packages
+rsync_options=rlptz
+
+if [ $VERBOSE -gt 0 ]; then
+    rsync_options=${rsync_options}v
+fi
+
+function ssh_run {
+    ssh_command="ssh -oBatchMode=yes -l root $hostname"
+    if [ $VERBOSE -gt 0 ]; then
+        $ssh_command $@
+    else
+        $ssh_command $@ > /dev/null
+    fi
+}
+
+function echo_verbose {
+    if [ $VERBOSE -gt 0 ]; then
+        echo $@
+    fi
+}
+
+function try {
+    if [ $VERBOSE -gt 0 ]; then
+        $@ && echo "Success." || die "Failed."
+    else
+        $@ || die "Command failed: $@"
+    fi
+}
+
+echo_verbose "Checking $hostname..."
+maas_version=$(ssh_run "dpkg -s maas-region-api | grep ^Version") \
     || die "Cannot SSH to root@$hostname."
 ip_address=$(get_ip $hostname)
 maas_version=$(echo $maas_version | cut -d':' -f 2)
 trim maas_version
 trim hostname
 trim ip_address
-echo ""
-echo "Current MAAS version is: $maas_version"
+echo_verbose ""
+echo "Current reported MAAS version is: $maas_version"
+echo "    (This may be inaccurate if this script has run before.)"
 echo ""
 echo "WARNING: This will LIVE UPDATE the MAAS server at:"
-if [ "$hostname" == "$ip_address" ]; then
+if [ "$hostname" == "$ip_address" -o "$ip_address" == "" ]; then
     echo "    $hostname"
 else
     echo "    $hostname ($ip_address)"
@@ -50,50 +128,59 @@ echo "MAAS packages, and DELETE any extra files found on the server."
 echo ""
 echo "The MAAS server must be running Xenial with MAAS 2.0+ for this to work."
 echo ""
-echo "Destination directories:"
+echo_verbose "Destination directories:"
 for dir in $src_directories; do
-echo "    $remote_src_base/$dir"
+    echo_verbose "    $remote_src_base/$dir"
 done
-echo "    /etc/maas"
-echo ""
-echo "The following directories from this sandbox will be copied:"
+echo_verbose "    /etc/maas"
+echo_verbose ""
+echo_verbose "The following directories from this sandbox will be copied:"
 for dir in $src_directories; do
-echo "    src/$dir"
+    echo_verbose "    src/$dir"
 done
-echo "    etc/maas"
-echo ""
-echo "Press <enter> to continue, ^C to cancel."
-read
+echo_verbose "    etc/maas"
+echo_verbose ""
+if [ "$FORCE" != "1" ]; then
+    echo "Press <enter> to continue, ^C to cancel."
+    read
+fi
 
-echo "Synchronizing Python code..."
+echo "Synchronizing source directories..."
 for dir in $src_directories; do
     remote_dir=${remote_src_base}/${dir}
-    rsync -${rsync_options} --delete-after --exclude 'tests/' src/${dir}/ \
-        root@${hostname}:${remote_dir} \
-        && echo "Success." || die "Syncrhonization failed."
-    $ssh_run "python3 -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
+    echo " - $dir --> $remote_dir"
+    try rsync -${rsync_options} --delete-after --exclude 'tests/' src/${dir}/ \
+        root@${hostname}:${remote_dir}
+    ssh_run "python3 -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
 done
 
-echo "Updating /etc/maas..."
-rsync -${rsync_options} etc/maas/ \
-    root@${hostname}:/etc/maas \
-    && echo "Success." || die "Syncrhonization failed."
-$ssh_run "chown -R maas:maas /etc/maas"
+echo " - etc/maas --> /etc/maas"
+try rsync -${rsync_options} etc/maas/ \
+    root@${hostname}:/etc/maas
+ssh_run "chown -R maas:maas /etc/maas"
 
-echo "Updating /usr/share/maas/maas..."
-rsync -${rsync_options} src/maas/ \
-    root@${hostname}:/usr/share/maas/maas \
-    && echo "Success." || die "Syncrhonization failed."
+echo " - src/maas --> /usr/share/maas/maas"
+try rsync -${rsync_options} src/maas/ \
+    root@${hostname}:/usr/share/maas/maas
 
 echo ""
+echo "Synchronizing static web content..."
+echo " - Removing /usr/share/maas/web/static/*..."
+ssh_run rm -rf /usr/share/maas/web/static/*
+echo " - Moving /usr/lib/python3/dist-packages/maasserver/static/*"
+echo "          -> /usr/share/maas/web/static/"
+ssh_run mv /usr/lib/python3/dist-packages/maasserver/static/* /usr/share/maas/web/static/
+
+if [ $DO_RESTART -gt 0 ]; then
+echo ""
 echo "Restarting services and ensuring migrations are up to date..."
-$ssh_run rm -rf /usr/share/maas/web/static/*
-$ssh_run mv /usr/lib/python3/dist-packages/maasserver/static/* /usr/share/maas/web/static/
-$ssh_run service maas-regiond stop
-$ssh_run service maas-rackd stop
-$ssh_run maas-region dbupgrade
-sleep 1
-$ssh_run service apache2 restart
-$ssh_run service maas-regiond start
-sleep 2  # Wait for the region to start up.
-$ssh_run service maas-rackd start
+    ssh_run service maas-regiond stop
+    ssh_run service maas-rackd stop
+    ssh_run maas-region dbupgrade
+    sleep 1
+    ssh_run service apache2 restart
+    ssh_run service maas-regiond start
+    sleep 2  # Wait for the region to start up.
+    ssh_run service maas-rackd start
+fi
+echo "Remote reinstall complete."

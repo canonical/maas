@@ -22,7 +22,6 @@
                     <p class="page-header__message page-header__message--info">
                         You will start mapping your subnet. Go to the <a href="#/dashboard">dashboard</a> to see the discovered items.
                     </p>
-		
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelAction()">Cancel</a>
                         <button class="button--primary button--inline" data-ng-click="actionGo()">Go</button>
@@ -70,7 +69,7 @@
                 </fieldset>
                 <fieldset class="form__fieldset six-col last-col">
                     <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
-                        label-width="two" input-width="three" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $} to discover hosts that have not been discovered passively."></maas-obj-field>
+                        label-width="two" input-width="three" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
                     <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
                         options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
                         label-width="two" input-width="three"></maas-obj-field>
