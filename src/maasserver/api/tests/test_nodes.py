@@ -314,7 +314,7 @@ class TestNodesAPI(APITestCase.ForUser):
 
     def test_GET_nodes_issues_constant_number_of_queries(self):
         # XXX: GavinPanella 2014-10-03 bug=1377335
-        self.skip("Unreliable; something is causing varying counts.")
+        self.skipTest("Unreliable; something is causing varying counts.")
 
         nodegroup = factory.make_NodeGroup()
         self.create_nodes(nodegroup, 10)

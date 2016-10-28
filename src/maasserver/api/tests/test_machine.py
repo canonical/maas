@@ -1181,7 +1181,7 @@ class TestMachineAPI(APITestCase.ForUser):
             (old_zone, new_name), (machine.zone, machine.hostname))
 
     def test_PUT_clears_zone(self):
-        self.skip(
+        self.skipTest(
             "XXX: JeroenVermeulen 2013-12-11 bug=1259872: Clearing the "
             "zone field does not work...")
 
