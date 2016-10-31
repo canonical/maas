@@ -1095,16 +1095,103 @@ class MachinesHandler(NodesHandler, PowersMixin):
         multiple constraints are provided, they are combined using 'AND'
         semantics.
 
-        :param name: Hostname of the desired machine.
+        :param name: Hostname or FQDN of the desired machine. If a FQDN is
+            specified, both the domain and the hostname portions must match.
         :type name: unicode
         :param system_id: system_id of the desired machine.
         :type system_id: unicode
         :param arch: Architecture of the returned machine (e.g. 'i386/generic',
             'amd64', 'armhf/highbank', etc.).
-        :type arch: unicode
-        :param cpu_count: The minium number of CPUs the returned machine must
-            have.
-        :type cpu_count: int
+
+            If multiple architectures are specified, the machine to acquire may
+            match any of the given architectures. To request multiple
+            architectures, this parameter must be repeated in the request with
+            each value.
+        :type arch: unicode (accepts multiple)
+        :param cpu_count: Minimum number of CPUs a returned machine must have.
+
+            A machine with additional CPUs may be allocated if there is no
+            exact match, or if the 'mem' constraint is not also specified.
+        :type cpu_count: positive integer
+        :param mem: The minimum amount of memory (expressed in MB) the
+             returned machine must have. A machine with additional memory may
+             be allocated if there is no exact match, or the 'cpu_count'
+             constraint is not also specified.
+        :type mem: positive integer
+        :param tags: Tags the machine must match in order to be acquired.
+
+            If multiple tag names are specified, the machine must be
+            tagged with all of them. To request multiple tags, this parameter
+            must be repeated in the request with each value.
+        :type tags: unicode (accepts multiple)
+        :param not_tags: Tags the machine must NOT match.
+
+            If multiple tag names are specified, the machine must NOT be
+            tagged with ANY of them. To request exclusion of multiple tags,
+            this parameter must be repeated in the request with each value.
+        :type tags: unicode (accepts multiple)
+        :param zone: Physical zone name the machine must be located in.
+        :type zone: unicode
+        :type not_in_zone: List of physical zones from which the machine must
+            not be acquired.
+
+            If multiple zones are specified, the machine must NOT be
+            associated with ANY of them. To request multiple zones to
+            exclude, this parameter must be repeated in the request with each
+            value.
+        :type not_in_zone: unicode (accepts multiple)
+        :param subnets: Subnets that must be linked to the machine.
+
+            "Linked to" means the node must be configured to acquire an address
+            in the specified subnet, have a static IP address in the specified
+            subnet, or have been observed to DHCP from the specified subnet
+            during commissioning time (which implies that it *could* have an
+            address on the specified subnet).
+
+            Subnets can be specified by one of the following criteria:
+
+            - <id>: match the subnet by its 'id' field
+            - fabric:<fabric-spec>: match all subnets in a given fabric.
+            - ip:<ip-address>: Match the subnet containing <ip-address> with
+              the with the longest-prefix match.
+            - name:<subnet-name>: Match a subnet with the given name.
+            - space:<space-spec>: Match all subnets in a given space.
+            - vid:<vid-integer>: Match a subnet on a VLAN with the specified
+              VID. Valid values range from 0 through 4094 (inclusive). An
+              untagged VLAN can be specified by using the value "0".
+            - vlan:<vlan-spec>: Match all subnets on the given VLAN.
+
+            Note that (as of this writing), the 'fabric', 'space', 'vid', and
+            'vlan' specifiers are only useful for the 'not_spaces' version of
+            this constraint, because they will most likely force the query
+            to match ALL the subnets in each fabric, space, or VLAN, and thus
+            not return any nodes. (This is not a particularly useful behavior,
+            so may be changed in the future.)
+
+            If multiple subnets are specified, the machine must be associated
+            with all of them. To request multiple subnets, this parameter must
+            be repeated in the request with each value.
+
+            Note that this replaces the leagcy 'networks' constraint in MAAS
+            1.x.
+        :type subnets: unicode (accepts multiple)
+        :param not_subnets: Subnets that must NOT be linked to the machine.
+
+            See the 'subnets' constraint documentation above for more
+            information about how each subnet can be specified.
+
+            If multiple subnets are specified, the machine must NOT be
+            associated with ANY of them. To request multiple subnets to
+            exclude, this parameter must be repeated in the request with each
+            value. (Or a fabric, space, or VLAN specifier may be used to match
+            multiple subnets).
+
+            Note that this replaces the leagcy 'not_networks' constraint in
+            MAAS 1.x.
+        :type not_subnets: unicode (accepts multiple)
+        :param storage: A list of storage constraint identifiers, in the form:
+            <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
+        :type storage: unicode
         :param interfaces: A labeled constraint map associating constraint
             labels with interface properties that should be matched. Returned
             nodes must have one or more interface matching the specified
@@ -1135,35 +1222,36 @@ class MachinesHandler(NodesHandler, PowersMixin):
             - vid: Matches an interface on a VLAN with the specified VID.
             - tag: Matches an interface tagged with the specified tag.
         :type interfaces: unicode
-        :param mem: The minimum amount of memory (expressed in MB) the
-             returned machine must have.
-        :type mem: float
-        :param tags: List of tags the returned machine must have.
-        :type tags: list of unicodes
-        :param not_tags: List of tags the acquired machine must not have.
-        :type tags: List of unicodes.
-        :param networks: List of networks (defined in MAAS) to which the
-            machine must be attached.  A network can be identified by the name
-            assigned to it in MAAS; or by an `ip:` prefix followed by any IP
-            address that falls within the network; or a `vlan:` prefix
-            followed by a numeric VLAN tag, e.g. `vlan:23` for VLAN number 23.
-            Valid VLAN tags must be in the range of 1 to 4094 inclusive.
-        :type networks: list of unicodes
-        :param not_networks: List of networks (defined in MAAS) to which the
-            machine must not be attached.  The returned machine won't be
-            attached to any of the specified networks.  A network can be
-            identified by the name assigned to it in MAAS; or by an `ip:`
-            prefix followed by any IP address that falls within the network; or
-            a `vlan:` prefix followed by a numeric VLAN tag, e.g. `vlan:23` for
-            VLAN number 23. Valid VLAN tags must be in the range of 1 to 4094
-            inclusive.
-        :type not_networks: list of unicodes
-        :param zone: An optional name for a physical zone the acquired
-            machine should be located in.
-        :type zone: unicode
-        :type not_in_zone: Optional list of physical zones from which the
-            machine should not be acquired.
-        :type not_in_zone: List of unicodes.
+        :param fabrics: Set of fabrics that the machine must be associated with
+            in order to be acquired.
+
+            If multiple fabrics names are specified, the machine can be
+            in any of the specified fabrics. To request multiple possible
+            fabrics to match, this parameter must be repeated in the request
+            with each value.
+        :type fabrics: unicode (accepts multiple)
+        :param not_fabrics: Fabrics the machine must NOT be associated with in
+            order to be acquired.
+
+            If multiple fabrics names are specified, the machine must NOT be
+            in ANY of them. To request exclusion of multiple fabrics, this
+            parameter must be repeated in the request with each value.
+        :type not_fabrics: unicode (accepts multiple)
+        :param fabric_classes: Set of fabric class types whose fabrics the
+            machine must be associated with in order to be acquired.
+
+            If multiple fabrics class types are specified, the machine can be
+            in any matching fabric. To request multiple possible fabrics class
+            types to match, this parameter must be repeated in the request
+            with each value.
+        :type fabric_classes: unicode (accepts multiple)
+        :param not_fabric_classes: Fabric class types whose fabrics the machine
+            must NOT be associated with in order to be acquired.
+
+            If multiple fabrics names are specified, the machine must NOT be
+            in ANY of them. To request exclusion of multiple fabrics, this
+            parameter must be repeated in the request with each value.
+        :type not_fabric_classes: unicode (accepts multiple)
         :param agent_name: An optional agent name to attach to the
             acquired machine.
         :type agent_name: unicode
