@@ -16,6 +16,7 @@ from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.import_images import boot_resources
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLastImageSync
 from provisioningserver.utils.env import (
@@ -28,7 +29,9 @@ from twisted.internet.defer import (
     inlineCallbacks,
 )
 from twisted.internet.threads import deferToThread
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 CACHED_BOOT_IMAGES = None

@@ -13,6 +13,7 @@ __all__ = [
 from os import getpid
 from socket import gethostname
 
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.interfaces import (
     IConnection,
     IConnectionToRegion,
@@ -20,8 +21,10 @@ from provisioningserver.rpc.interfaces import (
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import Deferred
 from twisted.protocols import amp
-from twisted.python import log
 from twisted.python.failure import Failure
+
+
+log = LegacyLogger()
 
 
 class Identify(amp.Command):

@@ -31,7 +31,10 @@ from maasserver.models.user import (
 )
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import transactional
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.tags import (
     DEFAULT_BATCH_SIZE,
@@ -46,10 +49,10 @@ from provisioningserver.utils.twisted import (
 )
 from provisioningserver.utils.xpath import try_match_xpath
 from twisted.internet.defer import DeferredList
-from twisted.python import log
 
 
 maaslog = get_maas_logger("tags")
+log = LegacyLogger()
 
 
 # The nsmap that XPath expression must be compiled with. This will

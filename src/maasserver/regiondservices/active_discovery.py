@@ -27,13 +27,17 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     maybeDeferred,
 )
-from twisted.python import log
+
+
+log = LegacyLogger()
+
 
 # The check interval serves as somewhat of a throttle; normally, we will
 # not scan more than once every CHECK_INTERVAL seconds (unless the discovery

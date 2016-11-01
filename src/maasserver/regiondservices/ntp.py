@@ -15,6 +15,7 @@ from maasserver.models.node import RegionController
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_region
 from provisioningserver.utils.twisted import (
     callOut,
@@ -23,7 +24,9 @@ from provisioningserver.utils.twisted import (
 from twisted.application.internet import TimerService
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.threads import deferToThread
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class RegionNetworkTimeProtocolService(TimerService):

@@ -25,7 +25,10 @@ from provisioningserver.events import (
     send_event_node_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import (
@@ -65,11 +68,11 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.task import deferLater
-from twisted.python import log
 from twisted.python.filepath import FilePath
 
 
 maaslog = get_maas_logger("tftp")
+log = LegacyLogger()
 
 
 def get_boot_image(params):

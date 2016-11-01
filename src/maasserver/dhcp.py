@@ -53,6 +53,7 @@ from netaddr import (
     IPNetwork,
 )
 from provisioningserver.dhcp.omshell import generate_omapi_key
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv4_V2,
@@ -73,7 +74,9 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet.defer import inlineCallbacks
 from twisted.protocols import amp
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 def get_omapi_key():
@@ -562,14 +565,14 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 config = get_dhcp_configure_for(
                     4, rack_controller, vlan, subnets_v4, ntp_servers,
                     default_domain, dhcp_snippets)
-            except DHCPConfigurationError as e:
+            except DHCPConfigurationError:
                 # XXX bug #1602412: this silently breaks DHCPv4, but we cannot
                 # allow it to crash here since DHCPv6 might be able to run.
                 # This error may be irrelevant if there is an IPv4 network in
                 # the MAAS model which is not configured on the rack, and the
                 # user only wants to serve DHCPv6. But it is still something
                 # worth noting, so log it and continue.
-                log.err(e)
+                log.err(None, "Failure configuring DHCPv4.")
             else:
                 failover_peer, subnets, hosts, interface = config
                 if failover_peer is not None:
@@ -586,14 +589,14 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 config = get_dhcp_configure_for(
                     6, rack_controller, vlan, subnets_v6,
                     ntp_servers, default_domain, dhcp_snippets)
-            except DHCPConfigurationError as e:
+            except DHCPConfigurationError:
                 # XXX bug #1602412: this silently breaks DHCPv6, but we cannot
                 # allow it to crash here since DHCPv4 might be able to run.
                 # This error may be irrelevant if there is an IPv6 network in
                 # the MAAS model which is not configured on the rack, and the
                 # user only wants to serve DHCPv4. But it is still something
                 # worth noting, so log it and continue.
-                log.err(e)
+                log.err(None, "Failure configuring DHCPv6.")
             else:
                 failover_peer, subnets, hosts, interface = config
                 if failover_peer is not None:

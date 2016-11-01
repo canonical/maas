@@ -22,7 +22,10 @@ from typing import (
 
 import attr
 from netaddr import IPAddress
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils.dhcp import DHCP
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -38,17 +41,11 @@ from twisted.internet.threads import (
     blockingCallFromThread,
     deferToThread,
 )
-from twisted.python import log
 from twisted.python.failure import Failure
 
 
-_LOG_SYSTEM = "dhcp.detect"
-maaslog = get_maas_logger(_LOG_SYSTEM)
-
-
-def _log_msg(*args, **kwargs):
-    """Log to the Twisted logger using a unique `system` name."""
-    log.msg(*args, system=_LOG_SYSTEM, **kwargs)
+maaslog = get_maas_logger("dhcp.detect")
+log = LegacyLogger()
 
 
 def make_dhcp_transaction_id() -> bytes:
@@ -358,10 +355,10 @@ class DHCPRequestMonitor:
                 else:
                     offer = DHCP(data)
                     if not offer.is_valid():
-                        _log_msg(
-                            "Invalid DHCP response received from %s on '%s': "
-                            "%s" % (
-                                address, self.ifname, offer.invalid_reason))
+                        log.info(
+                            "Invalid DHCP response received from {address} "
+                            "on '{ifname}': {reason}", address=address,
+                            ifname=self.ifname, reason=offer.invalid_reason)
                     elif offer.packet.xid == xid:
                         # Offer matches our transaction ID, so check if it has
                         # a Server Identifier option.
@@ -390,7 +387,7 @@ class DHCPRequestMonitor:
             # has already been called.
             return None
         elif failure.check(DHCPProbeException):
-            _log_msg("DHCP probe failed. %s" % failure.getErrorMessage())
+            log.msg("DHCP probe failed. %s" % failure.getErrorMessage())
         elif failure.check(CancelledError):
             # Intentionally cancelled; no need to spam the log.
             pass
@@ -450,9 +447,10 @@ class DHCPRequestMonitor:
         """
         servers = yield deferToThread(self.send_requests_and_await_replies)
         if len(servers) > 0:
-            _log_msg(
-                "External DHCP server(s) discovered on interface '%s': %s"
-                % (self.ifname, ', '.join(str(server) for server in servers)))
+            log.info(
+                "External DHCP server(s) discovered on interface '{ifname}': "
+                "{servers}", ifname=self.ifname, servers=', '.join(
+                    str(server) for server in servers))
         self.servers = servers
 
     @property

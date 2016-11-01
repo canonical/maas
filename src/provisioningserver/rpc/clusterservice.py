@@ -40,7 +40,10 @@ from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
@@ -115,22 +118,19 @@ from twisted.internet.error import (
 )
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
 import twisted.web.client
-from twisted.web.client import getPage
+from twisted.web.client import (
+    getPage,
+    URI,
+)
 from zope.interface import implementer
-
-# From python-twisted 15+ changes the name of _URI to URI.
-try:
-    from twisted.web.client import _URI as URI
-except ImportError:
-    from twisted.web.client import URI
 
 
 maaslog = get_maas_logger("rpc.cluster")
+log = LegacyLogger()
 
 
 def catch_probe_and_enlist_error(name, failure):
@@ -1132,7 +1132,7 @@ class ClusterClientService(TimerService, object):
                         log.msg("Event-loop %s (%s:%d): %s" % (
                             eventloop, host, port, error))
                     except:
-                        log.err()
+                        log.err(None, "Failure making new RPC connection.")
                     else:
                         break
         # Remove connections to event-loops that are no longer

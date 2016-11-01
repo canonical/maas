@@ -15,10 +15,13 @@ from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.config import is_dev_environment
+from provisioningserver.logger import LegacyLogger
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class ServiceMonitorService(TimerService, object):

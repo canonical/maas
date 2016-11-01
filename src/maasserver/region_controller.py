@@ -27,6 +27,7 @@ from maasserver.dns.config import dns_update_all_zones
 from maasserver.proxyconfig import proxy_update_config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -35,7 +36,9 @@ from twisted.application.service import Service
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList
 from twisted.internet.task import LoopingCall
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class RegionControllerService(Service):

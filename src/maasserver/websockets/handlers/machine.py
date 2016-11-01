@@ -79,13 +79,12 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous
-from twisted.python import log
 
 
-maaslog = get_maas_logger("websockets.machine")
+log = LegacyLogger()
 
 
 class MachineHandler(NodeHandler):

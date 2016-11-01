@@ -52,6 +52,7 @@ import signal
 import threading
 
 from crochet import run_in_reactor
+from provisioningserver.logger import LegacyLogger
 from twisted.internet import reactor
 from twisted.internet.defer import (
     AlreadyCalledError,
@@ -66,13 +67,15 @@ from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
 from twisted.python import (
     context,
-    log,
     threadable,
     threadpool,
 )
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from zope import interface
+
+
+log = LegacyLogger()
 
 
 undefined = object()

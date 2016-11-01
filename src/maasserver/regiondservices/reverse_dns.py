@@ -15,10 +15,13 @@ from maasserver.models import (
     RegionController,
 )
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import reverseResolve
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class ReverseDNSService(Service):

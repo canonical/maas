@@ -28,13 +28,13 @@ from maasserver.websockets.websockets import (
     WebSocketsTransport,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import StartsWith
 from twisted.internet.protocol import (
     Factory,
     Protocol,
 )
 from twisted.protocols.tls import TLSMemoryBIOProtocol
-from twisted.python import log
 from twisted.test.proto_helpers import (
     AccumulatingProtocol,
     StringTransportWithDisconnection,
@@ -396,18 +396,13 @@ class WebSocketsProtocolTest(MAASTestCase):
         When a C{CLOSE} frame is received, the protocol closes the connection
         and logs a message.
         """
-        loggedMessages = []
-
-        def logConnectionLostMsg(eventDict):
-            loggedMessages.append(log.textFromEventDict(eventDict))
-
-        log.addObserver(logConnectionLostMsg)
-
-        self.protocol.dataReceived(
-            _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
+        with TwistedLoggerFixture() as logger:
+            self.protocol.dataReceived(
+                _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
         self.assertFalse(self.transport.connected)
-        self.assertEqual(["Closing connection: <STATUSES=NONE>"],
-                         loggedMessages)
+        self.assertEqual(
+            ["Closing connection: <STATUSES=NONE>"],
+            logger.messages)
 
     def test_invalidFrame(self):
         """

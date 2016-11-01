@@ -19,7 +19,10 @@ from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
 )
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.power import query
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
@@ -40,10 +43,10 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.task import deferLater
-from twisted.python import log
 
 
 maaslog = get_maas_logger("power")
+log = LegacyLogger()
 
 
 # Timeout for change_power_state(). We set it to 5 minutes by default,

@@ -18,6 +18,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.signals import SignalsManager
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -26,7 +27,9 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.internet import reactor
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 signals = SignalsManager()

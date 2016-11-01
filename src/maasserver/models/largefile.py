@@ -26,12 +26,15 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
 )
 from twisted.internet import reactor
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class FileStorageManager(Manager):

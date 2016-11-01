@@ -43,6 +43,7 @@ from maasserver.listener import PostgresListenerUnregistrationError
 from maasserver.models.node import RackController
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -55,7 +56,9 @@ from twisted.internet.defer import (
     maybeDeferred,
 )
 from twisted.internet.task import LoopingCall
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class RackControllerService(Service):

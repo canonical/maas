@@ -12,11 +12,11 @@ import logging.config
 import logging.handlers
 import sys
 
-from provisioningserver.config import is_dev_environment
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_VERBOSITY_LEVELS,
+    is_dev_environment,
     LoggingMode,
 )
 from provisioningserver.utils import typed

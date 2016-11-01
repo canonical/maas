@@ -15,6 +15,7 @@ from queue import Queue
 import threading
 
 from maasserver.exceptions import IteratorReusedError
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -27,7 +28,9 @@ from twisted.internet.defer import (
     Deferred,
     maybeDeferred,
 )
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class UseOnceIterator:
@@ -118,7 +121,7 @@ def gatherCallResults(calls, timeout=10.0):
             try:
                 deferred.cancel()
             except:
-                log.err()
+                log.err(None, "Failure gathering results.")
 
     if timeout is None:
         canceller = None
@@ -243,12 +246,12 @@ class DeferredHooks(threading.local):
     @asynchronous
     def _cancel_in_reactor(hook):
         hook.addErrback(suppress, CancelledError)
-        hook.addErrback(log.err)
+        hook.addErrback(log.err, "Failure when cancelling hook.")
         try:
             hook.cancel()
         except:
             # The canceller has failed. We take a hint from DeferredList here,
             # by logging the exception and moving on.
-            log.err(_why="Failure when cancelling hook.")
+            log.err(None, "Failure when cancelling hook.")
         else:
             return hook

@@ -28,11 +28,17 @@ from maastesting.runtest import (
     MAASTwistedRunTest,
 )
 from maastesting.scenarios import WithScenarios
+from maastesting.twisted import TwistedLoggerFixture
 from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
 import testtools
+from testtools.content import (
+    Content,
+    UTF8_TEXT,
+)
 import testtools.matchers
+from twisted.logger import formatEventAsClassicLogText
 
 
 @nottest
@@ -139,6 +145,13 @@ class MAASTestCase(
             return MAASRunTest
 
     def setUp(self):
+        # Capture Twisted logs and add them as a test detail.
+        twistedLog = self.useFixture(TwistedLoggerFixture())
+        self.addDetail("Twisted logs", Content(
+            UTF8_TEXT, lambda: (
+                formatEventAsClassicLogText(event).encode("utf-8")
+                for event in twistedLog.events)))
+
         self.maybeCheckTableRowCounts()
         self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()

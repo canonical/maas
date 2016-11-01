@@ -11,6 +11,7 @@ import time
 
 from maasserver.monkey import add_patches_to_django
 from provisioningserver import logger
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.monkey import add_patches_to_twisted
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
@@ -18,9 +19,11 @@ from provisioningserver.utils.debug import (
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
-from twisted.python import log
 from twisted.python.threadable import isInIOThread
 from zope.interface import implementer
+
+
+log = LegacyLogger()
 
 
 class Options(logger.VerbosityOptions):

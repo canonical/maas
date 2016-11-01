@@ -67,6 +67,7 @@ from netaddr import (
     AddrConversionError,
     IPAddress,
 )
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -116,8 +117,11 @@ from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python import log
 from zope.interface import implementer
+
+
+log = LegacyLogger()
+
 
 # Number of regiond processes that should be running for a regiond.
 # XXX blake_r 2016-03-10 bug=1555901: It would be better to determine this
@@ -870,7 +874,8 @@ class RegionService(service.Service, object):
         super(RegionService, self).startService()
         self.starting = defer.DeferredList(
             (self._bindFirst(endpoint_options, self.factory)
-             for endpoint_options in self.endpoints))
+             for endpoint_options in self.endpoints),
+            consumeErrors=True)
 
         def log_failure(failure):
             if failure.check(defer.CancelledError):
@@ -903,7 +908,7 @@ class RegionService(service.Service, object):
                 try:
                     yield conn.transport.loseConnection()
                 except:
-                    log.err()
+                    log.err(None, "Failure when closing RPC connection.")
         yield super(RegionService, self).stopService()
 
     @asynchronous(timeout=FOREVER)

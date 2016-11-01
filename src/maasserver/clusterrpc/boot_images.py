@@ -30,6 +30,7 @@ from maasserver.rpc import (
 from maasserver.utils import async
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
     ImportBootImages,
     IsImportBootImagesRunning,
@@ -48,8 +49,10 @@ from twisted.internet.defer import (
     DeferredSemaphore,
 )
 from twisted.protocols.amp import UnhandledCommand
-from twisted.python import log
 from twisted.python.failure import Failure
+
+
+log = LegacyLogger()
 
 
 def suppress_failures(responses):

@@ -10,6 +10,7 @@ __all__ = [
 from datetime import timedelta
 
 import attr
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.region import (
@@ -24,7 +25,9 @@ from twisted.internet.defer import (
     maybeDeferred,
 )
 from twisted.internet.threads import deferToThread
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class RackNetworkTimeProtocolService(TimerService):

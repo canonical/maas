@@ -40,6 +40,7 @@ from maastesting.matchers import (
     MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
@@ -155,15 +156,15 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     def test_loseConnection_writes_to_log(self):
         protocol, factory = self.make_protocol()
-        mock_log_msg = self.patch_autospec(protocol_module.log, "msg")
         status = random.randint(1000, 1010)
         reason = maas_factory.make_name("reason")
-        protocol.loseConnection(status, reason)
+        with TwistedLoggerFixture() as logger:
+            protocol.loseConnection(status, reason)
         self.assertThat(
-            mock_log_msg,
-            MockCalledOnceWith(
-                format="Closing connection: %(status)r (%(reason)r)",
-                status=status, reason=reason))
+            logger.messages, Equals([
+                "Closing connection: %(status)r (%(reason)r)"
+                % dict(status=status, reason=reason),
+            ]))
 
     def test_loseConnection_calls_loseConnection_with_status_and_reason(self):
         protocol, factory = self.make_protocol()

@@ -261,8 +261,7 @@ class TestLegacyLogger(MAASTestCase):
     def test__logs_messages(self):
         events = []
         namespace = factory.make_name("namespace")
-        modern_logger = logger.Logger(namespace, self, events.append)
-        legacy_logger = LegacyLogger(modern_logger)
+        legacy_logger = LegacyLogger(namespace, self, events.append)
         message = factory.make_name("message")
         keywords = {
             factory.make_name("key"): factory.make_name("value")
@@ -274,7 +273,7 @@ class TestLegacyLogger(MAASTestCase):
         expected = {
             'log_format': Equals('{_message_0}'),
             'log_level': Equals(logger.LogLevel.info),
-            'log_logger': Is(modern_logger),
+            'log_logger': Is(legacy_logger),
             'log_namespace': Equals(namespace),
             'log_source': Is(self),
             'log_time': IsInstance(float),
@@ -292,8 +291,7 @@ class TestLegacyLogger(MAASTestCase):
 
     def test__logs_multiple_messages(self):
         events = []
-        modern_logger = logger.Logger(observer=events.append)
-        legacy_logger = LegacyLogger(modern_logger)
+        legacy_logger = LegacyLogger(observer=events.append)
         messages = [
             factory.make_name("message"),
             factory.make_name("message"),
@@ -317,8 +315,7 @@ class TestLegacyLogger(MAASTestCase):
     def test__logs_errors(self):
         events = []
         namespace = factory.make_name("namespace")
-        modern_logger = logger.Logger(namespace, self, events.append)
-        legacy_logger = LegacyLogger(modern_logger)
+        legacy_logger = LegacyLogger(namespace, self, events.append)
         message = factory.make_name("message")
         exception_type = factory.make_exception_type()
         keywords = {
@@ -341,7 +338,7 @@ class TestLegacyLogger(MAASTestCase):
             ),
             'log_format': Equals('{_why}'),
             'log_level': Equals(logger.LogLevel.critical),
-            'log_logger': Is(modern_logger),
+            'log_logger': Is(legacy_logger),
             'log_namespace': Equals(namespace),
             'log_source': Is(self),
             'log_time': IsInstance(float),

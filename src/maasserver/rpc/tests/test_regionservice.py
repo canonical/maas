@@ -124,9 +124,7 @@ from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
-from twisted.logger import globalLogPublisher
 from twisted.protocols import amp
-from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from zope.interface.verify import verifyObject
@@ -661,19 +659,17 @@ class TestRegionService(MAASTestCase):
         endpoints = self.patch(service, "endpoints", [[Mock()]])
         endpoints[0][0].listen.return_value = fail(exception)
 
-        logged_failures = []
-        self.patch(log, "msg", (
-            lambda failure, **kw: logged_failures.append(failure)))
-
         logged_failures_expected = [
             AfterPreprocessing(
                 (lambda failure: failure.value),
                 Is(exception)),
         ]
 
-        yield service.startService()
+        with TwistedLoggerFixture() as logger:
+            yield service.startService()
+
         self.assertThat(
-            logged_failures, MatchesListwise(logged_failures_expected))
+            logger.failures, MatchesListwise(logged_failures_expected))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -821,12 +817,12 @@ class TestRegionService(MAASTestCase):
         # Connection-specific errors are logged.
         self.assertDocTestMatches(
             """\
-            Unhandled Error
+            Failure when closing RPC connection.
             Traceback (most recent call last):
             ...
             builtins.OSError: broken
             ...
-            Unhandled Error
+            Failure when closing RPC connection.
             Traceback (most recent call last):
             ...
             builtins.OSError: broken
@@ -841,8 +837,6 @@ class TestRegionService(MAASTestCase):
         exception = ValueError("This is a very naughty boy.")
         endpoints = self.patch(service, "endpoints", [[Mock()]])
         endpoints[0][0].listen.return_value = fail(exception)
-        # Suppress logged messages.
-        self.patch(globalLogPublisher, "_observers", [])
 
         service.startService()
         # The test is that stopService() succeeds.

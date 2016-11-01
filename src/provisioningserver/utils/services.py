@@ -18,7 +18,10 @@ import os
 import re
 
 from provisioningserver.config import is_dev_environment
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.fs import (
     get_maas_provision_command,
@@ -46,11 +49,11 @@ from twisted.internet.error import (
 )
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
-from twisted.python import log
 from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("networks.monitor")
+log = LegacyLogger()
 
 
 class JSONPerLineProtocol(ProcessProtocol):

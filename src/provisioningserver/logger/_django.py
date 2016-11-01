@@ -9,8 +9,8 @@ __all__ = [
 
 import warnings
 
-from provisioningserver.config import is_dev_environment
 from provisioningserver.logger._common import (
+    is_dev_environment,
     LoggingMode,
     warn_unless,
 )

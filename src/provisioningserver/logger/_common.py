@@ -100,3 +100,12 @@ def warn_unless(predicate, message):
             asctime=time.strftime(DEFAULT_LOG_FORMAT_DATE, time.localtime()),
             name="global", levelname="warn", message=message)
         print(message, file=sys.__stdout__, flush=True)
+
+
+def is_dev_environment():
+    """Is this the development environment, or production?
+
+    Lazy import to avoid circular import issues.
+    """
+    from provisioningserver.config import is_dev_environment
+    return is_dev_environment()

@@ -299,7 +299,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         self.assertThat(d, IsFiredDeferred())
         self.assertDocTestMatches(
             dedent("""\
-            Unhandled Error
+            Failure when cancelling hook.
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...

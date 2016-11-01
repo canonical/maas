@@ -4,7 +4,8 @@
 """The MAAS WebSockets protocol."""
 
 __all__ = [
-    ]
+    "WebSocketProtocol",
+]
 
 from collections import deque
 from functools import partial
@@ -29,6 +30,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
 from maasserver.websockets.websockets import STATUSES
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import (
     deferred,
@@ -42,9 +44,11 @@ from twisted.internet.protocol import (
     Factory,
     Protocol,
 )
-from twisted.python import log
 from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
+
+
+log = LegacyLogger()
 
 
 class MSG_TYPE:
@@ -126,8 +130,8 @@ class WebSocketProtocol(Protocol):
 
     def loseConnection(self, status, reason):
         """Close connection with status and reason."""
-        msgFormat = "Closing connection: %(status)r (%(reason)r)"
-        log.msg(format=msgFormat, status=status, reason=reason)
+        msgFormat = "Closing connection: {status!r} ({reason!r})"
+        log.debug(msgFormat, status=status, reason=reason)
         self.transport._receiver._transport.loseConnection(
             status, reason.encode("utf-8"))
 
@@ -321,7 +325,7 @@ class WebSocketProtocol(Protocol):
             error = failure.getErrorMessage()
         why = "Error on request (%s) %s.%s: %s" % (
             request_id, handler._meta.handler_name, method, error)
-        log.err(failure, _why=why)
+        log.err(failure, why)
 
         error_msg = {
             "type": MSG_TYPE.RESPONSE,

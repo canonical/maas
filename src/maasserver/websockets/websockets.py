@@ -27,10 +27,10 @@ from typing import (
     Sequence,
 )
 
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import typed
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
-from twisted.python import log
 from twisted.python.constants import (
     ValueConstant,
     Values,
@@ -43,6 +43,9 @@ from zope.interface import (
     Interface,
     providedBy,
 )
+
+
+log = LegacyLogger()
 
 
 class _WSException(Exception):
@@ -392,7 +395,7 @@ class WebSocketsProtocol(Protocol):
         Log the new connection and initialize the buffer list.
         """
         peer = self.transport.getPeer()
-        log.msg(format="Opening connection with %(peer)s", peer=peer)
+        log.debug("Opening connection with {peer}", peer=peer)
         self._buffer = []
         self._receiver.makeConnection(WebSocketsTransport(self.transport))
 
@@ -405,10 +408,10 @@ class WebSocketsProtocol(Protocol):
             if opcode == CONTROLS.CLOSE:
                 # The other side wants us to close.
                 code, reason = data
-                msgFormat = "Closing connection: %(code)r"
+                msgFormat = "Closing connection: {code!r}"
                 if reason:
-                    msgFormat += " (%(reason)r)"
-                log.msg(format=msgFormat, reason=reason, code=code)
+                    msgFormat += " ({reason!r})"
+                log.debug(msgFormat, reason=reason, code=code)
 
                 # Close the connection.
                 self.transport.loseConnection()

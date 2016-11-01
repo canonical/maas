@@ -57,6 +57,7 @@ from provisioningserver.import_images.download_descriptions import (
     image_passes_filter,
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -64,7 +65,9 @@ from provisioningserver.utils.twisted import (
     FOREVER,
 )
 from twisted.internet.defer import Deferred
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 def get_distro_series_info_row(series):

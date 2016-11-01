@@ -12,7 +12,10 @@ __all__ = [
 from datetime import timedelta
 
 from provisioningserver.config import is_dev_environment
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateServices
 from provisioningserver.service_monitor import service_monitor
@@ -22,10 +25,10 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import log
 
 
 maaslog = get_maas_logger("service_monitor_service")
+log = LegacyLogger()
 
 
 class ServiceMonitorService(TimerService, object):

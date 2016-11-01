@@ -650,7 +650,7 @@ class TestClusterClientService(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            Unhandled Error
+            Failure making new RPC connection.
             Traceback (most recent call last):
             ...
             builtins.RuntimeError: Something went wrong.

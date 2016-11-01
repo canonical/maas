@@ -185,7 +185,7 @@ class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
         return super().__call__(event)
 
 
-class LegacyLogger:
+class LegacyLogger(twistedModern.Logger):
     """Looks like a stripped-down `t.p.log` module, logs to a `Logger`.
 
     Use this with code that cannot easily be changed to use `twisted.logger`
@@ -193,7 +193,7 @@ class LegacyLogger:
     """
 
     @classmethod
-    def install(cls, module, attribute="log", *, observer=None):
+    def install(cls, module, attribute="log", *, source=None, observer=None):
         """Install a `LegacyLogger` at `module.attribute`.
 
         Warns if `module.attribute` does not exist, but carries on anyway.
@@ -201,8 +201,8 @@ class LegacyLogger:
         :param module: A module (or any other object with assignable
             attributes and a `__name__`).
         :param attribute: The name of the attribute on `module` to replace.
-        :param observer: A (modern) logging observer to use. If not specified
-            the global log publisher will be used.
+        :param source: See `Logger.__init__`.
+        :param observer: See `Logger.__init__`.
         :return: The newly created `LegacyLogger`.
         """
         replacing = getattr(module, attribute, "<not-found>")
@@ -210,14 +210,9 @@ class LegacyLogger:
             "Legacy logger being installed to replace %r but expected a "
             "reference to twisted.python.log module; please investigate!"
             % (replacing,)))
-        modernLogger = twistedModern.Logger(module.__name__, observer=observer)
-        legacyLogger = cls(modernLogger)
-        setattr(module, attribute, legacyLogger)
-        return legacyLogger
-
-    def __init__(self, logger: twistedModern.Logger):
-        super(LegacyLogger, self).__init__()
-        self.logger = logger
+        logger = cls(module.__name__, source=source, observer=observer)
+        setattr(module, attribute, logger)
+        return logger
 
     def msg(self, *message, **kwargs):
         """Write a message to the log.
@@ -228,14 +223,14 @@ class LegacyLogger:
         """
         fmt = " ".join("{_message_%d}" % i for i, _ in enumerate(message))
         kwargs.update({"_message_%d" % i: m for i, m in enumerate(message)})
-        self.logger.info(fmt, **kwargs)
+        self.info(fmt, **kwargs)
 
     def err(self, _stuff=None, _why=None, **kwargs):
         """Write a failure to the log.
 
         See `twisted.python.log.err`.
         """
-        self.logger.failure("{_why}", _stuff, _why=_why, **kwargs)
+        self.failure("{_why}", _stuff, _why=_why, **kwargs)
 
 
 class VerbosityOptions(usage.Options):

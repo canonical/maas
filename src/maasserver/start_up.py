@@ -27,7 +27,10 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -35,11 +38,11 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import log
 
 
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)
+log = LegacyLogger()
 
 
 @asynchronous(timeout=FOREVER)

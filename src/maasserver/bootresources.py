@@ -88,7 +88,10 @@ from provisioningserver.import_images.helpers import (
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
@@ -116,11 +119,11 @@ from twisted.internet.defer import (
     inlineCallbacks,
 )
 from twisted.protocols.amp import UnhandledCommand
-from twisted.python import log
 from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("bootresources")
+log = LegacyLogger()
 
 # Used by maasserver.middleware.AccessMiddleware to allow
 # anonymous access to the simplestreams endpoint.

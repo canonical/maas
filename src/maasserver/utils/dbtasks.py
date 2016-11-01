@@ -14,6 +14,7 @@ __all__ = [
 ]
 
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -24,7 +25,9 @@ from twisted.internet.defer import (
     DeferredQueue,
 )
 from twisted.internet.task import cooperate
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 class DatabaseTaskAlreadyRunning(Exception):

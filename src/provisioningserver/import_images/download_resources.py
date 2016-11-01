@@ -17,6 +17,7 @@ from provisioningserver.import_images.helpers import (
     get_signing_policy,
     maaslog,
 )
+from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import call_and_check
 from simplestreams.contentsource import FdContentSource
@@ -30,7 +31,9 @@ from simplestreams.util import (
     path_from_mirror_url,
     products_exdata,
 )
-from twisted.python import log
+
+
+log = LegacyLogger()
 
 
 DEFAULT_KEYRING_PATH = "/usr/share/keyrings"

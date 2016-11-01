@@ -12,7 +12,10 @@ import socket
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.dhcp.detect import probe_interface
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import ReportForeignDHCPServer
 from provisioningserver.utils.network import (
@@ -30,10 +33,10 @@ from twisted.internet.defer import (
 )
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
-from twisted.python import log
 
 
 maaslog = get_maas_logger("dhcp.probe")
+log = LegacyLogger()
 
 
 class DHCPProbeService(TimerService):

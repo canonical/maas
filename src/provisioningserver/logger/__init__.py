@@ -51,6 +51,7 @@ This module attempts to address *all* of these issues!
 __all__ = [
     "configure",
     "get_maas_logger",
+    "LegacyLogger",
     "LoggingMode",
     "VerbosityOptions",
 ]
@@ -63,6 +64,7 @@ from provisioningserver.logger._maaslog import get_maas_logger
 from provisioningserver.logger._tftp import configure_tftp_logging
 from provisioningserver.logger._twisted import (
     configure_twisted_logging,
+    LegacyLogger,
     VerbosityOptions,
 )
 from provisioningserver.utils import typed

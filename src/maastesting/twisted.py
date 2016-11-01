@@ -18,7 +18,10 @@ from fixtures import Fixture
 from testtools.deferredruntest import CaptureTwistedLogs
 from testtools.twistedsupport._deferred import extract_result
 from twisted.internet import defer
-from twisted.logger import LogLevel
+from twisted.logger import (
+    formatEvent,
+    LogLevel,
+)
 from twisted.python import log
 
 
@@ -47,17 +50,20 @@ class TwistedLoggerFixture(Fixture):
         super(TwistedLoggerFixture, self).__init__()
         self.events = []
 
-    def dump(self):
-        """Return all logs as a string."""
-        return "\n---\n".join(
-            log.textFromEventDict(event) for event in self.events)
+    @property
+    def messages(self):
+        """Return a list of events formatted with `t.logger.formatEvent`.
 
-    # For compatibility with fixtures.FakeLogger.
-    output = property(dump)
+        This returns a list of *strings*, not event dictionaries.
+        """
+        return [formatEvent(event) for event in self.events]
 
     @property
     def errors(self):
-        """Return events that are at `LogLevel.error` or above."""
+        """Return a list of events that are at `LogLevel.error` or above.
+
+        This returns a list of event *dictionaries*, not strings.
+        """
         return [
             event for event in self.events
             if "log_level" in event and
@@ -65,8 +71,34 @@ class TwistedLoggerFixture(Fixture):
             event["log_level"] >= LogLevel.error
         ]
 
-    def containsError(self):
-        return any(event["isError"] for event in self.events)
+    @property
+    def failures(self):
+        """Return a list of `Failure` instances from events."""
+
+        def find_failure(event):
+            if "failure" in event:
+                return event["failure"]
+            elif "log_failure" in event:
+                return event["log_failure"]
+            else:
+                return None
+
+        failures = map(find_failure, self.events)
+        return [failure for failure in failures if failure is not None]
+
+    def dump(self):
+        """Return a string of events formatted with `textFromEventDict`.
+
+        This returns a single string, where each log message is separated from
+        the next by a line containing "---". Formatting is done by Twisted's
+        *legacy* log machinery, which may or may not differ from the modern
+        machinery.
+        """
+        return "\n---\n".join(
+            log.textFromEventDict(event) for event in self.events)
+
+    # For compatibility with fixtures.FakeLogger.
+    output = property(dump)
 
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
