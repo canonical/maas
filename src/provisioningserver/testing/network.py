@@ -7,6 +7,7 @@ __all__ = [
     "does_HOSTALIASES_work_here",
 ]
 
+from functools import lru_cache
 import random
 import socket
 from tempfile import NamedTemporaryFile
@@ -18,6 +19,7 @@ from netaddr import (
 )
 
 
+@lru_cache(1)
 def does_HOSTALIASES_work_here():
     """Does the `HOSTALIASES` mechanism work fully on this host?
 
