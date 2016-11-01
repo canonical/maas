@@ -9,6 +9,7 @@ __all__ = [
     "VerbosityOptions",
 ]
 
+import re
 import sys
 import warnings
 
@@ -132,6 +133,12 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         "No Factory.noisy attribute; please investigate!"))
     Factory.noisy = False
 
+    # Install filters for other noisy parts of Twisted itself.
+    from twisted.internet import tcp, udp, unix
+    LegacyLogger.install(tcp, observer=observe_twisted_internet_tcp)
+    LegacyLogger.install(udp, observer=observe_twisted_internet_udp)
+    LegacyLogger.install(unix, observer=observe_twisted_internet_unix)
+
     # Start Twisted logging if we're running a command. Use `sys.__stdout__`,
     # the original standard out stream when this process was started. This
     # bypasses any wrapping or redirection that may have been done elsewhere.
@@ -184,6 +191,29 @@ class LegacyLogger:
     Use this with code that cannot easily be changed to use `twisted.logger`
     but over which we want a greater degree of control.
     """
+
+    @classmethod
+    def install(cls, module, attribute="log", *, observer=None):
+        """Install a `LegacyLogger` at `module.attribute`.
+
+        Warns if `module.attribute` does not exist, but carries on anyway.
+
+        :param module: A module (or any other object with assignable
+            attributes and a `__name__`).
+        :param attribute: The name of the attribute on `module` to replace.
+        :param observer: A (modern) logging observer to use. If not specified
+            the global log publisher will be used.
+        :return: The newly created `LegacyLogger`.
+        """
+        replacing = getattr(module, attribute, "<not-found>")
+        warn_unless(replacing is twistedLegacy, (
+            "Legacy logger being installed to replace %r but expected a "
+            "reference to twisted.python.log module; please investigate!"
+            % (replacing,)))
+        modernLogger = twistedModern.Logger(module.__name__, observer=observer)
+        legacyLogger = cls(modernLogger)
+        setattr(module, attribute, legacyLogger)
+        return legacyLogger
 
     def __init__(self, logger: twistedModern.Logger):
         super(LegacyLogger, self).__init__()
@@ -278,3 +308,36 @@ def show_warning_via_twisted(
             file.flush()
         except OSError:
             pass  # We tried.
+
+
+_observe_twisted_internet_tcp_noise = re.compile(
+    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)")
+
+
+def observe_twisted_internet_tcp(event):
+    """Observe events from `twisted.internet.tcp` and filter out noise."""
+    message = twistedModern.formatEvent(event)
+    if _observe_twisted_internet_tcp_noise.match(message) is None:
+        twistedModern.globalLogPublisher(event)
+
+
+_observe_twisted_internet_udp_noise = re.compile(
+    r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)")
+
+
+def observe_twisted_internet_udp(event):
+    """Observe events from `twisted.internet.udp` and filter out noise."""
+    message = twistedModern.formatEvent(event)
+    if _observe_twisted_internet_udp_noise.match(message) is None:
+        twistedModern.globalLogPublisher(event)
+
+
+_observe_twisted_internet_unix_noise = re.compile(
+    r"^(?:[(]Port \d+ Closed[)]|.+ starting on .+)")
+
+
+def observe_twisted_internet_unix(event):
+    """Observe events from `twisted.internet.unix` and filter out noise."""
+    message = twistedModern.formatEvent(event)
+    if _observe_twisted_internet_unix_noise.match(message) is None:
+        twistedModern.globalLogPublisher(event)

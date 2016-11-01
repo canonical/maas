@@ -60,6 +60,7 @@ from provisioningserver.logger._common import LoggingMode
 from provisioningserver.logger._django import configure_django_logging
 from provisioningserver.logger._logging import configure_standard_logging
 from provisioningserver.logger._maaslog import get_maas_logger
+from provisioningserver.logger._tftp import configure_tftp_logging
 from provisioningserver.logger._twisted import (
     configure_twisted_logging,
     VerbosityOptions,
@@ -101,4 +102,5 @@ configurators = [
     configure_twisted_logging,
     configure_django_logging,
     configure_standard_logging,
+    configure_tftp_logging,
 ]

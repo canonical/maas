@@ -15,10 +15,15 @@ from unittest.mock import (
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.logger._twisted import (
     LegacyLogger,
     LegacyLogObserverWrapper,
+    observe_twisted_internet_tcp,
+    observe_twisted_internet_udp,
+    observe_twisted_internet_unix,
 )
+from provisioningserver.logger.testing import make_event
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -351,3 +356,74 @@ class TestLegacyLogger(MAASTestCase):
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
             Equals("<when> [%s#critical] %s\n" % (namespace, message)))
+
+
+class TestObserveTwistedInternetTCP(MAASTestCase):
+    """Tests for `observe_twisted_internet_tcp`."""
+
+    def test__ignores_port_closed_events(self):
+        event = make_event("(%s Port %d Closed)" % (
+            factory.make_name("port-name"), factory.pick_port()))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_tcp(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__ignores_protocol_starting_on_events(self):
+        event = make_event("%s starting on %d" % (
+            factory.make_name("protocol"), factory.pick_port()))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_tcp(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__propagates_other_events(self):
+        event = make_event(factory.make_name("something"))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_tcp(event)
+        self.assertThat(logger.events, Contains(event))
+
+
+class TestObserveTwistedInternetUDP(MAASTestCase):
+    """Tests for `observe_twisted_internet_udp`."""
+
+    def test__ignores_port_closed_events(self):
+        event = make_event("(%s Port %d Closed)" % (
+            factory.make_name("port-name"), factory.pick_port()))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_udp(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__ignores_protocol_starting_on_events(self):
+        event = make_event("%s starting on %d" % (
+            factory.make_name("protocol"), factory.pick_port()))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_udp(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__propagates_other_events(self):
+        event = make_event(factory.make_name("something"))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_udp(event)
+        self.assertThat(logger.events, Contains(event))
+
+
+class TestObserveTwistedInternetUNIX(MAASTestCase):
+    """Tests for `observe_twisted_internet_unix`."""
+
+    def test__ignores_port_closed_events(self):
+        event = make_event("(Port %d Closed)" % factory.pick_port())
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_unix(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__ignores_protocol_starting_on_events(self):
+        event = make_event("%s starting on %d" % (
+            factory.make_name("protocol"), factory.pick_port()))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_unix(event)
+        self.assertThat(logger.events, HasLength(0))
+
+    def test__propagates_other_events(self):
+        event = make_event(factory.make_name("something"))
+        with TwistedLoggerFixture() as logger:
+            observe_twisted_internet_unix(event)
+        self.assertThat(logger.events, Contains(event))

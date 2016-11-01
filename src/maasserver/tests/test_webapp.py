@@ -19,10 +19,7 @@ from maasserver import (
 from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from testtools.matchers import (
@@ -35,7 +32,10 @@ from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.web.resource import Resource
 from twisted.web.server import Site
-from twisted.web.test.requesthelper import DummyRequest
+from twisted.web.test.requesthelper import (
+    DummyChannel,
+    DummyRequest,
+)
 
 
 class TestCleanPathRequest(MAASTestCase):
@@ -43,7 +43,7 @@ class TestCleanPathRequest(MAASTestCase):
     def test_requestReceived_converts_extra_slashes_to_single(self):
         mock_super_requestReceived = self.patch(
             webapp.Request, "requestReceived")
-        request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
+        request = webapp.CleanPathRequest(DummyChannel(), sentinel.queued)
         path_pieces = [
             factory.make_name("path").encode("utf-8")
             for _ in range(3)
@@ -60,7 +60,7 @@ class TestCleanPathRequest(MAASTestCase):
     def test_requestReceived_converts_extra_slashes_ignores_args(self):
         mock_super_requestReceived = self.patch(
             webapp.Request, "requestReceived")
-        request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
+        request = webapp.CleanPathRequest(DummyChannel(), sentinel.queued)
         path_pieces = [
             factory.make_name("path").encode("utf-8")
             for _ in range(3)
@@ -154,8 +154,6 @@ class TestWebApplicationService(MAASTestCase):
 
         self.assertDocTestMatches(
             dedent("""\
-            Site starting on ...
-            ---
             MAAS web application failed to start
             Traceback (most recent call last):
             ...
@@ -171,7 +169,8 @@ class TestWebApplicationService(MAASTestCase):
         mock_prepare.side_effect = factory.make_exception()
 
         # No error is returned.
-        service.startService()
+        with TwistedLoggerFixture():
+            service.startService()
 
         # The site's page (for any path) shows the error.
         request = DummyRequest("any/where".split("/"))
@@ -208,21 +207,7 @@ class TestWebApplicationService(MAASTestCase):
 
     def test__stopService_stops_the_service(self):
         service = self.make_webapp()
-
-        with TwistedLoggerFixture() as logger:
-            service.startService()
-
-        self.expectThat(
-            logger.output, DocTestMatches("""\
-            Site starting on ...
-            """))
-
-        with TwistedLoggerFixture() as logger:
-            service.stopService()
-
-        self.expectThat(
-            logger.output, DocTestMatches("""\
-            (TCP Port ... Closed)
-            """))
-
+        service.startService()
+        self.assertTrue(service.running)
+        service.stopService()
         self.assertFalse(service.running)
