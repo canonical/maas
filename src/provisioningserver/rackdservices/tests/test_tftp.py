@@ -723,6 +723,17 @@ class TestLogRequest(MAASTestCase):
             mac_address=sentinel.macaddr, description=sentinel.filename,
             event_type=EVENT_TYPES.NODE_TFTP_REQUEST))
 
+    def test__logs_to_server_log(self):
+        self.patch(tftp_module, "send_event_node_mac_address")
+        clock = Clock()
+        mac_address = factory.make_mac_address()
+        file_name = factory.make_name("file")
+        with TwistedLoggerFixture() as logger:
+            log_request(mac_address, file_name, clock)
+            clock.advance(0.0)  # Don't leave anything in the reactor.
+        self.assertThat(logger.output, Equals(
+            "%s requested by %s" % (file_name, mac_address)))
+
     def test__logs_when_sending_event_errors(self):
         send_event = self.patch(tftp_module, "send_event_node_mac_address")
         send_event.side_effect = factory.make_exception()

@@ -113,13 +113,19 @@ def get_boot_image(params):
 def log_request(mac_address, file_name, clock=reactor):
     """Log a TFTP request.
 
-    This will be logged at a later iteration of the `clock` so as to not delay
-    the task currently in progress.
+    This will be logged to the regular log, and also to the node event log at
+    a later iteration of the `clock` so as to not delay the task currently in
+    progress.
     """
     # If the file name is a byte string, decode it as ASCII, replacing
     # non-ASCII characters, so that we have at least something to log.
     if isinstance(file_name, bytes):
         file_name = file_name.decode("ascii", "replace")
+    # Log to the regular log.
+    log.info(
+        "{file_name} requested by {mac_address}", file_name=file_name,
+        mac_address=mac_address)
+    # Log to the node event log.
     d = deferLater(
         clock, 0, send_event_node_mac_address,
         event_type=EVENT_TYPES.NODE_TFTP_REQUEST,

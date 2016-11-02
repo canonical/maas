@@ -16,10 +16,12 @@ from textwrap import dedent
 
 from fixtures import Fixture
 from testtools.deferredruntest import CaptureTwistedLogs
+from testtools.monkey import patch
 from testtools.twistedsupport._deferred import extract_result
 from twisted.internet import defer
 from twisted.logger import (
     formatEvent,
+    globalLogPublisher,
     LogLevel,
 )
 from twisted.python import log
@@ -106,6 +108,8 @@ class TwistedLoggerFixture(Fixture):
         for observer in list(log.theLogPublisher.observers):
             self.addCleanup(log.theLogPublisher.addObserver, observer)
             log.theLogPublisher.removeObserver(observer)
+        # Now remove any remaining modern observers.
+        self.addCleanup(patch(globalLogPublisher, "_observers", []))
         # Now add our observer, again via the legacy API. This ensures that
         # it's wrapped with whatever legacy wrapper we've installed.
         self.addCleanup(log.theLogPublisher.removeObserver, self.events.append)
