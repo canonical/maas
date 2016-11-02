@@ -13,6 +13,7 @@ from collections import namedtuple
 import os
 
 import curtin
+from netaddr import IPAddress
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.logger import get_maas_logger
 
@@ -129,9 +130,18 @@ def compose_purpose_opts(params):
             "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
-            # Read by cloud-initramfs-dyn-netconf and klibc's ipconfig
-            # in the initramfs.
-            "ip=::::%s:BOOTIF" % params.hostname,
+            # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
+            # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
+            # family of fs_host.  If BOOTIF is set, IPv6 config uses that
+            # exclusively.
+            (
+                "ip=::::%s:BOOTIF" % params.hostname
+                if IPAddress(params.fs_host).version == 4 else "ip=off"
+            ),
+            (
+                "ip6=dhcp"
+                if IPAddress(params.fs_host).version == 6 else "ip6=off"
+            ),
             # kernel / udev name iscsi devices with this path
             "ro root=/dev/disk/by-path/ip-%s:%s-iscsi-%s-lun-1" % (
                 params.fs_host, "3260", tname),

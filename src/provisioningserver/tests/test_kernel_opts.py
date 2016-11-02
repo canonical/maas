@@ -43,6 +43,9 @@ def make_kernel_parameters(testcase=None, **parms):
     ArchitectureRegistry and call addCleanup on the testcase to make sure
     it is removed after the test completes.
     """
+    # fs_host needs to be an IP address, set it if it was not passed.
+    if 'fs_host' not in parms:
+        parms.update({'fs_host': factory.make_ip_address()})
     parms.update(
         {field: factory.make_name(field)
          for field in KernelParameters._fields
@@ -181,10 +184,11 @@ class TestKernelOpts(MAASTestCase):
             "netcfg/choose_interface=auto",
             compose_kernel_command_line(params))
 
-    def test_xinstall_compose_kernel_command_line_inc_purpose_opts(self):
+    def test_xinstall_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "xinstall" node.
-        params = self.make_kernel_parameters(purpose="xinstall")
+        params = self.make_kernel_parameters(
+            purpose="xinstall", fs_host=factory.make_ipv4_address())
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
@@ -192,12 +196,14 @@ class TestKernelOpts(MAASTestCase):
                 "root=/dev/disk/by-path/ip-",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
+                "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
 
-    def test_commissioning_compose_kernel_command_line_inc_purpose_opts(self):
+    def test_xinstall_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
-        # options for a non "commissioning" node.
-        params = self.make_kernel_parameters(purpose="commissioning")
+        # options for a non "xinstall" node.
+        params = self.make_kernel_parameters(
+            purpose="xinstall", fs_host=factory.make_ipv6_address())
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
@@ -205,12 +211,29 @@ class TestKernelOpts(MAASTestCase):
                 "root=/dev/disk/by-path/ip-",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
+                "ip=off",
+                "ip6=dhcp"]))
+
+    def test_commissioning_compose_kernel_command_line_inc_purpose_opts4(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        params = self.make_kernel_parameters(
+            purpose="commissioning", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
 
-    def test_enlist_compose_kernel_command_line_inc_purpose_opts(self):
+    def test_commissioning_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
-        params = self.make_kernel_parameters(purpose="enlist")
+        params = self.make_kernel_parameters(
+            purpose="commissioning", fs_host=factory.make_ipv6_address())
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
@@ -218,7 +241,38 @@ class TestKernelOpts(MAASTestCase):
                 "root=/dev/disk/by-path/ip-",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
+                "ip=off",
+                "ip6=dhcp"]))
+
+    def test_enlist_compose_kernel_command_line_inc_purpose_opts4(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        params = self.make_kernel_parameters(
+            purpose="enlist", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip6=off",
                 "ip=::::%s:BOOTIF" % params.hostname]))
+
+    def test_enlist_compose_kernel_command_line_inc_purpose_opts6(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        params = self.make_kernel_parameters(
+            purpose="enlist", fs_host=factory.make_ipv6_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip=off",
+                "ip6=dhcp"]))
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(
