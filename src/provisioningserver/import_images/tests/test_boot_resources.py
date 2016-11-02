@@ -19,11 +19,15 @@ from subprocess import (
     Popen,
 )
 from unittest import mock
-from unittest.mock import call
+from unittest.mock import (
+    call,
+    MagicMock,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
@@ -511,6 +515,7 @@ class TestMain(MAASTestCase):
             BootImageMapping())
         self.patch_maaslog()
         self.patch(boot_resources, 'RepoWriter')
+        self.patch(boot_resources, 'update_iscsi_targets')
         args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
@@ -657,3 +662,152 @@ class TestImportImages(MAASTestCase):
         boot_resources.import_images(sources)
         self.assertThat(
             fake_write_all_keyrings, MockCalledWith(mock.ANY, sources))
+
+    def test__returns_false_when_no_images(self):
+        # Stop import_images() from actually doing anything.
+        self.patch(boot_resources, 'maaslog')
+        fake_download_all_image_descriptions = self.patch(
+            boot_resources, 'download_all_image_descriptions')
+        fake_download_all_image_descriptions.return_value = MagicMock()
+        fake_update_iscsi_targets = self.patch(
+            boot_resources, 'update_iscsi_targets')
+
+        self.patch(boot_resources, 'write_all_keyrings')
+        sources = [
+            {
+                'keyring_data': self.getUniqueString(),
+                'url': factory.make_name("something"),
+                'selections': [
+                    {
+                        'os': factory.make_name("os"),
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
+                    },
+                    ],
+            },
+            ],
+        self.assertFalse(boot_resources.import_images(sources))
+        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
+
+    def test__returns_false_when_no_new_images(self):
+        # Stop import_images() from actually doing anything.
+        self.patch(boot_resources, 'maaslog')
+        fake_download_all_image_descriptions = self.patch(
+            boot_resources, 'download_all_image_descriptions')
+        fake_image_descriptions = MagicMock()
+        fake_image_descriptions.is_empty.return_value = False
+        fake_download_all_image_descriptions.return_value = (
+            fake_image_descriptions)
+        self.patch(boot_resources, 'meta_contains').return_value = True
+        fake_update_iscsi_targets = self.patch(
+            boot_resources, 'update_iscsi_targets')
+
+        self.patch(boot_resources, 'write_all_keyrings')
+        sources = [
+            {
+                'keyring_data': self.getUniqueString(),
+                'url': factory.make_name("something"),
+                'selections': [
+                    {
+                        'os': factory.make_name("os"),
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
+                    },
+                    ],
+            },
+            ],
+        self.assertFalse(boot_resources.import_images(sources))
+        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
+
+    def test__cleans_up_on_failure(self):
+        # Stop import_images() from actually doing anything.
+        self.patch(boot_resources, 'maaslog')
+        fake_download_all_image_descriptions = self.patch(
+            boot_resources, 'download_all_image_descriptions')
+        fake_image_descriptions = MagicMock()
+        fake_image_descriptions.is_empty.return_value = False
+        fake_download_all_image_descriptions.return_value = (
+            fake_image_descriptions)
+        self.patch(boot_resources, 'meta_contains').return_value = False
+        self.patch(boot_resources, 'map_products')
+        self.patch(
+            boot_resources, 'download_all_boot_resources'
+            ).side_effect = Exception
+        fake_update_iscsi_targets = self.patch(
+            boot_resources, 'update_iscsi_targets')
+        fake_cleanup_snapshots_and_cache = self.patch(
+            boot_resources, 'cleanup_snapshots_and_cache')
+
+        self.patch(boot_resources, 'write_all_keyrings')
+        sources = [
+            {
+                'keyring_data': self.getUniqueString(),
+                'url': factory.make_name("something"),
+                'selections': [
+                    {
+                        'os': factory.make_name("os"),
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
+                    },
+                    ],
+            },
+            ],
+        self.assertRaises(
+            Exception, boot_resources.import_images, sources)
+        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
+        self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())
+
+    def test__runs_import_and_returns_true(self):
+        # Stop import_images() from actually doing anything.
+        self.patch(boot_resources, 'maaslog')
+        fake_download_all_image_descriptions = self.patch(
+            boot_resources, 'download_all_image_descriptions')
+        fake_image_descriptions = MagicMock()
+        fake_image_descriptions.is_empty.return_value = False
+        fake_download_all_image_descriptions.return_value = (
+            fake_image_descriptions)
+        self.patch(boot_resources, 'meta_contains').return_value = False
+        self.patch(boot_resources, 'map_products')
+        self.patch(boot_resources, 'download_all_boot_resources')
+        fake_write_snapshot_metadata = self.patch(
+            boot_resources, 'write_snapshot_metadata')
+        fake_targets_conf = self.patch(
+            boot_resources, 'write_targets_conf')
+        fake_install_boot_loaders = self.patch(
+            boot_resources, 'install_boot_loaders')
+        fake_update_current_symlink = self.patch(
+            boot_resources, 'update_current_symlink')
+        fake_update_iscsi_targets = self.patch(
+            boot_resources, 'update_iscsi_targets')
+        fake_cleanup_snapshots_and_cache = self.patch(
+            boot_resources, 'cleanup_snapshots_and_cache')
+
+        self.patch(boot_resources, 'write_all_keyrings')
+        sources = [
+            {
+                'keyring_data': self.getUniqueString(),
+                'url': factory.make_name("something"),
+                'selections': [
+                    {
+                        'os': factory.make_name("os"),
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
+                    },
+                    ],
+            },
+            ],
+        self.assertTrue(boot_resources.import_images(sources))
+        self.assertThat(fake_write_snapshot_metadata, MockCalledOnce())
+        self.assertThat(fake_targets_conf, MockCalledOnce())
+        self.assertThat(fake_install_boot_loaders, MockCalledOnce())
+        self.assertThat(fake_update_current_symlink, MockCalledOnce())
+        self.assertThat(fake_update_iscsi_targets, MockCalledOnce())
+        self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())

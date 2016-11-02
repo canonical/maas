@@ -235,6 +235,11 @@ def parse_sources(sources_yaml):
     return BootSources.parse(StringIO(sources_yaml))
 
 
+def update_iscsi_targets(snapshot_path):
+    maaslog.info("Updating boot image iSCSI targets.")
+    update_targets_conf(snapshot_path)
+
+
 def import_images(sources):
     """Import images.  Callable from the command line.
 
@@ -245,6 +250,9 @@ def import_images(sources):
     if len(sources) == 0:
         maaslog.warning("Can't import: region did not provide a source.")
         return False
+
+    with ClusterConfiguration.open() as config:
+        storage = FilePath(config.tftp_root).parent().path
 
     with tempdir('keyrings') as keyrings_path:
         # XXX: Band-aid to ensure that the keyring_data is bytes. Future task:
@@ -261,15 +269,15 @@ def import_images(sources):
 
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
+            update_iscsi_targets(os.path.join(storage, 'current'))
             maaslog.warning(
                 "Finished importing boot images, the region does not have "
                 "any boot images available.")
             return False
 
-        with ClusterConfiguration.open() as config:
-            storage = FilePath(config.tftp_root).parent().path
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
+            update_iscsi_targets(os.path.join(storage, 'current'))
             maaslog.info(
                 "Finished importing boot images, the region does not "
                 "have any new images.")
@@ -277,8 +285,17 @@ def import_images(sources):
 
         product_mapping = map_products(image_descriptions)
 
-        snapshot_path = download_all_boot_resources(
-            sources, storage, product_mapping)
+        try:
+            snapshot_path = download_all_boot_resources(
+                sources, storage, product_mapping)
+        except:
+            update_iscsi_targets(os.path.join(storage, 'current'))
+            # Cleanup snapshots and cache since download failed.
+            maaslog.warning(
+                "Unable to import boot images; cleaning up failed snapshot "
+                "and cache.")
+            cleanup_snapshots_and_cache(storage)
+            raise
 
     maaslog.info("Writing boot image metadata and iSCSI targets.")
     write_snapshot_metadata(snapshot_path, meta_file_content)
@@ -289,8 +306,8 @@ def import_images(sources):
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
-    maaslog.info("Updating boot image iSCSI targets.")
-    update_targets_conf(snapshot_path)
+
+    update_iscsi_targets(snapshot_path)
 
     # Now cleanup the old snapshots and cache.
     maaslog.info('Cleaning up old snapshots and cache.')
