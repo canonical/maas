@@ -131,8 +131,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         iface = factory.make_Interface(node=rack)
         ip = factory.make_ip_address(ipv6=False)
         mdns_hostname = factory.make_hostname()
-        factory.make_Discovery(interface=iface, ip=ip)
-        factory.make_MDNS(hostname=mdns_hostname, ip=ip, interface=iface)
+        factory.make_Discovery(hostname=mdns_hostname, interface=iface, ip=ip)
         discovery = Discovery.objects.first()
         self.assertThat(discovery.hostname, Equals(mdns_hostname))
 
@@ -142,7 +141,7 @@ class TestDiscoveryModel(MAASServerTestCase):
         ip = factory.make_ip_address(ipv6=False)
         mdns_hostname = factory.make_hostname()
         rdns_hostname = factory.make_hostname()
-        factory.make_Discovery(interface=iface, ip=ip)
+        factory.make_Discovery(hostname="", interface=iface, ip=ip)
         factory.make_MDNS(hostname=mdns_hostname, ip=ip, interface=iface)
         factory.make_RDNS(hostname=rdns_hostname, ip=ip, observer=rack)
         discovery = Discovery.objects.first()

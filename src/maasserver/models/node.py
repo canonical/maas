@@ -3639,6 +3639,24 @@ class Controller(Node):
                 new_vlan.fabric.delete()
         return interface
 
+    def _get_or_create_vlan_interface(self, name, vlan, parent):
+        """Wrapper to get_or_create for VLAN interfaces.
+
+        Ensures all required parameters for updating a VLAN interface on a
+        controller are always passed in. (Numerous bugs have occurred because
+        one of the parameters have been missed in the _update_vlan_interface()
+        below.)
+
+        Also updates the interface name if it is different from what was
+        specified.
+        """
+        interface, created = VLANInterface.objects.get_or_create(
+            node=self, vlan=vlan, parents=[parent], defaults={"name": name})
+        if interface.name != name:
+            interface.name = name
+            interface.save()
+        return interface, created
+
     def _update_vlan_interface(self, name, config):
         """Update a VLAN interface.
 
@@ -3655,14 +3673,14 @@ class Controller(Node):
         update_links = True
         if parent_has_links:
             # If the parent interface has links then we assume that is
-            # connected to the correct fabric. This VLAN interface needs to
-            # exists on this fabric.
+            # connected to the correct fabric. This VLAN interface must
+            # exist on that fabric.
             vlan, _ = VLAN.objects.get_or_create(
                 fabric=parent_nic.vlan.fabric, vid=config["vid"])
-            interface, _ = VLANInterface.objects.get_or_create(
-                node=self, vlan=vlan, parents=[parent_nic])
+            interface, _ = self._get_or_create_vlan_interface(
+                name=name, vlan=vlan, parent=parent_nic)
         else:
-            # Parent has no links we do not assume that parent is on the
+            # Parent has no links, so we cannot assume that parent is on the
             # correct fabric.
             connected_to_subnets = self._get_connected_subnets(
                 config["links"])
@@ -3679,8 +3697,8 @@ class Controller(Node):
                     update_links = False
                     vlan, _ = VLAN.objects.get_or_create(
                         fabric=parent_nic.vlan.fabric, vid=config["vid"])
-                    interface, created = VLANInterface.objects.get_or_create(
-                        node=self, vlan=vlan, parents=[parent_nic])
+                    interface, created = self._get_or_create_vlan_interface(
+                        name=name, vlan=vlan, parent=parent_nic)
                     if not created:
                         # Interface already existed so remove all assigned IP
                         # addresses.
@@ -3691,14 +3709,13 @@ class Controller(Node):
                         "Unable to correctly identify VLAN for interface '%s' "
                         "on controller '%s'. Placing interface on VLAN "
                         "'%s.%d' without address assignments." % (
-                            name, self.hostname, vlan.fabric.name,
-                            vlan.vid))
+                            name, self.hostname, vlan.fabric.name, vlan.vid))
                 else:
                     # Subnet is on matching VLAN. Create the VLAN interface
                     # on this VLAN and update the parent interface fabric if
                     # needed.
-                    interface, _ = VLANInterface.objects.get_or_create(
-                        node=self, vlan=subnet.vlan, parents=[parent_nic])
+                    interface, _ = self._get_or_create_vlan_interface(
+                        name=name, vlan=subnet.vlan, parent=parent_nic)
                     if parent_nic.vlan.fabric_id != subnet.vlan.fabric_id:
                         parent_nic.vlan = subnet.vlan.fabric.get_default_vlan()
                         parent_nic.save()
@@ -3708,8 +3725,8 @@ class Controller(Node):
                 # place the interface on the VLAN for that fabric.
                 vlan, _ = VLAN.objects.get_or_create(
                     fabric=parent_nic.vlan.fabric, vid=config["vid"])
-                interface, _ = VLANInterface.objects.get_or_create(
-                    node=self, vlan=vlan, parents=[parent_nic])
+                interface, _ = self._get_or_create_vlan_interface(
+                    name=name, vlan=vlan, parent=parent_nic)
 
         # Update all assigned IP address to the interface. This is not
         # performed when the subnet and VID for that subnet do not match.

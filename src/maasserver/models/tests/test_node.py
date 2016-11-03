@@ -5738,6 +5738,130 @@ class TestUpdateInterfaces(MAASServerTestCase):
             observed_vlans,
             Contains(Fabric.objects.get_default_fabric().get_default_vlan()))
 
+    def test__vlans_with_alternate_naming_conventions(self):
+        controller = self.create_empty_controller()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "vlan0100": {
+                "type": "vlan",
+                "vid": 100,
+                "mac_address": factory.make_mac_address(),
+                "parents": ["eth0"],
+                "links": [{'address': '192.168.0.1/24', 'mode': 'static'}],
+                "enabled": True,
+            },
+            "vlan101": {
+                "type": "vlan",
+                "vid": 101,
+                "mac_address": factory.make_mac_address(),
+                "parents": ["eth0"],
+                "links": [{'address': '192.168.0.2/24', 'mode': 'static'}],
+                "enabled": True,
+            },
+            "eth0.0102": {
+                "type": "vlan",
+                "vid": 102,
+                "mac_address": factory.make_mac_address(),
+                "parents": ["eth0"],
+                "links": [],
+                "enabled": True,
+            },
+        }
+        # Do this twice so we make sure we can both create and update.
+        # And duplicate the code so it's easy to tell from a traceback which
+        # failed.
+        self._test_vlans_with_alternate_naming_conventions(
+            controller, interfaces)
+        self._test_vlans_with_alternate_naming_conventions(
+            controller, interfaces)
+
+    def _test_vlans_with_alternate_naming_conventions(
+            self, controller, interfaces):
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertThat(
+            eth0, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.PHYSICAL,
+                name="eth0",
+                # Note: we expect the VLAN MAC to be ignored; VLAN interfaces
+                # always inherit the parent MAC address.
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(eth0.parents.all()), Equals([]))
+        vlan0100 = Interface.objects.get(name="vlan0100", node=controller)
+        self.assertThat(
+            vlan0100, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="vlan0100",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(vlan0100.parents.all()), Equals([eth0]))
+        vlan101 = Interface.objects.get(name="vlan101", node=controller)
+        self.assertThat(
+            vlan101, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="vlan101",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(vlan101.parents.all()), Equals([eth0]))
+        eth0_0102 = Interface.objects.get(name="eth0.0102", node=controller)
+        self.assertThat(
+            eth0_0102, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="eth0.0102",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(eth0_0102.parents.all()), Equals([eth0]))
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertThat(
+            eth0, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.PHYSICAL,
+                name="eth0",
+                # Note: we expect the VLAN MAC to be ignored; VLAN interfaces
+                # always inherit the parent MAC address.
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(eth0.parents.all()), Equals([]))
+        vlan0100 = Interface.objects.get(name="vlan0100", node=controller)
+        self.assertThat(
+            vlan0100, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="vlan0100",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(vlan0100.parents.all()), Equals([eth0]))
+        vlan101 = Interface.objects.get(name="vlan101", node=controller)
+        self.assertThat(
+            vlan101, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="vlan101",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(vlan101.parents.all()), Equals([eth0]))
+        eth0_0102 = Interface.objects.get(name="eth0.0102", node=controller)
+        self.assertThat(
+            eth0_0102, MatchesStructure.byEquality(
+                type=INTERFACE_TYPE.VLAN,
+                name="eth0.0102",
+                mac_address=interfaces["eth0"]["mac_address"],
+                enabled=True,
+            ))
+        self.assertThat(list(eth0_0102.parents.all()), Equals([eth0]))
+
     def test__sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
@@ -7612,7 +7736,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "type": "vlan",
                 "vid": 100,
                 "mac_address": eth1_mac,
-                "parents": ["eth0"],
+                "parents": ["eth1"],
                 "links": [],
                 "enabled": True,
             },
@@ -7758,7 +7882,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "type": "vlan",
                 "vid": 100,
                 "mac_address": eth1_mac,
-                "parents": ["eth0"],
+                "parents": ["eth1"],
                 "links": [],
                 "enabled": True,
             },
@@ -7847,7 +7971,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 "type": "vlan",
                 "vid": 100,
                 "mac_address": eth1_mac,
-                "parents": ["eth0"],
+                "parents": ["eth1"],
                 "links": [],
                 "enabled": True,
             },

@@ -42,6 +42,7 @@ from maasserver.models.interface import (
     BondInterface,
     BridgeInterface,
     Interface,
+    InterfaceRelationship,
     PhysicalInterface,
     UnknownInterface,
     VLANInterface,
@@ -1244,7 +1245,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
 class VLANInterfaceTest(MAASServerTestCase):
 
     def test_vlan_has_generated_name(self):
-        name = factory.make_name('name')
+        name = factory.make_name('eth', size=2)
         parent = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name=name)
         vlan = factory.make_VLAN()
@@ -1255,7 +1256,7 @@ class VLANInterfaceTest(MAASServerTestCase):
                          interface.name)
 
     def test_generated_name_gets_update_if_vlan_id_changes(self):
-        name = factory.make_name('name')
+        name = factory.make_name('eth', size=2)
         parent = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name=name)
         vlan = factory.make_VLAN()
@@ -1266,6 +1267,24 @@ class VLANInterfaceTest(MAASServerTestCase):
         interface.save()
         self.assertEqual('%s.%d' % (parent.get_name(), new_vlan.vid),
                          interface.name)
+
+    def test_vlan_on_rack_has_supplied_name(self):
+        name = factory.make_name('eth', size=2)
+        controller = random.choice([
+            factory.make_RegionController,
+            factory.make_RackController,
+            factory.make_RegionRackController])()
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name=name, node=controller)
+        vlan = factory.make_VLAN()
+        vlan_ifname = factory.make_name()
+        interface = VLANInterface(
+            node=controller, mac_address=factory.make_mac_address(),
+            type=INTERFACE_TYPE.VLAN, name=vlan_ifname, vlan=vlan,
+            enabled=True)
+        interface.save()
+        InterfaceRelationship(child=interface, parent=parent).save()
+        self.assertEqual(vlan_ifname, interface.name)
 
     def test_manager_returns_vlan_interfaces(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1302,9 +1321,11 @@ class VLANInterfaceTest(MAASServerTestCase):
             }, error.message_dict)
 
     def test_must_have_one_parent(self):
+        node = factory.make_Device()
+        vlan = factory.make_VLAN(vid=1)
         error = self.assertRaises(
             ValidationError, factory.make_Interface,
-            INTERFACE_TYPE.VLAN)
+            INTERFACE_TYPE.VLAN, node=node, vlan=vlan)
         self.assertEqual({
             "parents": ["VLAN interface must have exactly one parent."]
             }, error.message_dict)

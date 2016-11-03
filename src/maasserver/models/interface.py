@@ -858,10 +858,6 @@ class Interface(CleanSave, TimestampedModel):
         the same VLAN as the interface. If no subnet could be identified then
         its just set to DHCP.
         """
-        # XXX mpontillo 2015-11-29: since we tend to dump a large number of
-        # subnets into the default VLAN, this assumption might be incorrect in
-        # many cases, leading to interfaces being configured as AUTO when
-        # they should be configured as DHCP.
         if self.vlan is not None:
             found_subnet = self.vlan.subnet_set.first()
             if found_subnet is not None:
@@ -1331,6 +1327,19 @@ class ChildInterface(Interface):
         proxy = True
 
     def get_node(self):
+        """Returns the related Node for this interface.
+
+        In most cases, the Node will be explicitly specified. In some cases,
+        however (for example, a bug, or a migration from an older database),
+        the node will only be set on the parent interface. This method
+        traverses the interface's parent (and parent of parent, etc.) looking
+        for a parent with a defined Node.
+
+        :return: Node model object related to this Interface, or None if one
+            cannot be found.
+        """
+        if self.node is not None:
+            return self.node
         if self.id is None:
             # This should be correct since the interface was just now created.
             return self.node
@@ -1506,16 +1515,6 @@ class VLANInterface(Interface):
     def get_type(self):
         return INTERFACE_TYPE.VLAN
 
-    def get_node(self):
-        if self.id is None:
-            return None
-        else:
-            parent = self.parents.first()
-            if parent is not None:
-                return parent.get_node()
-            else:
-                return None
-
     def is_enabled(self):
         if self.id is None:
             return True
@@ -1527,12 +1526,39 @@ class VLANInterface(Interface):
                 return True
 
     def get_name(self):
+        """Returns the name of this VLAN interface.
+
+        On non-Controller nodes, the name is computed from the parent interface
+        and the related VLAN.
+
+        On nodes that are a subclass of Controller (such as rack and region
+        controllers), the given name for the VLAN interface is used, since
+        the name might not conform to the default VLAN interface name format.
+
+        Note that if the VLAN interface has not yet been saved, it cannot yet
+        have a parent interface. In that case, this method will return a
+        generic name (such as 'vlan100'), rather than an expected
+        <parent>.<vid> format name (such as 'eth0.100').
+
+        :raises: AssertionError if the VLAN is not defined, or if the related
+            VLAN is not tagged with a valid 802.1Q VLAN tag (between 1-4094).
+        """
+        if self._is_related_node_a_controller() and self.name is not None:
+            # Controllers must preserve original VLAN interface names, since
+            # having an accurate name is important for MAAS (in order to
+            # perform actions such as providing DHCP or monitoring interfaces).
+            return self.name
+        # This should never happen in production. (We raise a ValidationError.)
+        assert self.vlan is not None, (
+            "Interface %d on %s (%s): Could not generate VLAN interface name; "
+            "related VLAN not found.") % (
+                self.id, self.node.hostname, self.node.system_id)
+        vid = self.vlan.vid
         if self.id is not None:
             parent = self.parents.first()
             if parent is not None:
-                return build_vlan_interface_name(parent, self.vlan)
-        # self.vlan is always something valid.
-        return "vlan%d" % self.vlan.vid
+                return "%s.%s" % (parent.name, vid)
+        return "vlan%s" % vid
 
     def clean(self):
         super(VLANInterface, self).clean()
@@ -1571,23 +1597,35 @@ class VLANInterface(Interface):
                     ]
                 })
 
+    def _is_related_node_a_controller(self):
+        """Returns True if the related Node is a Controller."""
+        return self.get_node().is_controller
+
     def save(self, *args, **kwargs):
         # Set the node of this VLAN to the same as its parents.
         self.node = self.get_node()
-
         # Set the enabled status based on its parents.
         self.enabled = self.is_enabled()
-
         # Set the MAC address to the same as its parent.
         if self.id is not None:
             parent = self.parents.first()
             if parent is not None:
                 self.mac_address = parent.mac_address
-
-        # Auto update the interface name.
-        new_name = self.get_name()
-        if self.name != new_name:
-            self.name = new_name
+        # There are two cases where we want to automatically generate a
+        # VLAN interface's name:
+        # (1) The interface is not attached to a Controller. Controllers
+        #     always inform MAAS what their interface name is, so MAAS
+        #     must trust what they say. On controllers, we allow
+        #     non-standard naming conventions, such as 'vlan100',
+        #     'vlan0100', or 'eth0.0100'. On deployed nodes, we always
+        #     coerce the name to '<parent>.<vid-no-pad>' format.
+        # (2) The interface is on a controller, but no name was specified.
+        #     (This is useful more for the test suite than anything else.)
+        is_controller = self._is_related_node_a_controller()
+        if not is_controller or (is_controller and self.name is None):
+            new_name = self.get_name()
+            if self.name != new_name:
+                self.name = new_name
         return super(VLANInterface, self).save(*args, **kwargs)
 
 

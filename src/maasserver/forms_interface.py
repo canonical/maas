@@ -84,6 +84,13 @@ class InterfaceForm(MAASModelForm):
                 "instance or node is required for the InterfaceForm")
         self.fields['parents'].queryset = self.node.interface_set.all()
 
+    def _get_validation_exclusions(self):
+        # The instance is created just before this in django. The only way to
+        # get the validation to pass on a newly created interface is to set the
+        # node in the interface here.
+        self.instance.node = self.node
+        return super(InterfaceForm, self)._get_validation_exclusions()
+
     def save(self, *args, **kwargs):
         """Persist the interface into the database."""
         created = self.instance.id is None
@@ -217,13 +224,6 @@ class PhysicalInterfaceForm(InterfaceForm):
         self.fields['mac_address'].required = True
         # Allow the name to be auto-generated if missing.
         self.fields['name'].required = False
-
-    def _get_validation_exclusions(self):
-        # The instance is created just before this in django. The only way to
-        # get the validation to pass on a newly created interface is to set the
-        # node in the interface here.
-        self.instance.node = self.node
-        return super(PhysicalInterfaceForm, self)._get_validation_exclusions()
 
     def clean_parents(self):
         parents = self.get_clean_parents()

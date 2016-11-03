@@ -1046,6 +1046,8 @@ class Factory(maastesting.factory.Factory):
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
             vlan = subnet.vlan
+        if iftype is None:
+            iftype = INTERFACE_TYPE.PHYSICAL
         if name is None:
             if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
                 name = self.make_name('eth')
@@ -1058,10 +1060,8 @@ class Factory(maastesting.factory.Factory):
             elif iftype == INTERFACE_TYPE.UNKNOWN:
                 name = self.make_name('eth')
             elif iftype == INTERFACE_TYPE.VLAN:
-                # This will be determined by the VLAN's VID.
+                # Need to calculate this later based on the VID.
                 name = None
-        if iftype is None:
-            iftype = INTERFACE_TYPE.PHYSICAL
         if not disconnected:
             if vlan is None:
                 if fabric is not None:
@@ -1072,11 +1072,14 @@ class Factory(maastesting.factory.Factory):
                 else:
                     if iftype == INTERFACE_TYPE.VLAN and parents:
                         vlan = self.make_VLAN(fabric=parents[0].vlan.fabric)
-                    elif iftype == INTERFACE_TYPE.BOND and parents:
+                    elif parents and iftype in (
+                            INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
                         vlan = parents[0].vlan
                     else:
                         fabric = self.make_Fabric()
                         vlan = fabric.get_default_vlan()
+        if None not in (parents, name) and iftype == INTERFACE_TYPE.VLAN:
+            name = "%s.%d" % (parents[0].name, vlan.vid)
         if (mac_address is None and
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,
@@ -1086,6 +1089,8 @@ class Factory(maastesting.factory.Factory):
             mac_address = self.make_MAC()
         if node is None and iftype == INTERFACE_TYPE.PHYSICAL:
             node = self.make_Node()
+        elif node is None and parents is not None and len(parents) > 0:
+            node = parents[0].get_node()
         if tags is None:
             tags = [self.make_name('tag') for _ in range(3)]
         interface = Interface(
