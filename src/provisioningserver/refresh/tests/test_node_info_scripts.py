@@ -210,23 +210,79 @@ class TestLLDPScripts(MAASTestCase):
 # and 'eth2' while 'ifconfig -s' does not contain them.
 
 # Example output of 'ifconfig -s -a':
-ifconfig_all = b"""
+ifconfig_all = b"""\
 Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
 eth2       1500 0         0      0      0 0             0      0
 eth1       1500 0         0      0      0 0             0      0
 eth0       1500 0   1366127      0      0 0        831110      0
+eth4       1500 0         0      0      0 0             0      0
+eth6       1500 0         0      0      0 0             0      0
 lo        65536 0     38075      0      0 0         38075      0
 virbr0     1500 0         0      0      0 0             0      0
 wlan0      1500 0   2304695      0      0 0       1436049      0
 """
 
 # Example output of 'ifconfig -s':
-ifconfig_config = b"""
+ifconfig_config = b"""\
 Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
 eth0       1500 0   1366127      0      0 0        831110      0
+eth4       1500 0   1366127      0      0 0        831110      0
+eth6       1500 0   1366127      0      0 0        831110      0
 lo        65536 0     38115      0      0 0         38115      0
 virbr0     1500 0         0      0      0 0             0      0
 wlan0      1500 0   2304961      0      0 0       1436319      0
+"""
+
+# Example output of 'ip addr list dev XX':
+ip_eth0 = b"""\
+3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP ...
+    link/ether 00:01:02:03:04:03 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.1/24 brd 192.168.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 2001:db8::32/64 scope global
+       valid_lft forever preferred_lft forever
+    inet6 fe80::0201:02ff:fe03:0403/64 scope link
+       valid_lft forever preferred_lft forever
+"""
+ip_eth4 = b"""\
+4: eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP ...
+    link/ether 00:01:02:03:04:04 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.4.1/24 brd 192.168.4.255 scope global eth4
+       valid_lft forever preferred_lft forever
+    inet6 fe80::0201:02ff:fe03:0404/64 scope link
+       valid_lft forever preferred_lft forever
+"""
+ip_eth6 = b"""\
+6: eth6: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP ...
+    link/ether 00:01:02:03:04:06 brd ff:ff:ff:ff:ff:ff
+    inet6 2001:db8:0:6::32/64 scope global
+       valid_lft forever preferred_lft forever
+    inet6 fe80::0201:02ff:fe03:0406/64 scope link
+       valid_lft forever preferred_lft forever
+"""
+ip_lo = b"""\
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN ...
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+"""
+ip_virbr0 = b"""\
+2: virbr0: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN ...
+    link/ether 00:01:02:03:04:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::0201:02ff:fe03:0402/64 scope link
+       valid_lft forever preferred_lft forever
+"""
+ip_wlan0 = b"""\
+5: wlan0: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN ...
+    link/ether 00:01:02:03:04:05 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.3.1/24 brd 192.168.3.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::0201:02ff:fe03:0405/64 scope link
+       valid_lft forever preferred_lft forever
 """
 
 
@@ -234,7 +290,11 @@ class TestDHCPExplore(MAASTestCase):
 
     def test_calls_dhclient_on_unconfigured_interfaces(self):
         check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [ifconfig_all, ifconfig_config]
+        check_output.side_effect = [
+            ifconfig_all, ifconfig_config,
+            ip_eth0, ip_eth4, ip_eth6, ip_lo, ip_virbr0, ip_wlan0,
+            ip_eth0, ip_eth4, ip_eth6, ip_lo, ip_virbr0, ip_wlan0
+            ]
         mock_call = self.patch(subprocess, "call")
         mock_popen = self.patch(subprocess, "Popen")
         dhcp_explore = isolate_function(node_info_module.dhcp_explore)
@@ -243,7 +303,8 @@ class TestDHCPExplore(MAASTestCase):
             mock_call,
             MockCallsMatch(
                 call(["dhclient", "-nw", "-4", b"eth1"]),
-                call(["dhclient", "-nw", "-4", b"eth2"])))
+                call(["dhclient", "-nw", "-4", b"eth2"]),
+                call(["dhclient", "-nw", "-4", b"eth6"])))
         self.assertThat(
             mock_popen,
             MockCallsMatch(
@@ -252,7 +313,16 @@ class TestDHCPExplore(MAASTestCase):
                     "while ! dhclient -6 eth1; do sleep .05; done"]),
                 call([
                     "sh", "-c",
-                    "while ! dhclient -6 eth2; do sleep .05; done"])))
+                    "while ! dhclient -6 eth2; do sleep .05; done"]),
+                call([
+                    "sh", "-c",
+                    "while ! dhclient -6 eth4; do sleep .05; done"]),
+                call([
+                    "sh", "-c",
+                    "while ! dhclient -6 virbr0; do sleep .05; done"]),
+                call([
+                    "sh", "-c",
+                    "while ! dhclient -6 wlan0; do sleep .05; done"])))
 
 
 class TestGatherPhysicalBlockDevices(MAASTestCase):

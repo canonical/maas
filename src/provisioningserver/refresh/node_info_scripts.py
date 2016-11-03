@@ -115,25 +115,45 @@ SRIOV_SCRIPT = dedent("""\
 # parser will be able to connect these NICs and the networks
 # MAAS knows about.
 def dhcp_explore():
+    from subprocess import call, check_output, Popen
+
     def get_iface_list(ifconfig_output):
         return [
             line.split()[0]
             for line in ifconfig_output.splitlines()[1:]]
 
-    from subprocess import call, check_output, Popen
+    def has_ipv4_address(iface):
+        output = check_output(('ip', '-4', 'addr', 'list', 'dev', iface))
+        for line in output.splitlines():
+            if line.find(b' inet ') >= 0:
+                return True
+        return False
+
+    def has_ipv6_address(iface):
+        output = check_output(('ip', '-6', 'addr', 'list', 'dev', iface))
+        for line in output.splitlines():
+            if line.find(b' inet6 ') >= 0 and line.find(b' inet6 fe80:') == -1:
+                return True
+        return False
+
     all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
     configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
-    unconfigured_ifaces = set(all_ifaces) - set(configured_ifaces)
-    for iface in sorted(unconfigured_ifaces):
-        # Run dhclient in the background to avoid blocking node_info.
-        # We need to run two dhclient processes (one for IPv6 and one for IPv4)
-        # and IPv6 will run into issues if the link-local address has not
-        # finished conflict-detection before it starts.  This is complicated by
-        # interaction with dhclient -4 bringing the interface up, so we address
-        # the issue by running dhclient -6 in a loop.
-        # See https://launchpad.net/bugs/1447715
-        iface_str = iface.decode('utf-8')
+    configured_ifaces_4 = [
+        iface for iface in configured_ifaces if has_ipv4_address(iface)]
+    configured_ifaces_6 = [
+        iface for iface in configured_ifaces if has_ipv6_address(iface)]
+    unconfigured_ifaces_4 = set(all_ifaces) - set(configured_ifaces_4)
+    unconfigured_ifaces_6 = set(all_ifaces) - set(configured_ifaces_6)
+    # Run dhclient in the background to avoid blocking node_info.  We need to
+    # run two dhclient processes (one for IPv6 and one for IPv4) and IPv6 will
+    # run into issues if the link-local address has not finished
+    # conflict-detection before it starts.  This is complicated by interaction
+    # with dhclient -4 bringing the interface up, so we address the issue by
+    # running dhclient -6 in a loop.  See https://launchpad.net/bugs/1447715
+    for iface in sorted(unconfigured_ifaces_4):
         call(["dhclient", "-nw", "-4", iface])
+    for iface in sorted(unconfigured_ifaces_6):
+        iface_str = iface.decode('utf-8')
         Popen([
             "sh", "-c",
             "while ! dhclient -6 %s; do sleep .05; done" % iface_str])
