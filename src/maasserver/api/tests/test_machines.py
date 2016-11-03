@@ -1009,6 +1009,21 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.expectThat(interfaces['needed'], Contains(iface.id))
         self.expectThat(constraints, Not(Contains('verbose_interfaces')))
 
+    def test_POST_allocate_with_subnet_specifier_renders_error(self):
+        space = factory.make_Space('foo')
+        s1 = factory.make_Subnet(space=space)
+        s2 = factory.make_Subnet(space=space)
+        factory.make_Node_with_Interface_on_Subnet(subnet=s1)
+        response = self.client.post(reverse('machines_handler'), {
+            'op': 'allocate',
+            'subnets': 'space:foo',
+        })
+        self.assertThat(response.status_code, Equals(http.client.CONFLICT))
+        expected_response = (
+            "No available machine matches constraints: subnets=%d,%d" % (
+                s1.pk, s2.pk)).encode(settings.DEFAULT_CHARSET)
+        self.assertThat(response.content, Equals(expected_response))
+
     def test_POST_allocate_machine_by_interfaces_dry_run_with_verbose(
             self):
         """Interface label is returned alongside machine data"""

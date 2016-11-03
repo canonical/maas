@@ -13,7 +13,10 @@ import re
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import (
+    Model,
+    Q,
+)
 from django.forms.fields import Field
 from maasserver.fields import mac_validator
 from maasserver.forms import (
@@ -238,22 +241,25 @@ def describe_single_constraint_value(value):
         return '%s' % value
 
 
-def describe_multi_constraint_value(value):
+def describe_multi_constraint_value(values):
     """Return a multi-valued constraint value as human-readable text.
 
-    :param value: Sequence form value for some constraint.
+    :param values: Sequence form value for some constraint.
     :return: String representation of `value`, or `None` if the value
         means that the constraint was not set.
     """
-    if value is None or len(value) == 0:
+    if values is None or len(values) == 0:
         return None
     else:
-        if isinstance(value, (set, dict, frozenset)):
+        if isinstance(values, (set, dict, frozenset)):
             # Order unordered containers for consistency.
-            sequence = sorted(value)
+            sequence = sorted(
+                value.pk if isinstance(value, Model) else value
+                for value in values
+            )
         else:
             # Keep ordered containers in their original order.
-            sequence = value
+            sequence = values
         return ','.join(map(describe_single_constraint_value, sequence))
 
 
