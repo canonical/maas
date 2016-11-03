@@ -177,6 +177,10 @@ class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
         # None. Same goes for `log_system`, `log_namespace`, and `log_level`.
         if event.get("system") is None and event.get("log_system") is None:
             namespace = event.get("log_namespace")
+            # Logs written directly to `t.p.log.logfile` and `.logerr` get a
+            # namespace of "twisted.python.log". This is not interesting.
+            if namespace == twistedLegacy.__name__:
+                namespace = None
             level = event.get("log_level")
             event["log_system"] = "{namespace}#{level}".format(
                 namespace=("-" if namespace is None else namespace),

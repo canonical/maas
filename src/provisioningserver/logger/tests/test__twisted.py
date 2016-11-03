@@ -185,6 +185,38 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
             <timestamp> [%s#%s] After (new)
             """ % (__name__, self.log_level.name)))
 
+    def test__namespace_and_level_are_elided_via_logfile_logerr(self):
+        # Restore existing observers at the end. This must be careful with
+        # ordering of clean-ups, hence the use of unittest.mock.patch.object
+        # as a context manager.
+        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
+        # The global non-legacy `LogBeginner` emits critical messages straight
+        # to stderr, so temporarily put aside its observer to avoid seeing the
+        # critical log messages we're going to generate.
+        self.patch(logger.globalLogPublisher, "_observers", [])
+
+        logbuffer = io.StringIO()
+        observer = log.FileLogObserver(logbuffer)
+        observer.formatTime = lambda when: "<timestamp>"
+
+        with patch.object(
+                log, "LegacyLogObserverWrapper",
+                log.LegacyLogObserverWrapper):
+            setLegacyObservers([observer.emit])
+            log.logfile.write("Before (via log.logfile)\n")
+            log.logerr.write("Before (via log.logerr)\n")
+            LegacyLogObserverWrapper.install()
+            log.logfile.write("After (via log.logfile)\n")
+            log.logerr.write("After (via log.logerr)\n")
+
+        self.assertThat(
+            logbuffer.getvalue(), DocTestMatches("""\
+            <timestamp> [-] Before (via log.logfile)
+            <timestamp> [-] Before (via log.logerr)
+            <timestamp> [-#info] After (via log.logfile)
+            <timestamp> [-#error] After (via log.logerr)
+            """))
+
 
 class TestLegacyLogObserverWrapper_Installation(MAASTestCase):
     """Tests for `LegacyLogObserverWrapper`."""
