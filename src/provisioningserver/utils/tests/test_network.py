@@ -15,17 +15,12 @@ from socket import (
 )
 from typing import List
 from unittest import mock
-from unittest.mock import (
-    call,
-    Mock,
-    sentinel,
-)
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.runtest import MAASTwistedRunTest
@@ -59,7 +54,6 @@ from provisioningserver.utils.network import (
     get_eui_organization,
     get_interface_children,
     get_mac_organization,
-    getDefaultIResolver,
     has_ipv4_address,
     hex_str_to_bytes,
     inet_ntop,
@@ -91,7 +85,10 @@ from testtools.matchers import (
     MatchesSetwise,
     Not,
 )
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -1867,29 +1864,6 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
             gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
 
 
-class TestGetDefaultIResolver(MAASTestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.createResolver = self.patch(
-            network_module, "createResolver")
-
-    def test__uses_twisted_createResolver_by_default(self):
-        self.createResolver.return_value = sentinel.default_resolver
-        resolver = getDefaultIResolver()
-        self.assertThat(self.createResolver, MockCalledOnceWith())
-        self.assertThat(resolver, Is(sentinel.default_resolver))
-
-    def test__falls_back_to_localhost_based_resolver(self):
-        self.createResolver.side_effect = [
-            ValueError, sentinel.localhost_resolver]
-        resolver = getDefaultIResolver()
-        self.assertThat(resolver, Is(sentinel.localhost_resolver))
-        self.assertThat(self.createResolver, MockCallsMatch(
-            call(), call(servers=[('127.0.0.1', 53)])
-        ))
-
-
 class TestPreferredHostnamesSortKey(MAASTestCase):
     """Tests for `preferred_hostnames_sort_key()`."""
 
@@ -2006,11 +1980,9 @@ class TestReverseResolveMixIn:
             rrset.append(rr)
         self.reply = data
 
-    @inlineCallbacks
     def mock_lookupPointer(self, ip, timeout=None):
         self.timeout = timeout
-        yield
-        return self.reply
+        return succeed(self.reply)
 
     def get_mock_iresolver(self):
         resolver = Mock()
@@ -2021,11 +1993,10 @@ class TestReverseResolveMixIn:
     def setUp(self):
         super().setUp()
         self.timeout = object()
-        self.getDefaultIResolver = self.patch(
-            network_module.getDefaultIResolver)
         self.resolver = self.get_mock_iresolver()
         self.lookupPointer = self.resolver.lookupPointer
-        self.getDefaultIResolver.return_value = self.resolver
+        self.getResolver = self.patch(network_module, "getResolver")
+        self.getResolver.return_value = self.resolver
 
 
 class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
@@ -2034,10 +2005,10 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=30)
 
     @inlineCallbacks
-    def test__uses_resolver_from_getDefauldIResolver_by_default(self):
+    def test__uses_resolver_from_getResolver_by_default(self):
         self.set_fake_twisted_dns_reply([])
         yield reverseResolve(factory.make_ip_address())
-        self.assertThat(self.getDefaultIResolver, MockCalledOnceWith())
+        self.assertThat(self.getResolver, MockCalledOnceWith())
 
     @inlineCallbacks
     def test__uses_passed_in_IResolver_if_specified(self):
@@ -2045,7 +2016,7 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         some_other_resolver = self.get_mock_iresolver()
         yield reverseResolve(
             factory.make_ip_address(), resolver=some_other_resolver)
-        self.assertThat(self.getDefaultIResolver, MockNotCalled())
+        self.assertThat(self.getResolver, MockNotCalled())
         self.assertThat(some_other_resolver.lookupPointer, MockCalledOnce())
 
     @inlineCallbacks

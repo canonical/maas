@@ -59,7 +59,7 @@ from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import synchronous
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IResolver
-from twisted.names.client import createResolver
+from twisted.names.client import getResolver
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -1240,31 +1240,6 @@ def resolves_to_loopback_address(hostname):
             for _, _, _, _, sockaddr in addrinfo)
 
 
-def getDefaultIResolver() -> IResolver:
-    """Get a new `IResolver` based on default resolver settings on this host.
-
-    That is, the Twisted default settings for the resolver will be used: first
-    /etc/hosts will be checked, then the DNS servers /etc/resolv.conf will be
-    queried.
-
-    If a resolver fails to be set up this way, a resolver will be created
-    pointing to 127.0.0.1:53 (perhaps a dnsmasq or similar setup is in use),
-    per the twisted behavior when using their globally-cached resolver.
-    """
-    # Rather than calling getResolver() here (which creates a global, cached
-    # resolver), we create a new resolver each time. This is in case the
-    # contents of /etc/hosts or /etc/resolv.conf have changed. (Doing this
-    # should not be slow, but we do negate the benefits of the in-memory cache
-    # in Twisted's global resolver.)
-    try:
-        return createResolver()
-    except ValueError:
-        # Mimic the behavior of the Twisted `getResolver()` function in case
-        # the resolver cannot be created. (presumably, because there was an
-        # error parsing /etc/resolv.conf or similar).
-        return createResolver(servers=[('127.0.0.1', 53)])
-
-
 def preferred_hostnames_sort_key(fqdn: str):
     """Return the sort key for the given FQDN, to sort in "preferred" order."""
     fqdn = fqdn.rstrip('.')
@@ -1294,7 +1269,7 @@ def reverseResolve(
         timed out or an error occurred, returns None.
     """
     if resolver is None:
-        resolver = getDefaultIResolver()
+        resolver = getResolver()
     ip = IPAddress(ip)
     try:
         data = yield resolver.lookupPointer(
