@@ -9,36 +9,67 @@ Bugs fixed in this release
 --------------------------
 
 LP: #1554636    maas serving old image to nodes
+
 LP: #1593991    [2.0b7, API/CLI] allows you to add machines with power_type and no power_parameters
+
 LP: #1602482    [2.0rc2] Incorrect DNS records
-LP: #1620478    [2.1, UI] Broken validation on VLAN MTU    Blake Rouse
+
+LP: #1620478    [2.1, UI] Broken validation on VLAN MTU
+
 LP: #1630636    [2.1 ipv6] YAML error when maas_url has an IPv6 IP
+
 LP: #1630679    [2.1b1] Can't use custom image repository
+
 LP: #1633717    [2.1] DHCP probe needs to be smarter about interface selection to avoid log spam
+
 LP: #1636858    [2.1.1, trunk, bzr5510] Can't enlist machines
+
 LP: #1636861    [2.1.1, trunk, bzr5510] UI error when adding a chassis
+
 LP: #1636992    [2.1] Deleting all boot sources and creating a new boot source, does not update the cache
+
 LP: #1598175    [2.0] If the machine is deployed, I cannot update NIC's nor storage
+
 LP: #1603563    [2.0 RC2] Multiple failures to release nodes
+
 LP: #1606508    [2.1] Failover peers must be IPv4 for use with ISC dhcpd
+
 LP: #1632853    [2.1] Observed neighbours should be avoided when assigning IP addresses
+
 LP: #1633401    [2.1] In device discovery in Settings, remove the header of the first dropdown field (Host discovery and network observation)
+
 LP: #1633452    [2.1] In settings, rename the option Disabled (suppress active scanning) in the Active discovery interval field to Never (disabled).
+
 LP: #1633462    [2.1] In settings in the device discovery section reduce the text of the explanation of the fields.
+
 LP: #1633822    [2.1] Device discovery ignores reverse DNS
+
 LP: #1636250    [2.1] machines allocate API returns a random machine if incorrect - parameters are used
+
 LP: #1636873    [2.1.0] Creating a bond doesn't work and no feedback is provided if fabric in interfaces is 'disconnected'
+
 LP: #1636874    [2.1, Yakkety] Plus '+' button is not visible when you hover over an interface in machine details
+
 LP: #1637009    [2.0,2.1] Node acquisition constraints API documentation needs to be updated to match reality
+
 LP: #1637182    Help and documentation 'list of unicodes' inconsistent
+
 LP: #1637192    [2.0,2.1] Allocate using subnets or not_subnets with space fails
+
 LP: #1637246    MaaS should use configured names for VLAN interfaces
+
 LP: #1638284    [2.1.1pre] Debug logging shown by default in regiond.conf
+
 LP: #1638288    [2.1.1 pre] A lot of repeated logging
+
 LP: #1638589    [2.1] commissioning doesn't find the second address family on the boot interface
+
 LP: #1600328    [2.0rc1, API/CLI] When adding a new machine and no rack controller can connect to the BMC, no error message is displayed.
+
 LP: #1633378    [Device Discovery] Rename the section Header in the Settings page
+
 LP: #1633600    [2.1.1] Docs do not mention the need to mirror bootloaders
+
 LP: #1636251    resolv.conf search path doesn't match the domain for the host
 
 
