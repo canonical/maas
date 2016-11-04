@@ -66,6 +66,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from netaddr import (
+    EUI,
     IPAddress,
     IPNetwork,
 )
@@ -1696,6 +1697,26 @@ class UpdateIpAddressesTest(MAASServerTestCase):
 
         self.assertFalse(Subnet.objects.filter(cidr=cidr).exists())
         self.assertEqual(interface.ip_addresses.first().subnet, subnet)
+
+    def test__eui64_address_returns_correct_value(self):
+        mac_address = factory.make_mac_address()
+        network = factory.make_ipv6_network(slash=64)
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
+        self.assertEqual(
+            iface._eui64_address(network.cidr),
+            EUI(mac_address).ipv6(network.first))
+
+    def test__does_not_add_eui_64_address(self):
+        # See also LP#1639090.
+        mac_address = factory.make_MAC()
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
+        network = factory.make_ipv6_network(slash=64)
+        cidr = "%s/64" % str(iface._eui64_address(network.cidr))
+        iface.update_ip_addresses([cidr])
+        self.assertEqual(0, iface.ip_addresses.count())
+        self.assertEqual(1, Subnet.objects.filter(cidr=network.cidr).count())
 
     def test__finds_ipv6_subnet_regardless_of_order(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

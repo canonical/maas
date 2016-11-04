@@ -53,6 +53,7 @@ from maasserver.utils.orm import (
 )
 from netaddr import (
     AddrFormatError,
+    EUI,
     IPAddress,
     IPNetwork,
 )
@@ -651,7 +652,8 @@ class Interface(CleanSave, TimestampedModel):
                         # (which the admin can edit later.)  Eventually, we'll
                         # want to look and see if the host has a link-local
                         # route for any block containing the IP.
-                        cidr = '%s/64' % address
+                        network.prefixlen = 64
+                        cidr = str(network.cidr)
                 if subnet is None:
                     # XXX mpontillo 2015-11-01 Configuration != state. That is,
                     # this means we have just a subnet on an unknown
@@ -709,12 +711,28 @@ class Interface(CleanSave, TimestampedModel):
                             " on " + node.fqdn if node is not None else '')
                         prev_address.delete()
 
-            # Create the newly discovered IP address.
-            new_address = StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
-                subnet=subnet)
-            new_address.save()
-            self.ip_addresses.add(new_address)
+            # XXX lamont 2016-11-03 Bug#1639090
+            # At the moment, IPv6 autoconf (SLAAC) is required so that we get
+            # the correct subnet block created above.  However, if we add SLAAC
+            # addresses to the DB, then we wind up creating 2 autoassigned
+            # addresses on the interface.  We need to discuss how to model them
+            # and incorporate the change for 2.2.  For now, just drop them with
+            # prejudice. (Bug#1639288)
+            if address != str(self._eui64_address(subnet.cidr)):
+                # Create the newly discovered IP address.
+                new_address = StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=address,
+                    subnet=subnet)
+                new_address.save()
+                self.ip_addresses.add(new_address)
+
+    def _eui64_address(self, net_cidr):
+        """Return the SLAAC address for this interface."""
+        # EUI64 addresses are always /64.
+        network = IPNetwork(net_cidr)
+        if network.prefixlen != 64:
+            return None
+        return EUI(self.mac_address.raw).ipv6(network.first)
 
     def _remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
