@@ -9,6 +9,7 @@ from datetime import (
     datetime,
     timedelta,
 )
+from logging import DEBUG
 
 from django.core.exceptions import ValidationError
 from fixtures import FakeLogger
@@ -16,6 +17,7 @@ from maasserver.models import RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import DocTestMatches
+from provisioningserver import logger
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -37,8 +39,13 @@ class TestRDNSModel(MAASServerTestCase):
 class TestRDNSManager(MAASServerTestCase):
 
     def setUp(self):
-        self.logger = self.useFixture(FakeLogger())
-        return super().setUp()
+        super().setUp()
+        # For some reason, with the new logging framework, level=DEBUG alone
+        # doesn't work. We also need to set the verbosity globally.
+        logger.set_verbosity(3)
+        # Set the verbosity back to the default after the test runs.
+        self.addCleanup(logger.set_verbosity)
+        self.logger = self.useFixture(FakeLogger(level=DEBUG))
 
     def test__get_current_entry__returns_entry(self):
         region = factory.make_RegionController()

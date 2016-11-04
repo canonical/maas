@@ -56,22 +56,34 @@ __all__ = [
     "VerbosityOptions",
 ]
 
-from provisioningserver.logger import _common
-from provisioningserver.logger._common import LoggingMode
+from provisioningserver.logger._common import (
+    DEFAULT_LOG_VERBOSITY,
+    LoggingMode,
+    make_logging_level_names_consistent,
+)
 from provisioningserver.logger._django import configure_django_logging
-from provisioningserver.logger._logging import configure_standard_logging
+from provisioningserver.logger._logging import (
+    configure_standard_logging,
+    set_standard_verbosity,
+)
 from provisioningserver.logger._maaslog import get_maas_logger
 from provisioningserver.logger._tftp import configure_tftp_logging
 from provisioningserver.logger._twisted import (
     configure_twisted_logging,
     LegacyLogger,
+    set_twisted_verbosity,
     VerbosityOptions,
 )
 from provisioningserver.utils import typed
 
+# Current verbosity level. Configured initial in `configure()` call.
+# Can be set afterward at runtime with `set_verbosity()`.
+# Default verbosity is kind of noisy, so we may want to revisit this.
+current_verbosity = DEFAULT_LOG_VERBOSITY
+
 
 @typed
-def configure(verbosity: int=None, mode: _common.LoggingMode=None):
+def configure(verbosity: int=None, mode: LoggingMode=None):
     """Configure logging for both Twisted and Python.
 
     This is safe to call from within `twistd`, in a plain Python environment,
@@ -82,19 +94,26 @@ def configure(verbosity: int=None, mode: _common.LoggingMode=None):
     Note that nothing is done to address time-zones. Both Twisted and Python's
     ``logging`` use local time by default.
 
+    If the verbosity is not specified, it will be set to the default verbosity
+    level.
+
+    It is not necessary to call `set_verbosity()` after calling this function,
+    unless the specified verbosity needs to be changed.
+
     :param verbosity: See `get_logging_level`.
     :param mode: The mode in which to configure logging. If not provided this
         will be guessed at. See `LoggingMode`.
     """
-    # Default verbosity is kind of noisy so we may want to revisit this.
+    global current_verbosity
     if verbosity is None:
-        verbosity = _common.DEFAULT_LOG_VERBOSITY
+        verbosity = DEFAULT_LOG_VERBOSITY
+    current_verbosity = verbosity
     # Automatically detect if we're at a stdio if not explicitly told.
     if mode is None:
-        mode = _common.LoggingMode.guess()
+        mode = LoggingMode.guess()
     # Fix-up the logging level names in the standard library. This is done
     # first to ensure they're consistent in most/all situations.
-    _common.make_logging_level_names_consistent()
+    make_logging_level_names_consistent()
     # Now call each configurator in order.
     for configurator in configurators:
         configurator(verbosity, mode)
@@ -105,4 +124,28 @@ configurators = [
     configure_django_logging,
     configure_standard_logging,
     configure_tftp_logging,
+]
+
+
+@typed
+def set_verbosity(verbosity: int=None):
+    """Resets the logging verbosity to the specified level.
+
+    This function is intended to be be called after `configure()` is called.
+
+    If the verbosity is not specified, it will be set to the default verbosity
+    level.
+
+    :param verbosity: See `get_logging_level`.
+    """
+    global current_verbosity
+    if verbosity is None:
+        verbosity = DEFAULT_LOG_VERBOSITY
+    current_verbosity = verbosity
+    for verbosity_setter in verbosity_setters:
+        verbosity_setter(verbosity)
+
+verbosity_setters = [
+    set_standard_verbosity,
+    set_twisted_verbosity,
 ]

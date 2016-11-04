@@ -43,6 +43,30 @@ assert (
     DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
         "Twisted verbosity map does not match expectations.")
 
+levels = {}
+
+
+def _filterByLevel(event):
+    """Only log if event's level is in `levels`."""
+    global levels
+    if event.get("log_level") in levels:
+        return twistedModern.PredicateResult.maybe
+    else:
+        return twistedModern.PredicateResult.no
+
+
+@typed
+def set_twisted_verbosity(verbosity: int):
+    """Reconfigure verbosity of the standard library's `logging` module."""
+    # Convert `verbosity` into a Twisted `LogLevel`.
+    level = get_twisted_logging_level(verbosity)
+    # `LogLevel` is comparable, but this saves overall computation.
+    global levels
+    levels = {
+        ll for ll in twistedModern.LogLevel.iterconstants()
+        if ll >= level
+    }
+
 
 @typed
 def configure_twisted_logging(verbosity: int, mode: LoggingMode):
@@ -54,20 +78,7 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     :param verbosity: See `get_logging_level`.
     :param mode: The mode in which to configure logging. See `LoggingMode`.
     """
-    # Convert `verbosity` into a Twisted `LogLevel`.
-    level = get_twisted_logging_level(verbosity)
-    # `LogLevel` is comparable, but this saves overall computation.
-    levels = {
-        ll for ll in twistedModern.LogLevel.iterconstants()
-        if ll >= level
-    }
-
-    def filterByLevel(event, levels=levels):
-        """Only log if event's level is in `levels`."""
-        if event.get("log_level") in levels:
-            return twistedModern.PredicateResult.maybe
-        else:
-            return twistedModern.PredicateResult.no
+    set_twisted_verbosity(verbosity)
 
     # A list of markers for noise.
     noisy = (
@@ -83,7 +94,7 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         else:
             return twistedModern.PredicateResult.maybe
 
-    predicates = filterByLevel, filterByNoise
+    predicates = _filterByLevel, filterByNoise
 
     # When `twistd` starts the reactor it initialises the legacy logging
     # system. Intercept this to wrap the observer in a level filter. We can

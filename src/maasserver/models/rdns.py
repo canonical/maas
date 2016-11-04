@@ -51,7 +51,7 @@ class RDNSManager(Manager):
         """
         entry = self.get_current_entry(ip, observer)
         if entry is not None:
-            maaslog.info(
+            maaslog.debug(
                 "Deleted reverse DNS entry: '%s' (resolved to %s)." % (
                     entry.ip, ", ".join(
                         ('%r' % hostname for hostname in entry.hostnames))))
@@ -75,7 +75,7 @@ class RDNSManager(Manager):
                 ip=ip, hostname=preferred_hostname, hostnames=results,
                 observer=observer)
             rdns.save()
-            maaslog.info(
+            maaslog.debug(
                 "New reverse DNS entry: '%s' resolves to %s." % (
                     ip, ", ".join(('%r' % result for result in results))))
         else:
@@ -92,7 +92,7 @@ class RDNSManager(Manager):
                 updated.append("hostnames")
             # If something significant changed, log it.
             if len(updated) > 1:
-                maaslog.info(
+                maaslog.debug(
                     "Reverse DNS entry updated: '%s' resolves to %s." % (
                         ip, ", ".join(('%r' % result for result in results))))
             entry.save(update_fields=updated)

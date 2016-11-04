@@ -32,6 +32,8 @@ modes = provisioningserver.logger.LoggingMode
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", required=True)
 parser.add_argument("--verbosity", type=int, required=True)
+# Resets the verbosity at runtime (after initially setting it).
+parser.add_argument("--set-verbosity", type=int, required=False)
 parser.add_argument(
     "--mode", type=modes.__getitem__, help=" or ".join(
         mode.name for mode in modes))
@@ -40,6 +42,9 @@ options = parser.parse_args()
 # Configure logging. This is the main entry-point.
 provisioningserver.logger.configure(
     verbosity=options.verbosity, mode=options.mode)
+
+if options.set_verbosity is not None:
+    provisioningserver.logger.set_verbosity(options.set_verbosity)
 
 # Simulate what `twistd` does when passed `--logfile=-`.
 if options.mode == modes.TWISTD:

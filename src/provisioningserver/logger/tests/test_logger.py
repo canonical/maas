@@ -23,11 +23,19 @@ here = pathlib.Path(__file__).parent
 
 
 @typed
-def log_something(name: str, *, verbosity: int, mode: LoggingMode):
+def log_something(
+        name: str, *, verbosity: int, set_verbosity: int=None,
+        mode: LoggingMode):
     env = dict(select_c_utf8_locale(), PYTHONPATH=":".join(sys.path))
     script = here.parent.joinpath("testing", "logsomething.py")
-    args = "--name", name, "--verbosity", "%d" % verbosity, "--mode", mode.name
-    cmd = (sys.executable, str(script)) + args
+    args = [
+        "--name", name,
+        "--verbosity", "%d" % verbosity,
+        "--mode", mode.name
+    ]
+    if set_verbosity is not None:
+        args.extend(["--set-verbosity", "%d" % set_verbosity])
+    cmd = [sys.executable, str(script)] + args
     output = subprocess.check_output(cmd, env=env, stderr=subprocess.STDOUT)
     return output.decode("utf-8")
 
@@ -59,9 +67,39 @@ class TestLogging(MAASTestCase):
     nor stderr are wrapped.
     """
 
+    scenarios = (
+        ("initial_only", {
+            "initial_only": True,
+            "increasing": False,
+        }),
+        ("increasing_verbosity", {
+            "initial_only": False,
+            "increasing": True,
+        }),
+        ("decreasing_verbosity", {
+            "initial_only": False,
+            "increasing": False,
+        }),
+    )
+
+    def _get_log_levels(self, verbosity_under_test: int):
+        if self.initial_only:
+            verbosity = verbosity_under_test
+            set_verbosity = None
+        elif self.increasing:
+            verbosity = 0
+            set_verbosity = verbosity_under_test
+        else:
+            verbosity = 3
+            set_verbosity = verbosity_under_test
+        return verbosity, set_verbosity
+
     def test__twistd_default_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(2)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=2, mode=LoggingMode.TWISTD)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.TWISTD)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -82,8 +120,11 @@ class TestLogging(MAASTestCase):
         self.assertSequenceEqual(expected, observed)
 
     def test__twistd_high_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(3)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=3, mode=LoggingMode.TWISTD)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.TWISTD)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -107,8 +148,11 @@ class TestLogging(MAASTestCase):
         self.assertSequenceEqual(expected, observed)
 
     def test__twistd_low_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(1)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=1, mode=LoggingMode.TWISTD)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.TWISTD)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -124,8 +168,11 @@ class TestLogging(MAASTestCase):
         self.assertSequenceEqual(expected, observed)
 
     def test__twistd_lowest_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(0)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=0, mode=LoggingMode.TWISTD)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.TWISTD)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -137,8 +184,11 @@ class TestLogging(MAASTestCase):
         self.assertSequenceEqual(expected, observed)
 
     def test__command_default_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(2)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=2, mode=LoggingMode.COMMAND)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.COMMAND)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -162,8 +212,11 @@ class TestLogging(MAASTestCase):
         """))
 
     def test__command_high_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(3)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=3, mode=LoggingMode.COMMAND)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.COMMAND)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -190,8 +243,11 @@ class TestLogging(MAASTestCase):
         """))
 
     def test__command_low_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(1)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=1, mode=LoggingMode.COMMAND)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.COMMAND)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [
@@ -211,8 +267,11 @@ class TestLogging(MAASTestCase):
         """))
 
     def test__command_lowest_verbosity(self):
+        verbosity, set_verbosity = self._get_log_levels(0)
         name = factory.make_name("log.name")
-        logged = log_something(name, verbosity=0, mode=LoggingMode.COMMAND)
+        logged = log_something(
+            name, verbosity=verbosity, set_verbosity=set_verbosity,
+            mode=LoggingMode.COMMAND)
         self.addDetail("logged", text_content(logged))
         observed = find_log_lines(logged)
         expected = [

@@ -38,6 +38,12 @@ assert (
 
 
 @typed
+def set_standard_verbosity(verbosity: int):
+    """Reconfigure verbosity of the standard library's `logging` module."""
+    logging.config.dictConfig(get_logging_config(verbosity))
+
+
+@typed
 def configure_standard_logging(verbosity: int, mode: LoggingMode):
     """Configure the standard library's `logging` module.
 
@@ -50,7 +56,7 @@ def configure_standard_logging(verbosity: int, mode: LoggingMode):
     :param verbosity: See `get_logging_level`.
     :param mode: The mode in which to configure logging. See `LoggingMode`.
     """
-    logging.config.dictConfig(get_logging_config(verbosity))
+    set_standard_verbosity(verbosity)
     # Make sure that `logging` is not configured to capture warnings.
     logging.captureWarnings(False)
     # If a logger is ever configured `propagate=False` but without handlers
