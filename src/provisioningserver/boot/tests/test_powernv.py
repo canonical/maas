@@ -164,7 +164,7 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PowerNVBootMethod()
-        params = make_kernel_parameters(self, purpose="install")
+        params = make_kernel_parameters(self, purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -179,10 +179,12 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/di-kernel$' % re.escape(image_dir),
+                    r'.*^\s+KERNEL %s/%s$' % (
+                        re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/di-initrd$' % re.escape(image_dir),
+                    r'.*^\s+INITRD %s/%s$' % (
+                        re.escape(image_dir), params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',

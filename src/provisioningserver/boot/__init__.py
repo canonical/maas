@@ -325,23 +325,34 @@ class BootMethod(metaclass=ABCMeta):
                 params.release, params.label)
 
         def initrd_path(params):
-            if params.purpose == "install":
-                return "%s/di-initrd" % image_dir(params)
+            # Normally the initrd filename is the SimpleStream filetype. If
+            # no filetype is given try the filetype.
+            if params.initrd is not None:
+                initrd = params.initrd
             else:
-                return "%s/boot-initrd" % image_dir(params)
+                initrd = 'boot-initrd'
+            return "%s/%s" % (image_dir(params), initrd)
 
         def kernel_path(params):
-            if params.purpose == "install":
-                return "%s/di-kernel" % image_dir(params)
+            # Normally the kernel filename is the SimpleStream filetype. If
+            # no filetype is given try the filetype.
+            if params.kernel is not None:
+                kernel = params.kernel
             else:
-                return "%s/boot-kernel" % image_dir(params)
+                kernel = 'boot-kernel'
+            return "%s/%s" % (image_dir(params), kernel)
 
         def dtb_path(params):
             if params.subarch in dtb_subarchs:
-                if params.purpose == "install":
-                    return "%s/di-dtb" % image_dir(params)
+                # Normally the dtb filename is the SimpleStream filetype. If
+                # no filetype is given try the filetype.
+                if params.boot_dtb is not None:
+                    boot_dtb = params.boot_dtb
                 else:
-                    return "%s/boot-dtb" % image_dir(params)
+                    boot_dtb = 'boot-dtb'
+                return "%s/%s" % (image_dir(params), boot_dtb)
+            else:
+                return None
 
         def kernel_command(params):
             return compose_kernel_command_line(params)

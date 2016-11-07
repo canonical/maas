@@ -27,19 +27,22 @@ class EphemeralImagesDirectoryNotFound(Exception):
 
 KernelParametersBase = namedtuple(
     "KernelParametersBase", (
-        "osystem",  # Operating system, e.g. "ubuntu"
-        "arch",  # Machine architecture, e.g. "i386"
-        "subarch",  # Machine subarchitecture, e.g. "generic"
-        "release",  # OS release, e.g. "precise"
-        "label",  # Image label, e.g. "release"
-        "purpose",  # Boot purpose, e.g. "commissioning"
-        "hostname",  # Machine hostname, e.g. "coleman"
-        "domain",  # Machine domain name, e.g. "example.com"
+        "osystem",      # Operating system, e.g. "ubuntu"
+        "arch",         # Machine architecture, e.g. "i386"
+        "subarch",      # Machine subarchitecture, e.g. "generic"
+        "release",      # OS release, e.g. "precise"
+        "kernel",       # The kernel filename
+        "initrd",       # The initrd filename
+        "boot_dtb",     # The boot_dtb filename
+        "label",        # Image label, e.g. "release"
+        "purpose",      # Boot purpose, e.g. "commissioning"
+        "hostname",     # Machine hostname, e.g. "coleman"
+        "domain",       # Machine domain name, e.g. "example.com"
         "preseed_url",  # URL from which a preseed can be obtained.
-        "log_host",  # Host/IP to which syslog can be streamed.
-        "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
-        "extra_opts",  # String of extra options to supply, will be appended
-                       # verbatim to the kernel command line
+        "log_host",     # Host/IP to which syslog can be streamed.
+        "fs_host",      # Host/IP on which ephemeral filesystems are hosted.
+        "extra_opts",   # String of extra options to supply, will be appended
+                        # verbatim to the kernel command line
         ))
 
 

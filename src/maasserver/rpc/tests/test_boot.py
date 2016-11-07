@@ -9,6 +9,7 @@ import random
 
 from maasserver import server_address
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -26,6 +27,7 @@ from maasserver.preseed import (
 from maasserver.rpc import boot as boot_module
 from maasserver.rpc.boot import (
     event_log_pxe_request,
+    get_boot_filenames,
     get_config,
 )
 from maasserver.testing.architecture import make_usable_architecture
@@ -51,10 +53,17 @@ class TestGetConfig(MAASServerTestCase):
         super(TestGetConfig, self).setUp()
         self.useFixture(RegionConfigurationFixture())
 
+    def make_node(self, arch_name=None, **kwargs):
+        architecture = make_usable_architecture(self, arch_name=arch_name)
+        return factory.make_Node_with_Interface_on_Subnet(
+            architecture="%s/generic" % architecture.split('/')[0],
+            **kwargs)
+
     def test__returns_all_kernel_parameters(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
         self.assertThat(
             get_config(rack_controller.system_id, local_ip, remote_ip),
             ContainsAll([
@@ -62,6 +71,9 @@ class TestGetConfig(MAASServerTestCase):
                 "subarch",
                 "osystem",
                 "release",
+                "kernel",
+                "initrd",
+                "boot_dtb",
                 "purpose",
                 "hostname",
                 "domain",
@@ -75,8 +87,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.DEPLOYING)
+        node = self.make_node(status=NODE_STATUS.DEPLOYING)
         mac = node.get_boot_interface().mac_address
         # Should not raise BootConfigNoResponse.
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -95,12 +106,13 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         architecture = make_usable_architecture(self)
-        arch, subarch = architecture.split('/')
+        arch = architecture.split('/')[0]
+        factory.make_default_ubuntu_release_bootable(arch)
         mac = factory.make_mac_address(delimiter='-')
         # Should not raise BootConfigNoResponse.
         get_config(
             rack_controller.system_id, local_ip, remote_ip,
-            arch=arch, subarch=subarch, mac=mac)
+            arch=arch, subarch='generic', mac=mac)
 
     def test__returns_global_kernel_params_for_enlisting_node(self):
         # An 'enlisting' node means it looks like a node with details but we
@@ -112,23 +124,19 @@ class TestGetConfig(MAASServerTestCase):
         value = factory.make_string()
         Config.objects.set_config("kernel_opts", value)
         architecture = make_usable_architecture(self)
-        arch, subarch = architecture.split('/')
+        arch = architecture.split('/')[0]
+        factory.make_default_ubuntu_release_bootable(arch)
         mac = factory.make_mac_address(delimiter='-')
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip,
-            arch=arch, subarch=subarch, mac=mac)
+            arch=arch, subarch='generic', mac=mac)
         self.assertEqual(value, observed_config['extra_opts'])
 
     def test__uses_present_boot_image(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        osystem = Config.objects.get_config('commissioning_osystem')
-        release = Config.objects.get_config('commissioning_distro_series')
-        resource_name = '%s/%s' % (osystem, release)
-        factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=resource_name, architecture='amd64/generic')
+        factory.make_default_ubuntu_release_bootable('amd64')
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual("amd64", observed_config["arch"])
@@ -149,8 +157,10 @@ class TestGetConfig(MAASServerTestCase):
 
     def test__uses_fixed_hostname_for_enlisting_node(self):
         rack_controller = factory.make_RackController()
+        # factory.make_default_ubuntu_release_bootable()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(
@@ -158,8 +168,10 @@ class TestGetConfig(MAASServerTestCase):
 
     def test__uses_local_domain_for_enlisting_node(self):
         rack_controller = factory.make_RackController()
+        # factory.make_default_ubuntu_release_bootable()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(
@@ -173,8 +185,7 @@ class TestGetConfig(MAASServerTestCase):
         domainname = factory.make_name('domain')
         domain = factory.make_Domain(name=domainname)
         full_hostname = '.'.join([host, domainname])
-        node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=full_hostname, domain=domain)
+        node = self.make_node(hostname=full_hostname, domain=domain)
         interface = node.get_boot_interface()
         mac = interface.mac_address
         observed_config = get_config(
@@ -186,6 +197,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        factory.make_default_ubuntu_release_bootable()
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(
@@ -198,6 +210,8 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         arch = 'armhf'
         Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
+        self.patch(boot_module, 'get_boot_filenames').return_value = (
+            None, None, None)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
         self.assertEqual(
@@ -208,8 +222,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.DEPLOYING)
+        node = self.make_node(status=NODE_STATUS.DEPLOYING)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -225,8 +238,7 @@ class TestGetConfig(MAASServerTestCase):
         self.patch(
             server_address, 'resolve_hostname').return_value = {local_ip}
         rack_controller = factory.make_RackController(url=rack_url)
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=rack_controller)
+        node = self.make_node(primary_rack=rack_controller)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -241,6 +253,7 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         arch = 'armhf'
+        make_usable_architecture(self, arch_name=arch)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
         self.assertEqual(
@@ -251,6 +264,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self, arch_name=boot_module.DEFAULT_ARCH)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual('enlist', observed_config['purpose'])
@@ -261,6 +275,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(local_ip, observed_config["fs_host"])
@@ -271,6 +286,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         extra_kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', extra_kernel_opts)
+        make_usable_architecture(self)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual(extra_kernel_opts, observed_config['extra_opts'])
@@ -279,6 +295,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        make_usable_architecture(self)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         self.assertEqual('', observed_config['extra_opts'])
@@ -287,8 +304,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.BROKEN)
+        node = self.make_node(status=NODE_STATUS.BROKEN)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -303,8 +319,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY)
+        node = self.make_node(status=NODE_STATUS.READY)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -314,8 +329,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ENTERING_RESCUE_MODE)
+        node = self.make_node(status=NODE_STATUS.ENTERING_RESCUE_MODE)
         mac = node.get_boot_interface().mac_address
         event_log_pxe_request = self.patch_autospec(
             boot_module, 'event_log_pxe_request')
@@ -328,7 +342,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         mac = node.get_boot_interface().mac_address
         event_log_pxe_request = self.patch_autospec(
             boot_module, 'event_log_pxe_request')
@@ -346,7 +360,7 @@ class TestGetConfig(MAASServerTestCase):
             ("local", "local boot"),
             ("poweroff", "power off")]
         for purpose, description in purposes:
-            node = factory.make_Node()
+            node = self.make_node()
             event_log_pxe_request(node, purpose)
             self.assertEqual(
                 description,
@@ -356,7 +370,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         nic = node.get_boot_interface()
         node.boot_interface = None
         node.save()
@@ -369,7 +383,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         node.boot_interface = node.get_boot_interface()
         node.save()
         nic = factory.make_Interface(
@@ -383,7 +397,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         node.boot_interface = node.get_boot_interface()
         node.save()
         mac = node.boot_interface.mac_address
@@ -398,7 +412,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -408,7 +422,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         node.boot_cluster_ip = factory.make_ipv4_address()
         node.save()
         mac = node.get_boot_interface().mac_address
@@ -420,7 +434,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         node.boot_interface = node.get_boot_interface()
         mac = node.boot_interface.mac_address
         node.boot_cluster_ip = local_ip
@@ -434,7 +448,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, local_ip, remote_ip,
@@ -445,8 +459,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            bios_boot_method='uefi')
+        node = self.make_node(bios_boot_method='uefi')
         nic = node.get_boot_interface()
         mac = nic.mac_address
         node.boot_interface = nic
@@ -469,7 +482,7 @@ class TestGetConfig(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=rack_subnet,
             interface=rack_interface)
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = self.make_node()
         mac = node.get_boot_interface().mac_address
         get_config(
             rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
@@ -482,6 +495,7 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
+        self.make_node(arch_name='amd64')
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING,
             osystem="centos",
@@ -515,11 +529,10 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
+        node = self.make_node(
             status=NODE_STATUS.COMMISSIONING,
             min_hwe_kernel="hwe-x")
-        arch = node.split_arch()[0]
-        factory.make_default_ubuntu_release_bootable(arch)
+        make_usable_architecture(self)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
@@ -529,29 +542,32 @@ class TestGetConfig(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
+        node = self.make_node(
             status=NODE_STATUS.COMMISSIONING,
-            min_hwe_kernel="hwe-x")
+            min_hwe_kernel="hwe-17.04")
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual("no-such-kernel", observed_config["subarch"])
 
     def test__returns_ubuntu_os_series_for_ubuntu_xinstall(self):
+        self.patch(boot_module, 'get_boot_filenames').return_value = (
+            None, None, None)
         distro_series = random.choice(["trusty", "vivid", "wily", "xenial"])
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
+        node = self.make_node(
             status=NODE_STATUS.DEPLOYING, osystem='ubuntu',
-            distro_series=distro_series, architecture="amd64/generic",
-            primary_rack=rack_controller)
+            distro_series=distro_series, primary_rack=rack_controller)
         mac = node.get_boot_interface().mac_address
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual(distro_series, observed_config["release"])
 
     def test__returns_commissioning_os_when_erasing_disks(self):
+        self.patch(boot_module, 'get_boot_filenames').return_value = (
+            None, None, None)
         commissioning_osystem = factory.make_name("os")
         Config.objects.set_config(
             "commissioning_osystem", commissioning_osystem)
@@ -571,3 +587,80 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac)
         self.assertEqual(commissioning_osystem, observed_config['osystem'])
         self.assertEqual(commissioning_series, observed_config['release'])
+
+
+class TestGetBootFilenames(MAASServerTestCase):
+
+    def test_get_filenames(self):
+        release = factory.make_default_ubuntu_release_bootable()
+        arch, subarch = release.architecture.split('/')
+        osystem, series = release.name.split('/')
+        boot_resource_set = release.get_latest_complete_set()
+        factory.make_boot_resource_file_with_content(
+            boot_resource_set, filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB)
+
+        kernel, initrd, boot_dbt = get_boot_filenames(
+            arch, subarch, osystem, series)
+
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).filename,
+            kernel)
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD).filename,
+            initrd)
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB).filename,
+            boot_dbt)
+
+    def test_get_filenames_finds_subarch_when_generic(self):
+        release = factory.make_default_ubuntu_release_bootable()
+        arch = release.architecture.split('/')[0]
+        osystem, series = release.name.split('/')
+        boot_resource_set = release.get_latest_complete_set()
+        factory.make_boot_resource_file_with_content(
+            boot_resource_set, filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB)
+
+        kernel, initrd, boot_dbt = get_boot_filenames(
+            arch, 'generic', osystem, series)
+
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).filename,
+            kernel)
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD).filename,
+            initrd)
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB).filename,
+            boot_dbt)
+
+    def test_returns_all_none_when_not_found(self):
+        self.assertItemsEqual(
+            (None, None, None),
+            get_boot_filenames(
+                factory.make_name('arch'), factory.make_name('subarch'),
+                factory.make_name('osystem'), factory.make_name('series')))
+
+    def test_allows_no_boot_dtb(self):
+        release = factory.make_default_ubuntu_release_bootable()
+        arch, subarch = release.architecture.split('/')
+        osystem, series = release.name.split('/')
+        boot_resource_set = release.get_latest_complete_set()
+
+        kernel, initrd, boot_dbt = get_boot_filenames(
+            arch, subarch, osystem, series)
+
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).filename,
+            kernel)
+        self.assertEquals(
+            boot_resource_set.files.get(
+                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD).filename,
+            initrd)
+        self.assertIsNone(boot_dbt)

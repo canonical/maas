@@ -76,7 +76,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # Given the right configuration options, the UEFI configuration is
         # correctly rendered.
         method = UEFIAMD64BootMethod()
-        params = make_kernel_parameters(purpose="install")
+        params = make_kernel_parameters(purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -92,10 +92,12 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+linux  %s/di-kernel .+?$' % re.escape(image_dir),
+                    r'.*^\s+linux  %s/%s .+?$' % (
+                        re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+initrd %s/di-initrd$' % re.escape(image_dir),
+                    r'.*^\s+initrd %s/%s$' % (
+                        re.escape(image_dir), params.initrd),
                     re.MULTILINE | re.DOTALL)))
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
@@ -143,7 +145,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             [
                 "menuentry 'Enlist'",
                 "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
-                "boot-kernel",
+                params.kernel,
             ]))
 
     def test_get_reader_with_commissioning_purpose(self):
@@ -161,7 +163,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             [
                 "menuentry 'Commission'",
                 "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
-                "boot-kernel",
+                params.kernel,
             ]))
 
 

@@ -124,6 +124,12 @@ class GetBootConfig(amp.Command):
         (b"subarch", amp.Unicode()),
         (b"osystem", amp.Unicode()),
         (b"release", amp.Unicode()),
+        # Kernel and initrd are optional as they were introduced
+        # in 2.1.1. After 2.2 they can be set to manditory.
+        (b"kernel", amp.Unicode(optional=True)),
+        (b"initrd", amp.Unicode(optional=True)),
+        # boot_dtb is optional as not all archs require it.
+        (b"boot_dtb", amp.Unicode(optional=True)),
         (b"purpose", amp.Unicode()),
         (b"hostname", amp.Unicode()),
         (b"domain", amp.Unicode()),

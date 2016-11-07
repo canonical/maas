@@ -29,8 +29,11 @@ from provisioningserver.boot import (
     get_remote_mac,
     maaslog,
 )
+from provisioningserver.boot.tftppath import compose_image_path
+from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
+from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import (
     atomic_symlink,
     tempdir,
@@ -230,6 +233,75 @@ class TestBootMethod(MAASTestCase):
             method.link_bootloader(new_dir)
 
             self.assertThat(mock_maaslog, MockCalledOnce())
+
+    def test_compose_template_namespace(self):
+        kernel_params = make_kernel_parameters()
+        method = FakeBootMethod()
+        image_dir = compose_image_path(
+            kernel_params.osystem, kernel_params.arch, kernel_params.subarch,
+            kernel_params.release, kernel_params.label)
+
+        template_namespace = method.compose_template_namespace(kernel_params)
+
+        self.assertEqual(
+            "%s/%s" % (image_dir, kernel_params.initrd),
+            template_namespace['initrd_path'](kernel_params))
+        self.assertEqual(
+            compose_kernel_command_line(kernel_params),
+            template_namespace['kernel_command'](kernel_params))
+        self.assertEqual(kernel_params, template_namespace['kernel_params'])
+        self.assertEqual(
+            "%s/%s" % (image_dir, kernel_params.kernel),
+            template_namespace['kernel_path'](kernel_params))
+        self.assertIsNone(template_namespace['dtb_path'](kernel_params))
+
+    def test_compose_template_namespace_returns_filetype_when_missing(self):
+        kernel_params = make_kernel_parameters(
+            subarch='xgene-uboot-mustang', kernel=None, initrd=None,
+            boot_dtb=None)
+        method = FakeBootMethod()
+        image_dir = compose_image_path(
+            kernel_params.osystem, kernel_params.arch, kernel_params.subarch,
+            kernel_params.release, kernel_params.label)
+
+        template_namespace = method.compose_template_namespace(kernel_params)
+
+        self.assertEqual(
+            "%s/boot-initrd" % image_dir,
+            template_namespace['initrd_path'](kernel_params))
+        self.assertEqual(
+            compose_kernel_command_line(kernel_params),
+            template_namespace['kernel_command'](kernel_params))
+        self.assertEqual(kernel_params, template_namespace['kernel_params'])
+        self.assertEqual(
+            "%s/boot-kernel" % image_dir,
+            template_namespace['kernel_path'](kernel_params))
+        self.assertEqual(
+            "%s/boot-dtb" % image_dir,
+            template_namespace['dtb_path'](kernel_params))
+
+    def test_compose_template_namespace_returns_dtb_file_when_arm(self):
+        kernel_params = make_kernel_parameters(subarch='xgene-uboot-mustang')
+        method = FakeBootMethod()
+        image_dir = compose_image_path(
+            kernel_params.osystem, kernel_params.arch, kernel_params.subarch,
+            kernel_params.release, kernel_params.label)
+
+        template_namespace = method.compose_template_namespace(kernel_params)
+
+        self.assertEqual(
+            "%s/%s" % (image_dir, kernel_params.initrd),
+            template_namespace['initrd_path'](kernel_params))
+        self.assertEqual(
+            compose_kernel_command_line(kernel_params),
+            template_namespace['kernel_command'](kernel_params))
+        self.assertEqual(kernel_params, template_namespace['kernel_params'])
+        self.assertEqual(
+            "%s/%s" % (image_dir, kernel_params.kernel),
+            template_namespace['kernel_path'](kernel_params))
+        self.assertEqual(
+            "%s/%s" % (image_dir, kernel_params.boot_dtb),
+            template_namespace['dtb_path'](kernel_params))
 
 
 class TestGetArchiveUrl(MAASTestCase):

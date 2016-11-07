@@ -50,6 +50,7 @@ from maasserver.rpc.nodes import (
 from maasserver.rpc.regionservice import Region
 from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -309,6 +310,7 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
     def test_get_boot_config_returns_expected_result(self):
         rack_controller = yield deferToDatabase(
             transactional(factory.make_RackController))
+        yield deferToDatabase(make_usable_architecture, self)
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
 
@@ -326,6 +328,9 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
                 "subarch",
                 "osystem",
                 "release",
+                "kernel",
+                "initrd",
+                "boot_dtb",
                 "purpose",
                 "hostname",
                 "domain",

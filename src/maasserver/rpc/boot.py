@@ -7,8 +7,14 @@ __all__ = [
     "get_config",
 ]
 
-from django.core.exceptions import ValidationError
-from maasserver.enum import INTERFACE_TYPE
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+)
+from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    INTERFACE_TYPE,
+)
 from maasserver.models import (
     BootResource,
     Config,
@@ -64,6 +70,48 @@ def event_log_pxe_request(machine, purpose):
     Event.objects.create_node_event(
         system_id=machine.system_id, event_type=EVENT_TYPES.NODE_PXE_REQUEST,
         event_description=options[purpose])
+
+
+def get_boot_filenames(arch, subarch, osystem, series):
+    """Return the filenames of the kernel, initrd, and boot_dtb for the boot
+    resource."""
+    if subarch == 'generic':
+        # MAAS doesn't store in the BootResource table what subarch is the
+        # generic subarch so lookup what the generic subarch maps to.
+        boot_resource_subarch = validate_hwe_kernel(
+            subarch, None, "%s/%s" % (arch, subarch), osystem, series)
+    else:
+        boot_resource_subarch = subarch
+
+    try:
+        # Get the filename for the kernel, initrd, and boot_dtb the rack should
+        # use when booting.
+        boot_resource = BootResource.objects.get(
+            architecture="%s/%s" % (arch, boot_resource_subarch),
+            name="%s/%s" % (osystem, series)
+        )
+        boot_resource_set = boot_resource.get_latest_complete_set()
+        kernel = boot_resource_set.files.get(
+            filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL).filename
+    except ObjectDoesNotExist:
+        # If a filename can not be found return None to allow the rack to
+        # figure out what todo.
+        return None, None, None
+    try:
+        initrd = boot_resource_set.files.get(
+            filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD).filename
+    except ObjectDoesNotExist:
+        # An initrd is not needed to boot if the kernel contains all driver
+        # support.
+        initrd = None
+    try:
+        boot_dtb = boot_resource_set.files.get(
+            filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB).filename
+    except ObjectDoesNotExist:
+        # Not all archs use boot_dtb so allow just this to fail
+        boot_dtb = None
+
+    return kernel, initrd, boot_dtb
 
 
 @synchronous
@@ -231,6 +279,9 @@ def get_config(
     server_host = get_maas_facing_server_host(
         rack_controller=rack_controller)
 
+    kernel, initrd, boot_dtb = get_boot_filenames(
+        arch, subarch, osystem, series)
+
     # Return the params to the rack controller. Include the system_id only
     # if the machine was known.
     params = {
@@ -238,6 +289,9 @@ def get_config(
         "subarch": subarch,
         "osystem": osystem,
         "release": series,
+        "kernel": kernel,
+        "initrd": initrd,
+        "boot_dtb": boot_dtb,
         "purpose": boot_purpose,
         "hostname": hostname,
         "domain": domain,

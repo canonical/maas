@@ -269,7 +269,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PXEBootMethod()
-        params = make_kernel_parameters(self, purpose="install")
+        params = make_kernel_parameters(self, purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -284,10 +284,12 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/di-kernel$' % re.escape(image_dir),
+                    r'.*^\s+KERNEL %s/%s$' % (
+                        re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/di-initrd$' % re.escape(image_dir),
+                    r'.*^\s+INITRD %s/%s$' % (
+                        re.escape(image_dir), params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',
@@ -300,7 +302,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         method = PXEBootMethod()
         params = make_kernel_parameters(
             testcase=self, osystem="ubuntu", arch="arm64",
-            subarch="xgene-uboot-mustang", purpose="install")
+            subarch="xgene-uboot-mustang", purpose="xinstall")
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
@@ -315,13 +317,16 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/di-kernel$' % re.escape(image_dir),
+                    r'.*^\s+KERNEL %s/%s$' % (
+                        re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/di-initrd$' % re.escape(image_dir),
+                    r'.*^\s+INITRD %s/%s$' % (
+                        re.escape(image_dir), params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+FDT %s/di-dtb$' % re.escape(image_dir),
+                    r'.*^\s+FDT %s/%s$' % (
+                        re.escape(image_dir), params.boot_dtb),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',
@@ -349,13 +354,16 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/boot-kernel$' % re.escape(image_dir),
+                    r'.*^\s+KERNEL %s/%s$' % (
+                        re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+INITRD %s/boot-initrd$' % re.escape(image_dir),
+                    r'.*^\s+INITRD %s/%s$' % (
+                        re.escape(image_dir), params.initrd),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+FDT %s/boot-dtb$' % re.escape(image_dir),
+                    r'.*^\s+FDT %s/%s$' % (
+                        re.escape(image_dir), params.boot_dtb),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+APPEND .+?$',

@@ -1544,7 +1544,7 @@ class Factory(maastesting.factory.Factory):
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
             extra=None, version=None, label=None, kflavor=None, size=None,
-            bootloader_type=None, rolling=False):
+            bootloader_type=None, rolling=False, filename=None):
         resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra,
             kflavor=kflavor, bootloader_type=bootloader_type, rolling=rolling)
@@ -1564,13 +1564,13 @@ class Factory(maastesting.factory.Factory):
             # cases this will always be true. The simplestreams content from
             # maas.io, is formatted this way.
             self.make_boot_resource_file_with_content(
-                resource_set, filename=filetype, filetype=filetype, size=None)
+                resource_set, filename=filename, filetype=filetype, size=None)
         return resource
 
     def make_incomplete_boot_resource(
             self, rtype=None, name=None, architecture=None,
             extra=None, version=None, label=None, kflavor=None, size=None,
-            bootloader_type=None):
+            bootloader_type=None, filename=None):
         resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra,
             kflavor=kflavor, bootloader_type=bootloader_type)
@@ -1590,7 +1590,7 @@ class Factory(maastesting.factory.Factory):
             size = 512
             content = factory.make_bytes(256)
             self.make_boot_resource_file_with_content(
-                resource_set, filename=filetype, filetype=filetype,
+                resource_set, filename=filename, filetype=filetype,
                 size=size, content=content)
         return resource
 
