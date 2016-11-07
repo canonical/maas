@@ -43,13 +43,14 @@ assert (
     DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
         "Twisted verbosity map does not match expectations.")
 
-levels = {}
+
+# Those levels for which we should emit log events.
+_filterByLevels = frozenset()
 
 
 def _filterByLevel(event):
-    """Only log if event's level is in `levels`."""
-    global levels
-    if event.get("log_level") in levels:
+    """Only log if event's level is in `_filterByLevels`."""
+    if event.get("log_level") in _filterByLevels:
         return twistedModern.PredicateResult.maybe
     else:
         return twistedModern.PredicateResult.no
@@ -61,8 +62,8 @@ def set_twisted_verbosity(verbosity: int):
     # Convert `verbosity` into a Twisted `LogLevel`.
     level = get_twisted_logging_level(verbosity)
     # `LogLevel` is comparable, but this saves overall computation.
-    global levels
-    levels = {
+    global _filterByLevels
+    _filterByLevels = {
         ll for ll in twistedModern.LogLevel.iterconstants()
         if ll >= level
     }

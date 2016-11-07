@@ -53,6 +53,7 @@ __all__ = [
     "get_maas_logger",
     "LegacyLogger",
     "LoggingMode",
+    "set_verbosity",
     "VerbosityOptions",
 ]
 

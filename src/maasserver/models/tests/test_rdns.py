@@ -17,7 +17,6 @@ from maasserver.models import RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import DocTestMatches
-from provisioningserver import logger
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -40,12 +39,7 @@ class TestRDNSManager(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
-        # For some reason, with the new logging framework, level=DEBUG alone
-        # doesn't work. We also need to set the verbosity globally.
-        logger.set_verbosity(3)
-        # Set the verbosity back to the default after the test runs.
-        self.addCleanup(logger.set_verbosity)
-        self.logger = self.useFixture(FakeLogger(level=DEBUG))
+        self.maaslog = self.useFixture(FakeLogger("maas.RDNS", level=DEBUG))
 
     def test__get_current_entry__returns_entry(self):
         region = factory.make_RegionController()
@@ -84,7 +78,7 @@ class TestRDNSManager(MAASServerTestCase):
         self.assertThat(result.ip, Equals(ip))
         self.assertThat(result.hostname, Equals(hostname))
         self.assertThat(result.hostnames, Equals([hostname]))
-        self.assertThat(self.logger.output, DocTestMatches(
+        self.assertThat(self.maaslog.output, DocTestMatches(
             "New reverse DNS entry...resolves to..."))
 
     def test__set_current_entry_updates_existing_hostname_with_log(self):
@@ -98,7 +92,7 @@ class TestRDNSManager(MAASServerTestCase):
         result = RDNS.objects.first()
         self.assertThat(result.ip, Equals(ip))
         self.assertThat(result.hostname, Equals(hostname))
-        self.assertThat(self.logger.output, DocTestMatches(
+        self.assertThat(self.maaslog.output, DocTestMatches(
             "Reverse DNS entry updated...resolves to..."))
 
     def test__set_current_entry_updates_existing_hostnames(self):
@@ -137,7 +131,7 @@ class TestRDNSManager(MAASServerTestCase):
         region = factory.make_RegionController()
         ip = factory.make_ip_address()
         RDNS.objects.delete_current_entry(ip, region)
-        self.assertThat(self.logger.output, Equals(""))
+        self.assertThat(self.maaslog.output, Equals(""))
 
     def test__delete_current_entry_deletes_and_logs_if_entry_deleted(self):
         region = factory.make_RegionController()
@@ -145,5 +139,5 @@ class TestRDNSManager(MAASServerTestCase):
         ip = factory.make_ip_address()
         factory.make_RDNS(ip, hostname, region)
         RDNS.objects.delete_current_entry(ip, region)
-        self.assertThat(self.logger.output, DocTestMatches(
+        self.assertThat(self.maaslog.output, DocTestMatches(
             "Deleted reverse DNS entry...resolved to..."))
