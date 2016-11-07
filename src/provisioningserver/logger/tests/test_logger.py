@@ -42,7 +42,7 @@ def log_something(
 
 # Matches lines like: 2016-10-18 14:23:55 [namespace#level] message
 find_log_lines_re = re.compile(
-    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [[](.*?)(?:#(.*))?[]] (.*)$",
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (.*?): [[](.*)[]] (.*)$",
     re.MULTILINE)
 
 
@@ -106,7 +106,7 @@ class TestLogging(MAASTestCase):
             (name, 'info', 'From `twisted.logger`.'),
             (name, 'warn', 'From `twisted.logger`.'),
             (name, 'error', 'From `twisted.logger`.'),
-            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `twisted.python.log`.'),
             (name, 'info', 'From `logging`.'),
             (name, 'warn', 'From `logging`.'),
             (name, 'error', 'From `logging`.'),
@@ -132,7 +132,7 @@ class TestLogging(MAASTestCase):
             (name, 'info', 'From `twisted.logger`.'),
             (name, 'warn', 'From `twisted.logger`.'),
             (name, 'error', 'From `twisted.logger`.'),
-            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `twisted.python.log`.'),
             (name, 'debug', 'From `logging`.'),
             (name, 'info', 'From `logging`.'),
             (name, 'warn', 'From `logging`.'),
@@ -195,7 +195,7 @@ class TestLogging(MAASTestCase):
             (name, 'info', 'From `twisted.logger`.'),
             (name, 'warn', 'From `twisted.logger`.'),
             (name, 'error', 'From `twisted.logger`.'),
-            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `twisted.python.log`.'),
             (name, 'info', 'From `logging`.'),
             (name, 'warn', 'From `logging`.'),
             (name, 'error', 'From `logging`.'),
@@ -224,7 +224,7 @@ class TestLogging(MAASTestCase):
             (name, 'info', 'From `twisted.logger`.'),
             (name, 'warn', 'From `twisted.logger`.'),
             (name, 'error', 'From `twisted.logger`.'),
-            (name, '', 'From `twisted.python.log`.'),
+            (name, 'info', 'From `twisted.python.log`.'),
             (name, 'debug', 'From `logging`.'),
             (name, 'info', 'From `logging`.'),
             (name, 'warn', 'From `logging`.'),

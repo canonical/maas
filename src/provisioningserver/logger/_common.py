@@ -21,7 +21,7 @@ import time
 
 # This format roughly matches Twisted's default, so that combined Twisted and
 # Django logs are consistent with one another.
-DEFAULT_LOG_FORMAT = "%(asctime)s [%(name)s#%(levelname)s] %(message)s"
+DEFAULT_LOG_FORMAT = "%(asctime)s %(name)s: [%(levelname)s] %(message)s"
 DEFAULT_LOG_FORMAT_DATE = "%Y-%m-%d %H:%M:%S"
 DEFAULT_LOG_VERBOSITY_LEVELS = {0, 1, 2, 3}
 DEFAULT_LOG_VERBOSITY = 2

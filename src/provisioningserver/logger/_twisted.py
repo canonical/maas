@@ -15,6 +15,7 @@ import warnings
 
 import crochet
 from provisioningserver.logger._common import (
+    DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_VERBOSITY,
     DEFAULT_LOG_VERBOSITY_LEVELS,
@@ -28,6 +29,7 @@ from twisted.python import (
     log as twistedLegacy,
     usage,
 )
+from twisted.python.util import untilConcludes
 
 # Map verbosity numbers to `twisted.logger` levels.
 DEFAULT_TWISTED_VERBOSITY_LEVELS = {
@@ -118,12 +120,10 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         twistedModern.globalLogBeginner.showwarning = warnings.showwarning
         twistedLegacy.theLogPublisher.showwarning = warnings.showwarning
 
-    # Globally override Twisted's log date format. It's tricky to get to the
-    # FileLogObserver that twistd installs so that we can modify its config
-    # alone, but we actually do want to make a global change anyway.
-    warn_unless(hasattr(twistedLegacy.FileLogObserver, "timeFormat"), (
-        "No FileLogObserver.timeFormat attribute found; please investigate!"))
-    twistedLegacy.FileLogObserver.timeFormat = DEFAULT_LOG_FORMAT_DATE
+    # Globally override Twisted's legacy logging format.
+    warn_unless(hasattr(twistedLegacy, "FileLogObserver"), (
+        "No t.p.log.FileLogObserver attribute found; please investigate!"))
+    LegacyFileLogObserver.install()
 
     # Install a wrapper so that log events from `t.logger` are logged with a
     # namespace and level by the legacy logger in `t.python.log`. This needs
@@ -158,18 +158,55 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
         twistedLegacy.startLogging(sys.__stdout__, setStdout=False)
 
 
+class LegacyFileLogObserver(twistedLegacy.FileLogObserver):
+    """Log legacy/mixed events to a file, formatting the MAAS way."""
+
+    timeFormat = DEFAULT_LOG_FORMAT_DATE
+    lineFormat = DEFAULT_LOG_FORMAT + "\n"
+
+    @classmethod
+    def install(cls):
+        """Install this wrapper in place of `log.FileLogObserver`."""
+        twistedLegacy.FileLogObserver = cls
+
+    def emit(self, event):
+        """Format and write out the given `event`."""
+        text = twistedLegacy.textFromEventDict(event)
+        if text is None:
+            return
+
+        system = event["system"] if "system" in event else None
+        if system is None and "log_namespace" in event:
+            system = event["log_namespace"]
+        # Logs written directly to `t.p.log.logfile` and `.logerr` get a
+        # namespace of "twisted.python.log". This is not interesting.
+        if system == twistedLegacy.__name__:
+            system = None
+
+        level = event["log_level"] if "log_level" in event else None
+        if level is None:
+            if "isError" in event and event["isError"]:
+                level = twistedModern.LogLevel.critical
+            else:
+                level = twistedModern.LogLevel.info
+
+        line = twistedLegacy._safeFormat(self.lineFormat, {
+            "asctime": self.formatTime(event["time"]),
+            "levelname": "-" if level is None else level.name,
+            "message": text.replace("\n", "\n\t"),
+            "name": "-" if system is None else system,
+        })
+
+        untilConcludes(self.write, line)
+        untilConcludes(self.flush)
+
+
 class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
     """Ensure that `log_system` is set in the event.
 
-    This mimics what `twisted.logger.formatEventAsClassicLogText` does when
-    `log_system` is not set, and constructs it from `log_namespace` and
-    `log_level`.
-
-    This `log_system` value is then seen by `LegacyLogObserverWrapper` and
-    copied into the `system` key and then printed out in the logs by Twisted's
-    legacy logging (`t.python.log`) machinery. This still used by `twistd`, so
-    the net effect is that the logger's namespace and level are printed to the
-    `twistd` log.
+    A newly populated `log_system` value is seen by `LegacyLogObserverWrapper`
+    (the superclass) and copied into the `system` key, later used when emitting
+    formatted log lines.
     """
 
     @classmethod
@@ -186,17 +223,11 @@ class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
 
     def __call__(self, event):
         # Be defensive: `system` could be missing or could have a value of
-        # None. Same goes for `log_system`, `log_namespace`, and `log_level`.
+        # None. Same goes for `log_system` and `log_namespace`.
         if event.get("system") is None and event.get("log_system") is None:
             namespace = event.get("log_namespace")
-            # Logs written directly to `t.p.log.logfile` and `.logerr` get a
-            # namespace of "twisted.python.log". This is not interesting.
-            if namespace == twistedLegacy.__name__:
-                namespace = None
-            level = event.get("log_level")
-            event["log_system"] = "{namespace}#{level}".format(
-                namespace=("-" if namespace is None else namespace),
-                level=("-" if level is None else level.name))
+            if namespace is not None:
+                event["log_system"] = namespace
         # Up-call, which will apply some more transformations.
         return super().__call__(event)
 

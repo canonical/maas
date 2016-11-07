@@ -17,6 +17,7 @@ from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.logger._twisted import (
+    LegacyFileLogObserver,
     LegacyLogger,
     LegacyLogObserverWrapper,
     observe_twisted_internet_tcp,
@@ -57,6 +58,80 @@ def setLegacyObservers(observers):
         log.theLogPublisher.addObserver(observer)
 
 
+class TestLegacyFileLogObserver(MAASTestCase):
+    """Scenario tests for `LegacyFileLogObserver`."""
+
+    scenarios = tuple(
+        (log_level.name, dict(log_level=log_level))
+        for log_level in logger.LogLevel.iterconstants()
+    )
+
+    def test__namespace_and_level_is_printed_in_legacy_log(self):
+        # Restore existing observers at the end. This must be careful with
+        # ordering of clean-ups, hence the use of unittest.mock.patch.object
+        # as a context manager.
+        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
+        # The global non-legacy `LogBeginner` emits critical messages straight
+        # to stderr, so temporarily put aside its observer to avoid seeing the
+        # critical log messages we're going to generate.
+        self.patch(logger.globalLogPublisher, "_observers", [])
+
+        logbuffer = io.StringIO()
+        observer = LegacyFileLogObserver(logbuffer)
+        observer.formatTime = lambda when: "<timestamp>"
+
+        oldlog = log.msg
+        # Deliberately use the default global observer in the new logger
+        # because we want to see how it behaves in a typical environment where
+        # logs are being emitted by the legacy logging infrastructure, for
+        # example running under `twistd`.
+        newlog = partial(logger.Logger().emit, self.log_level)
+
+        with patch.object(
+                log, "LegacyLogObserverWrapper",
+                log.LegacyLogObserverWrapper):
+            setLegacyObservers([observer.emit])
+            oldlog("Message from legacy", system="legacy")
+            newlog("Message from modern", log_system="modern")
+
+        self.assertThat(
+            logbuffer.getvalue(), DocTestMatches("""\
+            <timestamp> legacy: [info] Message from legacy
+            <timestamp> modern: [%s] Message from modern
+            """ % self.log_level.name))
+
+
+class TestLegacyFileLogObserver_Other(MAASTestCase):
+    """Other tests for `LegacyFileLogObserver`."""
+
+    def test__namespace_is_not_emitted_via_logfile_logerr(self):
+        # Restore existing observers at the end. This must be careful with
+        # ordering of clean-ups, hence the use of unittest.mock.patch.object
+        # as a context manager.
+        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
+        # The global non-legacy `LogBeginner` emits critical messages straight
+        # to stderr, so temporarily put aside its observer to avoid seeing the
+        # critical log messages we're going to generate.
+        self.patch(logger.globalLogPublisher, "_observers", [])
+
+        logbuffer = io.StringIO()
+        observer = LegacyFileLogObserver(logbuffer)
+        observer.formatTime = lambda when: "<timestamp>"
+
+        with patch.object(
+                log, "LegacyLogObserverWrapper",
+                log.LegacyLogObserverWrapper):
+            setLegacyObservers([observer.emit])
+            log.logfile.write("Via log.logfile\n")
+            log.logerr.write("Via log.logerr\n")
+
+        self.assertThat(
+            logbuffer.getvalue(), DocTestMatches("""\
+            <timestamp> -: [info] Via log.logfile
+            <timestamp> -: [error] Via log.logerr
+            """))
+
+
 class TestLegacyLogObserverWrapper(MAASTestCase):
     """Scenario tests for `LegacyLogObserverWrapper`."""
 
@@ -72,7 +147,7 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
         self.assertThat(events, HasLength(1))
         return events[0]
 
-    def test__adds_log_system_and_system_to_event(self):
+    def test__adds_system_to_event(self):
         self.assertThat(
             # This is a `twisted.logger` event, not legacy, and requires
             # values for `log_time` and `log_level` at a minimum.
@@ -80,10 +155,10 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
                 "log_time": sentinel.log_time,
                 "log_level": self.log_level,
             }),
-            ContainsDictByEquality({
-                "log_system": "-#" + self.log_level.name,
-                "system": "-#" + self.log_level.name,
-            }),
+            MatchesAll(
+                Not(Contains("log_system")),
+                ContainsDictByEquality({"system": "-"}),
+            ),
         )
 
     def test__adds_log_system_and_system_to_event_with_namespace(self):
@@ -95,12 +170,12 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
                 "log_namespace": log_namespace,
             }),
             ContainsDictByEquality({
-                "log_system": log_namespace + "#" + self.log_level.name,
-                "system": log_namespace + "#" + self.log_level.name,
+                "log_system": log_namespace,
+                "system": log_namespace,
             }),
         )
 
-    def test__adds_log_system_and_system_to_legacy_event(self):
+    def test__adds_system_to_legacy_event(self):
         self.assertThat(
             # This is a `twisted.python.log` event, i.e. legacy, and requires
             # values for `time` and `isError` at a minimum.
@@ -108,10 +183,10 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
                 "time": sentinel.time,
                 "isError": factory.pick_bool(),
             }),
-            ContainsDictByEquality({
-                "log_system": "-#-",
-                "system": "-#-",
-            }),
+            MatchesAll(
+                Not(Contains("log_system")),
+                ContainsDictByEquality({"system": "-"}),
+            ),
         )
 
     def test__preserves_log_system_in_event(self):
@@ -145,77 +220,6 @@ class TestLegacyLogObserverWrapper(MAASTestCase):
                 }),
             ),
         )
-
-    def test__namespace_and_level_is_printed_in_legacy_log(self):
-        # Restore existing observers at the end. This must be careful with
-        # ordering of clean-ups, hence the use of unittest.mock.patch.object
-        # as a context manager.
-        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
-        # The global non-legacy `LogBeginner` emits critical messages straight
-        # to stderr, so temporarily put aside its observer to avoid seeing the
-        # critical log messages we're going to generate.
-        self.patch(logger.globalLogPublisher, "_observers", [])
-
-        logbuffer = io.StringIO()
-        observer = log.FileLogObserver(logbuffer)
-        observer.formatTime = lambda when: "<timestamp>"
-
-        oldlog = log.msg
-        # Deliberately use the default global observer in the new logger
-        # because we want to see how it behaves in a typical environment where
-        # logs are being emitted by the legacy logging infrastructure, for
-        # example running under `twistd`.
-        newlog = partial(logger.Logger().emit, self.log_level)
-
-        with patch.object(
-                log, "LegacyLogObserverWrapper",
-                log.LegacyLogObserverWrapper):
-            setLegacyObservers([observer.emit])
-            oldlog("Before (legacy)")
-            newlog("Before (new)")
-            LegacyLogObserverWrapper.install()
-            oldlog("After (legacy)")
-            newlog("After (new)")
-
-        self.assertThat(
-            logbuffer.getvalue(), DocTestMatches("""\
-            <timestamp> [-] Before (legacy)
-            <timestamp> [-] Before (new)
-            <timestamp> [-] After (legacy)
-            <timestamp> [%s#%s] After (new)
-            """ % (__name__, self.log_level.name)))
-
-    def test__namespace_and_level_are_elided_via_logfile_logerr(self):
-        # Restore existing observers at the end. This must be careful with
-        # ordering of clean-ups, hence the use of unittest.mock.patch.object
-        # as a context manager.
-        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
-        # The global non-legacy `LogBeginner` emits critical messages straight
-        # to stderr, so temporarily put aside its observer to avoid seeing the
-        # critical log messages we're going to generate.
-        self.patch(logger.globalLogPublisher, "_observers", [])
-
-        logbuffer = io.StringIO()
-        observer = log.FileLogObserver(logbuffer)
-        observer.formatTime = lambda when: "<timestamp>"
-
-        with patch.object(
-                log, "LegacyLogObserverWrapper",
-                log.LegacyLogObserverWrapper):
-            setLegacyObservers([observer.emit])
-            log.logfile.write("Before (via log.logfile)\n")
-            log.logerr.write("Before (via log.logerr)\n")
-            LegacyLogObserverWrapper.install()
-            log.logfile.write("After (via log.logfile)\n")
-            log.logerr.write("After (via log.logerr)\n")
-
-        self.assertThat(
-            logbuffer.getvalue(), DocTestMatches("""\
-            <timestamp> [-] Before (via log.logfile)
-            <timestamp> [-] Before (via log.logerr)
-            <timestamp> [-#info] After (via log.logfile)
-            <timestamp> [-#error] After (via log.logerr)
-            """))
 
 
 class TestLegacyLogObserverWrapper_Installation(MAASTestCase):
