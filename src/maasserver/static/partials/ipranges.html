@@ -11,7 +11,6 @@
         </header>
         <main class="table__body">
             <div class="table__row"
-		data-ng-if="mode === 'subnet'"
 		data-ng-repeat="iprange in (subnetIPRanges = ipranges | filterBySubnet:obj | orderBy:'start_ip')"
                 data-ng-class="{ 'is-active': isIPRangeInEditMode(iprange) || isIPRangeInDeleteMode(iprange)}">
 		<div class="table__data table-col--20">{$ iprange.start_ip $}</div>
@@ -110,7 +109,6 @@
         </main>
     </div>
     <a class="button--secondary button--inline"
-      data-ng-if="mode === 'subnet'"
       data-ng-disabled="newRange"
       data-ng-click="addRange('reserved')">Reserve range</a>
     <a class="button--secondary button--inline"
