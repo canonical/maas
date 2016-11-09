@@ -9,12 +9,11 @@ from random import (
     randint,
     shuffle,
 )
+import threading
 from unittest import skip
 from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from maasserver import locks
 from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -43,25 +42,29 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import (
     reload_object,
-    RetryTransaction,
     transactional,
 )
 from maasserver.websockets.base import dehydrate_datetime
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from netaddr import IPAddress
 from testtools import ExpectedException
 from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
     Contains,
     Equals,
     HasLength,
+    Is,
+    IsInstance,
     Not,
 )
+from twisted.python.failure import Failure
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestStaticIPAddressManager, self).setUp()
+        register_view("maasserver_discovery")
 
     def test_filter_by_ip_family_ipv4(self):
         network_v4 = factory.make_ipv4_network()
@@ -133,36 +136,21 @@ class TestStaticIPAddressManager(MAASServerTestCase):
             StaticIPAddress.objects.filter_by_subnet_cidr_family(
                 IPADDRESS_FAMILY.IPv6))
 
-
-class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
-    """The following TestStaticIPAddressManager tests require
-    MAASTransactionServerTestCase, and thus have been separated from the
-    TestStaticIPAddressManager above.
-    """
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     def test_allocate_new_returns_ip_in_correct_range(self):
-        with transaction.atomic():
-            subnet = factory.make_managed_Subnet()
-        with transaction.atomic():
-            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+        subnet = factory.make_managed_Subnet()
+        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertTrue(
             subnet.is_valid_static_ip(ipaddress.ip),
             "%s: not valid for subnet with reserved IPs: %r" % (
                 ipaddress.ip, subnet.get_ipranges_in_use()))
 
-    @transactional
     def test_allocate_new_allocates_IPv6_address(self):
-        subnet = factory.make_managed_ipv6_Subnet()
+        subnet = factory.make_managed_Subnet(ipv6=True)
         ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertTrue(subnet.is_valid_static_ip(ipaddress.ip))
 
-    @transactional
     def test_allocate_new_sets_user(self):
         subnet = factory.make_managed_Subnet()
         user = factory.make_User()
@@ -170,7 +158,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             subnet=subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user)
         self.assertEqual(user, ipaddress.user)
 
-    @transactional
     def test_allocate_new_with_user_disallows_wrong_alloc_types(self):
         subnet = factory.make_managed_Subnet()
         user = factory.make_User()
@@ -184,7 +171,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             StaticIPAddress.objects.allocate_new(
                 subnet, user=user, alloc_type=alloc_type)
 
-    @transactional
     def test_allocate_new_with_reserved_type_requires_a_user(self):
         subnet = factory.make_managed_Subnet()
         with ExpectedException(AssertionError):
@@ -195,18 +181,15 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
         # Django has a bug that casts IP addresses with HOST(), which
         # results in alphabetical comparisons of strings instead of IP
         # addresses.  See https://bugs.launchpad.net/maas/+bug/1338452
-        with transaction.atomic():
-            subnet = factory.make_Subnet(
-                cidr='10.0.0.0/24', gateway_ip='10.0.0.1')
-            factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.97')
-            factory.make_IPRange(subnet, '10.0.0.101', '10.0.0.254')
-            factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
-            subnet = reload_object(subnet)
-        with transaction.atomic():
-            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
-            self.assertEqual(ipaddress.ip, "10.0.0.98")
+        subnet = factory.make_Subnet(
+            cidr='10.0.0.0/24', gateway_ip='10.0.0.1')
+        factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.97')
+        factory.make_IPRange(subnet, '10.0.0.101', '10.0.0.254')
+        factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
+        subnet = reload_object(subnet)
+        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+        self.assertEqual(ipaddress.ip, "10.0.0.98")
 
-    @transactional
     def test_allocate_new_returns_requested_IP_if_available(self):
         subnet = factory.make_Subnet(cidr='10.0.0.0/24')
         ipaddress = StaticIPAddress.objects.allocate_new(
@@ -219,7 +202,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             requested_address='10.0.0.1')
         self.assertEqual('10.0.0.1', ipaddress.ip)
 
-    @transactional
     def test_allocate_new_raises_when_requested_IP_unavailable(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
         requested_address = StaticIPAddress.objects.allocate_new(
@@ -234,28 +216,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             StaticIPAddress.objects.allocate_new(
                 subnet, requested_address=requested_address)
 
-    @transactional
-    def test_allocate_new_requests_transaction_retry_if_ip_taken(self):
-        subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        # Simulate a "IP already taken" error.
-        mock_attempt_allocation = self.patch(
-            StaticIPAddress.objects, '_attempt_allocation')
-        mock_attempt_allocation.side_effect = StaticIPAddressUnavailable()
-        self.assertRaises(
-            RetryTransaction, StaticIPAddress.objects.allocate_new, subnet)
-
-    @transactional
-    def test_allocate_new_does_not_use_lock_for_requested_ip(self):
-        # When requesting a specific IP address, there's no need to
-        # acquire the lock.
-        lock = self.patch(locks, 'staticip_acquire')
-        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            subnet, requested_address='10.0.0.1')
-        self.assertIsInstance(ipaddress, StaticIPAddress)
-        self.assertThat(lock.__enter__, MockNotCalled())
-
-    @transactional
     def test_allocate_new_raises_when_requested_IP_out_of_network(self):
         subnet = factory.make_Subnet(cidr='10.0.0.0/24')
         requested_address = '10.0.1.1'
@@ -274,31 +234,28 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             str(e))
 
     def test_allocate_new_raises_when_requested_IP_in_dynamic_range(self):
-        with transaction.atomic():
-            subnet = factory.make_ipv4_Subnet_with_IPRanges()
-            dynamic_range = subnet.get_dynamic_ranges().first()
-            requested_address = str(IPAddress(
-                dynamic_range.netaddr_iprange.first))
-            dynamic_range_end = str(IPAddress(
-                dynamic_range.netaddr_iprange.last))
-            subnet = reload_object(subnet)
-        with transaction.atomic():
-            e = self.assertRaises(
-                StaticIPAddressUnavailable,
-                StaticIPAddress.objects.allocate_new,
-                subnet, factory.pick_enum(
-                    IPADDRESS_TYPE, but_not=[
-                        IPADDRESS_TYPE.DHCP,
-                        IPADDRESS_TYPE.DISCOVERED,
-                        IPADDRESS_TYPE.USER_RESERVED,
-                    ]),
-                requested_address=requested_address)
-            self.assertEqual(
-                "%s is within the dynamic range from %s to %s" % (
-                    requested_address, requested_address, dynamic_range_end),
-                str(e))
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        dynamic_range = subnet.get_dynamic_ranges().first()
+        requested_address = str(IPAddress(
+            dynamic_range.netaddr_iprange.first))
+        dynamic_range_end = str(IPAddress(
+            dynamic_range.netaddr_iprange.last))
+        subnet = reload_object(subnet)
+        e = self.assertRaises(
+            StaticIPAddressUnavailable,
+            StaticIPAddress.objects.allocate_new,
+            subnet, factory.pick_enum(
+                IPADDRESS_TYPE, but_not=[
+                    IPADDRESS_TYPE.DHCP,
+                    IPADDRESS_TYPE.DISCOVERED,
+                    IPADDRESS_TYPE.USER_RESERVED,
+                ]),
+            requested_address=requested_address)
+        self.assertEqual(
+            "%s is within the dynamic range from %s to %s" % (
+                requested_address, requested_address, dynamic_range_end),
+            str(e))
 
-    @transactional
     def test_allocate_new_raises_when_alloc_type_is_None(self):
         error = self.assertRaises(
             ValueError, StaticIPAddress.objects.allocate_new,
@@ -307,7 +264,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             "IP address type None is not allowed to use allocate_new.",
             str(error))
 
-    @transactional
     def test_allocate_new_raises_when_alloc_type_is_not_allowed(self):
         error = self.assertRaises(
             ValueError, StaticIPAddress.objects.allocate_new,
@@ -316,31 +272,70 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
             "IP address type 5 is not allowed to use allocate_new.",
             str(error))
 
-    @transactional
-    def test_allocate_new_uses_staticip_acquire_lock(self):
-        lock = self.patch(locks, 'staticip_acquire')
-        subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
-        self.assertIsInstance(ipaddress, StaticIPAddress)
-        self.assertThat(lock.__enter__, MockCalledOnceWith())
-        self.assertThat(
-            lock.__exit__, MockCalledOnceWith(None, None, None))
-
     def test_allocate_new_raises_when_addresses_exhausted(self):
         network = "192.168.230.0/24"
-        with transaction.atomic():
-            subnet = factory.make_Subnet(cidr=network)
-            factory.make_IPRange(
-                subnet, '192.168.230.1', '192.168.230.254',
-                type=IPRANGE_TYPE.RESERVED)
-        with transaction.atomic():
-            e = self.assertRaises(
-                StaticIPAddressExhaustion,
-                StaticIPAddress.objects.allocate_new,
-                subnet)
+        subnet = factory.make_Subnet(cidr=network)
+        factory.make_IPRange(
+            subnet, '192.168.230.1', '192.168.230.254',
+            type=IPRANGE_TYPE.RESERVED)
+        e = self.assertRaises(
+            StaticIPAddressExhaustion,
+            StaticIPAddress.objects.allocate_new,
+            subnet)
         self.assertEqual(
             "No more IPs available in subnet: %s." % subnet.cidr,
             str(e))
+
+
+class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
+    """Transactional tests for `StaticIPAddressManager."""
+
+    scenarios = (
+        ("IPv4", dict(ip_version=4)),
+        ("IPv6", dict(ip_version=6)),
+    )
+
+    def test_allocate_new_works_under_extreme_concurrency(self):
+        register_view("maasserver_discovery")
+
+        ipv6 = (self.ip_version == 6)
+        subnet = factory.make_managed_Subnet(ipv6=ipv6)
+        count = 20  # Allocate this number of IP addresses.
+        concurrency = threading.Semaphore(16)
+        mutex = threading.Lock()
+        results = []
+
+        @transactional
+        def allocate():
+            return StaticIPAddress.objects.allocate_new(subnet)
+
+        def allocate_one():
+            try:
+                with concurrency:
+                    sip = allocate()
+            except:
+                failure = Failure()
+                with mutex:
+                    results.append(failure)
+            else:
+                with mutex:
+                    results.append(sip)
+
+        threads = [
+            threading.Thread(target=allocate_one)
+            for _ in range(count)
+        ]
+
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertThat(results, AllMatch(IsInstance(StaticIPAddress)))
+        ips = {sip.ip for sip in results}
+        self.assertThat(ips, HasLength(count))
+        self.assertThat(ips, AllMatch(
+            AfterPreprocessing(subnet.is_valid_static_ip, Is(True))))
 
 
 class TestStaticIPAddressManagerMapping(MAASServerTestCase):

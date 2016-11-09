@@ -1170,17 +1170,14 @@ class Factory(maastesting.factory.Factory):
                 end_ip=str(IPAddress(network.last - 2)))
         return reload_object(subnet)
 
-    def make_managed_ipv6_Subnet(self, cidr=None, dhcp=True, **kwargs):
-        if cidr is not None:
-            network = IPNetwork(cidr)
-        else:
-            network = factory.make_ipv6_network(slash=64)
+    def make_managed_Subnet_for(self, cidr, dhcp=True):
+        network = IPNetwork(cidr)
         router_address = IPAddress(network.first + 1)
         dns_servers = random.choice([
             [], ['8.8.8.8', '8.8.4.4'], [str(IPAddress(network.last - 1))]])
         subnet = self.make_Subnet(
             cidr=str(network), gateway_ip=str(router_address),
-            dns_servers=dns_servers, **kwargs)
+            dns_servers=dns_servers)
         if dhcp:
             subnet.vlan.dhcp_on = True
             subnet.vlan.save()
@@ -1189,13 +1186,16 @@ class Factory(maastesting.factory.Factory):
             subnet.vlan.save()
         return subnet
 
-    def make_managed_Subnet(self, *, ipv6=None):
+    def make_managed_Subnet(self, *, ipv6=None, dhcp=True):
         if ipv6 is None:
-            ipv6 = random.choice([True, False])
+            ipv6 = self.pick_bool()
         if ipv6:
-            return self.make_managed_ipv6_Subnet()
+            slash = random.randint(48, 80)  # Not too small.
+            cidr = factory.make_ipv6_network(slash=slash)
         else:
-            return self.make_ipv4_Subnet_with_IPRanges()
+            slash = random.randint(16, 20)  # Not too small.
+            cidr = factory.make_ipv4_network(slash=slash)
+        return self.make_managed_Subnet_for(cidr, dhcp=dhcp)
 
     def make_Tag(
             self, name=None, definition=None, comment='', kernel_opts=None,

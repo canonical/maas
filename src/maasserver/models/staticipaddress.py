@@ -30,10 +30,7 @@ from django.db.models import (
     PROTECT,
     Q,
 )
-from maasserver import (
-    DefaultMeta,
-    locks,
-)
+from maasserver import DefaultMeta
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -52,18 +49,8 @@ from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.dns import get_ip_based_hostname
-from maasserver.utils.orm import (
-    request_transaction_retry,
-    transactional,
-)
-from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
-from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.twisted import asynchronous
-
-
-maaslog = get_maas_logger("node")
 
 
 class HostnameIPMapping:
@@ -145,21 +132,58 @@ class StaticIPAddressManager(Manager):
         :return: `StaticIPAddress` if successful.
         :raise StaticIPAddressUnavailable: if the address was already taken.
         """
-        ipaddress = StaticIPAddress(
-            ip=requested_address.format(), alloc_type=alloc_type,
-            subnet=subnet)
-        ipaddress.set_ip_address(requested_address.format())
+        ipaddress = StaticIPAddress(alloc_type=alloc_type, subnet=subnet)
         try:
             # Try to save this address to the database. Do this in a nested
             # transaction so that we can continue using the outer transaction
             # even if this breaks.
             with transaction.atomic():
+                ipaddress.set_ip_address(requested_address.format())
                 ipaddress.save()
         except IntegrityError:
             # The address is already taken.
             raise StaticIPAddressUnavailable(
                 "The IP address %s is already in use." %
                 requested_address.format())
+        else:
+            # We deliberately do *not* save the user until now because it
+            # might result in an IntegrityError, and we rely on the latter
+            # in the code above to indicate an already allocated IP
+            # address and nothing else.
+            ipaddress.user = user
+            ipaddress.save()
+            return ipaddress
+
+    def _attempt_allocation_of_free_address(
+            self, requested_address, alloc_type, user=None, subnet=None):
+        """Attempt to allocate `requested_address`, which is known to be free.
+
+        It is known to be free *in this transaction*, so this could still fail
+        with an `IntegrityError`. However, that's _fine_ because the
+        transaction retry machinery will pick it up.
+
+        This method shares a lot in common with `_attempt_allocation` so check
+        out its documentation for more details.
+
+        :param requested_address: The address to be allocated.
+        :typr requested_address: IPAddress
+        :param alloc_type: Allocation type.
+        :param user: Optional user.
+        :return: `StaticIPAddress` if successful.
+        :raise IntegrityError: if the address was already taken.
+        """
+        ipaddress = StaticIPAddress(alloc_type=alloc_type, subnet=subnet)
+        try:
+            # Try to save this address to the database. Do this in a nested
+            # transaction so that we can continue using the outer transaction
+            # even if this breaks.
+            with transaction.atomic():
+                ipaddress.set_ip_address(requested_address.format())
+                ipaddress.save()
+        except IntegrityError:
+            # The address is already taken. Allow the transaction retry
+            # machinery to take care of this one.
+            raise
         else:
             # We deliberately do *not* save the user until now because it
             # might result in an IntegrityError, and we rely on the latter
@@ -186,9 +210,6 @@ class StaticIPAddressManager(Manager):
         :param exclude_addresses: A list of addresses which MUST NOT be used.
 
         All IP parameters can be strings or netaddr.IPAddress.
-
-        Note that this method has been designed to work even when the database
-        is running with READ COMMITTED isolation. Try to keep it that way.
         """
         # This check for `alloc_type` is important for later on. We rely on
         # detecting IntegrityError as a sign than an IP address is already
@@ -204,23 +225,15 @@ class StaticIPAddressManager(Manager):
                     "Could not find an appropriate subnet.")
 
         if requested_address is None:
-            with locks.staticip_acquire:
-                requested_address = self._async_find_free_ip(
-                    subnet, exclude_addresses=exclude_addresses).wait(30)
-                try:
-                    return self._attempt_allocation(
-                        requested_address, alloc_type, user,
-                        subnet=subnet)
-                except StaticIPAddressUnavailable:
-                    # We lost the race: another transaction has taken this IP
-                    # address. Retry this transaction from the top.
-                    request_transaction_retry()
+            requested_address = subnet.get_next_ip_for_allocation(
+                exclude_addresses=exclude_addresses)
+            return self._attempt_allocation_of_free_address(
+                requested_address, alloc_type, user=user, subnet=subnet)
         else:
             requested_address = IPAddress(requested_address)
             subnet.validate_static_ip(requested_address)
             return self._attempt_allocation(
-                requested_address, alloc_type,
-                user=user, subnet=subnet)
+                requested_address, alloc_type, user=user, subnet=subnet)
 
     def _get_user_reserved_mappings(self, domain_or_subnet, raw_ttl=False):
         # A poorly named routine these days, since it actually returns
@@ -272,14 +285,6 @@ class StaticIPAddressManager(Manager):
                 mappings[hostname].ttl = ttl
                 mappings[hostname].ips.add(ip)
         return mappings
-
-    @asynchronous
-    def _async_find_free_ip(self, *args, **kwargs):
-        return deferToDatabase(
-            transactional(self._find_free_ip), *args, **kwargs)
-
-    def _find_free_ip(self, subnet, exclude_addresses=None):
-        return subnet.get_next_ip_for_allocation(exclude_addresses)
 
     def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
         """Return hostname mappings for `StaticIPAddress` entries.

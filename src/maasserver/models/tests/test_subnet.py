@@ -615,7 +615,7 @@ class SubnetTest(MAASServerTestCase):
                 parent, subnet.get_smallest_enclosing_sane_subnet())
 
     def test_cannot_delete_with_dhcp_enabled(self):
-        subnet = factory.make_managed_Subnet(ipv6=False)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
         with ExpectedException(ValidationError, ".*servicing a dynamic.*"):
             subnet.delete()
 
