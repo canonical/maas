@@ -22,7 +22,9 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
+import pexpect
 from provisioningserver.drivers.hardware import virsh
+from provisioningserver.utils.shell import select_c_utf8_locale
 from provisioningserver.utils.twisted import asynchronous
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
@@ -237,6 +239,18 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh(output)
         expected = conn.get_arch('')
         self.assertEqual(fixed_arch, expected)
+
+    def test_resets_locale(self):
+        """
+        VirshSSH resets the locale to ensure we only ever get English strings.
+        """
+        c_utf8_environment = select_c_utf8_locale()
+        mock_spawn = self.patch(pexpect.spawn, "__init__")
+        self.configure_virshssh('')
+        self.assertThat(
+            mock_spawn,
+            MockCalledOnceWith(
+                None, timeout=30, maxread=2000, env=c_utf8_environment))
 
 
 class TestVirsh(MAASTestCase):
