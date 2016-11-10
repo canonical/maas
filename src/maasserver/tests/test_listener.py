@@ -110,6 +110,39 @@ class TestPostgresListenerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__handles_missing_system_handler_on_notification(self):
+        listener = PostgresListenerService()
+        # Change notifications to a frozenset. This makes sure that
+        # the system message does not go into the queue. Instead if should
+        # call the handler directly in `doRead`.
+        listener.notifications = frozenset()
+        yield listener.startService()
+        yield deferToDatabase(listener.registerChannel, "sys_test")
+        listener.listeners["sys_test"] = []
+        try:
+            yield deferToDatabase(self.send_notification, "sys_test", 1)
+            self.assertFalse("sys_test" in listener.listeners)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__handles_missing_notify_system_listener_on_notification(self):
+        listener = PostgresListenerService()
+        # Change notifications to a frozenset. This makes sure that
+        # the system message does not go into the queue. Instead if should
+        # call the handler directly in `doRead`.
+        listener.notifications = frozenset()
+        yield listener.startService()
+        yield deferToDatabase(listener.registerChannel, "sys_test")
+        try:
+            yield deferToDatabase(self.send_notification, "sys_test", 1)
+            self.assertFalse("sys_test" in listener.listeners)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__calls_handler_on_notification(self):
         listener = PostgresListenerService()
         dv = DeferredValue()
