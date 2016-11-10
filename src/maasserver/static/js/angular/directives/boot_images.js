@@ -93,7 +93,7 @@ angular.module('MAAS').directive('maasBootImages', [
                 // Return the overall title icon.
                 $scope.getTitleIcon = function() {
                     if($scope.bootResources.resources.length === 0) {
-                        return 'icon--error';
+                        return 'icon--success-grey';
                     } else {
                         return 'icon--success';
                     }

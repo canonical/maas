@@ -36,6 +36,12 @@
       color: $cool-grey;
     }
   }
+
+  .button--large {
+    height: auto;
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
 }
 
 @mixin maas-button-group {

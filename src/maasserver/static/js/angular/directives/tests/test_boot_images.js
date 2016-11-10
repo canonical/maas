@@ -184,7 +184,7 @@ describe("maasBootImages", function() {
             var directive = compileDirective();
             var scope = directive.isolateScope();
             BootResourcesManager._data.resources = [];
-            expect(scope.getTitleIcon()).toBe('icon--error');
+            expect(scope.getTitleIcon()).toBe('icon--success-grey');
         });
 
         it("returns success when resources", function() {
