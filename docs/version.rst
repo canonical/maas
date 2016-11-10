@@ -67,3 +67,15 @@ the version when creating a client application.
   Deploy nodes with custom network layout and configuration. Available since
   version 1.9 on Ubuntu deployments. See :ref:`networking` for more about this
   feature.
+
+.. _cap_bridging-interface-ubuntu:
+
+``bridging-interface-ubuntu``
+  Deploy nodes, selectively configuring bridges on network interfaces.
+  Available since 2.1 on Ubuntu deployments.
+
+.. _cap_bridging-automatic-ubuntu:
+
+``bridging-automatic-ubuntu``
+  Deploy nodes, automatically configuring bridges on all interfaces.
+  Available since 2.1 on Ubuntu deployments.
