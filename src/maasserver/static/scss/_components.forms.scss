@@ -151,6 +151,12 @@
           margin-right: 10px;
           vertical-align: top;
           line-height: 34px;
+
+          .icon--left {
+            position: absolute;
+            left: 0;
+            top: 12px;
+          }
         }
 
         input,

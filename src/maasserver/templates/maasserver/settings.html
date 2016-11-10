@@ -179,17 +179,6 @@
             <h2>Device Discovery</h2>
             <form action="{% url 'settings' %}" method="post">
                 {% csrf_token %}
-                <style>
-                /*
-                 * Special case: the Device Discovery option is the only one
-                 * that does NOT have a label before its first option. So we
-                 * must move the list item up slightly to account for the
-                 * difference.
-                 */
-                li.network_discovery-network_discovery {
-                    margin-top: -1.5em;
-                }
-                </style>
                 <ul>
                     {% for field in network_discovery_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>

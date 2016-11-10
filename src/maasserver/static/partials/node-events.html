@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="page-header">
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header u-margin--bottom">
+    <header class="page-header u-margin--bottom" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ node.fqdn $}</h1>
             <p class="page-header__status">
@@ -28,7 +28,7 @@
                     <input type="submit" class="search__submit" />
                 </div>
                 <table id="events-listing">
-                    <thead>
+                    <thead sticky use-placeholder="false" sticky-class="table__head--sticky" offset="116">
                         <tr>
                             <th class="table-col--1"></th>
                             <th class="table-col--79">Event</th>

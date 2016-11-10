@@ -47,6 +47,12 @@ MERGE_VIEWS = {
             "js/angular/3rdparty/ng-tags-input.js",
         ]
     },
+    "sticky.js": {
+        "content_type": "text/javascript; charset=UTF-8",
+        "files": [
+            "js/angular/3rdparty/sticky.js",
+        ]
+    },
     "maas-angular.js": {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [

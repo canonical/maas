@@ -14,7 +14,7 @@
 @mixin spacing($spacing, $spacing-unit) {
 
   $directions:                    top right bottom left;
-  $sizes:                         (tiny: $spacing-unit / 4, small: $spacing-unit / 2, large: $spacing-unit * 2, huge: $spacing-unit * 4);
+  $sizes:                         (tiny: $spacing-unit / 4, small: $spacing-unit / 2, medium: ($spacing-unit * 3) / 2, large: $spacing-unit * 2, huge: $spacing-unit * 4);
 
   .u-#{$spacing} {
     #{$spacing}: $spacing-unit;

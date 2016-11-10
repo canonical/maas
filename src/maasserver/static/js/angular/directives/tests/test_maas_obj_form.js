@@ -957,6 +957,35 @@ describe("maasObjForm", function() {
         });
     });
 
+    describe("labelLeft", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'label-info="My Info" ' +
+                        'label-left="true"></maas-obj-field>',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("icon add with tooltip added in label", function() {
+            var label = directive.find("label");
+            var icon = label.find("i");
+            expect(label.text()).toBe("key ");
+            expect(icon.hasClass("icon")).toBe(true);
+            expect(icon.hasClass("icon--info")).toBe(true);
+            expect(icon.hasClass("icon--left")).toBe(true);
+            expect(icon.hasClass("tooltip")).toBe(true);
+            expect(icon.attr('aria-label')).toBe("My Info");
+        });
+    });
+
     describe("inputClass", function() {
 
         var directive;

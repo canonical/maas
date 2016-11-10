@@ -28,28 +28,28 @@
       }
 
       &.flash-messages__item--error {
-        background: $white url('#{$asset-path}images/icons/error_colour_white.svg') no-repeat;
+        background: $white url('#{$asset-path}images/icons/error.svg') no-repeat;
         background-size: 16px 16px;
         background-position: 15px center;
         padding-left: 45px;
       }
 
       &.flash-messages__item--info {
-        background: $white url('#{$asset-path}images/icons/information_colour_white.svg') no-repeat;
+        background: $white url('#{$asset-path}images/icons/info.svg') no-repeat;
         background-size: 16px 16px;
         background-position: 15px center;
         padding-left: 45px;
       }
 
       &.flash-messages__item--warning {
-        background: $white url('#{$asset-path}images/icons/warning_colour_white.svg') no-repeat;
+        background: $white url('#{$asset-path}images/icons/warning.svg') no-repeat;
         background-size: 16px 16px;
         background-position: 15px center;
         padding-left: 45px;
       }
 
       &.flash-messages__item--success {
-        background: $white url('#{$asset-path}images/icons/success_colour_white.svg') no-repeat;
+        background: $white url('#{$asset-path}images/icons/success.svg') no-repeat;
         background-size: 16px 16px;
         background-position: 15px center;
         padding-left: 45px;

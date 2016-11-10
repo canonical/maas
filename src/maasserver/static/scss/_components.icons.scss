@@ -54,28 +54,16 @@
     &.icon--error {
       background: url('#{$asset-path}images/icons/error.svg') no-repeat;
       background-size: 100% 100%;
-
-      &-mono {
-        background: url('#{$asset-path}images/icons/error-mono.svg') no-repeat;
-      }
     }
 
     &.icon--help {
       background: url('#{$asset-path}images/icons/help.svg') no-repeat;
       background-size: 100% 100%;
-
-      &-mono {
-        background: url('#{$asset-path}images/icons/help-mono.svg') no-repeat;
-      }
     }
 
     &.icon--info {
       background: url('#{$asset-path}images/icons/info.svg') no-repeat;
       background-size: 100% 100%;
-
-      &-mono {
-        background: url('#{$asset-path}images/icons/info-mono.svg') no-repeat;
-      }
     }
 
     &.icon--loading {
