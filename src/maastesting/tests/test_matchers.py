@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from textwrap import dedent
 from unittest.mock import (
     call,
     create_autospec,
@@ -31,12 +32,16 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
+    TextEquals,
 )
 from maastesting.testcase import MAASTestCase
+from testtools.content import Content
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
+    ContainsDict,
     Equals,
+    IsInstance,
     MatchesStructure,
     Mismatch,
 )
@@ -499,3 +504,66 @@ class TestFileContains(MAASTestCase, MockTestMixin):
             "File at path exists and its contents (encoded as %s) "
             "match %s" % (encoding, contents_matcher),
             FileContains(matcher=contents_matcher, encoding=encoding))
+
+
+class TestTextEquals(MAASTestCase, MockTestMixin):
+    """Tests for the `TextEquals` matcher."""
+
+    def test_matches_equal_strings(self):
+        contents = factory.make_string()
+        self.assertThat(contents, TextEquals(contents))
+
+    def test_matches_equal_things(self):
+        contents = object()
+        self.assertThat(contents, TextEquals(contents))
+
+    def test_describes_mismatch(self):
+        self.assertMismatch(
+            TextEquals("foo").match("bar"),
+            "Observed text does not match expectations; see diff.")
+
+    def test_includes_diff_of_mismatch(self):
+        expected = "A line of text that differs at the end."
+        observed = "A line of text that differs at THE end."
+        mismatch = TextEquals(expected).match(observed)
+        details = mismatch.get_details()
+        self.assertThat(details, ContainsDict({"diff": IsInstance(Content)}))
+        self.assertThat(details["diff"].as_text(), Equals(dedent("""\
+        --- expected
+        +++ observed
+        - A line of text that differs at the end.
+        ?                                ^^^
+        + A line of text that differs at THE end.
+        ?                                ^^^
+        """)))
+
+    def test_includes_diff_of_mismatch_multiple_lines(self):
+        expected = "A line of text that differs\nat the end of the 2nd line."
+        observed = "A line of text that differs\nat the end of the 2ND line."
+        mismatch = TextEquals(expected).match(observed)
+        details = mismatch.get_details()
+        self.assertThat(details, ContainsDict({"diff": IsInstance(Content)}))
+        self.assertThat(details["diff"].as_text(), Equals(dedent("""\
+        --- expected
+        +++ observed
+          A line of text that differs
+        - at the end of the 2nd line.
+        ?                    ^^
+        + at the end of the 2ND line.
+        ?                    ^^
+        """)))
+
+    def test_includes_diff_of_coerced_arguments(self):
+        expected = "A tuple", "that differs", "here."
+        observed = "A tuple", "that differs", "HERE."
+        mismatch = TextEquals(expected).match(observed)
+        details = mismatch.get_details()
+        self.assertThat(details, ContainsDict({"diff": IsInstance(Content)}))
+        self.assertThat(details["diff"].as_text(), Equals(dedent("""\
+        --- expected
+        +++ observed
+        - ('A tuple', 'that differs', 'here.')
+        ?                              ^^^^
+        + ('A tuple', 'that differs', 'HERE.')
+        ?                              ^^^^
+        """)))

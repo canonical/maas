@@ -21,12 +21,18 @@ __all__ = [
     'MockCallsMatch',
     'MockNotCalled',
     'Provides',
+    'TextEquals',
     ]
 
+from difflib import ndiff
 import doctest
 from functools import partial
 
 from testtools import matchers
+from testtools.content import (
+    Content,
+    UTF8_TEXT,
+)
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
@@ -427,3 +433,35 @@ class FileContains(Matcher):
                 "File at path exists and its contents (encoded as %s) "
                 "match %s" % (self.encoding, self.matcher)
             )
+
+
+class TextEquals(Matcher):
+    """Compares two blocks of text for equality.
+
+    This differs from `Equals` in that is calculates an `ndiff` between the
+    two which will be included in the test results, making this especially
+    appropriate for longer pieces of text.
+    """
+
+    def __init__(self, expected):
+        super(TextEquals, self).__init__()
+        self.expected = expected
+
+    def match(self, observed):
+        if observed != self.expected:
+            diff = self._diff(self.expected, observed)
+            return Mismatch(
+                "Observed text does not match expectations; see diff.",
+                {"diff": Content(UTF8_TEXT, lambda: map(str.encode, diff))})
+
+    @staticmethod
+    def _diff(expected, observed):
+        # ndiff works better when lines consistently end with newlines.
+        a = str(expected).splitlines(keepends=False)
+        a = list(line + "\n" for line in a)
+        b = str(observed).splitlines(keepends=False)
+        b = list(line + "\n" for line in b)
+
+        yield "--- expected\n"
+        yield "+++ observed\n"
+        yield from ndiff(a, b)
