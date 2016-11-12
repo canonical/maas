@@ -13,10 +13,10 @@ ipython
 libjs-jquery
 libjs-jquery-hotkeys
 libjs-yui3-full
+libnss-wrapper
 make
 nodejs-legacy
 npm
-python-pocket-lint
 python-bson
 python-crochet
 python-django
@@ -26,6 +26,7 @@ python-formencode
 python-lxml
 python-netaddr
 python-netifaces
+python-pocket-lint
 python-psycopg2
 python-simplejson
 python-tempita

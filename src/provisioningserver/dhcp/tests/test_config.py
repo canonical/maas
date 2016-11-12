@@ -7,21 +7,16 @@ __all__ = []
 
 from base64 import b64encode
 from itertools import count
-import os
 import pipes
 import random
 import re
-import shutil
 import socket
 import subprocess
 import tempfile
 from textwrap import dedent
 import traceback
 
-from fixtures import (
-    EnvironmentVariable,
-    FakeLogger,
-)
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -38,11 +33,9 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_shared_network,
 )
-from provisioningserver.testing.network import does_HOSTALIASES_work_here
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import select_c_utf8_locale
-import tempita
 from testtools.content import (
     Content,
     text_content,
@@ -55,42 +48,6 @@ from testtools.matchers import (
     Equals,
 )
 
-# Simple test version of the DHCP template.  Contains parameter
-# substitutions, but none that aren't also in the real template.
-sample_template = dedent("""\
-    {{omapi_key}}
-    {{for failover_peer in failover_peers}}
-        {{failover_peer['name']}}
-        {{failover_peer['mode']}}
-        {{failover_peer['address']}}
-        {{failover_peer['peer_address']}}
-    {{endfor}}
-    {{for shared_network in shared_networks}}
-        {{shared_network['name']}}
-        {{for dhcp_subnet in shared_network['subnets']}}
-            {{if 'bootloader' in dhcp_subnet and dhcp_subnet['bootloader']}}
-            {{dhcp_subnet['bootloader']}}
-            {{endif}}
-            {{dhcp_subnet['subnet']}}
-            {{dhcp_subnet['subnet_mask']}}
-            {{dhcp_subnet['broadcast_ip']}}
-            {{dhcp_subnet['dns_servers']}}
-            {{dhcp_subnet['domain_name']}}
-            {{dhcp_subnet['router_ip']}}
-            {{for pool in dhcp_subnet['pools']}}
-                {{pool['ip_range_low']}}
-                {{pool['ip_range_high']}}
-                {{pool['failover_peer']}}
-            {{endfor}}
-        {{endfor}}
-    {{endfor}}
-    {{for host in hosts}}
-        {{host['host']}}
-        {{host['mac']}}
-        {{host['ip']}}
-    {{endfor}}
-""")
-
 
 def is_ip_address(string):
     """Does `string` look like an IP address?"""
@@ -100,29 +57,6 @@ def is_ip_address(string):
         return False
     else:
         return True
-
-
-def update_HOSTALIASES(test, hostaliases):
-    """Configure HOSTALIASES; see gethostbyname(3).
-
-    :param test: An instance of `maastesting.testcase.TestCase`.
-    :param hostaliases: An iterable yielding (alias, address) tuples.
-    """
-    hostaliases_path = test.make_file("hostaliases")
-
-    # Collect any existing host aliases.
-    if "HOSTALIASES" in os.environ:
-        shutil.copy(os.environ["HOSTALIASES"], hostaliases_path)
-        with open(hostaliases_path, "a", encoding="ascii") as fd:
-            fd.write("\n#----------------------\n")
-
-    # Spew the given aliases out to the HOSTALIASES file.
-    with open(hostaliases_path, "w", encoding="ascii") as fd:
-        for alias, address in hostaliases:
-            print(alias, address, file=fd)
-
-    # Temporarily update HOSTALIASES in the environment.
-    test.useFixture(EnvironmentVariable("HOSTALIASES", hostaliases_path))
 
 
 def make_sample_params_only(ipv6=False):
@@ -154,6 +88,19 @@ def make_sample_params_only(ipv6=False):
     }
 
 
+def read_aliases_from_etc_hosts():
+    """Read all the aliases (hostnames) from /etc/hosts."""
+    with open("/etc/hosts", "r", encoding="ascii") as hosts:
+        for line in map(str.strip, hosts):
+            if len(line) > 0 and not line.startswith("#"):
+                address, *aliases = line.split()
+                yield from aliases
+
+
+# Names that will resolve without network activity.
+aliases_from_etc_hosts = tuple(read_aliases_from_etc_hosts())
+
+
 def make_sample_params(test, ipv6=False):
     """Return a dict of arbitrary DHCP configuration parameters.
 
@@ -166,22 +113,18 @@ def make_sample_params(test, ipv6=False):
         otherwise prepare configuration for a DHCPv4 server.
     :return: A dictionary of sample configuration.
     """
-    if not does_HOSTALIASES_work_here():
-        test.skipTest("HOSTALIASES is not fully supported")
-
     sample_params = make_sample_params_only(ipv6=ipv6)
 
     # So that get_config can resolve the configuration, collect hostnames from
-    # the sample configuration that need to resolve then configure HOSTALIASES
-    # to give each an address somewhere in the local 127.0.0.0/8 network.
-    hostaddresses = netaddr.IPRange("127.1.0.1", "127.1.255.254")
-    hostnames = (
-        name for shared_network in sample_params["shared_networks"]
-        for subnet in shared_network["subnets"]
-        for name in subnet["ntp_servers"]
-        if not is_ip_address(name)
-    )
-    update_HOSTALIASES(test, zip(hostnames, hostaddresses))
+    # the sample params that need to resolve then replace them with names that
+    # will resolve locally, i.e. with an alias found in `/etc/hosts`.
+    for shared_network in sample_params["shared_networks"]:
+        for subnet in shared_network["subnets"]:
+            subnet["ntp_servers"] = [
+                server if is_ip_address(server) else
+                random.choice(aliases_from_etc_hosts)
+                for server in subnet["ntp_servers"]
+            ]
 
     return sample_params
 
@@ -235,27 +178,6 @@ class TestGetConfig(MAASTestCase):
         ("v4", dict(template='dhcpd.conf.template', ipv6=False)),
         ("v6", dict(template='dhcpd6.conf.template', ipv6=True)),
     ]
-
-    def patch_template(self, name):
-        """Patch the DHCP config template with `sample_template`.
-
-        Returns a `tempita.Template` of the `sample_template`, so that a test
-        can make its own substitutions and compare to those made by the code
-        being tested.
-
-        Be careful! You're NOT testing using the real template any more!
-        """
-        template = self.make_file(name, contents=sample_template)
-        self.patch(config, 'locate_template').return_value = template
-        return tempita.Template(sample_template, name=template)
-
-    def test__substitutes_parameters(self):
-        template_name = factory.make_name('template')
-        template = self.patch_template(name=template_name)
-        params = make_sample_params(self, ipv6=self.ipv6)
-        self.assertEqual(
-            template.substitute(params.copy()),
-            config.get_config(template_name, **params))
 
     def test__uses_branch_template_by_default(self):
         # Since the branch comes with dhcp templates in etc/maas, we can
@@ -328,12 +250,19 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.name-servers", rendered)  # IPv6
         self.assertNotIn("domain-name-servers", rendered)  # IPv4
 
+    def _resolve(self, name):
+        # Find the first address that `getaddrinfo` returns for any address
+        # family, socket type, and protocol. This is like `gethostbyname` that
+        # also finds names in `/etc/hosts` and works with IPv6.
+        for *_, addr in socket.getaddrinfo(name, 0):
+            return addr[0]
+
     def test__renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         ntp_servers_expected = [
-            server if is_ip_address(server) else socket.gethostbyname(server)
+            server if is_ip_address(server) else self._resolve(server)
             for network in params['shared_networks']
             for subnet in network['subnets']
             for server in subnet["ntp_servers"]
