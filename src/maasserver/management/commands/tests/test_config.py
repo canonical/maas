@@ -76,7 +76,7 @@ class TestConfigurationGet(MAASTestCase):
         self.assertThat(settings, Not(Contains(self.option.dest)))
         with RegionConfiguration.open() as configuration:
             self.assertThat(settings, Contains(
-                getattr(configuration, self.option.dest)))
+                str(getattr(configuration, self.option.dest))))
 
 
 class TestConfigurationReset(MAASTestCase):
@@ -88,9 +88,12 @@ class TestConfigurationReset(MAASTestCase):
 
     def test__options_are_reset(self):
         self.useFixture(RegionConfigurationFixture())
-        # Give the option a random value.
-        value = factory.make_name("foobar")
         with RegionConfiguration.open_for_update() as configuration:
+            # Give the option a random value.
+            if isinstance(getattr(configuration, self.option.dest), str):
+                value = factory.make_name("foobar")
+            else:
+                value = factory.pick_port()
             setattr(configuration, self.option.dest, value)
         stdio = call_reset(**{self.option.dest: True})
         # Nothing is echoed back to the user.
@@ -112,18 +115,25 @@ class TestConfigurationSet(MAASTestCase):
     def test__options_are_saved(self):
         self.useFixture(RegionConfigurationFixture())
         # Set the option to a random value.
-        value = factory.make_name("foobar")
+        if self.option.dest == "database_port":
+            value = factory.pick_port()
+        else:
+            value = factory.make_name("foobar")
+
         stdio = call_set(**{self.option.dest: value})
+
         # Nothing is echoed back to the user.
         self.assertThat(stdio.getOutput(), Equals(""))
         self.assertThat(stdio.getError(), Equals(""))
+
         # Some validators alter the given option, like adding an HTTP scheme
         # to a "bare" URL, so we merely check that the value contains the
-        # given value, not that it exactly matches.
+        # given value, not that it exactly matches. Values are converted to a
+        # str so Contains works with int values.
         with RegionConfiguration.open() as configuration:
             self.assertThat(
-                getattr(configuration, self.option.dest),
-                Contains(value))
+                str(getattr(configuration, self.option.dest)),
+                Contains(str(value)))
 
 
 class TestConfigurationCommon(MAASTestCase):
