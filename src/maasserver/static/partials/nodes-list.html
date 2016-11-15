@@ -180,7 +180,7 @@
                 <p class="page-header__message" data-ng-show="hasActionsInProgress('nodes')">
                     <i class="icon icon--loading u-animation--spin"></i>
                     {$ tabs.nodes.actionProgress.completed $} of {$ tabs.nodes.actionProgress.total $}
-                    nodes have been {$ tabs.nodes.actionOption.sentence $}.
+                    nodes are transitioning to {$ tabs.nodes.actionOption.sentence $}.
                 </p>
                 <p class="page-header__message page-header__message--error"
                    data-ng-repeat="(error, nodes) in tabs.nodes.actionProgress.errors">
