@@ -41,6 +41,7 @@ from maasserver.models.timestampedmodel import now
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     getRegionID,
+    ignoreCancellation,
     Region,
     RegionAdvertising,
     RegionAdvertisingService,
@@ -569,7 +570,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             CannotRegisterRackController)
         self.assertEquals((
             "Failed to register rack controller 'None' into the database. "
-            "Connection has been dropped.",), error.args)
+            "Connection will be dropped.",), error.args)
 
 
 class TestRegionService(MAASTestCase):
@@ -777,6 +778,7 @@ class TestRegionService(MAASTestCase):
     def test_stopping_closes_connections_cleanly(self):
         service = RegionService()
         service.starting = Deferred()
+        service.starting.addErrback(ignoreCancellation)
         service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),
@@ -801,6 +803,7 @@ class TestRegionService(MAASTestCase):
     def test_stopping_logs_errors_when_closing_connections(self):
         service = RegionService()
         service.starting = Deferred()
+        service.starting.addErrback(ignoreCancellation)
         service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),

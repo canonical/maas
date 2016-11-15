@@ -642,19 +642,17 @@ class RegionServer(Region):
             # and into the database.
             self.ident = rack_controller.system_id
             self.factory.service._addConnectionFor(self.ident, self)
+
+            # A local rack is treated differently to one that's remote.
             self.host = self.transport.getHost()
             self.hostIsRemote = isinstance(
                 self.host, (IPv4Address, IPv6Address))
 
-            # Get the region ID if we're dealing with a non-local rack; we
-            # won't need to bother for local racks.
-            if self.hostIsRemote:
-                region_id = yield getRegionID()
-
-            # Only register the connection into the database when its a valid
-            # IPv4 and IPv6. Only time it is not an IPv4 or IPv6 address is
+            # Only register the connection into the database when it's a valid
+            # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
             # when mocking a connection.
             if self.hostIsRemote:
+                region_id = yield getRegionID()
                 yield deferToDatabase(
                     registerConnection, region_id, rack_controller, self.host)
 
@@ -663,21 +661,20 @@ class RegionServer(Region):
                 "Process [%s] - registered rack controller '%s'." % (
                     os.getpid(), self.ident))
 
-            # Done registering the rack controller and connection.
-            return {'system_id': self.ident}
-        except Exception as exc:
-            # Some error occurred here. Remove the connection in the database,
-            # log the error and alert the connected rack controller. The
-            # connected rack controller will drop the connection.
-            if (self.ident is not None and self.hostIsRemote):
-                yield deferToDatabase(
-                    unregisterConnection, region_id, self.ident, self.host)
+        except:
+            # Ensure we're not hanging onto this connection.
+            self.factory.service._removeConnectionFor(self.ident, self)
+            # Tell the logs about it.
             msg = (
                 "Failed to register rack controller '%s' into the "
-                "database. Connection has been dropped." % (
-                    self.ident))
-            log.err(exc, msg)
+                "database. Connection will be dropped." % self.ident)
+            log.err(None, msg)
+            # Finally, tell the callers.
             raise exceptions.CannotRegisterRackController(msg)
+
+        else:
+            # Done registering the rack controller and connection.
+            return {'system_id': self.ident}
 
     @inlineCallbacks
     def performHandshake(self):
