@@ -232,6 +232,7 @@ class TestMachineHandler(MAASServerTestCase):
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
             "default_user": node.default_user,
+            "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
         }
         if for_list:
             allowed_fields = MachineHandler.Meta.list_fields + [
@@ -252,6 +253,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "node_type_display",
                 "osystem",
                 "distro_series",
+                "dhcp_on",
             ]
             for key in list(data):
                 if key not in allowed_fields:

@@ -145,6 +145,7 @@ class NodeHandler(TimestampedModelHandler):
             default=self.default_osystem)
         data["distro_series"] = obj.get_distro_series(
             default=self.default_distro_series)
+        data["dhcp_on"] = self.get_providing_dhcp(obj)
         if not for_list:
             data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
 
@@ -503,3 +504,11 @@ class NodeHandler(TimestampedModelHandler):
         if "pxe_mac" in data:
             macs.insert(0, data["pxe_mac"])
         return macs
+
+    def get_providing_dhcp(self, obj):
+        """Return if providing DHCP using the prefetched query."""
+        for interface in obj.interface_set.all():
+            if interface.vlan is not None:
+                if interface.vlan.dhcp_on:
+                    return True
+        return False
