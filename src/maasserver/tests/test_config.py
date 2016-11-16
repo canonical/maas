@@ -84,7 +84,9 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
             example_value = factory.make_name(self.option)
         else:
             example_value = factory.pick_port()
-        setattr(config, self.option, example_value)
+        # Argument values will most often be passed in from the command-line,
+        # so convert to a string before use to reflect that usage.
+        setattr(config, self.option, str(example_value))
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: example_value}, config.store)
