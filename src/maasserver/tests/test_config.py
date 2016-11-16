@@ -63,6 +63,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
 
     options_and_defaults = {
         "database_host": "localhost",
+        "database_port": 5432,
         "database_name": "maasdb",
         "database_user": "maas",
         "database_pass": "",
@@ -79,8 +80,13 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
 
     def test__set_and_get(self):
         config = RegionConfiguration({})
-        example_value = factory.make_name(self.option)
-        setattr(config, self.option, example_value)
+        if isinstance(getattr(config, self.option), str):
+            example_value = factory.make_name(self.option)
+        else:
+            example_value = factory.pick_port()
+        # Argument values will most often be passed in from the command-line,
+        # so convert to a string before use to reflect that usage.
+        setattr(config, self.option, str(example_value))
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
         self.assertEqual({self.option: example_value}, config.store)

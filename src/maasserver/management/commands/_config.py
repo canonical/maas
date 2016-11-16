@@ -14,7 +14,11 @@ import json
 from optparse import make_option
 import sys
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import (
+    BaseCommand,
+    CommandError,
+)
+import formencode
 from maascli.utils import parse_docstring
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import ConfigurationOption
@@ -208,4 +212,9 @@ class SetCommand(LocalConfigCommand):
             for name, option in gen_configuration_options():
                 value = options.get(name)
                 if value is not None:
-                    setattr(config, name, value)
+                    try:
+                        setattr(config, name, value)
+                    except formencode.Invalid as error:
+                        message = str(error).rstrip(".")
+                        raise CommandError("%s: %s." % (
+                            name.replace("_", "-"), message))

@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration for the MAAS region."""
@@ -9,6 +9,7 @@ __all__ = [
 
 from os import path
 
+from formencode.validators import Int
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
@@ -41,6 +42,9 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     database_host = ConfigurationOption(
         "database_host", "The address of the PostgreSQL database.",
         UnicodeString(if_missing="localhost", accept_python=False))
+    database_port = ConfigurationOption(
+        "database_port", "The port of the PostgreSQL database.",
+        Int(if_missing=5432, accept_python=False, min=1, max=65535))
     database_name = ConfigurationOption(
         "database_name", "The name of the PostgreSQL database.",
         UnicodeString(if_missing="maasdb", accept_python=False))

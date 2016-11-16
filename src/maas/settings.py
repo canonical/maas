@@ -124,7 +124,7 @@ try:
                 'USER': config.database_user,
                 'PASSWORD': config.database_pass,
                 'HOST': config.database_host,
-                'PORT': '',
+                'PORT': str(config.database_port),
             }
         }
 except:
