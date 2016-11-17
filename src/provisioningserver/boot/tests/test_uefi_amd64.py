@@ -335,6 +335,7 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
 
     def test_link_bootloader_logs_missing_bootloader_files(self):
         method = UEFIAMD64BootMethod()
+        self.patch(uefi_amd64_module.os.path, 'exists').return_value = False
         mock_maaslog = self.patch(uefi_amd64_module.maaslog, 'error')
         bootloader_dir = (
             '/var/lib/maas/boot-resources/%s' % factory.make_name('snapshot'))
