@@ -28,7 +28,6 @@ from django.db.models import (
     IntegerField,
     Manager,
     PROTECT,
-    Q,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -235,56 +234,152 @@ class StaticIPAddressManager(Manager):
             return self._attempt_allocation(
                 requested_address, alloc_type, user=user, subnet=subnet)
 
-    def _get_user_reserved_mappings(self, domain_or_subnet, raw_ttl=False):
-        # A poorly named routine these days, since it actually returns
-        # addresses for anything with any DNSResource records as well.
-        default_ttl = Config.objects.get_config('default_dns_ttl')
-        qs = self.filter(
-            Q(alloc_type=IPADDRESS_TYPE.USER_RESERVED) |
-            Q(dnsresource__isnull=False))
-        # If this is a subnet, we need to ignore subnet.id, as per
-        # get_hostname_ip_mapping().  LP#1600259
-        if isinstance(domain_or_subnet, Subnet):
-            pass
-        elif isinstance(domain_or_subnet, Domain):
-            qs = qs.filter(dnsresource__domain_id=domain_or_subnet.id)
-        qs = qs.prefetch_related("dnsresource_set")
-        mappings = defaultdict(HostnameIPMapping)
-        for instance in qs:
-            ip = instance.ip
-            rrset = instance.dnsresource_set.all()
-            # 2016-01-20 LaMontJones N.B.:
-            # Empirically, for dnsrr in instance.dnsresource_set.all(): ...
-            # else: with a non-empty rrset yields both the for loop AND the
-            # else clause.  Wrapping it all in a if/else: avoids that issue.
-            if rrset.count() > 0:
-                for dnsrr in rrset:
-                    if dnsrr.name is None or dnsrr.name == '':
-                        hostname = get_ip_based_hostname(ip)
-                        hostname = "%s.%s" % (
-                            get_ip_based_hostname(ip),
-                            Domain.objects.get_default_domain().name)
-                    else:
-                        hostname = '%s.%s' % (dnsrr.name, dnsrr.domain.name)
-                    if raw_ttl or dnsrr.address_ttl is not None:
-                        ttl = dnsrr.address_ttl
-                    elif dnsrr.domain.ttl is not None:
-                        ttl = dnsrr.domain.ttl
-                    else:
-                        ttl = default_ttl
-                    mappings[hostname].ttl = ttl
-                    mappings[hostname].ips.add(ip)
-            else:
-                # No DNSResource, but it's USER_RESERVED.
-                domain = Domain.objects.get_default_domain()
-                hostname = "%s.%s" % (get_ip_based_hostname(ip), domain.name)
-                if raw_ttl or domain.ttl is not None:
-                    ttl = domain.ttl
-                else:
-                    ttl = default_ttl
-                mappings[hostname].ttl = ttl
-                mappings[hostname].ips.add(ip)
-        return mappings
+    def _get_special_mappings(self, domain, raw_ttl=False):
+        """Get the special mappings, possibly limited to a single Domain.
+
+        This function is responsible for creating these mappings:
+        - any USER_RESERVED IP,
+        - any IP not associated with a Node,
+        - any IP associated with a DNSResource.
+        The caller is responsible for addresses otherwise derived from nodes.
+
+        Because of how the get hostname_ip_mapping code works, we actually need
+        to fetch ALL of the entries for subnets, but forward mappings need to
+        be domain-specific.
+
+        :param domain: limit return to just the given Domain.  If anything
+            other than a Domain is passed in (e.g., a Subnet or None), we
+            return all of the reverse mappings.
+        :param raw_ttl: Boolean, if True then just return the address_ttl,
+            otherwise, coalesce the address_ttl to be the correct answer for
+            zone generation.
+        :return: a (default) dict of hostname: HostnameIPMapping entries.
+        """
+        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        if isinstance(domain, Domain):
+            # Domains are special in that we only want to have entries for the
+            # domain that we were asked about.  And they can possibly come from
+            # either the child or the parent for glue.
+            where_clause = """
+                AND (
+                    dnsrr.dom2_id = %s OR
+                    node.dom2_id = %s OR
+                    dnsrr.domain_id = %s OR
+                    node.domain_id = %s
+            """
+            query_parms = [domain.id, domain.id, domain.id, domain.id]
+            # And the default domain is extra special, since it needs to have
+            # A/AAAA RRs for any USER_RESERVED addresses that have no name
+            # otherwise attached to them.
+            if domain.is_default():
+                where_clause += """ OR (
+                    dnsrr.fqdn IS NULL AND
+                    node.fqdn IS NULL)
+                """
+            where_clause += ")"
+        else:
+            # There is nothing special about the query for subnets.
+            domain = None
+            where_clause = ""
+            query_parms = []
+        # raw_ttl says that we don't coalesce, but we need to pick one, so we
+        # go with DNSResource if it is involved.
+        if raw_ttl:
+            ttl_clause = """COALESCE(dnsrr.address_ttl, node.address_ttl)"""
+        else:
+            ttl_clause = """
+                COALESCE(
+                    dnsrr.address_ttl,
+                    dnsrr.ttl,
+                    node.address_ttl,
+                    node.ttl,
+                    %s)""" % default_ttl
+        # And here is the SQL query of doom.  Build up inner selects to get the
+        # view of a DNSResource (and Node) that we need, and finally use
+        # domain2 to handle the case where an FQDN is also the name of a domain
+        # that we know.
+        sql_query = """
+            SELECT
+                COALESCE(dnsrr.fqdn, node.fqdn) AS fqdn,
+                node.system_id,
+                node.node_type,
+                """ + ttl_clause + """ AS ttl,
+                staticip.ip
+            FROM
+                maasserver_staticipaddress AS staticip
+            LEFT JOIN (
+                /* Create a dnsrr that has what we need. */
+                SELECT
+                    CASE WHEN dnsrr.name = '@' THEN
+                        dom.name
+                    ELSE
+                        CONCAT(dnsrr.name, '.', dom.name)
+                    END AS fqdn,
+                    dom.name as dom_name,
+                    dnsrr.domain_id,
+                    dnsrr.address_ttl,
+                    dom.ttl,
+                    dia.staticipaddress_id AS dnsrr_sip_id,
+                    dom2.id AS dom2_id
+                FROM maasserver_dnsresource_ip_addresses AS dia
+                JOIN maasserver_dnsresource AS dnsrr ON
+                    dia.dnsresource_id = dnsrr.id
+                JOIN maasserver_domain AS dom ON
+                    dnsrr.domain_id = dom.id
+                LEFT JOIN maasserver_domain AS dom2 ON
+                    CONCAT(dnsrr.name, '.', dom.name) = dom2.name OR (
+                        dnsrr.name = '@' AND
+                        dom.name SIMILAR TO CONCAT('[-A-Za-z0-9]*.', dom2.name)
+                    )
+                ) AS dnsrr ON
+                    dnsrr_sip_id = staticip.id
+            LEFT JOIN (
+                /* Create a node that has what we need. */
+                SELECT
+                    CONCAT(nd.hostname, '.', dom.name) AS fqdn,
+                    dom.name as dom_name,
+                    nd.system_id,
+                    nd.node_type,
+                    nd.domain_id,
+                    nd.address_ttl,
+                    dom.ttl,
+                    iia.staticipaddress_id AS node_sip_id,
+                    dom2.id AS dom2_id
+                FROM maasserver_interface_ip_addresses AS iia
+                JOIN maasserver_interface AS iface ON
+                    iia.interface_id = iface.id
+                JOIN maasserver_node AS nd ON
+                    iface.node_id = nd.id
+                JOIN maasserver_domain AS dom ON
+                    nd.domain_id = dom.id
+                LEFT JOIN maasserver_domain AS dom2 ON
+                    CONCAT(nd.hostname, '.', dom.name) = dom2.name
+                ) AS node ON
+                    node_sip_id = staticip.id
+            WHERE
+                staticip.ip IS NOT NULL AND
+                host(staticip.ip) != '' AND
+                (
+                    staticip.alloc_type = %s OR
+                    node.fqdn IS NULL OR
+                    dnsrr IS NOT NULL
+                )""" + where_clause + """
+        """
+        default_domain = Domain.objects.get_default_domain()
+        mapping = defaultdict(HostnameIPMapping)
+        cursor = connection.cursor()
+        query_parms = [IPADDRESS_TYPE.USER_RESERVED] + query_parms
+        cursor.execute(sql_query, query_parms)
+        for (fqdn, system_id, node_type, ttl,
+                ip) in cursor.fetchall():
+            if fqdn is None or fqdn == '':
+                fqdn = "%s.%s" % (
+                    get_ip_based_hostname(ip), default_domain.name)
+            mapping[fqdn].node_type = node_type
+            mapping[fqdn].system_id = system_id
+            mapping[fqdn].ttl = ttl
+            mapping[fqdn].ips.add(ip)
+        return mapping
 
     def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
         """Return hostname mappings for `StaticIPAddress` entries.
@@ -326,7 +421,7 @@ class StaticIPAddressManager(Manager):
                         node.boot_interface_id = parent.id
                     ),
                     False
-                ) as is_boot
+                ) AS is_boot
             FROM
                 maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
@@ -335,7 +430,7 @@ class StaticIPAddressManager(Manager):
                 rel.parent_id = parent.id
             JOIN maasserver_node AS node ON
                 node.id = interface.node_id
-            JOIN maasserver_domain as domain ON
+            JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
                 link.interface_id = interface.id
@@ -349,15 +444,14 @@ class StaticIPAddressManager(Manager):
             # domains. domain2.name will be non-null if this host's fqdn is the
             # name of a domain in MAAS.
             sql_query += """
-            LEFT JOIN maasserver_domain as domain2 ON
+            LEFT JOIN maasserver_domain AS domain2 ON
                 /* Pick up another copy of domain looking for instances of
                  * nodes a the top of a domain.
-                 */
-                domain2.name = CONCAT(node.hostname, '.', domain.name)
+                 */ domain2.name = CONCAT(node.hostname, '.', domain.name)
             WHERE
-                (domain2.name IS NOT NULL OR node.domain_id = %s) AND
+                (domain2.id = %s OR node.domain_id = %s) AND
             """
-            query_parms = [domain_or_subnet.id, ]
+            query_parms = [domain_or_subnet.id, domain_or_subnet.id, ]
         else:
             # For subnets, we need ALL the names, so that we can correctly
             # identify which ones should have the FQDN.  dns/zonegenerator.py
@@ -418,7 +512,7 @@ class StaticIPAddressManager(Manager):
                 maasserver_interface AS interface
             JOIN maasserver_node AS node ON
                 node.id = interface.node_id
-            JOIN maasserver_domain as domain ON
+            JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
                 link.interface_id = interface.id
@@ -428,14 +522,14 @@ class StaticIPAddressManager(Manager):
         if isinstance(domain_or_subnet, Domain):
             # This logic is similar to the logic in sql_query above.
             iface_sql_query += """
-            LEFT JOIN maasserver_domain as domain2 ON
+            LEFT JOIN maasserver_domain AS domain2 ON
                 /* Pick up another copy of domain looking for instances of
                  * the name as the top of a domain.
                  */
                 domain2.name = CONCAT(
                     interface.name, '.', node.hostname, '.', domain.name)
             WHERE
-                (domain2.name IS NOT NULL OR node.domain_id = %s) AND
+                (domain2.id = %s OR node.domain_id = %s) AND
             """
         else:
             # For subnets, we need ALL the names, so that we can correctly
@@ -455,7 +549,7 @@ class StaticIPAddressManager(Manager):
             """
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
-        mapping = self._get_user_reserved_mappings(domain_or_subnet)
+        mapping = self._get_special_mappings(domain_or_subnet, raw_ttl)
         # All of the mappings that we got mean that we will only want to add
         # addresses for the boot interface (is_boot == True).
         iface_is_boot = defaultdict(bool, {
@@ -482,7 +576,7 @@ class StaticIPAddressManager(Manager):
         # Next, get all the addresses, on all the interfaces, and add the ones
         # that are not already present on the FQDN as $IFACE.$FQDN.  Exclude
         # any discovered addresses once there are any non-discovered addresses.
-        cursor.execute(iface_sql_query, (domain_or_subnet.id,))
+        cursor.execute(iface_sql_query, query_parms)
         for (fqdn, system_id, node_type, ttl,
                 ip, iface_name, assigned) in cursor.fetchall():
             if assigned:

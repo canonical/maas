@@ -86,6 +86,7 @@ class TestDomainHandler(MAASServerTestCase):
     def test_list(self):
         user = factory.make_User()
         handler = DomainHandler(user, {})
+        Domain.objects.get_default_domain()
         factory.make_Domain()
         expected_domains = [
             self.dehydrate_domain(domain, for_list=True)
