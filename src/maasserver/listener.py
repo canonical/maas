@@ -160,8 +160,20 @@ class PostgresListenerService(Service, object):
                     if self.isSystemChannel(notify.channel):
                         # System level message; pass it to the registered
                         # handler immediately.
-                        handler = self.listeners[notify.channel][0]
-                        handler(notify.channel, notify.payload)
+                        if notify.channel in self.listeners:
+                            # Be defensive in that if a handler does not exist
+                            # for this channel then the channel should be
+                            # unregisted and removed from listeners.
+                            if len(self.listeners[notify.channel]) > 0:
+                                handler = self.listeners[notify.channel][0]
+                                handler(notify.channel, notify.payload)
+                            else:
+                                self.unregisterChannel(notify.channel)
+                                del self.listeners[notify.channel]
+                        else:
+                            # Unregister the channel since no listener is
+                            # registered for this channel.
+                            self.unregisterChannel(notify.channel)
                     else:
                         # Place non-system messages into the queue to be
                         # processed.
