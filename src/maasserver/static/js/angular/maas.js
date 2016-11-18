@@ -50,10 +50,20 @@ angular.module('MAAS',
                         'static/partials/nodes-list.html'),
                     controller: 'NodesListController'
                 }).
+                when('/node/:type/:system_id/result/:filename', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-result.html'),
+                    controller: 'NodeResultController'
+                }).
                 when('/node/:system_id/result/:filename', {
                     templateUrl: versionedPath(
                         'static/partials/node-result.html'),
                     controller: 'NodeResultController'
+                }).
+                when('/node/:type/:system_id/events', {
+                    templateUrl: versionedPath(
+                        'static/partials/node-events.html'),
+                    controller: 'NodeEventsController'
                 }).
                 when('/node/:system_id/events', {
                     templateUrl: versionedPath(

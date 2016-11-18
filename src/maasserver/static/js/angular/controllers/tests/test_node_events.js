@@ -20,10 +20,11 @@ describe("NodeEventsController", function() {
 
     // Load the required dependencies for the NodeEventsController and
     // mock the websocket connection.
-    var MachinesManager, EventsManagerFactory, ManagerHelperService;
-    var ErrorService, RegionConnection, webSocket;
+    var MachinesManager, ControllersManager, EventsManagerFactory;
+    var ManagerHelperService, ErrorService, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
+        ControllersManager = $injector.get("ControllersManager");
         EventsManagerFactory = $injector.get("EventsManagerFactory");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -43,6 +44,7 @@ describe("NodeEventsController", function() {
             fqdn: makeName("fqdn")
         };
         MachinesManager._items.push(node);
+        ControllersManager._items.push(node);
         return node;
     }
 
@@ -83,6 +85,7 @@ describe("NodeEventsController", function() {
             $rootScope: $rootScope,
             $routeParams: $routeParams,
             MachinesManager: MachinesManager,
+            ControllersManager: ControllersManager,
             EventsManagerFactory: EventsManagerFactory,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
@@ -102,6 +105,20 @@ describe("NodeEventsController", function() {
         expect($scope.events).toEqual([]);
         expect($scope.eventsLoaded).toEqual(false);
         expect($scope.days).toEqual(1);
+        expect($scope.nodesManager).toBe(MachinesManager);
+        expect($scope.type_name).toBe('machine');
+    });
+
+    it("sets the initial $scope values when controller", function() {
+        $routeParams.type = 'controller';
+        var controller = makeController();
+        expect($scope.loaded).toBe(false);
+        expect($scope.node).toBeNull();
+        expect($scope.events).toEqual([]);
+        expect($scope.eventsLoaded).toEqual(false);
+        expect($scope.days).toEqual(1);
+        expect($scope.nodesManager).toBe(ControllersManager);
+        expect($scope.type_name).toBe('controller');
     });
 
     it("calls loadManager with MachinesManager", function() {

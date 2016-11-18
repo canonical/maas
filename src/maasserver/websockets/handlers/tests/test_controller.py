@@ -90,6 +90,12 @@ class TestControllerHandler(MAASServerTestCase):
             node1.system_id: "Unknown",
             node2.system_id: "Unknown"}, data)
 
+    def test_dehydrate_show_os_info_returns_true(self):
+        owner = factory.make_admin()
+        rack = factory.make_RackController()
+        handler = ControllerHandler(owner, {})
+        self.assertTrue(handler.dehydrate_show_os_info(rack))
+
 
 class TestControllerHandlerScenarios(MAASServerTestCase):
 

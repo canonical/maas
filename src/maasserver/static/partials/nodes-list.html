@@ -756,12 +756,12 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         </td>
                         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                         <td class="u-align--left" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
-                            <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
+                            <a href="#/node/machine/{$ node.system_id $}">{$ node.fqdn $}</a>
                         </td>
                         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                         <td class="ng-hide u-align--left" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
-                            <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                            <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                            <a href="#/node/machine/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                            <a href="#/node/machine/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
                         </td>
                         <td class="powerstate u-align--center">
                             <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span>

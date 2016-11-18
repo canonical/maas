@@ -102,3 +102,7 @@ class ControllerHandler(MachineHandler):
                 result[node.system_id] = node.get_image_sync_status().replace(
                     "-", " ").title()
         return result
+
+    def dehydrate_show_os_info(self, obj):
+        """Always show the OS information for controllers in the UI."""
+        return True

@@ -1034,11 +1034,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             DomainsManager,
             ServicesManager
         ]).then(function() {
-            $scope.nodesManager = MachinesManager;
-            $scope.isController = false;
             if('controller' === $routeParams.type) {
                 $scope.nodesManager = ControllersManager;
                 $scope.isController = true;
+                $scope.type_name = 'controller';
+                $scope.type_name_title = 'Controller';
+            }else{
+                $scope.nodesManager = MachinesManager;
+                $scope.isController = false;
+                $scope.type_name = 'machine';
+                $scope.type_name_title = 'Machine';
             }
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already

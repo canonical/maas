@@ -21,10 +21,11 @@ describe("NodeResultController", function() {
 
     // Load the required dependencies for the NodeResultController and
     // mock the websocket connection.
-    var MachinesManager, RegionConnection, ManagerHelperService, ErrorService;
-    var webSocket;
+    var MachinesManager, ControllersManager, RegionConnection;
+    var ManagerHelperService, ErrorService, webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
+        ControllersManager = $injector.get("ControllersManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -54,6 +55,7 @@ describe("NodeResultController", function() {
             ]
         };
         MachinesManager._items.push(node);
+        ControllersManager._items.push(node);
         return node;
     }
 
@@ -86,6 +88,7 @@ describe("NodeResultController", function() {
             $routeParams: $routeParams,
             $location: $location,
             MachinesManager: MachinesManager,
+            ControllersManager: ControllersManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -102,6 +105,18 @@ describe("NodeResultController", function() {
         expect($scope.loaded).toBe(false);
         expect($scope.node).toBeNull();
         expect($scope.filename).toBe($routeParams.filename);
+        expect($scope.nodesManager).toBe(MachinesManager);
+        expect($scope.type_name).toBe('machine');
+    });
+
+    it("sets the initial $scope values when controller", function() {
+        $routeParams.type = 'controller';
+        var controller = makeController();
+        expect($scope.loaded).toBe(false);
+        expect($scope.node).toBeNull();
+        expect($scope.filename).toBe($routeParams.filename);
+        expect($scope.nodesManager).toBe(ControllersManager);
+        expect($scope.type_name).toBe('controller');
     });
 
     it("calls loadManager with MachinesManager", function() {

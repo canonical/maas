@@ -299,6 +299,39 @@ describe("NodeDetailsController", function() {
         expect($scope.loaded).toBe(true);
     });
 
+    it("sets machine values on load", function () {
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect($scope.nodesManager).toBe(MachinesManager);
+        expect($scope.isController).toBe(false);
+        expect($scope.type_name).toBe('machine');
+        expect($scope.type_name_title).toBe('Machine');
+    });
+
+    it("sets controller values on load", function () {
+        $routeParams.type = 'controller';
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+        spyOn(ControllersManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect($scope.nodesManager).toBe(ControllersManager);
+        expect($scope.isController).toBe(true);
+        expect($scope.type_name).toBe('controller');
+        expect($scope.type_name_title).toBe('Controller');
+    });
+
     it("updateServices sets $scope.services when node is loaded", function() {
         spyOn(ControllersManager, "getServices").and.returnValue([
             { "status": "unknown", "name": "tgt" },

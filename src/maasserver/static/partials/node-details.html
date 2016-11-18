@@ -286,19 +286,12 @@
                             </dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ getOSText() $}</dd>
-                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS()">Kernel</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS()">{$ node.hwe_kernel $}</dd>
+                        <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">Kernel</dt>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">{$ node.hwe_kernel $}</dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">Third Party Driver</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
                             </dd>
-                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
-                            <span data-ng-show="false && isController">
-                                <dt class="two-col">MAAS version</dt>
-                                    <dd class="four-col last-col">
-                                        1.10
-                                    </dd>
-                            </span>
                     </dl>
                 </div>
             </form>
@@ -2005,13 +1998,13 @@
             </form>
         </div>
     </div>
-    <div class="row" data-ng-hide="isController">
+    <div class="row">
         <div class="wrapper--inner">
             <div class="eight-col">
-                <h2 class="title">Latest machine events</h2>
+                <h2 class="title">Latest {$ type_name $} events</h2>
             </div>
             <div class="four-col last-col u-align--right">
-                <a class="button--secondary button--inline" href="#/node/{$ node.system_id $}/events">View full history</a>
+                <a class="button--secondary button--inline" href="#/node/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
             </div>
             <div class="twelve-col">
                 <p data-ng-hide="node.events.length">No events.</p>
@@ -2044,10 +2037,10 @@
             </div>
         </div>
     </div>
-    <div class="row" data-ng-show="!isController && machine_output.viewable">
+    <div class="row" data-ng-show="machine_output.viewable">
         <div class="wrapper--inner">
             <div class="eight-col">
-                <h2 class="u-display--inline-block">Machine output</h2>
+                <h2 class="u-display--inline-block">{$ type_name_title $} output</h2>
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <ul class="tabs" data-ng-show="machine_output.showSummaryToggle">
                     <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -2092,7 +2085,7 @@
                                 <span class="icon"
                                     data-ng-class="{ 'icon--success': output.result === 0, 'icon--error': output.result !== 0 }"></span>
                             </td>
-                            <td class="table-col--35"><a href="#/node/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <td class="table-col--35"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
                             <td class="table-col--30">{$ output.created $}</td>
                             <td class="table-col--30">{$ output.line_count $} lines</td>
                         </tr>
