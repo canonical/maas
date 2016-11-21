@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import json
 import os
+from pipes import quote
 from unittest.mock import sentinel
 from urllib.parse import urlparse
 
@@ -493,17 +494,27 @@ class TestPreseedTemplate(MAASTestCase):
     """Tests for class:`PreseedTemplate`."""
 
     scenarios = [
-        (name, dict(var=var, expected=json.dumps(var))) for name, var in (
+        (name, dict(
+            var=var, json=json.dumps(var), shell=quote(var)))
+        for name, var in (
             ('plain', '$ ! ()'),
             ('quote', "$ ' ()"),
             ('double', '$ " ()'),
         )
     ]
 
+    # Bug#1642996: We need to keep escape.shell in 2.X, for backwards
+    # compatibility.  Any bugs filed about how it doesn't work should be marked
+    # as a dup of Bug#1643595, and the user told to change to escape.json.
+    def test_escape_shell(self):
+        template = PreseedTemplate("{{var|escape.shell}}")
+        observed = template.substitute(var=self.var)
+        self.assertEqual(self.shell, observed)
+
     def test_escape_json(self):
         template = PreseedTemplate("{{var|escape.json}}")
         observed = template.substitute(var=self.var)
-        self.assertEqual(self.expected, observed)
+        self.assertEqual(self.json, observed)
 
 
 class TestRenderPreseed(

@@ -2,6 +2,15 @@
 Changelog
 =========
 
+2.1.2
+=====
+
+Bugs fixed in this release
+--------------------------
+
+LP: #1642996    2.x preseeds with {{escape.shell}} fail if not upgraded at 2.1.1
+
+
 2.1.1
 =====
 
