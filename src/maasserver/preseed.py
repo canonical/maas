@@ -17,6 +17,7 @@ __all__ = [
 from collections import namedtuple
 import json
 import os.path
+from pipes import quote
 from urllib.parse import (
     urlencode,
     urlparse,
@@ -590,8 +591,11 @@ def get_escape_singleton():
     """Return a singleton containing methods to escape various formats used in
     the preseed templates.
     """
-    Escape = namedtuple('Escape', 'json')
-    return Escape(json=json.dumps)
+    # Bug#1642996: We need to keep escape.shell in 2.X, for backwards
+    # compatibility.  Any bugs filed about how it doesn't work should be marked
+    # as a dup of Bug#1643595, and the user told to change to escape.json.
+    Escape = namedtuple('Escape', ['json', 'shell'])
+    return Escape(json=json.dumps, shell=quote)
 
 
 class PreseedTemplate(tempita.Template):
