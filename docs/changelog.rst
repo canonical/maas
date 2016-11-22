@@ -12,6 +12,10 @@ LP: #1642996    2.x preseeds with {{escape.shell}} fail if not upgraded at 2.1.1
 
 LP: #1643057    juju2 with maas 2.1.1 LXD containers get wrong ip addresses
 
+LP: #1640300    Be defensive in the postgresql listener when a system notification is received for a none existent handler or missing listener channel.
+
+LP: #1613862    Re-allow configuration of the port where to connect to postgresql.
+
 
 2.1.1
 =====
