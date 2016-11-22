@@ -16,6 +16,8 @@ LP: #1640300    Be defensive in the postgresql listener when a system notificati
 
 LP: #1613862    Re-allow configuration of the port where to connect to postgresql.
 
+LP: #1638575    Add two capabilities: bridging-interface-ubuntu and bridging-automatic-ubuntu.
+
 
 2.1.1
 =====
