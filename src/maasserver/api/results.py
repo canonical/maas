@@ -14,7 +14,6 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
-from maasserver.models.node import typecast_to_node_type
 from metadataserver.models import NodeResult
 
 
@@ -54,9 +53,9 @@ class NodeResultsHandler(OperationsHandler):
         if result_type is not None:
             results = results.filter(result_type__in=result_type)
         # Convert the node objects into typed node objects so we get the
-        # proper listing
+        # proper listing.
         for result in results:
-            result.node = typecast_to_node_type(result.node)
+            result.node = result.node.as_self()
         return results
 
     @classmethod

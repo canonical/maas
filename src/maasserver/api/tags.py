@@ -37,7 +37,6 @@ from maasserver.models import (
     RegionController,
     Tag,
 )
-from maasserver.models.node import typecast_to_node_type
 from maasserver.models.user import get_auth_tokens
 from maasserver.utils.orm import get_one
 from piston3.utils import rc
@@ -137,7 +136,7 @@ class TagHandler(OperationsHandler):
         self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         return [
-            typecast_to_node_type(node)
+            node.as_self()
             for node in model.objects.get_nodes(
                 request.user, NODE_PERMISSION.VIEW,
                 from_nodes=tag.node_set.all())

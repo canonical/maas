@@ -12,7 +12,6 @@ from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models.node import (
     Controller,
     RackController,
-    typecast_to_node_type,
 )
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
@@ -97,7 +96,7 @@ class ControllerHandler(MachineHandler):
         result = {}
         for node in [self.get_object(param) for param in params]:
             # We use a RackController method; without the cast, it's a Node.
-            node = typecast_to_node_type(node)
+            node = node.as_rack_controller()
             if isinstance(node, RackController):
                 result[node.system_id] = node.get_image_sync_status().replace(
                     "-", " ").title()

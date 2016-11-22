@@ -95,8 +95,6 @@ from maasserver.models.node import (
     GatewayDefinition,
     generate_node_system_id,
     PowerInfo,
-    typecast_node,
-    typecast_to_node_type,
 )
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
@@ -225,59 +223,70 @@ class TestGenerateNodeSystemID(MAASServerTestCase):
             "... after 1000 iterations ... no unused node identifiers."))
 
 
-class TestTypeCastNode(MAASServerTestCase):
-    def test_all_node_types_can_be_casted(self):
-        node = factory.make_Node()
-        cast_to = random.choice(
-            [Device, Machine, Node, RackController, RegionController])
-        typecast_node(node, cast_to)
-        self.assertIsInstance(node, cast_to)
+def HasType(type_):
+    return AfterPreprocessing(type, Is(type_), annotate=False)
 
-    def test_rejects_casting_to_non_node_type_objects(self):
-        node = factory.make_Node()
-        self.assertRaises(AssertionError, typecast_node, node, object)
 
-    def test_rejects_casting_non_node_type(self):
-        node = object()
-        cast_to = random.choice(
-            [Device, Machine, Node, RackController, RegionController])
-        self.assertRaises(AssertionError, typecast_node, node, cast_to)
-
-    def test_sets_hostname_if_blank(self):
-        node = factory.make_Node(hostname='')
-        self.assertNotEqual('', node.hostname)
+def SharesStorageWith(other):
+    return AfterPreprocessing(
+        (lambda thing: thing.__dict__), Is(other.__dict__),
+        annotate=False)
 
 
 class TestTypeCastToNodeType(MAASServerTestCase):
+
+    def test_cast_to_self(self):
+        node = factory.make_Node().as_node()
+        node_types = set(map_enum(NODE_TYPE).values())
+        casts = {
+            NODE_TYPE.DEVICE: Device,
+            NODE_TYPE.MACHINE: Machine,
+            NODE_TYPE.RACK_CONTROLLER: RackController,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER: RackController,
+            NODE_TYPE.REGION_CONTROLLER: RegionController,
+        }
+        self.assertThat(casts.keys(), Equals(node_types))
+        for node_type, cast_type in casts.items():
+            node.node_type = node_type
+            node_as_self = node.as_self()
+            self.assertThat(node, HasType(Node))
+            self.assertThat(node_as_self, HasType(cast_type))
+            self.assertThat(node_as_self, SharesStorageWith(node))
+
     def test_cast_to_machine(self):
-        node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        machine = typecast_to_node_type(node)
-        self.assertIsInstance(machine, Machine)
+        node = factory.make_Node().as_node()
+        machine = node.as_machine()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(machine, HasType(Machine))
+        self.assertThat(machine, SharesStorageWith(node))
 
     def test_cast_to_rack_controller(self):
-        node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        rack = typecast_to_node_type(node)
-        self.assertIsInstance(rack, RackController)
-
-    def test_cast_to_region_and_rack_controller(self):
-        node = factory.make_Node(
-            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
-        rack = typecast_to_node_type(node)
-        self.assertIsInstance(rack, RackController)
+        node = factory.make_Node().as_node()
+        rack = node.as_rack_controller()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(rack, HasType(RackController))
+        self.assertThat(rack, SharesStorageWith(node))
 
     def test_cast_to_region_controller(self):
-        node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        region = typecast_to_node_type(node)
-        self.assertIsInstance(region, RegionController)
+        node = factory.make_Node().as_node()
+        region = node.as_region_controller()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(region, HasType(RegionController))
+        self.assertThat(region, SharesStorageWith(node))
 
     def test_cast_to_device(self):
-        node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
-        device = typecast_to_node_type(node)
-        self.assertIsInstance(device, Device)
+        node = factory.make_Node().as_node()
+        device = node.as_device()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(device, HasType(Device))
+        self.assertThat(device, SharesStorageWith(node))
 
-    def test_throws_exception_on_unknown_type(self):
-        node = factory.make_Node(node_type=random.randint(10, 10000))
-        self.assertRaises(NotImplementedError, typecast_to_node_type, node)
+    def test_cast_to_node(self):
+        machine = factory.make_Machine()
+        node = machine.as_node()
+        self.assertThat(machine, HasType(Machine))
+        self.assertThat(node, HasType(Node))
+        self.assertThat(node, SharesStorageWith(machine))
 
 
 class TestNodeManager(MAASServerTestCase):
@@ -2635,11 +2644,10 @@ class TestNode(MAASServerTestCase):
 
     def test_full_clean_checks_architecture_for_installable_nodes(self):
         device = factory.make_Device(architecture='')
-        # Set type here so we don't cause exception while creating object
-        node = typecast_node(device, Node)
-        node.node_type = factory.pick_enum(
+        device.node_type = factory.pick_enum(
             NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
-        exception = self.assertRaises(ValidationError, node.full_clean)
+        exception = self.assertRaises(
+            ValidationError, device.as_node().full_clean)
         self.assertEqual(
             exception.message_dict,
             {'architecture':
@@ -5635,8 +5643,7 @@ class TestUpdateInterfaces(MAASServerTestCase):
     )
 
     def create_empty_controller(self):
-        node = factory.make_Node(node_type=self.node_type)
-        return typecast_to_node_type(node)
+        return factory.make_Node(node_type=self.node_type).as_self()
 
     def test__order_of_calls_to_update_interface_is_always_the_same(self):
         controller = self.create_empty_controller()
@@ -8364,7 +8371,7 @@ class TestRackController(MAASTransactionServerTestCase):
         region_and_rack = factory.make_Node(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
         system_id = region_and_rack.system_id
-        typecast_node(region_and_rack, RackController).delete()
+        region_and_rack.as_rack_controller().delete()
         self.assertEquals(
             NODE_TYPE.REGION_CONTROLLER,
             Node.objects.get(system_id=system_id).node_type)
@@ -8571,7 +8578,7 @@ class TestRegionController(MAASServerTestCase):
     def test_delete_converts_region_and_rack_to_rack(self):
         region_and_rack = factory.make_Node(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
-        typecast_node(region_and_rack, RegionController).delete()
+        region_and_rack.as_region_controller().delete()
         self.assertEquals(
             NODE_TYPE.RACK_CONTROLLER,
             Node.objects.get(system_id=region_and_rack.system_id).node_type)

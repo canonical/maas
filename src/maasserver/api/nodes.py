@@ -47,7 +47,6 @@ from maasserver.models import (
     Node,
     OwnerData,
 )
-from maasserver.models.node import typecast_to_node_type
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from piston3.utils import rc
 from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
@@ -171,7 +170,7 @@ class NodeHandler(OperationsHandler):
         else:
             # Return the specific node type object so we get the correct
             # listing
-            return typecast_to_node_type(node)
+            return node.as_self()
 
     def delete(self, request, system_id):
         """Delete a specific Node.
@@ -183,7 +182,7 @@ class NodeHandler(OperationsHandler):
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
-        typecast_to_node_type(node).delete()
+        node.as_self().delete()
         return rc.DELETED
 
     @classmethod

@@ -26,7 +26,6 @@ from maasserver.models import (
     RegionController,
     StaticIPAddress,
 )
-from maasserver.models.node import typecast_node
 from maasserver.models.timestampedmodel import now
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -120,7 +119,7 @@ def register(
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 
-    rackcontroller = typecast_node(node, RackController)
+    rackcontroller = node.as_rack_controller()
 
     # Update `rackcontroller.url` from the given URL, if it has changed.
     update_fields = []

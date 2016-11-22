@@ -265,32 +265,6 @@ def generate_node_system_id():
             "we could find no unused node identifiers." % attempt)
 
 
-def typecast_node(node, model):
-    """Typecast a node object into a node type object."""
-    assert(isinstance(node, Node))
-    assert(issubclass(model, Node))
-    node.__class__ = model
-    return node
-
-
-def typecast_to_node_type(node):
-    """Typecast a node object to what the node_type is set to."""
-    if node.node_type == NODE_TYPE.MACHINE:
-        return typecast_node(node, Machine)
-    elif node.node_type in (
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER):
-        # XXX ltrager 18-02-2016 - Currently only rack controllers have
-        # unique functionality so when combined return a rack controller
-        return typecast_node(node, RackController)
-    elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
-        return typecast_node(node, RegionController)
-    elif node.node_type == NODE_TYPE.DEVICE:
-        return typecast_node(node, Device)
-    else:
-        raise NotImplementedError("Unknown node type %d" % node.node_type)
-
-
 class NodeQueriesMixin(MAASQueriesMixin):
 
     def filter_by_spaces(self, spaces):
@@ -520,7 +494,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         node = get_object_or_404(
             self.model, system_id=system_id, **kwargs)
         if user.has_perm(perm, node):
-            return typecast_to_node_type(node)
+            return node.as_self()
         else:
             raise PermissionDenied()
 
@@ -746,7 +720,8 @@ class RegionControllerManager(ControllerManager):
             update_fields.append("owner")
         if len(update_fields) > 0:
             node.save(update_fields=update_fields)
-        return typecast_node(node, self.model)
+        # Always cast to a region controller.
+        return node.as_region_controller()
 
     def _create_running_controller(self):
         """Create a region controller for the host machine.
@@ -3520,6 +3495,51 @@ class Node(CleanSave, TimestampedModel):
             # deal with it.
             raise
 
+    def _as(self, model):
+        """Create a `model` that shares underlying storage with `self`.
+
+        In other words, the newly returned object will be an instance of
+        `model` and its `__dict__` will be `self.__dict__`. Not a copy, but a
+        reference to, so that changes to one will be reflected in the other.
+        """
+        new = object.__new__(model)
+        new.__dict__ = self.__dict__
+        return new
+
+    def as_node(self):
+        """Return a reference to self that behaves as a `Node`."""
+        return self._as(Node)
+
+    def as_machine(self):
+        """Return a reference to self that behaves as a `Machine`."""
+        return self._as(Machine)
+
+    def as_device(self):
+        """Return a reference to self that behaves as a `Device`."""
+        return self._as(Device)
+
+    def as_region_controller(self):
+        """Return a reference to self that behaves as a `RegionController`."""
+        return self._as(RegionController)
+
+    def as_rack_controller(self):
+        """Return a reference to self that behaves as a `RackController`."""
+        return self._as(RackController)
+
+    _as_self = {
+        NODE_TYPE.DEVICE: as_device,
+        NODE_TYPE.MACHINE: as_machine,
+        NODE_TYPE.RACK_CONTROLLER: as_rack_controller,
+        # XXX ltrager 18-02-2016 - Currently only rack controllers have
+        # unique functionality so when combined return a rack controller
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER: as_rack_controller,
+        NODE_TYPE.REGION_CONTROLLER: as_region_controller,
+    }
+
+    def as_self(self):
+        """Return a reference to self that behaves as its own type."""
+        return self._as_self[self.node_type](self)
+
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are
@@ -4212,7 +4232,7 @@ class RackController(Controller):
             # If the refresh is occuring on the running region execute it using
             # the region process. This avoids using RPC and sends the node
             # results back to this host when in HA.
-            yield typecast_node(self, RegionController).refresh()
+            yield self.as_region_controller().refresh()
             return
 
         client = yield getClientFor(self.system_id, timeout=1)
@@ -4445,10 +4465,9 @@ class RegionController(Controller):
                 % self.hostname)
 
         if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
-            # typecast_to_node_type returns a RackController object when the
-            # node is a REGION_AND_RACK_CONTROLLER. Thus the API and websocket
-            # will transition a REGION_AND_RACK_CONTROLLER to a
-            # REGION_CONTROLLER.
+            # Node.as_self() returns a RackController object when the node is
+            # a REGION_AND_RACK_CONTROLLER. Thus the API and websocket will
+            # transition a REGION_AND_RACK_CONTROLLER to a REGION_CONTROLLER.
             self.node_type = NODE_TYPE.RACK_CONTROLLER
             self.save()
         elif self._was_probably_machine():

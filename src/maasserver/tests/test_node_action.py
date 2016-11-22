@@ -28,7 +28,6 @@ from maasserver.models import (
     signals,
     StaticIPAddress,
 )
-from maasserver.models.node import typecast_to_node_type
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import (
     Abort,
@@ -979,7 +978,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
             interface=True, status=node_status, power_type='manual',
             power_state=power_state, node_type=node_type)
         admin = factory.make_admin()
-        return action_class(typecast_to_node_type(node), admin)
+        return action_class(node.as_self(), admin)
 
     def test_Commission_handles_rpc_errors(self):
         self.addCleanup(signals.power.signals.enable)

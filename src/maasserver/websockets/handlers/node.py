@@ -21,7 +21,6 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.node import typecast_to_node_type
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
@@ -489,9 +488,9 @@ class NodeHandler(TimestampedModelHandler):
         """Get object by using the `pk` in `params`."""
         obj = super(NodeHandler, self).get_object(params)
         if self.user.is_superuser:
-            return typecast_to_node_type(obj)
+            return obj.as_self()
         if obj.owner is None or obj.owner == self.user:
-            return typecast_to_node_type(obj)
+            return obj.as_self()
         raise HandlerDoesNotExistError(params[self._meta.pk])
 
     def get_mac_addresses(self, data):

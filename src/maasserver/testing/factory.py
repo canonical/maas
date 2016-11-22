@@ -75,7 +75,6 @@ from maasserver.models import (
     KeySource,
     LargeFile,
     LicenseKey,
-    Machine,
     MDNS,
     Neighbour,
     Node,
@@ -84,7 +83,6 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
-    RackController,
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
@@ -110,7 +108,6 @@ from maasserver.models.interface import (
     Interface,
     InterfaceRelationship,
 )
-from maasserver.models.node import typecast_node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.node_status import NODE_TRANSITIONS
@@ -460,7 +457,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Machine(self, *args, **kwargs):
         machine = self.make_Node(*args, node_type=NODE_TYPE.MACHINE, **kwargs)
-        return typecast_node(machine, Machine)
+        return machine.as_machine()
 
     def make_RackController(
             self, last_image_sync=undefined, owner=None, **kwargs):
@@ -476,7 +473,7 @@ class Factory(maastesting.factory.Factory):
         else:
             node.last_image_sync = last_image_sync
         node.save()
-        return typecast_node(node, RackController)
+        return node.as_rack_controller()
 
     def make_RegionRackController(self, *args, **kwargs):
         region_rack = self.make_RackController(*args, **kwargs)
@@ -719,7 +716,7 @@ class Factory(maastesting.factory.Factory):
     def make_Machine_with_Interface_on_Subnet(self, *args, **kwargs):
         machine = self.make_Node_with_Interface_on_Subnet(
             *args, node_type=NODE_TYPE.MACHINE, **kwargs)
-        return typecast_node(machine, Machine)
+        return machine.as_machine()
 
     def _get_exclude_list(self, subnet):
         ip_addresses = [
