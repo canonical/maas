@@ -176,7 +176,14 @@ class IPMIPowerDriver(PowerDriver):
             process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
             _, stderr = process.communicate()
         stderr = stderr.decode("utf-8").strip()
-        for error, error_info in IPMI_ERRORS.items():
+        # XXX newell 2016-11-21 bug=1516065: Some IPMI hardware have timeout
+        # issues when trying to set the boot order to PXE.  We want to
+        # continue and not raise an error here.
+        ipmi_errors = {
+            key: IPMI_ERRORS[key] for key in IPMI_ERRORS
+            if IPMI_ERRORS[key]['exception'] == PowerAuthError
+        }
+        for error, error_info in ipmi_errors.items():
             if error in stderr:
                 raise error_info.get('exception')(error_info.get('message'))
         if process.returncode != 0:
