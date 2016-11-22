@@ -18,6 +18,7 @@ from maasserver.forms_interface_link import (
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,
 )
+from maasserver.models import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -56,12 +57,13 @@ class TestInterfaceLinkForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
 
     @transactional
-    def test__sets_subnet_queryset_to_empty_on_interface_wihtout_vlan(self):
+    def test__sets_subnet_queryset_to_all_on_interface_wihtout_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.vlan = None
         interface.save()
         form = InterfaceLinkForm(instance=interface, data={})
-        self.assertItemsEqual([], form.fields["subnet"].queryset)
+        self.assertItemsEqual(
+            list(Subnet.objects.all()), list(form.fields["subnet"].queryset))
 
     @transactional
     def test__sets_subnet_queryset_to_subnets_on_interface_vlan(self):

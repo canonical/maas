@@ -10,6 +10,8 @@ Bugs fixed in this release
 
 LP: #1642996    2.x preseeds with {{escape.shell}} fail if not upgraded at 2.1.1
 
+LP: #1643057    juju2 with maas 2.1.1 LXD containers get wrong ip addresses
+
 
 2.1.1
 =====
