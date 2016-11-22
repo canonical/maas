@@ -858,18 +858,25 @@ class Interface(CleanSave, TimestampedModel):
         :param user: When alloc_type is set to USER_RESERVED, this user will
             be set on the link.
         """
+        # Allow the interface VLAN to be implied by the subnet VLAN, if we're
+        # setting up the interface for the first time and it doesn't have
+        # a VLAN assigned yet.
+        if self.vlan is None and subnet is not None:
+            self.vlan = subnet.vlan
+            self.save(update_fields=['vlan', 'updated'])
         if mode == INTERFACE_LINK_TYPE.AUTO:
-            return self._link_subnet_auto(subnet)
+            result = self._link_subnet_auto(subnet)
         elif mode == INTERFACE_LINK_TYPE.DHCP:
-            return self._link_subnet_dhcp(subnet)
+            result = self._link_subnet_dhcp(subnet)
         elif mode == INTERFACE_LINK_TYPE.STATIC:
-            return self._link_subnet_static(
+            result = self._link_subnet_static(
                 subnet, ip_address=ip_address,
                 alloc_type=alloc_type, user=user)
         elif mode == INTERFACE_LINK_TYPE.LINK_UP:
-            return self._link_subnet_link_up(subnet)
+            result = self._link_subnet_link_up(subnet)
         else:
             raise ValueError("Unknown mode: %s" % mode)
+        return result
 
     def force_auto_or_dhcp_link(self):
         """Force the interface to come up with an AUTO linked to a subnet on

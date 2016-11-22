@@ -75,7 +75,7 @@ class InterfaceLinkForm(forms.Form):
                     'mode', mode_choices),
             })
         if self.instance.vlan is None:
-            self.fields['subnet'].queryset = Subnet.objects.none()
+            self.fields['subnet'].queryset = Subnet.objects.all()
         else:
             self.fields['subnet'].queryset = (
                 self.instance.vlan.subnet_set.all())

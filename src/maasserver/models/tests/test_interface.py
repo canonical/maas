@@ -2045,6 +2045,17 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
             "IP address is not in the given subnet '%s'." % subnet,
             str(error))
 
+    def test__AUTO_link_sets_vlan_if_vlan_undefined(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            vlan=interface.vlan, cidr=str(network.cidr))
+        interface.vlan = None
+        interface.save()
+        interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
+        interface = reload_object(interface)
+        self.assertThat(interface.vlan, Equals(subnet.vlan))
+
     def test__STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
