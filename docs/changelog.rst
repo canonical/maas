@@ -8,6 +8,8 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1516065    Fix IPMI chassis config session timeout issue when configuring the boot device.  Only error on PowerAuthErrors when configuring the IPMI chassis boot order.
+
 LP: #1642996    2.x preseeds with {{escape.shell}} fail if not upgraded at 2.1.1
 
 LP: #1643057    juju2 with maas 2.1.1 LXD containers get wrong ip addresses

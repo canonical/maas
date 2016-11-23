@@ -21,6 +21,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
     ipmi as ipmi_module,
+    PowerAuthError,
     PowerError,
 )
 from provisioningserver.drivers.power.ipmi import (
@@ -138,8 +139,12 @@ class TestIPMIPowerDriver(MAASTestCase):
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
         self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
 
-    def test__issue_ipmi_chassis_config_command_raises_power_error(self):
-        for error, error_info in IPMI_ERRORS.items():
+    def test__issue_ipmi_chassis_config_command_raises_power_auth_error(self):
+        ipmi_errors = {
+            key: IPMI_ERRORS[key] for key in IPMI_ERRORS
+            if IPMI_ERRORS[key]['exception'] == PowerAuthError
+        }
+        for error, error_info in ipmi_errors.items():
             popen_mock = self.patch(ipmi_module, 'Popen')
             process = popen_mock.return_value
             process.communicate.return_value = (b'', error.encode('utf-8'))
