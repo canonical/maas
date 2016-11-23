@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from contextlib import contextmanager
 from itertools import (
     islice,
     repeat,
@@ -563,6 +564,46 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped()
         self.assertThat(reset, MockNotCalled())
 
+    def test_uses_retry_context(self):
+
+        @retry_on_retryable_failure
+        def function_that_will_be_retried():
+            self.assertThat(orm.retry_context.active, Is(True))
+
+        self.assertThat(orm.retry_context.active, Is(False))
+        function_that_will_be_retried()
+        self.assertThat(orm.retry_context.active, Is(False))
+
+    def test_retry_contexts_accumulate(self):
+        accumulated, entered, exited = [], [], []
+
+        @contextmanager
+        def observe(thing):
+            # Record `thing` on entry.
+            entered.append(thing)
+            try:
+                yield sentinel.ignored
+            finally:
+                # Record `thing` on exit.
+                exited.append(thing)
+
+        @retry_on_retryable_failure
+        def accumulate_and_observe():
+            # `accumulated` is a record of every time this function is called.
+            # `entered` and `exited` record what's going on with the contexts
+            # we're throwing up into the retry machinery.
+            count = len(accumulated)
+            accumulated.append(count)
+            request_transaction_retry(observe(count))
+
+        self.assertRaises(orm.TooManyRetries, accumulate_and_observe)
+        # `entered` and `exited` will contain all but the highest element in
+        # `accumulated` because the final context is not entered nor exited.
+        expected = accumulated[:-1]
+        self.assertThat(entered, Equals(expected))
+        expected.reverse()
+        self.assertThat(exited, Equals(expected))
+
 
 class TestMakeSerializationFailure(MAASTestCase):
     """Tests for `make_serialization_failure`."""
@@ -591,11 +632,173 @@ class TestMakeUniqueViolation(MAASTestCase):
             is_unique_violation, "%r is not a unique violation."))
 
 
+class PopulateContext:
+    """A simple context manager that puts `thing` in `alist`."""
+
+    def __init__(self, alist, thing):
+        self.alist, self.thing = alist, thing
+
+    def __enter__(self):
+        self.alist.append(self.thing)
+        return sentinel.irrelevant
+
+    def __exit__(self, *exc_info):
+        assert self.alist.pop() is self.thing
+
+
+class CrashEntryContext:
+    """A simple context manager that crashes on entry."""
+
+    def __enter__(self):
+        0 / 0  # Divide by zero and break everything.
+
+    def __exit__(self, *exc_info):
+        pass  # Nothing left to break.
+
+
+class CrashExitContext:
+    """A simple context manager that crashes on exit."""
+
+    def __enter__(self):
+        pass  # What a lovely day this is...
+
+    def __exit__(self, *exc_info):
+        0 / 0  # Nah, destroy everything.
+
+
+class TestRetryStack(MAASTestCase):
+    """Tests for `RetryStack`."""
+
+    def test_add_and_enter_pending_contexts(self):
+        names = []
+        with orm.RetryStack() as stack:
+            stack.add_pending_contexts([
+                PopulateContext(names, "alice"),
+                PopulateContext(names, "bob"),
+                PopulateContext(names, "carol"),
+            ])
+            # These contexts haven't been entered yet.
+            self.assertThat(names, Equals([]))
+            # They're entered when `enter_pending_contexts` is called.
+            stack.enter_pending_contexts()
+            # The contexts are entered in the order specified.
+            self.assertThat(names, Equals(["alice", "bob", "carol"]))
+        # These contexts have been exited again.
+        self.assertThat(names, Equals([]))
+
+    def test_each_context_entered_only_once_even_if_added_twice(self):
+        names = []
+        with orm.RetryStack() as stack:
+            dave = PopulateContext(names, "dave")
+            stack.add_pending_contexts([dave, dave])
+            stack.enter_pending_contexts()
+            # The `dave` context is entered only once.
+            self.assertThat(names, Equals(["dave"]))
+        # The `dave` context has been exited.
+        self.assertThat(names, Equals([]))
+
+    def test_each_context_entered_only_once_even_if_enter_called_twice(self):
+        names = []
+        with orm.RetryStack() as stack:
+            dave = PopulateContext(names, "dave")
+            stack.add_pending_contexts([dave])
+            stack.enter_pending_contexts()
+            stack.enter_pending_contexts()
+            # The `dave` context is entered only once.
+            self.assertThat(names, Equals(["dave"]))
+        # The `dave` context has been exited.
+        self.assertThat(names, Equals([]))
+
+    def test_crash_entering_context_is_propagated(self):
+        with orm.RetryStack() as stack:
+            stack.add_pending_contexts([CrashEntryContext()])
+            self.assertRaises(ZeroDivisionError, stack.enter_pending_contexts)
+
+    def test_crash_exiting_context_is_propagated(self):
+        with orm.RetryStack() as stack:
+            stack.add_pending_contexts([CrashExitContext()])
+            stack.enter_pending_contexts()
+            # Use `ExitStack.close` here to elicit the crash.
+            self.assertRaises(ZeroDivisionError, stack.close)
+
+
+class TestRetryContext(MAASTestCase):
+    """Tests for `RetryContext`."""
+
+    def test_starts_off_with_nothing(self):
+        context = orm.RetryContext()
+        self.assertThat(context.active, Is(False))
+        self.assertThat(context.stack, Is(None))
+
+    def test_creates_stack_on_entry(self):
+        context = orm.RetryContext()
+        with context:
+            self.assertThat(context.active, Is(True))
+            self.assertThat(context.stack, IsInstance(orm.RetryStack))
+
+    def test_prepare_enters_pending_contexts(self):
+        context = orm.RetryContext()
+        with context:
+            context.stack.add_pending_contexts([CrashEntryContext()])
+            self.assertRaises(ZeroDivisionError, context.prepare)
+
+    def test_destroys_stack_on_exit(self):
+        names = []
+        context = orm.RetryContext()
+        with context:
+            self.assertThat(context.active, Is(True))
+            context.stack.add_pending_contexts([
+                PopulateContext(names, "alice"),
+                PopulateContext(names, "bob"),
+            ])
+            context.prepare()
+            self.assertThat(names, Equals(["alice", "bob"]))
+        self.assertThat(context.active, Is(False))
+        self.assertThat(context.stack, Is(None))
+        self.assertThat(names, Equals([]))
+
+    def test_destroys_stack_on_exit_even_when_there_is_a_crash(self):
+        names = []
+        context = orm.RetryContext()
+        with ExpectedException(ZeroDivisionError):
+            with context:
+                context.stack.add_pending_contexts([
+                    PopulateContext(names, "alice"),
+                    CrashEntryContext(),
+                    PopulateContext(names, "bob"),
+                ])
+                context.prepare()
+                self.assertThat(names, Equals(["alice", "bob"]))
+        self.assertThat(context.active, Is(False))
+        self.assertThat(context.stack, Is(None))
+        self.assertThat(names, Equals([]))
+
+
 class TestRequestTransactionRetry(MAASTestCase):
     """Tests for `request_transaction_retry`."""
 
     def test__raises_a_retry_transaction_exception(self):
-        self.assertRaises(orm.RetryTransaction, request_transaction_retry)
+        with orm.retry_context:
+            self.assertRaises(orm.RetryTransaction, request_transaction_retry)
+
+    def test__adds_additional_contexts_to_retry_context(self):
+        contexts = []
+        with orm.retry_context:
+            self.assertRaises(
+                orm.RetryTransaction, request_transaction_retry,
+                PopulateContext(contexts, "alice"),
+                PopulateContext(contexts, "bob"),
+                PopulateContext(contexts, "carol"),
+            )
+            # These contexts are added as "pending"...
+            self.assertThat(contexts, Equals([]))
+            # They're entered when `prepare` is called (which is done by the
+            # retry machinery; normal application code doesn't do this).
+            orm.retry_context.prepare()
+            # The contexts are entered in the order specified.
+            self.assertThat(contexts, Equals(["alice", "bob", "carol"]))
+        # The contexts are exited in the order specified.
+        self.assertThat(contexts, Equals([]))
 
 
 class TestGenRetryIntervals(MAASTestCase):

@@ -32,7 +32,11 @@ __all__ = [
     'with_connection',
     ]
 
-from contextlib import contextmanager
+from collections import deque
+from contextlib import (
+    contextmanager,
+    ExitStack,
+)
 from functools import wraps
 from itertools import (
     chain,
@@ -335,6 +339,72 @@ def make_unique_violation():
     return exception
 
 
+class RetryStack(ExitStack):
+    """An exit stack specialised to the retry machinery."""
+
+    def __init__(self):
+        super(RetryStack, self).__init__()
+        self._cm_pending = deque()
+        self._cm_seen = set()
+
+    def add_pending_contexts(self, contexts):
+        """Add contexts that should be entered before the next retry."""
+        self._cm_pending.extend(contexts)
+
+    def enter_pending_contexts(self):
+        """Enter all pending contexts and clear the pending queue.
+
+        Exceptions are propagated. It's the caller's responsibility to exit
+        this stack so that previous contexts are exited.
+
+        Although this stack will be in a deterministic state after a crash —
+        all previous contexts will remain active, the crashing context will be
+        discarded, and other pending contexts will remain pending — the most
+        sensible thing to do is probably to exit this stack in full before
+        trying again.
+        """
+        while len(self._cm_pending) != 0:
+            context = self._cm_pending.popleft()
+            if context not in self._cm_seen:
+                self.enter_context(context)
+                self._cm_seen.add(context)
+
+
+class RetryContext(threading.local):
+    """A thread-local context managed by the retry machinery.
+
+    At present it manages only an exit stack (see `contextlib.ExitStack` and
+    `RetryStack`) but is a convenient place to put context that's relevant to
+    a whole sequence of attempts.
+    """
+
+    def __init__(self):
+        super(RetryContext, self).__init__()
+        self.stack = None
+
+    @property
+    def active(self) -> bool:
+        """Has this retry context been entered and not yet exited?"""
+        return self.stack is not None
+
+    def __enter__(self):
+        assert not self.active, "Retry context already active."
+        self.stack = RetryStack().__enter__()
+
+    def __exit__(self, *exc_info):
+        assert self.active, "Retry context not active."
+        _stack, self.stack = self.stack, None
+        return _stack.__exit__(*exc_info)
+
+    def prepare(self):
+        """Prepare for the first or subsequent retry."""
+        self.stack.enter_pending_contexts()
+
+
+# The global retry context.
+retry_context = RetryContext()
+
+
 class RetryTransaction(BaseException):
     """An explicit request that the transaction be retried."""
 
@@ -343,15 +413,24 @@ class TooManyRetries(Exception):
     """A transaction retry has been requested too many times."""
 
 
-def request_transaction_retry():
+def request_transaction_retry(*extra_contexts):
     """Raise a serialization exception.
 
     This depends on the retry machinery being higher up in the stack, catching
     this, and then retrying the transaction, though it may choose to re-raise
     the error if too many retries have already been attempted.
 
+    :param extra_contexts: Contexts to enter before the next retry. The caller
+        may be on its last retry so there's no guarantee that these contexts
+        will be used. A failure when entering any of these contexts will
+        immediately terminate the retry machinery: there will be no further
+        retries. A context entered will remain active on all subsequent
+        retries until the retry machinery is complete.
+
     :raise RetryTransaction:
     """
+    assert retry_context.active, "Retry context not active."
+    retry_context.stack.add_pending_contexts(extra_contexts)
     raise RetryTransaction()
 
 
@@ -416,26 +495,29 @@ def retry_on_retryable_failure(func, reset=noop):
     """
     @wraps(func)
     def retrier(*args, **kwargs):
-        intervals = gen_retry_intervals()
-        for _ in range(9):
-            try:
-                return func(*args, **kwargs)
-            except RetryTransaction:
-                reset()  # Which may do nothing.
-                sleep(next(intervals))
-            except DatabaseError as error:
-                if is_retryable_failure(error):
+        with retry_context:
+            intervals = gen_retry_intervals()
+            for _ in range(9):
+                retry_context.prepare()
+                try:
+                    return func(*args, **kwargs)
+                except RetryTransaction:
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
-                else:
-                    raise
-        else:
-            try:
-                return func(*args, **kwargs)
-            except RetryTransaction:
-                raise TooManyRetries(
-                    "This transaction has already been attempted "
-                    "multiple times; giving up.")
+                except DatabaseError as error:
+                    if is_retryable_failure(error):
+                        reset()  # Which may do nothing.
+                        sleep(next(intervals))
+                    else:
+                        raise
+            else:
+                retry_context.prepare()
+                try:
+                    return func(*args, **kwargs)
+                except RetryTransaction:
+                    raise TooManyRetries(
+                        "This transaction has already been attempted "
+                        "multiple times; giving up.")
     return retrier
 
 
