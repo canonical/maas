@@ -89,6 +89,7 @@ setup(
             "*.testing",
             "*.tests",
             "maastesting",
+            "maastesting.*",
         ],
     ),
     package_dir={'': 'src'},
