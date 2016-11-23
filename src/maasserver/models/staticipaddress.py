@@ -29,7 +29,10 @@ from django.db.models import (
     Manager,
     PROTECT,
 )
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    locks,
+)
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -47,6 +50,7 @@ from maasserver.models.config import Config
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils import orm
 from maasserver.utils.dns import get_ip_based_hostname
 from netaddr import IPAddress
 from provisioningserver.utils.enum import map_enum_reverse
@@ -157,9 +161,13 @@ class StaticIPAddressManager(Manager):
             self, requested_address, alloc_type, user=None, subnet=None):
         """Attempt to allocate `requested_address`, which is known to be free.
 
-        It is known to be free *in this transaction*, so this could still fail
-        with an `IntegrityError`. However, that's _fine_ because the
-        transaction retry machinery will pick it up.
+        It is known to be free *in this transaction*, so this could still
+        fail. If it does fail because of a `UNIQUE_VIOLATION` it will request
+        a retry, except while holding an addition lock. This is not perfect:
+        other threads could jump in before acquiring the lock and steal an
+        apparently free address. However, in stampede situations this appears
+        to be effective enough. Experiment by increasing the `count` parameter
+        in `test_allocate_new_works_under_extreme_concurrency`.
 
         This method shares a lot in common with `_attempt_allocation` so check
         out its documentation for more details.
@@ -169,20 +177,26 @@ class StaticIPAddressManager(Manager):
         :param alloc_type: Allocation type.
         :param user: Optional user.
         :return: `StaticIPAddress` if successful.
-        :raise IntegrityError: if the address was already taken.
+        :raise RetryTransaction: if the address was already taken.
         """
         ipaddress = StaticIPAddress(alloc_type=alloc_type, subnet=subnet)
         try:
             # Try to save this address to the database. Do this in a nested
             # transaction so that we can continue using the outer transaction
             # even if this breaks.
-            with transaction.atomic():
+            with orm.savepoint():
                 ipaddress.set_ip_address(requested_address.format())
                 ipaddress.save()
-        except IntegrityError:
-            # The address is already taken. Allow the transaction retry
-            # machinery to take care of this one.
-            raise
+        except IntegrityError as error:
+            if orm.is_unique_violation(error):
+                # The address is taken. We could allow the transaction retry
+                # machinery to take care of this, but instead we'll ask it to
+                # retry with the `address_allocation` lock. We can't take it
+                # here because we're already in a transaction; we need to exit
+                # the transaction, take the lock, and only then try again.
+                orm.request_transaction_retry(locks.address_allocation)
+            else:
+                raise
         else:
             # We deliberately do *not* save the user until now because it
             # might result in an IntegrityError, and we rely on the latter

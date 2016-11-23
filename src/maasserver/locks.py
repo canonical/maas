@@ -4,6 +4,7 @@
 """Region-wide locks."""
 
 __all__ = [
+    "address_allocation",
     "dns",
     "eventloop",
     "import_images",
@@ -11,7 +12,6 @@ __all__ = [
     "rack_registration",
     "security",
     "startup",
-    "staticip_acquire",
 ]
 
 from maasserver.utils.dblocks import (
@@ -38,8 +38,8 @@ dns = DatabaseLock(6)
 # Lock to prevent concurrent acquisition of nodes.
 node_acquire = DatabaseXactLock(7)
 
-# Lock to prevent concurrent allocation of StaticIPAddress
-staticip_acquire = DatabaseXactLock(8)
+# Lock to help with concurrent allocation of IP addresses.
+address_allocation = DatabaseLock(8)
 
 # Lock to prevent concurrent registration of rack controllers. This can be a
 # problem because registration involves populating fabrics, VLANs, and other

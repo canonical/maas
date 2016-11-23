@@ -14,6 +14,8 @@ from unittest import skip
 from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+from maasserver import locks
 from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -40,6 +42,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils import orm
 from maasserver.utils.dns import get_ip_based_hostname
 from maasserver.utils.orm import (
     reload_object,
@@ -47,6 +50,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.websockets.base import dehydrate_datetime
 from netaddr import IPAddress
+from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
@@ -286,6 +290,33 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         self.assertEqual(
             "No more IPs available in subnet: %s." % subnet.cidr,
             str(e))
+
+    def test_allocate_new_requests_retry_when_free_address_taken(self):
+        set_ip_address = self.patch(StaticIPAddress, "set_ip_address")
+        set_ip_address.side_effect = orm.make_unique_violation()
+        with orm.retry_context:
+            # A retry has been requested.
+            self.assertRaises(
+                orm.RetryTransaction, StaticIPAddress.objects.allocate_new,
+                subnet=factory.make_managed_Subnet())
+            # Aquisition of `address_allocation` is pending.
+            self.assertThat(
+                list(orm.retry_context.stack._cm_pending),
+                Equals([locks.address_allocation]))
+
+    def test_allocate_new_propagates_other_integrity_errors(self):
+        set_ip_address = self.patch(StaticIPAddress, "set_ip_address")
+        set_ip_address.side_effect = orm.make_unique_violation()
+        set_ip_address.side_effect.__cause__.pgcode = FOREIGN_KEY_VIOLATION
+        with orm.retry_context:
+            # An integrity error that's not `UNIQUE_VIOLATION` is propagated.
+            self.assertRaises(
+                IntegrityError, StaticIPAddress.objects.allocate_new,
+                subnet=factory.make_managed_Subnet())
+            # There is no pending retry context.
+            self.assertThat(
+                orm.retry_context.stack._cm_pending,
+                HasLength(0))
 
 
 class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
