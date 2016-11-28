@@ -436,18 +436,18 @@ class InterfaceHandler(OperationsHandler):
 
         Following are parameters specific to bonds:
 
-        :param bond-mode: The operating mode of the bond.
+        :param bond_mode: The operating mode of the bond.
             (Default: active-backup).
-        :param bond-miimon: The link monitoring freqeuncy in milliseconds.
+        :param bond_miimon: The link monitoring freqeuncy in milliseconds.
             (Default: 100).
-        :param bond-downdelay: Specifies the time, in milliseconds, to wait
+        :param bond_downdelay: Specifies the time, in milliseconds, to wait
             before disabling a slave after a link failure has been detected.
-        :param bond-updelay: Specifies the time, in milliseconds, to wait
+        :param bond_updelay: Specifies the time, in milliseconds, to wait
             before enabling a slave after a link recovery has been detected.
-        :param bond-lacp_rate: Option specifying the rate in which we'll ask
+        :param bond_lacp_rate: Option specifying the rate in which we'll ask
             our link partner to transmit LACPDU packets in 802.3ad mode.
             Available options are fast or slow. (Default: slow).
-        :param bond-xmit_hash_policy: The transmit hash policy to use for
+        :param bond_xmit_hash_policy: The transmit hash policy to use for
             slave selection in balance-xor, 802.3ad, and tlb modes.
 
         Supported bonding modes (bond-mode):
