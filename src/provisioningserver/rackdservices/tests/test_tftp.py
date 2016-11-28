@@ -714,7 +714,7 @@ class TestLogRequest(MAASTestCase):
         self.expectThat(call.getTime(), Equals(0.0))
 
     def test__sends_event_later(self):
-        send_event = self.patch(tftp_module, "send_event_node_mac_address")
+        send_event = self.patch(tftp_module, "send_node_event_mac_address")
         clock = Clock()
         log_request(sentinel.macaddr, sentinel.filename, clock)
         self.assertThat(send_event, MockNotCalled())
@@ -724,7 +724,7 @@ class TestLogRequest(MAASTestCase):
             event_type=EVENT_TYPES.NODE_TFTP_REQUEST))
 
     def test__logs_to_server_log(self):
-        self.patch(tftp_module, "send_event_node_mac_address")
+        self.patch(tftp_module, "send_node_event_mac_address")
         clock = Clock()
         mac_address = factory.make_mac_address()
         file_name = factory.make_name("file")
@@ -735,7 +735,7 @@ class TestLogRequest(MAASTestCase):
             "%s requested by %s" % (file_name, mac_address)))
 
     def test__logs_when_sending_event_errors(self):
-        send_event = self.patch(tftp_module, "send_event_node_mac_address")
+        send_event = self.patch(tftp_module, "send_node_event_mac_address")
         send_event.side_effect = factory.make_exception()
         clock = Clock()
         log_request(sentinel.macaddr, sentinel.filename, clock)

@@ -28,8 +28,9 @@ from provisioningserver.events import (
     EventDetail,
     nodeEventHub,
     NodeEventHub,
-    send_event_node,
-    send_event_node_mac_address,
+    send_node_event,
+    send_node_event_mac_address,
+    send_rack_event,
 )
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import (
@@ -38,6 +39,7 @@ from provisioningserver.rpc.exceptions import (
 )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.testing import MAASIDFixture
 from testtools import ExpectedException
 from testtools.matchers import (
     AllMatch,
@@ -63,11 +65,11 @@ class TestEvents(MAASTestCase):
 
 
 class TestSendEventNode(MAASTestCase):
-    """Tests for `send_event_node`."""
+    """Tests for `send_node_event`."""
 
     def test__calls_singleton_hub_logByID_directly(self):
         self.patch(nodeEventHub, "logByID").return_value = sentinel.d
-        result = send_event_node(
+        result = send_node_event(
             sentinel.event_type, sentinel.system_id, sentinel.hostname,
             sentinel.description)
         self.assertThat(result, Is(sentinel.d))
@@ -76,15 +78,28 @@ class TestSendEventNode(MAASTestCase):
 
 
 class TestSendEventNodeMACAddress(MAASTestCase):
-    """Tests for `send_event_node_mac_address`."""
+    """Tests for `send_node_event_mac_address`."""
 
     def test__calls_singleton_hub_logByMAC_directly(self):
         self.patch(nodeEventHub, "logByMAC").return_value = sentinel.d
-        result = send_event_node_mac_address(
+        result = send_node_event_mac_address(
             sentinel.event_type, sentinel.mac_address, sentinel.description)
         self.assertThat(result, Is(sentinel.d))
         self.assertThat(nodeEventHub.logByMAC, MockCalledOnceWith(
             sentinel.event_type, sentinel.mac_address, sentinel.description))
+
+
+class TestSendRackEvent(MAASTestCase):
+    """Tests for `send_rack_event`."""
+
+    def test__calls_singleton_hub_logByID_directly(self):
+        self.patch(nodeEventHub, "logByID").return_value = sentinel.d
+        rack_system_id = factory.make_name("system_id")
+        self.useFixture(MAASIDFixture(rack_system_id))
+        result = send_rack_event(sentinel.event_type, sentinel.description)
+        self.assertThat(result, Is(sentinel.d))
+        self.assertThat(nodeEventHub.logByID, MockCalledOnceWith(
+            sentinel.event_type, rack_system_id, sentinel.description))
 
 
 class TestNodeEventHubLogByID(MAASTestCase):

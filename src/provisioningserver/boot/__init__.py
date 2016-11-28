@@ -22,6 +22,10 @@ from typing import (
 )
 
 from provisioningserver.boot.tftppath import compose_image_path
+from provisioningserver.events import (
+    EVENT_TYPES,
+    try_send_rack_event,
+)
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
@@ -206,9 +210,11 @@ class BootMethod(metaclass=ABCMeta):
             if os.path.exists(bootloader_src):
                 atomic_symlink(bootloader_src, bootloader_dst)
             else:
-                maaslog.error(
+                err_msg = (
                     "SimpleStream is missing required bootloader file '%s' "
                     "from bootloader %s." % (bootloader_file, self.name))
+                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
+                maaslog.error(err_msg)
 
     def _find_and_copy_bootloaders(self, destination, log_missing=True):
         """Attempt to copy bootloaders from the previous snapshot
@@ -237,10 +243,12 @@ class BootMethod(metaclass=ABCMeta):
             else:
                 files_found = False
                 if log_missing:
-                    maaslog.error(
+                    err_msg = (
                         "Unable to find a copy of %s in the SimpleStream or a "
                         "previously downloaded copy. The %s bootloader type "
                         "may not work." % (bootloader_file, self.name))
+                    try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
+                    maaslog.error(err_msg)
         return files_found
 
     @typed
@@ -310,7 +318,7 @@ class BootMethod(metaclass=ABCMeta):
                 "'New' or 'Ready' states? It needs to be Enlisting, "
                 "Commissioning or Allocated." % (
                     pxe_templates_dir, purpose, arch, subarch))
-
+            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, error)
             raise AssertionError(error)
 
     def compose_template_namespace(self, kernel_params):

@@ -132,6 +132,7 @@ class TestBootMethod(MAASTestCase):
             method.get_template(purpose, arch, subarch).name)
 
     def test_get_template_not_found(self):
+        mock_try_send_rack_event = self.patch(boot, 'try_send_rack_event')
         # It is a critical and unrecoverable error if the default template
         # is not found.
         templates_dir = self.make_dir()
@@ -140,6 +141,7 @@ class TestBootMethod(MAASTestCase):
         self.assertRaises(
             AssertionError, method.get_template,
             *factory.make_names("purpose", "arch", "subarch"))
+        self.assertThat(mock_try_send_rack_event, MockCalledOnce())
 
     def test_get_templates_only_suppresses_ENOENT(self):
         # The IOError arising from trying to load a template that doesn't
@@ -171,6 +173,7 @@ class TestBootMethod(MAASTestCase):
     def test_link_bootloader_logs_missing_simplestream_file(self):
         method = FakeBootMethod()
         mock_maaslog = self.patch(maaslog, 'error')
+        mock_try_send_rack_event = self.patch(boot, 'try_send_rack_event')
         with tempdir() as tmp:
             stream_path = os.path.join(
                 tmp, 'bootloader', method.bios_boot_method,
@@ -182,6 +185,7 @@ class TestBootMethod(MAASTestCase):
             method.link_bootloader(tmp)
 
             self.assertThat(mock_maaslog, MockCalledOnce())
+            self.assertThat(mock_try_send_rack_event, MockCalledOnce())
 
     def test_link_bootloader_copies_previous_downloaded_files(self):
         method = FakeBootMethod()
@@ -222,6 +226,7 @@ class TestBootMethod(MAASTestCase):
     def test_link_bootloader_logs_missing_previous_downloaded_files(self):
         method = FakeBootMethod()
         mock_maaslog = self.patch(maaslog, 'error')
+        mock_try_send_rack_event = self.patch(boot, 'try_send_rack_event')
         with tempdir() as tmp:
             new_dir = os.path.join(tmp, 'new')
             current_dir = os.path.join(tmp, 'current')
@@ -233,6 +238,7 @@ class TestBootMethod(MAASTestCase):
             method.link_bootloader(new_dir)
 
             self.assertThat(mock_maaslog, MockCalledOnce())
+            self.assertThat(mock_try_send_rack_event, MockCalledOnce())
 
     def test_compose_template_namespace(self):
         kernel_params = make_kernel_parameters()

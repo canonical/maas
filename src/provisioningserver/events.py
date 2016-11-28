@@ -6,8 +6,9 @@
 __all__ = [
     'EVENT_DETAILS',
     'EVENT_TYPES',
-    'send_event_node',
-    'send_event_node_mac_address',
+    'send_node_event',
+    'send_node_event_mac_address',
+    'send_rack_event',
     ]
 
 from collections import namedtuple
@@ -18,7 +19,10 @@ from logging import (
     WARN,
 )
 
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
@@ -29,10 +33,12 @@ from provisioningserver.rpc.region import (
     SendEvent,
     SendEventMACAddress,
 )
+from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     DeferredValue,
+    FOREVER,
 )
 from twisted.internet.defer import (
     maybeDeferred,
@@ -42,6 +48,7 @@ from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("events")
+log = LegacyLogger()
 
 
 class EVENT_TYPES:
@@ -97,6 +104,14 @@ class EVENT_TYPES:
     # Rack controller request events
     REQUEST_CONTROLLER_REFRESH = "REQUEST_CONTROLLER_REFRESH"
     REQUEST_RACK_CONTROLLER_ADD_CHASSIS = "REQUEST_RACK_CONTROLLER_ADD_CHASSIS"
+    # Rack import events
+    RACK_IMPORT_WARNING = "RACK_IMPORT_WARNING"
+    RACK_IMPORT_ERROR = "RACK_IMPORT_ERROR"
+    RACK_IMPORT_INFO = "RACK_IMPORT_INFO"
+    # Region import events
+    REGION_IMPORT_WARNING = "REGION_IMPORT_WARNING"
+    REGION_IMPORT_ERROR = "REGION_IMPORT_ERROR"
+    REGION_IMPORT_INFO = "REGION_IMPORT_INFO"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -273,6 +288,30 @@ EVENT_DETAILS = {
         description=("Querying chassis and enlisting all machines"),
         level=INFO,
     ),
+    EVENT_TYPES.RACK_IMPORT_WARNING: EventDetail(
+        description=("Rack import warning"),
+        level=WARN,
+    ),
+    EVENT_TYPES.RACK_IMPORT_ERROR: EventDetail(
+        description=("Rack import error"),
+        level=ERROR,
+    ),
+    EVENT_TYPES.RACK_IMPORT_INFO: EventDetail(
+        description=("Rack import info"),
+        level=INFO,
+    ),
+    EVENT_TYPES.REGION_IMPORT_WARNING: EventDetail(
+        description=("Region import warning"),
+        level=WARN,
+    ),
+    EVENT_TYPES.REGION_IMPORT_ERROR: EventDetail(
+        description=("Region import error"),
+        level=ERROR,
+    ),
+    EVENT_TYPES.REGION_IMPORT_INFO: EventDetail(
+        description=("Region import info"),
+        level=INFO,
+    ),
 }
 
 
@@ -419,7 +458,7 @@ nodeEventHub = NodeEventHub()
 
 
 @asynchronous
-def send_event_node(event_type, system_id, hostname, description=''):
+def send_node_event(event_type, system_id, hostname, description=''):
     """Send the given node event to the region.
 
     :param event_type: The type of the event.
@@ -434,7 +473,7 @@ def send_event_node(event_type, system_id, hostname, description=''):
 
 
 @asynchronous
-def send_event_node_mac_address(event_type, mac_address, description=''):
+def send_node_event_mac_address(event_type, mac_address, description=''):
     """Send the given node event to the region for the given mac address.
 
     :param event_type: The type of the event.
@@ -445,3 +484,29 @@ def send_event_node_mac_address(event_type, mac_address, description=''):
     :type description: unicode
     """
     return nodeEventHub.logByMAC(event_type, mac_address, description)
+
+
+@asynchronous
+def send_rack_event(event_type, description=''):
+    """Send an event about the running rack to the region.
+
+    :param event_type: The type of the event.
+    :type event_type: unicode
+    :param description: An optional description of the event.
+    :type description: unicode
+    """
+    return nodeEventHub.logByID(event_type, get_maas_id(), description)
+
+
+@asynchronous(timeout=FOREVER)
+def try_send_rack_event(event_type, description=''):
+    """Try to send a rack event to the region.
+
+    Log something locally if this fails but otherwise supress all
+    failures.
+    """
+    d = send_rack_event(event_type, description)
+    d.addErrback(
+        log.err, "Failure sending rack event to region: %s - %s" %
+        (event_type, description))
+    return d

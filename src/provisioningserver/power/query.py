@@ -19,7 +19,7 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.events import (
     EVENT_TYPES,
-    send_event_node,
+    send_node_event,
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import (
@@ -102,7 +102,7 @@ def power_query_success(system_id, hostname, state):
     """Report a node that for which power querying has succeeded."""
     message = "Power state queried: %s" % state
     yield power.power_state_update(system_id, state)
-    yield send_event_node(
+    yield send_node_event(
         EVENT_TYPES.NODE_POWER_QUERIED_DEBUG,
         system_id, hostname, message)
 
@@ -113,7 +113,7 @@ def power_query_failure(system_id, hostname, failure):
     maaslog.error("%s: Power state could not be queried: %s" % (
         hostname, failure.getErrorMessage()))
     yield power.power_state_update(system_id, 'error')
-    yield send_event_node(
+    yield send_node_event(
         EVENT_TYPES.NODE_POWER_QUERY_FAILED,
         system_id, hostname, failure.getErrorMessage())
 

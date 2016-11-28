@@ -274,11 +274,11 @@ class TestPowerQueryExceptions(MAASTestCase):
         query = self.patch_autospec(power.query, self.func)
         query.side_effect = always_fail_with(exception)
 
-        # Intercept calls to power_state_update() and send_event_node().
+        # Intercept calls to power_state_update() and send_node_event().
         power_state_update = self.patch_autospec(power, "power_state_update")
         power_state_update.return_value = succeed(None)
-        send_event_node = self.patch_autospec(power.query, "send_event_node")
-        send_event_node.return_value = succeed(None)
+        send_node_event = self.patch_autospec(power.query, "send_node_event")
+        send_node_event.return_value = succeed(None)
 
         self.patch(
             self.power_driver, "detect_missing_packages").return_value = []
@@ -317,7 +317,7 @@ class TestPowerQueryExceptions(MAASTestCase):
             power_state_update, MockCalledOnceWith(system_id, 'error'))
         # An attempt was made to log a node event with details.
         self.assertThat(
-            send_event_node, MockCalledOnceWith(
+            send_node_event, MockCalledOnceWith(
                 EVENT_TYPES.NODE_POWER_QUERY_FAILED,
                 system_id, hostname, exception_message))
 

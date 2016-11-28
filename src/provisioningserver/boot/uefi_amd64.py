@@ -17,6 +17,10 @@ from provisioningserver.boot import (
     BytesReader,
     get_parameters,
 )
+from provisioningserver.events import (
+    EVENT_TYPES,
+    try_send_rack_event,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
@@ -136,11 +140,13 @@ class UEFIAMD64BootMethod(BootMethod):
                 missing_files.append('grubx64.efi')
 
             if missing_files != [] and log_missing:
-                maaslog.error(
+                err_msg = (
                     "Unable to find a copy of %s in the SimpleStream and the "
                     "packages shim-signed, and grub-efi-amd64-signed are not "
                     "installed. The %s bootloader type may not work." %
                     (', '.join(missing_files), self.name))
+                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
+                maaslog.error(err_msg)
                 return False
         return True
 

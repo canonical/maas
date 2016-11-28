@@ -17,6 +17,10 @@ from provisioningserver.boot import (
     BytesReader,
     get_parameters,
 )
+from provisioningserver.events import (
+    EVENT_TYPES,
+    try_send_rack_event,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import (
     atomic_copy,
@@ -165,13 +169,15 @@ class PXEBootMethod(BootMethod):
         if missing_files != []:
             files_are_missing = True
             if log_missing:
-                maaslog.error(
+                err_msg = (
                     "Unable to find a copy of %s in the SimpleStream or in "
                     "the system search paths %s. The %s bootloader type may "
                     "not work." %
                     (', '.join(missing_files), ', '.join(search_paths),
                      self.name)
                 )
+                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
+                maaslog.error(err_msg)
         else:
             files_are_missing = False
 

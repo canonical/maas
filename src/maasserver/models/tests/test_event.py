@@ -11,6 +11,7 @@ import random
 from django.db import IntegrityError
 from maasserver.models import (
     Event,
+    event as event_module,
     EventType,
 )
 from maasserver.testing.factory import factory
@@ -83,6 +84,15 @@ class EventTest(MAASServerTestCase):
             system_id=node.system_id, event_type=event_type)
         self.assertIsNotNone(EventType.objects.get(name=event_type))
         self.assertIsNotNone(Event.objects.get(node=node))
+
+    def test_create_region_event_creates_region_event(self):
+        region = factory.make_RegionRackController()
+        self.patch(event_module, 'get_maas_id').return_value = region.system_id
+        Event.objects.create_region_event(
+            event_type=EVENT_TYPES.REGION_IMPORT_ERROR)
+        self.assertIsNotNone(
+            EventType.objects.get(name=EVENT_TYPES.REGION_IMPORT_ERROR))
+        self.assertIsNotNone(Event.objects.get(node=region))
 
     def test_register_event_and_event_type_handles_integrity_errors(self):
         # It's possible that two calls to

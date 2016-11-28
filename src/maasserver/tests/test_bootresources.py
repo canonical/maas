@@ -976,6 +976,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEquals({}, store._content_to_finalize)
 
     def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):
+        self.patch(bootresources.Event.objects, 'create_region_event')
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         store = BootResourceStore()
         mock_resource_cleaner = self.patch(store, 'resource_cleaner')
@@ -1083,6 +1084,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.assertThat(mock_save_later, MockNotCalled())
 
     def test_insert_deletes_mismatch_largefile(self):
+        self.patch(bootresources.Event.objects, 'create_region_event')
         self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         with transaction.atomic():
@@ -1125,6 +1127,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.assertThat(mock_save_later, MockNotCalled())
 
     def test_insert_prints_warning_if_mismatch_largefile(self):
+        self.patch(bootresources.Event.objects, 'create_region_event')
         self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         with transaction.atomic():
@@ -1139,6 +1142,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             "Hash mismatch for prev_file=...", logger.output)
 
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
+        self.patch(bootresources.Event.objects, 'create_region_event')
         name, architecture, product = make_product()
         with transaction.atomic():
             resource = factory.make_BootResource(
@@ -1193,6 +1197,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         # an existing complete resource incomplete: print an error in the
         # log.
         self.useFixture(SignalsDisabled("largefiles"))
+        self.patch(bootresources.Event.objects, 'create_region_event')
         name, architecture, product = make_product()
         with transaction.atomic():
             resource = factory.make_BootResource(
@@ -1307,6 +1312,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 selection.os, arch, subarch_two, selection.release))
 
     def test_resource_cleaner_keeps_boot_resources_in_selections(self):
+        self.patch(bootresources.Event.objects, 'create_region_event')
         self.useFixture(SignalsDisabled("bootsources"))
         with transaction.atomic():
             resources = [
@@ -1495,6 +1501,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         # We're not testing cache_boot_sources() here, so patch it out to
         # avoid inadvertently calling it and wondering why the test blocks.
         self.patch_autospec(bootresources, 'cache_boot_sources')
+        self.patch(bootresources.Event.objects, 'create_region_event')
 
     def patch_and_capture_env_for_download_all_boot_resources(self):
         class CaptureEnv:

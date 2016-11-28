@@ -60,6 +60,7 @@ from maasserver.models import (
     BootResourceSet,
     BootSourceSelection,
     Config,
+    Event,
     LargeFile,
 )
 from maasserver.rpc import getAllClients
@@ -78,6 +79,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.version import get_maas_version_ui
 from provisioningserver.config import is_dev_environment
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     image_passes_filter,
@@ -661,10 +663,13 @@ class BootResourceStore(ObjectStore):
                 # not allowed.
                 prev_largefile = largefile
                 largefile = None
-                maaslog.warning(
+                msg = (
                     "Hash mismatch for prev_file=%s resourceset=%s "
-                    "resource=%s",
-                    prev_largefile, resource_set, resource)
+                    "resource=%s" % (prev_largefile, resource_set, resource)
+                )
+                Event.objects.create_region_event(
+                    EVENT_TYPES.REGION_IMPORT_WARNING, msg)
+                maaslog.warning(msg)
 
         if largefile is None:
             # The resource file current does not have a largefile linked. Lets
@@ -695,8 +700,10 @@ class BootResourceStore(ObjectStore):
             is_resource_initially_complete and
             resource.get_latest_complete_set() is None)
         if is_resource_broken:
-            maaslog.error(
-                "Resource %s has no complete resource set!", resource)
+            msg = "Resource %s has no complete resource set!" % resource
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_ERROR, msg)
+            maaslog.error(msg)
 
         if prev_largefile is not None:
             # If the previous largefile had a miss matching sha256 then it
@@ -773,11 +780,15 @@ class BootResourceStore(ObjectStore):
             # Calculated sha256 hash from the data does not match, what
             # simplestreams is telling us it should be. This resource file
             # will be deleted since it is corrupt.
-            maaslog.error(
+            msg = (
                 "Failed to finalize boot image %s. Unexpected "
-                "checksum '%s' (found: %s expected: %s)",
-                ident, cksummer.algorithm,
-                cksummer.hexdigest(), cksummer.expected)
+                "checksum '%s' (found: %s expected: %s)" %
+                (
+                    ident, cksummer.algorithm, cksummer.hexdigest(),
+                    cksummer.expected))
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_ERROR, msg)
+            maaslog.error(msg)
             transactional(rfile.delete)()
         else:
             maaslog.debug('Finalized boot image %s.', ident)
@@ -877,11 +888,15 @@ class BootResourceStore(ObjectStore):
                             self.get_resource_identity(delete_resource))
                         delete_resource.delete()
                     else:
-                        maaslog.info(
+                        msg = (
                             "Boot image %s no longer exists in stream, but "
                             "remains in selections. To delete this image "
-                            "remove its selection.",
-                            self.get_resource_identity(delete_resource))
+                            "remove its selection." %
+                            self.get_resource_identity(delete_resource)
+                        )
+                        Event.objects.create_region_event(
+                            EVENT_TYPES.REGION_IMPORT_INFO, msg)
+                        maaslog.info(msg)
                 else:
                     # No resource set on the boot resource so it should be
                     # removed as it has not files.
@@ -960,6 +975,8 @@ class BootResourceStore(ObjectStore):
                 "Finalization of imported images skipped, "
                 "or all %s synced images would be deleted." % (
                     self._resources_to_delete))
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_ERROR, error_msg)
             maaslog.error(error_msg)
             if notify is not None:
                 failure = Failure(Exception(error_msg))
@@ -1192,7 +1209,10 @@ def download_all_boot_resources(
 
     # Download all of the metadata first.
     for source in sources:
-        maaslog.info("Importing images from source: %s", source['url'])
+        msg = "Importing images from source: %s" % source['url']
+        Event.objects.create_region_event(
+            EVENT_TYPES.REGION_IMPORT_INFO, msg)
+        maaslog.info(msg)
         download_boot_resources(
             source['url'], store, product_mapping,
             keyring_file=source.get('keyring'))
@@ -1318,15 +1338,21 @@ def _import_resources_with_lock(notify=None):
     with tempdir('keyrings') as keyrings_path:
         sources = get_boot_sources()
         sources = write_all_keyrings(keyrings_path, sources)
-        maaslog.info(
-            "Started importing of boot images from %d source(s).",
+        msg = (
+            "Started importing of boot images from %d source(s)." %
             len(sources))
+        Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
+        maaslog.info(msg)
 
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
-            maaslog.warning(
+            msg = (
                 "Unable to import boot images, no image "
-                "descriptions avaliable.")
+                "descriptions avaliable."
+            )
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_WARNING, msg)
+            maaslog.warning(msg)
             return
         product_mapping = map_products(image_descriptions)
 

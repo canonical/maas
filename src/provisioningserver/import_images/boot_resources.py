@@ -20,6 +20,10 @@ from provisioningserver.config import (
     BootSources,
     ClusterConfiguration,
 )
+from provisioningserver.events import (
+    EVENT_TYPES,
+    try_send_rack_event,
+)
 from provisioningserver.import_images.cleanup import (
     cleanup_snapshots_and_cache,
 )
@@ -34,13 +38,17 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.service_monitor import service_monitor
+from provisioningserver.utils import sudo
 from provisioningserver.utils.fs import (
     atomic_symlink,
     atomic_write,
     read_text_file,
     tempdir,
 )
-from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.filepath import FilePath
 
@@ -98,8 +106,9 @@ def link_bootloaders(destination):
         try:
             boot_method.link_bootloader(destination)
         except BaseException:
-            maaslog.error(
-                "Unable to link the %s bootloader.", boot_method.name)
+            msg = "Unable to link the %s bootloader.", boot_method.name
+            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, msg)
+            maaslog.error(msg)
 
 
 def make_arg_parser(doc):
@@ -199,12 +208,16 @@ def update_targets_conf(snapshot):
 
     # Update the tgt config.
     targets_conf = os.path.join(snapshot, 'maas.tgt')
-    call_and_check([
-        'sudo',
-        '/usr/sbin/tgt-admin',
-        '--conf', targets_conf,
-        '--update', 'ALL',
-        ])
+    try:
+        call_and_check(sudo([
+            '/usr/sbin/tgt-admin',
+            '--conf', targets_conf,
+            '--update', 'ALL',
+            ]))
+    except ExternalProcessError as e:
+        msg = "Unable to update TGT config: %s" % e
+        try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
+        maaslog.warning(msg)
 
 
 def read_sources(sources_yaml):
@@ -244,10 +257,15 @@ def import_images(sources):
     :param config: An iterable of dicts representing the sources from
         which boot images will be downloaded.
     """
-    maaslog.info("Started importing boot images.")
     if len(sources) == 0:
-        maaslog.warning("Can't import: region did not provide a source.")
+        msg = "Can't import: region did not provide a source."
+        try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
+        maaslog.warning(msg)
         return False
+
+    msg = "Starting rack boot image import"
+    maaslog.info(msg)
+    try_send_rack_event(EVENT_TYPES.RACK_IMPORT_INFO, msg)
 
     with ClusterConfiguration.open() as config:
         storage = FilePath(config.tftp_root).parent().path
@@ -268,9 +286,11 @@ def import_images(sources):
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
             update_iscsi_targets(os.path.join(storage, 'current'))
-            maaslog.warning(
+            msg = (
                 "Finished importing boot images, the region does not have "
                 "any boot images available.")
+            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_WARNING, msg)
+            maaslog.warning(msg)
             return False
 
         meta_file_content = image_descriptions.dump_json()
@@ -279,6 +299,8 @@ def import_images(sources):
             maaslog.info(
                 "Finished importing boot images, the region does not "
                 "have any new images.")
+            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_INFO, msg)
+            maaslog.info(msg)
             return False
 
         product_mapping = map_products(image_descriptions)
@@ -286,12 +308,15 @@ def import_images(sources):
         try:
             snapshot_path = download_all_boot_resources(
                 sources, storage, product_mapping)
-        except:
+        except Exception as e:
+            try_send_rack_event(
+                EVENT_TYPES.RACK_IMPORT_ERROR,
+                "Unable to import boot images: %s" % e)
             update_iscsi_targets(os.path.join(storage, 'current'))
-            # Cleanup snapshots and cache since download failed.
-            maaslog.warning(
+            maaslog.error(
                 "Unable to import boot images; cleaning up failed snapshot "
                 "and cache.")
+            # Cleanup snapshots and cache since download failed.
             cleanup_snapshots_and_cache(storage)
             raise
 
@@ -312,7 +337,9 @@ def import_images(sources):
     cleanup_snapshots_and_cache(storage)
 
     # Import is now finished.
-    maaslog.info("Finished importing boot images.")
+    msg = "Finished importing boot images."
+    maaslog.info(msg)
+    try_send_rack_event(EVENT_TYPES.RACK_IMPORT_INFO, msg)
     return True
 
 

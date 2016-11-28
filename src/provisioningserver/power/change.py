@@ -17,7 +17,7 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.events import (
     EVENT_TYPES,
-    send_event_node,
+    send_node_event,
 )
 from provisioningserver.logger import (
     get_maas_logger,
@@ -76,7 +76,7 @@ def power_change_failure(system_id, hostname, power_change, message):
         event_type = EVENT_TYPES.NODE_POWER_OFF_FAILED
     elif power_change == 'cycle':
         event_type = EVENT_TYPES.NODE_POWER_CYCLE_FAILED
-    yield send_event_node(event_type, system_id, hostname, message)
+    yield send_node_event(event_type, system_id, hostname, message)
 
 
 @asynchronous
@@ -129,7 +129,7 @@ def power_change_success(system_id, hostname, power_change):
         event_type = EVENT_TYPES.NODE_POWERED_ON
     elif power_change == 'off':
         event_type = EVENT_TYPES.NODE_POWERED_OFF
-    yield send_event_node(event_type, system_id, hostname)
+    yield send_node_event(event_type, system_id, hostname)
 
 
 @asynchronous
@@ -155,7 +155,7 @@ def power_change_starting(system_id, hostname, power_change):
         event_type = EVENT_TYPES.NODE_POWER_OFF_STARTING
     elif power_change == 'cycle':
         event_type = EVENT_TYPES.NODE_POWER_CYCLE_STARTING
-    yield send_event_node(event_type, system_id, hostname)
+    yield send_node_event(event_type, system_id, hostname)
 
 
 @asynchronous

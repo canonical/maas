@@ -22,7 +22,7 @@ from provisioningserver.boot import (
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
-    send_event_node_mac_address,
+    send_node_event_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.logger import (
@@ -127,7 +127,7 @@ def log_request(mac_address, file_name, clock=reactor):
         mac_address=mac_address)
     # Log to the node event log.
     d = deferLater(
-        clock, 0, send_event_node_mac_address,
+        clock, 0, send_node_event_mac_address,
         event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
         mac_address=mac_address, description=file_name)
     d.addErrback(log.err, "Logging TFTP request failed.")

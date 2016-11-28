@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`Event` and friends."""
@@ -21,6 +21,7 @@ from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.events import EVENT_DETAILS
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.env import get_maas_id
 
 
 maaslog = get_maas_logger('models.event')
@@ -54,6 +55,12 @@ class EventManager(Manager):
             type_description=EVENT_DETAILS[event_type].description,
             type_level=EVENT_DETAILS[event_type].level,
             event_action=event_action,
+            event_description=event_description)
+
+    def create_region_event(self, event_type, event_description=''):
+        """Helper to register event and event type for the running region."""
+        self.create_node_event(
+            system_id=get_maas_id(), event_type=event_type,
             event_description=event_description)
 
 
