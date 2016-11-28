@@ -9,7 +9,6 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.enum import POWER_STATE
 from maasserver.node_action import compile_node_actions
 
 
@@ -36,10 +35,6 @@ class CommissionForm(forms.Form):
             raise ValidationError(
                 "Commission is not available because of the current state "
                 "of the node.")
-        if self.instance.power_state == POWER_STATE.ON:
-            raise ValidationError(
-                "Commission is not available because of the node is currently "
-                "powered on.")
         return cleaned_data
 
     def save(self):

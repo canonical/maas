@@ -281,13 +281,20 @@ class TestCommissionAction(MAASServerTestCase):
         ("READY", {"status": NODE_STATUS.READY}),
     )
 
-    def test_raise_NodeActionError_if_on(self):
+    def test_Commission_starts_commissioning_if_already_on(self):
         node = factory.make_Node(
-            status=self.status, power_state=POWER_STATE.ON)
-        user = factory.make_admin()
-        action = Commission(node, user)
-        self.assertTrue(action.is_permitted())
-        self.assertRaises(NodeActionError, action.execute)
+            interface=True, status=self.status,
+            power_type='manual', power_state=POWER_STATE.ON)
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = (
+            lambda user, user_data, old_status: post_commit())
+        admin = factory.make_admin()
+        action = Commission(node, admin)
+        with post_commit_hooks:
+            action.execute()
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+        self.assertThat(
+            node_start, MockCalledOnceWith(admin, ANY, ANY))
 
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(

@@ -2304,6 +2304,27 @@ class TestNode(MAASServerTestCase):
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertEqual('hwe-v', node.min_hwe_kernel)
 
+    def test_start_commissioning_starts_node_if_already_on(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.NEW, power_type='manual',
+            power_state=POWER_STATE.ON)
+        node_start = self.patch(node, '_start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = (
+            lambda user, user_data, old_status: post_commit())
+        admin = factory.make_admin()
+        node.start_commissioning(admin)
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        expected_attrs = {
+            'status': NODE_STATUS.COMMISSIONING,
+            'owner': admin,
+        }
+        self.assertAttributes(node, expected_attrs)
+        self.expectThat(node.owner, Equals(admin))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, ANY, NODE_STATUS.NEW))
+
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')

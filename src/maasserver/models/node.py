@@ -3134,7 +3134,10 @@ class Node(CleanSave, TimestampedModel):
 
         # Request that the node be powered on post-commit.
         d = post_commit()
-        d = self._power_control_node(d, power_on_node, power_info)
+        if self.power_state == POWER_STATE.ON:
+            d = self._power_control_node(d, power_cycle, power_info)
+        else:
+            d = self._power_control_node(d, power_on_node, power_info)
 
         # Set the deployment timeout so the node is marked failed after
         # a period of time.

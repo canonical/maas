@@ -36,17 +36,20 @@ class TestCommissionForm(MAASServerTestCase):
                 "of the node."],
             }, form.errors)
 
-    def test__not_allowed_if_on(self):
+    def test__calls_start_commissioning_if_already_on(self):
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_state=POWER_STATE.ON)
         user = factory.make_admin()
+        mock_start_commissioning = self.patch_autospec(
+            node, "start_commissioning")
         form = CommissionForm(instance=node, user=user, data={})
-        self.assertFalse(form.is_valid(), form.errors)
-        self.assertEqual({
-            '__all__': [
-                "Commission is not available because of the node is currently "
-                "powered on."],
-            }, form.errors)
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertThat(
+            mock_start_commissioning,
+            MockCalledOnceWith(
+                user, enable_ssh=False, skip_networking=False,
+                skip_storage=False))
 
     def test__calls_start_commissioning_with_options(self):
         node = factory.make_Node(
