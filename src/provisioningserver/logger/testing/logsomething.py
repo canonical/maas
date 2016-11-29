@@ -46,9 +46,12 @@ provisioningserver.logger.configure(
 if options.set_verbosity is not None:
     provisioningserver.logger.set_verbosity(options.set_verbosity)
 
-# Simulate what `twistd` does when passed `--logfile=-`.
+# Simulate what `twistd` does when passed `--logger=...` in Twisted 16.0. In
+# 16.4 something similar happens, but globalLogBeginner.beginLoggingTo() is
+# called without going via `twisted.python.log`.
 if options.mode == modes.TWISTD:
-    twisted.python.log.startLogging(sys.stdout)
+    emitter = provisioningserver.logger.EventLogger()
+    twisted.python.log.startLoggingWithObserver(emitter)
 
 # Twisted, new.
 twisted.logger.Logger(options.name).debug("From `twisted.logger`.")

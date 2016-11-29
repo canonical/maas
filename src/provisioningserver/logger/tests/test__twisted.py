@@ -5,31 +5,30 @@
 
 __all__ = []
 
-from functools import partial
 import io
-from unittest.mock import (
-    patch,
-    sentinel,
-)
 
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver.logger import _twisted
+from provisioningserver.logger._common import DEFAULT_LOG_FORMAT_DATE
 from provisioningserver.logger._twisted import (
-    LegacyFileLogObserver,
+    _formatModernEvent,
+    _getSystemName,
+    EventLogger,
     LegacyLogger,
-    LegacyLogObserverWrapper,
     observe_twisted_internet_tcp,
     observe_twisted_internet_udp,
     observe_twisted_internet_unix,
 )
-from provisioningserver.logger.testing import make_event
+from provisioningserver.logger.testing import (
+    find_log_lines,
+    make_event,
+    pick_log_time,
+)
 from testtools.matchers import (
     AfterPreprocessing,
-    AllMatch,
     Contains,
-    ContainsAll,
     ContainsDict,
     Equals,
     HasLength,
@@ -37,254 +36,14 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesDict,
-    MatchesSetwise,
-    Not,
 )
 from twisted import logger
-from twisted.python import log
 from twisted.python.failure import Failure
 
 
 def ContainsDictByEquality(expected):
     return ContainsDict(
         {key: Equals(value) for key, value in expected.items()})
-
-
-def setLegacyObservers(observers):
-    """Remove existing legacy log observers, add those given."""
-    for observer in log.theLogPublisher.observers:
-        log.theLogPublisher.removeObserver(observer)
-    for observer in observers:
-        log.theLogPublisher.addObserver(observer)
-
-
-class TestLegacyFileLogObserver(MAASTestCase):
-    """Scenario tests for `LegacyFileLogObserver`."""
-
-    scenarios = tuple(
-        (log_level.name, dict(log_level=log_level))
-        for log_level in logger.LogLevel.iterconstants()
-    )
-
-    def test__namespace_and_level_is_printed_in_legacy_log(self):
-        # Restore existing observers at the end. This must be careful with
-        # ordering of clean-ups, hence the use of unittest.mock.patch.object
-        # as a context manager.
-        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
-        # The global non-legacy `LogBeginner` emits critical messages straight
-        # to stderr, so temporarily put aside its observer to avoid seeing the
-        # critical log messages we're going to generate.
-        self.patch(logger.globalLogPublisher, "_observers", [])
-
-        logbuffer = io.StringIO()
-        observer = LegacyFileLogObserver(logbuffer)
-        observer.formatTime = lambda when: "<timestamp>"
-
-        oldlog = log.msg
-        # Deliberately use the default global observer in the new logger
-        # because we want to see how it behaves in a typical environment where
-        # logs are being emitted by the legacy logging infrastructure, for
-        # example running under `twistd`.
-        newlog = partial(logger.Logger().emit, self.log_level)
-
-        with patch.object(
-                log, "LegacyLogObserverWrapper",
-                log.LegacyLogObserverWrapper):
-            setLegacyObservers([observer.emit])
-            oldlog("Message from legacy", system="legacy")
-            newlog("Message from modern", log_system="modern")
-
-        self.assertThat(
-            logbuffer.getvalue(), DocTestMatches("""\
-            <timestamp> legacy: [info] Message from legacy
-            <timestamp> modern: [%s] Message from modern
-            """ % self.log_level.name))
-
-
-class TestLegacyFileLogObserver_Other(MAASTestCase):
-    """Other tests for `LegacyFileLogObserver`."""
-
-    def test__namespace_is_not_emitted_via_logfile_logerr(self):
-        # Restore existing observers at the end. This must be careful with
-        # ordering of clean-ups, hence the use of unittest.mock.patch.object
-        # as a context manager.
-        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
-        # The global non-legacy `LogBeginner` emits critical messages straight
-        # to stderr, so temporarily put aside its observer to avoid seeing the
-        # critical log messages we're going to generate.
-        self.patch(logger.globalLogPublisher, "_observers", [])
-
-        logbuffer = io.StringIO()
-        observer = LegacyFileLogObserver(logbuffer)
-        observer.formatTime = lambda when: "<timestamp>"
-
-        with patch.object(
-                log, "LegacyLogObserverWrapper",
-                log.LegacyLogObserverWrapper):
-            setLegacyObservers([observer.emit])
-            log.logfile.write("Via log.logfile\n")
-            log.logerr.write("Via log.logerr\n")
-
-        self.assertThat(
-            logbuffer.getvalue(), DocTestMatches("""\
-            <timestamp> -: [info] Via log.logfile
-            <timestamp> -: [error] Via log.logerr
-            """))
-
-
-class TestLegacyLogObserverWrapper(MAASTestCase):
-    """Scenario tests for `LegacyLogObserverWrapper`."""
-
-    scenarios = tuple(
-        (log_level.name, dict(log_level=log_level))
-        for log_level in logger.LogLevel.iterconstants()
-    )
-
-    def processEvent(self, event):
-        events = []
-        observer = LegacyLogObserverWrapper(events.append)
-        observer(event)
-        self.assertThat(events, HasLength(1))
-        return events[0]
-
-    def test__adds_system_to_event(self):
-        self.assertThat(
-            # This is a `twisted.logger` event, not legacy, and requires
-            # values for `log_time` and `log_level` at a minimum.
-            self.processEvent({
-                "log_time": sentinel.log_time,
-                "log_level": self.log_level,
-            }),
-            MatchesAll(
-                Not(Contains("log_system")),
-                ContainsDictByEquality({"system": "-"}),
-            ),
-        )
-
-    def test__adds_log_system_and_system_to_event_with_namespace(self):
-        log_namespace = factory.make_name("log_namespace")
-        self.assertThat(
-            self.processEvent({
-                "log_time": sentinel.log_time,
-                "log_level": self.log_level,
-                "log_namespace": log_namespace,
-            }),
-            ContainsDictByEquality({
-                "log_system": log_namespace,
-                "system": log_namespace,
-            }),
-        )
-
-    def test__adds_system_to_legacy_event(self):
-        self.assertThat(
-            # This is a `twisted.python.log` event, i.e. legacy, and requires
-            # values for `time` and `isError` at a minimum.
-            self.processEvent({
-                "time": sentinel.time,
-                "isError": factory.pick_bool(),
-            }),
-            MatchesAll(
-                Not(Contains("log_system")),
-                ContainsDictByEquality({"system": "-"}),
-            ),
-        )
-
-    def test__preserves_log_system_in_event(self):
-        log_system = factory.make_name("log_system")
-        self.assertThat(
-            self.processEvent({
-                "log_time": sentinel.time,
-                "log_level": self.log_level,
-                "log_system": log_system,
-            }),
-            # `log_system` is not modified; `system` is set to match.
-            ContainsDictByEquality({
-                "log_system": log_system,
-                "system": log_system,
-            }),
-        )
-
-    def test__preserves_system_in_legacy_event(self):
-        system = factory.make_name("system")
-        self.assertThat(
-            self.processEvent({
-                "time": sentinel.time,
-                "isError": factory.pick_bool(),
-                "system": system,
-            }),
-            MatchesAll(
-                # `log_system` is not added when `system` already exists.
-                Not(Contains("log_system")),
-                ContainsDictByEquality({
-                    "system": system,
-                }),
-            ),
-        )
-
-
-class TestLegacyLogObserverWrapper_Installation(MAASTestCase):
-    """Tests for `LegacyLogObserverWrapper`."""
-
-    def setUp(self):
-        super().setUp()
-        # Restore existing observers at the end. Tests must be careful with
-        # ordering of clean-ups, hence the use of unittest.mock.patch.object
-        # as a context manager in the tests themselves.
-        self.addCleanup(setLegacyObservers, log.theLogPublisher.observers)
-
-    def test__installs_wrapper_to_log_module(self):
-        with patch.object(log, "LegacyLogObserverWrapper", sentinel.unchanged):
-            self.assertThat(
-                log.LegacyLogObserverWrapper,
-                Is(sentinel.unchanged))
-            LegacyLogObserverWrapper.install()
-            self.assertThat(
-                log.LegacyLogObserverWrapper,
-                Is(LegacyLogObserverWrapper))
-
-    def test__rewraps_existing_observers(self):
-
-        class OldWrapper:
-
-            def __init__(self, observer):
-                self.legacyObserver = observer
-
-            def __call__(self, event):
-                return self.legacyObserver(event)
-
-        with patch.object(log, "LegacyLogObserverWrapper", OldWrapper):
-
-            observers = (lambda event: event), (lambda event: event)
-            setLegacyObservers(observers)
-
-            # Our legacy observers are all registered.
-            self.assertThat(
-                log.theLogPublisher.observers,
-                MatchesSetwise(*map(Is, observers)))
-            # Behind the scenes they're all wrapped with OldWrapper.
-            self.assertThat(
-                log.theLogPublisher._legacyObservers,
-                AllMatch(IsInstance(OldWrapper)))
-            # They're registered with the new global log publisher too.
-            self.assertThat(
-                logger.globalLogPublisher._observers,
-                ContainsAll(log.theLogPublisher._legacyObservers))
-
-            # Install!
-            LegacyLogObserverWrapper.install()
-
-            # Our legacy observers are all still registered.
-            self.assertThat(
-                log.theLogPublisher.observers,
-                MatchesSetwise(*map(Is, observers)))
-            # Behind the scenes they're now all wrapped with our wrapper.
-            self.assertThat(
-                log.theLogPublisher._legacyObservers,
-                AllMatch(IsInstance(LegacyLogObserverWrapper)))
-            # They're registered with the new global log publisher too.
-            self.assertThat(
-                logger.globalLogPublisher._observers,
-                ContainsAll(log.theLogPublisher._legacyObservers))
 
 
 def formatTimeStatic(when):
@@ -443,7 +202,7 @@ class TestObserveTwistedInternetUNIX(MAASTestCase):
     """Tests for `observe_twisted_internet_unix`."""
 
     def test__ignores_port_closed_events(self):
-        event = make_event("(Port %d Closed)" % factory.pick_port())
+        event = make_event("(Port %r Closed)" % factory.make_name("port"))
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
         self.assertThat(logger.events, HasLength(0))
@@ -460,3 +219,193 @@ class TestObserveTwistedInternetUNIX(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
         self.assertThat(logger.events, Contains(event))
+
+
+class TestGetSystemName(MAASTestCase):
+    """Tests for `_getSystemName`."""
+
+    expectations = {
+        "foo.bar.baz": "foo.bar.baz",
+        "f_o.bar.baz": "f_o.bar.baz",
+        "foo.b_r.baz": "foo.b_r.baz",
+        "foo.bar.b_z": "foo.bar.b_z",
+        "foo.bar._az": "foo.bar",
+        "foo._ar.baz": "foo",
+        "foo._ar._az": "foo",
+        "_oo.bar.baz": None,
+        "_": None,
+        "": None,
+        None: None,
+    }
+
+    scenarios = tuple(
+        ("%s => %s" % (
+            string_in or repr(string_in),
+            string_out or repr(string_out)),
+         {"string_in": string_in, "string_out": string_out})
+        for string_in, string_out in expectations.items()
+    )
+
+    def test(self):
+        self.assertThat(
+            _getSystemName(self.string_in),
+            Equals(self.string_out))
+
+
+class TestFormatModernEvent(MAASTestCase):
+    """Tests for `_formatModernEvent`."""
+
+    scenarios = tuple(
+        (level.name, {"log_level": level})
+        for level in logger.LogLevel.iterconstants()
+    )
+
+    def test_format_basics(self):
+        thing1 = factory.make_name("thing")
+        thing2 = factory.make_name("thing")
+        log_system = factory.make_name("system")
+        log_format = ">{thing1}< >{thing2}<"
+        log_time = pick_log_time()
+        self.assertThat(
+            _formatModernEvent({
+                "log_time": log_time,
+                "log_format": log_format,
+                "log_system": log_system,
+                "log_level": self.log_level,
+                "thing1": thing1,
+                "thing2": thing2,
+            }),
+            Equals(
+                "%s %s: [%s] >%s< >%s<\n" % (
+                    logger.formatTime(log_time, DEFAULT_LOG_FORMAT_DATE),
+                    log_system, self.log_level.name, thing1, thing2),
+            ),
+        )
+
+    def test_formats_without_format(self):
+        self.assertThat(
+            _formatModernEvent({
+                "log_level": self.log_level,
+            }),
+            Equals("- -: [%s] \n" % self.log_level.name),
+        )
+
+    def test_formats_with_null_format(self):
+        self.assertThat(
+            _formatModernEvent({
+                "log_format": None,
+                "log_level": self.log_level,
+            }),
+            Equals("- -: [%s] \n" % self.log_level.name),
+        )
+
+    def test_formats_without_time(self):
+        self.assertThat(
+            _formatModernEvent({
+                "log_level": self.log_level,
+            }),
+            Equals("- -: [%s] \n" % self.log_level.name),
+        )
+
+    def test_formats_with_null_time(self):
+        self.assertThat(
+            _formatModernEvent({
+                "log_time": None,
+                "log_level": self.log_level,
+            }),
+            Equals("- -: [%s] \n" % self.log_level.name),
+        )
+
+    def test_uses_namespace_if_system_missing(self):
+        log_namespace = factory.make_name("namespace")
+        self.assertThat(
+            _formatModernEvent({
+                "log_level": self.log_level,
+                "log_namespace": log_namespace,
+            }),
+            Equals(
+                "- %s: [%s] \n" % (
+                    log_namespace, self.log_level.name),
+            ),
+        )
+
+    def test_uses_namespace_if_system_null(self):
+        log_namespace = factory.make_name("namespace")
+        self.assertThat(
+            _formatModernEvent({
+                "log_level": self.log_level,
+                "log_namespace": log_namespace,
+                "log_system": None,
+            }),
+            Equals(
+                "- %s: [%s] \n" % (
+                    log_namespace, self.log_level.name),
+            ),
+        )
+
+
+class TestEventLogger(MAASTestCase):
+    """Tests for `EventLogger`."""
+
+    scenarios = tuple(
+        (level.name, {"log_level": level})
+        for level in logger.LogLevel.iterconstants()
+    )
+
+    def setUp(self):
+        super(TestEventLogger, self).setUp()
+        self.output = io.StringIO()
+        self.log = EventLogger(self.output)
+        self.get_logs = lambda: find_log_lines(self.output.getvalue())
+
+    def setLogLevel(self, log_level):
+        """Set the level at which events will be logged.
+
+        This is not a minimum level, it is an absolute level.
+        """
+        self.patch(_twisted, "_filterByLevels", {self.log_level})
+
+    def test_basics(self):
+        self.setLogLevel(self.log_level)
+        event = make_event(log_level=self.log_level)
+        event["log_system"] = factory.make_name("system")
+        self.log(event)
+        self.assertSequenceEqual(
+            [(event["log_system"], self.log_level.name, event["log_text"])],
+            self.get_logs(),
+        )
+
+    def test_filters_by_level(self):
+        self.setLogLevel(self.log_level)
+        events = {
+            log_level: make_event(log_level=log_level)
+            for log_level in logger.LogLevel.iterconstants()
+        }
+        for event in events.values():
+            self.log(event)
+        # Only the log at the current level will get through.
+        self.assertSequenceEqual(
+            [("-", self.log_level.name, events[self.log_level]["log_text"])],
+            self.get_logs(),
+        )
+
+    def test_filters_by_noise(self):
+        self.setLogLevel(self.log_level)
+        common = dict(log_namespace="log_legacy", log_system="-")
+        noisy = [
+            make_event("Log opened.", **common),
+            make_event("Main loop terminated.", **common),
+        ]
+        for event in noisy:
+            self.log(event)
+        okay = [
+            make_event(log_level=self.log_level, **common),
+        ]
+        for event in okay:
+            self.log(event)
+        # Only the `okay` logs will get through.
+        expected = [
+            ("-", self.log_level.name, event["log_text"])
+            for event in okay
+        ]
+        self.assertSequenceEqual(expected, self.get_logs())

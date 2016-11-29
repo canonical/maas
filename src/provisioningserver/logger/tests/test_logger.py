@@ -6,7 +6,6 @@
 __all__ = []
 
 import pathlib
-import re
 import subprocess
 import sys
 
@@ -14,6 +13,7 @@ from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LoggingMode
+from provisioningserver.logger.testing import find_log_lines
 from provisioningserver.utils import typed
 from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import text_content
@@ -38,23 +38,6 @@ def log_something(
     cmd = [sys.executable, str(script)] + args
     output = subprocess.check_output(cmd, env=env, stderr=subprocess.STDOUT)
     return output.decode("utf-8")
-
-
-# Matches lines like: 2016-10-18 14:23:55 [namespace#level] message
-find_log_lines_re = re.compile(
-    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (.*?): [[](.*)[]] (.*)$",
-    re.MULTILINE)
-
-
-def find_log_lines(text):
-    """Find logs in `text` that match `find_log_lines_re`.
-
-    Checks for well-formed date/times but throws them away.
-    """
-    return [
-        (ns, level, line) for (ts, ns, level, line) in
-        find_log_lines_re.findall(text)
-    ]
 
 
 class TestLogging(MAASTestCase):
@@ -115,7 +98,7 @@ class TestLogging(MAASTestCase):
             ('maas.' + name, 'error', 'From `get_maas_logger`.'),
             ('stdout', 'info', 'Printing to stdout.'),
             ('stderr', 'error', 'Printing to stderr.'),
-            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+            ('-', 'warn', 'UserWarning: This is a warning!'),
         ]
         self.assertSequenceEqual(expected, observed)
 
@@ -143,7 +126,7 @@ class TestLogging(MAASTestCase):
             ('maas.' + name, 'error', 'From `get_maas_logger`.'),
             ('stdout', 'info', 'Printing to stdout.'),
             ('stderr', 'error', 'Printing to stderr.'),
-            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+            ('-', 'warn', 'UserWarning: This is a warning!'),
         ]
         self.assertSequenceEqual(expected, observed)
 
@@ -163,7 +146,7 @@ class TestLogging(MAASTestCase):
             ('maas.' + name, 'warn', 'From `get_maas_logger`.'),
             ('maas.' + name, 'error', 'From `get_maas_logger`.'),
             ('stderr', 'error', 'Printing to stderr.'),
-            ('__main__', 'warn', 'UserWarning: This is a warning!'),
+            ('-', 'warn', 'UserWarning: This is a warning!'),
         ]
         self.assertSequenceEqual(expected, observed)
 
