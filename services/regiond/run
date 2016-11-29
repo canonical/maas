@@ -33,4 +33,6 @@ export MAAS_REGIOND_WORKER_ID=1
 
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/twistd.region)"
-exec "${script}" --nodaemon --pidfile="" maas-regiond
+exec "${script}" \
+    --logger=provisioningserver.logger.EventLogger \
+    --nodaemon --pidfile="" maas-regiond

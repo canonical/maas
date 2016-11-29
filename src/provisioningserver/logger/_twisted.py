@@ -5,6 +5,7 @@
 
 __all__ = [
     "configure_twisted_logging",
+    "EventLogger",
     "LegacyLogger",
     "VerbosityOptions",
 ]
@@ -29,7 +30,6 @@ from twisted.python import (
     log as twistedLegacy,
     usage,
 )
-from twisted.python.util import untilConcludes
 
 # Map verbosity numbers to `twisted.logger` levels.
 DEFAULT_TWISTED_VERBOSITY_LEVELS = {
@@ -44,18 +44,6 @@ DEFAULT_TWISTED_VERBOSITY_LEVELS = {
 assert (
     DEFAULT_TWISTED_VERBOSITY_LEVELS.keys() == DEFAULT_LOG_VERBOSITY_LEVELS), (
         "Twisted verbosity map does not match expectations.")
-
-
-# Those levels for which we should emit log events.
-_filterByLevels = frozenset()
-
-
-def _filterByLevel(event):
-    """Only log if event's level is in `_filterByLevels`."""
-    if event.get("log_level") in _filterByLevels:
-        return twistedModern.PredicateResult.maybe
-    else:
-        return twistedModern.PredicateResult.no
 
 
 @typed
@@ -83,31 +71,9 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     """
     set_twisted_verbosity(verbosity)
 
-    # A list of markers for noise.
-    noisy = (
-        {"log_system": "-", "log_text": "Log opened."},
-        {"log_system": "-", "log_text": "Main loop terminated."},
-    )
-
-    def filterByNoise(event, noisy=noisy):
-        """Only log if event is not noisy."""
-        for noise in noisy:
-            if all(key in event and event[key] == noise[key] for key in noise):
-                return twistedModern.PredicateResult.no
-        else:
-            return twistedModern.PredicateResult.maybe
-
-    predicates = _filterByLevel, filterByNoise
-
-    # When `twistd` starts the reactor it initialises the legacy logging
-    # system. Intercept this to wrap the observer in a level filter. We can
-    # use this same approach when not running under `twistd` too.
-    def startLoggingWithObserver(observer, setStdout=1):
-        observer = twistedModern.FilteringLogObserver(observer, predicates)
-        reallyStartLoggingWithObserver(observer, setStdout)
-
-    reallyStartLoggingWithObserver = twistedLegacy.startLoggingWithObserver
-    twistedLegacy.startLoggingWithObserver = startLoggingWithObserver
+    warn_unless(hasattr(twistedLegacy, "startLoggingWithObserver"), (
+        "No startLoggingWithObserver function found; please investigate!"))
+    twistedLegacy.startLoggingWithObserver = _startLoggingWithObserver
 
     # Customise warnings behaviour. Ensure that nothing else — neither the
     # standard library's `logging` module nor Django — clobbers this later.
@@ -119,17 +85,6 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     else:
         twistedModern.globalLogBeginner.showwarning = warnings.showwarning
         twistedLegacy.theLogPublisher.showwarning = warnings.showwarning
-
-    # Globally override Twisted's legacy logging format.
-    warn_unless(hasattr(twistedLegacy, "FileLogObserver"), (
-        "No t.p.log.FileLogObserver attribute found; please investigate!"))
-    LegacyFileLogObserver.install()
-
-    # Install a wrapper so that log events from `t.logger` are logged with a
-    # namespace and level by the legacy logger in `t.python.log`. This needs
-    # to be injected into the `t.p.log` module in order to process events as
-    # they move from the legacy to the modern systems.
-    LegacyLogObserverWrapper.install()
 
     # Prevent `crochet` from initialising Twisted's logging.
     warn_unless(hasattr(crochet._main, "_startLoggingWithObserver"), (
@@ -155,81 +110,77 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     # the original standard out stream when this process was started. This
     # bypasses any wrapping or redirection that may have been done elsewhere.
     if mode == LoggingMode.COMMAND:
-        twistedLegacy.startLogging(sys.__stdout__, setStdout=False)
+        twistedModern.globalLogBeginner.beginLoggingTo(
+            [EventLogger()], discardBuffer=False, redirectStandardIO=False)
 
 
-class LegacyFileLogObserver(twistedLegacy.FileLogObserver):
-    """Log legacy/mixed events to a file, formatting the MAAS way."""
+def EventLogger(outFile=sys.__stdout__):
+    """Factory returning a `t.logger.ILogObserver`.
 
-    timeFormat = DEFAULT_LOG_FORMAT_DATE
-    lineFormat = DEFAULT_LOG_FORMAT + "\n"
+    This logs to the real standard out using MAAS's logging conventions.
 
-    @classmethod
-    def install(cls):
-        """Install this wrapper in place of `log.FileLogObserver`."""
-        twistedLegacy.FileLogObserver = cls
-
-    def emit(self, event):
-        """Format and write out the given `event`."""
-        text = twistedLegacy.textFromEventDict(event)
-        if text is None:
-            return
-
-        system = event["system"] if "system" in event else None
-        if system is None and "log_namespace" in event:
-            system = event["log_namespace"]
-        # Logs written directly to `t.p.log.logfile` and `.logerr` get a
-        # namespace of "twisted.python.log". This is not interesting.
-        if system == twistedLegacy.__name__:
-            system = None
-
-        level = event["log_level"] if "log_level" in event else None
-        if level is None:
-            if "isError" in event and event["isError"]:
-                level = twistedModern.LogLevel.critical
-            else:
-                level = twistedModern.LogLevel.info
-
-        line = twistedLegacy._safeFormat(self.lineFormat, {
-            "asctime": self.formatTime(event["time"]),
-            "levelname": "-" if level is None else level.name,
-            "message": text.replace("\n", "\n\t"),
-            "name": "-" if system is None else system,
-        })
-
-        untilConcludes(self.write, line)
-        untilConcludes(self.flush)
-
-
-class LegacyLogObserverWrapper(twistedModern.LegacyLogObserverWrapper):
-    """Ensure that `log_system` is set in the event.
-
-    A newly populated `log_system` value is seen by `LegacyLogObserverWrapper`
-    (the superclass) and copied into the `system` key, later used when emitting
-    formatted log lines.
+    Refer to this with `twistd`'s `--logger` argument.
     """
+    return twistedModern.FilteringLogObserver(
+        twistedModern.FileLogObserver(outFile, _formatModernEvent),
+        (_filterByLevel, _filterByNoise))
 
-    @classmethod
-    def install(cls):
-        """Install this wrapper in place of `log.LegacyLogObserverWrapper`.
 
-        Inject this wrapper into the `t.python.log` module then remove and
-        re-add all the legacy observers so that they're re-wrapped.
-        """
-        twistedLegacy.LegacyLogObserverWrapper = cls
-        for observer in twistedLegacy.theLogPublisher.observers:
-            twistedLegacy.theLogPublisher.removeObserver(observer)
-            twistedLegacy.theLogPublisher.addObserver(observer)
+def _startLoggingWithObserver(observer, setStdout=1):
+    """Replacement for `t.p.log.startLoggingWithObserver`.
 
-    def __call__(self, event):
-        # Be defensive: `system` could be missing or could have a value of
-        # None. Same goes for `log_system` and `log_namespace`.
-        if event.get("system") is None and event.get("log_system") is None:
-            namespace = event.get("log_namespace")
-            if namespace is not None:
-                event["log_system"] = namespace
-        # Up-call, which will apply some more transformations.
-        return super().__call__(event)
+    When `twistd` starts in 16.0 it initialises the legacy logging system.
+    Intercept this to DTRT with either a modern or legacy observer.
+
+    In Xenial (with Twisted 16.0) `observer` is probably a legacy observer,
+    like twisted.python.log.FileLogObserver, but we should check if it's
+    modern. In either case we should call through to the `globalLogBeginner`
+    ourselves. In Yakkety (with Twisted 16.4) this function will not be
+    called; `t.application.app.AppLogger` does the right thing already.
+    """
+    if not twistedModern.ILogObserver.providedBy(observer):
+        observer = twistedModern.LegacyLogObserverWrapper(observer)
+    twistedModern.globalLogBeginner.beginLoggingTo(
+        [observer], discardBuffer=False, redirectStandardIO=bool(setStdout))
+
+
+_timeFormat = DEFAULT_LOG_FORMAT_DATE
+_lineFormat = DEFAULT_LOG_FORMAT + "\n"
+
+
+def _formatModernEvent(event):
+    """Format a "modern" event according to MAAS's conventions."""
+    text = twistedModern.formatEvent(event)
+    time = event["log_time"] if "log_time" in event else None
+    level = event["log_level"] if "log_level" in event else None
+    system = event["log_system"] if "log_system" in event else None
+    if system is None and "log_namespace" in event:
+        system = _getSystemName(event["log_namespace"])
+
+    return _lineFormat % {
+        "asctime": twistedModern.formatTime(time, _timeFormat),
+        "levelname": "-" if level is None else level.name,
+        "message": "-" if text is None else text.replace("\n", "\n\t"),
+        "name": "-" if system is None else system,
+    }
+
+
+def _getSystemName(system):
+    """Return the "public" parts of `system`.
+
+    `system` is a dot-separated name, e.g. a fully-qualified module name. This
+    returns the leading parts of that name that are not pseudo-private, i.e.
+    that start with an underscore. For example "a.b._c.d" would be transformed
+    into "a.b".
+    """
+    if system is None:
+        return None
+    elif len(system) == 0:
+        return None
+    elif system.startswith("_"):
+        return None
+    else:
+        return system.split("._")[0]
 
 
 class LegacyLogger(twistedModern.Logger):
@@ -352,6 +303,33 @@ def show_warning_via_twisted(
             pass  # We tried.
 
 
+# Those levels for which we should emit log events.
+_filterByLevels = frozenset()
+
+
+def _filterByLevel(event):
+    """Only log if event's level is in `_filterByLevels`."""
+    if event.get("log_level") in _filterByLevels:
+        return twistedModern.PredicateResult.maybe
+    else:
+        return twistedModern.PredicateResult.no
+
+# A list of markers for noise.
+_filterByNoises = (
+    {"log_namespace": "log_legacy", "log_text": "Log opened."},
+    {"log_namespace": "log_legacy", "log_text": "Main loop terminated."},
+)
+
+
+def _filterByNoise(event):
+    """Only log if event is not noisy."""
+    for noise in _filterByNoises:
+        if all(key in event and event[key] == noise[key] for key in noise):
+            return twistedModern.PredicateResult.no
+    else:
+        return twistedModern.PredicateResult.maybe
+
+
 _observe_twisted_internet_tcp_noise = re.compile(
     r"^(?:[(].+ Port \d+ Closed[)]|.+ starting on \d+)")
 
@@ -375,7 +353,7 @@ def observe_twisted_internet_udp(event):
 
 
 _observe_twisted_internet_unix_noise = re.compile(
-    r"^(?:[(]Port \d+ Closed[)]|.+ starting on .+)")
+    r"^(?:[(]Port .+ Closed[)]|.+ starting on .+)")
 
 
 def observe_twisted_internet_unix(event):

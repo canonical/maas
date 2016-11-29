@@ -50,6 +50,7 @@ This module attempts to address *all* of these issues!
 
 __all__ = [
     "configure",
+    "EventLogger",
     "get_maas_logger",
     "LegacyLogger",
     "LoggingMode",
@@ -71,6 +72,7 @@ from provisioningserver.logger._maaslog import get_maas_logger
 from provisioningserver.logger._tftp import configure_tftp_logging
 from provisioningserver.logger._twisted import (
     configure_twisted_logging,
+    EventLogger,
     LegacyLogger,
     set_twisted_verbosity,
     VerbosityOptions,
@@ -145,6 +147,7 @@ def set_verbosity(verbosity: int=None):
     current_verbosity = verbosity
     for verbosity_setter in verbosity_setters:
         verbosity_setter(verbosity)
+
 
 verbosity_setters = [
     set_standard_verbosity,
