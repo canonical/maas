@@ -30,6 +30,7 @@ from maasserver.models import (
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
@@ -66,16 +67,16 @@ def _gen_cluster_nodes_power_parameters(nodes):
     :return: A generator yielding `dict`s.
     """
     five_minutes_ago = now() - timedelta(minutes=5)
-
-    # This is meant to be temporary until all the power types support querying
-    # the power state of a node. See the definition of QUERY_POWER_TYPES for
-    # more information.
-    from provisioningserver.power import QUERY_POWER_TYPES
+    queryable_power_types = [
+        driver.name
+        for _, driver in PowerDriverRegistry
+        if driver.queryable
+    ]
 
     nodes_unchecked = (
         nodes
         .filter(power_state_queried=None)
-        .filter(bmc__power_type__in=QUERY_POWER_TYPES)
+        .filter(bmc__power_type__in=queryable_power_types)
         .exclude(status=NODE_STATUS.BROKEN)
         .distinct()
     )
@@ -83,7 +84,7 @@ def _gen_cluster_nodes_power_parameters(nodes):
         nodes
         .exclude(power_state_queried=None)
         .exclude(power_state_queried__gt=five_minutes_ago)
-        .filter(bmc__power_type__in=QUERY_POWER_TYPES)
+        .filter(bmc__power_type__in=queryable_power_types)
         .exclude(status=NODE_STATUS.BROKEN)
         .order_by("power_state_queried", "system_id")
         .distinct()

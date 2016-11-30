@@ -152,12 +152,11 @@ from metadataserver.user_data import (
     disk_erasing,
 )
 from netaddr import IPAddress
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
-from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DisableAndShutoffRackd,
@@ -1233,12 +1232,11 @@ class TestNode(MAASServerTestCase):
                  sentinel.power_parameters), node.get_effective_power_info())
 
     def test_get_effective_power_info_cant_be_queried(self):
-        all_power_types = {
-            power_type_details['name']
-            for power_type_details in JSON_POWER_TYPE_PARAMETERS
-        }
-        uncontrolled_power_types = all_power_types.difference(
-            QUERY_POWER_TYPES)
+        uncontrolled_power_types = [
+            driver.name
+            for _, driver in PowerDriverRegistry
+            if not driver.queryable
+        ]
         for power_type in uncontrolled_power_types:
             node = factory.make_Node(power_type=power_type)
             gepp = self.patch(node, "get_effective_power_parameters")
@@ -1249,7 +1247,11 @@ class TestNode(MAASServerTestCase):
                 node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_queried(self):
-        power_type = random.choice(QUERY_POWER_TYPES)
+        power_type = random.choice([
+            driver.name
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         node = factory.make_Node(power_type=power_type)
         gepp = self.patch(node, "get_effective_power_parameters")
         self.assertEqual(
@@ -1820,13 +1822,11 @@ class TestNode(MAASServerTestCase):
         }
         # Use an "uncontrolled" power type (i.e. a power type for which we
         # cannot query the status of the node).
-        all_power_types = {
-            power_type_details['name']
-            for power_type_details in JSON_POWER_TYPE_PARAMETERS
-        }
-        uncontrolled_power_types = (
-            all_power_types.difference(QUERY_POWER_TYPES))
-        power_type = random.choice(list(uncontrolled_power_types))
+        power_type = random.choice([
+            driver.name
+            for _, driver in PowerDriverRegistry
+            if not driver.queryable
+        ])
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, owner=owner, owner_data=owner_data,

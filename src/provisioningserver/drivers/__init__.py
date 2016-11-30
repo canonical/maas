@@ -1,23 +1,70 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Hardware Drivers."""
+"""Drivers."""
 
 __all__ = [
     "Architecture",
     "ArchitectureRegistry",
-    "BootResource",
     ]
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-)
-
 from jsonschema import validate
-from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.utils import typed
 from provisioningserver.utils.registry import Registry
+
+
+class IP_EXTRACTOR_PATTERNS:
+    """Commonly used patterns IP extractor patterns."""
+
+    # Use the entire string as the value.
+    IDENTITY = '^(?P<address>.+?)$'
+
+    # The typical URL pattern. Extracts address field as the value.
+    # The given URL has an address component that is one of:
+    # (1) an IPv6 IP address surrounded by []
+    # (2) an IPv4 IP address (no [])
+    # (3) a name
+    # (4) the empty string.
+    # Cases 2 and 3 are processed in the regex by excluding all []/: from the
+    # allowed values.  The need to verify the [] around the IPv6 IP address
+    # introduces a goodly amount of complexity due to looking forward/backward
+    # to determine if [] is ok/expected.
+    # The resulting address is simply the IP address (v6 or v4), or a hostname.
+    URL = (r'^'
+           r'((?P<schema>.+?)://)?'
+           r'((?P<user>.+?)(:(?P<password>.*?))?@)?'
+
+           r'(?:\[(?=[0-9a-fA-F]*:[0-9a-fA-F.:]+\]))?'
+           r'(?P<address>(?:(?:[^\[\]/:]*(?!\]))|'
+           r'(?:(?<=\[)[0-9a-fA-F:.]+(?=\]))))\]?'
+
+           r'(:(?P<port>\d+?))?'
+           r'(?P<path>/.*?)?'
+           r'(?P<query>[?].*?)?'
+           r'$'
+           )
+
+
+# Python REGEX pattern for extracting IP address from parameter field.
+# The field_name tells the extractor which power_parameter field to use.
+# Name the address field 'address' in your Python regex pattern.
+# The pattern will be used as in 're.match(pattern, field_value)'.
+IP_EXTRACTOR_SCHEMA = {
+    'title': "IP Extractor Configuration",
+    'type': 'object',
+    'properties': {
+        'field_name': {
+            'type': 'string',
+        },
+        'pattern': {
+            'type': 'string',
+        },
+    },
+    "dependencies": {
+        "field_name": ["pattern"],
+        "pattern": ["field_name"]
+    },
+}
 
 # JSON schema representing the Django choices format as JSON; an array of
 # 2-item arrays.
@@ -52,6 +99,10 @@ SETTING_PARAMETER_FIELD_SCHEMA = {
         'required': {
             'type': 'boolean',
         },
+        # 'bmc' or 'node': Whether value lives on bmc (global) or node/device.
+        'scope': {
+            'type': 'string',
+        },
         'choices': CHOICE_FIELD_SCHEMA,
         'default': {
             'type': 'string',
@@ -76,14 +127,36 @@ JSON_SETTING_SCHEMA = {
             'type': 'array',
             'items': SETTING_PARAMETER_FIELD_SCHEMA,
         },
+        'ip_extractor': IP_EXTRACTOR_SCHEMA,
+        'queryable': {
+            'type': 'boolean',
+        },
+        'missing_packages': {
+            'type': 'array',
+            'items': {
+                'type': 'string',
+            },
+        },
     },
     'required': ['name', 'description', 'fields'],
 }
 
 
+def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
+    return {
+        'field_name': field_name,
+        'pattern': pattern,
+    }
+
+
+class SETTING_SCOPE:
+    BMC = "bmc"
+    NODE = "node"
+
+
 def make_setting_field(
         name, label, field_type=None, choices=None, default=None,
-        required=False):
+        required=False, scope=SETTING_SCOPE.BMC):
     """Helper function for building a JSON setting parameters field.
 
     :param name: The name of the field.
@@ -101,37 +174,28 @@ def make_setting_field(
     :type default: string
     :param required: Whether or not a value for the field is required.
     :type required: boolean
+    :param scope: 'bmc' or 'node' - Whether value is bmc or node specific.
+        Defaults to 'bmc'.
+    :type scope: string
     """
-    if field_type not in ('string', 'mac_address', 'choice'):
+    if field_type not in ('string', 'mac_address', 'choice', 'password'):
         field_type = 'string'
     if choices is None:
         choices = []
     validate(choices, CHOICE_FIELD_SCHEMA)
     if default is None:
         default = ""
-    field = {
+    if scope not in (SETTING_SCOPE.BMC, SETTING_SCOPE.NODE):
+        scope = SETTING_SCOPE.BMC
+    return {
         'name': name,
         'label': label,
         'required': required,
         'field_type': field_type,
         'choices': choices,
         'default': default,
+        'scope': scope,
     }
-    return field
-
-
-def validate_settings(setting_fields):
-    """Helper that validates that the fields adhere to the JSON schema."""
-    validate(setting_fields, JSON_SETTING_SCHEMA)
-
-
-def gen_power_types():
-    from provisioningserver.drivers.power import power_drivers_by_name
-    for power_type in JSON_POWER_TYPE_PARAMETERS:
-        driver = power_drivers_by_name.get(power_type['name'])
-        if driver is not None:
-            power_type['missing_packages'] = driver.detect_missing_packages()
-        yield power_type
 
 
 class Architecture:
@@ -158,62 +222,6 @@ class Architecture:
         self.kernel_options = kernel_options
 
 
-class BootResource(metaclass=ABCMeta):
-    """Abstraction of ephemerals and pxe resources required for a hardware
-    driver.
-
-    This resource is responsible for importing and reporting on
-    what is potentially available in relation to a cluster controller.
-    """
-
-    def __init__(self, name):
-        self.name = name
-
-    @abstractmethod
-    def import_resources(self, at_location, filter=None):
-        """Import the specified resources.
-
-        :param at_location: URL to a Simplestreams index or a local path
-            to a directory containing boot resources.
-        :param filter: A simplestreams filter.
-            e.g. "release=trusty label=beta-2 arch=amd64"
-            This is ignored if the location is a local path, all resources
-            at the location will be imported.
-        TBD: How to provide progress information.
-        """
-
-    @abstractmethod
-    def describe_resources(self, at_location):
-        """Enumerate all the boot resources.
-
-        :param at_location: URL to a Simplestreams index or a local path
-            to a directory containing boot resources.
-
-        :return: a list of dictionaries describing the available resources,
-            which will need to be imported so the driver can use them.
-        [
-            {
-                "release": "trusty",
-                "arch": "amd64",
-                "label": "beta-2",
-                "size": 12344556,
-            }
-            ,
-        ]
-        """
-
-
-class HardwareDiscoverContext(metaclass=ABCMeta):
-
-    @abstractmethod
-    def startDiscovery(self):
-        """TBD"""
-
-    @abstractmethod
-    def stopDiscovery(self):
-        """TBD"""
-
-
 class ArchitectureRegistry(Registry):
     """Registry for architecture classes."""
 
@@ -224,10 +232,6 @@ class ArchitectureRegistry(Registry):
             if alias in arch.pxealiases:
                 return arch
         return None
-
-
-class BootResourceRegistry(Registry):
-    """Registry for boot resource classes."""
 
 
 builtin_architectures = [

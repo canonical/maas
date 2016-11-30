@@ -11,6 +11,11 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import fromstring
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
@@ -33,8 +38,18 @@ class MicrosoftOCSState(object):
 class MicrosoftOCSPowerDriver(PowerDriver):
 
     name = 'msftocs'
-    description = "MicrosoftOCS Power Driver."
-    settings = []
+    description = "Microsoft OCS - Chassis Manager"
+    settings = [
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field('power_port', "Power port"),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+        make_setting_field(
+            'blade_id', "Blade ID (Typically 1-24)",
+            scope=SETTING_SCOPE.NODE, required=True),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         # uses urllib2 http client - nothing to look for!

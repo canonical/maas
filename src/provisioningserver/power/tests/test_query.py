@@ -30,7 +30,6 @@ from maastesting.twisted import (
 from provisioningserver import power
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
-    power_drivers_by_name,
     PowerDriverRegistry,
     PowerError,
 )
@@ -117,7 +116,7 @@ class TestPowerQuery(MAASTestCase):
         super(TestPowerQuery, self).setUp()
         self.useFixture(EventTypesAllRegistered())
         self.patch(power.query, "deferToThread", maybeDeferred)
-        for power_driver in power_drivers_by_name.values():
+        for _, power_driver in PowerDriverRegistry:
             self.patch(
                 power_driver, "detect_missing_packages").return_value = []
 
@@ -133,7 +132,11 @@ class TestPowerQuery(MAASTestCase):
     def test_get_power_state_queries_node(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_state = random.choice(['on', 'off'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
@@ -145,35 +148,38 @@ class TestPowerQuery(MAASTestCase):
         mock_perform_power_driver_query.return_value = power_state
 
         d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
+            system_id, hostname, power_driver.name, context)
         # This blocks until the deferred is complete.
         io.flush()
         self.assertEqual(power_state, extract_result(d))
         self.assertThat(
-            power_drivers_by_name.get(power_type).detect_missing_packages,
+            power_driver.detect_missing_packages,
             MockCalledOnceWith())
         self.assertThat(
             mock_perform_power_driver_query,
             MockCallsMatch(
-                call(system_id, hostname, power_type, context)
+                call(system_id, hostname, power_driver.name, context)
             ),
         )
 
     def test_get_power_state_fails_for_missing_packages(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'is_driver_available').return_value = False
         _, markNodeBroken, io = self.patch_rpc_methods()
 
-        power_driver = power_drivers_by_name.get(power_type)
         power_driver.detect_missing_packages.return_value = ['gone']
 
         d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
+            system_id, hostname, power_driver.name, context)
         # This blocks until the deferred is complete.
         io.flush()
 
@@ -244,19 +250,20 @@ class TestPowerQuery(MAASTestCase):
 class TestPowerQueryExceptions(MAASTestCase):
 
     scenarios = tuple(
-        (power_type, {
-            "power_type": power_type,
-            "power_driver": power_drivers_by_name.get(power_type),
+        (driver.name, {
+            "power_type": driver.name,
+            "power_driver": driver,
             "func": (  # Function to invoke power driver.
                 "perform_power_driver_query"),
             "waits": (  # Pauses between retries.
-                [] if power_type in PowerDriverRegistry
+                [] if driver.name in PowerDriverRegistry
                 else DEFAULT_WAITING_POLICY),
             "calls": (  # No. of calls to the driver.
-                1 if power_type in PowerDriverRegistry
+                1 if driver.name in PowerDriverRegistry
                 else len(DEFAULT_WAITING_POLICY)),
         })
-        for power_type in power.QUERY_POWER_TYPES
+        for _, driver in PowerDriverRegistry
+        if driver.queryable
     )
 
     def test_report_power_state_reports_all_exceptions(self):

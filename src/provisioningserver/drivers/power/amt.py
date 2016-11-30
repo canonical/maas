@@ -18,6 +18,10 @@ from subprocess import (
 from time import sleep
 
 from lxml import etree
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+)
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
     PowerActionError,
@@ -53,8 +57,13 @@ REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
 class AMTPowerDriver(PowerDriver):
 
     name = 'amt'
-    description = "AMT Power Driver."
-    settings = []
+    description = "Intel AMT"
+    settings = [
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+        make_setting_field('power_address', "Power address", required=True),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         missing_packages = []

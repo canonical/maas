@@ -13,17 +13,14 @@ __all__ = [
     "ChassisFatalError",
     ]
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-)
+from abc import abstractmethod
 
 from jsonschema import validate
-from provisioningserver.drivers import (
-    JSON_SETTING_SCHEMA,
-    validate_settings,
+from provisioningserver.drivers import JSON_SETTING_SCHEMA
+from provisioningserver.drivers.power import (
+    PowerDriver,
+    PowerDriverBase,
 )
-from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.utils.registry import Registry
 
 
@@ -64,31 +61,10 @@ class ChassisActionError(ChassisError):
     or `discover`."""
 
 
-class ChassisDriverBase(metaclass=ABCMeta):
+class ChassisDriverBase(PowerDriverBase):
     """Base driver for a chassis driver."""
 
-    def __init__(self):
-        super(ChassisDriverBase, self).__init__()
-        validate_settings(self.get_schema())
-
-    @abstractproperty
-    def name(self):
-        """Name of the chassis driver."""
-
-    @abstractproperty
-    def description(self):
-        """Description of the chassis driver."""
-
-    @abstractproperty
-    def settings(self):
-        """List of settings for the chassis driver.
-
-        Each setting in this list will be different per user. They are passed
-        to the `discover`, `compose`, and `decompose` using the context. It is
-        up to the driver to read these options before performing the operation.
-        """
-
-    @abstractproperty
+    @abstractmethod
     def discover(self, system_id, context):
         """Discover the chassis resources.
 
@@ -96,7 +72,7 @@ class ChassisDriverBase(metaclass=ABCMeta):
         :param context: Chassis settings.
         `"""
 
-    @abstractproperty
+    @abstractmethod
     def compose(self, system_id, context):
         """Compose a node from parameters in context.
 
@@ -104,19 +80,13 @@ class ChassisDriverBase(metaclass=ABCMeta):
         :param context: Chassis settings.
         """
 
-    @abstractproperty
+    @abstractmethod
     def decompose(self, system_id, context):
         """Decompose a node.
 
         :param system_id: Chassis system_id.
         :param context:  Chassis settings.
         """
-
-    def get_schema(self):
-        """Returns the JSON schema for the driver."""
-        return dict(
-            name=self.name, description=self.description,
-            fields=self.settings)
 
 
 def get_error_message(err):
@@ -139,9 +109,12 @@ class ChassisDriverRegistry(Registry):
     """Registry for chassis drivers."""
 
     @classmethod
-    def get_schema(cls):
+    def get_schema(cls, detect_missing_packages=True):
         """Returns the full schema for the registry."""
-        schemas = [drivers.get_schema() for _, drivers in cls]
+        schemas = [
+            driver.get_schema(detect_missing_packages=detect_missing_packages)
+            for _, driver in cls
+        ]
         validate(schemas, JSON_CHASSIS_DRIVERS_SCHEMA)
         return schemas
 

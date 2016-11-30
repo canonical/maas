@@ -48,7 +48,7 @@ from maasserver.utils.orm import (
     reload_object,
 )
 from maastesting.twisted import always_succeed_with
-from provisioningserver.drivers import gen_power_types
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
@@ -76,7 +76,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
 
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         protocol = fixture.makeCluster(rack_controller, DescribePowerTypes)
-        self.power_types = list(gen_power_types())
+        self.power_types = PowerDriverRegistry.get_schema()
         protocol.DescribePowerTypes.side_effect = always_succeed_with(
             {'power_types': self.power_types})
         return protocol

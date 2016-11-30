@@ -5,7 +5,9 @@
 
 __all__ = []
 
+from operator import methodcaller
 import random
+import re
 from unittest.mock import sentinel
 
 from jsonschema import (
@@ -13,20 +15,158 @@ from jsonschema import (
     ValidationError,
 )
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver import drivers
 from provisioningserver.drivers import (
     Architecture,
     ArchitectureRegistry,
-    BootResourceRegistry,
-    JSON_SETTING_SCHEMA,
+    IP_EXTRACTOR_PATTERNS,
     make_setting_field,
     SETTING_PARAMETER_FIELD_SCHEMA,
-    validate_settings,
+    SETTING_SCOPE,
 )
 from provisioningserver.utils.testing import RegistryFixture
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    AfterPreprocessing,
+    ContainsAll,
+    Equals,
+    Is,
+    MatchesAll,
+    MatchesDict,
+    Not,
+)
+
+
+class TestIpExtractor(MAASTestCase):
+
+    scenarios = (
+        ("no-name", {
+            'val': 'http://:555/path',
+            'expected': {
+                'password': None, 'port': '555', 'path': '/path',
+                'query': None, 'address': '', 'user': None,
+                'schema': 'http'}}),
+        ("name-with-brackets", {
+            'val': 'http://[localhost]/path',
+            'expected': None}),
+        ("ipv4-with-brackets", {
+            'val': 'http://[127.0.0.1]/path',
+            'expected': None}),
+        ("ipv4-with-leading-bracket", {
+            'val': 'http://[127.0.0.1/path',
+            'expected': None}),
+        ("ipv4-with-trailing-bracket", {
+            'val': 'http://127.0.0.1]/path',
+            'expected': None}),
+        ("ipv6-no-brackets", {
+            'val': 'http://2001:db8::1/path',
+            'expected': None}),
+        ("name", {
+            'val': 'http://localhost:555/path',
+            'expected': {
+                'password': None, 'port': '555', 'path': '/path',
+                'query': None, 'address': 'localhost', 'user': None,
+                'schema': 'http'}}),
+        ("ipv4", {
+            'val': 'http://127.0.0.1:555/path',
+            'expected': {
+                'password': None, 'port': '555', 'path': '/path',
+                'query': None, 'address': '127.0.0.1', 'user': None,
+                'schema': 'http'}}),
+        ("ipv6-formatted-ipv4", {
+            'val': 'http://[::ffff:127.0.0.1]:555/path',
+            'expected': {
+                'password': None, 'port': '555', 'path': '/path',
+                'query': None, 'address': '::ffff:127.0.0.1', 'user': None,
+                'schema': 'http'}}),
+        ("ipv6", {
+            'val': 'http://[2001:db8::1]:555/path',
+            'expected': {
+                'password': None, 'port': '555', 'path': '/path',
+                'query': None, 'address': '2001:db8::1', 'user': None,
+                'schema': 'http'}}),
+        ("ipv4-no-slash", {
+            'val': 'http://127.0.0.1',
+            'expected': {
+                'password': None, 'port': None, 'path': None,
+                'query': None, 'address': '127.0.0.1', 'user': None,
+                'schema': 'http'}}),
+        ("name-no-slash", {
+            'val': 'http://localhost',
+            'expected': {
+                'password': None, 'port': None, 'path': None,
+                'query': None, 'address': 'localhost', 'user': None,
+                'schema': 'http'}}),
+        ("ipv6-no-slash", {
+            'val': 'http://[2001:db8::1]',
+            'expected': {
+                'password': None, 'port': None, 'path': None,
+                'query': None, 'address': '2001:db8::1', 'user': None,
+                'schema': 'http'}}),
+        ("ipv4-no-port", {
+            'val': 'http://127.0.0.1/path',
+            'expected': {
+                'password': None, 'port': None, 'path': '/path',
+                'query': None, 'address': '127.0.0.1', 'user': None,
+                'schema': 'http'}}),
+        ("name-no-port", {
+            'val': 'http://localhost/path',
+            'expected': {
+                'password': None, 'port': None, 'path': '/path',
+                'query': None, 'address': 'localhost', 'user': None,
+                'schema': 'http'}}),
+        ("ipv6-no-port", {
+            'val': 'http://[2001:db8::1]/path',
+            'expected': {
+                'password': None, 'port': None, 'path': '/path',
+                'query': None, 'address': '2001:db8::1', 'user': None,
+                'schema': 'http'}}),
+        ("user-pass-ipv4", {
+            'val': 'http://user:pass@127.0.0.1:555/path',
+            'expected': {
+                'password': 'pass', 'port': '555', 'path': '/path',
+                'query': None, 'address': '127.0.0.1', 'user': 'user',
+                'schema': 'http'}}),
+        ("user-pass-ipv6", {
+            'val': 'http://user:pass@[2001:db8::1]:555/path',
+            'expected': {
+                'password': 'pass', 'port': '555', 'path': '/path',
+                'query': None, 'address': '2001:db8::1', 'user': 'user',
+                'schema': 'http'}}),
+        ("user-pass-ipv4-no-port", {
+            'val': 'http://user:pass@127.0.0.1/path',
+            'expected': {
+                'password': 'pass', 'port': None, 'path': '/path',
+                'query': None, 'address': '127.0.0.1', 'user': 'user',
+                'schema': 'http'}}),
+        ("user-pass-ipv6-no-port", {
+            'val': 'http://user:pass@[2001:db8::1]/path',
+            'expected': {
+                'password': 'pass', 'port': None, 'path': '/path',
+                'query': None, 'address': '2001:db8::1', 'user': 'user',
+                'schema': 'http'}}),
+    )
+
+    def get_expected_matcher(self):
+        if self.expected is None:
+            return Is(None)
+        else:
+            expected = {
+                key: Equals(value)
+                for key, value in self.expected.items()
+            }
+            return MatchesAll(
+                Not(Is(None)),
+                AfterPreprocessing(
+                    methodcaller("groupdict"),
+                    MatchesDict(expected),
+                    annotate=False,
+                ),
+                first_only=True,
+            )
+
+    def test_make_ip_extractor(self):
+        actual = re.match(IP_EXTRACTOR_PATTERNS.URL, self.val)
+        self.assertThat(actual, self.get_expected_matcher())
 
 
 class TestMakeSettingField(MAASTestCase):
@@ -44,7 +184,7 @@ class TestMakeSettingField(MAASTestCase):
             setting,
             ContainsAll([
                 'name', 'label', 'required',
-                'field_type', 'choices', 'default']))
+                'field_type', 'choices', 'default', 'scope']))
 
     def test_defaults_field_type_to_string(self):
         setting = make_setting_field(
@@ -79,25 +219,17 @@ class TestMakeSettingField(MAASTestCase):
         default = factory.make_name('default')
         setting = make_setting_field(
             name, label, field_type=field_type,
-            choices=choices, default=default, required=True)
+            choices=choices, default=default, required=True,
+            scope=SETTING_SCOPE.NODE)
         self.assertItemsEqual({
             'name': name,
             'label': label,
             'field_type': field_type,
             'choices': choices,
             'default': default,
-            'required': True
+            'required': True,
+            'scope': SETTING_SCOPE.NODE,
             }, setting)
-
-
-class TestValidateSettings(MAASTestCase):
-
-    def test_calls_validate(self):
-        mock_validate = self.patch(drivers, 'validate')
-        validate_settings(sentinel.settings)
-        self.assertThat(
-            mock_validate,
-            MockCalledOnceWith(sentinel.settings, JSON_SETTING_SCHEMA))
 
 
 class TestRegistries(MAASTestCase):
@@ -106,13 +238,6 @@ class TestRegistries(MAASTestCase):
         super(TestRegistries, self).setUp()
         # Ensure the global registry is empty for each test run.
         self.useFixture(RegistryFixture())
-
-    def test_bootresource_registry(self):
-        self.assertItemsEqual([], BootResourceRegistry)
-        BootResourceRegistry.register_item("resource", sentinel.resource)
-        self.assertIn(
-            sentinel.resource,
-            (item for name, item in BootResourceRegistry))
 
     def test_architecture_registry(self):
         self.assertItemsEqual([], ArchitectureRegistry)
@@ -142,38 +267,3 @@ class TestRegistries(MAASTestCase):
         ArchitectureRegistry.register_item("arch2", arch2)
         self.assertEqual(
             None, ArchitectureRegistry.get_by_pxealias("stinkywinky"))
-
-    def test_gen_power_types(self):
-
-        from provisioningserver.drivers import power
-        from provisioningserver.power import schema
-
-        class TestGenPowerTypesPowerDriver(power.PowerDriver):
-            name = 'test_gen_power_types'
-            description = "test_gen_power_types Power Driver."
-            settings = []
-
-            def detect_missing_packages(self):
-                # these packages are forever missing
-                return ['fake-package-one', 'fake-package-two']
-
-            def power_on(self, system_id, **kwargs):
-                raise NotImplementedError
-
-            def power_off(self, system_id, **kwargs):
-                raise NotImplementedError
-
-            def power_query(self, system_id, **kwargs):
-                raise NotImplementedError
-
-        # add my fake driver
-        driver = TestGenPowerTypesPowerDriver()
-        power.power_drivers_by_name[driver.name] = driver
-        schema.JSON_POWER_TYPE_PARAMETERS += [{'name': "test_gen_power_types"}]
-
-        # make sure fake packages are reported missing
-        power_types = list(drivers.gen_power_types())
-        self.assertEqual(17, len(power_types))
-        self.assertItemsEqual(
-            ['fake-package-one', 'fake-package-two'],
-            power_types[-1].get('missing_packages'))

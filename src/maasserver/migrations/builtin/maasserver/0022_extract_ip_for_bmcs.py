@@ -8,7 +8,7 @@ from django.db import (
 )
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import timestampedmodel
-from provisioningserver.power.schema import POWER_TYPE_PARAMETERS_BY_NAME
+from provisioningserver.drivers.power import PowerDriverRegistry
 
 # Derived from Subnet model.
 def raw_subnet_id_containing_ip(ip):
@@ -38,10 +38,13 @@ def extract_ip_address(power_type, power_parameters):
     # power_address field, returns None.
     if not power_type or not power_parameters:
         return None
-    power_type_parameters = POWER_TYPE_PARAMETERS_BY_NAME.get(power_type)
+    power_driver = PowerDriverRegistry.get_item(power_type)
+    if power_driver is None:
+        return None
+    power_type_parameters = power_driver.settings
     if not power_type_parameters:
         return None
-    ip_extractor = power_type_parameters.get('ip_extractor')
+    ip_extractor = power_driver.ip_extractor
     if not ip_extractor:
         return None
     field_value = power_parameters.get(ip_extractor.get('field_name'))

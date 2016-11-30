@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
-from provisioningserver.power import schema
+from provisioningserver.drivers.power import PowerDriverRegistry
 from testtools import monkey
 
 
@@ -26,7 +26,9 @@ class StaticPowerTypesFixture(Fixture):
         super(StaticPowerTypesFixture, self).setUp()
         # This patch prevents communication with a non-existent cluster
         # controller when fetching power types.
+        power_types = PowerDriverRegistry.get_schema(
+            detect_missing_packages=False)
         restore = monkey.patch(
             power_parameters, 'get_all_power_types_from_clusters',
-            Mock(return_value=schema.JSON_POWER_TYPE_PARAMETERS))
+            Mock(return_value=power_types))
         self.addCleanup(restore)

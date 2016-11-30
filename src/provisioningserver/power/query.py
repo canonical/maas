@@ -13,7 +13,6 @@ import sys
 
 from provisioningserver import power
 from provisioningserver.drivers.power import (
-    power_drivers_by_name,
     PowerDriverRegistry,
     PowerError,
 )
@@ -72,7 +71,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     # Capture errors as we go along.
     exc_info = None, None, None
 
-    power_driver = power_drivers_by_name.get(power_type)
+    power_driver = PowerDriverRegistry.get_item(power_type)
     if power_driver is None:
         raise PowerActionFail(
             "Unknown power_type '%s'" % power_type)

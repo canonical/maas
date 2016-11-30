@@ -25,12 +25,9 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.rpc import getAllClients
+from provisioningserver.drivers import SETTING_SCOPE
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.power.schema import (
-    POWER_FIELDS_BY_TYPE,
-    POWER_PARAMETER_SCOPE,
-    POWER_TYPE_PARAMETERS_BY_NAME,
-)
 
 
 maaslog = get_maas_logger("node")
@@ -125,16 +122,20 @@ class BMC(CleanSave, TimestampedModel):
         if not power_type:
             # If there is no power type, treat all params as node params.
             return ({}, power_params)
-        power_fields = POWER_FIELDS_BY_TYPE.get(power_type)
+        power_driver = PowerDriverRegistry.get_item(power_type)
+        if power_driver is None:
+            # If there is no power driver, treat all params as node params.
+            return ({}, power_params)
+        power_fields = power_driver.settings
         if not power_fields:
             # If there is no parameter info, treat all params as node params.
             return ({}, power_params)
         bmc_params = {}
         node_params = {}
         for param_name in power_params:
-            power_field = power_fields.get(param_name)
+            power_field = power_driver.get_setting(param_name)
             if (power_field and
-                    power_field.get('scope') == POWER_PARAMETER_SCOPE.BMC):
+                    power_field.get('scope') == SETTING_SCOPE.BMC):
                 bmc_params[param_name] = power_params[param_name]
             else:
                 node_params[param_name] = power_params[param_name]
@@ -148,12 +149,17 @@ class BMC(CleanSave, TimestampedModel):
         if not power_type or not power_parameters:
             # Nothing to extract.
             return None
-        power_type_parameters = POWER_TYPE_PARAMETERS_BY_NAME.get(power_type)
+        power_driver = PowerDriverRegistry.get_item(power_type)
+        if power_driver is None:
+            maaslog.warning(
+                "No power driver for power type %s" % power_type)
+            return None
+        power_type_parameters = power_driver.settings
         if not power_type_parameters:
             maaslog.warning(
-                "No POWER_TYPE_PARAMETERS for power type %s" % power_type)
+                "No power driver settings for power type %s" % power_type)
             return None
-        ip_extractor = power_type_parameters.get('ip_extractor')
+        ip_extractor = power_driver.ip_extractor
         if not ip_extractor:
             maaslog.info(
                 "No IP extractor configured for power type %s. "

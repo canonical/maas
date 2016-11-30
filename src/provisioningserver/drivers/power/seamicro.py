@@ -5,6 +5,11 @@
 
 __all__ = []
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.hardware.seamicro import (
     power_control_seamicro15k_v09,
     power_control_seamicro15k_v2,
@@ -20,6 +25,13 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
 )
 
+# Power control choices for sm15k power type
+SM15K_POWER_CONTROL_CHOICES = [
+    ["ipmi", "IPMI"],
+    ["restapi", "REST API v0.9"],
+    ["restapi2", "REST API v2.0"],
+    ]
+
 
 def extract_seamicro_parameters(context):
     ip = context.get('power_address')
@@ -33,8 +45,21 @@ def extract_seamicro_parameters(context):
 class SeaMicroPowerDriver(PowerDriver):
 
     name = 'sm15k'
-    description = "SeaMicro Power Driver."
-    settings = []
+    description = "SeaMicro 15000"
+    settings = [
+        make_setting_field(
+            'system_id', "System ID", scope=SETTING_SCOPE.NODE,
+            required=True),
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+        make_setting_field(
+            'power_control', "Power control type", field_type='choice',
+            choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi',
+            required=True),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         if not shell.has_command_available('ipmitool'):

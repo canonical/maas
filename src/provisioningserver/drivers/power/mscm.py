@@ -23,6 +23,11 @@ from paramiko import (
     SSHClient,
     SSHException,
 )
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
@@ -59,8 +64,20 @@ class MSCMState:
 class MSCMPowerDriver(PowerDriver):
 
     name = 'mscm'
-    description = "Moonshot HP iLO Chassis Manager Power Driver."
-    settings = []
+    description = "HP Moonshot - iLO Chassis Manager"
+    settings = [
+        make_setting_field(
+            'power_address', "IP for MSCM CLI API", required=True),
+        make_setting_field('power_user', "MSCM CLI API user"),
+        make_setting_field(
+            'power_pass', "MSCM CLI API password", field_type='password'),
+        make_setting_field(
+            'node_id',
+            "Node ID - Must adhere to cXnY format "
+            "(X=cartridge number, Y=node number).",
+            scope=SETTING_SCOPE.NODE, required=True),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         # uses pure-python paramiko ssh client - nothing to look for!

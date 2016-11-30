@@ -5,6 +5,12 @@
 
 __all__ = []
 
+from provisioningserver.drivers import (
+    IP_EXTRACTOR_PATTERNS,
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.hardware.ucsm import (
     power_control_ucsm,
     power_state_ucsm,
@@ -23,8 +29,18 @@ def extract_ucsm_parameters(context):
 class UCSMPowerDriver(PowerDriver):
 
     name = 'ucsm'
-    description = "Cisco UCS Power Driver."
-    settings = []
+    description = "Cisco UCS Manager"
+    settings = [
+        make_setting_field(
+            'uuid', "Server UUID", scope=SETTING_SCOPE.NODE,
+            required=True),
+        make_setting_field('power_address', "URL for XML API", required=True),
+        make_setting_field('power_user', "API user"),
+        make_setting_field(
+            'power_pass', "API password", field_type='password'),
+    ]
+    ip_extractor = make_ip_extractor(
+        'power_address', IP_EXTRACTOR_PATTERNS.URL)
 
     def detect_missing_packages(self):
         # uses urllib2 http client - nothing to look for!

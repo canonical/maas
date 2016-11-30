@@ -8,6 +8,11 @@ __all__ = []
 
 import re
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
@@ -23,8 +28,17 @@ from provisioningserver.utils.shell import (
 class MoonshotIPMIPowerDriver(PowerDriver):
 
     name = 'moonshot'
-    description = "Moonshot IPMI Power Driver."
-    settings = []
+    description = "HP Moonshot - iLO4 (IPMI)"
+    settings = [
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+        make_setting_field(
+            'power_hwaddress', "Power hardware address",
+            scope=SETTING_SCOPE.NODE, required=True),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         if not shell.has_command_available('ipmitool'):

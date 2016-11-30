@@ -8,6 +8,11 @@ __all__ = []
 import re
 from time import sleep
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
@@ -23,8 +28,18 @@ from provisioningserver.utils.shell import (
 
 class DLIPowerDriver(PowerDriver):
     name = 'dli'
-    description = "DLI Power Driver."
-    settings = []
+    description = "Digital Loggers, Inc. PDU"
+    settings = [
+        make_setting_field(
+            'outlet_id', "Outlet ID", scope=SETTING_SCOPE.NODE,
+            required=True),
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
+    queryable = False
 
     def detect_missing_packages(self):
         if not shell.has_command_available('wget'):

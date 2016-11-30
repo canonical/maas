@@ -5,6 +5,12 @@
 
 __all__ = []
 
+from provisioningserver.drivers import (
+    IP_EXTRACTOR_PATTERNS,
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.hardware.virsh import (
     power_control_virsh,
     power_state_virsh,
@@ -27,8 +33,18 @@ def extract_virsh_parameters(context):
 class VirshPowerDriver(PowerDriver):
 
     name = 'virsh'
-    description = "Virsh Power Driver."
-    settings = []
+    description = "Virsh (virtual systems)"
+    settings = [
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field(
+            'power_id', "Power ID", scope=SETTING_SCOPE.NODE,
+            required=True),
+        make_setting_field(
+            'power_pass', "Power password (optional)",
+            required=False, field_type='password'),
+    ]
+    ip_extractor = make_ip_extractor(
+        'power_address', IP_EXTRACTOR_PATTERNS.URL)
 
     def detect_missing_packages(self):
         missing_packages = set()

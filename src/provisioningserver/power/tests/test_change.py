@@ -25,7 +25,6 @@ from maastesting.twisted import (
 from provisioningserver import power
 from provisioningserver.drivers.power import (
     get_error_message as get_driver_error_message,
-    power_drivers_by_name,
     PowerDriverRegistry,
     PowerError,
 )
@@ -177,7 +176,11 @@ class TestChangePowerState(MAASTestCase):
     def test___handles_power_driver_power_types(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
@@ -193,14 +196,14 @@ class TestChangePowerState(MAASTestCase):
         yield self.patch_rpc_methods()
 
         yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
 
         self.expectThat(
             perform_power_driver_change, MockCalledOnceWith(
-                system_id, hostname, power_type, power_change, context))
+                system_id, hostname, power_driver.name, power_change, context))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
-                system_id, hostname, power_type, context))
+                system_id, hostname, power_driver.name, context))
         self.expectThat(
             power_change_success, MockCalledOnceWith(
                 system_id, hostname, power_change))
@@ -209,7 +212,11 @@ class TestChangePowerState(MAASTestCase):
     def test__calls_power_driver_on_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = 'on'
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
@@ -223,12 +230,12 @@ class TestChangePowerState(MAASTestCase):
         yield self.patch_rpc_methods()
 
         result = yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
-                system_id, hostname, power_type, context))
+                system_id, hostname, power_driver.name, context))
         self.expectThat(
             power.change.power_change_success, MockCalledOnceWith(
                 system_id, hostname, power_change))
@@ -238,7 +245,11 @@ class TestChangePowerState(MAASTestCase):
     def test__calls_power_driver_off_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = 'off'
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
@@ -252,12 +263,12 @@ class TestChangePowerState(MAASTestCase):
         yield self.patch_rpc_methods()
 
         result = yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
-                system_id, hostname, power_type, context))
+                system_id, hostname, power_driver.name, context))
         self.expectThat(
             power.change.power_change_success, MockCalledOnceWith(
                 system_id, hostname, power_change))
@@ -267,7 +278,11 @@ class TestChangePowerState(MAASTestCase):
     def test__calls_power_driver_cycle_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = 'cycle'
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
@@ -281,12 +296,12 @@ class TestChangePowerState(MAASTestCase):
         yield self.patch_rpc_methods()
 
         result = yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
 
-        self.expectThat(get_item, MockCalledOnceWith(power_type))
+        self.expectThat(get_item, MockCalledOnceWith(power_driver.name))
         self.expectThat(
             perform_power_driver_query, MockCalledOnceWith(
-                system_id, hostname, power_type, context))
+                system_id, hostname, power_driver.name, context))
         self.expectThat(
             power.change.power_change_success, MockCalledOnceWith(
                 system_id, hostname, 'on'))
@@ -296,7 +311,11 @@ class TestChangePowerState(MAASTestCase):
     def test__marks_the_node_broken_if_exception_for_power_driver(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = 'on'
         context = {
             factory.make_name('context-key'): factory.make_name('context-val'),
@@ -312,7 +331,7 @@ class TestChangePowerState(MAASTestCase):
 
         with ExpectedException(PowerError):
             yield power.change.change_power_state(
-                system_id, hostname, power_type, power_change, context)
+                system_id, hostname, power_driver.name, power_change, context)
 
         error_message = "Power on for the node failed: %s" % (
             get_driver_error_message(exception))
@@ -328,7 +347,7 @@ class TestMaybeChangePowerState(MAASTestCase):
     def setUp(self):
         super(TestMaybeChangePowerState, self).setUp()
         self.patch(power, 'power_action_registry', {})
-        for power_driver in power_drivers_by_name.values():
+        for _, power_driver in PowerDriverRegistry:
             self.patch(
                 power_driver, "detect_missing_packages").return_value = []
         self.useFixture(EventTypesAllRegistered())
@@ -341,9 +360,13 @@ class TestMaybeChangePowerState(MAASTestCase):
 
     def test_always_returns_deferred(self):
         clock = Clock()
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         d = power.change.maybe_change_power_state(
-            sentinel.system_id, sentinel.hostname, power_type,
+            sentinel.system_id, sentinel.hostname, power_driver.name,
             random.choice(("on", "off")), sentinel.context, clock=clock)
         self.assertThat(d, IsInstance(Deferred))
 
@@ -353,14 +376,18 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         self.assertEqual(
             {system_id: (power_change, ANY)},
             power.power_action_registry)
@@ -373,14 +400,17 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
-        power_driver = power_drivers_by_name.get(power_type)
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             power_driver.detect_missing_packages, MockCalledOnceWith())
@@ -391,16 +421,19 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
-        power_driver = power_drivers_by_name.get(power_type)
         power_driver.detect_missing_packages.return_value = ['gone']
         with ExpectedException(exceptions.PowerActionFail):
             yield power.change.maybe_change_power_state(
-                system_id, hostname, power_type, power_change, context)
+                system_id, hostname, power_driver.name, power_change, context)
         self.assertThat(
             power_driver.detect_missing_packages, MockCalledOnceWith())
 
@@ -408,7 +441,11 @@ class TestMaybeChangePowerState(MAASTestCase):
     def test_errors_when_change_conflicts_with_in_progress_change(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_changes = ['on', 'off']
         random.shuffle(power_changes)
         current_power_change, power_change = power_changes
@@ -419,13 +456,17 @@ class TestMaybeChangePowerState(MAASTestCase):
             current_power_change, sentinel.d)
         with ExpectedException(exceptions.PowerActionAlreadyInProgress):
             yield power.change.maybe_change_power_state(
-                system_id, hostname, power_type, power_change, context)
+                system_id, hostname, power_driver.name, power_change, context)
 
     @inlineCallbacks
     def test_does_nothing_when_change_matches_in_progress_change(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         current_power_change = power_change = (
             random.choice(['on', 'off', 'cycle']))
         context = {
@@ -434,7 +475,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         power.power_action_registry[system_id] = (
             current_power_change, sentinel.d)
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         self.assertThat(power.power_action_registry, Equals(
             {system_id: (power_change, sentinel.d)}))
 
@@ -444,19 +485,23 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             power.change.change_power_state,
             MockCalledOnceWith(
-                system_id, hostname, power_type, power_change, context,
+                system_id, hostname, power_driver.name, power_change, context,
                 power.change.reactor))
 
     @inlineCallbacks
@@ -465,14 +510,18 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertNotIn(system_id, power.power_action_registry)
 
@@ -487,14 +536,18 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = sentinel.context
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertNotIn(system_id, power.power_action_registry)
         self.assertDocTestMatches(
@@ -516,14 +569,18 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = sentinel.context
 
         logger = self.useFixture(TwistedLoggerFixture())
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
 
         # Get the Deferred from the registry and cancel it.
         _, d = power.power_action_registry[system_id]
@@ -547,17 +604,22 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         power_change = random.choice(['on', 'off', 'cycle'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
 
         yield power.change.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
+            system_id, hostname, power_driver.name, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
         self.assertThat(
             defer_with_timeout, MockCalledOnceWith(
                 power.change.CHANGE_POWER_STATE_TIMEOUT,
                 power.change.change_power_state, system_id, hostname,
-                power_type, power_change, context, power.change.reactor))
+                power_driver.name, power_change,
+                context, power.change.reactor))

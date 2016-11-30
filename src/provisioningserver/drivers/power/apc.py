@@ -15,6 +15,11 @@ from subprocess import (
 )
 from time import sleep
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
@@ -34,8 +39,18 @@ class APCState:
 class APCPowerDriver(PowerDriver):
 
     name = 'apc'
-    description = "APC Power Driver."
-    settings = []
+    description = "American Power Conversion (APC) PDU"
+    settings = [
+        make_setting_field('power_address', "IP for APC PDU", required=True),
+        make_setting_field(
+            'node_outlet', "APC PDU node outlet number (1-16)",
+            scope=SETTING_SCOPE.NODE, required=True),
+        make_setting_field(
+            'power_on_delay', "Power ON outlet delay (seconds)",
+            default='5'),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
+    queryable = False
 
     def detect_missing_packages(self):
         binary, package = ['snmpset', 'snmp']

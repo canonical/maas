@@ -27,17 +27,14 @@ from apiclient.utils import ascii_url
 from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.drivers import (
-    ArchitectureRegistry,
-    gen_power_types,
-)
+from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
-from provisioningserver.drivers.power import power_drivers_by_name
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.logger import (
@@ -299,7 +296,7 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
         return {
-            'power_types': list(gen_power_types()),
+            'power_types': list(PowerDriverRegistry.get_schema()),
         }
 
     @cluster.ListSupportedArchitectures.responder
@@ -393,7 +390,7 @@ class Cluster(RPCProtocol):
     @cluster.PowerDriverCheck.responder
     def power_driver_check(self, power_type):
         """Return a list of missing power driver packages, if any."""
-        driver = power_drivers_by_name.get(power_type)
+        driver = PowerDriverRegistry.get_item(power_type)
         if driver is None:
             raise exceptions.UnknownPowerType(
                 "No driver found for power type '%s'" % power_type)

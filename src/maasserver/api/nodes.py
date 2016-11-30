@@ -49,7 +49,7 @@ from maasserver.models import (
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from piston3.utils import rc
-from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
+from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 
 
 def store_node_power_parameters(node, request):

@@ -11,6 +11,7 @@ from unittest.mock import (
     sentinel,
 )
 
+from jsonschema import validate
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -20,9 +21,9 @@ from maastesting.matchers import (
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import (
+    JSON_SETTING_SCHEMA,
     make_setting_field,
     power,
-    validate_settings,
 )
 from provisioningserver.drivers.power import (
     get_error_message,
@@ -49,6 +50,8 @@ class FakePowerDriverBase(PowerDriverBase):
     name = ""
     description = ""
     settings = []
+    ip_extractor = None
+    queryable = True
 
     def __init__(self, name, description, settings):
         self.name = name
@@ -67,6 +70,9 @@ class FakePowerDriverBase(PowerDriverBase):
 
     def query(self, system_id, context):
         raise NotImplementedError
+
+    def detect_missing_packages(self):
+        return []
 
 
 def make_power_driver_base(name=None, description=None, settings=None):
@@ -161,13 +167,15 @@ class TestPowerDriverBase(MAASTestCase):
             'name': fake_name,
             'description': fake_description,
             'fields': fake_settings,
+            'queryable': fake_driver.queryable,
+            'missing_packages': fake_driver.detect_missing_packages(),
             },
             fake_driver.get_schema())
 
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_power_driver_base()
         #: doesn't raise ValidationError
-        validate_settings(fake_driver.get_schema())
+        validate(fake_driver.get_schema(), JSON_SETTING_SCHEMA)
 
 
 class TestPowerDriverRegistry(MAASTestCase):
@@ -196,11 +204,15 @@ class TestPowerDriverRegistry(MAASTestCase):
                 'name': fake_driver_one.name,
                 'description': fake_driver_one.description,
                 'fields': [],
+                'queryable': fake_driver_one.queryable,
+                'missing_packages': fake_driver_one.detect_missing_packages(),
             },
             {
                 'name': fake_driver_two.name,
                 'description': fake_driver_two.description,
                 'fields': [],
+                'queryable': fake_driver_two.queryable,
+                'missing_packages': fake_driver_two.detect_missing_packages(),
             }],
             PowerDriverRegistry.get_schema())
 
@@ -243,6 +255,8 @@ class FakePowerDriver(PowerDriver):
     name = ""
     description = ""
     settings = []
+    ip_extractor = None
+    queryable = True
 
     def __init__(self, name, description, settings, wait_time=None,
                  clock=reactor):
@@ -254,7 +268,7 @@ class FakePowerDriver(PowerDriver):
         super(FakePowerDriver, self).__init__(clock)
 
     def detect_missing_packages(self):
-        raise NotImplementedError
+        return []
 
     def power_on(self, system_id, context):
         raise NotImplementedError

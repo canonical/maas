@@ -33,7 +33,7 @@ from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.drivers.power import PowerDriverRegistry
 
 
 def accumulate_api_resources(resolver, accumulator):
@@ -77,8 +77,7 @@ def find_api_resources(urlconf=None):
 def generate_power_types_doc():
     """Generate ReST documentation for the supported power types.
 
-    The documentation is derived from the `JSON_POWER_TYPE_PARAMETERS`
-    object.
+    The documentation is derived from the `PowerDriverRegistry`.
     """
     output = StringIO()
     line = partial(print, file=output)
@@ -92,14 +91,14 @@ def generate_power_types_doc():
          "list if the cluster in question is from an older version of "
          "MAAS.")
     line()
-    for item in JSON_POWER_TYPE_PARAMETERS:
-        title = "%s (%s)" % (item['name'], item['description'])
+    for _, driver in PowerDriverRegistry:
+        title = "%s (%s)" % (driver.name, driver.description)
         line(title)
         line('=' * len(title))
         line('')
         line("Power parameters:")
         line('')
-        for field in item['fields']:
+        for field in driver.settings:
             field_description = []
             field_description.append(
                 "* %s (%s)." % (field['name'], field['label']))

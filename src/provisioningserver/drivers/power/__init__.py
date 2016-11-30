@@ -26,10 +26,7 @@ from datetime import timedelta
 import sys
 
 from jsonschema import validate
-from provisioningserver.drivers import (
-    JSON_SETTING_SCHEMA,
-    validate_settings,
-)
+from provisioningserver.drivers import JSON_SETTING_SCHEMA
 from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import pause
 from twisted.internet import reactor
@@ -38,6 +35,12 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.threads import deferToThread
+
+# We specifically declare this here so that a node not knowing its own
+# powertype won't fail to enlist. However, we don't want it in the list
+# of power types since setting a node's power type to "I don't know"
+# from another type doens't make any sense.
+UNKNOWN_POWER_TYPE = ''
 
 # A policy used when waiting between retries of power changes.
 DEFAULT_WAITING_POLICY = (1, 2, 2, 4, 6, 8, 12)
@@ -114,7 +117,9 @@ class PowerDriverBase(metaclass=ABCMeta):
 
     def __init__(self):
         super(PowerDriverBase, self).__init__()
-        validate_settings(self.get_schema())
+        validate(
+            self.get_schema(detect_missing_packages=False),
+            JSON_SETTING_SCHEMA)
 
     @abstractproperty
     def name(self):
@@ -131,6 +136,24 @@ class PowerDriverBase(metaclass=ABCMeta):
         Each setting in this list will be different per user. They are passed
         to the `on`, `off`, and `query` using the context. It is up
         to the driver to read these options before performing the operation.
+        """
+
+    @abstractproperty
+    def ip_extractor(self):
+        """IP extractor.
+
+        Name of the settings field and python REGEX pattern for extracting IP
+        the address from the value.
+        """
+
+    @abstractproperty
+    def queryable(self):
+        """Whether or not the power driver is queryable."""
+
+    @abstractmethod
+    def detect_missing_packages(self):
+        """Implement this method for the actual implementation
+        of the check for the driver's missing support packages.
         """
 
     @abstractmethod
@@ -169,11 +192,27 @@ class PowerDriverBase(metaclass=ABCMeta):
             calling function should ignore this error, and continue on.
         """
 
-    def get_schema(self):
-        """Returns the JSON schema for the driver."""
-        return dict(
+    def get_schema(self, detect_missing_packages=True):
+        """Returns the JSON schema for the driver.
+
+        Calculates the missing packages on each invoke.
+        """
+        schema = dict(
             name=self.name, description=self.description,
-            fields=self.settings)
+            fields=self.settings, queryable=self.queryable,
+            missing_packages=(
+                self.detect_missing_packages()
+                if detect_missing_packages else []))
+        if self.ip_extractor is not None:
+            schema['ip_extractor'] = self.ip_extractor
+        return schema
+
+    def get_setting(self, name):
+        """Return the setting field by its name."""
+        for setting in self.settings:
+            if setting['name'] == name:
+                return setting
+        return None
 
 
 def get_error_message(err):
@@ -196,15 +235,10 @@ class PowerDriver(PowerDriverBase):
     """Default power driver logic."""
 
     wait_time = DEFAULT_WAITING_POLICY
+    queryable = True
 
     def __init__(self, clock=reactor):
         self.clock = reactor
-
-    @abstractmethod
-    def detect_missing_packages(self):
-        """Implement this method for the actual implementation
-        of the check for the driver's missing support packages.
-        """
 
     @abstractmethod
     def power_on(self, system_id, context):
@@ -330,9 +364,12 @@ class PowerDriverRegistry(Registry):
     """Registry for power drivers."""
 
     @classmethod
-    def get_schema(cls):
+    def get_schema(cls, detect_missing_packages=True):
         """Returns the full schema for the registry."""
-        schemas = [drivers.get_schema() for _, drivers in cls]
+        schemas = [
+            driver.get_schema(detect_missing_packages=detect_missing_packages)
+            for _, driver in cls
+        ]
         validate(schemas, JSON_POWER_DRIVERS_SCHEMA)
         return schemas
 
@@ -374,7 +411,3 @@ power_drivers = [
 ]
 for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
-
-power_drivers_by_name = {
-    d.name: d for d in power_drivers
-}

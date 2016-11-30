@@ -158,12 +158,12 @@ from netaddr import (
 )
 import petname
 from piston3.models import Token
+from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.refresh import (
     get_sys_info,
     refresh,
@@ -2063,7 +2063,11 @@ class Node(CleanSave, TimestampedModel):
             else:
                 can_be_started = True
                 can_be_stopped = True
-            can_be_queried = power_type in QUERY_POWER_TYPES
+            power_driver = PowerDriverRegistry.get_item(power_type)
+            if power_driver is not None:
+                can_be_queried = power_driver.queryable
+            else:
+                can_be_queried = False
             return PowerInfo(
                 can_be_started, can_be_stopped, can_be_queried,
                 power_type, power_params,

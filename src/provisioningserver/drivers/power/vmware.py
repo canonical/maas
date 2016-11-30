@@ -5,6 +5,11 @@
 
 __all__ = []
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.hardware import vmware
 from provisioningserver.drivers.hardware.vmware import (
     power_control_vmware,
@@ -32,8 +37,26 @@ def extract_vmware_parameters(context):
 class VMwarePowerDriver(PowerDriver):
 
     name = 'vmware'
-    description = "VMware Power Driver."
-    settings = []
+    description = "VMware"
+    settings = [
+        make_setting_field(
+            'power_vm_name', "VM Name (if UUID unknown)", required=False,
+            scope=SETTING_SCOPE.NODE),
+        make_setting_field(
+            'power_uuid', "VM UUID (if known)", required=False,
+            scope=SETTING_SCOPE.NODE),
+        make_setting_field('power_address', "VMware hostname", required=True),
+        make_setting_field('power_user', "VMware username", required=True),
+        make_setting_field(
+            'power_pass', "VMware password", field_type='password',
+            required=True),
+        make_setting_field(
+            'power_port', "VMware API port (optional)", required=False),
+        make_setting_field(
+            'power_protocol', "VMware API protocol (optional)",
+            required=False),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         if not vmware.try_pyvmomi_import():

@@ -12,6 +12,11 @@ from subprocess import (
 )
 from tempfile import NamedTemporaryFile
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
     PowerAuthError,
@@ -149,11 +154,35 @@ IPMI_ERRORS = {
 maaslog = get_maas_logger("drivers.power.ipmi")
 
 
+class IPMI_DRIVER:
+    DEFAULT = ''
+    LAN = 'LAN'
+    LAN_2_0 = 'LAN_2_0'
+
+
+IPMI_DRIVER_CHOICES = [
+    [IPMI_DRIVER.LAN, "LAN [IPMI 1.5]"],
+    [IPMI_DRIVER.LAN_2_0, "LAN_2_0 [IPMI 2.0]"],
+    ]
+
+
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
-    description = "IPMI Power Driver."
-    settings = []
+    description = "IPMI"
+    settings = [
+        make_setting_field(
+            'power_driver', "Power driver", field_type='choice',
+            choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0,
+            required=True),
+        make_setting_field('power_address', "IP address", required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+        make_setting_field(
+            'mac_address', "Power MAC", scope=SETTING_SCOPE.NODE)
+    ]
+    ip_extractor = make_ip_extractor('power_address')
     wait_time = (4, 8, 12)
 
     def detect_missing_packages(self):

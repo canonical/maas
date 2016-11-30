@@ -2,10 +2,8 @@
 
 from django.db import migrations
 from maasserver.models import timestampedmodel
-from provisioningserver.power.schema import (
-    POWER_FIELDS_BY_TYPE,
-    POWER_PARAMETER_SCOPE,
-)
+from provisioningserver.drivers import SETTING_SCOPE
+from provisioningserver.drivers.power import PowerDriverRegistry
 
 # Copied from BMC model.
 def scope_power_parameters(power_type, power_params):
@@ -14,16 +12,20 @@ def scope_power_parameters(power_type, power_params):
     if not power_type:
         # If there is no power type, treat all params as node params.
         return ({}, power_params)
-    power_fields = POWER_FIELDS_BY_TYPE.get(power_type)
+    power_driver = PowerDriverRegistry.get_item(power_type)
+    if power_driver is None:
+        # If there is no power driver, treat all params as node params.
+        return ({}, power_params)
+    power_fields = power_driver.settings
     if not power_fields:
         # If there is no parameter info, treat all params as node params.
         return ({}, power_params)
     bmc_params = {}
     node_params = {}
     for param_name in power_params:
-        power_field = power_fields.get(param_name)
+        power_field = power_driver.get_setting(param_name)
         if power_field and power_field.get(
-                'scope') == POWER_PARAMETER_SCOPE.BMC:
+                'scope') == SETTING_SCOPE.BMC:
             bmc_params[param_name] = power_params[param_name]
         else:
             node_params[param_name] = power_params[param_name]

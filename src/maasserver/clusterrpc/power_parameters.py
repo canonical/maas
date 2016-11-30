@@ -14,7 +14,7 @@ selected power_type.  The classes in this module are used to associate each
 power type with a set of power parameters.
 
 The power types are retrieved from the cluster controllers using the json
-schema provisioningserver.power_schema.JSON_POWER_TYPE_SCHEMA.  To add new
+schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA.  To add new
 parameters requires changes to hardware drivers that run in the cluster
 controllers.
 """
@@ -33,10 +33,8 @@ from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.utils.forms import compose_invalid_choice_text
-from provisioningserver.power.schema import (
-    JSON_POWER_TYPE_SCHEMA,
-    POWER_TYPE_PARAMETER_FIELD_SCHEMA,
-)
+from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
+from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.rpc import cluster
 
 
@@ -93,10 +91,10 @@ def add_power_type_parameters(
     :type description: string
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
-        POWER_TYPE_PARAMETER_FIELD_SCHEMA.
+        SETTING_PARAMETER_FIELD_SCHEMA.
     :param missing_packages: System packages that must be installed on
         the cluster before the power type can be used.
-    :type fields: list of `make_json_field` results.
+    :type fields: list of `make_setting_field` results.
     :param parameters_set: An existing list of power type parameters to
         mutate.
     :type parameters_set: list
@@ -107,7 +105,7 @@ def add_power_type_parameters(
     field_set_schema = {
         'title': "Power type parameters field set schema",
         'type': 'array',
-        'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
+        'items': SETTING_PARAMETER_FIELD_SCHEMA,
     }
     validate(fields, field_set_schema)
     parameters_set.append(
@@ -132,7 +130,7 @@ def get_power_type_parameters_from_json(
     :return: A dict of power parameters for all power types, indexed by
         power type name.
     """
-    validate(json_power_type_parameters, JSON_POWER_TYPE_SCHEMA)
+    validate(json_power_type_parameters, JSON_POWER_DRIVERS_SCHEMA)
     power_parameters = {
         # Empty type, for the case where nothing is entered in the form yet.
         '': DictCharField(
@@ -197,7 +195,7 @@ def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
     """Query every cluster controller and obtain all known power types.
 
     :return: a list of power types matching the schema
-        provisioningserver.power_schema.JSON_POWER_TYPE_PARAMETERS_SCHEMA
+        provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA
     """
     merged_types = []
     responses = call_clusters(

@@ -11,6 +11,12 @@ from importlib import (
 )
 import urllib
 
+from provisioningserver.drivers import (
+    IP_EXTRACTOR_PATTERNS,
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerAuthError,
     PowerDriver,
@@ -34,9 +40,22 @@ class NovaPowerState:
 
 
 class NovaPowerDriver(PowerDriver):
+
     name = 'nova'
-    description = "OpenStack Nova Power Driver."
-    settings = []
+    description = "OpenStack Nova"
+    settings = [
+        make_setting_field(
+            'nova_id', "Host UUID", required=True,
+            scope=SETTING_SCOPE.NODE),
+        make_setting_field('os_tenantname', "Tenant name", required=True),
+        make_setting_field('os_username', "Username", required=True),
+        make_setting_field(
+            'os_password', "Password", field_type='password',
+            required=True),
+        make_setting_field('os_authurl', "Auth URL", required=True),
+    ]
+    ip_extractor = make_ip_extractor('os_authurl', IP_EXTRACTOR_PATTERNS.URL)
+
     nova_api = None
 
     def power_control_nova(

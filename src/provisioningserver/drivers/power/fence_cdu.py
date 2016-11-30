@@ -8,6 +8,11 @@ __all__ = []
 import re
 from time import sleep
 
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.power import (
     PowerDriver,
     PowerError,
@@ -21,9 +26,20 @@ from provisioningserver.utils.shell import (
 
 
 class FenceCDUPowerDriver(PowerDriver):
+
     name = 'fence_cdu'
-    description = "Fence CDU Power Driver."
-    settings = []
+    description = "Sentry Switch CDU"
+    settings = [
+        make_setting_field('power_address', "Power address", required=True),
+        make_setting_field(
+            'power_id', "Power ID", scope=SETTING_SCOPE.NODE,
+            required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
+    queryable = False
 
     def detect_missing_packages(self):
         if not shell.has_command_available('fence_cdu'):

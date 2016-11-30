@@ -64,12 +64,10 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.drivers.power import (
-    power_drivers_by_name,
+    PowerDriverRegistry,
     PowerError,
 )
 from provisioningserver.path import get_path
-from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     boot_images,
     cluster,
@@ -401,14 +399,14 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def test_describe_power_types_returns_jsonized_power_parameters(self):
+    def test_describe_power_types_returns_jsonized_schema(self):
 
         response = yield call_responder(
             Cluster(), cluster.DescribePowerTypes, {})
 
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
-            JSON_POWER_TYPE_PARAMETERS, response["power_types"])
+            PowerDriverRegistry.get_schema(), response["power_types"])
 
 
 class TestPatchedURI(MAASTestCase):
@@ -1714,16 +1712,19 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         perform_power_driver_query = self.patch(
             power_module.query, "perform_power_driver_query")
         perform_power_driver_query.return_value = state
-        power_type = random.choice(QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         arguments = {
             'system_id': factory.make_name('system'),
             'hostname': factory.make_name('hostname'),
-            'power_type': power_type,
+            'power_type': power_driver.name,
             'context': factory.make_name('context'),
         }
 
         # Make sure power driver doesn't check for installed packages.
-        power_driver = power_drivers_by_name.get(power_type)
         self.patch_autospec(
             power_driver, "detect_missing_packages").return_value = []
 
@@ -1741,16 +1742,19 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         perform_power_driver_query = self.patch(
             power_module.query, "perform_power_driver_query")
         perform_power_driver_query.side_effect = PowerError('Error message')
-        power_type = random.choice(QUERY_POWER_TYPES)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if driver.queryable
+        ])
         arguments = {
             'system_id': factory.make_name('system'),
             'hostname': factory.make_name('hostname'),
-            'power_type': power_type,
+            'power_type': power_driver.name,
             'context': factory.make_name('context'),
         }
 
         # Make sure power driver doesn't check for installed packages.
-        power_driver = power_drivers_by_name.get(power_type)
         self.patch_autospec(
             power_driver, "detect_missing_packages").return_value = []
 

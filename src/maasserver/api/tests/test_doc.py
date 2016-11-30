@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 from inspect import getdoc
 from io import StringIO
+import random
 import sys
 import types
 from unittest.mock import sentinel
@@ -49,7 +50,7 @@ from maastesting.testcase import MAASTestCase
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from provisioningserver.power.schema import make_json_field
+from provisioningserver.drivers.power import PowerDriverRegistry
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -416,22 +417,19 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
         self.assertThat(doc, ContainsAll(["Power types", "IPMI"]))
 
     def test__generate_power_types_doc_generates_describes_power_type(self):
-        name = factory.make_name('name')
-        description = factory.make_name('description')
-        param_name = factory.make_name('param_name')
-        param_description = factory.make_name('param_description')
-        json_fields = [{
-            'name': name,
-            'description': description,
-            'fields': [
-                make_json_field(param_name, param_description),
-            ],
-        }]
-        self.patch(doc_module, "JSON_POWER_TYPE_PARAMETERS", json_fields)
+        power_driver = random.choice([
+            driver
+            for _, driver in PowerDriverRegistry
+            if len(driver.settings) > 0
+        ])
         doc = generate_power_types_doc()
         self.assertThat(
             doc,
-            ContainsAll([name, description, param_name, param_description]))
+            ContainsAll([
+                power_driver.name,
+                power_driver.description,
+                power_driver.settings[0]['name'],
+                power_driver.settings[0]['label']]))
 
 
 class TestDescribeCanonical(MAASTestCase):

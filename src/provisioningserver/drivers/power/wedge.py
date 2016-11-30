@@ -12,6 +12,10 @@ from paramiko import (
     SSHClient,
     SSHException,
 )
+from provisioningserver.drivers import (
+    make_ip_extractor,
+    make_setting_field,
+)
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
@@ -26,9 +30,16 @@ class WedgeState:
 
 
 class WedgePowerDriver(PowerDriver):
+
     name = 'wedge'
-    description = "Facebook's Wedge Power Driver."
-    settings = []
+    description = "Facebook's Wedge"
+    settings = [
+        make_setting_field('power_address', "IP address", required=True),
+        make_setting_field('power_user', "Power user"),
+        make_setting_field(
+            'power_pass', "Power password", field_type='password'),
+    ]
+    ip_extractor = make_ip_extractor('power_address')
 
     def detect_missing_packages(self):
         # uses pure-python paramiko ssh client - nothing to look for!

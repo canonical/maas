@@ -16,8 +16,10 @@ maaslog = get_maas_logger("drivers.power.manual")
 class ManualPowerDriver(PowerDriver):
 
     name = 'manual'
-    description = "Manual Power Driver."
+    description = "Manual"
     settings = []
+    ip_extractor = None
+    queryable = False
 
     def detect_missing_packages(self):
         # no required packages
