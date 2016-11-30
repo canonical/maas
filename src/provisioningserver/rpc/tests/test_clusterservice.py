@@ -44,10 +44,7 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from netaddr import IPNetwork
-from provisioningserver import (
-    concurrency,
-    power as power_module,
-)
+from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import (
@@ -77,6 +74,7 @@ from provisioningserver.rpc import (
     exceptions,
     getRegionClient,
     osystems as osystems_rpc_module,
+    power as power_module,
     region,
     tags,
 )
@@ -1710,7 +1708,7 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
     def test_returns_power_state(self):
         state = random.choice(['on', 'off'])
         perform_power_driver_query = self.patch(
-            power_module.query, "perform_power_driver_query")
+            power_module, "perform_power_driver_query")
         perform_power_driver_query.return_value = state
         power_driver = random.choice([
             driver
@@ -1740,7 +1738,7 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
     @inlineCallbacks
     def test_returns_power_error(self):
         perform_power_driver_query = self.patch(
-            power_module.query, "perform_power_driver_query")
+            power_module, "perform_power_driver_query")
         perform_power_driver_query.side_effect = PowerError('Error message')
         power_driver = random.choice([
             driver

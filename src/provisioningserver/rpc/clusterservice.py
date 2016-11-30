@@ -41,8 +41,6 @@ from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
 )
-from provisioningserver.power.change import maybe_change_power_state
-from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
     get_sys_info,
     refresh,
@@ -66,6 +64,10 @@ from provisioningserver.rpc.osystems import (
     get_os_release_title,
     get_preseed_data,
     validate_license_key,
+)
+from provisioningserver.rpc.power import (
+    get_power_state,
+    maybe_change_power_state,
 )
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import (
