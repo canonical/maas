@@ -67,7 +67,10 @@ class TestCommands(MAASServerTestCase):
         self.assertIn("POST /api/2.0/account/", result)
         self.assertIn("MAAS API", result)
         # The documentation starts with a link target: "region-controller-api".
-        self.assertThat(result[:100], StartsWith('.. _region-controller-api:'))
+        # (And also a specification that the left-side table-of-contents depth
+        # should not exceed 3 levels deep.)
+        self.assertThat(result[:100], StartsWith(
+            ':tocdepth: 3\n.. _region-controller-api:'))
         # It also contains a ReST title (not indented).
         self.assertIn('===', result[:100])
 

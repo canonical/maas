@@ -9,7 +9,7 @@ requests.
 
 
 API versions
-------------
+````````````
 
 At any given time, MAAS may support multiple versions of its API.  The version
 number is included in the API's URL, e.g. /api/2.0/
@@ -23,7 +23,7 @@ error message and the api version are returned as plaintext.
 
 
 HTTP methods and parameter-passing
-----------------------------------
+``````````````````````````````````
 
 The following HTTP methods are available for accessing the API:
  * GET (for information retrieval and queries),
@@ -82,6 +82,7 @@ from maasserver.utils import build_absolute_uri
 # etc. whatever render_api_docs() produces, so that you can concatenate
 # the two.
 api_doc_title = dedent("""
+    :tocdepth: 3
     .. _region-controller-api:
 
     ========
@@ -109,7 +110,7 @@ def render_api_docs():
     line()
     line()
     line('Operations')
-    line('----------')
+    line('``````````')
     line()
 
     def export_key(export):
@@ -132,25 +133,24 @@ def render_api_docs():
         section_name = doc.handler.api_doc_section_name
         line(section_name)
         line('=' * len(section_name))
-        line(doc.handler.__doc__.strip())
+        line(dedent(doc.handler.__doc__).strip())
         line()
         line()
         for (http_method, op), function in sorted(exports, key=export_key):
-            line("``%s %s``" % (http_method, uri_template), end="")
-            if op is not None:
-                line(" ``op=%s``" % op, end="")
+            operation = " op=%s" % op if op is not None else ""
+            subsection = "``%s %s%s``" % (http_method, uri_template, operation)
+            line("%s\n%s\n" % (subsection, '#' * len(subsection)))
             line()
             docstring = getdoc(function)
             if docstring is not None:
-                for docline in docstring.splitlines():
+                for docline in dedent(docstring).splitlines():
                     if docline.strip() == '':
                         # Blank line.  Don't indent.
                         line()
                     else:
                         # Print documentation line, indented.
-                        line("  ", docline, sep="")
+                        line(docline)
                 line()
-
     line()
     line()
     line(generate_power_types_doc())
