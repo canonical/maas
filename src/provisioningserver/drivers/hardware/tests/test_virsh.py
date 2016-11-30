@@ -13,9 +13,7 @@ from unittest.mock import call
 from lxml import etree
 from maastesting.factory import factory
 from maastesting.matchers import (
-    MockAnyCall,
     MockCalledOnceWith,
-    MockCalledWith,
     MockCallsMatch,
 )
 from maastesting.testcase import (
@@ -281,7 +279,7 @@ class TestVirsh(MAASTestCase):
         # with some fake architectures.
         user = factory.make_name('user')
         system_id = factory.make_name('system_id')
-        machines = [factory.make_name('machine') for _ in range(4)]
+        machines = [factory.make_name('machine') for _ in range(5)]
         self.patch(virsh.VirshSSH, 'list').return_value = machines
         fake_arch = factory.make_name('arch')
         mock_arch = self.patch(virsh.VirshSSH, 'get_arch')
@@ -294,6 +292,7 @@ class TestVirsh(MAASTestCase):
             virsh.VirshVMState.ON,
             virsh.VirshVMState.OFF,
             virsh.VirshVMState.OFF,
+            virsh.VirshVMState.ON,
             virsh.VirshVMState.ON,
             ]
         mock_state = self.patch(virsh.VirshSSH, 'get_state')
@@ -324,7 +323,7 @@ class TestVirsh(MAASTestCase):
         mock_poweroff = self.patch(virsh.VirshSSH, 'poweroff')
         mock_create_node = self.patch(virsh, 'create_node')
         mock_create_node.side_effect = asynchronous(
-            lambda *args, **kwargs: system_id)
+            lambda *args, **kwargs: None if machines[4] in args else system_id)
         mock_commission_node = self.patch(virsh, 'commission_node')
 
         # Patch login and logout so that we don't really contact
@@ -338,6 +337,7 @@ class TestVirsh(MAASTestCase):
             SAMPLE_DUMPXML_2,
             SAMPLE_DUMPXML_3,
             SAMPLE_DUMPXML_4,
+            SAMPLE_DUMPXML,
         ]
 
         mock_run = self.patch(virsh.VirshSSH, 'run')
@@ -352,12 +352,6 @@ class TestVirsh(MAASTestCase):
         # password.
         self.expectThat(
             mock_login, MockCalledOnceWith(poweraddr, fake_password))
-
-        # The first and last machine should have poweroff called on it, as it
-        # was initial in the on state.
-        self.expectThat(mock_poweroff, MockAnyCall(machines[0]))
-
-        self.expectThat(mock_poweroff, MockAnyCall(machines[3]))
 
         # Check that the create command had the correct parameters for
         # each machine.
@@ -375,11 +369,27 @@ class TestVirsh(MAASTestCase):
                 call(
                     fake_macs[3], fake_arch, 'virsh', called_params[3],
                     domain, machines[3]),
+                call(
+                    fake_macs[4], fake_arch, 'virsh', called_params[4],
+                    domain, machines[4]),
             ))
+
+        # The first and last machine should have poweroff called on it, as it
+        # was initial in the on state.
+        self.expectThat(
+            mock_poweroff, MockCallsMatch(
+                call(machines[0]),
+                call(machines[3]),
+            ))
+
         self.assertThat(mock_logout, MockCalledOnceWith())
         self.expectThat(
-            mock_commission_node,
-            MockCalledWith(system_id, user))
+            mock_commission_node, MockCallsMatch(
+                call(system_id, user),
+                call(system_id, user),
+                call(system_id, user),
+                call(system_id, user),
+            ))
 
     @inlineCallbacks
     def test_probe_and_enlist_login_failure(self):
