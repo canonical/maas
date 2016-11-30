@@ -1667,7 +1667,9 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self._start(user, commissioning_user_data, old_status)
+            starting = self._start(
+                user, commissioning_user_data, old_status,
+                allow_power_cycle=True)
         except Exception as error:
             self.status = old_status
             self.save()
@@ -2156,7 +2158,8 @@ class Node(CleanSave, TimestampedModel):
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
-            starting = self._start(user, disk_erase_user_data, old_status)
+            starting = self._start(
+                user, disk_erase_user_data, old_status, allow_power_cycle=True)
         except Exception as error:
             # We always mark the node as failed here, although we could
             # potentially move it back to the state it was in previously. For
@@ -3037,14 +3040,18 @@ class Node(CleanSave, TimestampedModel):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
         event = EVENT_TYPES.REQUEST_NODE_START
+        allow_power_cycle = False
         # If status is ALLOCATED, this start is actually for a deployment.
         # (Note: this is true even when nodes are being deployed from READY
         # state. See node_action.py; the node is acquired and then started.)
+        # Power cycling is allowed when deployment is being started.
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
+            allow_power_cycle = True
         self._register_request_event(
             user, event, action='start', comment=comment)
-        return self._start(user, user_data)
+        return self._start(
+            user, user_data, allow_power_cycle=allow_power_cycle)
 
     def _get_bmc_client_connection_info(self, *args, **kwargs):
         """Return a tuple that list the rack controllers that can communicate
@@ -3077,7 +3084,9 @@ class Node(CleanSave, TimestampedModel):
         return client_idents, fallback_idents
 
     @transactional
-    def _start(self, user, user_data=None, old_status=None):
+    def _start(
+            self, user, user_data=None, old_status=None,
+            allow_power_cycle=False):
         """Request on given user's behalf that the node be started up.
 
         :param user: Requesting user.
@@ -3134,7 +3143,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Request that the node be powered on post-commit.
         d = post_commit()
-        if self.power_state == POWER_STATE.ON:
+        if self.power_state == POWER_STATE.ON and allow_power_cycle:
             d = self._power_control_node(d, power_cycle, power_info)
         else:
             d = self._power_control_node(d, power_on_node, power_info)

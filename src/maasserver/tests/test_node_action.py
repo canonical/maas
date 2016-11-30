@@ -287,14 +287,16 @@ class TestCommissionAction(MAASServerTestCase):
             power_type='manual', power_state=POWER_STATE.ON)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         action = Commission(node, admin)
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            node_start, MockCalledOnceWith(admin, ANY, ANY))
+            node_start,
+            MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
 
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
@@ -302,14 +304,16 @@ class TestCommissionAction(MAASServerTestCase):
             power_type='manual', power_state=POWER_STATE.OFF)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         action = Commission(node, admin)
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            node_start, MockCalledOnceWith(admin, ANY, ANY))
+            node_start,
+            MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
 
 
 class TestAbortAction(MAASTransactionServerTestCase):
@@ -754,7 +758,8 @@ class TestReleaseAction(MAASServerTestCase):
         self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
         self.assertThat(
             node_start, MockCalledOnceWith(
-                user, user_data=ANY, old_status=old_status))
+                user, user_data=ANY, old_status=old_status,
+                allow_power_cycle=True))
 
     def test_Release_passes_secure_erase_and_quick_erase(self):
         user = factory.make_User()

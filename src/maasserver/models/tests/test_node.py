@@ -1503,7 +1503,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         Config.objects.set_config('disk_erase_with_secure_erase', True)
         Config.objects.set_config('disk_erase_with_quick_erase', True)
         with post_commit_hooks:
@@ -1525,7 +1526,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         Config.objects.set_config('disk_erase_with_secure_erase', False)
         Config.objects.set_config('disk_erase_with_quick_erase', False)
         with post_commit_hooks:
@@ -1547,14 +1549,17 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         with post_commit_hooks:
             node.start_disk_erasing(owner)
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
         self.expectThat(node.agent_name, Equals(agent_name))
         self.assertThat(
-            node_start, MockCalledOnceWith(owner, ANY, NODE_STATUS.ALLOCATED))
+            node_start,
+            MockCalledOnceWith(
+                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True))
 
     def test_start_disk_erasing_logs_user_request(self):
         owner = factory.make_User()
@@ -1562,12 +1567,15 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.start_disk_erasing(owner)
         self.assertThat(
-            node_start, MockCalledOnceWith(owner, ANY, NODE_STATUS.ALLOCATED))
+            node_start,
+            MockCalledOnceWith(
+                owner, ANY, NODE_STATUS.ALLOCATED, allow_power_cycle=True))
         self.assertThat(register_event, MockCalledOnceWith(
             owner, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
             action='start disk erasing', comment=None))
@@ -1630,7 +1638,8 @@ class TestNode(MAASServerTestCase):
 
         self.assertThat(
             node_start, MockCalledOnceWith(
-                admin, generate_user_data.return_value, NODE_STATUS.ALLOCATED))
+                admin, generate_user_data.return_value, NODE_STATUS.ALLOCATED,
+                allow_power_cycle=True))
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_sets_status_on_post_commit_error(self):
@@ -2237,7 +2246,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -2247,7 +2257,7 @@ class TestNode(MAASServerTestCase):
         }
         self.assertAttributes(node, expected_attrs)
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, ANY, NODE_STATUS.NEW))
+            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
 
     def test_start_commissioning_sets_options(self):
         rack = factory.make_RackController()
@@ -2257,7 +2267,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         enable_ssh = factory.pick_bool()
         skip_networking = factory.pick_bool()
@@ -2278,7 +2289,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
             commissioning, 'generate_user_data')
@@ -2287,13 +2299,14 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, user_data, NODE_STATUS.NEW))
+            admin, user_data, NODE_STATUS.NEW, allow_power_cycle=True))
 
     def test_start_commissioning_sets_min_hwe_kernel(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
             commissioning, 'generate_user_data')
@@ -2311,7 +2324,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -2323,13 +2337,14 @@ class TestNode(MAASServerTestCase):
         self.assertAttributes(node, expected_attrs)
         self.expectThat(node.owner, Equals(admin))
         self.assertThat(node_start, MockCalledOnceWith(
-            admin, ANY, NODE_STATUS.NEW))
+            admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
@@ -2343,7 +2358,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
         admin = factory.make_admin()
@@ -2355,7 +2371,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
         admin = factory.make_admin()
@@ -2367,7 +2384,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
         admin = factory.make_admin()
@@ -2379,7 +2397,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
         admin = factory.make_admin()
@@ -2423,7 +2442,8 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             node_start,
             MockCalledOnceWith(
-                admin, generate_user_data.return_value, NODE_STATUS.NEW))
+                admin, generate_user_data.return_value, NODE_STATUS.NEW,
+                allow_power_cycle=True))
         self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
@@ -2447,7 +2467,8 @@ class TestNode(MAASServerTestCase):
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit())
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -4938,10 +4959,12 @@ class TestNode_Start(MAASTransactionServerTestCase):
         register_view("maasserver_discovery")
 
     def make_acquired_node_with_interface(
-            self, user, bmc_connected_to=None, power_type="virsh"):
+            self, user, bmc_connected_to=None, power_type="virsh",
+            power_state=POWER_STATE.OFF):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, with_boot_disk=True,
-            bmc_connected_to=bmc_connected_to, power_type=power_type)
+            bmc_connected_to=bmc_connected_to, power_type=power_type,
+            power_state=power_state)
         node.acquire(user)
         return node
 
@@ -5058,6 +5081,24 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 call(callOutToDatabase, node._set_status,
                      node.system_id, status=old_status),
                 call(callOutToDatabase, node.release_interface_config)))
+
+    def test__calls_power_cycle_when_cycling_allowed(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_state=POWER_STATE.ON)
+
+        post_commit_defer = self.patch(node_module, "post_commit")
+        mock_power_control = self.patch(Node, "_power_control_node")
+        mock_power_control.return_value = post_commit_defer
+
+        # Power cycling is allowed when starting deployment. This node is
+        # allocated and the power_state is ON. Power cycle should be called
+        # instead of power_on.
+        node.start(user)
+
+        # Calls _power_control_node when power_cycle.
+        self.assertThat(
+            mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY))
 
     def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
         node = factory.make_Node(
