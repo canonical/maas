@@ -282,11 +282,6 @@ def probe_virsh_and_enlist(
         state = conn.get_state(machine)
         macs = conn.get_mac_addresses(machine)
 
-        # Force the machine off, as MAAS will control the machine
-        # and it needs to be in a known state of off.
-        if state == VirshVMState.ON:
-            conn.poweroff(machine)
-
         params = {
             'power_address': poweraddr,
             'power_id': machine,
@@ -296,8 +291,17 @@ def probe_virsh_and_enlist(
         system_id = create_node(
             macs, arch, 'virsh', params, domain, machine).wait(30)
 
-        if system_id is not None:
-            conn.configure_pxe_boot(machine)
+        # If the system_id is None an error occured when creating the machine.
+        # Most likely the error is the node already exists.
+        if system_id is None:
+            continue
+
+        # Force the machine off, as MAAS will control the machine
+        # and it needs to be in a known state of off.
+        if state == VirshVMState.ON:
+            conn.poweroff(machine)
+
+        conn.configure_pxe_boot(machine)
 
         if accept_all:
             commission_node(system_id, user).wait(30)
