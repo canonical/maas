@@ -11,6 +11,7 @@ __all__ = [
     'IsCallable',
     'IsCallableMock',
     'IsFiredDeferred',
+    'IsNonEmptyString',
     'IsUnfiredDeferred',
     'LessThanOrEqual',
     'Matches',
@@ -465,3 +466,18 @@ class TextEquals(Matcher):
         yield "--- expected\n"
         yield "+++ observed\n"
         yield from ndiff(a, b)
+
+
+# The matchee is a non-empty string. In addition a string containing only
+# whitespace will not match.
+IsNonEmptyString = MatchesAll(
+    MatchesPredicate(
+        (lambda observed: isinstance(observed, str)),
+        "%r is not a string"),
+    MatchesPredicate(
+        (lambda observed: len(observed) != 0),
+        "%r is empty"),
+    MatchesPredicate(
+        (lambda observed: not observed.isspace()),
+        "%r is whitespace"),
+    first_only=True)

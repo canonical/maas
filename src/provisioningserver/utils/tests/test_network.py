@@ -19,6 +19,7 @@ from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    IsNonEmptyString,
     MockCalledOnce,
     MockCalledOnceWith,
     MockNotCalled,
@@ -26,11 +27,11 @@ from maastesting.matchers import (
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from netaddr import (
+    EUI,
     IPAddress,
     IPNetwork,
     IPRange,
 )
-from netaddr.eui import EUI
 import netifaces
 from netifaces import (
     AF_INET,
@@ -219,12 +220,14 @@ class TestGetMACOrganization(MAASTestCase):
     """Tests for `get_mac_organization()` and `get_eui_organization()`."""
 
     def test_get_mac_organization(self):
-        organization = get_mac_organization("48:51:b7:00:00:00")
-        self.assertThat(organization, Equals("Intel Corporate"))
+        mac_address = "48:51:b7:00:00:00"
+        self.assertThat(
+            get_mac_organization(mac_address), IsNonEmptyString)
 
     def test_get_eui_organization(self):
-        organization = get_eui_organization(EUI("48:51:b7:00:00:00"))
-        self.assertThat(organization, Equals("Intel Corporate"))
+        mac_address = "48:51:b7:00:00:00"
+        self.assertThat(
+            get_eui_organization(EUI(mac_address)), IsNonEmptyString)
 
     def test_get_eui_organization_returns_None_for_UnicodeError(self):
         mock_eui = Mock()

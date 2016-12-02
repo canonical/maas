@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from string import whitespace
 from textwrap import dedent
 from unittest.mock import (
     call,
@@ -23,6 +24,7 @@ from maastesting.matchers import (
     IsCallable,
     IsCallableMock,
     IsFiredDeferred,
+    IsNonEmptyString,
     IsUnfiredDeferred,
     LessThanOrEqual,
     Matches,
@@ -567,3 +569,22 @@ class TestTextEquals(MAASTestCase, MockTestMixin):
         + ('A tuple', 'that differs', 'HERE.')
         ?                              ^^^^
         """)))
+
+
+class TestIsNonEmptyString(MAASTestCase, MockTestMixin):
+    """Tests for the `IsNonEmptyString` matcher."""
+
+    def test_matches_non_empty_string(self):
+        self.assertThat("foo", IsNonEmptyString)
+
+    def test_does_not_match_empty_string(self):
+        self.assertMismatch(IsNonEmptyString.match(""), "'' is empty")
+
+    def test_does_not_match_string_containing_only_whitespace(self):
+        self.assertMismatch(
+            IsNonEmptyString.match(whitespace),
+            "%r is whitespace" % whitespace)
+
+    def test_does_not_match_non_strings(self):
+        self.assertMismatch(
+            IsNonEmptyString.match(1234), "1234 is not a string")
