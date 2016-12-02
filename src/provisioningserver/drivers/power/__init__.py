@@ -26,7 +26,10 @@ from datetime import timedelta
 import sys
 
 from jsonschema import validate
-from provisioningserver.drivers import JSON_SETTING_SCHEMA
+from provisioningserver.drivers import (
+    IP_EXTRACTOR_SCHEMA,
+    SETTING_PARAMETER_FIELD_SCHEMA,
+)
 from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import pause
 from twisted.internet import reactor
@@ -45,11 +48,40 @@ UNKNOWN_POWER_TYPE = ''
 # A policy used when waiting between retries of power changes.
 DEFAULT_WAITING_POLICY = (1, 2, 2, 4, 6, 8, 12)
 
+# JSON schema for what a power driver definition should look like
+JSON_POWER_DRIVER_SCHEMA = {
+    'title': "Power driver setting set",
+    'type': 'object',
+    'properties': {
+        'name': {
+            'type': 'string',
+        },
+        'description': {
+            'type': 'string',
+        },
+        'fields': {
+            'type': 'array',
+            'items': SETTING_PARAMETER_FIELD_SCHEMA,
+        },
+        'ip_extractor': IP_EXTRACTOR_SCHEMA,
+        'queryable': {
+            'type': 'boolean',
+        },
+        'missing_packages': {
+            'type': 'array',
+            'items': {
+                'type': 'string',
+            },
+        },
+    },
+    'required': ['name', 'description', 'fields'],
+}
 
+# JSON schema for multple power drivers.
 JSON_POWER_DRIVERS_SCHEMA = {
     'title': "Power drivers parameters set",
     'type': 'array',
-    'items': JSON_SETTING_SCHEMA,
+    'items': JSON_POWER_DRIVER_SCHEMA,
 }
 
 
@@ -119,7 +151,7 @@ class PowerDriverBase(metaclass=ABCMeta):
         super(PowerDriverBase, self).__init__()
         validate(
             self.get_schema(detect_missing_packages=False),
-            JSON_SETTING_SCHEMA)
+            JSON_POWER_DRIVER_SCHEMA)
 
     @abstractproperty
     def name(self):

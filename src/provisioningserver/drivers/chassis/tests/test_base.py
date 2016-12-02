@@ -10,10 +10,7 @@ from unittest.mock import sentinel
 from jsonschema import validate
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers import (
-    JSON_SETTING_SCHEMA,
-    make_setting_field,
-)
+from provisioningserver.drivers import make_setting_field
 from provisioningserver.drivers.chassis import (
     ChassisActionError,
     ChassisAuthError,
@@ -23,6 +20,7 @@ from provisioningserver.drivers.chassis import (
     ChassisDriverRegistry,
     ChassisError,
     get_error_message,
+    JSON_CHASSIS_DRIVER_SCHEMA,
 )
 from provisioningserver.utils.testing import RegistryFixture
 
@@ -34,6 +32,7 @@ class FakeChassisDriverBase(ChassisDriverBase):
     settings = []
     ip_extractor = None
     queryable = True
+    composable = False
 
     def __init__(self, name, description, settings):
         self.name = name
@@ -154,13 +153,14 @@ class TestChassisDriverBase(MAASTestCase):
             'fields': fake_settings,
             'queryable': fake_driver.queryable,
             'missing_packages': [],
+            'composable': fake_driver.composable,
             },
             fake_driver.get_schema())
 
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_chassis_driver_base()
         #: doesn't raise ValidationError
-        validate(fake_driver.get_schema(), JSON_SETTING_SCHEMA)
+        validate(fake_driver.get_schema(), JSON_CHASSIS_DRIVER_SCHEMA)
 
 
 class TestChassisDriverRegistry(MAASTestCase):
@@ -191,13 +191,15 @@ class TestChassisDriverRegistry(MAASTestCase):
                 'fields': [],
                 'queryable': fake_driver_one.queryable,
                 'missing_packages': fake_driver_one.detect_missing_packages(),
+                'composable': fake_driver_one.composable,
             },
             {
                 'name': fake_driver_two.name,
                 'description': fake_driver_two.description,
                 'fields': [],
-                'queryable': fake_driver_one.queryable,
-                'missing_packages': fake_driver_one.detect_missing_packages(),
+                'queryable': fake_driver_two.queryable,
+                'missing_packages': fake_driver_two.detect_missing_packages(),
+                'composable': fake_driver_two.composable,
             }],
             ChassisDriverRegistry.get_schema())
 

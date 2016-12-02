@@ -13,21 +13,59 @@ __all__ = [
     "ChassisFatalError",
     ]
 
-from abc import abstractmethod
+from abc import (
+    abstractmethod,
+    abstractproperty,
+)
 
 from jsonschema import validate
-from provisioningserver.drivers import JSON_SETTING_SCHEMA
+from provisioningserver.drivers import (
+    IP_EXTRACTOR_SCHEMA,
+    SETTING_PARAMETER_FIELD_SCHEMA,
+)
 from provisioningserver.drivers.power import (
     PowerDriver,
     PowerDriverBase,
 )
 from provisioningserver.utils.registry import Registry
 
+# JSON schema for what a chassis driver definition should look like.
+JSON_CHASSIS_DRIVER_SCHEMA = {
+    'title': "Chassis driver setting set",
+    'type': 'object',
+    'properties': {
+        'name': {
+            'type': 'string',
+        },
+        'description': {
+            'type': 'string',
+        },
+        'fields': {
+            'type': 'array',
+            'items': SETTING_PARAMETER_FIELD_SCHEMA,
+        },
+        'ip_extractor': IP_EXTRACTOR_SCHEMA,
+        'queryable': {
+            'type': 'boolean',
+        },
+        'missing_packages': {
+            'type': 'array',
+            'items': {
+                'type': 'string',
+            },
+        },
+        'composable': {
+            'type': 'boolean',
+        },
+    },
+    'required': ['name', 'description', 'fields', 'composable'],
+}
 
+# JSON schema for multple chassis drivers.
 JSON_CHASSIS_DRIVERS_SCHEMA = {
     'title': "Chassis drivers parameters set",
     'type': 'array',
-    'items': JSON_SETTING_SCHEMA,
+    'items': JSON_CHASSIS_DRIVER_SCHEMA,
 }
 
 
@@ -64,13 +102,18 @@ class ChassisActionError(ChassisError):
 class ChassisDriverBase(PowerDriverBase):
     """Base driver for a chassis driver."""
 
+    @abstractproperty
+    def composable(self):
+        """Whether or not the chassis supports composition."""
+
     @abstractmethod
     def discover(self, system_id, context):
         """Discover the chassis resources.
 
         :param system_id: Chassis system_id.
         :param context: Chassis settings.
-        `"""
+        :rtype: `twisted.internet.defer.Deferred`
+        """
 
     @abstractmethod
     def compose(self, system_id, context):
@@ -88,6 +131,16 @@ class ChassisDriverBase(PowerDriverBase):
         :param context:  Chassis settings.
         """
 
+    def get_schema(self, detect_missing_packages=True):
+        """Returns the JSON schema for the driver.
+
+        Calculates the missing packages on each invoke.
+        """
+        schema = super(ChassisDriverBase, self).get_schema(
+            detect_missing_packages=detect_missing_packages)
+        schema['composable'] = self.composable
+        return schema
+
 
 def get_error_message(err):
     """Returns the proper error message based on error."""
@@ -103,6 +156,8 @@ def get_error_message(err):
 
 class ChassisDriver(PowerDriver, ChassisDriverBase):
     """Default chassis driver."""
+
+    composable = False
 
 
 class ChassisDriverRegistry(Registry):

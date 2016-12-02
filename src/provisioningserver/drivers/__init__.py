@@ -112,36 +112,6 @@ SETTING_PARAMETER_FIELD_SCHEMA = {
 }
 
 
-# JSON schema for what group of setting parameters should look like.
-JSON_SETTING_SCHEMA = {
-    'title': "Setting parameters set",
-    'type': 'object',
-    'properties': {
-        'name': {
-            'type': 'string',
-        },
-        'description': {
-            'type': 'string',
-        },
-        'fields': {
-            'type': 'array',
-            'items': SETTING_PARAMETER_FIELD_SCHEMA,
-        },
-        'ip_extractor': IP_EXTRACTOR_SCHEMA,
-        'queryable': {
-            'type': 'boolean',
-        },
-        'missing_packages': {
-            'type': 'array',
-            'items': {
-                'type': 'string',
-            },
-        },
-    },
-    'required': ['name', 'description', 'fields'],
-}
-
-
 def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
     return {
         'field_name': field_name,

@@ -21,12 +21,12 @@ from maastesting.matchers import (
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import (
-    JSON_SETTING_SCHEMA,
     make_setting_field,
     power,
 )
 from provisioningserver.drivers.power import (
     get_error_message,
+    JSON_POWER_DRIVER_SCHEMA,
     PowerActionError,
     PowerAuthError,
     PowerConnError,
@@ -175,7 +175,7 @@ class TestPowerDriverBase(MAASTestCase):
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_power_driver_base()
         #: doesn't raise ValidationError
-        validate(fake_driver.get_schema(), JSON_SETTING_SCHEMA)
+        validate(fake_driver.get_schema(), JSON_POWER_DRIVER_SCHEMA)
 
 
 class TestPowerDriverRegistry(MAASTestCase):
