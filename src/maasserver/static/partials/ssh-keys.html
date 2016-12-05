@@ -13,27 +13,25 @@
             <div class="table__data table-col--25">{$ sourceTitles[group.source] $}</div>
             <div data-ng-if="group.source !== 'upload'">
                 <div class="table__data table-col--35">{$ group.authId $}</div>
-                <div class="table__data table-col--30">{$ group.keys.length $}</div>
+                <div class="table__data table-col--30">{$ group.keys.length $}
+                  <a class="icon icon--open tooltip u-margin--top-tiny u-padding--left-large" aria-label="Open"
+                    data-ng-click="open(group, 'view')"
+                    data-ng-if="group.source !== 'upload' && openRow !== group.id">Open</a>
+                  <a class="icon icon--close tooltip u-margin--top-tiny u-padding--left-large" aria-label="Close"
+                      data-ng-click="close()"
+                      data-ng-if="group.source !== 'upload' && openRow === group.id">Close</a></div>
             </div>
             <div data-ng-if="group.source === 'upload'">
                 <div class="table__data table-col--65" data-ng-bind-html="trustAsHtml(group.keys[0].display)"></div>
             </div>
-            <div class="table__data table-col--10">
-                <div class="table__controls">
-                    <a class="icon icon--open tooltip u-margin--right" aria-label="Open"
-                        data-ng-click="open(group, 'view')"
-                        data-ng-if="group.source !== 'upload' && openRow !== group.id">Open</a>
-                    <a class="icon icon--close tooltip u-margin--right" aria-label="Close"
-                        data-ng-click="close()"
-                        data-ng-if="group.source !== 'upload' && openRow === group.id">Close</a>
-                    <a class="icon icon--delete tooltip" aria-label="Delete"
-                        data-ng-click="open(group, 'delete')">Delete</a>
-                </div>
+            <div class="table__data table-col--10 u-align--right">
+                <a class="icon icon--delete tooltip" aria-label="Delete"
+                    data-ng-click="open(group, 'delete')">Delete</a>
             </div>
             <div class="table__dropdown">
                 <div class="table__row u-border--none"
                     data-ng-class="{ 'is-active': rowMode === 'view' }">
-                    <div class="u-margin--left u-margin--right u-margin--bottom u-border u-border--solid u-padding--small">
+                    <div class="u-margin--bottom u-border u-border--solid u-padding--small">
                         <p data-ng-repeat="key in group.keys" data-ng-bind-html="trustAsHtml(key.display)"></p>
                     </div>
                 </div>
@@ -54,7 +52,7 @@
         </div>
         <div class="table__dropdown-row is-active">
             <form class="form form--inline">
-                <div class="table__data u-float--left">
+                <div class="table__data table-col u-float--left">
                     <div class="form__group">
                         <label class="form__group-label" for="source">Source</label>
                         <div class="form__group-input">
@@ -75,7 +73,7 @@
                     <div class="form__group" data-ng-if="add.source === 'upload'">
                         <label class="form__group-label" for="key">Public key</label>
                         <div class="form__group-input">
-                            <textarea id="key" name="key" placeholder="Public key"
+                            <textarea id="key" name="key" style="width: 300px;" placeholder="Begins with 'ssh-rsa', 'ssh-dss', 'ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', or 'ecdsa-sha2-nistp521'"
                                 data-ng-model="add.key" data-ng-disabled="add.saving"
                                 style="min-height: 100px;"></textarea>
                         </div>
@@ -85,7 +83,7 @@
                     </ul>
                 </div>
                 <div class="table__data u-float--right">
-                    <button type="submit" class="button--primary button--inline"
+                    <button type="submit" class="button--secondary button--inline"
                         data-ng-disabled="!canImportKeys()"
                         data-ng-click="importKeys()">Import</button>
                 </div>

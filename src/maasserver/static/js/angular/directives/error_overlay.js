@@ -48,7 +48,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // continuously.
     if(!angular.isDefined(window.jasmine)) {
         var image = new Image();
-        image.src = "static/assets/images/icons/error_colour_white.svg";
+        image.src = "static/assets/images/icons/error.svg";
         image = new Image();
         image.src = "static/assets/images/icons/error.png";
     }

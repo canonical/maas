@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="page-header">
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header">
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ node.fqdn $}</h1>
             <p class="page-header__status">{$ filename $}</p>

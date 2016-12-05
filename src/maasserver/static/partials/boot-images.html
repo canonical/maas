@@ -2,7 +2,7 @@
 <div data-ng-class="{ 'action-card': design === 'action-card', 'row u-padding--top-large': design === 'page' }" data-ng-if="!loading">
     <div data-ng-class="{ 'wrapper--inner': design === 'page' }">
         <h2 data-ng-class="{ 'action-card__title': design === 'action-card' }">
-            <i data-ng-if="design === 'action-card'" class="icon icon--large {$ getTitleIcon() $}"></i> Ubuntu
+            <i data-ng-if="design === 'action-card'" class="icon icon--large u-margin--right-tiny {$ getTitleIcon() $}"></i> Ubuntu
         </h2>
         <div data-ng-class="{ 'action-card__controls': design === 'action-card' }">
             <p class="u-margin--top-small u-margin--bottom-small" data-ng-if="isSuperUser() && !source.tooMany">

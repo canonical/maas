@@ -497,6 +497,10 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     } else {
                         labelElement.addClass("u-margin--right");
                     }
+                    if(attrs.labelLeft === "true") {
+                        labelElement.addClass('u-padding--left');
+                        labelElement.addClass('u-position--relative');
+                    }
                     element.append(labelElement);
 
                     // Add a label info icon with tooltip.
@@ -506,10 +510,17 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         infoElement.addClass('icon');
                         infoElement.addClass('icon--info');
                         infoElement.addClass('tooltip');
+                        infoElement.addClass('u-margin--left-tiny');
+                        if(attrs.labelLeft === "true") {
+                          infoElement.addClass('icon--left');
+                          infoElement.removeClass('u-margin--left-tiny');
+                        }
                         infoElement.attr('aria-label', attrs.labelInfo);
                         labelElement.text(labelElement.text() + ' ');
                         labelElement.append(infoElement);
                     }
+
+
                 }
 
                 // Add the wrapper for the input.

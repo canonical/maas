@@ -76,7 +76,7 @@ describe("DashboardController", function() {
 
     it("sets initial $scope", function() {
         var controller = makeController();
-        expect($scope.loading).toBe(true);
+        expect($scope.loaded).toBe(false);
         expect($scope.discoveredDevices).toBe(DiscoveriesManager.getItems());
         expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.machines).toBe(MachinesManager.getItems());

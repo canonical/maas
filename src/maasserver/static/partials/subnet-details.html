@@ -1,15 +1,15 @@
 <div data-ng-hide="loaded">
-    <header class="page-header">
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header">
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
           <h1 class="page-header__title">{$ subnet.cidr $}</h1>
-            <!-- "Take action" dropdown -->	  
+            <!-- "Take action" dropdown -->
             <div class="page-header__controls u-float--right ng-hide" data-ng-show="isSuperUser() && !isDefaultSubnet() && !loading && actionOptions.length">
                 <div data-maas-cta="actionOptions"
                     data-default-title="Take Action"
@@ -40,11 +40,11 @@
                     <p class="page-header__message page-header__message--error">{$ actionError $}</p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelAction()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionRetry()">Retry</button>		      
+                        <button class="button--primary button--inline" data-ng-click="actionRetry()">Retry</button>
                     </div>
                 </section>
   	    </div>
-            <!-- End of "Take action" dropdown -->	    
+            <!-- End of "Take action" dropdown -->
         </div>
     </header>
     <section class="row">

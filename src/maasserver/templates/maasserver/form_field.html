@@ -4,12 +4,14 @@
     {% ifequal field|field_type "CheckboxInput" %}
         {{ field }}
     {% endifequal %}
+    {% if field.label %}
     <label for="id_{{ field.html_name }}">
         {{ field.label }}
         {% if field.field.required %}
         <span class="required">(required)</span>
         {% endif %}
     </label>
+    {% endif %}
     {% endif %}
     {% ifnotequal field|field_type "CheckboxInput" %}
     {{ field }}

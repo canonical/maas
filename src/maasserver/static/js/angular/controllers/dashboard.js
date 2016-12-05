@@ -26,7 +26,7 @@ angular.module('MAAS').controller('DashboardController', [
         $rootScope.page = "dashboard";
 
         // Set initial values.
-        $scope.loading = true;
+        $scope.loaded = false;
         $scope.discoveredDevices = DiscoveriesManager.getItems();
         $scope.domains = DomainsManager.getItems();
         $scope.machines = MachinesManager.getItems();
@@ -155,7 +155,7 @@ angular.module('MAAS').controller('DashboardController', [
             DiscoveriesManager, DomainsManager, MachinesManager,
             DevicesManager, SubnetsManager, VLANsManager, ConfigsManager]).then(
             function() {
-                $scope.loading = false;
+                $scope.loaded = true;
                 $scope.networkDiscovery = ConfigsManager.getItemFromList(
                     'network_discovery');
             });
