@@ -205,3 +205,20 @@ class IPNetwork(amp.Argument):
             netaddr.IPAddress(address, version=version))
         network.prefixlen = prefixlen
         return network
+
+
+class AmpDiscoveredChassis(StructureAsJSON):
+    """Encode and decode `DiscoveredChassis` over the wire."""
+
+    def toString(self, inObject):
+        # Circular imports.
+        from provisioningserver.drivers.chassis import DiscoveredChassis
+        if not isinstance(inObject, DiscoveredChassis):
+            raise TypeError("%r is not of type DiscoveredChassis." % inObject)
+        return super(AmpDiscoveredChassis, self).toString(inObject.asdict())
+
+    def fromString(self, inString):
+        # Circular imports.
+        from provisioningserver.drivers.chassis import DiscoveredChassis
+        data = super(AmpDiscoveredChassis, self).fromString(inString)
+        return DiscoveredChassis.fromdict(data)

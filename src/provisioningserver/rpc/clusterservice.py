@@ -46,6 +46,7 @@ from provisioningserver.refresh import (
     refresh,
 )
 from provisioningserver.rpc import (
+    chassis,
     cluster,
     common,
     dhcp,
@@ -589,6 +590,17 @@ class Cluster(RPCProtocol):
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)
         return {}
+
+    @cluster.DiscoverChassis.responder
+    def discover_chassis(
+            self, chassis_type, context, system_id=None, hostname=None):
+        """DiscoverChassis()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DiscoverChassis`.
+        """
+        return chassis.discover_chassis(
+            chassis_type, context, system_id=system_id, hostname=hostname)
 
     @cluster.ScanNetworks.responder
     def scan_all_networks(

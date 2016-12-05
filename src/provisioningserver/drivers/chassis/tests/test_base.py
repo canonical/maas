@@ -520,11 +520,11 @@ class TestGetErrorMessage(MAASTestCase):
     scenarios = [
         ('auth', dict(
             exception=ChassisAuthError('auth'),
-            message="Could not authenticate to node's chassis: auth",
+            message="Could not authenticate to chassis: auth",
             )),
         ('conn', dict(
             exception=ChassisConnError('conn'),
-            message="Could not contact node's chassis: conn",
+            message="Could not contact chassis: conn",
             )),
         ('action', dict(
             exception=ChassisActionError('action'),
@@ -532,7 +532,7 @@ class TestGetErrorMessage(MAASTestCase):
             )),
         ('unknown', dict(
             exception=ChassisError('unknown error'),
-            message="Failed talking to node's chassis: unknown error",
+            message="Failed talking to chassis: unknown error",
             )),
     ]
 

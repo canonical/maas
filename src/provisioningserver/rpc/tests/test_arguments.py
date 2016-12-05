@@ -11,6 +11,10 @@ import zlib
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import netaddr
+from provisioningserver.drivers.chassis import (
+    DiscoveredChassis,
+    DiscoveredChassisHints,
+)
 from provisioningserver.rpc import arguments
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -198,3 +202,21 @@ class TestIPNetwork(MAASTestCase):
         self.assertThat(encoded, HasLength(17))
         decoded = self.argument.fromString(encoded)
         self.assertThat(decoded, Equals(network))
+
+
+class TestDiscoveredChassis(MAASTestCase):
+
+    example = DiscoveredChassis(
+        cores=random.randint(1, 8), cpu_speed=random.randint(1000, 3000),
+        memory=random.randint(1024, 8192), local_storage=0,
+        hints=DiscoveredChassisHints(
+            cores=random.randint(1, 8),
+            memory=random.randint(1024, 8192), local_storage=0),
+        machines=[])
+
+    def test_round_trip(self):
+        argument = arguments.AmpDiscoveredChassis()
+        encoded = argument.toString(self.example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(self.example))

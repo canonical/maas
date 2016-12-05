@@ -246,13 +246,13 @@ class ChassisDriverBase(PowerDriverBase):
 def get_error_message(err):
     """Returns the proper error message based on error."""
     if isinstance(err, ChassisAuthError):
-        return "Could not authenticate to node's chassis: %s" % err
+        return "Could not authenticate to chassis: %s" % err
     elif isinstance(err, ChassisConnError):
-        return "Could not contact node's chassis: %s" % err
+        return "Could not contact chassis: %s" % err
     elif isinstance(err, ChassisActionError):
         return "Failed to complete chassis action: %s" % err
     else:
-        return "Failed talking to node's chassis: %s" % err
+        return "Failed talking to chassis: %s" % err
 
 
 class ChassisDriver(PowerDriver, ChassisDriverBase):

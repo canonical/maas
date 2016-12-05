@@ -56,6 +56,10 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network,
     make_shared_network_v1,
 )
+from provisioningserver.drivers.chassis import (
+    DiscoveredChassis,
+    DiscoveredChassisHints,
+)
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
@@ -67,6 +71,7 @@ from provisioningserver.drivers.power import (
 from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     boot_images,
+    chassis,
     cluster,
     clusterservice,
     common,
@@ -2747,6 +2752,45 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'hostname': factory.make_hostname(),
             })
         self.assertEquals({}, response.result)
+
+
+class TestClusterProtocol_DiscoverChassis(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DiscoverChassis.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_calls_discover_chassis(self):
+        mock_discover_chassis = self.patch_autospec(
+            chassis, 'discover_chassis')
+        mock_discover_chassis.return_value = succeed({
+            "chassis": DiscoveredChassis(
+                cores=random.randint(1, 8),
+                cpu_speed=random.randint(1000, 3000),
+                memory=random.randint(1024, 8192),
+                local_storage=0,
+                hints=DiscoveredChassisHints(
+                    cores=random.randint(1, 8),
+                    memory=random.randint(1024, 8192), local_storage=0),
+                machines=[]),
+            })
+        chassis_type = factory.make_name('chassis_type')
+        context = {
+            "data": factory.make_name("data"),
+        }
+        system_id = factory.make_name("system_id")
+        hostname = factory.make_hostname()
+        call_responder(Cluster(), cluster.DiscoverChassis, {
+            'chassis_type': chassis_type,
+            'context': context,
+            'system_id': system_id,
+            'hostname': hostname,
+            })
+        self.assertThat(
+            mock_discover_chassis, MockCalledOnceWith(
+                chassis_type, context, system_id=system_id, hostname=hostname))
 
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):

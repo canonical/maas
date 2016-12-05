@@ -123,6 +123,14 @@ class UnknownPowerType(Exception):
     """Raised when trying to process an unknown power type."""
 
 
+class UnknownChassisType(Exception):
+    """Raised when trying to process an unknown chassis type."""
+
+
+class ChassisActionFail(Exception):
+    """Raised when performing a chassis action."""
+
+
 class CannotRegisterCluster(Exception):
     """The cluster could not be registered."""
 

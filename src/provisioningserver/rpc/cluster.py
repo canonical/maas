@@ -35,6 +35,7 @@ __all__ = [
 
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
+    AmpDiscoveredChassis,
     AmpList,
     Bytes,
     CompressedAmpList,
@@ -609,6 +610,32 @@ class AddChassis(amp.Command):
         (b"protocol", amp.Unicode(optional=True)),
     ]
     errors = {}
+
+
+class DiscoverChassis(amp.Command):
+    """Discover all the chassis information.
+
+    :since: 2.2
+    """
+    arguments = [
+        (b"system_id", amp.Unicode(optional=True)),
+        (b"hostname", amp.Unicode(optional=True)),
+        (b"chassis_type", amp.Unicode()),
+        # We can't define a tighter schema here because this is a highly
+        # variable bag of arguments from a variety of sources.
+        (b"context", StructureAsJSON()),
+    ]
+    response = [
+        (b"chassis", AmpDiscoveredChassis()),
+    ]
+    errors = {
+        exceptions.UnknownChassisType: (
+            b"UnknownChassisType"),
+        NotImplementedError: (
+            b"NotImplementedError"),
+        exceptions.ChassisActionFail: (
+            b"ChassisActionFail"),
+    }
 
 
 class ScanNetworks(amp.Command):
