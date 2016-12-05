@@ -40,6 +40,7 @@ from maasserver.models import (
     RackController,
     Service,
     StaticIPAddress,
+    Subnet,
 )
 from maasserver.rpc import (
     getAllClients,
@@ -88,14 +89,14 @@ def get_omapi_key():
     return key
 
 
-def split_ipv4_ipv6_subnets(subnets):
+def split_managed_ipv4_ipv6_subnets(subnets: Iterable[Subnet]):
     """Divide `subnets` into IPv4 ones and IPv6 ones.
 
     :param subnets: A sequence of subnets.
     :return: A tuple of two separate sequences: IPv4 subnets and IPv6 subnets.
     """
     split = defaultdict(list)
-    for subnet in subnets:
+    for subnet in (s for s in subnets if s.managed is True):
         split[subnet.get_ipnetwork().version].append(subnet)
     assert len(split) <= 2, (
         "Unexpected IP version(s): %s" % ', '.join(list(split.keys())))
@@ -509,7 +510,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
 
     # Group the subnets on each VLAN into IPv4 and IPv6 subnets.
     vlan_subnets = {
-        vlan: split_ipv4_ipv6_subnets(vlan.subnet_set.all())
+        vlan: split_managed_ipv4_ipv6_subnets(vlan.subnet_set.all())
         for vlan in vlans
     }
 

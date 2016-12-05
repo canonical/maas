@@ -100,6 +100,7 @@ class IPRANGE_TYPE:
     GATEWAY_IP = 'gateway-ip'
     DYNAMIC = 'dynamic'
     PROPOSED_DYNAMIC = 'proposed-dynamic'
+    UNMANAGED = 'unmanaged'
 
 
 class MAASIPRange(IPRange):
@@ -521,7 +522,7 @@ class MAASIPSet(set):
 
     def get_unused_ranges(
             self, outer_range: OuterRange,
-            comment=IPRANGE_TYPE.UNUSED) -> 'MAASIPSet':
+            purpose=IPRANGE_TYPE.UNUSED) -> 'MAASIPSet':
         """Calculates and returns a list of unused IP ranges, based on
         the supplied range of desired addresses.
 
@@ -557,7 +558,7 @@ class MAASIPSet(set):
             # range.
             if candidate_end - candidate_start >= 0:
                 unused_ranges.append(
-                    make_iprange(candidate_start, candidate_end, comment))
+                    make_iprange(candidate_start, candidate_end, purpose))
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
         if type(outer_range) == IPNetwork:
@@ -572,7 +573,7 @@ class MAASIPSet(set):
         # of the range we're checking against.
         if candidate_end - candidate_start >= 0:
             unused_ranges.append(
-                make_iprange(candidate_start, candidate_end, comment))
+                make_iprange(candidate_start, candidate_end, purpose))
         return MAASIPSet(unused_ranges)
 
     def get_full_range(self, outer_range):

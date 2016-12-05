@@ -43,6 +43,9 @@ class SubnetForm(MAASModelForm):
     allow_proxy = forms.BooleanField(
         required=False)
 
+    managed = forms.BooleanField(
+        required=False)
+
     class Meta:
         model = Subnet
         fields = (
@@ -56,6 +59,7 @@ class SubnetForm(MAASModelForm):
             'rdns_mode',
             'active_discovery',
             'allow_proxy',
+            'managed',
             )
 
     def __init__(self, *args, **kwargs):
@@ -64,9 +68,12 @@ class SubnetForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super(SubnetForm, self).clean()
-        # The default value for allow_proxy is True.
+        # The default value for 'allow_proxy' is True.
         if 'allow_proxy' not in self.data:
             cleaned_data['allow_proxy'] = True
+        # The default value for 'managed' is True.
+        if 'managed' not in self.data:
+            cleaned_data['managed'] = True
         # The ArrayField form has a bug which leaves out the first entry.
         if 'dns_servers' in self.data and self.data['dns_servers'] != '':
             cleaned_data['dns_servers'] = self.data.getlist('dns_servers')

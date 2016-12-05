@@ -37,7 +37,7 @@ def convert_static_ipranges_to_reserved(
         IPRange, subnet, ranges, created_time, range_description):
     unreserved_range_set = MAASIPSet(ranges)
     unreserved_ranges = unreserved_range_set.get_unused_ranges(
-        subnet.cidr, comment="reserved")
+        subnet.cidr, purpose="reserved")
     for iprange in unreserved_ranges:
         start_ip = str(IPAddress(iprange.first))
         end_ip = str(IPAddress(iprange.last))

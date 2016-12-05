@@ -68,6 +68,11 @@
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
                 <fieldset class="form__fieldset six-col last-col">
+                    <maas-obj-field type="onoffswitch" key="managed" label="Managed allocation"
+                                    label-width="two" input-width="three"
+                                    label-info="When enabled, MAAS will assume it may take full control of DHCP and&#xa;IP address management on this subnet. When disabled, MAAS will only&#xa;allocate addresses from reserved IP ranges on this subnet, and will not&#xa;include this subnet's dynamic ranges in the DHCP configuration.">
+
+                    </maas-obj-field>
                     <maas-obj-field data-ng-if="subnet.version === 4" type="onoffswitch" key="active_discovery" label="Active mapping"
                         label-width="two" input-width="three" label-info="When enabled, MAAS will scan this subnet {$ active_discovery_interval | lowercase $}&#xa;to discover hosts that have not been discovered passively."></maas-obj-field>
                     <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"

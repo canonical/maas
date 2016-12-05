@@ -59,6 +59,7 @@ from netaddr import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
+    IPRANGE_TYPE as MAASIPRANGE_TYPE,
     MAASIPSet,
     make_ipaddress,
     make_iprange,
@@ -386,6 +387,9 @@ class Subnet(CleanSave, TimestampedModel):
     active_discovery = BooleanField(
         editable=True, blank=False, null=False, default=False)
 
+    managed = BooleanField(
+        editable=True, blank=False, null=False, default=True)
+
     @property
     def label(self):
         """Returns a human-friendly label for this subnet."""
@@ -474,7 +478,8 @@ class Subnet(CleanSave, TimestampedModel):
 
     def get_ipranges_in_use(
             self, exclude_addresses: IPAddressExcludeList=None,
-            ranges_only: bool=False,
+            ranges_only: bool=False, include_reserved: bool=True,
+            with_neighbours: bool=False,
             ignore_discovered_ips: bool=False) -> MAASIPSet:
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
@@ -483,6 +488,8 @@ class Subnet(CleanSave, TimestampedModel):
         :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
         :param ranges_only: if True, filters out gateway IPs, static routes,
             DNS servers, and `exclude_addresses`.
+        :param with_neighbours: If True, includes addresses learned from
+            neighbour observation.
         """
         if exclude_addresses is None:
             exclude_addresses = []
@@ -531,8 +538,11 @@ class Subnet(CleanSave, TimestampedModel):
                 for address in exclude_addresses
                 if address in network
             )
-        ranges |= self.get_reserved_maasipset()
+        if include_reserved:
+            ranges |= self.get_reserved_maasipset()
         ranges |= self.get_dynamic_maasipset()
+        if with_neighbours:
+            ranges |= self.get_maasipset_for_neighbours()
         return MAASIPSet(ranges)
 
     def get_ipranges_available_for_reserved_range(self):
@@ -549,19 +559,71 @@ class Subnet(CleanSave, TimestampedModel):
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
+        :param ranges_only: if True, filters out gateway IPs, static routes,
+            DNS servers, and `exclude_addresses`.
         :param exclude_addresses: An iterable of addresses not to use.
         :param ignore_discovered_ips: DISCOVERED addresses are not "in use".
+        :param with_neighbours: If True, includes addresses learned from
+            neighbour observation.
         """
         if exclude_addresses is None:
             exclude_addresses = []
-        ranges = self.get_ipranges_in_use(
+        in_use = self.get_ipranges_in_use(
             exclude_addresses=exclude_addresses,
             ranges_only=ranges_only,
+            with_neighbours=with_neighbours,
             ignore_discovered_ips=ignore_discovered_ips)
-        if with_neighbours:
-            ranges |= self.get_maasipset_for_neighbours()
-        unused = ranges.get_unused_ranges(self.get_ipnetwork())
-        return unused
+        if self.managed or ranges_only:
+            not_in_use = in_use.get_unused_ranges(self.get_ipnetwork())
+        else:
+            # The end result we want is a list of unused IP addresses *within*
+            # reserved ranges. To get that result, we first need the full list
+            # of unused IP addresses on the subnet. This is better illustrated
+            # visually below.
+            #
+            # Legend:
+            #     X:  in-use IP addresses
+            #     R:  reserved range
+            #     Rx: reserved range (with allocated, in-use IP address)
+            #
+            #             +----+----+----+----+----+----+
+            # IP address: | 1  | 2  | 3  | 4  | 5  | 6  |
+            #             +----+----+----+----+----+----+
+            #     Usages: | X  |    | R  | Rx |    | X  |
+            #             +----+----+----+----+----+----+
+            #
+            # We need a set that just contains `3` in this case. To get there,
+            # first calculate the set of all unused addresses on the subnet,
+            # then intersect that set with set of in-use addresses *excluding*
+            # the reserved range, then calculate which addresses within *that*
+            # set are unused:
+            #                               +----+----+----+----+----+----+
+            #                   IP address: | 1  | 2  | 3  | 4  | 5  | 6  |
+            #                               +----+----+----+----+----+----+
+            #                       unused: |    | U  |    |    | U  |    |
+            #                               +----+----+----+----+----+----+
+            #             unmanaged_in_use: | u  |    |    | u  |    | u  |
+            #                               +----+----+----+----+----+----+
+            #                 |= unmanaged: ===============================
+            #                               +----+----+----+----+----+----+
+            #             unmanaged_in_use: | u  | U  |    | u  | U  | u  |
+            #                               +----+----+----+----+----+----+
+            #          get_unused_ranges(): ===============================
+            #                               +----+----+----+----+----+----+
+            #                   not_in_use: |    |    | n  |    |    |    |
+            #                               +----+----+----+----+----+----+
+            unused = in_use.get_unused_ranges(
+                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNMANAGED)
+            unmanaged_in_use = self.get_ipranges_in_use(
+                exclude_addresses=exclude_addresses,
+                ranges_only=ranges_only,
+                include_reserved=False,
+                with_neighbours=with_neighbours,
+                ignore_discovered_ips=ignore_discovered_ips)
+            unmanaged_in_use |= unused
+            not_in_use = unmanaged_in_use.get_unused_ranges(
+                self.get_ipnetwork(), purpose=MAASIPRANGE_TYPE.UNUSED)
+        return not_in_use
 
     def get_maasipset_for_neighbours(self) -> MAASIPSet:
         """Return the observed neighbours in this subnet.

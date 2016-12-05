@@ -45,6 +45,7 @@ class TestSubnetHandler(MAASServerTestCase):
             "cidr": subnet.cidr,
             "gateway_ip": subnet.gateway_ip,
             "active_discovery": subnet.active_discovery,
+            "managed": subnet.managed,
         }
         full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)

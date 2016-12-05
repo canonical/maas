@@ -87,6 +87,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         allow_proxy = factory.pick_bool()
         gateway_ip = factory.pick_ip_in_network(network)
+        managed = factory.pick_bool()
         dns_servers = []
         for _ in range(2):
             dns_servers.append(
@@ -102,6 +103,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
             "dns_servers": ','.join(dns_servers),
             "rdns_mode": rdns_mode,
             "allow_proxy": allow_proxy,
+            "managed": managed,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -115,6 +117,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
         self.assertEqual(rdns_mode, created_subnet['rdns_mode'])
         self.assertEqual(allow_proxy, created_subnet['allow_proxy'])
+        self.assertEqual(managed, created_subnet['managed'])
 
     def test_create_defaults_to_allow_proxy(self):
         self.become_admin()
@@ -151,7 +154,43 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
         self.assertEqual(rdns_mode, created_subnet['rdns_mode'])
-        self.assertEqual(True, created_subnet['allow_proxy'])
+
+    def test_create_defaults_to_managed(self):
+        self.become_admin()
+        subnet_name = factory.make_name("subnet")
+        vlan = factory.make_VLAN()
+        space = factory.make_Space()
+        network = factory.make_ip4_or_6_network()
+        cidr = str(network.cidr)
+        rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
+        gateway_ip = factory.pick_ip_in_network(network)
+        dns_servers = []
+        for _ in range(2):
+            dns_servers.append(
+                factory.pick_ip_in_network(
+                    network, but_not=[gateway_ip] + dns_servers))
+        uri = get_subnets_uri()
+        response = self.client.post(uri, {
+            "name": subnet_name,
+            "vlan": vlan.id,
+            "space": space.id,
+            "cidr": cidr,
+            "gateway_ip": gateway_ip,
+            "dns_servers": ','.join(dns_servers),
+            "rdns_mode": rdns_mode,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        created_subnet = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(subnet_name, created_subnet['name'])
+        self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
+        self.assertEqual(space.get_name(), created_subnet['space'])
+        self.assertEqual(cidr, created_subnet['cidr'])
+        self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
+        self.assertEqual(dns_servers, created_subnet['dns_servers'])
+        self.assertEqual(rdns_mode, created_subnet['rdns_mode'])
+        self.assertEqual(True, created_subnet['managed'])
 
     def test_create_admin_only(self):
         subnet_name = factory.make_name("subnet")
@@ -200,6 +239,7 @@ class TestSubnetAPI(APITestCase.ForUser):
             "cidr": Equals(subnet.cidr),
             "gateway_ip": Equals(subnet.gateway_ip),
             "dns_servers": Equals(subnet.dns_servers),
+            "managed": Equals(subnet.managed),
             }))
 
     def test_read_404_when_bad_id(self):
@@ -232,20 +272,24 @@ class TestSubnetAPI(APITestCase.ForUser):
         new_name = factory.make_name("subnet")
         new_rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         new_allow_proxy = factory.pick_bool()
+        new_managed = factory.pick_bool()
         uri = get_subnet_uri(subnet)
         response = self.client.put(uri, {
             "name": new_name,
             "rdns_mode": new_rdns_mode,
             "allow_proxy": new_allow_proxy,
+            "managed": new_managed,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertEqual(
             new_name, json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))['name'])
-        self.assertEqual(new_name, reload_object(subnet).name)
-        self.assertEqual(new_rdns_mode, reload_object(subnet).rdns_mode)
-        self.assertEqual(new_allow_proxy, reload_object(subnet).allow_proxy)
+        subnet = reload_object(subnet)
+        self.assertEqual(new_name, subnet.name)
+        self.assertEqual(new_rdns_mode, subnet.rdns_mode)
+        self.assertEqual(new_allow_proxy, subnet.allow_proxy)
+        self.assertEqual(new_managed, subnet.managed)
 
     def test_update_admin_only(self):
         subnet = factory.make_Subnet()

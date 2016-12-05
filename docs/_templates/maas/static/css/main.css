@@ -74,7 +74,16 @@ a:active, a:focus, a:hover {
   border-bottom: 1px solid #6D4100;
 }
 
-/* API documentation subsection titles should be smaller. */
-h4 code.docutils {
+/*
+ * Custom CSS selectors for the API documentation page.
+ *
+ * Make subtitles for each API endpoint smaller, so they don't overwhelm
+ * the remainder of the documentation.
+ */
+div#maas-api div#operations h4 code.docutils {
   font-size: 75%;
+}
+
+div#maas-api div#operations div.section h5 {
+  font-size: 90%;
 }

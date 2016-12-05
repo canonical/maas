@@ -35,6 +35,7 @@ from maasserver.models.subnet import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches
 from netaddr import (
     AddrFormatError,
@@ -898,13 +899,37 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
 
 class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
 
+    scenarios = (
+        ("managed", {'managed': True}),
+        ("unmanaged", {'managed': False}),
+    )
+
+    def make_Subnet(self, *args, **kwargs):
+        """Helper to create a subnet for this test suite.
+
+        Eclipses the entire subnet with an IPRange of type RESERVED, so that
+        unmanaged and managed test scenarios are expected to behave the same.
+        """
+        cidr = kwargs.get('cidr')
+        network = IPNetwork(cidr)
+        # Note: these tests assume IPv4.
+        first = str(IPAddress(network.first + 1))
+        last = str(IPAddress(network.last - 1))
+        subnet = factory.make_Subnet(*args, managed=self.managed, **kwargs)
+        if not self.managed:
+            factory.make_IPRange(
+                subnet, start_ip=first, end_ip=last,
+                type=IPRANGE_TYPE.RESERVED)
+            subnet = reload_object(subnet)
+        return subnet
+
     def setUp(self):
         register_view("maasserver_discovery")
         return super().setUp()
 
     def test__raises_if_no_free_addresses(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
-        subnet = factory.make_Subnet(
+        subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip="10.0.0.1",
             dns_servers=["10.0.0.2"])
         with ExpectedException(
@@ -914,35 +939,39 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
 
     def test__allocates_next_free_address(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
-        subnet = factory.make_Subnet(
-            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        subnet = self.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None,
+            )
         ip = subnet.get_next_ip_for_allocation()
         self.assertThat(ip, Equals("10.0.0.1"))
 
     def test__avoids_gateway_ip(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
-        subnet = factory.make_Subnet(
-            cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=None)
+        subnet = self.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=None,
+            )
         ip = subnet.get_next_ip_for_allocation()
         self.assertThat(ip, Equals("10.0.0.2"))
 
     def test__avoids_excluded_addresses(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
         subnet = factory.make_Subnet(
-            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None,
+            )
         ip = subnet.get_next_ip_for_allocation(exclude_addresses=["10.0.0.1"])
         self.assertThat(ip, Equals("10.0.0.2"))
 
     def test__avoids_dns_servers(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
         subnet = factory.make_Subnet(
-            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=["10.0.0.1"])
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=["10.0.0.1"],
+            )
         ip = subnet.get_next_ip_for_allocation()
         self.assertThat(ip, Equals("10.0.0.2"))
 
     def test__avoids_observed_neighbours(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
-        subnet = factory.make_Subnet(
+        subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
@@ -951,7 +980,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
 
     def test__logs_if_suggests_previously_observed_neighbour(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
-        subnet = factory.make_Subnet(
+        subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
         rackif = factory.make_Interface(vlan=subnet.vlan)
         now = datetime.now()
@@ -969,7 +998,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
 
     def test__uses_smallest_free_range_when_not_considering_neighbours(self):
         # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
-        subnet = factory.make_Subnet(
+        subnet = self.make_Subnet(
             cidr="10.0.0.0/29", gateway_ip=None, dns_servers=None)
         # With .4 in use, the free ranges are {1, 2, 3}, {5, 6}. So MAAS should
         # select 10.0.0.5, since that is the first address in the smallest
@@ -977,3 +1006,48 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         factory.make_StaticIPAddress(ip="10.0.0.4", cidr="10.0.0.0/29")
         ip = subnet.get_next_ip_for_allocation()
         self.assertThat(ip, Equals("10.0.0.5"))
+
+
+class TestUnmanagedSubnets(MAASServerTestCase):
+    def setUp(self):
+        register_view("maasserver_discovery")
+        return super().setUp()
+
+    def test__allocation_uses_reserved_range(self):
+        # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/29", gateway_ip=None, dns_servers=None,
+            managed=False)
+        range1 = factory.make_IPRange(
+            subnet, start_ip='10.0.0.1', end_ip='10.0.0.1',
+            type=IPRANGE_TYPE.RESERVED)
+        subnet = reload_object(subnet)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.1"))
+        range1.delete()
+        factory.make_IPRange(
+            subnet, start_ip='10.0.0.6', end_ip='10.0.0.6',
+            type=IPRANGE_TYPE.RESERVED)
+        subnet = reload_object(subnet)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.6"))
+
+    def test__allocation_uses_multiple_reserved_ranges(self):
+        # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/29", gateway_ip=None, dns_servers=None,
+            managed=False)
+        factory.make_IPRange(
+            subnet, start_ip='10.0.0.3', end_ip='10.0.0.4',
+            type=IPRANGE_TYPE.RESERVED)
+        subnet = reload_object(subnet)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.3"))
+        factory.make_StaticIPAddress(ip)
+        ip = subnet.get_next_ip_for_allocation()
+        self.assertThat(ip, Equals("10.0.0.4"))
+        factory.make_StaticIPAddress(ip)
+        with ExpectedException(
+                StaticIPAddressExhaustion,
+                "No more IPs available in subnet: 10.0.0.0/29."):
+            subnet.get_next_ip_for_allocation()

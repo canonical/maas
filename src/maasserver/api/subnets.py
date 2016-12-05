@@ -29,6 +29,7 @@ DISPLAYED_SUBNET_FIELDS = (
     'rdns_mode',
     'active_discovery',
     'allow_proxy',
+    'managed',
 )
 
 
@@ -49,32 +50,76 @@ class SubnetsHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a subnet.
+        """\
+        Create a subnet.
 
-        :param name: Name of the subnet.
-        :param description: Description of the subnet.
-        :param fabric: Fabric for the subnet. Defaults to the fabric the
-            provided VLAN belongs to or defaults to the default fabric.
-        :param vlan: VLAN this subnet belongs to. Defaults to the default
-            VLAN for the provided fabric or defaults to the default VLAN in
-            the default fabric.
-        :param vid: VID of the VLAN this subnet belongs to. Only used when
-            vlan is not provided. Picks the VLAN with this VID in the provided
-            fabric or the default fabric if one is not given.
-        :param space: Space this subnet is in. Defaults to the default space.
-        :param cidr: The network CIDR for this subnet.
-        :param gateway_ip: The gateway IP address for this subnet.
-        :param rdns_mode: How reverse DNS is handled for this subnet.
-            One of: 0 (Disabled), 1 (Enabled), or 2 (RFC2317).  Disabled means
-            no reverse zone is created; Enabled means generate the reverse
-            zone; RFC2317 extends Enabled to create the necessary parent zone
-            with the appropriate CNAME resource records for the network, if the
-            network is small enough to require the support described in
-            RFC2317.
-        :param allow_proxy: Configure maas-proxy to allow requests from this
-            subnet.
-        :param dns_servers: Comma-seperated list of DNS servers for this
-            subnet.
+        Required parameters
+        -------------------
+
+        cidr
+          The network CIDR for this subnet.
+
+
+        Optional parameters
+        -------------------
+
+        name
+          Name of the subnet.
+
+        description
+          Description of the subnet.
+
+        vlan
+          VLAN this subnet belongs to. Defaults to the default VLAN for the
+          provided fabric or defaults to the default VLAN in the default fabric
+          (if unspecified).
+
+        fabric
+          Fabric for the subnet. Defaults to the fabric the
+          provided VLAN belongs to, or defaults to the default fabric.
+
+        vid
+          VID of the VLAN this subnet belongs to. Only used when vlan is
+          not provided. Picks the VLAN with this VID in the provided
+          fabric or the default fabric if one is not given.
+
+        space
+          Space this subnet is in. Defaults to the default space.
+
+        gateway_ip
+          The gateway IP address for this subnet.
+
+        rdns_mode
+          How reverse DNS is handled for this subnet.
+          One of: 0 (Disabled), 1 (Enabled), or 2 (RFC2317).  Disabled
+          means no reverse zone is created; Enabled means generate the
+          reverse zone; RFC2317 extends Enabled to create the necessary
+          parent zone with the appropriate CNAME resource records for the
+          network, if the network is small enough to require the support
+          described in RFC2317.
+
+        allow_proxy
+          Configure maas-proxy to allow requests from this
+          subnet.
+
+        dns_servers
+          Comma-seperated list of DNS servers for this subnet.
+
+        managed
+          In MAAS 2.0+, all subnets are assumed to be managed by default.
+
+          Only managed subnets allow DHCP to be enabled on their related
+          dynamic ranges. (Thus, dynamic ranges become "informational
+          only"; an indication that another DHCP server is currently
+          handling them, or that MAAS will handle them when the subnet is
+          enabled for management.)
+
+          Managed subnets do not allow IP allocation by default. The
+          meaning of a "reserved" IP range is reversed for an unmanaged
+          subnet. (That is, for managed subnets, "reserved" means "MAAS
+          cannot allocate any IP address within this reserved block". For
+          unmanaged subnets, "reserved" means "MAAS must allocate IP
+          addresses only from reserved IP ranges".
         """
         form = SubnetForm(data=request.data)
         if form.is_valid():
@@ -100,7 +145,8 @@ class SubnetHandler(OperationsHandler):
 
     @classmethod
     def space(cls, subnet):
-        """Return the name of the space.
+        """\
+        Return the name of the space.
 
         Only the name is returned because the space endpoint will return
         a list of all subnets in that space. If this returned the subnet
@@ -109,7 +155,8 @@ class SubnetHandler(OperationsHandler):
         return subnet.space.get_name()
 
     def read(self, request, subnet_id):
-        """Read subnet.
+        """\
+        Read subnet.
 
         Returns 404 if the subnet is not found.
         """
@@ -117,19 +164,44 @@ class SubnetHandler(OperationsHandler):
             subnet_id, request.user, NODE_PERMISSION.VIEW)
 
     def update(self, request, subnet_id):
-        """Update subnet.
+        """\
+        Update the specified subnet.
 
-        :param name: Name of the subnet.
-        :param description: Description of the subnet.
-        :param vlan: VLAN this subnet belongs to.
-        :param space: Space this subnet is in.
-        :param cidr: The network CIDR for this subnet.
-        :param gateway_ip: The gateway IP address for this subnet.
-        :param rdns_mode: How reverse DNS is handled for this subnet.
-        :param allow_proxy: Configure maas-proxy to allow requests from this \
-            subnet.
-        :param dns_servers: Comma-seperated list of DNS servers for this \
-            subnet.
+        Please see the documentation for the 'create' operation for detailed
+        descriptions of each parameter.
+
+        Optional parameters
+        -------------------
+
+        name
+          Name of the subnet.
+
+        description
+          Description of the subnet.
+
+        vlan
+          VLAN this subnet belongs to.
+
+        space
+          Space this subnet is in.
+
+        cidr
+          The network CIDR for this subnet.
+
+        gateway_ip
+          The gateway IP address for this subnet.
+
+        rdns_mode
+          How reverse DNS is handled for this subnet.
+
+        allow_proxy
+          Configure maas-proxy to allow requests from this subnet.
+
+        dns_servers
+          Comma-seperated list of DNS servers for this subnet.
+
+        managed
+          If False, MAAS should not manage this subnet. (Default: True)
 
         Returns 404 if the subnet is not found.
         """
@@ -142,7 +214,8 @@ class SubnetHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, subnet_id):
-        """Delete subnet.
+        """\
+        Delete subnet.
 
         Returns 404 if the subnet is not found.
         """
@@ -153,7 +226,8 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def reserved_ip_ranges(self, request, subnet_id):
-        """Lists IP ranges currently reserved in the subnet.
+        """\
+        Lists IP ranges currently reserved in the subnet.
 
         Returns 404 if the subnet is not found.
         """
@@ -163,7 +237,8 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def unreserved_ip_ranges(self, request, subnet_id):
-        """Lists IP ranges currently unreserved in the subnet.
+        """\
+        Lists IP ranges currently unreserved in the subnet.
 
         Returns 404 if the subnet is not found.
         """
@@ -174,22 +249,27 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def statistics(self, request, subnet_id):
-        """
+        """\
         Returns statistics for the specified subnet, including:
 
-        num_available - the number of available IP addresses
-        largest_available - the largest number of contiguous free IP addresses
-        num_unavailable - the number of unavailable IP addresses
-        total_addresses - the sum of the available plus unavailable addresses
-        usage - the (floating point) usage percentage of this subnet
-        usage_string - the (formatted unicode) usage percentage of this subnet
-        ranges - the specific IP ranges present in ths subnet (if specified)
+        num_available: the number of available IP addresses
+        largest_available: the largest number of contiguous free IP addresses
+        num_unavailable: the number of unavailable IP addresses
+        total_addresses: the sum of the available plus unavailable addresses
+        usage: the (floating point) usage percentage of this subnet
+        usage_string: the (formatted unicode) usage percentage of this subnet
+        ranges: the specific IP ranges present in ths subnet (if specified)
 
-        Optional arguments:
-        include_ranges: if True, includes detailed information
-        about the usage of this range.
-        include_suggestions: if True, includes the suggested gateway and
-        dynamic range for this subnet, if it were to be configured.
+        Optional parameters
+        -------------------
+
+        include_ranges
+           If True, includes detailed information
+           about the usage of this range.
+
+        include_suggestions
+          If True, includes the suggested gateway and dynamic range for this
+          subnet, if it were to be configured.
 
         Returns 404 if the subnet is not found.
         """
@@ -208,14 +288,19 @@ class SubnetHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def ip_addresses(self, request, subnet_id):
-        """
+        """\
         Returns a summary of IP addresses assigned to this subnet.
 
-        Optional arguments:
-        with_username: (default=True) if False, suppresses the display
-        of usernames associated with each address.
-        with_node_summary: (default=True) if False, suppresses the display
-        of any node associated with each address.
+        Optional parameters
+        -------------------
+
+        with_username
+          If False, suppresses the display of usernames associated with each
+          address. (Default: True)
+
+        with_node_summary
+          If False, suppresses the display of any node associated with each
+          address. (Default: True)
         """
         subnet = Subnet.objects.get_subnet_or_404(
             subnet_id, request.user, NODE_PERMISSION.VIEW)

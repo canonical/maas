@@ -116,10 +116,36 @@ class TestSplitIPv4IPv6Subnets(MAASServerTestCase):
             ipv4_subnets + ipv6_subnets,
             key=lambda *args: random.randint(0, 10))
 
-        ipv4_result, ipv6_result = dhcp.split_ipv4_ipv6_subnets(subnets)
+        ipv4_result, ipv6_result = dhcp.split_managed_ipv4_ipv6_subnets(
+            subnets)
 
         self.assertItemsEqual(ipv4_subnets, ipv4_result)
         self.assertItemsEqual(ipv6_subnets, ipv6_result)
+
+    def test_skips_unmanaged_subnets(self):
+        ipv4_subnets = [
+            factory.make_Subnet(
+                cidr=str(factory.make_ipv4_network().cidr),
+                managed=random.choice([True, False]))
+            for _ in range(random.randint(0, 2))
+            ]
+        ipv6_subnets = [
+            factory.make_Subnet(
+                cidr=str(factory.make_ipv6_network().cidr),
+                managed=random.choice([True, False]))
+            for _ in range(random.randint(0, 2))
+            ]
+        subnets = sorted(
+            ipv4_subnets + ipv6_subnets,
+            key=lambda *args: random.randint(0, 10))
+
+        ipv4_result, ipv6_result = dhcp.split_managed_ipv4_ipv6_subnets(
+            subnets)
+
+        self.assertItemsEqual(
+            [s for s in ipv4_subnets if s.managed is True], ipv4_result)
+        self.assertItemsEqual(
+            [s for s in ipv6_subnets if s.managed is True], ipv6_result)
 
 
 class TestIPIsStickyOrAuto(MAASServerTestCase):
