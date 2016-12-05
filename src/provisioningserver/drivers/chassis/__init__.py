@@ -18,6 +18,7 @@ from abc import (
     abstractproperty,
 )
 
+import attr
 from jsonschema import validate
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
@@ -99,6 +100,105 @@ class ChassisActionError(ChassisError):
     or `discover`."""
 
 
+def convert_obj(expected):
+    """Convert the given value to an object of type `expected`."""
+    def convert(value):
+        if isinstance(value, expected):
+            return value
+        elif isinstance(value, dict):
+            return expected(**value)
+        else:
+            raise TypeError(
+                "%r is not of type %s or dict" % (value, expected))
+    return convert
+
+
+def convert_list(expected):
+    """Convert the given value to a list of objects of type `expected`."""
+    def convert(value):
+        if isinstance(value, list):
+            if len(value) == 0:
+                return value
+            else:
+                new_list = []
+                for item in value:
+                    if isinstance(item, expected):
+                        new_list.append(item)
+                    elif isinstance(item, dict):
+                        new_list.append(expected(**item))
+                    else:
+                        raise TypeError(
+                            "Item %r is not of type %s or dict" % (
+                                item, expected))
+                return new_list
+        else:
+            raise TypeError("%r is not of type list" % value)
+    return convert
+
+
+@attr.s
+class DiscoveredMachineInterface:
+    """Discovered machine interface."""
+    mac_address = attr.ib(convert=str)
+    vid = attr.ib(convert=int, default=-1)
+    tags = attr.ib(convert=convert_list(str), default=[])
+
+
+@attr.s
+class DiscoveredMachineBlockDevice:
+    """Discovered machine block device."""
+    model = attr.ib(convert=str)
+    serial = attr.ib(convert=str)
+    size = attr.ib(convert=int)
+    block_size = attr.ib(convert=int, default=512)
+    tags = attr.ib(convert=convert_list(str), default=[])
+
+
+@attr.s
+class DiscoveredMachine:
+    """Discovered machine."""
+    cores = attr.ib(convert=int)
+    cpu_speed = attr.ib(convert=int)
+    memory = attr.ib(convert=int)
+    interfaces = attr.ib(convert=convert_list(DiscoveredMachineInterface))
+    block_devices = attr.ib(
+        convert=convert_list(DiscoveredMachineBlockDevice))
+
+
+@attr.s
+class DiscoveredChassisHints:
+    """Discovered chassis hints.
+
+    Hints provide helpful information to a user trying to compose a machine.
+    Limiting the maximum cores allow request on a per machine basis.
+    """
+    cores = attr.ib(convert=int)
+    memory = attr.ib(convert=int)
+    local_storage = attr.ib(convert=int)
+
+
+@attr.s
+class DiscoveredChassis:
+    """Discovered chassis information."""
+
+    cores = attr.ib(convert=int)
+    cpu_speed = attr.ib(convert=int)
+    memory = attr.ib(convert=int)
+    local_storage = attr.ib(convert=int)
+    hints = attr.ib(convert=convert_obj(DiscoveredChassisHints))
+    machines = attr.ib(
+        convert=convert_list(DiscoveredMachine), default=[])
+
+    @classmethod
+    def fromdict(cls, data):
+        """Convert from a dictionary."""
+        return cls(**data)
+
+    def asdict(self):
+        """Convert to a dictionary."""
+        return attr.asdict(self)
+
+
 class ChassisDriverBase(PowerDriverBase):
     """Base driver for a chassis driver."""
 
@@ -112,6 +212,7 @@ class ChassisDriverBase(PowerDriverBase):
 
         :param system_id: Chassis system_id.
         :param context: Chassis settings.
+        :returns: `Deferred` returning `DiscoveredChassis`.
         :rtype: `twisted.internet.defer.Deferred`
         """
 

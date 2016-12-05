@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import random
 from unittest.mock import sentinel
 
 from jsonschema import validate
@@ -19,10 +20,320 @@ from provisioningserver.drivers.chassis import (
     ChassisDriverBase,
     ChassisDriverRegistry,
     ChassisError,
+    DiscoveredChassis,
+    DiscoveredChassisHints,
+    DiscoveredMachine,
+    DiscoveredMachineBlockDevice,
+    DiscoveredMachineInterface,
     get_error_message,
     JSON_CHASSIS_DRIVER_SCHEMA,
 )
 from provisioningserver.utils.testing import RegistryFixture
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    MatchesListwise,
+    MatchesStructure,
+)
+
+
+class TestDiscoveredClasses(MAASTestCase):
+
+    def test_interface_mac(self):
+        mac = factory.make_mac_address()
+        nic = DiscoveredMachineInterface(mac_address=mac)
+        self.assertEquals(mac, nic.mac_address)
+        self.assertEquals(-1, nic.vid)
+        self.assertEquals([], nic.tags)
+
+    def test_interface_mac_vid(self):
+        mac = factory.make_mac_address()
+        vid = random.randint(1, 300)
+        nic = DiscoveredMachineInterface(mac_address=mac, vid=vid)
+        self.assertEquals(mac, nic.mac_address)
+        self.assertEquals(vid, nic.vid)
+        self.assertEquals([], nic.tags)
+
+    def test_interface_mac_vid_tags(self):
+        mac = factory.make_mac_address()
+        vid = random.randint(1, 300)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        nic = DiscoveredMachineInterface(mac_address=mac, vid=vid, tags=tags)
+        self.assertEquals(mac, nic.mac_address)
+        self.assertEquals(vid, nic.vid)
+        self.assertEquals(tags, nic.tags)
+
+    def test_block_device_model_serial_size(self):
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        size = random.randint(512, 512 * 1024)
+        device = DiscoveredMachineBlockDevice(
+            model=model, serial=serial, size=size)
+        self.assertEquals(model, device.model)
+        self.assertEquals(serial, device.serial)
+        self.assertEquals(size, device.size)
+
+    def test_block_device_model_serial_size_block_size(self):
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        size = random.randint(512, 512 * 1024)
+        block_size = random.randint(512, 4096)
+        device = DiscoveredMachineBlockDevice(
+            model=model, serial=serial, size=size, block_size=block_size)
+        self.assertEquals(model, device.model)
+        self.assertEquals(serial, device.serial)
+        self.assertEquals(size, device.size)
+        self.assertEquals(block_size, device.block_size)
+
+    def test_block_device_model_serial_size_block_size_tags(self):
+        model = factory.make_name("model")
+        serial = factory.make_name("serial")
+        size = random.randint(512, 512 * 1024)
+        block_size = random.randint(512, 4096)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        device = DiscoveredMachineBlockDevice(
+            model=model, serial=serial, size=size, block_size=block_size,
+            tags=tags)
+        self.assertEquals(model, device.model)
+        self.assertEquals(serial, device.serial)
+        self.assertEquals(size, device.size)
+        self.assertEquals(block_size, device.block_size)
+        self.assertEquals(tags, device.tags)
+
+    def test_machine(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        interfaces = [
+            DiscoveredMachineInterface(mac_address=factory.make_mac_address())
+            for _ in range(3)
+        ]
+        block_devices = [
+            DiscoveredMachineBlockDevice(
+                model=factory.make_name("model"),
+                serial=factory.make_name("serial"),
+                size=random.randint(512, 1024))
+            for _ in range(3)
+        ]
+        machine = DiscoveredMachine(
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            interfaces=interfaces, block_devices=block_devices)
+        self.assertEquals(cores, machine.cores)
+        self.assertEquals(cpu_speed, machine.cpu_speed)
+        self.assertEquals(memory, machine.memory)
+        self.assertEquals(interfaces, machine.interfaces)
+        self.assertEquals(block_devices, machine.block_devices)
+
+    def test_chassis_hints(self):
+        cores = random.randint(1, 8)
+        memory = random.randint(4096, 8192)
+        local_storage = random.randint(4096, 8192)
+        hints = DiscoveredChassisHints(
+            cores=cores, memory=memory, local_storage=local_storage)
+        self.assertEquals(cores, hints.cores)
+        self.assertEquals(memory, hints.memory)
+        self.assertEquals(local_storage, hints.local_storage)
+
+    def test_chassis(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        local_storage = random.randint(4096, 8192)
+        hints = DiscoveredChassisHints(
+            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            local_storage=random.randint(4096, 8192))
+        machines = []
+        for _ in range(3):
+            cores = random.randint(1, 8)
+            cpu_speed = random.randint(1000, 2000)
+            memory = random.randint(4096, 8192)
+            interfaces = [
+                DiscoveredMachineInterface(
+                    mac_address=factory.make_mac_address())
+                for _ in range(3)
+            ]
+            block_devices = [
+                DiscoveredMachineBlockDevice(
+                    model=factory.make_name("model"),
+                    serial=factory.make_name("serial"),
+                    size=random.randint(512, 1024))
+                for _ in range(3)
+            ]
+            machines.append(
+                DiscoveredMachine(
+                    cores=cores, cpu_speed=cpu_speed, memory=memory,
+                    interfaces=interfaces, block_devices=block_devices))
+        chassis = DiscoveredChassis(
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            local_storage=local_storage, hints=hints, machines=machines)
+        self.assertEquals(cores, chassis.cores)
+        self.assertEquals(cpu_speed, chassis.cpu_speed)
+        self.assertEquals(memory, chassis.memory)
+        self.assertEquals(local_storage, chassis.local_storage)
+        self.assertEquals(machines, chassis.machines)
+
+    def test_chassis_asdict(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        local_storage = random.randint(4096, 8192)
+        hints = DiscoveredChassisHints(
+            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            local_storage=random.randint(4096, 8192))
+        machines = []
+        for _ in range(3):
+            cores = random.randint(1, 8)
+            cpu_speed = random.randint(1000, 2000)
+            memory = random.randint(4096, 8192)
+            interfaces = [
+                DiscoveredMachineInterface(
+                    mac_address=factory.make_mac_address())
+                for _ in range(3)
+            ]
+            block_devices = [
+                DiscoveredMachineBlockDevice(
+                    model=factory.make_name("model"),
+                    serial=factory.make_name("serial"),
+                    size=random.randint(512, 1024))
+                for _ in range(3)
+            ]
+            machines.append(
+                DiscoveredMachine(
+                    cores=cores, cpu_speed=cpu_speed, memory=memory,
+                    interfaces=interfaces, block_devices=block_devices))
+        chassis = DiscoveredChassis(
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            local_storage=local_storage, hints=hints, machines=machines)
+        self.assertThat(chassis.asdict(), MatchesDict({
+            "cores": Equals(cores),
+            "cpu_speed": Equals(cpu_speed),
+            "memory": Equals(memory),
+            "local_storage": Equals(local_storage),
+            "hints": MatchesDict({
+                "cores": Equals(hints.cores),
+                "memory": Equals(hints.memory),
+                "local_storage": Equals(hints.local_storage),
+            }),
+            "machines": MatchesListwise([
+                MatchesDict({
+                    "cores": Equals(machine.cores),
+                    "cpu_speed": Equals(machine.cpu_speed),
+                    "memory": Equals(machine.memory),
+                    "interfaces": MatchesListwise([
+                        MatchesDict({
+                            "mac_address": Equals(interface.mac_address),
+                            "vid": Equals(interface.vid),
+                            "tags": Equals(interface.tags),
+                        })
+                        for interface in machine.interfaces
+                    ]),
+                    "block_devices": MatchesListwise([
+                        MatchesDict({
+                            "model": Equals(block_device.model),
+                            "serial": Equals(block_device.serial),
+                            "size": Equals(block_device.size),
+                            "block_size": Equals(block_device.block_size),
+                            "tags": Equals(block_device.tags),
+                        })
+                        for block_device in machine.block_devices
+                    ]),
+                })
+                for machine in machines
+            ]),
+        }))
+
+    def test_chassis_fromdict(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        local_storage = random.randint(4096, 8192)
+        hints = dict(
+            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            local_storage=random.randint(4096, 8192))
+        machines_data = []
+        for _ in range(3):
+            cores = random.randint(1, 8)
+            cpu_speed = random.randint(1000, 2000)
+            memory = random.randint(4096, 8192)
+            interfaces = [
+                dict(
+                    mac_address=factory.make_mac_address())
+                for _ in range(3)
+            ]
+            block_devices = [
+                dict(
+                    model=factory.make_name("model"),
+                    serial=factory.make_name("serial"),
+                    size=random.randint(512, 1024))
+                for _ in range(3)
+            ]
+            machines_data.append(
+                dict(
+                    cores=cores, cpu_speed=cpu_speed, memory=memory,
+                    interfaces=interfaces, block_devices=block_devices))
+        chassis_data = dict(
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            local_storage=local_storage, hints=hints, machines=machines_data)
+        chassis = DiscoveredChassis.fromdict(chassis_data)
+        self.assertThat(chassis, IsInstance(DiscoveredChassis))
+        self.assertThat(chassis, MatchesStructure(
+            cores=Equals(cores),
+            cpu_speed=Equals(cpu_speed),
+            memory=Equals(memory),
+            local_storage=Equals(local_storage),
+            hints=MatchesAll(
+                IsInstance(DiscoveredChassisHints),
+                MatchesStructure(
+                    cores=Equals(hints['cores']),
+                    memory=Equals(hints['memory']),
+                    local_storage=Equals(hints['local_storage']),
+                ),
+            ),
+            machines=MatchesListwise([
+                MatchesAll(
+                    IsInstance(DiscoveredMachine),
+                    MatchesStructure(
+                        cores=Equals(machine['cores']),
+                        cpu_speed=Equals(machine['cpu_speed']),
+                        memory=Equals(machine['memory']),
+                        interfaces=MatchesListwise([
+                            MatchesAll(
+                                IsInstance(DiscoveredMachineInterface),
+                                MatchesStructure(
+                                    mac_address=Equals(
+                                        interface['mac_address']),
+                                    vid=Equals(-1),
+                                    tags=Equals([]),
+                                ),
+                            )
+                            for interface in machine['interfaces']
+                        ]),
+                        block_devices=MatchesListwise([
+                            MatchesAll(
+                                IsInstance(DiscoveredMachineBlockDevice),
+                                MatchesStructure(
+                                    model=Equals(block_device['model']),
+                                    serial=Equals(block_device['serial']),
+                                    size=Equals(block_device['size']),
+                                    block_size=Equals(512),
+                                    tags=Equals([]),
+                                ),
+                            )
+                            for block_device in machine['block_devices']
+                        ]),
+                    ),
+                )
+                for machine in machines_data
+            ]),
+        ))
 
 
 class FakeChassisDriverBase(ChassisDriverBase):
