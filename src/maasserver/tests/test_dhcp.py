@@ -17,7 +17,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     SERVICE_STATUS,
 )
-from maasserver.exceptions import DHCPConfigurationError
 from maasserver.models import (
     Config,
     DHCPSnippet,
@@ -45,7 +44,6 @@ from maastesting.matchers import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
-    TwistedLoggerFixture,
 )
 from netaddr import (
     IPAddress,
@@ -422,8 +420,8 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
                 rack_controller, vlan, subnet.get_ipnetwork().version))
 
 
-class TestGetManagedVLANsFor(MAASServerTestCase):
-    """Tests for `get_managed_vlans_for`."""
+class TestGenManagedVLANsFor(MAASServerTestCase):
+    """Tests for `gen_managed_vlans_for`."""
 
     def test__returns_all_managed_vlans(self):
         rack_controller = factory.make_RackController()
@@ -509,7 +507,31 @@ class TestGetManagedVLANsFor(MAASServerTestCase):
         self.assertEquals({
             vlan_one,
             vlan_two,
-        }, dhcp.get_managed_vlans_for(rack_controller))
+        }, set(dhcp.gen_managed_vlans_for(rack_controller)))
+
+    def test__returns_managed_vlan_with_relay_vlans(self):
+        rack_controller = factory.make_RackController()
+        vlan_one = factory.make_VLAN(
+            dhcp_on=True, primary_rack=rack_controller, name="1")
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan_one)
+        managed_ipv4_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr), vlan=vlan_one)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=managed_ipv4_subnet,
+            interface=primary_interface)
+
+        # Relay VLANs atteched to the vlan.
+        relay_vlans = {
+            factory.make_VLAN(relay_vlan=vlan_one)
+            for _ in range(3)
+        }
+
+        # Should only contain the subnets that are managed by the rack
+        # controller and the best interface should have been selected.
+        self.assertEquals(
+            relay_vlans.union(set([vlan_one])),
+            set(dhcp.gen_managed_vlans_for(rack_controller)))
 
 
 class TestIPIsOnVLAN(MAASServerTestCase):
@@ -1300,31 +1322,6 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
 class TestGetDHCPConfigureFor(MAASServerTestCase):
     """Tests for `get_dhcp_configure_for`."""
 
-    def test__raises_DHCPConfigurationError_for_ipv4(self):
-        primary_rack = factory.make_RackController()
-        secondary_rack = factory.make_RackController()
-
-        # VLAN for primary that has a secondary with multiple subnets.
-        ha_vlan = factory.make_VLAN(
-            dhcp_on=True, primary_rack=primary_rack,
-            secondary_rack=secondary_rack)
-        ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
-        secondary_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=ha_vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
-            interface=secondary_interface)
-        other_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
-
-        ntp_servers = [factory.make_name("ntp")]
-        default_domain = Domain.objects.get_default_domain()
-        self.assertRaises(
-            DHCPConfigurationError, dhcp.get_dhcp_configure_for,
-            4, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_servers, default_domain)
-
     def test__returns_for_ipv4(self):
         primary_rack = factory.make_RackController()
         secondary_rack = factory.make_RackController()
@@ -1422,36 +1419,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         self.assertItemsEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)
-
-    def test__raises_DHCPConfigurationError_for_ipv6(self):
-        primary_rack = factory.make_RackController()
-        secondary_rack = factory.make_RackController()
-
-        # VLAN for primary that has a secondary with multiple subnets.
-        ha_vlan = factory.make_VLAN(
-            dhcp_on=True, primary_rack=primary_rack,
-            secondary_rack=secondary_rack)
-        ha_subnet = factory.make_Subnet(
-            vlan=ha_vlan, cidr="fd38:c341:27da:c831::/64")
-        factory.make_IPRange(
-            ha_subnet, "fd38:c341:27da:c831:0:1::",
-            "fd38:c341:27da:c831:0:1:ffff:0")
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
-        secondary_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=ha_vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
-            interface=secondary_interface)
-        other_subnet = factory.make_Subnet(
-            vlan=ha_vlan, cidr="fd38:c341:27da:c832::/64")
-
-        ntp_servers = [factory.make_name("ntp")]
-        default_domain = Domain.objects.get_default_domain()
-        self.assertRaises(
-            DHCPConfigurationError, dhcp.get_dhcp_configure_for,
-            6, primary_rack, ha_vlan, [ha_subnet, other_subnet],
-            ntp_servers, default_domain)
 
     def test__returns_for_ipv6(self):
         primary_rack = factory.make_RackController()
@@ -1744,26 +1711,6 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
                 hosts=config.hosts_v6, interfaces=interfaces_v6,
                 global_dhcp_snippets=config.global_dhcp_snippets,
                 ))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__logs_DHCPConfigurationError_ipv4(self):
-        self.patch(dhcp.settings, "DHCP_CONNECT", True)
-        with TwistedLoggerFixture() as logger:
-            yield deferToDatabase(
-                self.create_rack_controller, missing_ipv4=True)
-            self.assertDocTestMatches(
-                "...No IPv4 interface...", logger.output)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__logs_DHCPConfigurationError_ipv6(self):
-        self.patch(dhcp.settings, "DHCP_CONNECT", True)
-        with TwistedLoggerFixture() as logger:
-            yield deferToDatabase(
-                self.create_rack_controller, missing_ipv6=True)
-            self.assertDocTestMatches(
-                "...No IPv6 interface...", logger.output)
 
     @wait_for_reactor
     @inlineCallbacks

@@ -53,13 +53,17 @@ angular.module('MAAS').factory(
 
         // Configure DHCP on the VLAN
         VLANsManager.prototype.configureDHCP = function(
-           vlan, controllers, extra) {
+           vlan, controllers, extra, relay_vlan) {
+           var params = {
+               "id": vlan.id,
+               "controllers": controllers,
+               "extra": extra
+           };
+           if(relay_vlan === null || angular.isNumber(relay_vlan)) {
+              params.relay_vlan = relay_vlan;
+           }
            return RegionConnection.callMethod(
-                "vlan.configure_dhcp", {
-                    "id": vlan.id,
-                    "controllers": controllers,
-                    "extra": extra
-                }, true);
+                "vlan.configure_dhcp", params, true);
         };
 
         // Disable DHCP on the VLAN
@@ -67,7 +71,8 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod(
                 "vlan.configure_dhcp", {
                     "id": vlan.id,
-                    "controllers": []
+                    "controllers": [],
+                    "relay_vlan": null
                 }, true);
         };
 

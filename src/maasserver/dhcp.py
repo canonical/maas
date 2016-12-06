@@ -29,10 +29,7 @@ from maasserver.enum import (
     IPRANGE_TYPE,
     SERVICE_STATUS,
 )
-from maasserver.exceptions import (
-    DHCPConfigurationError,
-    UnresolvableHost,
-)
+from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
     Config,
     DHCPSnippet,
@@ -194,18 +191,19 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
         return []
 
 
-def get_managed_vlans_for(rack_controller):
-    """Return list of `VLAN` for the `rack_controller` when DHCP is enabled and
+def gen_managed_vlans_for(rack_controller):
+    """Yeilds each `VLAN` for the `rack_controller` when DHCP is enabled and
     `rack_controller` is either the `primary_rack` or the `secondary_rack`.
     """
     interfaces = rack_controller.interface_set.filter(
         Q(vlan__dhcp_on=True) & (
             Q(vlan__primary_rack=rack_controller) |
-            Q(vlan__secondary_rack=rack_controller))).select_related("vlan")
-    return {
-        interface.vlan
-        for interface in interfaces
-    }
+            Q(vlan__secondary_rack=rack_controller)))
+    interfaces = interfaces.prefetch_related("vlan__relay_vlans")
+    for interface in interfaces:
+        yield interface.vlan
+        for relayed_vlan in interface.vlan.relay_vlans.all():
+            yield relayed_vlan
 
 
 def ip_is_on_vlan(ip_address, vlan):
@@ -460,12 +458,6 @@ def get_dhcp_configure_for(
     interfaces = get_interfaces_with_ip_on_vlan(
         rack_controller, vlan, ip_version)
     interface = get_best_interface(interfaces)
-    if interface is None:
-        raise DHCPConfigurationError(
-            "No IPv%d interface on rack controller '%s' has an IP address on "
-            "any subnet on VLAN '%s.%d'." % (
-                ip_version, rack_controller.hostname, vlan.fabric.name,
-                vlan.vid))
 
     # Generate the failover peer for this VLAN.
     if vlan.secondary_rack_id is not None:
@@ -497,7 +489,7 @@ def get_dhcp_configure_for(
     hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
     return (
         peer_config, sorted(subnet_configs, key=itemgetter("subnet")),
-        hosts, interface.name)
+        hosts, None if interface is None else interface.name)
 
 
 @synchronous
@@ -506,7 +498,7 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     """Return tuple with IPv4 and IPv6 configurations for the
     rack controller."""
     # Get list of all vlans that are being managed by the rack controller.
-    vlans = get_managed_vlans_for(rack_controller)
+    vlans = gen_managed_vlans_for(rack_controller)
 
     # Group the subnets on each VLAN into IPv4 and IPv6 subnets.
     vlan_subnets = {
@@ -562,52 +554,40 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
     for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
         # IPv4
         if len(subnets_v4) > 0:
-            try:
-                config = get_dhcp_configure_for(
-                    4, rack_controller, vlan, subnets_v4, ntp_servers,
-                    default_domain, dhcp_snippets)
-            except DHCPConfigurationError:
-                # XXX bug #1602412: this silently breaks DHCPv4, but we cannot
-                # allow it to crash here since DHCPv6 might be able to run.
-                # This error may be irrelevant if there is an IPv4 network in
-                # the MAAS model which is not configured on the rack, and the
-                # user only wants to serve DHCPv6. But it is still something
-                # worth noting, so log it and continue.
-                log.err(None, "Failure configuring DHCPv4.")
-            else:
-                failover_peer, subnets, hosts, interface = config
-                if failover_peer is not None:
-                    failover_peers_v4.append(failover_peer)
-                shared_networks_v4.append({
-                    "name": "vlan-%d" % vlan.id,
-                    "subnets": subnets,
-                })
-                hosts_v4.extend(hosts)
+            config = get_dhcp_configure_for(
+                4, rack_controller, vlan, subnets_v4, ntp_servers,
+                default_domain, dhcp_snippets)
+            failover_peer, subnets, hosts, interface = config
+            if failover_peer is not None:
+                failover_peers_v4.append(failover_peer)
+            shared_networks_v4.append({
+                "name": "vlan-%d" % vlan.id,
+                "subnets": subnets,
+            })
+            hosts_v4.extend(hosts)
+            if interface is not None:
                 interfaces_v4.add(interface)
         # IPv6
         if len(subnets_v6) > 0:
-            try:
-                config = get_dhcp_configure_for(
-                    6, rack_controller, vlan, subnets_v6,
-                    ntp_servers, default_domain, dhcp_snippets)
-            except DHCPConfigurationError:
-                # XXX bug #1602412: this silently breaks DHCPv6, but we cannot
-                # allow it to crash here since DHCPv4 might be able to run.
-                # This error may be irrelevant if there is an IPv6 network in
-                # the MAAS model which is not configured on the rack, and the
-                # user only wants to serve DHCPv4. But it is still something
-                # worth noting, so log it and continue.
-                log.err(None, "Failure configuring DHCPv6.")
-            else:
-                failover_peer, subnets, hosts, interface = config
-                if failover_peer is not None:
-                    failover_peers_v6.append(failover_peer)
-                shared_networks_v6.append({
-                    "name": "vlan-%d" % vlan.id,
-                    "subnets": subnets,
-                })
-                hosts_v6.extend(hosts)
+            config = get_dhcp_configure_for(
+                6, rack_controller, vlan, subnets_v6,
+                ntp_servers, default_domain, dhcp_snippets)
+            failover_peer, subnets, hosts, interface = config
+            if failover_peer is not None:
+                failover_peers_v6.append(failover_peer)
+            shared_networks_v6.append({
+                "name": "vlan-%d" % vlan.id,
+                "subnets": subnets,
+            })
+            hosts_v6.extend(hosts)
+            if interface is not None:
                 interfaces_v6.add(interface)
+    # When no interfaces exist for each IP version clear the shared networks
+    # as DHCP server cannot be started and needs to be stopped.
+    if len(interfaces_v4) == 0:
+        shared_networks_v4 = {}
+    if len(interfaces_v6) == 0:
+        shared_networks_v6 = {}
     return DHCPConfigurationForRack(
         failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,

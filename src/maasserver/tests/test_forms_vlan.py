@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from maasserver.forms_vlan import VLANForm
+from maasserver.models.fabric import Fabric
 from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -26,6 +27,27 @@ class TestVLANForm(MAASServerTestCase):
                 "VID must be between 0 and 4094.",
                 ],
             }, form.errors)
+
+    def test__vlans_already_using_relay_vlan_not_shown(self):
+        fabric = Fabric.objects.get_default_fabric()
+        relay_vlan = factory.make_VLAN()
+        factory.make_VLAN(relay_vlan=relay_vlan)
+        form = VLANForm(fabric=fabric, data={})
+        self.assertItemsEqual(
+            [fabric.get_default_vlan(), relay_vlan],
+            form.fields['relay_vlan'].queryset)
+
+    def test__self_vlan_not_used_in_relay_vlan_field(self):
+        fabric = Fabric.objects.get_default_fabric()
+        relay_vlan = fabric.get_default_vlan()
+        form = VLANForm(instance=relay_vlan, data={})
+        self.assertItemsEqual([], form.fields['relay_vlan'].queryset)
+
+    def test__no_relay_vlans_allowed_when_dhcp_on(self):
+        vlan = factory.make_VLAN(dhcp_on=True)
+        factory.make_VLAN()
+        form = VLANForm(instance=vlan, data={})
+        self.assertItemsEqual([], form.fields['relay_vlan'].queryset)
 
     def test__creates_vlan(self):
         fabric = factory.make_Fabric()
@@ -210,6 +232,54 @@ class TestVLANForm(MAASServerTestCase):
         form.save()
         vlan = reload_object(vlan)
         self.assertTrue(vlan.dhcp_on)
+
+    def test_update_sets_relay_vlan(self):
+        vlan = factory.make_VLAN()
+        relay_vlan = factory.make_VLAN()
+        form = VLANForm(instance=vlan, data={
+            "relay_vlan": relay_vlan.id,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertEquals(relay_vlan.id, vlan.relay_vlan.id)
+
+    def test_update_clears_relay_vlan_when_None(self):
+        relay_vlan = factory.make_VLAN()
+        vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+        form = VLANForm(instance=vlan, data={
+            "relay_vlan": None,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.relay_vlan)
+
+    def test_update_clears_relay_vlan_when_empty(self):
+        relay_vlan = factory.make_VLAN()
+        vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+        form = VLANForm(instance=vlan, data={
+            "relay_vlan": "",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.relay_vlan)
+
+    def test_update_disables_relay_vlan_when_dhcp_turned_on(self):
+        relay_vlan = factory.make_VLAN()
+        vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        rack = factory.make_RackController(vlan=vlan)
+        vlan.primary_rack = rack
+        vlan.save()
+        form = VLANForm(instance=reload_object(vlan), data={
+            "dhcp_on": "true",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.relay_vlan)
 
     def test_update_validates_primary_rack_with_dhcp_on(self):
         vlan = factory.make_VLAN()

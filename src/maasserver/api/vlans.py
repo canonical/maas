@@ -26,6 +26,7 @@ DISPLAYED_VLAN_FIELDS = (
     'secondary_rack',
     'dhcp_on',
     'external_dhcp',
+    'relay_vlan',
 )
 
 
@@ -165,12 +166,18 @@ class VlanHandler(OperationsHandler):
         :type vid: integer
         :param mtu: The MTU to use on the VLAN.
         :type mtu: integer
-        :Param dhcp_on: Whether or not DHCP should be managed on the VLAN.
+        :param dhcp_on: Whether or not DHCP should be managed on the VLAN.
         :type dhcp_on: boolean
         :param primary_rack: The primary rack controller managing the VLAN.
         :type primary_rack: system_id
         :param secondary_rack: The secondary rack controller manging the VLAN.
         :type secondary_rack: system_id
+        :param relay_vlan: Only set when this VLAN will be using a DHCP relay
+            to forward DHCP requests to another VLAN that MAAS is or will run
+            the DHCP server. MAAS will not run the DHCP relay itself, it must
+            be configured to proxy reqests to the primary and/or secondary
+            rack controller interfaces for the VLAN specified in this field.
+        :type relay_vlan: ID of VLAN
 
         Returns 404 if the fabric or VLAN is not found.
         """

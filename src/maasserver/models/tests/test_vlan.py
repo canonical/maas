@@ -88,6 +88,14 @@ class TestVLANManager(MAASServerTestCase):
 
 class TestVLAN(MAASServerTestCase):
 
+    def test_delete_relay_vlan_doesnt_delete_vlan(self):
+        relay_vlan = factory.make_VLAN()
+        vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+        relay_vlan.delete()
+        vlan = reload_object(vlan)
+        self.assertIsNotNone(vlan)
+        self.assertIsNone(vlan.relay_vlan)
+
     def test_get_name_for_default_vlan_is_untagged(self):
         fabric = factory.make_Fabric()
         self.assertEqual("untagged", fabric.get_default_vlan().get_name())

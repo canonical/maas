@@ -14,6 +14,7 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     BooleanField,
     CharField,
+    deletion,
     ForeignKey,
     IntegerField,
     Manager,
@@ -168,6 +169,10 @@ class VLAN(CleanSave, TimestampedModel):
     secondary_rack = ForeignKey(
         'RackController', null=True, blank=True, editable=True,
         related_name='+')
+
+    relay_vlan = ForeignKey(
+        'self', null=True, blank=True, editable=True,
+        related_name='relay_vlans', on_delete=deletion.SET_NULL)
 
     def __str__(self):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())

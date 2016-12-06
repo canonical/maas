@@ -31,6 +31,7 @@ class VLANForm(MAASModelForm):
             'dhcp_on',
             'primary_rack',
             'secondary_rack',
+            'relay_vlan',
             )
 
     def __init__(self, *args, **kwargs):
@@ -40,6 +41,7 @@ class VLANForm(MAASModelForm):
         if instance is None and self.fabric is None:
             raise ValueError("Form requires either a instance or a fabric.")
         self._set_up_rack_fields()
+        self._set_up_relay_vlan()
 
     def _set_up_rack_fields(self):
         qs = RackController.objects.filter_by_vids([self.instance.vid])
@@ -60,6 +62,22 @@ class VLANForm(MAASModelForm):
         if secondary_rack_id is not None:
             secondary_rack = RackController.objects.get(id=secondary_rack_id)
             self.initial['secondary_rack'] = secondary_rack.system_id
+
+    def _set_up_relay_vlan(self):
+        # Configure the relay_vlan fields to include only VLAN's that are
+        # not already on a relay_vlan. If this is an update then it cannot
+        # be itself or never set when dhcp_on is True.
+        possible_relay_vlans = VLAN.objects.filter(relay_vlan__isnull=True)
+        if self.instance is not None:
+            possible_relay_vlans = possible_relay_vlans.exclude(
+                id=self.instance.id)
+            if self.instance.dhcp_on:
+                possible_relay_vlans = VLAN.objects.none()
+                if self.instance.relay_vlan is not None:
+                    possible_relay_vlans = VLAN.objects.filter(
+                        id=self.instance.relay_vlan.id)
+        self.fields['relay_vlan'] = forms.ModelChoiceField(
+            queryset=possible_relay_vlans, required=False)
 
     def clean(self):
         cleaned_data = super(VLANForm, self).clean()
@@ -120,5 +138,12 @@ class VLANForm(MAASModelForm):
         interface = super(VLANForm, self).save(commit=False)
         if self.fabric is not None:
             interface.fabric = self.fabric
+        if ('relay_vlan' in self.data and
+                not self.cleaned_data.get('relay_vlan')):
+            # relay_vlan is being cleared.
+            interface.relay_vlan = None
+        if interface.dhcp_on:
+            # relay_vlan cannot be set when dhcp is on.
+            interface.relay_vlan = None
         interface.save()
         return interface

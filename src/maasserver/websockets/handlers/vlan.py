@@ -104,6 +104,10 @@ class VLANHandler(TimestampedModelHandler):
             NODE_PERMISSION.ADMIN, vlan), "Permission denied."
         vlan.delete()
 
+    def update(self, parameters):
+        """Delete this VLAN."""
+        return super(VLANHandler, self).update(parameters)
+
     def _configure_iprange_and_gateway(self, parameters):
         if 'subnet' in parameters and parameters['subnet'] is not None:
             subnet = Subnet.objects.get(id=parameters['subnet'])
@@ -171,18 +175,21 @@ class VLANHandler(TimestampedModelHandler):
         # of parameters, to prevent spurious log statements.
         if 'extra' in parameters:
             self._configure_iprange_and_gateway(parameters['extra'])
-        iprange_count = IPRange.objects.filter(
-            type=IPRANGE_TYPE.DYNAMIC, subnet__vlan=vlan).count()
-        if iprange_count == 0:
-            raise ValueError(
-                "Cannot configure DHCP: At least one dynamic range is "
-                "required.")
+        if 'relay_vlan' not in parameters:
+            iprange_count = IPRange.objects.filter(
+                type=IPRANGE_TYPE.DYNAMIC, subnet__vlan=vlan).count()
+            if iprange_count == 0:
+                raise ValueError(
+                    "Cannot configure DHCP: At least one dynamic range is "
+                    "required.")
         controllers = parameters.get('controllers', [])
         data = {
             "dhcp_on": True if len(controllers) > 0 else False,
             "primary_rack": controllers[0] if len(controllers) > 0 else None,
             "secondary_rack": controllers[1] if len(controllers) > 1 else None,
         }
+        if 'relay_vlan' in parameters:
+            data['relay_vlan'] = parameters['relay_vlan']
         form = VLANForm(instance=vlan, data=data)
         if form.is_valid():
             form.save()

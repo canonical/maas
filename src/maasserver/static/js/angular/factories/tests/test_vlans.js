@@ -38,14 +38,16 @@ describe("VLANsManager", function() {
             var result = {};
             var controllers = ["a", "b"];
             var extra = {"c": "d"};
+            var relay = makeInteger(1, 500);
             spyOn(RegionConnection, "callMethod").and.returnValue(result);
             expect(VLANsManager.configureDHCP(
-                obj, controllers, extra)).toBe(result);
+                obj, controllers, extra, relay)).toBe(result);
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
                 "vlan.configure_dhcp", {
                     id: obj.id,
                     controllers: controllers,
-                    extra: extra
+                    extra: extra,
+                    relay_vlan: relay
                 }, true);
         });
     });
@@ -60,7 +62,8 @@ describe("VLANsManager", function() {
             expect(RegionConnection.callMethod).toHaveBeenCalledWith(
                 "vlan.configure_dhcp", {
                     id: obj.id,
-                    controllers: []
+                    controllers: [],
+                    relay_vlan: null
                 }, true);
         });
     });

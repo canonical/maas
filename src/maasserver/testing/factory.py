@@ -1022,7 +1022,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_VLAN(
             self, name=None, vid=None, fabric=None, dhcp_on=False,
-            primary_rack=None, secondary_rack=None):
+            primary_rack=None, secondary_rack=None, relay_vlan=None):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if fabric is None:
             fabric = Fabric.objects.get_default_fabric()
@@ -1031,7 +1031,8 @@ class Factory(maastesting.factory.Factory):
             vid = self._get_available_vid(fabric)
         vlan = VLAN(
             name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on,
-            primary_rack=primary_rack, secondary_rack=secondary_rack)
+            primary_rack=primary_rack, secondary_rack=secondary_rack,
+            relay_vlan=relay_vlan)
         vlan.save()
         return vlan
 

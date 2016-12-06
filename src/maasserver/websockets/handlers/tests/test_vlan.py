@@ -42,6 +42,7 @@ class TestVLANHandler(MAASServerTestCase):
             "external_dhcp": vlan.external_dhcp,
             "primary_rack": vlan.primary_rack,
             "secondary_rack": vlan.secondary_rack,
+            "relay_vlan": vlan.relay_vlan_id,
         }
         data['rack_sids'] = sorted(list({
             interface.node.system_id
@@ -205,6 +206,20 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         self.assertThat(vlan.dhcp_on, Equals(False))
         self.assertThat(vlan.primary_rack, Is(None))
         self.assertThat(vlan.secondary_rack, Is(None))
+
+    def test__configure_dhcp_with_relay_vlan(self):
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        relay_vlan = factory.make_VLAN()
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [],
+            "relay_vlan": relay_vlan.id,
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.dhcp_on, Equals(False))
+        self.assertThat(vlan.relay_vlan, Equals(relay_vlan))
 
     def test__non_superuser_asserts(self):
         user = factory.make_User()

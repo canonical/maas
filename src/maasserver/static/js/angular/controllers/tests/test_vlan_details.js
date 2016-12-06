@@ -427,6 +427,42 @@ describe("VLANDetailsController", function() {
         expect(controller.actionError).toBe(null);
     });
 
+    it("performAction for relay_dhcp called with all params", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.RELAY_DHCP_ACTION;
+        // This will populate the default values for the racks with
+        // the current values from the mock objects.
+        controller.actionOptionChanged();
+        controller.provideDHCPAction.subnet = 1;
+        controller.provideDHCPAction.gatewayIP = "192.168.0.1";
+        controller.provideDHCPAction.startIP = "192.168.0.2";
+        controller.provideDHCPAction.endIP = "192.168.0.254";
+        var relay = {
+            id: makeInteger(5001, 6000)
+        };
+        VLANsManager._items = [relay];
+        controller.provideDHCPAction.relayVLAN = relay;
+        var defer = $q.defer();
+        spyOn(VLANsManager, "configureDHCP").and.returnValue(
+            defer.promise);
+        controller.actionGo();
+        defer.resolve();
+        $scope.$digest();
+        expect(VLANsManager.configureDHCP).toHaveBeenCalledWith(
+            controller.vlan,
+            [],
+            {
+                subnet: 1,
+                gateway: "192.168.0.1",
+                start: "192.168.0.2",
+                end: "192.168.0.254"
+            },
+            relay.id
+        );
+        expect(controller.actionOption).toBe(null);
+        expect(controller.actionError).toBe(null);
+    });
+
     it("performAction for disable_dhcp called with all params", function() {
         var controller = makeControllerResolveSetActiveItem();
         controller.actionOption = controller.DISABLE_DHCP_ACTION;
@@ -457,6 +493,7 @@ describe("VLANDetailsController", function() {
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
             subnet: subnet.id,
+            relayVLAN: null,
             primaryRack: "p1",
             secondaryRack: "p2",
             maxIPs: 0,
@@ -488,6 +525,7 @@ describe("VLANDetailsController", function() {
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
             subnet: subnet.id,
+            relayVLAN: null,
             primaryRack: "p1",
             secondaryRack: "p2",
             maxIPs: 26,
@@ -551,30 +589,45 @@ describe("VLANDetailsController", function() {
             expect(controller.actionOptions).toEqual([]);
         });
 
-        it("returns enable_dhcp and delete when dhcp is off",
+        it("returns enable_dhcp, relay_dhcp and delete when dhcp is off",
         function() {
             vlan.dhcp_on = false;
             UsersManager._authUser = {is_superuser: true};
             var controller = makeControllerResolveSetActiveItem();
             expect(controller.actionOptions).toEqual([
                 controller.PROVIDE_DHCP_ACTION,
+                controller.RELAY_DHCP_ACTION,
                 controller.DELETE_ACTION
             ]);
             expect(controller.PROVIDE_DHCP_ACTION.title).toBe("Provide DHCP");
         });
 
-        it("returns disable_dhcp, enable_dhcp (with new title) and delete "+
+        it("returns enable_dhcp (with new title), disable_dhcp and delete "+
             "when dhcp is on", function() {
             vlan.dhcp_on = true;
             UsersManager._authUser = {is_superuser: true};
             var controller = makeControllerResolveSetActiveItem();
             expect(controller.actionOptions).toEqual([
-                controller.DISABLE_DHCP_ACTION,
                 controller.PROVIDE_DHCP_ACTION,
+                controller.DISABLE_DHCP_ACTION,
                 controller.DELETE_ACTION
             ]);
             expect(controller.PROVIDE_DHCP_ACTION.title).toBe(
                 "Reconfigure DHCP");
+        });
+
+        it("returns relay_dhcp (with new title), disable_dhcp and delete "+
+            "when relay_vlan is set", function() {
+            vlan.relay_vlan = 5001;
+            UsersManager._authUser = {is_superuser: true};
+            var controller = makeControllerResolveSetActiveItem();
+            expect(controller.actionOptions).toEqual([
+                controller.RELAY_DHCP_ACTION,
+                controller.DISABLE_DHCP_ACTION,
+                controller.DELETE_ACTION
+            ]);
+            expect(controller.RELAY_DHCP_ACTION.title).toBe(
+                "Reconfigure DHCP relay");
         });
     });
 });

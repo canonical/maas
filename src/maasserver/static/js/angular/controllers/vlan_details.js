@@ -4,6 +4,18 @@
  * MAAS VLAN Details Controller
  */
 
+angular.module('MAAS').filter('ignoreSelf', function () {
+    return function(objects, self) {
+        var filtered = [];
+        angular.forEach(objects, function(obj) {
+            if(obj !== self) {
+                filtered.push(obj);
+            }
+        });
+        return filtered;
+    };
+});
+
 angular.module('MAAS').controller('VLANDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'VLANsManager', 'SubnetsManager', 'SpacesManager', 'FabricsManager',
@@ -27,9 +39,14 @@ angular.module('MAAS').controller('VLANDetailsController', [
         $rootScope.page = "networks";
 
         vm.PROVIDE_DHCP_ACTION = {
-            // Note: 'title' is setubndynamically depending on whether or not
+            // Note: 'title' is set dynamically depending on whether or not
             // DHCP is already enabled on this VLAN.
             name: "enable_dhcp"
+        };
+        vm.RELAY_DHCP_ACTION = {
+            // Note: 'title' is set ndynamically depending on whether or not
+            // DHCP relay is already enabled on this VLAN.
+            name: "relay_dhcp"
         };
         vm.DISABLE_DHCP_ACTION = {
             name: "disable_dhcp",
@@ -47,6 +64,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.actionOption = null;
         vm.actionOptions = [];
         vm.vlanManager = VLANsManager;
+        vm.vlans = VLANsManager.getItems();
         vm.subnets = SubnetsManager.getItems();
         vm.spaces = SpacesManager.getItems();
         vm.fabrics = FabricsManager.getItems();
@@ -78,10 +96,15 @@ angular.module('MAAS').controller('VLANDetailsController', [
         // Initialize the provideDHCPAction structure with the current primary
         // and secondary rack, plus an indication regarding whether or not
         // adding a dynamic IP range is required.
-        vm.initProvideDHCP = function() {
+        vm.initProvideDHCP = function(forRelay) {
             vm.provideDHCPAction = {};
             var dhcp = vm.provideDHCPAction;
             dhcp.subnet = null;
+            dhcp.relayVLAN = null;
+            if (angular.isNumber(vm.vlan.relay_vlan)) {
+                dhcp.relayVLAN = VLANsManager.getItemFromList(
+                    vm.vlan.relay_vlan);
+            }
             if (angular.isObject(vm.primaryRack)) {
                 dhcp.primaryRack = vm.primaryRack.system_id;
             } else if(vm.relatedControllers.length > 0) {
@@ -140,15 +163,19 @@ angular.module('MAAS').controller('VLANDetailsController', [
             }
             // Since we are setting default values for these three options,
             // ensure all the appropriate updates occur.
-            vm.updatePrimaryRack();
-            vm.updateSecondaryRack();
-            vm.updateSubnet();
+            if(!forRelay) {
+                vm.updatePrimaryRack();
+                vm.updateSecondaryRack();
+            }
+            vm.updateSubnet(forRelay);
         };
 
         // Called when the actionOption has changed.
         vm.actionOptionChanged = function() {
             if(vm.actionOption.name === "enable_dhcp") {
-                vm.initProvideDHCP();
+                vm.initProvideDHCP(false);
+            } else if(vm.actionOption.name === "relay_dhcp") {
+                vm.initProvideDHCP(true);
             }
             // Clear the action error.
             vm.actionError = null;
@@ -200,7 +227,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         };
 
         // Called from the Provide DHCP form when the subnet selection changes.
-        vm.updateSubnet = function() {
+        vm.updateSubnet = function(forRelay) {
             var dhcp = vm.provideDHCPAction;
             var subnet = SubnetsManager.getItemFromList(dhcp.subnet);
             if(angular.isObject(subnet)) {
@@ -212,10 +239,17 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 }
                 if(angular.isObject(iprange) && iprange.num_addresses > 0) {
                     dhcp.maxIPs = iprange.num_addresses;
-                    dhcp.startIP = iprange.start;
-                    dhcp.endIP = iprange.end;
-                    dhcp.startPlaceholder = iprange.start;
-                    dhcp.endPlaceholder = iprange.end;
+                    if(forRelay) {
+                        dhcp.startIP = "";
+                        dhcp.endIP = "";
+                        dhcp.startPlaceholder = iprange.start + "( optional)";
+                        dhcp.endPlaceholder = iprange.end + " (optional)";
+                    } else {
+                        dhcp.startIP = iprange.start;
+                        dhcp.endIP = iprange.end;
+                        dhcp.startPlaceholder = iprange.start;
+                        dhcp.endPlaceholder = iprange.end;
+                    }
                 } else {
                     // Need to add a dynamic range, but according to our data,
                     // there is no room on the subnet for a dynamic range.
@@ -226,8 +260,14 @@ angular.module('MAAS').controller('VLANDetailsController', [
                     dhcp.endPlaceholder = "(no available IPs)";
                 }
                 if(angular.isString(suggested_gateway)) {
-                    dhcp.gatewayIP = suggested_gateway;
-                    dhcp.gatewayPlaceholder = suggested_gateway;
+                    if(forRelay) {
+                      dhcp.gatewayIP = "";
+                      dhcp.gatewayPlaceholder = (
+                          suggested_gateway + " (optional)");
+                    } else {
+                        dhcp.gatewayIP = suggested_gateway;
+                        dhcp.gatewayPlaceholder = suggested_gateway;
+                    }
                 } else {
                     // This means the subnet already has a gateway, so don't
                     // bother populating it.
@@ -261,8 +301,24 @@ angular.module('MAAS').controller('VLANDetailsController', [
             vm.actionError = null;
         };
 
+        // Return True if the current action can be performed.
+        vm.canPerformAction = function() {
+            if(vm.actionOption.name === "enable_dhcp") {
+                return vm.relatedSubnets.length > 0;
+            } else if(vm.actionOption.name === "relay_dhcp") {
+                return angular.isObject(vm.provideDHCPAction.relayVLAN);
+            } else {
+                return true;
+            }
+        };
+
         // Perform the action.
         vm.actionGo = function() {
+            // Do nothing if action cannot be performed.
+            if(!vm.canPerformAction()) {
+               return;
+            }
+
             if(vm.actionOption.name === "enable_dhcp") {
                 var dhcp = vm.provideDHCPAction;
                 var controllers = [];
@@ -294,6 +350,23 @@ angular.module('MAAS').controller('VLANDetailsController', [
                         vm.actionError = result.error;
                         vm.actionOption = vm.PROVIDE_DHCP_ACTION;
                     });
+            } else if(vm.actionOption.name === "relay_dhcp") {
+                // These will be undefined if they don't exist, and the region
+                // will simply get an empty dictionary.
+                var extraDHCP = {};
+                extraDHCP.subnet = vm.provideDHCPAction.subnet;
+                extraDHCP.start = vm.provideDHCPAction.startIP;
+                extraDHCP.end = vm.provideDHCPAction.endIP;
+                extraDHCP.gateway = vm.provideDHCPAction.gatewayIP;
+                var relay = vm.provideDHCPAction.relayVLAN.id;
+                VLANsManager.configureDHCP(
+                    vm.vlan, [], extraDHCP, relay).then(function() {
+                        vm.actionOption = null;
+                        vm.actionError = null;
+                    }, function(result) {
+                        vm.actionError = result.error;
+                        vm.actionOption = vm.RELAY_DHCP_ACTION;
+                    });
             } else if(vm.actionOption.name === "disable_dhcp") {
                 VLANsManager.disableDHCP(vm.vlan).then(function() {
                     vm.actionOption = null;
@@ -317,6 +390,30 @@ angular.module('MAAS').controller('VLANDetailsController', [
         // Return true if there is an action error.
         vm.isActionError = function() {
             return vm.actionError !== null;
+        };
+
+        // Return the name of the VLAN.
+        vm.getFullVLANName = function(vlan_id) {
+            var vlan = VLANsManager.getItemFromList(vlan_id);
+            var fabric = FabricsManager.getItemFromList(vlan.fabric);
+            return (
+                FabricsManager.getName(fabric) + "." +
+                VLANsManager.getName(vlan));
+        };
+
+        // Return the current DHCP status.
+        vm.getDHCPStatus = function() {
+            if(vm.vlan) {
+              if(vm.vlan.dhcp_on) {
+                return "Enabled";
+              } else if(vm.vlan.relay_vlan) {
+                return "Relayed via " + vm.getFullVLANName(vm.vlan.relay_vlan);
+              } else {
+                return "Disabled";
+              }
+            } else {
+              return "";
+            }
         };
 
         // Updates the page title.
@@ -413,13 +510,22 @@ angular.module('MAAS').controller('VLANDetailsController', [
             // object, since it's watched from $scope.)
             vm.actionOptions.length = 0;
             if(UsersManager.isSuperUser()) {
-                if(vlan.dhcp_on === true) {
-                    vm.actionOptions.push(vm.DISABLE_DHCP_ACTION);
-                    vm.PROVIDE_DHCP_ACTION.title = "Reconfigure DHCP";
+                if(!vlan.relay_vlan) {
+                  if(vlan.dhcp_on === true) {
+                      vm.PROVIDE_DHCP_ACTION.title = "Reconfigure DHCP";
+                      vm.actionOptions.push(vm.PROVIDE_DHCP_ACTION);
+                      vm.actionOptions.push(vm.DISABLE_DHCP_ACTION);
+                  } else {
+                      vm.PROVIDE_DHCP_ACTION.title = "Provide DHCP";
+                      vm.RELAY_DHCP_ACTION.title = "Relay DHCP";
+                      vm.actionOptions.push(vm.PROVIDE_DHCP_ACTION);
+                      vm.actionOptions.push(vm.RELAY_DHCP_ACTION);
+                  }
                 } else {
-                    vm.PROVIDE_DHCP_ACTION.title = "Provide DHCP";
+                  vm.actionOptions.push(vm.RELAY_DHCP_ACTION);
+                  vm.actionOptions.push(vm.DISABLE_DHCP_ACTION);
+                  vm.RELAY_DHCP_ACTION.title = "Reconfigure DHCP relay";
                 }
-                vm.actionOptions.push(vm.PROVIDE_DHCP_ACTION);
                 if(!vm.isFabricDefault) {
                     vm.actionOptions.push(vm.DELETE_ACTION);
                 }
@@ -467,6 +573,8 @@ angular.module('MAAS').controller('VLANDetailsController', [
             $scope.$watch("vlanDetails.vlan.name", updateTitle);
             $scope.$watch("vlanDetails.vlan.vid", updateTitle);
             $scope.$watch("vlanDetails.vlan.dhcp_on", updatePossibleActions);
+            $scope.$watch(
+                "vlanDetails.vlan.relay_vlan", updatePossibleActions);
             $scope.$watch("vlanDetails.fabric.name", updateTitle);
             $scope.$watch(
                 "vlanDetails.vlan.primary_rack", updateManagementRacks);

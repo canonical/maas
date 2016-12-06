@@ -268,6 +268,8 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
 DHCP_VLAN_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_vlan_update()
     RETURNS trigger as $$
+    DECLARE
+      relay_vlan maasserver_vlan;
     BEGIN
       -- DHCP was turned off.
       IF OLD.dhcp_on AND NOT NEW.dhcp_on THEN
@@ -301,6 +303,60 @@ DHCP_VLAN_UPDATE = dedent("""\
         END IF;
         IF NEW.secondary_rack_id IS NOT NULL THEN
           PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
+        END IF;
+      END IF;
+
+      -- Relay VLAN was set when it was previously unset.
+      IF OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL THEN
+        SELECT maasserver_vlan.* INTO relay_vlan
+        FROM maasserver_vlan
+        WHERE maasserver_vlan.id = NEW.relay_vlan_id;
+        IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(
+            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify(
+              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+          END IF;
+        END IF;
+      -- Relay VLAN was unset when it was previously set.
+      ELSIF OLD.relay_vlan_id IS NOT NULL AND NEW.relay_vlan_id IS NULL THEN
+        SELECT maasserver_vlan.* INTO relay_vlan
+        FROM maasserver_vlan
+        WHERE maasserver_vlan.id = OLD.relay_vlan_id;
+        IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(
+            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify(
+              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+          END IF;
+        END IF;
+      -- Relay VLAN has changed on the VLAN.
+      ELSIF OLD.relay_vlan_id != NEW.relay_vlan_id THEN
+        -- Alert old VLAN if required.
+        SELECT maasserver_vlan.* INTO relay_vlan
+        FROM maasserver_vlan
+        WHERE maasserver_vlan.id = OLD.relay_vlan_id;
+        IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(
+            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify(
+              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+          END IF;
+        END IF;
+        -- Alert new VLAN if required.
+        SELECT maasserver_vlan.* INTO relay_vlan
+        FROM maasserver_vlan
+        WHERE maasserver_vlan.id = NEW.relay_vlan_id;
+        IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(
+            CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify(
+              CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+          END IF;
         END IF;
       END IF;
       RETURN NEW;

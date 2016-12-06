@@ -84,6 +84,29 @@ class TestVlansAPI(APITestCase.ForUser):
         self.assertEqual(vid, response_data['vid'])
         self.assertEqual(mtu, response_data['mtu'])
 
+    def test_create_with_relay_vlan(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan_name = factory.make_name("fabric")
+        vid = random.randint(1, 1000)
+        mtu = random.randint(552, 1500)
+        relay_vlan = factory.make_VLAN()
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {
+            "name": vlan_name,
+            "vid": vid,
+            "mtu": mtu,
+            "relay_vlan": relay_vlan.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(vlan_name, response_data['name'])
+        self.assertEqual(vid, response_data['vid'])
+        self.assertEqual(mtu, response_data['mtu'])
+        self.assertEqual(relay_vlan.vid, response_data['relay_vlan']['vid'])
+
     def test_create_admin_only(self):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("fabric")
@@ -181,6 +204,23 @@ class TestVlanAPI(APITestCase.ForUser):
         self.assertEqual(new_name, vlan.name)
         self.assertEqual(new_vid, parsed_vlan['vid'])
         self.assertEqual(new_vid, vlan.vid)
+
+    def test_update_sets_relay_vlan(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        uri = get_vlan_uri(vlan)
+        relay_vlan = factory.make_VLAN()
+        response = self.client.put(uri, {
+            "relay_vlan": relay_vlan.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        vlan = reload_object(vlan)
+        self.assertEqual(relay_vlan.vid, parsed_vlan['relay_vlan']['vid'])
+        self.assertEqual(relay_vlan, vlan.relay_vlan)
 
     def test_update_with_fabric(self):
         self.become_admin()
