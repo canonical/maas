@@ -54,12 +54,8 @@ class RegionServiceMaker:
         # load the models first. This is OK to run in the reactor because
         # having Django -- most specifically the ORM -- up and running is a
         # prerequisite of almost everything in the region controller.
-        try:
-            from django import setup as django_setup
-        except ImportError:
-            pass  # Django < 1.7
-        else:
-            django_setup()
+        import django
+        django.setup()
 
     def _configureReactor(self):
         # Disable all database connections in the reactor.
