@@ -112,6 +112,7 @@ class TestDiscoveredClasses(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
+        power_state = factory.make_name('unknown')
         interfaces = [
             DiscoveredMachineInterface(mac_address=factory.make_mac_address())
             for _ in range(3)
@@ -125,7 +126,8 @@ class TestDiscoveredClasses(MAASTestCase):
         ]
         machine = DiscoveredMachine(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            interfaces=interfaces, block_devices=block_devices)
+            power_state=power_state, interfaces=interfaces,
+            block_devices=block_devices)
         self.assertEquals(cores, machine.cores)
         self.assertEquals(cpu_speed, machine.cpu_speed)
         self.assertEquals(memory, machine.memory)
@@ -146,6 +148,7 @@ class TestDiscoveredClasses(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
+        power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
             cores=random.randint(1, 8), memory=random.randint(4096, 8192),
@@ -170,7 +173,8 @@ class TestDiscoveredClasses(MAASTestCase):
             machines.append(
                 DiscoveredMachine(
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
-                    interfaces=interfaces, block_devices=block_devices))
+                    power_state=power_state, interfaces=interfaces,
+                    block_devices=block_devices))
         chassis = DiscoveredChassis(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
@@ -184,6 +188,7 @@ class TestDiscoveredClasses(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
+        power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
             cores=random.randint(1, 8), memory=random.randint(4096, 8192),
@@ -208,7 +213,8 @@ class TestDiscoveredClasses(MAASTestCase):
             machines.append(
                 DiscoveredMachine(
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
-                    interfaces=interfaces, block_devices=block_devices))
+                    power_state=power_state, interfaces=interfaces,
+                    block_devices=block_devices))
         chassis = DiscoveredChassis(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
@@ -227,6 +233,7 @@ class TestDiscoveredClasses(MAASTestCase):
                     "cores": Equals(machine.cores),
                     "cpu_speed": Equals(machine.cpu_speed),
                     "memory": Equals(machine.memory),
+                    "power_state": Equals(machine.power_state),
                     "interfaces": MatchesListwise([
                         MatchesDict({
                             "mac_address": Equals(interface.mac_address),

@@ -163,6 +163,7 @@ class DiscoveredMachine:
     interfaces = attr.ib(convert=convert_list(DiscoveredMachineInterface))
     block_devices = attr.ib(
         convert=convert_list(DiscoveredMachineBlockDevice))
+    power_state = attr.ib(convert=str, default='unknown')
 
 
 @attr.s
