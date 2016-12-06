@@ -159,10 +159,6 @@ try rsync -${rsync_options} etc/maas/ \
     root@${hostname}:/etc/maas
 ssh_run "chown -R maas:maas /etc/maas"
 
-echo " - src/maas --> /usr/share/maas/maas"
-try rsync -${rsync_options} src/maas/ \
-    root@${hostname}:/usr/share/maas/maas
-
 echo ""
 echo "Synchronizing static web content..."
 echo " - Removing /usr/share/maas/web/static/*..."

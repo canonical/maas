@@ -138,8 +138,9 @@ By default MAAS only logs HTTP 500 - INTERNAL_SERVER_ERROR into the
 regiond.log. To enable logging of all exceptions even exceptions where MAAS
 will return the correct HTTP status code.::
 
-    $ sudo sed -i 's/DEBUG = False/DEBUG = True/g' /usr/share/maas/maas/settings.py
-    $ sudo service maas-regiond restart
+  $ sudo sed -i 's/DEBUG = False/DEBUG = True/g' \
+  >   /usr/lib/python3/dist-packages/maasserver/djangosettings/settings.py
+  $ sudo service maas-regiond restart
 
 Run regiond in foreground
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,8 +150,10 @@ interact with the regiond by placing a breakpoint in the code. Once you have
 placed a breakpoint into the code you want to inspect you can start the regiond
 process in the foreground.::
 
-    $ sudo service maas-regiond stop
-    $ sudo -u maas -H DJANGO_SETTINGS_MODULE=maas.settings PYTHONPATH=/usr/share/maas twistd3 --nodaemon --pidfile= maas-regiond
+  $ sudo service maas-regiond stop
+  $ sudo -u maas -H \
+  >   DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings \
+  >   twistd3 --nodaemon --pidfile= maas-regiond
 
 
 .. Note::
@@ -175,7 +178,8 @@ process in the foreground.::
 Development MAAS server setup
 =============================
 
-Access to the database is configured in ``src/maas/development.py``.
+Access to the database is configured in
+``src/maasserver/djangosettings/development.py``.
 
 The ``Makefile`` or the test suite sets up a development database
 cluster inside your branch. It lives in the ``db`` directory, which

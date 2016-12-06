@@ -10,11 +10,11 @@ import types
 
 from django.conf import settings
 from django.db import connections
-from maas import (
+from maasserver.djangosettings import (
     find_settings,
     import_settings,
 )
-from maas.settings import (
+from maasserver.djangosettings.settings import (
     _get_local_timezone,
     _read_timezone,
 )

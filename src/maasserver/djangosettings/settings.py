@@ -6,9 +6,9 @@
 import os
 
 import django.template.base
-from maas import fix_up_databases
-from maas.monkey import patch_get_script_prefix
 from maasserver.config import RegionConfiguration
+from maasserver.djangosettings import fix_up_databases
+from maasserver.djangosettings.monkey import patch_get_script_prefix
 
 
 def _read_timezone(tzfilename='/etc/timezone'):
@@ -265,7 +265,7 @@ MIDDLEWARE_CLASSES = (
 
 )
 
-ROOT_URLCONF = 'maas.urls'
+ROOT_URLCONF = 'maasserver.djangosettings.urls'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates"

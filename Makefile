@@ -427,7 +427,8 @@ distclean: clean
 	$(warning 'distclean' is deprecated; use 'clean')
 
 harness: bin/maas-region bin/database
-	$(dbrun) bin/maas-region shell --settings=maas.demo
+	$(dbrun) bin/maas-region shell \
+	  --settings=maasserver.djangosettings.demo
 
 dbharness: bin/database
 	bin/database --preserve shell

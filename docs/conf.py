@@ -24,7 +24,8 @@ import sys
 from pytz import UTC
 
 # Configure MAAS's settings.
-environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
+environ.setdefault(
+    "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

@@ -189,8 +189,8 @@ def register_cli_commands(parser):
     # Setup and the allowed django commands into the maascli.
     management = get_django_management()
     if management is not None and is_maasserver_available():
-        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
-        sys.path.append('/usr/share/maas')
+        os.environ.setdefault(
+            "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings")
         load_regiond_commands(management, parser)
 
 

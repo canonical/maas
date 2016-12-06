@@ -128,7 +128,7 @@ if __name__ == "__main__":
         exclude_filter=lambda path: (
             "/test/" in path or "/testing/" in path or "/." in path))
     wm.add_watch(
-        ["src/maas*", "src/meta*"], TRIGGER_EVENTS,
+        ["src/maasserver", "src/metadataserver"], TRIGGER_EVENTS,
         proc_fun=handle_maas_change, rec=True, auto_add=True, do_glob=True)
     wm.add_watch(
         ["src/prov*"], TRIGGER_EVENTS, proc_fun=handle_pserv_change,

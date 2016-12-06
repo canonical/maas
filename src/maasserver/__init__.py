@@ -8,7 +8,7 @@ __all__ = [
     'DefaultViewMeta',
     'is_master_process',
     'logger',
-    ]
+]
 
 import logging
 from os import environ

@@ -111,7 +111,7 @@ access it, there are a few things to try:
      always point at the local server.
   #. If you are still getting "404 - Page not found" errors, check that the MAAS
      web interface has been installed in the right place. There should be a file
-     present called /usr/share/maas/maas/urls.py
+     called ``urls.py`` in ``/usr/lib/python3/dist-packages/maasserver/djangosettings/``.
 
 Debugging ephemeral image
 =========================

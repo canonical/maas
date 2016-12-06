@@ -5,7 +5,7 @@
 
 from os.path import abspath
 
-from maas import (
+from maasserver.djangosettings import (
     development,
     import_settings,
     settings,

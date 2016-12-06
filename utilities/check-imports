@@ -263,19 +263,6 @@ RegionControllerRule = Rule(
 )
 
 
-RegionControllerConfig = files("src/maas/**/*.py")
-RegionControllerConfigRule = Rule(
-    Allow("django|django.**"),
-    Allow("formencode.validators.*"),
-    Allow("maasserver.config.*"),
-    Allow("maasserver.testing.testcase.*"),
-    Allow("maas|maas.**"),
-    Allow("provisioningserver|provisioningserver.**"),
-    Allow("psycopg2|psycopg2.**"),
-    Allow(StandardLibraries),
-)
-
-
 Tests = files(
     "src/**/test_*.py",
     "src/**/testing/**/*.py",
@@ -421,20 +408,6 @@ checks = [
     (
         RegionController & Tests,
         RegionControllerRule | Rule(
-            Allow(TestingLibraries),
-        ),
-    ),
-
-    #
-    # REGION CONTROLLER CONFIGURATION
-    #
-    (
-        RegionControllerConfig - Tests,
-        RegionControllerConfigRule,
-    ),
-    (
-        RegionControllerConfig & Tests,
-        RegionControllerConfigRule | Rule(
             Allow(TestingLibraries),
         ),
     ),

@@ -9,6 +9,7 @@ Django command: Upgrade MAAS regiond database using both south and django
 __all__ = []
 
 from importlib import import_module
+import json
 import optparse
 import os
 import shutil
@@ -34,7 +35,7 @@ SOUTH_MODULES = [
 # Script that performs the south migrations for MAAS under django 1.6 and
 # python2.7.
 MAAS_UPGRADE_SCRIPT = """\
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -46,11 +47,48 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = [
-    ]
+__all__ = []
 
 import os
 import sys
+
+import django.conf
+
+
+class LazySettings(django.conf.LazySettings):
+    '''Prevent Django from mangling warnings settings.
+
+    At present, Django adds a single filter that surfaces all deprecation
+    warnings, but MAAS handles them differently. Django doesn't appear to give
+    a way to prevent it from doing its thing, so we must undo its changes.
+
+    Deprecation warnings in production environments are not desirable as they
+    are a developer tool, and not something an end user can reasonably do
+    something about. This brings control of warnings back into MAAS's control.
+    '''
+
+    def _configure_logging(self):
+        # This is a copy of *half* of Django's `_configure_logging`, omitting
+        # the problematic bits.
+        if self.LOGGING_CONFIG:
+            from django.utils.log import DEFAULT_LOGGING
+            from django.utils.module_loading import import_by_path
+            # First find the logging configuration function ...
+            logging_config_func = import_by_path(self.LOGGING_CONFIG)
+            logging_config_func(DEFAULT_LOGGING)
+            # ... then invoke it with the logging settings
+            if self.LOGGING:
+                logging_config_func(self.LOGGING)
+
+
+# Install our `LazySettings` as the Django-global settings class. First,
+# ensure that Django hasn't yet loaded its settings.
+assert not django.conf.settings.configured
+# This is needed because Django's `LazySettings` overrides `__setattr__`.
+object.__setattr__(django.conf.settings, "__class__", LazySettings)
+
+# Force Django configuration.
+os.environ["DJANGO_SETTINGS_MODULE"] = "maas19settings"
 
 # Inject the sys.path from the parent process so that the python path is
 # is similar, except that the directory that this script is running from is
@@ -132,6 +170,11 @@ class Command(BaseCommand):
         tempdir = tempfile.mkdtemp(prefix='maas-upgrade-')
         subprocess.check_call([
             "tar", "zxf", path_to_tarball, "-C", tempdir])
+
+        settings_json = os.path.join(tempdir, "maas19settings.json")
+        with open(settings_json, "w", encoding="utf-8") as fd:
+            fd.write(json.dumps({"DATABASES": settings.DATABASES}))
+
         script_path = os.path.join(tempdir, "migrate.py")
         with open(script_path, "wb") as fp:
             fp.write(MAAS_UPGRADE_SCRIPT.encode("utf-8"))
