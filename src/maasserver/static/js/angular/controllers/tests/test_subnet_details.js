@@ -302,7 +302,9 @@ describe("SubnetDetailsController", function() {
             2: 'Rack controller',
             3: 'Region controller',
             4: 'Rack and region controller',
-            5: 'Unknown'
+            5: 'Chassis',
+            6: 'Storage',
+            7: 'Unknown'
         };
 
         angular.forEach(scenarios, function(expected, nodeType) {

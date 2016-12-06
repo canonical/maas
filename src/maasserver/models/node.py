@@ -547,6 +547,19 @@ class DeviceManager(BaseNodeManager):
     extra_filters = {'node_type': NODE_TYPE.DEVICE}
 
 
+class ChassisManager(BaseNodeManager):
+    """Chassis are nodes that contain or can compose more machines or
+    storage."""
+
+    extra_filters = {'node_type': NODE_TYPE.CHASSIS}
+
+
+class StorageManager(BaseNodeManager):
+    """Storage are nodes that provide storage to other machines."""
+
+    extra_filters = {'node_type': NODE_TYPE.STORAGE}
+
+
 class ControllerManager(BaseNodeManager):
     """All controllers `RackController`, `RegionController`, and
     `RegionRackController`."""
@@ -807,7 +820,7 @@ class Node(CleanSave, TimestampedModel):
     # What Domain do we use for this host unless the individual StaticIPAddress
     # record overrides it?
     domain = ForeignKey(
-        Domain, default=get_default_domain, null=False,
+        Domain, default=get_default_domain, null=True, blank=True,
         editable=True, on_delete=PROTECT)
 
     # TTL for this Node's IP addresses.  Since this must be the same for all
@@ -867,6 +880,7 @@ class Node(CleanSave, TimestampedModel):
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the lshw output.
     cpu_count = IntegerField(default=0)
+    cpu_speed = IntegerField(default=0)  # MHz
     memory = IntegerField(default=0)
 
     swap_size = BigIntegerField(null=True, blank=True, default=None)
@@ -907,6 +921,11 @@ class Node(CleanSave, TimestampedModel):
     netboot = BooleanField(default=True)
 
     license_key = CharField(max_length=30, null=True, blank=True)
+
+    # Only used by Machine. Set to True when the machine was composed
+    # dynamically from a Chassis during allocation. When the machine is
+    # released it will be deleted.
+    dynamic = BooleanField(default=False)
 
     tags = ManyToManyField(Tag)
 
@@ -1083,7 +1102,10 @@ class Node(CleanSave, TimestampedModel):
 
         Return the FQDN for this host.
         """
-        return '%s.%s' % (self.hostname, self.domain.name)
+        if self.domain is not None:
+            return '%s.%s' % (self.hostname, self.domain.name)
+        else:
+            return self.hostname
 
     def get_deployment_time(self):
         """Return the deployment time of this node (in seconds).
@@ -2348,7 +2370,7 @@ class Node(CleanSave, TimestampedModel):
         if self.power_state == POWER_STATE.OFF:
             # The node is already powered off; we can deallocate all attached
             # resources and mark the node READY without delay.
-            release_to_ready = True
+            finalize_release = True
         elif self.get_effective_power_info().can_be_queried:
             # Controlled power type (one for which we can query the power
             # state): update_power_state() will take care of making the node
@@ -2357,13 +2379,13 @@ class Node(CleanSave, TimestampedModel):
             post_commit().addCallback(
                 callOutToDatabase, Node._set_status_expires,
                 self.system_id, self.get_releasing_time())
-            release_to_ready = False
+            finalize_release = False
         else:
             # The node's power cannot be reliably controlled. Frankly, this
             # node is not suitable for use with MAAS. Deallocate all attached
             # resources and mark the node READY without delay because there's
             # not much else we can do.
-            release_to_ready = True
+            finalize_release = True
 
         self.status = NODE_STATUS.RELEASING
         self.token = None
@@ -2388,25 +2410,29 @@ class Node(CleanSave, TimestampedModel):
         self.children.all().delete()
 
         # Power was off or cannot be powered off so release to ready now.
-        if release_to_ready:
-            self._release_to_ready()
+        if finalize_release:
+            self._finalize_release()
 
     @transactional
-    def _release_to_ready(self):
-        """Release all remaining resources and mark the node `READY`.
+    def _finalize_release(self):
+        """Release all remaining resources, mark the machine `READY` if not
+        dynamic, otherwise delete the machine.
 
         Releasing a node can be straightforward or it can be a multi-step
         operation, which can include a reboot in order to erase disks, then a
         final power-down. This method should be the absolute last method
         called.
         """
-        self.release_interface_config()
-        self.status = NODE_STATUS.READY
-        self.owner = None
-        self.save()
+        if self.dynamic:
+            self.delete()
+        else:
+            self.release_interface_config()
+            self.status = NODE_STATUS.READY
+            self.owner = None
+            self.save()
 
-        # Remove all set owner data.
-        OwnerData.objects.filter(node=self).delete()
+            # Remove all set owner data.
+            OwnerData.objects.filter(node=self).delete()
 
     def release_or_erase(
             self, user, comment=None,
@@ -2521,7 +2547,7 @@ class Node(CleanSave, TimestampedModel):
         if mark_ready:
             # Ensure the node is released when it powers down.
             self.status_expires = None
-            self._release_to_ready()
+            self._finalize_release()
         if self.status == NODE_STATUS.EXITING_RESCUE_MODE:
             if self.previous_status == NODE_STATUS.BROKEN:
                 if power_state == POWER_STATE.OFF:
@@ -3542,6 +3568,14 @@ class Node(CleanSave, TimestampedModel):
         """Return a reference to self that behaves as a `RackController`."""
         return self._as(RackController)
 
+    def as_chassis(self):
+        """Return a reference to self that behaves as a `Chassis`."""
+        return self._as(Chassis)
+
+    def as_storage(self):
+        """Return a reference to self that behaves as a `Storage`."""
+        return self._as(Storage)
+
     _as_self = {
         NODE_TYPE.DEVICE: as_device,
         NODE_TYPE.MACHINE: as_machine,
@@ -3550,6 +3584,8 @@ class Node(CleanSave, TimestampedModel):
         # unique functionality so when combined return a rack controller
         NODE_TYPE.REGION_AND_RACK_CONTROLLER: as_rack_controller,
         NODE_TYPE.REGION_CONTROLLER: as_region_controller,
+        NODE_TYPE.CHASSIS: as_chassis,
+        NODE_TYPE.STORAGE: as_storage,
     }
 
     def as_self(self):
@@ -4540,6 +4576,56 @@ class Device(Node):
     def clean_architecture(self, prev):
         # Devices aren't required to have a defined architecture
         pass
+
+
+class Chassis(Node):
+    """A node that contains multiple machines and can compose new machines."""
+
+    objects = ChassisManager()
+
+    class Meta(DefaultMeta):
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Chassis, self).__init__(
+            node_type=NODE_TYPE.CHASSIS, *args, **kwargs)
+
+    def clean_architecture(self, prev):
+        # Chassis aren't required to have a defined architecture
+        pass
+
+    def clean_hostname_domain(self, prev):
+        # Chassis is never in a domain.
+        if self.hostname.find('.') > -1:
+            # They have specified an FQDN.  Split up the pieces, and throw
+            # away the rest.
+            self.hostname, _ = self.hostname.split('.', 1)
+        self.domain = None
+
+
+class Storage(Node):
+    """A node that provides storage to other machines."""
+
+    objects = StorageManager()
+
+    class Meta(DefaultMeta):
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Storage, self).__init__(
+            node_type=NODE_TYPE.STORAGE, *args, **kwargs)
+
+    def clean_architecture(self, prev):
+        # Storage aren't required to have a defined architecture
+        pass
+
+    def clean_hostname_domain(self, prev):
+        # Storage is never in a domain.
+        if self.hostname.find('.') > -1:
+            # They have specified an FQDN.  Split up the pieces, and throw
+            # away the rest.
+            self.hostname, _ = self.hostname.split('.', 1)
+        self.domain = None
 
 
 class NodeGroupToRackController(CleanSave, Model):

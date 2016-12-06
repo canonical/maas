@@ -60,6 +60,7 @@ from maasserver.models import (
     BondInterface,
     BootResource,
     BridgeInterface,
+    Chassis,
     Config,
     Controller,
     Device,
@@ -78,6 +79,7 @@ from maasserver.models import (
     RegionRackRPCConnection,
     Service,
     Space,
+    Storage,
     Subnet,
     UnknownInterface,
     VLAN,
@@ -244,6 +246,8 @@ class TestTypeCastToNodeType(MAASServerTestCase):
             NODE_TYPE.RACK_CONTROLLER: RackController,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER: RackController,
             NODE_TYPE.REGION_CONTROLLER: RegionController,
+            NODE_TYPE.CHASSIS: Chassis,
+            NODE_TYPE.STORAGE: Storage,
         }
         self.assertThat(casts.keys(), Equals(node_types))
         for node_type, cast_type in casts.items():
@@ -287,6 +291,20 @@ class TestTypeCastToNodeType(MAASServerTestCase):
         self.assertThat(machine, HasType(Machine))
         self.assertThat(node, HasType(Node))
         self.assertThat(node, SharesStorageWith(machine))
+
+    def test_cast_to_chassis(self):
+        node = factory.make_Node().as_node()
+        chassis = node.as_chassis()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(chassis, HasType(Chassis))
+        self.assertThat(chassis, SharesStorageWith(node))
+
+    def test_cast_to_storage(self):
+        node = factory.make_Node().as_node()
+        storage = node.as_storage()
+        self.assertThat(node, HasType(Node))
+        self.assertThat(storage, HasType(Storage))
+        self.assertThat(storage, SharesStorageWith(node))
 
 
 class TestNodeManager(MAASServerTestCase):
@@ -1834,7 +1852,7 @@ class TestNode(MAASServerTestCase):
             agent_name=agent_name, power_type=power_type, primary_rack=rack)
         self.patch(Node, '_set_status_expires')
         mock_stop = self.patch(node, "_stop")
-        mock_release_to_ready = self.patch(node, "_release_to_ready")
+        mock_finalize_release = self.patch(node, "_finalize_release")
         node.power_state = POWER_STATE.ON
         node.release()
         self.expectThat(Node._set_status_expires, MockNotCalled())
@@ -1847,7 +1865,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
         self.expectThat(mock_stop, MockCalledOnceWith(node.owner))
-        self.expectThat(mock_release_to_ready, MockCalledOnceWith())
+        self.expectThat(mock_finalize_release, MockCalledOnceWith())
 
     def test_release_node_that_has_power_off(self):
         agent_name = factory.make_name('agent-name')
@@ -1892,6 +1910,16 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(
             [], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
+
+    def test_release_deletes_dynamic_machine(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
+            dynamic=True, power_state=POWER_STATE.OFF)
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(reload_object(node))
 
     def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
@@ -8839,3 +8867,25 @@ class TestControllerGetDiscoveryState(MAASServerTestCase):
         self.assertThat(monitoring_state, Contains('eth2'))
         self.assertThat(
             monitoring_state['eth1'], Equals(eth1.get_discovery_state()))
+
+
+class TestChassis(MAASServerTestCase):
+
+    def test__domain_is_always_empty(self):
+        hostname = factory.make_hostname()
+        domain = factory.make_name("domain")
+        chassis = factory.make_Chassis(
+            hostname="%s.%s" % (hostname, domain))
+        self.assertEquals(hostname, chassis.hostname)
+        self.assertIsNone(chassis.domain)
+
+
+class TestStorage(MAASServerTestCase):
+
+    def test__domain_is_always_empty(self):
+        hostname = factory.make_hostname()
+        domain = factory.make_name("domain")
+        storage = factory.make_Storage(
+            hostname="%s.%s" % (hostname, domain))
+        self.assertEquals(hostname, storage.hostname)
+        self.assertIsNone(storage.domain)

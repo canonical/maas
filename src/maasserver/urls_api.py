@@ -36,6 +36,10 @@ from maasserver.api.boot_sources import (
     BootSourceHandler,
     BootSourcesHandler,
 )
+from maasserver.api.chassis import (
+    ChassiHandler,
+    ChassisHandler,
+)
 from maasserver.api.commissioning_scripts import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
@@ -145,6 +149,10 @@ from maasserver.api.staticroutes import (
     StaticRouteHandler,
     StaticRoutesHandler,
 )
+from maasserver.api.storage import (
+    StorageHandler,
+    StoragesHandler,
+)
 from maasserver.api.subnets import (
     SubnetHandler,
     SubnetsHandler,
@@ -210,6 +218,10 @@ regioncontrollers_handler = RestrictedResource(
     RegionControllersHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
+chassi_handler = RestrictedResource(ChassiHandler, authentication=api_auth)
+chassis_handler = RestrictedResource(ChassisHandler, authentication=api_auth)
+storage_handler = RestrictedResource(StorageHandler, authentication=api_auth)
+storages_handler = RestrictedResource(StoragesHandler, authentication=api_auth)
 dhcp_snippet_handler = RestrictedResource(
     DHCPSnippetHandler, authentication=api_auth)
 dhcp_snippets_handler = RestrictedResource(
@@ -376,6 +388,14 @@ urlpatterns += patterns(
         r'^devices/(?P<system_id>[^/]+)/$', device_handler,
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
+    url(
+        r'^chassis/(?P<system_id>[^/]+)/$', chassi_handler,
+        name='chassi_handler'),
+    url(r'^chassis/$', chassis_handler, name='chassis_handler'),
+    url(
+        r'^storages/(?P<system_id>[^/]+)/$', storage_handler,
+        name='storage_handler'),
+    url(r'^storages/$', storages_handler, name='storages_handler'),
     url(r'^events/$', events_handler, name='events_handler'),
     url(r'^discovery/$', discoveries_handler, name='discoveries_handler'),
     url(

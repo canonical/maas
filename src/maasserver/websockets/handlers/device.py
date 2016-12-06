@@ -79,6 +79,7 @@ class DeviceHandler(NodeHandler):
             'create_interface',
             'action']
         exclude = [
+            "dynamic",
             "type",
             "boot_interface",
             "boot_cluster_ip",
@@ -87,6 +88,7 @@ class DeviceHandler(NodeHandler):
             "netboot",
             "agent_name",
             "cpu_count",
+            "cpu_speed",
             "memory",
             "power_state",
             "routers",

@@ -154,6 +154,8 @@ class NODE_TYPE:
     RACK_CONTROLLER = 2
     REGION_CONTROLLER = 3
     REGION_AND_RACK_CONTROLLER = 4
+    CHASSIS = 5
+    STORAGE = 6
 
 
 # This is copied in static/js/angular/controllers/subnet_details.js. If you
@@ -164,6 +166,8 @@ NODE_TYPE_CHOICES = (
     (NODE_TYPE.RACK_CONTROLLER, "Rack controller"),
     (NODE_TYPE.REGION_CONTROLLER, "Region controller"),
     (NODE_TYPE.REGION_AND_RACK_CONTROLLER, "Region and rack controller"),
+    (NODE_TYPE.CHASSIS, "Chassis"),
+    (NODE_TYPE.STORAGE, "Storage"),
 )
 
 

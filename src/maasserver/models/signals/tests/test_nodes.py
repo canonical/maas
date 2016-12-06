@@ -11,6 +11,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
+from maasserver.models import ChassisHints
 from maasserver.models.service import (
     RACK_SERVICES,
     REGION_SERVICES,
@@ -144,3 +145,27 @@ class TestNodeCreateServices(MAASServerTestCase):
         self.assertThat(
             {service.name for service in services},
             Equals(REGION_SERVICES))
+
+
+class TestCreateChassisHints(MAASServerTestCase):
+
+    def test_creates_hints_for_chassis(self):
+        chassis = factory.make_Node(node_type=NODE_TYPE.CHASSIS)
+        self.assertIsNotNone(chassis.chassis_hints)
+
+    def test_creates_hints_device_converted_to_chassis(self):
+        device = factory.make_Device()
+        device.node_type = NODE_TYPE.CHASSIS
+        device.save()
+        self.assertIsNotNone(device.chassis_hints)
+
+    def test_deletes_hints_when_chassis_converted_to_device(self):
+        chassis = factory.make_Node(node_type=NODE_TYPE.CHASSIS)
+        chassis.node_type = NODE_TYPE.DEVICE
+        chassis.save()
+        error = None
+        try:
+            reload_object(chassis).chassis_hints
+        except ChassisHints.DoesNotExist as exc:
+            error = exc
+        self.assertIsNotNone(error)

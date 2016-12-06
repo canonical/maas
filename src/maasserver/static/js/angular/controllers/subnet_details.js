@@ -80,7 +80,9 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             1: 'Device',
             2: 'Rack controller',
             3: 'Region controller',
-            4: 'Rack and region controller'
+            4: 'Rack and region controller',
+            5: 'Chassis',
+            6: 'Storage'
         };
 
         // Updates the page title.

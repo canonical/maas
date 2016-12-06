@@ -12,8 +12,12 @@ from django.db.models.signals import (
     post_save,
     pre_save,
 )
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    NODE_TYPE,
+)
 from maasserver.models import (
+    ChassisHints,
     Controller,
     Device,
     Machine,
@@ -102,6 +106,24 @@ for klass in NODE_CLASSES:
         klass, ['node_type'], delete=False)
     signals.watch(
         post_save, create_services_on_create,
+        sender=klass)
+
+
+def create_chassis_hints(sender, instance, created, **kwargs):
+    """Create `ChassisHints` when `Chassis` is created."""
+    try:
+        chassis_hints = instance.chassis_hints
+    except ChassisHints.DoesNotExist:
+        chassis_hints = None
+    if instance.node_type == NODE_TYPE.CHASSIS:
+        if chassis_hints is None:
+            ChassisHints.objects.create(chassis=instance)
+    elif chassis_hints is not None:
+        chassis_hints.delete()
+
+for klass in NODE_CLASSES:
+    signals.watch(
+        post_save, create_chassis_hints,
         sender=klass)
 
 

@@ -57,6 +57,7 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     CacheSet,
+    Chassis,
     Config,
     Device,
     DHCPSnippet,
@@ -93,6 +94,7 @@ from maasserver.models import (
     SSLKey,
     StaticIPAddress,
     StaticRoute,
+    Storage,
     Subnet,
     Tag,
     VersionedTextFile,
@@ -290,6 +292,20 @@ class Factory(maastesting.factory.Factory):
                 INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
         return reload_object(device)
 
+    def make_Chassis(self, hostname=None, **kwargs):
+        if hostname is None:
+            hostname = self.make_string(20)
+        chassis = Chassis(hostname=hostname, **kwargs)
+        chassis.save()
+        return chassis
+
+    def make_Storage(self, hostname=None, **kwargs):
+        if hostname is None:
+            hostname = self.make_string(20)
+        storage = Storage(hostname=hostname, **kwargs)
+        storage.save()
+        return storage
+
     def make_RegionController(self, hostname=None, status=None, owner=None):
         if hostname is None:
             hostname = self.make_string(20)
@@ -354,7 +370,7 @@ class Factory(maastesting.factory.Factory):
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined,
             with_boot_disk=True, vlan=None, fabric=None,
-            bmc_connected_to=None, owner_data={}, **kwargs):
+            bmc_connected_to=None, owner_data={}, dynamic=False, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -390,7 +406,7 @@ class Factory(maastesting.factory.Factory):
             node_type=node_type, zone=zone,
             power_state=power_state,
             power_state_updated=power_state_updated,
-            domain=domain, **kwargs)
+            domain=domain, dynamic=dynamic, **kwargs)
         node.power_type = power_type
         node.power_parameters = power_parameters
         self._save_node_unchecked(node)

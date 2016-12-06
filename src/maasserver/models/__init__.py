@@ -16,6 +16,8 @@ __all__ = [
     'BootSourceSelection',
     'BridgeInterface',
     'CacheSet',
+    'Chassis',
+    'ChassisHints',
     'ComponentError',
     'Config',
     'Controller',
@@ -59,6 +61,7 @@ __all__ = [
     'RegionRackRPCConnection',
     'Service',
     'Space',
+    'Storage',
     'SSHKey',
     'SSLKey',
     'StaticIPAddress',
@@ -98,6 +101,7 @@ from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.chassishints import ChassisHints
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
@@ -133,6 +137,7 @@ from maasserver.models.licensekey import LicenseKey
 from maasserver.models.mdns import MDNS
 from maasserver.models.neighbour import Neighbour
 from maasserver.models.node import (
+    Chassis,
     Controller,
     Device,
     Machine,
@@ -140,6 +145,7 @@ from maasserver.models.node import (
     NodeGroupToRackController,
     RackController,
     RegionController,
+    Storage,
 )
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.packagerepository import PackageRepository

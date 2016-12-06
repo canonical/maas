@@ -304,7 +304,6 @@ class TestNodesAPI(APITestCase.ForUser):
         response = self.client.get(reverse('nodes_handler'))
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-
         self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(system_ids, extract_system_ids(parsed_result))
 

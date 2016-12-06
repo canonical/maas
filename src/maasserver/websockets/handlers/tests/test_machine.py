@@ -149,6 +149,7 @@ class TestMachineHandler(MAASServerTestCase):
             "commissioning_results": handler.dehydrate_node_results(
                 node, RESULT_TYPE.COMMISSIONING),
             "cpu_count": node.cpu_count,
+            "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
             "devices": sorted([
                 {
