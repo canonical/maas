@@ -150,6 +150,8 @@ def compose_purpose_opts(params):
                 params.fs_host, "3260", tname),
             # Read by overlayroot package.
             "overlayroot=tmpfs",
+            # Select the MAAS datasource by default.
+            "cc:{'datasource_list': ['MAAS']}end_cc",
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
             ]
