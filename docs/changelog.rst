@@ -9,6 +9,24 @@ Bugs fixed in this release
 --------------------------
 
 
+LP: #1582323    Select MAAS datasource specifically to ensure commissioning doesn't fail when competing cloud metadata resides on disk
+
+LP: #1646163    [2.1] Icon need to be improved
+
+LP: #1646162    [2.1] Sticky header has been removed
+
+LP: #1646160    [2.1] Device discovery UI does not have a loading state
+
+LP: #1628126    [2.1, FUJ] Column layout shouldn't resize until screen is smaller than 1440
+
+LP: #1628058    [2.1, FUJ] The form spacing is not compatible to the designs
+
+LP: #1628054    [2.1, FUJ] Section complete/incomplete icon
+
+LP: #1639182    [2.1] log format differs for Yakkety
+
+LP: #1637401    Re-adding virsh chassis to discover new nodes powers down existing nodes
+
 
 2.1.2
 =====
@@ -416,18 +434,6 @@ LP: #1630633    [2.1 Yakkety UI] Unable to select nodes
 LP: #1629061    [2.0, 2.1] Release and list IPs reserved by another user
 
 LP: #1605476    [2.0rc2] Changing DNSSEC validation does not trigger configuration file update
-
-LP: #1646163    [2.1] Icon need to be improved
-
-LP: #1646162    [2.1] Sticky header has been removed
-
-LP: #1646160    [2.1] Device discovery UI does not have a loading state
-
-LP: #1628126    [2.1, FUJ] Column layout shouldn't resize until screen is smaller than 1440
-
-LP: #1628058    [2.1, FUJ] The form spacing is not compatible to the designs
-
-LP: #1628054    [2.1, FUJ] Section complete/incomplete icon
 
 
 2.1.0 (beta2)

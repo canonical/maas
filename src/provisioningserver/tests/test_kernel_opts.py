@@ -214,6 +214,18 @@ class TestKernelOpts(MAASTestCase):
                 "ip=off",
                 "ip6=dhcp"]))
 
+    def test_xinstall_compose_kernel_command_line_inc_cc_datasource(self):
+        # The result of compose_kernel_command_line includes the cloud-init
+        # options for the datasource and cloud-config-url
+        params = self.make_kernel_parameters(
+            purpose="xinstall", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "cc:{'datasource_list': ['MAAS']}end_cc",
+                "cloud-config-url=%s" % params.preseed_url]))
+
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
@@ -244,6 +256,18 @@ class TestKernelOpts(MAASTestCase):
                 "ip=off",
                 "ip6=dhcp"]))
 
+    def test_commissioning_compose_kernel_command_line_inc_cc_datasource(self):
+        # The result of compose_kernel_command_line includes the cloud-init
+        # options for the datasource and cloud-config-url
+        params = self.make_kernel_parameters(
+            purpose="commissioning", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "cc:{'datasource_list': ['MAAS']}end_cc",
+                "cloud-config-url=%s" % params.preseed_url]))
+
     def test_enlist_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
@@ -273,6 +297,18 @@ class TestKernelOpts(MAASTestCase):
                 "overlayroot=tmpfs",
                 "ip=off",
                 "ip6=dhcp"]))
+
+    def test_enlist_compose_kernel_command_line_inc_cc_datasource(self):
+        # The result of compose_kernel_command_line includes the cloud-init
+        # options for the datasource and cloud-config-url
+        params = self.make_kernel_parameters(
+            purpose="enlist", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "cc:{'datasource_list': ['MAAS']}end_cc",
+                "cloud-config-url=%s" % params.preseed_url]))
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(
