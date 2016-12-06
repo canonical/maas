@@ -404,6 +404,16 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(mock_stop, MockCalledOnceWith())
 
+    def test_is_importing_returns_import_status(self):
+        mock_running = self.patch(
+            boot_resources, "is_import_resources_running")
+        mock_running.return_value = factory.pick_bool()
+        response = self.client.get(
+            reverse('boot_resources_handler'), {'op': 'is_importing'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            mock_running.return_value, json_load_bytes(response.content))
+
 
 class TestBootResourceAPI(APITestCase.ForUser):
 
