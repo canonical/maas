@@ -622,7 +622,12 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         super().setUp()
         # Patch out gethostname and get_mac_addresses.
         self.patch_autospec(node_module, "gethostname")
-        node_module.gethostname.return_value = factory.make_name("host")
+        hostname = factory.make_name('host')
+        # Bug#1614584: make sure that we handle the case where gethostname()
+        # returns an FQDN, instead of a domainless hostname.
+        if factory.pick_bool():
+            hostname += ".%s" % factory.make_name('domain')
+        node_module.gethostname.return_value = hostname
         self.patch_autospec(node_module, "get_mac_addresses")
         node_module.get_mac_addresses.return_value = []
 

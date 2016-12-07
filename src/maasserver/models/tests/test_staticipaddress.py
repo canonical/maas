@@ -424,20 +424,21 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=boot_interface)
-        ifaces = node.interface_set.exclude(interface=boot_interface)
+        iface2 = node.interface_set.exclude(id=boot_interface.id).first()
         sip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_Subnet(subnet),
-            subnet=subnet, interface=ifaces[0])
+            subnet=subnet, interface=iface2)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(subnet)
-        self.assertEqual({
+        expected = {
             full_hostname:
                 HostnameIPMapping(
                     node.system_id, 30, {staticip.ip}, node.node_type),
-            "%s.%s" % (ifaces[0].name, full_hostname):
+            "%s.%s" % (iface2.name, full_hostname):
                 HostnameIPMapping(
                     node.system_id, 30, {sip2.ip}, node.node_type),
-            }, mapping)
+        }
+        self.assertEqual(expected, mapping)
 
     def make_mapping(self, node, raw_ttl=False):
         if raw_ttl or node.address_ttl is not None:

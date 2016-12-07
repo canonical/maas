@@ -743,7 +743,19 @@ class RegionControllerManager(ControllerManager):
         regiond has run on it. Create a region controller only; it can be
         upgraded to a region+rack controller later if necessary.
         """
-        return self.create(owner=get_worker_user(), hostname=gethostname())
+        hostname = gethostname()
+        # Bug#1614584: it is possible that gethostname() reurns the FQDN.
+        # Split it up, and get the appropriate domain.  If we wind up creating
+        # one for it, we are not authoritative.
+        # Just in case the default domain has not been created, let's create it
+        # here, even if we subsequently overwrite it inside the if statement.
+        domain = Domain.objects.get_default_domain()
+        if hostname.find('.') > 0:
+            hostname, domainname = hostname.split('.', 1)
+            (domain, _) = Domain.objects.get_or_create(
+                name=domainname, defaults={'authoritative': False})
+        return self.create(
+            owner=get_worker_user(), hostname=hostname, domain=domain)
 
 
 def get_default_domain():
