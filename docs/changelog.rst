@@ -9,6 +9,8 @@ Bugs fixed in this release
 --------------------------
 
 
+LP: #1614584    MAAS fails to start when gethostname returns an FQDN.
+
 LP: #1582323    Select MAAS datasource specifically to ensure commissioning doesn't fail when competing cloud metadata resides on disk
 
 LP: #1646163    [2.1] Icon need to be improved
