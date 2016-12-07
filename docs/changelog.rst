@@ -29,6 +29,8 @@ LP: #1639182    [2.1] log format differs for Yakkety
 
 LP: #1637401    Re-adding virsh chassis to discover new nodes powers down existing nodes
 
+LP: #1642033    IPs with multiple names can corrupt DNS zone data
+
 
 2.1.2
 =====
