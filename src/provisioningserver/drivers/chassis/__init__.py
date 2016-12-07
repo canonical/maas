@@ -100,9 +100,11 @@ class ChassisActionError(ChassisError):
     or `discover`."""
 
 
-def convert_obj(expected):
+def convert_obj(expected, optional=False):
     """Convert the given value to an object of type `expected`."""
     def convert(value):
+        if optional and value is None:
+            return None
         if isinstance(value, expected):
             return value
         elif isinstance(value, dict):
@@ -147,11 +149,12 @@ class DiscoveredMachineInterface:
 @attr.s
 class DiscoveredMachineBlockDevice:
     """Discovered machine block device."""
-    model = attr.ib(convert=str)
-    serial = attr.ib(convert=str)
+    model = attr.ib(convert=convert_obj(str, optional=True))
+    serial = attr.ib(convert=convert_obj(str, optional=True))
     size = attr.ib(convert=int)
     block_size = attr.ib(convert=int, default=512)
     tags = attr.ib(convert=convert_list(str), default=[])
+    id_path = attr.ib(convert=convert_obj(str, optional=True), default=None)
 
 
 @attr.s

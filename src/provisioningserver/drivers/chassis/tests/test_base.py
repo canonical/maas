@@ -68,15 +68,25 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEquals(vid, nic.vid)
         self.assertEquals(tags, nic.tags)
 
-    def test_block_device_model_serial_size(self):
-        model = factory.make_name("model")
-        serial = factory.make_name("serial")
+    def test_block_device_size(self):
         size = random.randint(512, 512 * 1024)
         device = DiscoveredMachineBlockDevice(
-            model=model, serial=serial, size=size)
-        self.assertEquals(model, device.model)
-        self.assertEquals(serial, device.serial)
+            model=None, serial=None, size=size)
+        self.assertEquals(None, device.model)
+        self.assertEquals(None, device.serial)
         self.assertEquals(size, device.size)
+        self.assertEquals(None, device.id_path)
+
+    def test_block_device_size_id_path(self):
+        size = random.randint(512, 512 * 1024)
+        id_path = factory.make_name("id_path")
+        device = DiscoveredMachineBlockDevice(
+            model=None, serial=None,
+            size=size, id_path=id_path)
+        self.assertEquals(None, device.model)
+        self.assertEquals(None, device.serial)
+        self.assertEquals(size, device.size)
+        self.assertEquals(id_path, device.id_path)
 
     def test_block_device_model_serial_size_block_size(self):
         model = factory.make_name("model")
@@ -214,7 +224,8 @@ class TestDiscoveredClasses(MAASTestCase):
                 DiscoveredMachineBlockDevice(
                     model=factory.make_name("model"),
                     serial=factory.make_name("serial"),
-                    size=random.randint(512, 1024))
+                    size=random.randint(512, 1024),
+                    id_path=factory.make_name("/dev/vda"))
                 for _ in range(3)
             ]
             machines.append(
@@ -257,6 +268,7 @@ class TestDiscoveredClasses(MAASTestCase):
                             "size": Equals(block_device.size),
                             "block_size": Equals(block_device.block_size),
                             "tags": Equals(block_device.tags),
+                            "id_path": Equals(block_device.id_path),
                         })
                         for block_device in machine.block_devices
                     ]),
