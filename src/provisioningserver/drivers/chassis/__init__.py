@@ -174,6 +174,7 @@ class DiscoveredChassisHints:
     Limiting the maximum cores allow request on a per machine basis.
     """
     cores = attr.ib(convert=int)
+    cpu_speed = attr.ib(convert=int)
     memory = attr.ib(convert=int)
     local_storage = attr.ib(convert=int)
 
@@ -208,11 +209,11 @@ class ChassisDriverBase(PowerDriverBase):
         """Whether or not the chassis supports composition."""
 
     @abstractmethod
-    def discover(self, system_id, context):
+    def discover(self, context, system_id=None):
         """Discover the chassis resources.
 
-        :param system_id: Chassis system_id.
         :param context: Chassis settings.
+        :param system_id: Chassis system_id.
         :returns: `Deferred` returning `DiscoveredChassis`.
         :rtype: `twisted.internet.defer.Deferred`
         """

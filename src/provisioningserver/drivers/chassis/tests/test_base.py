@@ -136,11 +136,14 @@ class TestDiscoveredClasses(MAASTestCase):
 
     def test_chassis_hints(self):
         cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
-            cores=cores, memory=memory, local_storage=local_storage)
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            local_storage=local_storage)
         self.assertEquals(cores, hints.cores)
+        self.assertEquals(cpu_speed, hints.cpu_speed)
         self.assertEquals(memory, hints.memory)
         self.assertEquals(local_storage, hints.local_storage)
 
@@ -151,7 +154,9 @@ class TestDiscoveredClasses(MAASTestCase):
         power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
-            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(4096, 8192),
             local_storage=random.randint(4096, 8192))
         machines = []
         for _ in range(3):
@@ -191,7 +196,9 @@ class TestDiscoveredClasses(MAASTestCase):
         power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
-            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(4096, 8192),
             local_storage=random.randint(4096, 8192))
         machines = []
         for _ in range(3):
@@ -225,6 +232,7 @@ class TestDiscoveredClasses(MAASTestCase):
             "local_storage": Equals(local_storage),
             "hints": MatchesDict({
                 "cores": Equals(hints.cores),
+                "cpu_speed": Equals(hints.cpu_speed),
                 "memory": Equals(hints.memory),
                 "local_storage": Equals(hints.local_storage),
             }),
@@ -263,7 +271,9 @@ class TestDiscoveredClasses(MAASTestCase):
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
         hints = dict(
-            cores=random.randint(1, 8), memory=random.randint(4096, 8192),
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(4096, 8192),
             local_storage=random.randint(4096, 8192))
         machines_data = []
         for _ in range(3):
@@ -300,6 +310,7 @@ class TestDiscoveredClasses(MAASTestCase):
                 IsInstance(DiscoveredChassisHints),
                 MatchesStructure(
                     cores=Equals(hints['cores']),
+                    cpu_speed=Equals(hints['cpu_speed']),
                     memory=Equals(hints['memory']),
                     local_storage=Equals(hints['local_storage']),
                 ),

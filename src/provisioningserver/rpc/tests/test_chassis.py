@@ -88,6 +88,7 @@ class TestDiscoverChassis(MAASTestCase):
             local_storage=0,
             hints=DiscoveredChassisHints(
                 cores=random.randint(1, 8),
+                cpu_speed=random.randint(1000, 2000),
                 memory=random.randint(1024, 8192), local_storage=0),
             machines=[])
         fake_driver.discover.return_value = succeed(discovered_chassis)
