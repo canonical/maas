@@ -19,6 +19,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     Q,
+    SET_NULL,
     TextField,
 )
 from django.db.models.query import QuerySet
@@ -173,6 +174,9 @@ class VLAN(CleanSave, TimestampedModel):
     relay_vlan = ForeignKey(
         'self', null=True, blank=True, editable=True,
         related_name='relay_vlans', on_delete=deletion.SET_NULL)
+
+    space = ForeignKey(
+        'Space', editable=True, blank=True, null=True, on_delete=SET_NULL)
 
     def __str__(self):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())

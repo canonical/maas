@@ -1037,7 +1037,7 @@ class Factory(maastesting.factory.Factory):
             "Could not generate vid in fabric %s" % fabric)
 
     def make_VLAN(
-            self, name=None, vid=None, fabric=None, dhcp_on=False,
+            self, name=None, vid=None, fabric=None, dhcp_on=False, space=None,
             primary_rack=None, secondary_rack=None, relay_vlan=None):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if fabric is None:
@@ -1046,7 +1046,7 @@ class Factory(maastesting.factory.Factory):
             # Don't create the vid=0 VLAN, it's auto-created.
             vid = self._get_available_vid(fabric)
         vlan = VLAN(
-            name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on,
+            name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on, space=space,
             primary_rack=primary_rack, secondary_rack=secondary_rack,
             relay_vlan=relay_vlan)
         vlan.save()

@@ -107,6 +107,50 @@ class TestVlansAPI(APITestCase.ForUser):
         self.assertEqual(mtu, response_data['mtu'])
         self.assertEqual(relay_vlan.vid, response_data['relay_vlan']['vid'])
 
+    def test_create_without_space(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan_name = factory.make_name("fabric")
+        vid = random.randint(1, 1000)
+        mtu = random.randint(552, 1500)
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {
+            "name": vlan_name,
+            "vid": vid,
+            "mtu": mtu,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(vlan_name, response_data['name'])
+        self.assertEqual(vid, response_data['vid'])
+        self.assertEqual(mtu, response_data['mtu'])
+        self.assertEqual(None, response_data['space'])
+
+    def test_create_with_space(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan_name = factory.make_name("fabric")
+        vid = random.randint(1, 1000)
+        mtu = random.randint(552, 1500)
+        space = factory.make_Space()
+        uri = get_vlans_uri(fabric)
+        response = self.client.post(uri, {
+            "name": vlan_name,
+            "vid": vid,
+            "mtu": mtu,
+            "space": space.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response_data = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(vlan_name, response_data['name'])
+        self.assertEqual(vid, response_data['vid'])
+        self.assertEqual(mtu, response_data['mtu'])
+        self.assertEqual(space.name, response_data['space'])
+
     def test_create_admin_only(self):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("fabric")
@@ -175,6 +219,24 @@ class TestVlanAPI(APITestCase.ForUser):
             "fabric": Equals(fabric.get_name()),
             "resource_uri": Equals(get_vlan_uri(vlan)),
             }))
+
+    def test_read_with_space(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        uri = get_vlan_uri(vlan, vlan.fabric)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(parsed_vlan, ContainsDict({
+            "id": Equals(vlan.id),
+            "name": Equals(vlan.get_name()),
+            "vid": Equals(vlan.vid),
+            "space": Equals(space.get_name()),
+            "resource_uri": Equals(get_vlan_uri(vlan)),
+        }))
 
     def test_read_404_when_bad_id(self):
         fabric = factory.make_Fabric()

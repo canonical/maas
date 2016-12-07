@@ -266,6 +266,39 @@ class TestVLANForm(MAASServerTestCase):
         vlan = reload_object(vlan)
         self.assertIsNone(vlan.relay_vlan)
 
+    def test_update_sets_space(self):
+        vlan = factory.make_VLAN()
+        space = factory.make_Space()
+        form = VLANForm(instance=vlan, data={
+            "space": space.id,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertEquals(space.id, vlan.space.id)
+
+    def test_update_clears_space_when_None(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        form = VLANForm(instance=vlan, data={
+            "space": None,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.space)
+
+    def test_update_clears_space_vlan_when_empty(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        form = VLANForm(instance=vlan, data={
+            "space": "",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.space)
+
     def test_update_disables_relay_vlan_when_dhcp_turned_on(self):
         relay_vlan = factory.make_VLAN()
         vlan = factory.make_VLAN(relay_vlan=relay_vlan)

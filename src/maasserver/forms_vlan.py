@@ -11,7 +11,10 @@ from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.fields import NodeChoiceField
 from maasserver.forms import MAASModelForm
-from maasserver.models import RackController
+from maasserver.models import (
+    RackController,
+    Space,
+)
 from maasserver.models.vlan import VLAN
 
 
@@ -20,6 +23,9 @@ class VLANForm(MAASModelForm):
 
     # Linux doesn't allow lower than 552 for the MTU.
     mtu = forms.IntegerField(min_value=552, required=False)
+
+    space = forms.ModelChoiceField(
+        queryset=Space.objects.all(), required=False)
 
     class Meta:
         model = VLAN
@@ -32,6 +38,7 @@ class VLANForm(MAASModelForm):
             'primary_rack',
             'secondary_rack',
             'relay_vlan',
+            'space',
             )
 
     def __init__(self, *args, **kwargs):
@@ -134,16 +141,20 @@ class VLANForm(MAASModelForm):
             "dhcp can only be turned on when a dynamic IP range is defined.")
 
     def save(self):
-        """Persist the interface into the database."""
-        interface = super(VLANForm, self).save(commit=False)
+        """Persist the VLAN into the database."""
+        vlan = super(VLANForm, self).save(commit=False)
         if self.fabric is not None:
-            interface.fabric = self.fabric
+            vlan.fabric = self.fabric
+        if ('space' in self.data and
+                not self.cleaned_data.get('space')):
+            # 'space' is being cleared.
+            vlan.space = None
         if ('relay_vlan' in self.data and
                 not self.cleaned_data.get('relay_vlan')):
-            # relay_vlan is being cleared.
-            interface.relay_vlan = None
-        if interface.dhcp_on:
-            # relay_vlan cannot be set when dhcp is on.
-            interface.relay_vlan = None
-        interface.save()
-        return interface
+            # 'relay_vlan' is being cleared.
+            vlan.relay_vlan = None
+        if vlan.dhcp_on:
+            # 'relay_vlan' cannot be set when dhcp is on.
+            vlan.relay_vlan = None
+        vlan.save()
+        return vlan

@@ -6,18 +6,19 @@ from django.db import (
     models,
 )
 import django.db.models.deletion
+import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0095_vlan_relay_vlan'),
+        ('maasserver', '0098_add_space_to_vlan'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='subnet',
             name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', default=lambda: 0, on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.subnet.get_default_vlan),
         ),
     ]

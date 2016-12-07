@@ -27,6 +27,7 @@ DISPLAYED_VLAN_FIELDS = (
     'dhcp_on',
     'external_dhcp',
     'relay_vlan',
+    'space',
 )
 
 
@@ -52,6 +53,13 @@ class VlansHandler(OperationsHandler):
     def secondary_rack(handler, vlan):
         if vlan.secondary_rack:
             return vlan.secondary_rack.system_id
+        else:
+            return None
+
+    @classmethod
+    def space(handler, vlan):
+        if vlan.space:
+            return vlan.space.get_name()
         else:
             return None
 
@@ -109,6 +117,13 @@ class VlanHandler(OperationsHandler):
     def secondary_rack(handler, vlan):
         if vlan.secondary_rack:
             return vlan.secondary_rack.system_id
+        else:
+            return None
+
+    @classmethod
+    def space(handler, vlan):
+        if vlan.space:
+            return vlan.space.get_name()
         else:
             return None
 

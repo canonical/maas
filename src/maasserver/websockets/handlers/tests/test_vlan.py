@@ -36,6 +36,7 @@ class TestVLANHandler(MAASServerTestCase):
             "vid": vlan.vid,
             "mtu": vlan.mtu,
             "fabric": vlan.fabric_id,
+            "space": vlan.space_id,
             "updated": dehydrate_datetime(vlan.updated),
             "created": dehydrate_datetime(vlan.created),
             "dhcp_on": vlan.dhcp_on,

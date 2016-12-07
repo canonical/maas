@@ -232,6 +232,9 @@
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                     <maas-obj-field type="text" key="mtu" label="MTU" placeholder="VLAN MTU"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    <maas-obj-field type="options" key="space" label="Space" placeholder="(not in a space)" placeholder-enabled="true"
+                        options="space.id as space.name for space in vlanDetails.spaces"
+                        label-width="two" input-width="three"></maas-obj-field>
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
