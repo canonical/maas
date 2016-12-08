@@ -795,6 +795,41 @@ DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a domain is updated.  Sends a notify message
+# for node_update.
+DOMAIN_NODE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+      pnode RECORD;
+    BEGIN
+      IF OLD.name != NEW.name THEN
+        SELECT system_id, node_type, parent_id INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.domain_id = NEW.id;
+
+        IF node.system_id IS NOT NULL THEN
+          IF node.node_type = %d THEN
+            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+          ELSIF node.node_type IN (%d, %d, %d) THEN
+            PERFORM pg_notify(
+              'controller_update',CAST(node.system_id AS text));
+          ELSIF node.parent_id IS NOT NULL THEN
+            SELECT system_id INTO pnode
+            FROM maasserver_node
+            WHERE id = node.parent_id;
+            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+          ELSE
+            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -1254,6 +1289,11 @@ def register_websocket_triggers():
 
     # Domain table
     register_procedure(
+        DOMAIN_NODE_NOTIFY % (
+            'domain_node_update_notify',
+            NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
+    register_procedure(
         render_notification_procedure(
             'domain_create_notify', 'domain_create', 'NEW.id'))
     register_procedure(
@@ -1262,6 +1302,8 @@ def register_websocket_triggers():
     register_procedure(
         render_notification_procedure(
             'domain_delete_notify', 'domain_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_domain", "domain_node_update_notify", "update")
     register_trigger(
         "maasserver_domain", "domain_create_notify", "insert")
     register_trigger(
