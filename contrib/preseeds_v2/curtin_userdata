@@ -24,6 +24,3 @@ late_commands:
   driver_06_depmod: ["curtin", "in-target", "--", "depmod"]
   driver_07_update_initramfs: ["curtin", "in-target", "--", "update-initramfs", "-u"]
 {{endif}}
-
-power_state:
-  mode: reboot
