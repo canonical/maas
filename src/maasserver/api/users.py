@@ -112,3 +112,8 @@ class UserHandler(OperationsHandler):
                 user.delete()
 
         return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, user=None):
+        username = "username" if user is None else user.username
+        return ('user_handler', [username])

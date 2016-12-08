@@ -124,7 +124,7 @@ class DNSResourceHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, dnsresource=None):
         # See the comment in NodeHandler.resource_uri.
-        dnsresource_id = "dnsresource_id"
+        dnsresource_id = "id"
         if dnsresource is not None:
             dnsresource_id = dnsresource.id
         return ('dnsresource_handler', (dnsresource_id,))

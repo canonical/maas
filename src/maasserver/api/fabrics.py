@@ -62,7 +62,7 @@ class FabricHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, fabric=None):
         # See the comment in NodeHandler.resource_uri.
-        fabric_id = "fabric_id"
+        fabric_id = "id"
         if fabric is not None:
             fabric_id = fabric.id
         return ('fabric_handler', (fabric_id,))

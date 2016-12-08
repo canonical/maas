@@ -25,6 +25,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_BCACHE_FIELDS = (
+    'system_id',
     'id',
     'uuid',
     'name',
@@ -96,13 +97,18 @@ class BcacheHandler(OperationsHandler):
     def resource_uri(cls, bcache=None):
         # See the comment in NodeHandler.resource_uri.
         system_id = "system_id"
-        bcache_id = "bcache_id"
+        bcache_id = "id"
         if bcache is not None:
             bcache_id = bcache.id
             node = bcache.get_node()
             if node is not None:
                 system_id = node.system_id
         return ('bcache_device_handler', (system_id, bcache_id))
+
+    @classmethod
+    def system_id(cls, bcache):
+        node = bcache.get_node()
+        return None if node is None else node.system_id
 
     @classmethod
     def size(cls, bcache):

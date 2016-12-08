@@ -70,7 +70,7 @@ class FanNetworkHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, fannetwork=None):
         # See the comment in NodeHandler.resource_uri.
-        fannetwork_id = "fannetwork_id"
+        fannetwork_id = "id"
         if fannetwork is not None:
             fannetwork_id = fannetwork.id
         return ('fannetwork_handler', (fannetwork_id,))

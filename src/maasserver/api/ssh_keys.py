@@ -141,7 +141,7 @@ class SSHKeyHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, sshkey=None):
-        keyid = "keyid"
+        keyid = "id"
         if sshkey is not None:
             keyid = sshkey.id
         return ('sshkey_handler', (keyid, ))

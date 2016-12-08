@@ -246,6 +246,8 @@ class AnonNodeHandler(AnonymousOperationsHandler):
     read = create = update = delete = None
     model = Node
 
+    resource_uri = NodeHandler.resource_uri
+
 
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""

@@ -55,6 +55,7 @@ MISSING_FIELD = "This field is required."
 BLANK_FIELD = "This field cannot be blank."
 
 DISPLAYED_INTERFACE_FIELDS = (
+    'system_id',
     'id',
     'name',
     'type',
@@ -340,13 +341,18 @@ class InterfaceHandler(OperationsHandler):
     def resource_uri(cls, interface=None):
         # See the comment in NodeHandler.resource_uri.
         system_id = "system_id"
-        interface_id = "interface_id"
+        interface_id = "id"
         if interface is not None:
             interface_id = interface.id
             node = interface.get_node()
             if node is not None:
                 system_id = node.system_id
         return ('interface_handler', (system_id, interface_id))
+
+    @classmethod
+    def system_id(cls, interface):
+        node = interface.get_node()
+        return None if node is None else node.system_id
 
     @classmethod
     def mac_address(cls, interface):

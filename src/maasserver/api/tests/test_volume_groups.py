@@ -249,6 +249,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
             "human_used_size": Equals(
                 human_readable_bytes(volume_group.get_lvm_allocated_size())),
             "resource_uri": Equals(get_volume_group_uri(volume_group)),
+            "system_id": Equals(node.system_id),
             }))
         self.assertItemsEqual(
             block_device_ids + partitions_ids, parsed_device_ids)

@@ -818,6 +818,7 @@ class TestRaidAPI(APITestCase.ForUser):
             "human_size": Equals(
                 human_readable_bytes(raid.get_size())),
             "resource_uri": Equals(get_raid_device_uri(raid)),
+            "system_id": Equals(node.system_id),
             }))
         self.assertItemsEqual(
             block_device_ids + partitions_ids, parsed_device_ids)

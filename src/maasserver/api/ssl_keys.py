@@ -102,7 +102,7 @@ class SSLKeyHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, sslkey=None):
-        keyid = "keyid"
+        keyid = "id"
         if sslkey is not None:
             keyid = sslkey.id
         return ('sslkey_handler', (keyid, ))

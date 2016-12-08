@@ -19,6 +19,7 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
+from testtools.matchers import Equals
 
 
 class TestDHCPSnippetAPI(APITestCase.ForUser):
@@ -44,22 +45,31 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertItemsEqual({
+        self.assertThat(parsed_dhcp_snippet, Equals({
             'id': dhcp_snippet.id,
             'name': dhcp_snippet.name,
-            'value': dhcp_snippet.value,
+            'value': dhcp_snippet.value.data,
             'description': dhcp_snippet.description,
-            'history': [{
-                'id': dhcp_snippet.value.previous_version.id,
-                'value': dhcp_snippet.value.previous_version.data,
-                'created': format_datetime(dhcp_snippet.value.created),
-            }],
+            'history': [
+                {
+                    'id': dhcp_snippet.value.id,
+                    'value': dhcp_snippet.value.data,
+                    'created': format_datetime(
+                        dhcp_snippet.value.created),
+                },
+                {
+                    'id': dhcp_snippet.value.previous_version.id,
+                    'value': dhcp_snippet.value.previous_version.data,
+                    'created': format_datetime(
+                        dhcp_snippet.value.previous_version.created),
+                },
+            ],
             'enabled': dhcp_snippet.enabled,
             'node': None,
             'subnet': None,
             'global_snippet': True,
             'resource_uri': self.get_dhcp_snippet_uri(dhcp_snippet),
-        }, parsed_dhcp_snippet)
+        }))
 
     def test_read_by_name(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -71,22 +81,31 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertItemsEqual({
+        self.assertThat(parsed_dhcp_snippet, Equals({
             'id': dhcp_snippet.id,
             'name': dhcp_snippet.name,
-            'value': dhcp_snippet.value,
+            'value': dhcp_snippet.value.data,
             'description': dhcp_snippet.description,
-            'history': [{
-                'id': dhcp_snippet.value.previous_version.id,
-                'value': dhcp_snippet.value.previous_version.data,
-                'created': format_datetime(dhcp_snippet.value.created),
-            }],
+            'history': [
+                {
+                    'id': dhcp_snippet.value.id,
+                    'value': dhcp_snippet.value.data,
+                    'created': format_datetime(
+                        dhcp_snippet.value.created),
+                },
+                {
+                    'id': dhcp_snippet.value.previous_version.id,
+                    'value': dhcp_snippet.value.previous_version.data,
+                    'created': format_datetime(
+                        dhcp_snippet.value.previous_version.created),
+                },
+            ],
             'enabled': dhcp_snippet.enabled,
             'node': None,
             'subnet': None,
             'global_snippet': True,
             'resource_uri': self.get_dhcp_snippet_uri(dhcp_snippet),
-        }, parsed_dhcp_snippet)
+        }))
 
     def test_read_404_when_bad_id(self):
         response = self.client.get(

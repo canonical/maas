@@ -21,6 +21,7 @@ DISPLAYED_VLAN_FIELDS = (
     'name',
     'vid',
     'fabric',
+    'fabric_id',
     'mtu',
     'primary_rack',
     'secondary_rack',

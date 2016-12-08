@@ -228,6 +228,7 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             "backing_device": ContainsDict({
                 "id": Equals(backing_block_device.id),
                 }),
+            "system_id": Equals(bcache.get_node().system_id),
             }))
 
     def test_read_404_when_not_bcache(self):
