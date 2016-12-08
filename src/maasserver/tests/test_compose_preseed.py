@@ -311,6 +311,12 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
+        self.assertThat(
+            preseed['power_state'], MatchesDict({
+                'delay': Equals('now'),
+                'mode': Equals('reboot'),
+                'timeout': Equals(1800),
+            }))
         self.assertEqual(
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])

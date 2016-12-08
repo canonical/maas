@@ -8,6 +8,7 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1604962    node set to "failed deployment" for no visible reason
 
 LP: #1614584    MAAS fails to start when gethostname returns an FQDN.
 

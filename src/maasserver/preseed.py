@@ -417,7 +417,14 @@ def get_curtin_config(node):
         get_node_preseed_context(
             node, osystem, series, rack_controller=rack_controller))
     context.update(get_curtin_context(node, rack_controller=rack_controller))
-    return template.substitute(**context)
+    config = yaml.load(template.substitute(**context))
+    if 'power_state' in config:
+        del config['power_state']
+    # Precise does not support cloud-init performing the reboot, so curtin
+    # must have this statement.
+    if node.distro_series == "precise":
+        config['power_state'] = {'mode': 'reboot'}
+    return yaml.dump(config)
 
 
 def get_curtin_context(node, rack_controller=None):

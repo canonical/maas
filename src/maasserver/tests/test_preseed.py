@@ -9,6 +9,7 @@ import http.client
 import json
 import os
 from pipes import quote
+from textwrap import dedent
 from unittest.mock import sentinel
 from urllib.parse import urlparse
 
@@ -863,12 +864,30 @@ class TestCurtinUtilities(
         config = get_curtin_config(node)
         self.assertThat(
             config,
-            ContainsAll(
-                [
-                    'mode: reboot',
-                    "debconf_selections:",
-                ]
-            ))
+            Contains("debconf_selections:"))
+        self.assertThat(config, Not(Contains('mode: reboot')))
+
+    def test_get_curtin_config_removes_power_state(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        power_state_template = dedent("""\
+        power_state:
+          mode: reboot
+        """)
+        self.patch(preseed_module, "get_preseed_template").return_value = (
+            factory.make_name("filename"), power_state_template)
+        config = get_curtin_config(node)
+        self.assertThat(config, Not(Contains('mode: reboot')))
+
+    def test_get_curtin_config_contains_reboot_for_precise(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        node.distro_series = "precise"
+        node.save()
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        config = get_curtin_config(node)
+        self.assertThat(config, Contains('mode: reboot'))
 
     def test_get_curtin_config_with_ipv4_rack_url(self):
         primary_rack = self.rpc_rack_controller
@@ -879,7 +898,6 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
-        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
         self.assertEqual(
             "%smetadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
@@ -895,7 +913,6 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
-        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
         self.assertEqual(
             "%smetadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
@@ -911,7 +928,6 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
-        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
         self.assertEqual(
             "%smetadata/latest/by-id/%s/" % (
                 primary_rack.url, node.system_id),
@@ -927,7 +943,6 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         yaml_conf = yaml.safe_load(config)
-        self.assertEqual('reboot', yaml_conf['power_state']['mode'])
         self.assertEqual(
             "%smetadata/latest/by-id/%s/" % (primary_rack.url, node.system_id),
             yaml_conf['late_commands']['maas'][2])

@@ -254,12 +254,13 @@ def compose_curtin_preseed(node, token, base_url=''):
     """Compose the preseed value for a node being installed with curtin."""
     metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url)
+        node, token, metadata_url, base_url=base_url, reboot=True)
 
 
 def _compose_cloud_init_preseed(
         node, token, metadata_url, base_url, poweroff=False,
-        poweroff_timeout=3600, poweroff_condition=None):
+        poweroff_timeout=3600, poweroff_condition=None,
+        reboot=False, reboot_timeout=1800):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -303,6 +304,12 @@ def _compose_cloud_init_preseed(
         }
         if poweroff_condition is not None:
             cloud_config['power_state']['condition'] = poweroff_condition
+    if reboot:
+        cloud_config['power_state'] = {
+            'delay': 'now',
+            'mode': 'reboot',
+            'timeout': reboot_timeout,
+        }
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 
