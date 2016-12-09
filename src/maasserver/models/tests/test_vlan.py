@@ -65,6 +65,26 @@ class TestVLANManager(MAASServerTestCase):
             [vlan]
         )
 
+    def test__space_specifier_matches_space_by_name(self):
+        factory.make_VLAN()
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        factory.make_VLAN()
+        self.assertItemsEqual(
+            VLAN.objects.filter_by_specifiers('space:%s' % space.name),
+            [vlan]
+        )
+
+    def test__space_specifier_matches_space_by_id(self):
+        factory.make_VLAN()
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        factory.make_VLAN()
+        self.assertItemsEqual(
+            VLAN.objects.filter_by_specifiers('space:%s' % space.id),
+            [vlan]
+        )
+
     def test__class_specifier_matches_attached_subnet(self):
         factory.make_VLAN()
         vlan = factory.make_VLAN()

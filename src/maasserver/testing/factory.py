@@ -1040,11 +1040,15 @@ class Factory(maastesting.factory.Factory):
             self, name=None, vid=None, fabric=None, dhcp_on=False, space=None,
             primary_rack=None, secondary_rack=None, relay_vlan=None):
         assert vid != 0, "VID=0 VLANs are auto-created"
+        if name is RANDOM:
+            name = factory.make_name()
         if fabric is None:
             fabric = Fabric.objects.get_default_fabric()
         if vid is None:
             # Don't create the vid=0 VLAN, it's auto-created.
             vid = self._get_available_vid(fabric)
+        if space is RANDOM:
+            space = factory.make_Space()
         vlan = VLAN(
             name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on, space=space,
             primary_rack=primary_rack, secondary_rack=secondary_rack,

@@ -31,12 +31,16 @@ from maasserver.node_constraint_filter_forms import (
     RenamableFieldsForm,
 )
 from maasserver.testing.architecture import patch_usable_architectures
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from testtools.matchers import (
     Contains,
     ContainsAll,
+    Equals,
     MatchesDict,
     MatchesListwise,
     StartsWith,
@@ -355,6 +359,89 @@ class TestAcquireNodeForm(MAASServerTestCase):
                     for subnet in subnets
                 ]
             })
+
+    def test_vlans_filters_by_space(self):
+        vlans = [
+            factory.make_VLAN(space=RANDOM)
+            for _ in range(3)
+        ]
+        subnets = [
+            factory.make_Subnet(vlan=vlan)
+            for vlan in vlans
+        ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+        ]
+        # Filter for this subnet.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 1
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'vlans': ["space:%s" % vlans[pick].space.name]})
+
+    def test_vlans_filters_by_multiple_not_space_arguments(self):
+        # Create 3 different VLANs (will be on 3 random spaces)
+        vlans = [
+            factory.make_VLAN(space=RANDOM)
+            for _ in range(3)
+        ]
+        subnets = [
+            factory.make_Subnet(vlan=vlan)
+            for vlan in vlans
+            ]
+        nodes = [
+            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            for subnet in subnets
+        ]
+        expected_selection = randint(0, len(vlans) - 1)
+        expected_node = nodes[expected_selection]
+        # Remove the expected subnet from the list of subnets; we'll use the
+        # remaining subnets to filter the list.
+        del vlans[expected_selection]
+        self.assertConstrainedNodes(
+            {expected_node},
+            {
+                'not_vlans': [
+                    "space:%s" % vlan.space.name
+                    for vlan in vlans
+                ]
+            })
+
+    def test_fails_validation_for_no_matching_vlans(self):
+        form = AcquireNodeForm(data={
+            'vlans': ["space:foo"]
+        })
+        self.assertThat(form.is_valid(), Equals(False))
+        self.assertThat(
+            dict(form.errors)['vlans'], Equals(["No matching VLANs found."]))
+
+    def test_fails_validation_for_no_matching_not_vlans(self):
+        form = AcquireNodeForm(data={
+            'not_vlans': ["space:foo"]
+        })
+        self.assertThat(form.is_valid(), Equals(False))
+        self.assertThat(
+            dict(form.errors)['not_vlans'],
+            Equals(["No matching VLANs found."]))
+
+    def test_fails_validation_for_no_matching_subnets(self):
+        form = AcquireNodeForm(data={
+            'subnets': ["foo"]
+        })
+        self.assertThat(form.is_valid(), Equals(False))
+        self.assertThat(
+            dict(form.errors)['subnets'],
+            Equals(["No matching subnets found."]))
+
+    def test_fails_validation_for_no_matching_not_subnets(self):
+        form = AcquireNodeForm(data={
+            'not_subnets': ["foo"]
+        })
+        self.assertThat(form.is_valid(), Equals(False))
+        self.assertThat(
+            dict(form.errors)['not_subnets'],
+            Equals(["No matching subnets found."]))
 
     def test_subnets_filters_by_ip(self):
         subnets = [
@@ -1129,6 +1216,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'not_tags': [factory.make_Tag().name],
             'subnets': [factory.make_Subnet().name],
             'not_subnets': [factory.make_Subnet().name],
+            'vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
+            'not_vlans': ['name:' + factory.make_VLAN(name=RANDOM).name],
             'connected_to': [factory.make_mac_address()],
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
@@ -1158,7 +1247,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
 class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
 
-    def test_describe_constraints_shows_all_constraints(self):
+    def test_describe_constraints_orders_based_on_cost(self):
         nodes = [
             factory.make_Node(
                 cpu_count=randint(5, 32),

@@ -29,6 +29,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
+from netaddr import AddrFormatError
 from provisioningserver.utils.network import parse_integer
 
 
@@ -53,6 +54,7 @@ class VLANQueriesMixin(MAASQueriesMixin):
         # Circular imports.
         from maasserver.models import (
             Fabric,
+            Space,
             Subnet,
         )
 
@@ -65,6 +67,7 @@ class VLANQueriesMixin(MAASQueriesMixin):
             'id': "__id",
             'name': "__name",
             'subnet': (Subnet.objects, 'vlan'),
+            'space': (Space.objects, 'vlan'),
             'vid': self._add_vid_query,
         }
         return super(VLANQueriesMixin, self).get_specifiers_q(
@@ -104,6 +107,13 @@ class VLANQueriesMixin(MAASQueriesMixin):
         validate_vid(vid)
         current_q = op(current_q, Q(vid=vid))
         return current_q
+
+    def validate_filter_specifiers(self, specifiers):
+        """Validate the given filter string."""
+        try:
+            self.filter_by_specifiers(specifiers)
+        except (ValueError, AddrFormatError) as e:
+            raise ValidationError(e.message)
 
 
 class VLANQuerySet(QuerySet, VLANQueriesMixin):

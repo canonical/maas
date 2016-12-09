@@ -30,6 +30,7 @@ from maasserver.models import (
     PhysicalBlockDevice,
     Subnet,
     Tag,
+    VLAN,
     Zone,
 )
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
@@ -516,6 +517,22 @@ class AcquireNodeForm(RenamableFieldsForm):
             "Invalid parameter: list of subnet specifiers required.",
             })
 
+    vlans = ValidatorMultipleChoiceField(
+        validator=VLAN.objects.validate_filter_specifiers,
+        label="Attached to VLANs",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of VLAN specifiers required.",
+            })
+
+    not_vlans = ValidatorMultipleChoiceField(
+        validator=VLAN.objects.validate_filter_specifiers,
+        label="Not attached to VLANs",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of VLAN specifiers required.",
+            })
+
     connected_to = ValidatorMultipleChoiceField(
         validator=mac_validator, label="Connected to", required=False,
         error_messages={
@@ -616,21 +633,30 @@ class AcquireNodeForm(RenamableFieldsForm):
             return None
         return value
 
-    def _clean_subnet_specifiers(self, specifiers):
+    def _clean_specifiers(self, model, specifiers):
         if not specifiers:
             return None
-        subnets = set(Subnet.objects.filter_by_specifiers(specifiers))
-        if len(subnets) == 0:
-            raise ValidationError("No matching subnets found.")
-        return subnets
+        objects = set(model.objects.filter_by_specifiers(specifiers))
+        if len(objects) == 0:
+            raise ValidationError(
+                "No matching %s found." % model._meta.verbose_name_plural)
+        return objects
 
     def clean_subnets(self):
         value = self.cleaned_data[self.get_field_name('subnets')]
-        return self._clean_subnet_specifiers(value)
+        return self._clean_specifiers(Subnet, value)
 
     def clean_not_subnets(self):
         value = self.cleaned_data[self.get_field_name('not_subnets')]
-        return self._clean_subnet_specifiers(value)
+        return self._clean_specifiers(Subnet, value)
+
+    def clean_vlans(self):
+        value = self.cleaned_data[self.get_field_name('vlans')]
+        return self._clean_specifiers(VLAN, value)
+
+    def clean_not_vlans(self):
+        value = self.cleaned_data[self.get_field_name('not_vlans')]
+        return self._clean_specifiers(VLAN, value)
 
     def __init__(self, *args, **kwargs):
         super(AcquireNodeForm, self).__init__(*args, **kwargs)
@@ -694,7 +720,161 @@ class AcquireNodeForm(RenamableFieldsForm):
         :rtype: `django.db.models.query.QuerySet`
         """
         filtered_nodes = nodes
+        filtered_nodes = self.filter_by_hostname(filtered_nodes)
+        filtered_nodes = self.filter_by_system_id(filtered_nodes)
+        filtered_nodes = self.filter_by_arch(filtered_nodes)
+        filtered_nodes = self.filter_by_cpu_count(filtered_nodes)
+        filtered_nodes = self.filter_by_mem(filtered_nodes)
+        filtered_nodes = self.filter_by_tags(filtered_nodes)
+        filtered_nodes = self.filter_by_zone(filtered_nodes)
+        filtered_nodes = self.filter_by_subnets(filtered_nodes)
+        filtered_nodes = self.filter_by_vlans(filtered_nodes)
+        filtered_nodes = self.filter_by_fabrics(filtered_nodes)
+        filtered_nodes = self.filter_by_fabric_classes(filtered_nodes)
+        compatible_nodes, filtered_nodes = self.filter_by_storage(
+            filtered_nodes)
+        compatible_interfaces, filtered_nodes = self.filter_by_interfaces(
+            filtered_nodes)
+        filtered_nodes = self.reorder_nodes_by_cost(filtered_nodes)
+        return filtered_nodes, compatible_nodes, compatible_interfaces
 
+    def reorder_nodes_by_cost(self, filtered_nodes):
+        # This uses a very simple procedure to compute a machine's
+        # cost. This procedure is loosely based on how ec2 computes
+        # the costs of machines. This is here to give a hint to let
+        # the call to acquire() decide which machine to return based
+        # on the machine's cost when multiple machines match the
+        # constraints.
+        filtered_nodes = filtered_nodes.distinct().extra(
+            select={'cost': "cpu_count + memory / 1024."})
+        return filtered_nodes.order_by("cost")
+
+    def filter_by_interfaces(self, filtered_nodes):
+        compatible_interfaces = {}
+        interfaces_label_map = self.cleaned_data.get(
+            self.get_field_name('interfaces'))
+        if interfaces_label_map is not None:
+            node_ids, compatible_interfaces = nodes_by_interface(
+                interfaces_label_map)
+            if node_ids is not None:
+                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
+
+        return compatible_interfaces, filtered_nodes
+
+    def filter_by_storage(self, filtered_nodes):
+        compatible_nodes = {}  # Maps node/storage to named storage constraints
+        storage = self.cleaned_data.get(
+            self.get_field_name('storage'))
+        if storage:
+            compatible_nodes = nodes_by_storage(storage)
+            node_ids = list(compatible_nodes)
+            if node_ids is not None:
+                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
+        return compatible_nodes, filtered_nodes
+
+    def filter_by_fabric_classes(self, filtered_nodes):
+        fabric_classes = self.cleaned_data.get(self.get_field_name(
+            'fabric_classes'))
+        if fabric_classes is not None and len(fabric_classes) > 0:
+            filtered_nodes = filtered_nodes.filter(
+                interface__vlan__fabric__class_type__in=fabric_classes)
+        not_fabric_classes = self.cleaned_data.get(self.get_field_name(
+            'not_fabric_classes'))
+        if not_fabric_classes is not None and len(not_fabric_classes) > 0:
+            filtered_nodes = filtered_nodes.exclude(
+                interface__vlan__fabric__class_type__in=not_fabric_classes)
+        return filtered_nodes
+
+    def filter_by_fabrics(self, filtered_nodes):
+        fabrics = self.cleaned_data.get(self.get_field_name('fabrics'))
+        if fabrics is not None and len(fabrics) > 0:
+            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
+            # is null (fabric-<id>).
+            filtered_nodes = filtered_nodes.filter(
+                interface__vlan__fabric__name__in=fabrics)
+        not_fabrics = self.cleaned_data.get(self.get_field_name('not_fabrics'))
+        if not_fabrics is not None and len(not_fabrics) > 0:
+            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
+            # is null (fabric-<id>).
+            filtered_nodes = filtered_nodes.exclude(
+                interface__vlan__fabric__name__in=not_fabrics)
+        return filtered_nodes
+
+    def filter_by_vlans(self, filtered_nodes):
+        vlans = self.cleaned_data.get(self.get_field_name('vlans'))
+        if vlans is not None and len(vlans) > 0:
+            for vlan in set(vlans):
+                filtered_nodes = filtered_nodes.filter(
+                    interface__vlan=vlan)
+        not_vlans = self.cleaned_data.get(self.get_field_name('not_vlans'))
+        if not_vlans is not None and len(not_vlans) > 0:
+            for not_vlan in set(not_vlans):
+                filtered_nodes = filtered_nodes.exclude(
+                    interface__vlan=not_vlan)
+        return filtered_nodes
+
+    def filter_by_subnets(self, filtered_nodes):
+        subnets = self.cleaned_data.get(self.get_field_name('subnets'))
+        if subnets is not None and len(subnets) > 0:
+            for subnet in set(subnets):
+                filtered_nodes = filtered_nodes.filter(
+                    interface__ip_addresses__subnet=subnet)
+        not_subnets = self.cleaned_data.get(
+            self.get_field_name('not_subnets'))
+        if not_subnets is not None and len(not_subnets) > 0:
+            for not_subnet in set(not_subnets):
+                filtered_nodes = filtered_nodes.exclude(
+                    interface__ip_addresses__subnet=not_subnet)
+        return filtered_nodes
+
+    def filter_by_zone(self, filtered_nodes):
+        zone = self.cleaned_data.get(self.get_field_name('zone'))
+        if zone:
+            zone_obj = Zone.objects.get(name=zone)
+            filtered_nodes = filtered_nodes.filter(zone=zone_obj)
+        not_in_zone = self.cleaned_data.get(self.get_field_name('not_in_zone'))
+        if not_in_zone is not None and len(not_in_zone) > 0:
+            not_in_zones = Zone.objects.filter(name__in=not_in_zone)
+            filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
+        return filtered_nodes
+
+    def filter_by_tags(self, filtered_nodes):
+        tags = self.cleaned_data.get(self.get_field_name('tags'))
+        if tags:
+            for tag in tags:
+                filtered_nodes = filtered_nodes.filter(tags__name=tag)
+        not_tags = self.cleaned_data.get(self.get_field_name('not_tags'))
+        if len(not_tags) > 0:
+            for not_tag in not_tags:
+                filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
+        return filtered_nodes
+
+    def filter_by_mem(self, filtered_nodes):
+        mem = self.cleaned_data.get(self.get_field_name('mem'))
+        if mem:
+            filtered_nodes = filtered_nodes.filter(memory__gte=mem)
+        return filtered_nodes
+
+    def filter_by_cpu_count(self, filtered_nodes):
+        cpu_count = self.cleaned_data.get(self.get_field_name('cpu_count'))
+        if cpu_count:
+            filtered_nodes = filtered_nodes.filter(cpu_count__gte=cpu_count)
+        return filtered_nodes
+
+    def filter_by_arch(self, filtered_nodes):
+        arch = self.cleaned_data.get(self.get_field_name('arch'))
+        if arch:
+            filtered_nodes = filtered_nodes.filter(architecture__in=arch)
+        return filtered_nodes
+
+    def filter_by_system_id(self, filtered_nodes):
+        # Filter by system_id.
+        system_id = self.cleaned_data.get(self.get_field_name('system_id'))
+        if system_id:
+            filtered_nodes = filtered_nodes.filter(system_id=system_id)
+        return filtered_nodes
+
+    def filter_by_hostname(self, filtered_nodes):
         # Filter by hostname.
         hostname = self.cleaned_data.get(self.get_field_name('name'))
         if hostname:
@@ -708,125 +888,4 @@ class AcquireNodeForm(RenamableFieldsForm):
             else:
                 clause = Q(hostname=hostname)
             filtered_nodes = filtered_nodes.filter(clause)
-
-        # Filter by system_id.
-        system_id = self.cleaned_data.get(self.get_field_name('system_id'))
-        if system_id:
-            filtered_nodes = filtered_nodes.filter(system_id=system_id)
-
-        # Filter by architecture.
-        arch = self.cleaned_data.get(self.get_field_name('arch'))
-        if arch:
-            filtered_nodes = filtered_nodes.filter(architecture__in=arch)
-
-        # Filter by cpu_count.
-        cpu_count = self.cleaned_data.get(self.get_field_name('cpu_count'))
-        if cpu_count:
-            filtered_nodes = filtered_nodes.filter(cpu_count__gte=cpu_count)
-
-        # Filter by memory.
-        mem = self.cleaned_data.get(self.get_field_name('mem'))
-        if mem:
-            filtered_nodes = filtered_nodes.filter(memory__gte=mem)
-
-        # Filter by tags.
-        tags = self.cleaned_data.get(self.get_field_name('tags'))
-        if tags:
-            for tag in tags:
-                filtered_nodes = filtered_nodes.filter(tags__name=tag)
-
-        # Filter by not_tags.
-        not_tags = self.cleaned_data.get(self.get_field_name('not_tags'))
-        if len(not_tags) > 0:
-            for not_tag in not_tags:
-                filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
-
-        # Filter by zone.
-        zone = self.cleaned_data.get(self.get_field_name('zone'))
-        if zone:
-            zone_obj = Zone.objects.get(name=zone)
-            filtered_nodes = filtered_nodes.filter(zone=zone_obj)
-
-        # Filter by not_in_zone.
-        not_in_zone = self.cleaned_data.get(self.get_field_name('not_in_zone'))
-        if not_in_zone is not None and len(not_in_zone) > 0:
-            not_in_zones = Zone.objects.filter(name__in=not_in_zone)
-            filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
-
-        # Filter by subnet.
-        subnets = self.cleaned_data.get(self.get_field_name('subnets'))
-        if subnets is not None and len(subnets) > 0:
-            for subnet in set(subnets):
-                filtered_nodes = filtered_nodes.filter(
-                    interface__ip_addresses__subnet=subnet)
-
-        # Filter by not_subnets.
-        not_subnets = self.cleaned_data.get(
-            self.get_field_name('not_subnets'))
-        if not_subnets is not None and len(not_subnets) > 0:
-            for not_subnet in set(not_subnets):
-                filtered_nodes = filtered_nodes.exclude(
-                    interface__ip_addresses__subnet=not_subnet)
-
-        # Filter by fabrics.
-        fabrics = self.cleaned_data.get(self.get_field_name('fabrics'))
-        if fabrics is not None and len(fabrics) > 0:
-            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
-            # is null (fabric-<id>).
-            filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__name__in=fabrics)
-
-        # Filter by not_fabrics.
-        not_fabrics = self.cleaned_data.get(self.get_field_name('not_fabrics'))
-        if not_fabrics is not None and len(not_fabrics) > 0:
-            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
-            # is null (fabric-<id>).
-            filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__name__in=not_fabrics)
-
-        # Filter by fabric classes.
-        fabric_classes = self.cleaned_data.get(self.get_field_name(
-            'fabric_classes'))
-        if fabric_classes is not None and len(fabric_classes) > 0:
-            filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__class_type__in=fabric_classes)
-
-        # Filter by not_fabric_classes.
-        not_fabric_classes = self.cleaned_data.get(self.get_field_name(
-            'not_fabric_classes'))
-        if not_fabric_classes is not None and len(not_fabric_classes) > 0:
-            filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__class_type__in=not_fabric_classes)
-
-        # Filter by storage.
-        compatible_nodes = {}  # Maps node/storage to named storage constraints
-        storage = self.cleaned_data.get(
-            self.get_field_name('storage'))
-        if storage:
-            compatible_nodes = nodes_by_storage(storage)
-            node_ids = list(compatible_nodes)
-            if node_ids is not None:
-                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
-
-        # Filter by interfaces (networking)
-        compatible_interfaces = {}
-        interfaces_label_map = self.cleaned_data.get(
-            self.get_field_name('interfaces'))
-        if interfaces_label_map is not None:
-            node_ids, compatible_interfaces = nodes_by_interface(
-                interfaces_label_map)
-            if node_ids is not None:
-                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
-
-        # This uses a very simple procedure to compute a machine's
-        # cost. This procedure is loosely based on how ec2 computes
-        # the costs of machines. This is here to give a hint to let
-        # the call to acquire() decide which machine to return based
-        # on the machine's cost when multiple machines match the
-        # constraints.
-        filtered_nodes = filtered_nodes.distinct().extra(
-            select={'cost': "cpu_count + memory / 1024."})
-        return (
-            filtered_nodes.order_by("cost"), compatible_nodes,
-            compatible_interfaces
-        )
+        return filtered_nodes

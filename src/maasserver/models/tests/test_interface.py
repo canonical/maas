@@ -533,11 +533,35 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
                 ["subnet_cidr:%s" % subnet1.cidr,
                  "subnet_cidr:%s" % subnet2.cidr], ), [iface1, iface2])
 
-    def test__filter_by_specifiers_matches_space(self):
+    def test__filter_by_specifiers_matches_space_by_subnet(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
         subnet1 = factory.make_Subnet(space=space1)
         subnet2 = factory.make_Subnet(space=space2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
+        iface1 = node1.get_boot_interface()
+        iface2 = node2.get_boot_interface()
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "space:%s" % space1.name), [iface1])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                "space:%s" % space2.name), [iface2])
+        self.assertItemsEqual(
+            Interface.objects.filter_by_specifiers(
+                ["space:%s" % space1.name,
+                 "space:%s" % space2.name], ), [iface1, iface2])
+
+    def test__filter_by_specifiers_matches_space_by_vlan(self):
+        space1 = factory.make_Space()
+        space2 = factory.make_Space()
+        vlan1 = factory.make_VLAN(space=space1)
+        vlan2 = factory.make_VLAN(space=space2)
+        subnet1 = factory.make_Subnet(vlan=vlan1)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(

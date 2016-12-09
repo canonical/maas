@@ -106,7 +106,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             'name': '__name',
             'hostname': 'node__hostname',
             'subnet': (Subnet.objects, 'staticipaddress__interface'),
-            'space': 'subnet{s}space'.format(s=separator),
+            'space': self._add_space_query,
             'subnet_cidr': 'subnet{s}cidr'.format(s=separator),
             'type': '__type',
             'vlan': (VLAN.objects, 'interface'),
@@ -124,6 +124,15 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             raise ValidationError("Interface ID must be numeric.")
         else:
             return op(current_q, Q(id=item))
+
+    def _add_space_query(self, current_q, op, space):
+        """Query for a related VLAN or subnet with the specified space."""
+        # Circular imports.
+        from maasserver.models import Space
+        space = Space.objects.get_object_by_specifiers_or_raise(space)
+        current_q = op(
+            current_q, Q(vlan__subnet__space=space) | Q(vlan__space=space))
+        return current_q
 
     def _add_default_query(self, current_q, op, item):
         # First, just try treating this as an interface ID.
