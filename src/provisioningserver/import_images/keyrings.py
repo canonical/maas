@@ -6,8 +6,8 @@ __all__ = [
     'write_all_keyrings',
     ]
 
+import hashlib
 import os
-from urllib.parse import urlsplit
 
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.utils import typed
@@ -28,10 +28,7 @@ def write_keyring(keyring_path, keyring_data: bytes):
 
 def calculate_keyring_name(source_url):
     """Return a name for a keyring based on a URL."""
-    split_url = urlsplit(source_url)
-    cleaned_path = split_url.path.strip('/').replace('/', '-')
-    keyring_name = "%s-%s.gpg" % (split_url.netloc, cleaned_path)
-    return keyring_name
+    return hashlib.md5(source_url.encode("utf8")).hexdigest()
 
 
 def write_all_keyrings(directory, sources):

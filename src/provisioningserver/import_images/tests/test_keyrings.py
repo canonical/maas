@@ -4,6 +4,7 @@
 
 __all__ = []
 
+import hashlib
 import os
 from unittest import mock
 
@@ -36,7 +37,8 @@ class TestCalculateKeyringName(MAASTestCase):
     def test_creates_name_from_url(self):
         parts = [self.getUniqueString() for _ in range(1, 5)]
         source_url = "http://example.com/%s/" % "/".join(parts)
-        expected_keyring_name = "example.com-%s.gpg" % "-".join(parts)
+        expected_keyring_name = hashlib.md5(
+            source_url.encode("utf8")).hexdigest()
         self.assertEqual(
             expected_keyring_name,
             keyrings.calculate_keyring_name(source_url))
