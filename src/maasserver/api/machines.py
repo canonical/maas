@@ -811,8 +811,9 @@ class AnonMachineHandler(AnonNodeHandler):
     fields = DISPLAYED_ANON_MACHINE_FIELDS
 
     @classmethod
-    def resource_uri(cls, machine):
-        return ('machine_handler', (machine.system_id, ))
+    def resource_uri(cls, machine=None):
+        system_id = "system_id" if machine is None else machine.system_id
+        return ('machine_handler', (system_id, ))
 
 
 class AnonMachinesHandler(AnonNodesHandler):

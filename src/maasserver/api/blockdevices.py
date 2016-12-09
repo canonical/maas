@@ -38,6 +38,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_BLOCKDEVICE_FIELDS = (
+    'system_id',
     'id',
     'name',
     'uuid',
@@ -125,11 +126,15 @@ class BlockDeviceHandler(OperationsHandler):
         # See the comment in NodeHandler.resource_uri.
         if block_device is None:
             system_id = "system_id"
-            device_id = "device_id"
+            device_id = "id"
         else:
             device_id = block_device.id
             system_id = block_device.node.system_id
         return ('blockdevice_handler', (system_id, device_id))
+
+    @classmethod
+    def system_id(cls, block_device):
+        return block_device.node.system_id
 
     @classmethod
     def name(cls, block_device):

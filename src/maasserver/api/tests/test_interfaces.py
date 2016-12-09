@@ -831,6 +831,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             "resource_uri": Equals(get_interface_uri(bond)),
             "params": Equals(bond.params),
             "effective_mtu": Equals(bond.get_effective_mtu()),
+            "system_id": Equals(node.system_id),
         }))
         self.assertEqual(sorted(
             nic.name

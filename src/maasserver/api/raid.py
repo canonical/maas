@@ -26,6 +26,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_RAID_FIELDS = (
+    'system_id',
     'id',
     'uuid',
     'name',
@@ -95,13 +96,18 @@ class RaidHandler(OperationsHandler):
     def resource_uri(cls, raid=None):
         # See the comment in NodeHandler.resource_uri.
         system_id = "system_id"
-        raid_id = "raid_id"
+        raid_id = "id"
         if raid is not None:
             raid_id = raid.id
             node = raid.get_node()
             if node is not None:
                 system_id = node.system_id
         return ('raid_device_handler', (system_id, raid_id))
+
+    @classmethod
+    def system_id(cls, raid):
+        node = raid.get_node()
+        return None if node is None else node.system_id
 
     @classmethod
     def level(cls, raid):

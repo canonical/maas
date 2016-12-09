@@ -33,6 +33,8 @@ from piston3.utils import rc
 
 
 DISPLAYED_PARTITION_FIELDS = (
+    'system_id',
+    'device_id',
     'id',
     'uuid',
     'path',
@@ -145,7 +147,7 @@ class PartitionHandler(OperationsHandler):
         if partition is None:
             system_id = "system_id"
             device_id = "device_id"
-            partition_id = "partition_id"
+            partition_id = "id"
         else:
             partition_id = partition.id
             block_device = partition.partition_table.block_device
@@ -153,6 +155,15 @@ class PartitionHandler(OperationsHandler):
             system_id = block_device.node.system_id
         return (
             'partition_handler', (system_id, device_id, partition_id))
+
+    @classmethod
+    def system_id(cls, partition):
+        block_device = partition.partition_table.block_device
+        return block_device.node.system_id
+
+    @classmethod
+    def device_id(cls, partition):
+        return partition.partition_table.block_device.id
 
     def read(self, request, system_id, device_id, partition_id):
         """Read partition.

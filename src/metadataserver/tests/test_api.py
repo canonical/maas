@@ -345,7 +345,7 @@ class TestMetadataCommon(MAASServerTestCase):
         response = client.get(url)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertItemsEqual(
-            MetaDataHandler.fields, [
+            MetaDataHandler.subfields, [
                 field.decode(settings.DEFAULT_CHARSET)
                 for field in response.content.split()
             ])

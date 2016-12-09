@@ -27,6 +27,11 @@ from testtools.matchers import (
 )
 
 
+def get_user_uri(user):
+    """Return a User URI."""
+    return reverse('user_handler', args=[user.username])
+
+
 class TestUsers(APITestCase.ForUser):
 
     def test_handler_path(self):
@@ -169,6 +174,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(user.username, returned_user['username'])
         self.assertEqual(user.email, returned_user['email'])
         self.assertFalse(returned_user['is_superuser'])
+        self.assertEqual(get_user_uri(user), returned_user['resource_uri'])
 
     def test_GET_shows_expected_fields(self):
         user = factory.make_User()
@@ -181,7 +187,7 @@ class TestUser(APITestCase.ForUser):
         returned_user = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
-            ['username', 'email', 'is_superuser'],
+            ['username', 'email', 'resource_uri', 'is_superuser'],
             returned_user.keys())
 
     def test_GET_identifies_superuser_as_such(self):

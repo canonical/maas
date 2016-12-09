@@ -149,6 +149,7 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             "cache_device": ContainsDict({
                 "id": Equals(cache_block_device.id),
                 }),
+            "system_id": Equals(cache_set.get_node().system_id),
             }))
 
     def test_read_404_when_invalid_id(self):

@@ -45,7 +45,7 @@ class PackageRepositoryHandler(OperationsHandler):
         if package_repository is not None:
             package_repository_id = package_repository.id
         else:
-            package_repository_id = "package_repository_id"
+            package_repository_id = "id"
         return ('package_repository_handler', (package_repository_id,))
 
     def read(self, request, package_repository_id):

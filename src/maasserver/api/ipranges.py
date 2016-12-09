@@ -81,7 +81,7 @@ class IPRangeHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, iprange=None):
         # See the comment in NodeHandler.resource_uri.
-        iprange_id = "iprange_id"
+        iprange_id = "id"
         if iprange is not None:
             iprange_id = iprange.id
         return ('iprange_handler', (iprange_id,))

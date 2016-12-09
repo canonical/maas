@@ -165,9 +165,13 @@ class TestPartitions(APITestCase.ForUser):
 
         parsed_partition = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertTrue(parsed_partition['bootable'])
-        self.assertEqual(partition.id, parsed_partition['id'])
-        self.assertEqual(partition.size, parsed_partition['size'])
+        self.assertThat(parsed_partition, ContainsDict({
+            "bootable": Is(True),
+            "id": Equals(partition.id),
+            "size": Equals(partition.size),
+            "system_id": Equals(device.node.system_id),
+            "device_id": Equals(device.id),
+        }))
 
     def test_read_partition_by_name(self):
         device = factory.make_PhysicalBlockDevice(

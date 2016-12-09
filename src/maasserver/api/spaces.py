@@ -60,7 +60,7 @@ class SpaceHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, space=None):
         # See the comment in NodeHandler.resource_uri.
-        space_id = "space_id"
+        space_id = "id"
         if space is not None:
             space_id = space.id
         return ('space_handler', (space_id,))

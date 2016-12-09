@@ -64,7 +64,7 @@ class StaticRouteHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, staticroute=None):
         # See the comment in NodeHandler.resource_uri.
-        staticroute_id = "staticroute_id"
+        staticroute_id = "id"
         if staticroute is not None:
             staticroute_id = staticroute.id
         return ('staticroute_handler', (staticroute_id,))

@@ -21,6 +21,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
+    'boot_source_id',
     'id',
     'os',
     'release',

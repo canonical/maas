@@ -28,6 +28,10 @@ from piston3.utils import (
     HttpStatusCode,
     rc,
 )
+from provisioningserver.logger import LegacyLogger
+
+
+log = LegacyLogger()
 
 
 class OperationsResource(Resource):
@@ -225,7 +229,40 @@ class OperationsHandlerType(HandlerMetaClass):
         cls.allowed_methods = frozenset(
             http_method for http_method, name in exports)
 
+        # Flags used later.
+        has_fields = cls.fields is not BaseHandler.fields
+        has_resource_uri = hasattr(cls, "resource_uri")
+        is_internal_only = cls.__module__ in {__name__, "metadataserver.api"}
+
+        # Reject handlers which omit fields required for self-referential
+        # URIs. See bug 1643552. We ignore handlers that don't define `fields`
+        # because we assume they are doing custom object rendering and we have
+        # no way to check here for compliance.
+        if has_fields and has_resource_uri:
+            _, uri_params, *_ = cls.resource_uri()
+            missing = set(uri_params).difference(cls.fields)
+            if len(missing) != 0:
+                raise OperationsHandlerMisconfigured(
+                    "{handler.__module__}.{handler.__name__} does not render "
+                    "all fields required to construct a self-referential URI. "
+                    "Fields missing: {missing}.".format(
+                        handler=cls, missing=" ".join(sorted(missing))))
+
+        # Piston uses `resource_uri` even for handlers without models in order
+        # to generate documentation. We ignore those modules we consider "for
+        # internal use only" since we do not intend to generate documentation
+        # for these.
+        if not has_resource_uri and not is_internal_only:
+            log.warn(
+                "{handler.__module__}.{handler.__name__} does not have "
+                "`resource_uri`. This means it may be omitted from generated "
+                "documentation. Please investigate.", handler=cls)
+
         return cls
+
+
+class OperationsHandlerMisconfigured(Exception):
+    """Handler has been misconfigured; see the error message for details."""
 
 
 class OperationsHandlerMixin:

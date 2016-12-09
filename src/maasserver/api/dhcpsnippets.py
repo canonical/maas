@@ -48,7 +48,7 @@ class DHCPSnippetHandler(OperationsHandler):
         if dhcp_snippet is not None:
             dhcp_snippet_id = dhcp_snippet.id
         else:
-            dhcp_snippet_id = "dhcp_snippet_id"
+            dhcp_snippet_id = "id"
         return ('dhcp_snippet_handler', (dhcp_snippet_id,))
 
     @classmethod

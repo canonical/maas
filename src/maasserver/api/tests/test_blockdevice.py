@@ -18,6 +18,7 @@ from maasserver.enum import (
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
@@ -382,6 +383,17 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
             "mount_point": filesystem2.mount_point,
             "mount_options": filesystem2.mount_options,
             }, parsed_device['partitions'][1]['filesystem'])
+
+    def test_read_returns_system_id(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        uri = get_blockdevice_uri(block_device)
+        response = self.client.get(uri)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_device = json_load_bytes(response.content)
+        self.assertThat(parsed_device, ContainsDict({
+            "system_id": Equals(node.system_id),
+        }))
 
     def test_delete_returns_403_when_not_admin(self):
         block_device = factory.make_PhysicalBlockDevice()

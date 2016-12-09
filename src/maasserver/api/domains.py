@@ -96,7 +96,7 @@ class DomainHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, domain=None):
         # See the comment in NodeHandler.resource_uri.
-        domain_id = "domain_id"
+        domain_id = "id"
         if domain is not None:
             domain_id = domain.id
         return ('domain_handler', (domain_id,))

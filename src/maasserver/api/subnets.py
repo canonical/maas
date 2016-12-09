@@ -93,7 +93,7 @@ class SubnetHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, subnet=None):
         # See the comment in NodeHandler.resource_uri.
-        subnet_id = "subnet_id"
+        subnet_id = "id"
         if subnet is not None:
             subnet_id = subnet.id
         return ('subnet_handler', (subnet_id,))

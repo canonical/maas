@@ -132,6 +132,7 @@ class TestVlanAPI(APITestCase.ForUser):
             "name": Equals(vlan.get_name()),
             "vid": Equals(vlan.vid),
             "fabric": Equals(fabric.get_name()),
+            "fabric_id": Equals(fabric.id),
             "resource_uri": Equals(get_vlan_uri(vlan)),
             }))
 

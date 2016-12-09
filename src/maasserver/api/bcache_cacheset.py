@@ -25,6 +25,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_CACHE_SET_FIELDS = (
+    'system_id',
     'id',
     'name',
     'cache_device',
@@ -85,13 +86,18 @@ class BcacheCacheSetHandler(OperationsHandler):
     def resource_uri(cls, cache_set=None):
         # See the comment in NodeHandler.resource_uri.
         system_id = "system_id"
-        cache_set_id = "cache_set_id"
+        cache_set_id = "id"
         if cache_set is not None:
             cache_set_id = cache_set.id
             node = cache_set.get_node()
             if node is not None:
                 system_id = node.system_id
         return ('bcache_cache_set_handler', (system_id, cache_set_id))
+
+    @classmethod
+    def system_id(cls, cache_set):
+        node = cache_set.get_node()
+        return None if node is None else node.system_id
 
     @classmethod
     def cache_device(cls, cache_set):

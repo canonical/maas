@@ -196,13 +196,13 @@ class MetadataViewHandler(OperationsHandler):
     create = update = delete = None
 
     def read(self, request, mac=None):
-        return make_list_response(sorted(self.fields))
+        return make_list_response(sorted(self.subfields))
 
 
 class IndexHandler(MetadataViewHandler):
     """Top-level metadata listing."""
 
-    fields = ('latest', '2012-03-01')
+    subfields = ('latest', '2012-03-01')
 
 
 class StatusHandler(MetadataViewHandler):
@@ -394,7 +394,7 @@ class StatusHandler(MetadataViewHandler):
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
     create = update = delete = None
-    fields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
+    subfields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
 
     # States in which a node is allowed to signal
     # commissioning/installing/entering-rescue-mode status.
@@ -432,11 +432,11 @@ class VersionIndexHandler(MetadataViewHandler):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
         if NodeUserData.objects.has_user_data(node):
-            shown_fields = self.fields
+            shown_subfields = self.subfields
         else:
-            shown_fields = list(self.fields)
-            shown_fields.remove('user-data')
-        return make_list_response(sorted(shown_fields))
+            shown_subfields = list(self.subfields)
+            shown_subfields.remove('user-data')
+        return make_list_response(sorted(shown_subfields))
 
     def _store_installation_results(self, node, request):
         """Store installation result file for `node`."""
@@ -608,7 +608,7 @@ class VersionIndexHandler(MetadataViewHandler):
 class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
 
-    fields = (
+    subfields = (
         'instance-id',
         'local-hostname',
         'public-keys',
@@ -627,9 +627,9 @@ class MetaDataHandler(VersionIndexHandler):
             returns an HttpResponse.
         :rtype: Callable
         """
-        field = item.split('/')[0]
-        if field not in self.fields:
-            raise MAASAPINotFound("Unknown metadata attribute: %s" % field)
+        subfield = item.split('/')[0]
+        if subfield not in self.subfields:
+            raise MAASAPINotFound("Unknown metadata attribute: %s" % subfield)
 
         producers = {
             'instance-id': self.instance_id,
@@ -639,7 +639,7 @@ class MetaDataHandler(VersionIndexHandler):
             'x509': self.ssl_certs,
         }
 
-        return producers[field]
+        return producers[subfield]
 
     def read(self, request, version, mac=None, item=None):
         check_version(version)
@@ -648,7 +648,7 @@ class MetaDataHandler(VersionIndexHandler):
         # Requesting the list of attributes, not any particular
         # attribute.
         if item is None or len(item) == 0:
-            fields = list(self.fields)
+            subfields = list(self.subfields)
             commissioning_without_ssh = (
                 node.status == NODE_STATUS.COMMISSIONING and
                 not node.enable_ssh)
@@ -656,8 +656,8 @@ class MetaDataHandler(VersionIndexHandler):
             # node has registered SSH keys.
             keys = SSHKey.objects.get_keys_for_user(user=node.owner)
             if not keys or commissioning_without_ssh:
-                fields.remove('public-keys')
-            return make_list_response(sorted(fields))
+                subfields.remove('public-keys')
+            return make_list_response(sorted(subfields))
 
         producer = self.get_attribute_producer(item)
         return producer(node, version, item)
@@ -787,10 +787,10 @@ class EnlistUserDataHandler(OperationsHandler):
 
 class EnlistVersionIndexHandler(OperationsHandler):
     create = update = delete = None
-    fields = ('meta-data', 'user-data')
+    subfields = ('meta-data', 'user-data')
 
     def read(self, request, version):
-        return make_list_response(sorted(self.fields))
+        return make_list_response(sorted(self.subfields))
 
 
 class AnonMetaDataHandler(VersionIndexHandler):

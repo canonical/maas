@@ -31,6 +31,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_VOLUME_GROUP_FIELDS = (
+    'system_id',
     'id',
     'uuid',
     'name',
@@ -99,13 +100,21 @@ class VolumeGroupHandler(OperationsHandler):
     def resource_uri(cls, volume_group=None):
         # See the comment in NodeHandler.resource_uri.
         system_id = "system_id"
-        volume_group_id = "volume_group_id"
+        volume_group_id = "id"
         if volume_group is not None:
             volume_group_id = volume_group.id
             node = volume_group.get_node()
             if node is not None:
                 system_id = node.system_id
         return ('volume_group_handler', (system_id, volume_group_id))
+
+    @classmethod
+    def system_id(cls, volume_group):
+        if volume_group is None:
+            return None
+        else:
+            node = volume_group.get_node()
+            return None if node is None else node.system_id
 
     @classmethod
     def size(cls, filesystem_group):
