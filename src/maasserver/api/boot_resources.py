@@ -25,6 +25,7 @@ from maasserver.api.support import (
 from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import (
     import_resources,
+    is_import_resources_running,
     stop_import_resources,
 )
 from maasserver.enum import (
@@ -235,6 +236,11 @@ class BootResourcesHandler(OperationsHandler):
         return HttpResponse(
             "Import of boot resources is being stopped",
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+    @operation(idempotent=True)
+    def is_importing(self, request):
+        """Return import status."""
+        return is_import_resources_running()
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
