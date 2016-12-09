@@ -44,13 +44,16 @@ from provisioningserver.rackdservices.tftp import (
     TFTPBackend,
     TFTPService,
 )
+from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from testtools.matchers import (
     AfterPreprocessing,
+    Contains,
     Equals,
     IsInstance,
     MatchesAll,
     MatchesStructure,
+    Not,
 )
 from twisted.application.service import MultiService
 from twisted.python.filepath import FilePath
@@ -111,6 +114,22 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertThat(
             logger.configure, MockCalledOnceWith(
                 options["verbosity"], logger.LoggingMode.TWISTD))
+
+    def test_makeService_with_EXPERIMENTAL_tftp_offload_service(self):
+        """
+        Only the site service is created when no options are given.
+        """
+        # Activate the offload service by setting port to 0.
+        self.useFixture(ClusterConfigurationFixture(tftp_port=0))
+
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        self.assertIsInstance(service, MultiService)
+        self.assertThat(service.namedServices, Not(Contains("tftp")))
+        self.assertThat(service.namedServices, Contains("tftp-offload"))
+        tftp_offload_service = service.getServiceNamed("tftp-offload")
+        self.assertThat(tftp_offload_service, IsInstance(TFTPOffloadService))
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = (
