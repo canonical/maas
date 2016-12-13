@@ -92,8 +92,10 @@ def make_dn():
     return factory.make_name('dn')
 
 
-def make_server():
-    return factory.make_name('server')
+def make_server(power_state=None):
+    return {
+        'operPower': power_state,
+    }
 
 
 class TestUCSMXMLAPIError(MAASTestCase):
@@ -547,19 +549,10 @@ class TestUCSMPowerState(MAASTestCase):
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         get_servers_mock = self.patch(ucsm, 'get_servers')
-        server = make_server()
-        current_state = 'down'
-        power_control = Element('lsPower', {'state': current_state})
-        get_servers_mock.return_value = [server]
-        get_server_power_control_mock = self.patch(
-            ucsm, 'get_server_power_control')
-        get_server_power_control_mock.return_value = power_control
+        get_servers_mock.return_value = [make_server("off")]
 
         power_state = power_state_ucsm(url, username, password, uuid)
         self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
-        self.expectThat(
-            get_server_power_control_mock,
-            MockCalledOnceWith(api, server))
         self.expectThat(power_state, Equals('off'))
 
     def test_power_state_get_on(self):
@@ -570,19 +563,10 @@ class TestUCSMPowerState(MAASTestCase):
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         get_servers_mock = self.patch(ucsm, 'get_servers')
-        server = make_server()
-        current_state = 'up'
-        power_control = Element('lsPower', {'state': current_state})
-        get_servers_mock.return_value = [server]
-        get_server_power_control_mock = self.patch(
-            ucsm, 'get_server_power_control')
-        get_server_power_control_mock.return_value = power_control
+        get_servers_mock.return_value = [make_server("on")]
 
         power_state = power_state_ucsm(url, username, password, uuid)
         self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
-        self.expectThat(
-            get_server_power_control_mock,
-            MockCalledOnceWith(api, server))
         self.expectThat(power_state, Equals('on'))
 
     def test_power_state_error_on_unknown_state(self):
@@ -593,13 +577,7 @@ class TestUCSMPowerState(MAASTestCase):
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         get_servers_mock = self.patch(ucsm, 'get_servers')
-        server = make_server()
-        current_state = factory.make_name('error')
-        power_control = Element('lsPower', {'state': current_state})
-        get_servers_mock.return_value = [server]
-        get_server_power_control_mock = self.patch(
-            ucsm, 'get_server_power_control')
-        get_server_power_control_mock.return_value = power_control
+        get_servers_mock.return_value = [make_server()]
 
         self.assertRaises(
             UCSM_XML_API_Error, power_state_ucsm, url,

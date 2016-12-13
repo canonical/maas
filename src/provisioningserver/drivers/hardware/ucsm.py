@@ -85,15 +85,10 @@ from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
-class UCSMState:
-    DOWN = "down"
-    UP = "up"
-
-
 class UCSM_XML_API_Error(Exception):
     """Failure talking to a Cisco UCS Manager."""
 
-    def __init__(self, msg, code):
+    def __init__(self, msg, code=None):
         super(UCSM_XML_API_Error, self).__init__(msg)
         self.code = code
 
@@ -410,8 +405,8 @@ def power_control_ucsm(url, username, password, uuid, maas_power_mode):
         # servers for a given UUID.
         [server] = get_servers(api, uuid)
         power_control = get_server_power_control(api, server)
-        command = get_power_command(maas_power_mode,
-                                    power_control.get('state'))
+        command = get_power_command(
+            maas_power_mode, server.get('operPower'))
         set_server_power_control(api, power_control, command)
 
 
@@ -421,13 +416,10 @@ def power_state_ucsm(url, username, password, uuid):
         # UUIDs are unique per server, so we get either one or zero
         # servers for a given UUID.
         [server] = get_servers(api, uuid)
-        power_control = get_server_power_control(api, server)
-        power_state = power_control.get('state')
+        power_state = server.get('operPower')
 
-        if power_state == UCSMState.DOWN:
-            return 'off'
-        elif power_state == UCSMState.UP:
-            return 'on'
+        if power_state in ('on', 'off'):
+            return power_state
         raise UCSM_XML_API_Error(
             'Unknown power state: %s' % power_state, None)
 
