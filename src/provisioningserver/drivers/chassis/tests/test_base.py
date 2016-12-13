@@ -134,15 +134,20 @@ class TestDiscoveredClasses(MAASTestCase):
                 size=random.randint(512, 1024))
             for _ in range(3)
         ]
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
         machine = DiscoveredMachine(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             power_state=power_state, interfaces=interfaces,
-            block_devices=block_devices)
+            block_devices=block_devices, tags=tags)
         self.assertEquals(cores, machine.cores)
         self.assertEquals(cpu_speed, machine.cpu_speed)
         self.assertEquals(memory, machine.memory)
         self.assertEquals(interfaces, machine.interfaces)
         self.assertEquals(block_devices, machine.block_devices)
+        self.assertEquals(tags, machine.tags)
 
     def test_chassis_hints(self):
         cores = random.randint(1, 8)
@@ -161,7 +166,6 @@ class TestDiscoveredClasses(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
-        power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
             cores=random.randint(1, 8),
@@ -173,6 +177,10 @@ class TestDiscoveredClasses(MAASTestCase):
             cores = random.randint(1, 8)
             cpu_speed = random.randint(1000, 2000)
             memory = random.randint(4096, 8192)
+            power_state = factory.make_name('unknown')
+            power_parameters = {
+                'power_id': factory.make_name('power_id'),
+            }
             interfaces = [
                 DiscoveredMachineInterface(
                     mac_address=factory.make_mac_address())
@@ -185,11 +193,16 @@ class TestDiscoveredClasses(MAASTestCase):
                     size=random.randint(512, 1024))
                 for _ in range(3)
             ]
+            tags = [
+                factory.make_name("tag")
+                for _ in range(3)
+            ]
             machines.append(
                 DiscoveredMachine(
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
-                    power_state=power_state, interfaces=interfaces,
-                    block_devices=block_devices))
+                    power_state=power_state, power_parameters=power_parameters,
+                    interfaces=interfaces, block_devices=block_devices,
+                    tags=tags))
         chassis = DiscoveredChassis(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
@@ -203,7 +216,6 @@ class TestDiscoveredClasses(MAASTestCase):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
-        power_state = factory.make_name('unknown')
         local_storage = random.randint(4096, 8192)
         hints = DiscoveredChassisHints(
             cores=random.randint(1, 8),
@@ -215,6 +227,10 @@ class TestDiscoveredClasses(MAASTestCase):
             cores = random.randint(1, 8)
             cpu_speed = random.randint(1000, 2000)
             memory = random.randint(4096, 8192)
+            power_state = factory.make_name('unknown')
+            power_parameters = {
+                'power_id': factory.make_name('power_id'),
+            }
             interfaces = [
                 DiscoveredMachineInterface(
                     mac_address=factory.make_mac_address())
@@ -228,11 +244,16 @@ class TestDiscoveredClasses(MAASTestCase):
                     id_path=factory.make_name("/dev/vda"))
                 for _ in range(3)
             ]
+            tags = [
+                factory.make_name("tag")
+                for _ in range(3)
+            ]
             machines.append(
                 DiscoveredMachine(
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
-                    power_state=power_state, interfaces=interfaces,
-                    block_devices=block_devices))
+                    power_state=power_state, power_parameters=power_parameters,
+                    interfaces=interfaces, block_devices=block_devices,
+                    tags=tags))
         chassis = DiscoveredChassis(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
@@ -253,6 +274,7 @@ class TestDiscoveredClasses(MAASTestCase):
                     "cpu_speed": Equals(machine.cpu_speed),
                     "memory": Equals(machine.memory),
                     "power_state": Equals(machine.power_state),
+                    "power_parameters": Equals(machine.power_parameters),
                     "interfaces": MatchesListwise([
                         MatchesDict({
                             "mac_address": Equals(interface.mac_address),
@@ -272,6 +294,7 @@ class TestDiscoveredClasses(MAASTestCase):
                         })
                         for block_device in machine.block_devices
                     ]),
+                    "tags": Equals(machine.tags),
                 })
                 for machine in machines
             ]),

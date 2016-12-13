@@ -167,6 +167,8 @@ class DiscoveredMachine:
     block_devices = attr.ib(
         convert=convert_list(DiscoveredMachineBlockDevice))
     power_state = attr.ib(convert=str, default='unknown')
+    power_parameters = attr.ib(convert=convert_obj(dict), default={})
+    tags = attr.ib(convert=convert_list(str), default=[])
 
 
 @attr.s
