@@ -445,13 +445,13 @@ def get_curtin_config(node):
     if deprecated_context_variables:
         log.warn(
             "WARNING: '%s' contains deprecated preseed "
-            "variables. Please remove - %s" % (
-                template.name, ",".join(deprecated_context_variables)))
+            "variables. Please remove: %s" % (
+                template.name, ", ".join(deprecated_context_variables)))
     if deprecated_config_variables:
         log.warn(
             "WARNING: '%s' contains deprecated preseed "
-            "configuration. Please remove - %s" % (
-                template.name, ",".join(deprecated_config_variables)))
+            "configuration. Please remove: %s" % (
+                template.name, ", ".join(deprecated_config_variables)))
     # Precise does not support cloud-init performing the reboot, so curtin
     # must have this statement.
     if node.distro_series == "precise":
