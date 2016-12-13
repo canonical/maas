@@ -62,7 +62,10 @@ from maasserver.utils.curtin import curtin_supports_webhook_events
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger import (
+    get_maas_logger,
+    LegacyLogger,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
 from provisioningserver.utils.url import compose_URL
@@ -71,6 +74,8 @@ import yaml
 
 
 maaslog = get_maas_logger("preseed")
+
+log = LegacyLogger()
 
 GENERIC_FILENAME = 'generic'
 
@@ -417,9 +422,36 @@ def get_curtin_config(node):
         get_node_preseed_context(
             node, osystem, series, rack_controller=rack_controller))
     context.update(get_curtin_context(node, rack_controller=rack_controller))
+    deprecated_context_variables = [
+        'main_archive_hostname', 'main_archive_directory',
+        'ports_archive_hostname', 'ports_archive_directory',
+        'enable_http_proxy', 'http_proxy']
+    deprecated_config_variables = []
+    for var in deprecated_context_variables:
+        if var not in context:
+            deprecated_context_variables.remove(var)
+    context.update(get_node_deprecated_preseed_context())
     config = yaml.load(template.substitute(**context))
+    # Remove deprecated config from the curtin preseed.
     if 'power_state' in config:
         del config['power_state']
+        deprecated_config_variables.append('power_state')
+    if 'apt_proxy' in config:
+        deprecated_config_variables.append('apt_proxy')
+        del config['apt_proxy']
+    if 'apt_mirrors' in config:
+        deprecated_config_variables.append('apt_mirrors')
+        del config['apt_mirrors']
+    if deprecated_context_variables:
+        log.warn(
+            "WARNING: '%s' contains deprecated preseed "
+            "variables. Please remove - %s" % (
+                template.name, ",".join(deprecated_context_variables)))
+    if deprecated_config_variables:
+        log.warn(
+            "WARNING: '%s' contains deprecated preseed "
+            "configuration. Please remove - %s" % (
+                template.name, ",".join(deprecated_config_variables)))
     # Precise does not support cloud-init performing the reboot, so curtin
     # must have this statement.
     if node.distro_series == "precise":
@@ -718,6 +750,30 @@ def get_node_preseed_context(
         'node_disable_pxe_url': node_disable_pxe_url,
         'node_disable_pxe_data': node_disable_pxe_data,
         'license_key': node.get_effective_license_key(),
+    }
+
+
+def get_node_deprecated_preseed_context():
+    """Return the node-dependent context dictionary to be used to render
+    preseed template. This includes all the context variables that have
+    been deprecated, but allows for backwards compatibility for those
+    preseeds that still contain old variables.
+
+    :return: The context dictionary.
+    :rtype: dict.
+    """
+    main_archive_hostname, main_archive_directory = get_netloc_and_path(
+        PackageRepository.get_main_archive().url)
+    ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
+        PackageRepository.get_ports_archive().url)
+
+    return {
+        'main_archive_hostname': main_archive_hostname,
+        'main_archive_directory': main_archive_directory,
+        'ports_archive_hostname': ports_archive_hostname,
+        'ports_archive_directory': ports_archive_directory,
+        'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
+        'http_proxy': Config.objects.get_config('http_proxy'),
     }
 
 

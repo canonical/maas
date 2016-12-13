@@ -54,6 +54,7 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_enlist_userdata,
     get_netloc_and_path,
+    get_node_deprecated_preseed_context,
     get_node_preseed_context,
     get_preseed,
     get_preseed_context,
@@ -457,6 +458,23 @@ class TestPreseedContext(MAASServerTestCase):
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
              'server_url', 'syslog_host_port'],
+            context)
+
+
+class TestNodeDeprecatedPreseedContext(
+        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+    """Test for `get_node_deprecated_preseed_context`."""
+
+    def test_get_node_deprecated_preseed_context_contains_keys(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        self.configure_get_boot_images_for_node(node, 'install')
+        context = get_node_deprecated_preseed_context()
+        self.assertItemsEqual(
+            ['main_archive_hostname', 'main_archive_directory',
+             'ports_archive_hostname', 'ports_archive_directory',
+             'enable_http_proxy', 'http_proxy'
+             ],
             context)
 
 
@@ -879,6 +897,33 @@ class TestCurtinUtilities(
             factory.make_name("filename"), power_state_template)
         config = get_curtin_config(node)
         self.assertThat(config, Not(Contains('mode: reboot')))
+
+    def test_get_curtin_config_removes_apt_mirrors(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        apt_mirrors_template = dedent("""\
+        apt_mirrors:
+          ubuntu_archive:
+          ubuntu_security:
+        """)
+        self.patch(preseed_module, "get_preseed_template").return_value = (
+            factory.make_name("filename"), apt_mirrors_template)
+        config = get_curtin_config(node)
+        self.assertThat(config, Not(Contains('ubuntu_archive')))
+        self.assertThat(config, Not(Contains('ubuntu_security')))
+
+    def test_get_curtin_config_removes_apt_proxy(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        apt_proxy_template = dedent("""\
+        apt_proxy: http://127.0.0.1:8000/
+        """)
+        self.patch(preseed_module, "get_preseed_template").return_value = (
+            factory.make_name("filename"), apt_proxy_template)
+        config = get_curtin_config(node)
+        self.assertThat(config, Not(Contains('127.0.0.1')))
 
     def test_get_curtin_config_contains_reboot_for_precise(self):
         node = factory.make_Node_with_Interface_on_Subnet(
