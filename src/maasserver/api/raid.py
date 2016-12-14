@@ -147,15 +147,15 @@ class RaidHandler(OperationsHandler):
                 fstype=FILESYSTEM_TYPE.RAID_SPARE)
         ]
 
-    def read(self, request, system_id, raid_id):
+    def read(self, request, system_id, id):
         """Read RAID device on a machine.
 
         Returns 404 if the machine or RAID is not found.
         """
         return RAID.objects.get_object_or_404(
-            system_id, raid_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, system_id, raid_id):
+    def update(self, request, system_id, id):
         """Update RAID on a machine.
 
         :param name: Name of the RAID.
@@ -175,7 +175,7 @@ class RaidHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         raid = RAID.objects.get_object_or_404(
-            system_id, raid_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = raid.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -186,14 +186,14 @@ class RaidHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, system_id, raid_id):
+    def delete(self, request, system_id, id):
         """Delete RAID on a machine.
 
         Returns 404 if the machine or RAID is not found.
         Returns 409 if the machine is not Ready.
         """
         raid = RAID.objects.get_object_or_404(
-            system_id, raid_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = raid.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

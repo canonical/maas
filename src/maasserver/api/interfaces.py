@@ -387,15 +387,15 @@ class InterfaceHandler(OperationsHandler):
     def effective_mtu(cls, interface):
         return interface.get_effective_mtu()
 
-    def read(self, request, system_id, interface_id):
+    def read(self, request, system_id, id):
         """Read interface on node.
 
         Returns 404 if the node or interface is not found.
         """
         return Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, system_id, interface_id):
+    def update(self, request, system_id, id):
         """Update interface on node.
 
         Machines must has status of Ready or Broken to have access to all
@@ -496,7 +496,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
@@ -530,13 +530,13 @@ class InterfaceHandler(OperationsHandler):
                 form.errors['parent'] = form.errors.pop('parents')
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, system_id, interface_id):
+    def delete(self, request, system_id, id):
         """Delete interface on node.
 
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
         raise_error_if_controller(node, "delete interface")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -548,7 +548,7 @@ class InterfaceHandler(OperationsHandler):
         return rc.DELETED
 
     @operation(idempotent=False)
-    def link_subnet(self, request, system_id, interface_id):
+    def link_subnet(self, request, system_id, id):
         """Link interface to a subnet.
 
         :param mode: AUTO, DHCP, STATIC or LINK_UP connection to subnet.
@@ -579,7 +579,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -604,7 +604,7 @@ class InterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def unlink_subnet(self, request, system_id, interface_id):
+    def unlink_subnet(self, request, system_id, id):
         """Unlink interface to a subnet.
 
         :param id: ID of the link on the interface to remove.
@@ -612,7 +612,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -627,7 +627,7 @@ class InterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def set_default_gateway(self, request, system_id, interface_id):
+    def set_default_gateway(self, request, system_id, id):
         """Set the node to use this interface as the default gateway.
 
         If this interface has more than one subnet with a gateway IP in the
@@ -641,7 +641,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
         raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
@@ -657,7 +657,7 @@ class InterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def add_tag(self, request, system_id, interface_id):
+    def add_tag(self, request, system_id, id):
         """Add a tag to interface on a node.
 
         :param tag: The tag being added.
@@ -666,13 +666,13 @@ class InterfaceHandler(OperationsHandler):
         Returns 403 if the user is not allowed to update the interface.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         interface.add_tag(get_mandatory_param(request.POST, 'tag'))
         interface.save()
         return interface
 
     @operation(idempotent=False)
-    def remove_tag(self, request, system_id, interface_id):
+    def remove_tag(self, request, system_id, id):
         """Remove a tag from interface on a node.
 
         :param tag: The tag being removed.
@@ -681,7 +681,7 @@ class InterfaceHandler(OperationsHandler):
         Returns 403 if the user is not allowed to update the interface.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         interface.remove_tag(get_mandatory_param(request.POST, 'tag'))
         interface.save()
         return interface

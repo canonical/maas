@@ -165,7 +165,7 @@ class PartitionHandler(OperationsHandler):
     def device_id(cls, partition):
         return partition.partition_table.block_device.id
 
-    def read(self, request, system_id, device_id, partition_id):
+    def read(self, request, system_id, device_id, id):
         """Read partition.
 
         Returns 404 if the node, block device, or partition are not found.
@@ -175,9 +175,9 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         return get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
 
-    def delete(self, request, system_id, device_id, partition_id):
+    def delete(self, request, system_id, device_id, id):
         """Delete partition.
 
         Returns 404 if the node, block device, or partition are not found.
@@ -187,7 +187,7 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -196,7 +196,7 @@ class PartitionHandler(OperationsHandler):
         return rc.DELETED
 
     @operation(idempotent=False)
-    def format(self, request, system_id, device_id, partition_id):
+    def format(self, request, system_id, device_id, id):
         """Format a partition.
 
         :param fstype: Type of filesystem.
@@ -212,7 +212,7 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "format")
@@ -223,14 +223,14 @@ class PartitionHandler(OperationsHandler):
             return form.save()
 
     @operation(idempotent=False)
-    def unformat(self, request, system_id, device_id, partition_id):
+    def unformat(self, request, system_id, device_id, id):
         """Unformat a partition."""
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat")
@@ -251,7 +251,7 @@ class PartitionHandler(OperationsHandler):
         return partition
 
     @operation(idempotent=False)
-    def mount(self, request, system_id, device_id, partition_id):
+    def mount(self, request, system_id, device_id, id):
         """Mount the filesystem on partition.
 
         :param mount_point: Path on the filesystem to mount.
@@ -266,7 +266,7 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
         raise_error_for_invalid_state_on_allocated_operations(
             device.get_node(), request.user, "mount")
         filesystem = partition.get_effective_filesystem()
@@ -278,7 +278,7 @@ class PartitionHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def unmount(self, request, system_id, device_id, partition_id):
+    def unmount(self, request, system_id, device_id, id):
         """Unmount the filesystem on partition.
 
         Returns 400 if the partition is not formatted or not currently \
@@ -292,7 +292,7 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
-            partition_id, partition_table)
+            id, partition_table)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount")

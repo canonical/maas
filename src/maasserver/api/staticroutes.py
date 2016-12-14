@@ -69,15 +69,15 @@ class StaticRouteHandler(OperationsHandler):
             staticroute_id = staticroute.id
         return ('staticroute_handler', (staticroute_id,))
 
-    def read(self, request, staticroute_id):
+    def read(self, request, id):
         """Read static route.
 
         Returns 404 if the static route is not found.
         """
         return StaticRoute.objects.get_staticroute_or_404(
-            staticroute_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, staticroute_id):
+    def update(self, request, id):
         """Update static route.
 
         :param source: Source subnet for the route.
@@ -88,19 +88,19 @@ class StaticRouteHandler(OperationsHandler):
         Returns 404 if the static route is not found.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            staticroute_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = StaticRouteForm(instance=staticroute, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, staticroute_id):
+    def delete(self, request, id):
         """Delete static route.
 
         Returns 404 if the static route is not found.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
-            staticroute_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         staticroute.delete()
         return rc.DELETED

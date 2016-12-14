@@ -187,11 +187,27 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, node=None):
-        # This method is called by piston in two different contexts:
-        # - when generating an uri template to be used in the documentation
-        # (in this case, it is called with node=None).
-        # - when populating the 'resource_uri' field of an object
-        # returned by the API (in this case, node is a Node object).
+        #
+        # This method is called by Piston in two different contexts:
+        #
+        # 1. When generating a URI template to be used in the documentation,
+        #    in which case it is called with `node=None`. We return argument
+        #    *names* instead of their values. Frustratingly, Piston itself
+        #    discards these names and instead uses names derived from Django's
+        #    URL patterns for the resource.
+        #
+        # 2. When populating the `resource_uri` field of an object returned by
+        #    the API, in which case `node` is an instance of `Node`.
+        #
+        # There is a check made at handler class creation time to ensure that
+        # the names from #1 match up to the handler's `fields`. In this way we
+        # can declare which fields are required to render a resource's URI and
+        # be sure that they are all present in a rendering of said resource.
+        #
+        # There is an additional unit test (see `TestResourceURIs`) to check
+        # that the fields in each URI template match up to those fields
+        # declared in a handler's `resource_uri` method.
+        #
         node_system_id = "system_id"
         if node is not None:
             node_system_id = node.system_id

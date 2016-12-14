@@ -144,15 +144,15 @@ class DNSResourceHandler(OperationsHandler):
         """Other data for this dnsresource."""
         return dnsresource.dnsdata_set.all().order_by('rrtype')
 
-    def read(self, request, dnsresource_id):
+    def read(self, request, id):
         """Read dnsresource.
 
         Returns 404 if the dnsresource is not found.
         """
         return DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, dnsresource_id):
+    def update(self, request, id):
         """Update dnsresource.
 
         :param fqdn: Hostname (with domain) for the dnsresource.
@@ -163,14 +163,14 @@ class DNSResourceHandler(OperationsHandler):
         Returns 404 if the dnsresource is not found.
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = DNSResourceForm(instance=dnsresource, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, dnsresource_id):
+    def delete(self, request, id):
         """Delete dnsresource.
 
         Returns 403 if the user does not have permission to delete the
@@ -178,6 +178,6 @@ class DNSResourceHandler(OperationsHandler):
         Returns 404 if the dnsresource is not found.
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         dnsresource.delete()
         return rc.DELETED

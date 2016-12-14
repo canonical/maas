@@ -86,15 +86,15 @@ class IPRangeHandler(OperationsHandler):
             iprange_id = iprange.id
         return ('iprange_handler', (iprange_id,))
 
-    def read(self, request, iprange_id):
+    def read(self, request, id):
         """Read IP range.
 
         Returns 404 if the IP range is not found.
         """
-        iprange = IPRange.objects.get_iprange_or_404(iprange_id)
+        iprange = IPRange.objects.get_iprange_or_404(id)
         return iprange
 
-    def update(self, request, iprange_id):
+    def update(self, request, id):
         """Update IP range.
 
         :param start_ip: Start IP address of this range (inclusive).
@@ -104,7 +104,7 @@ class IPRangeHandler(OperationsHandler):
         Returns 403 if not owner of IP range.
         Returns 404 if the IP Range is not found.
         """
-        iprange = IPRange.objects.get_iprange_or_404(iprange_id)
+        iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)
         form = IPRangeForm(instance=iprange, data=request.data)
         if form.is_valid():
@@ -112,13 +112,13 @@ class IPRangeHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, iprange_id):
+    def delete(self, request, id):
         """Delete IP range.
 
         Returns 403 if not owner of IP range.
         Returns 404 if the IP range is not found.
         """
-        iprange = IPRange.objects.get_iprange_or_404(iprange_id)
+        iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)
         iprange.delete()
         return rc.DELETED

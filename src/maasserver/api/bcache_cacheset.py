@@ -104,15 +104,15 @@ class BcacheCacheSetHandler(OperationsHandler):
         """Return the cache device for this cache set."""
         return cache_set.get_device()
 
-    def read(self, request, system_id, cache_set_id):
+    def read(self, request, system_id, id):
         """Read bcache cache set on a machine.
 
         Returns 404 if the machine or cache set is not found.
         """
         return CacheSet.objects.get_cache_set_or_404(
-            system_id, cache_set_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def delete(self, request, system_id, cache_set_id):
+    def delete(self, request, system_id, id):
         """Delete cache set on a machine.
 
         Returns 400 if the cache set is in use.
@@ -120,7 +120,7 @@ class BcacheCacheSetHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, cache_set_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -132,7 +132,7 @@ class BcacheCacheSetHandler(OperationsHandler):
             cache_set.delete()
             return rc.DELETED
 
-    def update(self, request, system_id, cache_set_id):
+    def update(self, request, system_id, id):
         """Delete bcache on a machine.
 
         :param cache_device: Cache block device to replace current one.
@@ -144,7 +144,7 @@ class BcacheCacheSetHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
-            system_id, cache_set_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

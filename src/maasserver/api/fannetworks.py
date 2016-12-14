@@ -75,15 +75,15 @@ class FanNetworkHandler(OperationsHandler):
             fannetwork_id = fannetwork.id
         return ('fannetwork_handler', (fannetwork_id,))
 
-    def read(self, request, fannetwork_id):
+    def read(self, request, id):
         """Read fannetwork.
 
         Returns 404 if the fannetwork is not found.
         """
         return FanNetwork.objects.get_fannetwork_or_404(
-            fannetwork_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, fannetwork_id):
+    def update(self, request, id):
         """Update fannetwork.
 
         :param name: Name of the fannetwork.
@@ -97,19 +97,19 @@ class FanNetworkHandler(OperationsHandler):
         Returns 404 if the fannetwork is not found.
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            fannetwork_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = FanNetworkForm(instance=fannetwork, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, fannetwork_id):
+    def delete(self, request, id):
         """Delete fannetwork.
 
         Returns 404 if the fannetwork is not found.
         """
         fannetwork = FanNetwork.objects.get_fannetwork_or_404(
-            fannetwork_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         fannetwork.delete()
         return rc.DELETED

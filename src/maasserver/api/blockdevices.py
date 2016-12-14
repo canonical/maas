@@ -206,15 +206,15 @@ class BlockDeviceHandler(OperationsHandler):
             return []
         return partition_table.partitions.all()
 
-    def read(self, request, system_id, device_id):
+    def read(self, request, system_id, id):
         """Read block device on node.
 
         Returns 404 if the machine or block device is not found.
         """
         return BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def delete(self, request, system_id, device_id):
+    def delete(self, request, system_id, id):
         """Delete block device on a machine.
 
         Returns 404 if the machine or block device is not found.
@@ -222,7 +222,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -230,7 +230,7 @@ class BlockDeviceHandler(OperationsHandler):
         device.delete()
         return rc.DELETED
 
-    def update(self, request, system_id, device_id):
+    def update(self, request, system_id, id):
         """Update block device on a machine.
 
         Machines must have a status of Ready to have access to all options.
@@ -261,7 +261,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status not in [NODE_STATUS.READY, NODE_STATUS.DEPLOYED]:
             raise NodeStateViolation(
@@ -290,7 +290,7 @@ class BlockDeviceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def add_tag(self, request, system_id, device_id):
+    def add_tag(self, request, system_id, id):
         """Add a tag to block device on a machine.
 
         :param tag: The tag being added.
@@ -300,7 +300,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -310,7 +310,7 @@ class BlockDeviceHandler(OperationsHandler):
         return device
 
     @operation(idempotent=False)
-    def remove_tag(self, request, system_id, device_id):
+    def remove_tag(self, request, system_id, id):
         """Remove a tag from block device on a machine.
 
         :param tag: The tag being removed.
@@ -320,7 +320,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -330,7 +330,7 @@ class BlockDeviceHandler(OperationsHandler):
         return device
 
     @operation(idempotent=False)
-    def format(self, request, system_id, device_id):
+    def format(self, request, system_id, id):
         """Format block device with filesystem.
 
         :param fstype: Type of filesystem.
@@ -342,7 +342,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "format")
@@ -353,7 +353,7 @@ class BlockDeviceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def unformat(self, request, system_id, device_id):
+    def unformat(self, request, system_id, id):
         """Unformat block device with filesystem.
 
         Returns 400 if the block device is not formatted, currently mounted, \
@@ -364,7 +364,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat")
@@ -386,7 +386,7 @@ class BlockDeviceHandler(OperationsHandler):
         return device
 
     @operation(idempotent=False)
-    def mount(self, request, system_id, device_id):
+    def mount(self, request, system_id, id):
         """Mount the filesystem on block device.
 
         :param mount_point: Path on the filesystem to mount.
@@ -398,7 +398,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         raise_error_for_invalid_state_on_allocated_operations(
             device.get_node(), request.user, "mount")
         filesystem = device.get_effective_filesystem()
@@ -410,7 +410,7 @@ class BlockDeviceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def unmount(self, request, system_id, device_id):
+    def unmount(self, request, system_id, id):
         """Unmount the filesystem on block device.
 
         Returns 400 if the block device is not formatted or not currently \
@@ -421,7 +421,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.EDIT)
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount")
@@ -436,7 +436,7 @@ class BlockDeviceHandler(OperationsHandler):
         return device
 
     @operation(idempotent=False)
-    def set_boot_disk(self, request, system_id, device_id):
+    def set_boot_disk(self, request, system_id, id):
         """Set this block device as the boot disk for the machine.
 
         Returns 400 if the block device is a virtual block device.
@@ -445,7 +445,7 @@ class BlockDeviceHandler(OperationsHandler):
         Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
-            system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

@@ -128,22 +128,22 @@ class BcacheHandler(OperationsHandler):
         """Return the backing device for this bcache."""
         return bcache.get_bcache_backing_filesystem().get_parent()
 
-    def read(self, request, system_id, bcache_id):
+    def read(self, request, system_id, id):
         """Read bcache device on a machine.
 
         Returns 404 if the machine or bcache is not found.
         """
         return Bcache.objects.get_object_or_404(
-            system_id, bcache_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def delete(self, request, system_id, bcache_id):
+    def delete(self, request, system_id, id):
         """Delete bcache on a machine.
 
         Returns 404 if the machine or bcache is not found.
         Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -151,7 +151,7 @@ class BcacheHandler(OperationsHandler):
         bcache.delete()
         return rc.DELETED
 
-    def update(self, request, system_id, bcache_id):
+    def update(self, request, system_id, id):
         """Delete bcache on a machine.
 
         :param name: Name of the Bcache.
@@ -168,7 +168,7 @@ class BcacheHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
-            system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

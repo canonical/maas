@@ -163,15 +163,15 @@ class DNSResourceRecordHandler(OperationsHandler):
         """Return the name of the dnsresourcerecord."""
         return dnsresourcerecord.fqdn()
 
-    def read(self, request, dnsresourcerecord_id):
+    def read(self, request, id):
         """Read dnsresourcerecord.
 
         Returns 404 if the dnsresourcerecord is not found.
         """
         return DNSData.objects.get_dnsdata_or_404(
-            dnsresourcerecord_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, dnsresourcerecord_id):
+    def update(self, request, id):
         """Update dnsresourcerecord.
 
         :param rrtype: Resource Type
@@ -182,7 +182,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         Returns 404 if the dnsresourcerecord is not found.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            dnsresourcerecord_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         request.data['dnsresource'] = dnsdata.dnsresource.id
         form = DNSDataForm(instance=dnsdata, data=request.data)
         if form.is_valid():
@@ -190,7 +190,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, dnsresourcerecord_id):
+    def delete(self, request, id):
         """Delete dnsresourcerecord.
 
         Returns 403 if the user does not have permission to delete the
@@ -198,7 +198,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         Returns 404 if the dnsresourcerecord is not found.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
-            dnsresourcerecord_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         dnsrr = dnsdata.dnsresource
         dnsdata.delete()
         if dnsrr.dnsdata_set.count() == 0 and dnsrr.ip_addresses.count() == 0:

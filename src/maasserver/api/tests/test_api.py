@@ -6,16 +6,20 @@
 __all__ = []
 
 import http.client
+from itertools import chain
 import json
 import random
+import string
 from unittest.mock import Mock
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver import urls_api as urlconf
 from maasserver.api import (
     machines as machines_module,
     nodes as nodes_module,
 )
+from maasserver.api.doc import find_api_resources
 from maasserver.api.nodes import store_node_power_parameters
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.exceptions import (
@@ -43,12 +47,64 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
+from piston3.doc import generate_doc
 from requests.exceptions import RequestException
 from testtools.matchers import (
     Contains,
     Equals,
     MatchesListwise,
 )
+
+
+class TestResourceURIs(MAASTestCase):
+    """Tests for `resource_uri` usage in handlers."""
+
+    def test_resource_uri_in_docs_matches_handlers_idea_of_resource_uri(self):
+        # Sigh. Piston asks handlers for resource_uri information, but also
+        # makes use of Django's URL patterns to figure out resource_uri
+        # templates for the documentation. Here we check that they match up.
+        formatter = string.Formatter()
+
+        def gen_handlers(resource):
+            if resource.anonymous is not None:
+                yield resource.anonymous
+            if resource.handler is not None:
+                yield resource.handler
+
+        handlers = chain.from_iterable(
+            map(gen_handlers, find_api_resources(urlconf)))
+
+        mismatches = []
+
+        for handler in map(type, handlers):
+            if hasattr(handler, "resource_uri"):
+                resource_uri_params = handler.resource_uri()[1]
+                resource_uri_template = (
+                    generate_doc(handler).resource_uri_template)
+
+                fields_expected = tuple(resource_uri_params)
+                fields_observed = tuple(
+                    fname for _, fname, _, _ in formatter.parse(
+                        resource_uri_template) if fname is not None)
+
+                if fields_observed != fields_expected:
+                    mismatches.append(
+                        (handler, fields_expected, fields_observed))
+
+        if len(mismatches) != 0:
+            messages = (
+                "{handler.__module__}.{handler.__name__} has mismatched "
+                "fields:\n  expected: {expected}\n  observed: {observed}"
+                "".format(
+                    handler=handler, expected=" ".join(expected),
+                    observed=" ".join(observed))
+                for handler, expected, observed in mismatches)
+            messages = chain(messages, [
+                "Amend the URL patterns for these handlers/resources so that "
+                "the observed fields match what is expected.",
+            ])
+            self.fail("\n--\n".join(messages))
 
 
 class TestAuthentication(MAASServerTestCase):

@@ -75,15 +75,15 @@ class SpaceHandler(OperationsHandler):
         """Return all subnets in this space."""
         return space.subnet_set.all()
 
-    def read(self, request, space_id):
+    def read(self, request, id):
         """Read space.
 
         Returns 404 if the space is not found.
         """
         return Space.objects.get_space_or_404(
-            space_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, space_id):
+    def update(self, request, id):
         """Update space.
 
         :param name: Name of the space.
@@ -92,19 +92,19 @@ class SpaceHandler(OperationsHandler):
         Returns 404 if the space is not found.
         """
         space = Space.objects.get_space_or_404(
-            space_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = SpaceForm(instance=space, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, space_id):
+    def delete(self, request, id):
         """Delete space.
 
         Returns 404 if the space is not found.
         """
         space = Space.objects.get_space_or_404(
-            space_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         space.delete()
         return rc.DELETED
