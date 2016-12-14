@@ -157,22 +157,22 @@ class TestRackControllersAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def test_GET_describe_power_types(self):
-        get_all_power_types_from_clusters = self.patch(
-            rackcontrollers, "get_all_power_types_from_clusters")
+        get_all_power_types_from_racks = self.patch(
+            rackcontrollers, "get_all_power_types_from_racks")
         self.become_admin()
         response = self.client.get(
             self.get_rack_uri(), {'op': 'describe_power_types'})
         self.assertEqual(
             http.client.OK, response.status_code,
             explain_unexpected_response(http.client.OK, response))
-        self.assertThat(get_all_power_types_from_clusters, MockCalledOnce())
+        self.assertThat(get_all_power_types_from_racks, MockCalledOnce())
 
     def test_GET_describe_power_types_denied_if_not_admin(self):
-        get_all_power_types_from_clusters = self.patch(
-            rackcontrollers, "get_all_power_types_from_clusters")
+        get_all_power_types_from_racks = self.patch(
+            rackcontrollers, "get_all_power_types_from_racks")
         response = self.client.get(
             self.get_rack_uri(), {'op': 'describe_power_types'})
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code,
             explain_unexpected_response(http.client.FORBIDDEN, response))
-        self.assertThat(get_all_power_types_from_clusters, MockNotCalled())
+        self.assertThat(get_all_power_types_from_racks, MockNotCalled())

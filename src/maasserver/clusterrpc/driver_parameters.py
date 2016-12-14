@@ -1,30 +1,35 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Power parameters.  Each possible value of a Node's power_type field can
-be associated with specific 'power parameters' wich will be used when
-powering up or down the node in question.  These 'power parameters' will be
-stored as a JSON object in the Node's power parameter field.  Even if we want
-to allow arbitrary power parameters to be set using the API for maximum
-flexibility, each value of power type is associated with a set of 'sensible'
-power parameters.  That is used to validate data (but again, it is possible
-to bypass that validation step and store arbitrary power parameters) and by
-the UI to display the right power parameter fields that correspond to the
-selected power_type.  The classes in this module are used to associate each
-power type with a set of power parameters.
+"""
+Driver parameters.
 
-The power types are retrieved from the cluster controllers using the json
-schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA.  To add new
-parameters requires changes to hardware drivers that run in the cluster
+Each possible value of a Node's power_type field can be associated with
+specific 'parameters' which will be used when controlling the node in
+question.  These 'parameters' will be stored as a JSON object in the
+Node's power parameter field and its related BMC.  Even if we want
+to allow arbitrary parameters to be set using the API for maximum
+flexibility, each value of power or chassis type is associated with a set of
+'sensible' parameters.  That is used to validate data (but again, it is
+possible to bypass that validation step and store arbitrary parameters) and by
+the UI to display the right parameter fields that correspond to the
+selected power or chassis type.  The classes in this module are used to
+associate each power or chassis type with a set of parameters.
+
+The power and chassis types are retrieved from the rack controllers using
+the json schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA and
+provisioningserver.drivers.chassis.JSON_CHASSIS_DRIVERS_SCHEMA respectively.
+To add new parameters requires changes to drivers that run in the rack
 controllers.
 """
 
 __all__ = [
-    'get_all_power_types_from_clusters',
-    'get_power_type_choices',
-    'get_power_type_parameters',
+    'get_all_power_types_from_racks',
+    'get_driver_choices',
+    'get_driver_parameters',
     ]
 
+import enum
 from operator import itemgetter
 
 from django import forms
@@ -45,6 +50,13 @@ FIELD_TYPE_MAPPINGS = {
     # This is used on the API so a password field is just a char field.
     'password': forms.CharField,
 }
+
+
+class DriverType(enum.Enum):
+    """Type's of different drivers."""
+
+    chassis = 'chassis'
+    power = 'power'
 
 
 def make_form_field(json_field):
@@ -79,8 +91,9 @@ def make_form_field(json_field):
     return form_field
 
 
-def add_power_type_parameters(
-        name, description, fields, missing_packages, parameters_set):
+def add_driver_parameters(
+        name, description, fields, missing_packages, parameters_set,
+        queryable=None, composable=None):
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
@@ -108,12 +121,20 @@ def add_power_type_parameters(
         'items': SETTING_PARAMETER_FIELD_SCHEMA,
     }
     validate(fields, field_set_schema)
-    parameters_set.append(
-        {'name': name, 'description': description, 'fields': fields,
-         'missing_packages': missing_packages})
+    params = {
+        'name': name,
+        'description': description,
+        'fields': fields,
+        'missing_packages': missing_packages,
+    }
+    if queryable is not None:
+        params['queryable'] = queryable
+    if composable is not None:
+        params['composable'] = composable
+    parameters_set.append(params)
 
 
-def get_power_type_parameters_from_json(
+def get_driver_parameters_from_json(
         json_power_type_parameters, initial_power_params=None,
         skip_check=False):
     """Return power type parameters.
@@ -154,23 +175,34 @@ def get_power_type_parameters_from_json(
     return power_parameters
 
 
-def get_power_type_parameters(initial_power_params=None, skip_check=False):
-    return get_power_type_parameters_from_json(
-        get_all_power_types_from_clusters(), initial_power_params, skip_check)
+def get_driver_parameters(
+        initial_power_params=None, skip_check=False,
+        driver_type=DriverType.power):
+    if driver_type is DriverType.power:
+        params = get_all_power_types_from_racks()
+    elif driver_type is DriverType.chassis:
+        params = get_all_chassis_types_from_racks()
+    else:
+        raise ValueError("Unknown driver_type.")
+    return get_driver_parameters_from_json(
+        params, initial_power_params, skip_check)
 
 
-def get_power_type_choices():
+def get_driver_choices(driver_type=DriverType.power):
     """Mutate the power types returned from the cluster into a choices
     structure as used by Django.
 
     :return: list of (name, description) tuples
     """
     return [
-        (power_type['name'], power_type['description'])
-        for power_type in get_all_power_types_from_clusters()]
+        (name, description)
+        for name, description in get_driver_types(
+            driver_type=driver_type).items()
+        ]
 
 
-def get_power_types(controllers=None, ignore_errors=False):
+def get_driver_types(
+        controllers=None, ignore_errors=False, driver_type=DriverType.power):
     """Return the choice of mechanism to control a node's power.
 
     :param controllers: Restrict to power types on the supplied
@@ -185,14 +217,21 @@ def get_power_types(controllers=None, ignore_errors=False):
     :return: Dictionary mapping power type to its description.
     """
     types = dict()
-    power_types = get_all_power_types_from_clusters(controllers, ignore_errors)
+    if driver_type is DriverType.power:
+        power_types = get_all_power_types_from_racks(
+            controllers, ignore_errors)
+    elif driver_type is DriverType.chassis:
+        power_types = get_all_chassis_types_from_racks(
+            controllers, ignore_errors)
+    else:
+        raise ValueError("Unknown driver_type.")
     for power_type in power_types:
         types[power_type['name']] = power_type['description']
     return types
 
 
-def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
-    """Query every cluster controller and obtain all known power types.
+def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
+    """Query every rack controller and obtain all known power driver types.
 
     :return: a list of power types matching the schema
         provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA
@@ -208,6 +247,32 @@ def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
             fields = power_type.get('fields', [])
             description = power_type['description']
             missing_packages = power_type['missing_packages']
-            add_power_type_parameters(
-                name, description, fields, missing_packages, merged_types)
+            queryable = power_type.get('queryable')
+            add_driver_parameters(
+                name, description, fields, missing_packages, merged_types,
+                queryable=queryable)
+    return sorted(merged_types, key=itemgetter("description"))
+
+
+def get_all_chassis_types_from_racks(controllers=None, ignore_errors=True):
+    """Query every rack controller and obtain all known chassis driver types.
+
+    :return: a list of power types matching the schema
+        provisioningserver.drivers.power.JSON_CHASSIS_DRIVERS_SCHEMA
+    """
+    merged_types = []
+    responses = call_clusters(
+        cluster.DescribeChassisTypes, controllers=controllers,
+        ignore_errors=ignore_errors)
+    for response in responses:
+        chassis_types = response['chassis_types']
+        for chassis_type in chassis_types:
+            name = chassis_type['name']
+            fields = chassis_type.get('fields', [])
+            description = chassis_type['description']
+            missing_packages = chassis_type['missing_packages']
+            add_driver_parameters(
+                name, description, fields, missing_packages, merged_types,
+                queryable=chassis_type.get('queryable'),
+                composable=chassis_type.get('composable'))
     return sorted(merged_types, key=itemgetter("description"))

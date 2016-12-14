@@ -20,8 +20,8 @@ from maasserver.api.support import (
     admin_method,
     operation,
 )
-from maasserver.clusterrpc.power_parameters import (
-    get_all_power_types_from_clusters,
+from maasserver.clusterrpc.driver_parameters import (
+    get_all_power_types_from_racks,
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
@@ -172,7 +172,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
 
         :return: a list of dicts that describe the power types in this format.
         """
-        return get_all_power_types_from_clusters()
+        return get_all_power_types_from_racks()
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

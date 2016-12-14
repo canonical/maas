@@ -146,9 +146,9 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.request = Mock()
 
     def test_no_connected_rack_controllers(self):
-        # When get_power_types returns empty dictionary.
-        mock_get_power_types = self.patch(nodes_module, "get_power_types")
-        mock_get_power_types.return_value = {}
+        # When get_driver_types returns empty dictionary.
+        mock_get_driver_types = self.patch(nodes_module, "get_driver_types")
+        mock_get_driver_types.return_value = {}
         power_type = factory.pick_power_type()
         self.request.POST = {"power_type": power_type}
         error = self.assertRaises(
@@ -158,7 +158,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
             "No rack controllers connected to validate the power_type.",
             str(error))
         self.assertThat(
-            mock_get_power_types, MockCalledOnceWith(ignore_errors=True))
+            mock_get_driver_types, MockCalledOnceWith(ignore_errors=True))
 
     def test_power_type_not_given(self):
         # When power_type is not specified, nothing happens.

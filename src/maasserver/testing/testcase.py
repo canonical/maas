@@ -79,8 +79,8 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         from maasserver.models import signals
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
-        from maasserver.clusterrpc.testing import power_parameters
-        self.useFixture(power_parameters.StaticPowerTypesFixture())
+        from maasserver.clusterrpc.testing import driver_parameters
+        self.useFixture(driver_parameters.StaticDriverTypesFixture())
         self.useFixture(PackageRepositoryFixture())
         self.useFixture(IntroCompletedFixture())
 

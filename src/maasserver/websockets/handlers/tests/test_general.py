@@ -219,7 +219,7 @@ class TestGeneralHandler(MAASServerTestCase):
         handler = GeneralHandler(factory.make_User(), {})
         self.patch_autospec(
             general,
-            "get_all_power_types_from_clusters").return_value = sentinel.types
+            "get_all_power_types_from_racks").return_value = sentinel.types
         self.assertEqual(sentinel.types, handler.power_types({}))
 
     def test_release_options(self):

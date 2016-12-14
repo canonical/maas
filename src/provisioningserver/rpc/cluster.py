@@ -97,7 +97,7 @@ class ListBootImagesV2(amp.Command):
 
 
 class DescribePowerTypes(amp.Command):
-    """Get a JSON Schema describing this cluster's power types.
+    """Get a JSON Schema describing this rack's power types.
 
     :since: 1.5
     """
@@ -105,6 +105,19 @@ class DescribePowerTypes(amp.Command):
     arguments = []
     response = [
         (b"power_types", StructureAsJSON()),
+    ]
+    errors = []
+
+
+class DescribeChassisTypes(amp.Command):
+    """Get a JSON Schema describing this rack's chassis types.
+
+    :since: 2.2
+    """
+
+    arguments = []
+    response = [
+        (b"chassis_types", StructureAsJSON()),
     ]
     errors = []
 

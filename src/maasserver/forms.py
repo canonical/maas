@@ -60,12 +60,12 @@ from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
-from maasserver.clusterrpc.osystems import validate_license_key
-from maasserver.clusterrpc.power_parameters import (
-    get_power_type_choices,
-    get_power_type_parameters,
-    get_power_types,
+from maasserver.clusterrpc.driver_parameters import (
+    get_driver_choices,
+    get_driver_parameters,
+    get_driver_types,
 )
+from maasserver.clusterrpc.osystems import validate_license_key
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -233,7 +233,7 @@ class WithPowerMixin:
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the machine's current 'power_type'
         # value or the default value if this form is not linked to a machine.
-        power_types = get_power_types(ignore_errors=True)
+        power_types = get_driver_types(ignore_errors=True)
         if len(power_types) == 0:
             return ''
 
@@ -271,17 +271,17 @@ class WithPowerMixin:
         """Set up the 'power_type' and 'power_parameters' fields.
 
         This can't be done at the model level because the choices need to
-        be generated on the fly by get_power_type_choices().
+        be generated on the fly by get_driver_choices().
         """
         power_type = WithPowerMixin._get_power_type(form, data, machine)
-        choices = [BLANK_CHOICE] + get_power_type_choices()
+        choices = [BLANK_CHOICE] + get_driver_choices()
         form.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
         power_parameters = WithPowerMixin._get_power_parameters(
             form, data, machine)
         skip_check = (
             form.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
-        form.fields['power_parameters'] = get_power_type_parameters(
+        form.fields['power_parameters'] = get_driver_parameters(
             power_parameters, skip_check=skip_check)[power_type]
         if form.instance is not None:
             if form.instance.power_type != '':
@@ -302,7 +302,7 @@ class WithPowerMixin:
         # prevent saving the form as we can't validate the power
         # parameters and type.
         if not skip_check:
-            power_types = get_power_types(ignore_errors=True)
+            power_types = get_driver_types(ignore_errors=True)
             if len(power_types) == 0:
                 set_form_error(
                     form, "power_type",

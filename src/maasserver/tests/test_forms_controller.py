@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from maasserver.clusterrpc.power_parameters import get_power_type_choices
+from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.forms import ControllerForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -26,7 +26,7 @@ class TestControllerForm(MAASServerTestCase):
     def test___populates_power_type_choices(self):
         form = ControllerForm()
         self.assertEqual(
-            [''] + [choice[0] for choice in get_power_type_choices()],
+            [''] + [choice[0] for choice in get_driver_choices()],
             [choice[0] for choice in form.fields['power_type'].choices])
 
     def test___populates_power_type_initial(self):

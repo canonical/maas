@@ -57,6 +57,7 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network_v1,
 )
 from provisioningserver.drivers.chassis import (
+    ChassisDriverRegistry,
     DiscoveredChassis,
     DiscoveredChassisHints,
 )
@@ -410,6 +411,27 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
             PowerDriverRegistry.get_schema(), response["power_types"])
+
+
+class TestClusterProtocol_DescribeChassisTypes(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_describe_chassis_types_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DescribeChassisTypes.commandName)
+        self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test_describe_chassis_types_returns_jsonized_schema(self):
+
+        response = yield call_responder(
+            Cluster(), cluster.DescribeChassisTypes, {})
+
+        self.assertThat(response, KeysEqual("chassis_types"))
+        self.assertItemsEqual(
+            ChassisDriverRegistry.get_schema(), response["chassis_types"])
 
 
 class TestPatchedURI(MAASTestCase):

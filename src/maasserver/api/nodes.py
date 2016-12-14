@@ -26,7 +26,7 @@ from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
 )
-from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -61,7 +61,7 @@ def store_node_power_parameters(node, request):
     if power_type is None:
         return
 
-    power_types = get_power_types(ignore_errors=True)
+    power_types = get_driver_types(ignore_errors=True)
     if len(power_types) == 0:
         raise ClusterUnavailable(
             "No rack controllers connected to validate the power_type.")

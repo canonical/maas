@@ -29,12 +29,12 @@ from maasserver import (
     preseed as preseed_module,
 )
 from maasserver.clusterrpc import boot_images
+from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.clusterrpc.power import (
     power_cycle,
     power_off_node,
     power_query,
 )
-from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.dbviews import register_view
 from maasserver.enum import (
@@ -1160,7 +1160,7 @@ class TestNode(MAASServerTestCase):
             UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
-        power_types = list(get_power_types().keys())  # Python3 proof.
+        power_types = list(get_driver_types().keys())  # Python3 proof.
         nodes = [
             factory.make_Node(power_type=power_type)
             for power_type in power_types]

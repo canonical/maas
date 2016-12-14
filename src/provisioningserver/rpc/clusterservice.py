@@ -28,6 +28,7 @@ from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import ArchitectureRegistry
+from provisioningserver.drivers.chassis import ChassisDriverRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
@@ -300,6 +301,17 @@ class Cluster(RPCProtocol):
         """
         return {
             'power_types': list(PowerDriverRegistry.get_schema()),
+        }
+
+    @cluster.DescribeChassisTypes.responder
+    def describe_chassis_types(self):
+        """describe_chassis_types()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DescribeChassisTypes`.
+        """
+        return {
+            'chassis_types': list(ChassisDriverRegistry.get_schema()),
         }
 
     @cluster.ListSupportedArchitectures.responder

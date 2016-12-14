@@ -25,7 +25,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.test.client import RequestFactory
 from django.utils import timezone
-from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     BOOT_RESOURCE_FILE_TYPE,
@@ -243,7 +243,7 @@ class Factory(maastesting.factory.Factory):
             but_not = list(but_not)
         but_not.append('')
         return random.choice(
-            [choice for choice in list(get_power_types().keys())
+            [choice for choice in list(get_driver_types().keys())
                 if choice not in but_not])
 
     def pick_commissioning_release(self, osystem):

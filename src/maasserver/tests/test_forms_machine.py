@@ -7,7 +7,7 @@ __all__ = []
 
 from crochet import TimeoutError
 from maasserver import forms
-from maasserver.clusterrpc.power_parameters import get_power_type_choices
+from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
@@ -353,7 +353,7 @@ class TestAdminMachineForm(MAASServerTestCase):
     def test_AdminMachineForm_populates_power_type_choices(self):
         form = AdminMachineForm()
         self.assertEqual(
-            [''] + [choice[0] for choice in get_power_type_choices()],
+            [''] + [choice[0] for choice in get_driver_choices()],
             [choice[0] for choice in form.fields['power_type'].choices])
 
     def test_AdminMachineForm_populates_power_type_initial(self):

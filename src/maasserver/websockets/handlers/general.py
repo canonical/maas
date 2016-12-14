@@ -9,8 +9,8 @@ __all__ = [
 
 from collections import OrderedDict
 
-from maasserver.clusterrpc.power_parameters import (
-    get_all_power_types_from_clusters,
+from maasserver.clusterrpc.driver_parameters import (
+    get_all_power_types_from_racks,
 )
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
@@ -179,7 +179,7 @@ class GeneralHandler(Handler):
 
     def power_types(self, params):
         """Return all power types."""
-        return get_all_power_types_from_clusters()
+        return get_all_power_types_from_racks()
 
     def release_options(self, params):
         """Return global release options."""
