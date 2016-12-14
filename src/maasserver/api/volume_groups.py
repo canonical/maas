@@ -151,15 +151,15 @@ class VolumeGroupHandler(OperationsHandler):
             for filesystem in volume_group.filesystems.all()
         ]
 
-    def read(self, request, system_id, volume_group_id):
+    def read(self, request, system_id, id):
         """Read volume group on a machine.
 
         Returns 404 if the machine or volume group is not found.
         """
         return VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.VIEW)
+            system_id, id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, system_id, volume_group_id):
+    def update(self, request, system_id, id):
         """Read volume group on a machine.
 
         :param name: Name of the volume group.
@@ -174,7 +174,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -185,14 +185,14 @@ class VolumeGroupHandler(OperationsHandler):
         else:
             return form.save()
 
-    def delete(self, request, system_id, volume_group_id):
+    def delete(self, request, system_id, id):
         """Delete volume group on a machine.
 
         Returns 404 if the machine or volume group is not found.
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -201,7 +201,7 @@ class VolumeGroupHandler(OperationsHandler):
         return rc.DELETED
 
     @operation(idempotent=False)
-    def create_logical_volume(self, request, system_id, volume_group_id):
+    def create_logical_volume(self, request, system_id, id):
         """Create a logical volume in the volume group.
 
         :param name: Name of the logical volume.
@@ -212,7 +212,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
@@ -225,7 +225,7 @@ class VolumeGroupHandler(OperationsHandler):
             return form.save()
 
     @operation(idempotent=False)
-    def delete_logical_volume(self, request, system_id, volume_group_id):
+    def delete_logical_volume(self, request, system_id, id):
         """Delete a logical volume in the volume group.
 
         :param id: ID of the logical volume.
@@ -235,7 +235,7 @@ class VolumeGroupHandler(OperationsHandler):
         Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
-            system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
+            system_id, id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(

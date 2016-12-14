@@ -111,15 +111,15 @@ class DomainHandler(OperationsHandler):
         """Return DNSResources within the specified domain."""
         return domain.dnsresource_set.all()
 
-    def read(self, request, domain_id):
+    def read(self, request, id):
         """Read domain.
 
         Returns 404 if the domain is not found.
         """
         return Domain.objects.get_domain_or_404(
-            domain_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, domain_id):
+    def update(self, request, id):
         """Update domain.
 
         :param name: Name of the domain.
@@ -131,14 +131,14 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(
-            domain_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = DomainForm(instance=domain, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, domain_id):
+    def delete(self, request, id):
         """Delete domain.
 
         Returns 403 if the user does not have permission to update the
@@ -146,6 +146,6 @@ class DomainHandler(OperationsHandler):
         Returns 404 if the domain is not found.
         """
         domain = Domain.objects.get_domain_or_404(
-            domain_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         domain.delete()
         return rc.DELETED

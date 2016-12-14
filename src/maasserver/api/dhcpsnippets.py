@@ -70,16 +70,15 @@ class DHCPSnippetHandler(OperationsHandler):
     def global_snippet(handler, dhcp_snippet):
         return dhcp_snippet.node is None and dhcp_snippet.subnet is None
 
-    def read(self, request, dhcp_snippet_id):
+    def read(self, request, id):
         """Read DHCP snippet.
 
         Returns 404 if the snippet is not found.
         """
-        return DHCPSnippet.objects.get_dhcp_snippet_or_404(
-            dhcp_snippet_id)
+        return DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
 
     @admin_method
-    def update(self, request, dhcp_snippet_id):
+    def update(self, request, id):
         """Update a DHCP snippet.
 
         :param name: The name of the DHCP snippet.
@@ -109,8 +108,7 @@ class DHCPSnippetHandler(OperationsHandler):
 
         Returns 404 if the DHCP snippet is not found.
         """
-        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(
-            dhcp_snippet_id)
+        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         form = DHCPSnippetForm(instance=dhcp_snippet, data=request.data)
         if form.is_valid():
             return form.save()
@@ -118,19 +116,18 @@ class DHCPSnippetHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @admin_method
-    def delete(self, request, dhcp_snippet_id):
+    def delete(self, request, id):
         """Delete a DHCP snippet.
 
         Returns 404 if the DHCP snippet is not found.
         """
-        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(
-            dhcp_snippet_id)
+        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         dhcp_snippet.delete()
         return rc.DELETED
 
     @admin_method
     @operation(idempotent=False)
-    def revert(self, request, dhcp_snippet_id):
+    def revert(self, request, id):
         """Revert the value of a DHCP snippet to an earlier revision.
 
         :param to: What revision in the DHCP snippet's history to revert to.
@@ -149,8 +146,7 @@ class DHCPSnippetHandler(OperationsHandler):
             raise MAASAPIValidationError(
                 "%s is an invalid 'to' value" % revert_to)
 
-        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(
-            dhcp_snippet_id)
+        dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         try:
             def gc_hook(value):
                 dhcp_snippet.value = value

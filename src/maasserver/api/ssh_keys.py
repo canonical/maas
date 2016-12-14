@@ -108,21 +108,21 @@ class SSHKeyHandler(OperationsHandler):
     model = SSHKey
     create = update = None
 
-    def read(self, request, keyid):
+    def read(self, request, id):
         """GET an SSH key.
 
         Returns 404 if the key does not exist.
         """
-        key = get_object_or_404(SSHKey, id=keyid)
+        key = get_object_or_404(SSHKey, id=id)
         return key
 
-    def delete(self, request, keyid):
+    def delete(self, request, id):
         """DELETE an SSH key.
 
         Returns 404 if the key does not exist.
         Returns 401 if the key does not belong to the calling user.
         """
-        key = get_object_or_404(SSHKey, id=keyid)
+        key = get_object_or_404(SSHKey, id=id)
         if key.user != request.user:
             return HttpResponseForbidden(
                 "Can't delete a key you don't own.",

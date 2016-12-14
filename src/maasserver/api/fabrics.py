@@ -77,15 +77,15 @@ class FabricHandler(OperationsHandler):
         """Return VLANs within the specified fabric."""
         return fabric.vlan_set.all()
 
-    def read(self, request, fabric_id):
+    def read(self, request, id):
         """Read fabric.
 
         Returns 404 if the fabric is not found.
         """
         return Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, fabric_id):
+    def update(self, request, id):
         """Update fabric.
 
         :param name: Name of the fabric.
@@ -95,19 +95,19 @@ class FabricHandler(OperationsHandler):
         Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = FabricForm(instance=fabric, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, fabric_id):
+    def delete(self, request, id):
         """Delete fabric.
 
         Returns 404 if the fabric is not found.
         """
         fabric = Fabric.objects.get_fabric_or_404(
-            fabric_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         fabric.delete()
         return rc.DELETED

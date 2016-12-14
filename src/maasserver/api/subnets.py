@@ -108,15 +108,15 @@ class SubnetHandler(OperationsHandler):
         """
         return subnet.space.get_name()
 
-    def read(self, request, subnet_id):
+    def read(self, request, id):
         """Read subnet.
 
         Returns 404 if the subnet is not found.
         """
         return Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
 
-    def update(self, request, subnet_id):
+    def update(self, request, id):
         """Update subnet.
 
         :param name: Name of the subnet.
@@ -134,46 +134,46 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         form = SubnetForm(instance=subnet, data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, subnet_id):
+    def delete(self, request, id):
         """Delete subnet.
 
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.ADMIN)
+            id, request.user, NODE_PERMISSION.ADMIN)
         subnet.delete()
         return rc.DELETED
 
     @operation(idempotent=True)
-    def reserved_ip_ranges(self, request, subnet_id):
+    def reserved_ip_ranges(self, request, id):
         """Lists IP ranges currently reserved in the subnet.
 
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
         return subnet.get_ipranges_in_use().render_json()
 
     @operation(idempotent=True)
-    def unreserved_ip_ranges(self, request, subnet_id):
+    def unreserved_ip_ranges(self, request, id):
         """Lists IP ranges currently unreserved in the subnet.
 
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
         return subnet.get_ipranges_not_in_use().render_json(
             include_purpose=False)
 
     @operation(idempotent=True)
-    def statistics(self, request, subnet_id):
+    def statistics(self, request, id):
         """
         Returns statistics for the specified subnet, including:
 
@@ -194,7 +194,7 @@ class SubnetHandler(OperationsHandler):
         Returns 404 if the subnet is not found.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
         include_ranges = get_optional_param(
             request.GET, 'include_ranges', default=False, validator=StringBool)
         include_suggestions = get_optional_param(
@@ -207,7 +207,7 @@ class SubnetHandler(OperationsHandler):
             include_suggestions=include_suggestions)
 
     @operation(idempotent=True)
-    def ip_addresses(self, request, subnet_id):
+    def ip_addresses(self, request, id):
         """
         Returns a summary of IP addresses assigned to this subnet.
 
@@ -218,7 +218,7 @@ class SubnetHandler(OperationsHandler):
         of any node associated with each address.
         """
         subnet = Subnet.objects.get_subnet_or_404(
-            subnet_id, request.user, NODE_PERMISSION.VIEW)
+            id, request.user, NODE_PERMISSION.VIEW)
         with_username = get_optional_param(
             request.GET, 'with_username', default=True, validator=StringBool)
         with_node_summary = get_optional_param(

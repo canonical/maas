@@ -322,33 +322,32 @@ urlpatterns += patterns(
     url(r'^maas/$', maas_handler, name='maas_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
         blockdevices_handler, name='blockdevices_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<device_id>[^/]+)/$',
+    url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<id>[^/]+)/$',
         blockdevice_handler, name='blockdevice_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
         '(?P<device_id>[^/]+)/partitions/$',
         partitions_handler, name='partitions_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/'
-        '(?P<device_id>[^/]+)/partition/(?P<partition_id>[^/]+)$',
+        '(?P<device_id>[^/]+)/partition/(?P<id>[^/]+)$',
         partition_handler, name='partition_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/volume-groups/$',
         volume_groups_handler, name='volume_groups_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/volume-group/'
-        '(?P<volume_group_id>[^/]+)/$',
+        '(?P<id>[^/]+)/$',
         volume_group_handler, name='volume_group_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/raids/$',
         raid_devices_handler, name='raid_devices_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/raid/(?P<raid_id>[^/]+)/$',
+    url(r'^nodes/(?P<system_id>[^/]+)/raid/(?P<id>[^/]+)/$',
         raid_device_handler, name='raid_device_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/bcaches/$',
         bcache_devices_handler, name='bcache_devices_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/bcache/(?P<bcache_id>[^/]+)/$',
+    url(r'^nodes/(?P<system_id>[^/]+)/bcache/(?P<id>[^/]+)/$',
         bcache_device_handler, name='bcache_device_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-sets/$',
         bcache_cache_sets_handler, name='bcache_cache_sets_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-set/'
-        '(?P<cache_set_id>[^/]+)/$',
+    url(r'^nodes/(?P<system_id>[^/]+)/bcache-cache-set/(?P<id>[^/]+)/$',
         bcache_cache_set_handler, name='bcache_cache_set_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/interfaces/(?P<interface_id>[^/]+)/$',
+    url(r'^nodes/(?P<system_id>[^/]+)/interfaces/(?P<id>[^/]+)/$',
         interface_handler, name='interface_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/$',
         interfaces_handler, name='interfaces_handler'),
@@ -389,11 +388,11 @@ urlpatterns += patterns(
     url(r'^files/(?P<filename>.+)/$', file_handler, name='file_handler'),
     url(r'^account/$', account_handler, name='account_handler'),
     url(
-        r'^account/prefs/sslkeys/(?P<keyid>[^/]+)/$', sslkey_handler,
+        r'^account/prefs/sslkeys/(?P<id>[^/]+)/$', sslkey_handler,
         name='sslkey_handler'),
     url(r'^account/prefs/sslkeys/$', sslkeys_handler, name='sslkeys_handler'),
     url(
-        r'^account/prefs/sshkeys/(?P<keyid>[^/]+)/$', sshkey_handler,
+        r'^account/prefs/sshkeys/(?P<id>[^/]+)/$', sshkey_handler,
         name='sshkey_handler'),
     url(r'^account/prefs/sshkeys/$', sshkeys_handler, name='sshkeys_handler'),
     url(r'^tags/(?P<name>[^/]+)/$', tag_handler, name='tag_handler'),
@@ -412,7 +411,7 @@ urlpatterns += patterns(
         r'^fabrics/$',
         fabrics_handler, name='fabrics_handler'),
     url(
-        r'^fabrics/(?P<fabric_id>[^/]+)/$',
+        r'^fabrics/(?P<id>[^/]+)/$',
         fabric_handler, name='fabric_handler'),
     url(
         r'^fabrics/(?P<fabric_id>[^/]+)/vlans/$',
@@ -427,13 +426,13 @@ urlpatterns += patterns(
         r'^fannetworks/$',
         fannetworks_handler, name='fannetworks_handler'),
     url(
-        r'^fannetworks/(?P<fannetwork_id>[^/]+)/$',
+        r'^fannetworks/(?P<id>[^/]+)/$',
         fannetwork_handler, name='fannetwork_handler'),
     url(
         r'^spaces/$',
         spaces_handler, name='spaces_handler'),
     url(
-        r'^spaces/(?P<space_id>[^/]+)/$',
+        r'^spaces/(?P<id>[^/]+)/$',
         space_handler, name='space_handler'),
     url(
         r'^subnets/$',
@@ -441,34 +440,34 @@ urlpatterns += patterns(
     # Note: Any changes to the regex here may need to be reflected in
     # models/subnets.py.
     url(
-        r'^subnets/(?P<subnet_id>[.: \w-]+(?:/\d\d\d?)?)/$',
+        r'^subnets/(?P<id>[.: \w-]+(?:/\d\d\d?)?)/$',
         subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
     url(
         r'^ipranges/$',
         ipranges_handler, name='ipranges_handler'),
     url(
-        r'^ipranges/(?P<iprange_id>[^/]+)/$',
+        r'^ipranges/(?P<id>[^/]+)/$',
         iprange_handler, name='iprange_handler'),
     url(
         r'^static-routes/$',
         staticroutes_handler, name='staticroutes_handler'),
     url(
-        r'^static-routes/(?P<staticroute_id>[^/]+)/$',
+        r'^static-routes/(?P<id>[^/]+)/$',
         staticroute_handler, name='staticroute_handler'),
     url(
         r'^dnsresourcerecords/$', dnsresourcerecords_handler,
         name='dnsresourcerecords_handler'),
     url(
-        r'^dnsresourcerecords/(?P<dnsresourcerecord_id>[^/]+)/$',
+        r'^dnsresourcerecords/(?P<id>[^/]+)/$',
         dnsresourcerecord_handler, name='dnsresourcerecord_handler'),
     url(r'^dnsresources/$', dnsresources_handler, name='dnsresources_handler'),
     url(
-        r'^dnsresources/(?P<dnsresource_id>[^/]+)/$',
+        r'^dnsresources/(?P<id>[^/]+)/$',
         dnsresource_handler, name='dnsresource_handler'),
     url(r'^domains/$', domains_handler, name='domains_handler'),
     url(
-        r'^domains/(?P<domain_id>[^/]+)/$',
+        r'^domains/(?P<id>[^/]+)/$',
         domain_handler, name='domain_handler'),
     url(
         r'^boot-resources/$',
@@ -484,13 +483,13 @@ urlpatterns += patterns(
         r'^package-repositories/$',
         package_repositories_handler, name='package_repositories_handler'),
     url(
-        r'^package-repositories/(?P<package_repository_id>[^/]+)/$',
+        r'^package-repositories/(?P<id>[^/]+)/$',
         package_repository_handler, name='package_repository_handler'),
     url(
         r'^dhcp-snippets/$',
         dhcp_snippets_handler, name='dhcp_snippets_handler'),
     url(
-        r'^dhcp-snippets/(?P<dhcp_snippet_id>[^/]+)/$',
+        r'^dhcp-snippets/(?P<id>[^/]+)/$',
         dhcp_snippet_handler, name='dhcp_snippet_handler'),
 )
 

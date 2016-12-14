@@ -48,16 +48,15 @@ class PackageRepositoryHandler(OperationsHandler):
             package_repository_id = "id"
         return ('package_repository_handler', (package_repository_id,))
 
-    def read(self, request, package_repository_id):
+    def read(self, request, id):
         """Read Package Repository.
 
         Returns 404 if the repository is not found.
         """
-        return PackageRepository.objects.get_object_or_404(
-            package_repository_id)
+        return PackageRepository.objects.get_object_or_404(id)
 
     @admin_method
-    def update(self, request, package_repository_id):
+    def update(self, request, id):
         """Update a Package Repository.
 
         :param name: The name of the Package Repository.
@@ -83,8 +82,7 @@ class PackageRepositoryHandler(OperationsHandler):
 
         Returns 404 if the Package Repository is not found.
         """
-        package_repository = PackageRepository.objects.get_object_or_404(
-            package_repository_id)
+        package_repository = PackageRepository.objects.get_object_or_404(id)
         form = PackageRepositoryForm(
             instance=package_repository, data=request.data)
         if form.is_valid():
@@ -93,13 +91,12 @@ class PackageRepositoryHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @admin_method
-    def delete(self, request, package_repository_id):
+    def delete(self, request, id):
         """Delete a Package Repository.
 
         Returns 404 if the Package Repository is not found.
         """
-        package_repository = PackageRepository.objects.get_object_or_404(
-            package_repository_id)
+        package_repository = PackageRepository.objects.get_object_or_404(id)
         package_repository.delete()
         return rc.DELETED
 
