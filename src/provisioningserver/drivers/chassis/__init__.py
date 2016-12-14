@@ -282,7 +282,10 @@ class ChassisDriverRegistry(Registry):
         return schemas
 
 
+from provisioningserver.drivers.chassis.null import NullChassisDriver
+
 chassis_drivers = [
+    NullChassisDriver()
 ]
 for driver in chassis_drivers:
     ChassisDriverRegistry.register_item(driver.name, driver)
