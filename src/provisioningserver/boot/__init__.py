@@ -15,11 +15,7 @@ from abc import (
 from errno import ENOENT
 from io import BytesIO
 import os
-from typing import (
-    Dict,
-    List,
-    Optional,
-)
+from typing import Dict
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.events import (
@@ -279,11 +275,13 @@ class BootMethod(metaclass=ABCMeta):
         assert isinstance(self.name, str)
         assert isinstance(self.bios_boot_method, str)
         assert isinstance(self.bootloader_path, str)
-        # Union types must be checked with issubclass().
-        assert issubclass(type(self.template_subdir), Optional[str])
-        assert issubclass(type(self.bootloader_arches), List[str])
-        assert issubclass(type(self.bootloader_files), List[str])
-        assert issubclass(type(self.arch_octet), Optional[str])
+        assert isinstance(self.template_subdir, str) or (
+            self.template_subdir is None)
+        assert isinstance(self.bootloader_arches, list) and all(
+            isinstance(element, str) for element in self.bootloader_arches)
+        assert isinstance(self.bootloader_files, list) and all(
+            isinstance(element, str) for element in self.bootloader_files)
+        assert isinstance(self.arch_octet, str) or self.arch_octet is None
 
     def get_template_dir(self):
         """Gets the template directory for the boot method."""

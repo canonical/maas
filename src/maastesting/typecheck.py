@@ -13,6 +13,17 @@ from functools import wraps
 import inspect
 import typing
 
+# Some releases of the `typing` module, even within the same major/minor/patch
+# version of Python, have changed their issubclass behaviour, breaking this
+# module. Changing a module's public API without bumping Python's version is
+# not cool. See bug 1650202.
+try:
+    issubclass(str, typing.Optional[str])
+except TypeError:
+    typing_is_broken = True
+else:
+    typing_is_broken = False
+
 
 class AnnotationError(TypeError):
     """An annotation has not be understood."""
@@ -103,6 +114,16 @@ def typed(func):
                 raise ReturnTypeError(func, result, type_out)
 
     return checked
+
+
+if typing_is_broken:
+    def typed(func):  # noqa
+        """Return `func` unchanged.
+
+        This release of Python has a "broken" version of `typing` so no type
+        checks are attempted.
+        """
+        return func
 
 
 def get_types_in(hints, func):
