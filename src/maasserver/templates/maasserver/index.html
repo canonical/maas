@@ -137,16 +137,21 @@
     <main class="wrapper" data-maas-error-overlay>
         {% if user.is_authenticated %}
         <div class="wrapper--inner">
-            <ul class="flash-messages u-margin--top ng-hide">
+            <div class="ng-hide">
                 {% for persistent_error in persistent_errors %}
-                <li class="flash-messages__item flash-messages__item--error">{{ persistent_error }}</li>
+                <div class="p-notification--error">
+                    <p class="p-notification__response">
+                      <span class="p-notification__status">Error:</span>{{ persistent_error }}</p>
+                </div>
                 {% endfor %}
                 {% if messages %}
                     {% for message in messages %}
-                        <li{% if message.tags %} class="flash-messages__item flash-messages__item--{{ message.tags }}" {% endif %}>{{ message }}</li>
+                        <div{% if message.tags %} class="p-notification--{{ message.tags }}" {% endif %}>
+                            <p class="p-notification__response">{{ message }}</p>
+                        </div>
                     {% endfor %}
                 {% endif %}
-            </ul>
+            </div>
         </div>
         {% endif %}
         <div data-ng-view></div>

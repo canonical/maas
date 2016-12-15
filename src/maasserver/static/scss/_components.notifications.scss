@@ -1,0 +1,95 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-tool-tips
+/// @since        0.0.1
+////
+
+/// Flash message styles
+/// @group maas flash messages
+@mixin maas-notifications {
+  @include notifications-default;
+  @include notifications-success;
+  @include notifications-warning;
+  @include notifications-error;
+}
+
+// The placeholder for basic notification styling
+%notification {
+  background-color: $white;
+  border: 0;
+  border-color: $warm-grey;
+  border-radius: .125rem;
+  border-style: solid;
+  border-top-width: 3px;
+  box-shadow: 0 1px 5px 1px rgba($cool-grey, .2);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  padding: .625rem;
+  text-align: center;
+  width: 100%;
+}
+
+// Default notification styling
+@mixin notifications-default {
+  .p-notification {
+    @extend %notification;
+
+    &__response {
+      background-position: 0 4px;
+      background-repeat: no-repeat;
+      background-size: 16px 16px;
+      margin: 0;
+      text-align: left;
+    }
+
+    &__status {
+      font-weight: 400;
+      margin-right: .3125rem;
+    }
+
+    &__action {
+      border-bottom: 0;
+      margin-left: .3125rem;
+    }
+  }
+}
+
+// Positive notification styling
+@mixin notifications-success {
+  .p-notification--success {
+    @extend %notification;
+    border-color: $success;
+
+    .p-notification__response {
+      background-image: url('#{$asset-path}images/icons/success.svg');
+      padding-left: 1.5rem;
+    }
+  }
+}
+
+// Warning notification styling
+@mixin notifications-warning {
+  .p-notification--warning {
+    @extend %notification;
+    border-color: $warning;
+
+    .p-notification__response {
+      background-image: url('#{$asset-path}images/icons/warning.svg');
+      padding-left: 1.5rem;
+    }
+  }
+}
+
+// Negative notification styling
+@mixin notifications-error {
+  .p-notification--error {
+    @extend %notification;
+    border-color: $error;
+
+    .p-notification__response {
+      background-image: url('#{$asset-path}images/icons/error.svg');
+      padding-left: 1.5rem;
+    }
+  }
+}

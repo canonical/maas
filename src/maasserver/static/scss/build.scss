@@ -19,7 +19,7 @@
 @import 'components.buttons';
 @import 'components.forms';
 @import 'components.code';
-@import 'components.flashmessages';
+@import 'components.notifications';
 @import 'components.icons';
 @import 'components.list-tree';
 @import 'components.tables';
@@ -57,7 +57,7 @@
   @include maas-button-group;
   @include maas-form-layouts;
   @include maas-code-block;
-  @include maas-flash-messages;
+  @include maas-notifications;
   @include maas-icons;
   @include maas-list-tree;
   @include maas-table;

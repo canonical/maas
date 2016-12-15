@@ -48,9 +48,10 @@
     </header>
     <section class="row">
         <div class="wrapper--inner">
-            <ul class="flash-messages u-padding--bottom" data-ng-if="networkDiscovery.value === 'disabled'">
-                <li class="flash-messages__item flash-messages__item--warning">List of devices will not update as discovery is turned off</li>
-            </ul>
+            <div class="p-notification--warning" data-ng-if="networkDiscovery.value === 'disabled'">
+                <p class="p-notification__response">
+                  <span class="p-notification__status">Warning:</span>List of devices will not update as discovery is turned off</p>
+            </div>
             <div class="twelve-col">
                 <div class="table" >
                     <header class="table__head" sticky sticky-class="table__head--sticky" offset="116">
