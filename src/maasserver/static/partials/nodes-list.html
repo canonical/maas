@@ -48,9 +48,7 @@
                 </div>
             </div>
             <div class="ng-hide" data-ng-show="tabs.nodes.selectedItems.length">
-                <span class="page-header__controls-feedback u-margin--right" data-ng-click="showSelected('nodes')">
-                    {$ tabs.nodes.selectedItems.length $} Selected
-                </span>
+                <a class="u-display--inline u-margin--right" data-ng-click="showSelected('nodes')">{$ tabs.nodes.selectedItems.length $} Selected</a>
                 <div data-maas-cta="tabs.nodes.takeActionOptions"
                     data-ng-model="tabs.nodes.actionOption"
                     data-ng-change="actionOptionSelected('nodes')">

@@ -22,9 +22,9 @@
   %table {
     border-color: $table-border-color;
     border-spacing: 0;
-    overflow-x: scroll;
     margin: 0 0 20px;
     width: 100%;
+    max-width: $site-max-width;
     text-align: left;
     border-collapse: separate;
 
@@ -180,7 +180,7 @@
       a:link,
       a:visited {
         color: $text-color;
-        border-bottom: 1px solid $link-border;
+        font-weight: 400;
 
         &:hover {
           text-decoration: none;
@@ -326,7 +326,7 @@
       a:link,
       a:visited {
         color: $text-color;
-        border-bottom: 1px solid $link-border;
+        font-weight: 400;
 
         &:hover {
           text-decoration: none;
@@ -382,10 +382,16 @@
 
     .table__body {
       display: table-row-group;
+      max-width: $site-max-width;
+      width: 100%;
+      float: left;
     }
 
     .table__footer {
       display: table-footer-group;
+      max-width: $site-max-width;
+      width: 100%;
+      float: left;
     }
 
     // Table label style used as secondary information with in a table cell. Can

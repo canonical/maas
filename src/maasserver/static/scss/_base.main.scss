@@ -7,6 +7,11 @@
 /// Main
 /// @group main
 @mixin maas-main {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-smoothing: subpixel-antialiased;
+  }
 
   html {
     overflow-y: scroll;

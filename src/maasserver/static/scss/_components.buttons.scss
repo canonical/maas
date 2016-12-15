@@ -16,8 +16,21 @@
     @extend %button-pattern;
   }
 
+  .button--primary {
+
+    &:hover {
+      border-bottom: 0;
+    }
+  }
+
   .button--secondary {
     line-height: 18px;
+    color: $cool-grey;
+
+    &:hover {
+      border-bottom-color: $alto-grey;
+      color: $cool-grey;
+    }
   }
 
   .button--primary,
@@ -34,6 +47,7 @@
 
     &:hover {
       color: $cool-grey;
+      border-bottom: 0;
     }
   }
 

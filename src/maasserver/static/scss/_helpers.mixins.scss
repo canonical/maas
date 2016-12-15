@@ -19,6 +19,16 @@
   }
 }
 
+// Creates url friendly colour fill
+@function url-friendly-color($color) {
+  @if type-of($color) != 'color' {
+    @warn '#{$fill-color} is not a color.';
+    @return false;
+  } @else {
+    @return '%23' + str-slice('#{$color}', 2, -1);
+  }
+}
+
 // String Replace
 @function str-replace($string, $search, $replace: '') {
   $index: str-index($string, $search);

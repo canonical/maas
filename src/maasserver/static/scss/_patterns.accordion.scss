@@ -91,17 +91,13 @@
               font-weight: 400;
 
               .accordion__tab-link {
-                background: $transparent url('#{$asset-path}images/icons/cross.svg') top 7px right 0 no-repeat;
+                background: $transparent url('#{$asset-path}images/icons/remove.svg') top 7px right 0 no-repeat;
+                background-size: 12px;
                 text-decoration: none;
               }
 
               &:hover {
                 color: $link-color;
-
-                .accordion__tab-link {
-                  color: $link-hover;
-                  background-image: url('#{$asset-path}images/icons/cross_orange.svg');
-                }
               }
             }
           }
