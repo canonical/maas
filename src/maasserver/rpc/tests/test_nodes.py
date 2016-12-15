@@ -579,7 +579,7 @@ class TestGetTimeConfiguration_Scenarios(MAASServerTestCase):
         ("machine", dict(
             node_type=NODE_TYPE.MACHINE,
         )),
-        ("machine", dict(
+        ("device", dict(
             node_type=NODE_TYPE.DEVICE,
         )),
     )
