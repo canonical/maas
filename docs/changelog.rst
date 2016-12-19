@@ -34,6 +34,8 @@ LP: #1637401    Re-adding virsh chassis to discover new nodes powers down existi
 
 LP: #1642033    IPs with multiple names can corrupt DNS zone data
 
+LP: #1646955    'main_archive_hostname' is not defined
+
 
 2.1.2
 =====
