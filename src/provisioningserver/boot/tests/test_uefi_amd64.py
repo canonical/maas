@@ -92,6 +92,10 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
+                    r".*\s+lin.*cc:\\{\'datasource_list\':"
+                    r" \[\'MAAS\'\]\\}end_cc.*",
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
                     r'.*^\s+linux  %s/%s .+?$' % (
                         re.escape(image_dir), params.kernel),
                     re.MULTILINE | re.DOTALL),

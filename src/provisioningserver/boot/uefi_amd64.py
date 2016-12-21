@@ -17,6 +17,7 @@ from provisioningserver.boot import (
     BytesReader,
     get_parameters,
 )
+from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
@@ -106,10 +107,26 @@ class UEFIAMD64BootMethod(BootMethod):
             parameters generated in another component (for example, see
             `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
+        def kernel_command(params):
+            """Return the kernel command, adjusted for UEFI to work.
+
+            See the similar function in BootMethod, and the callsite below.
+
+            The issue here is that grub throws a fit when the braces on
+            cc:{...}end_cc are hit, for whatever reason.  Escape _JUST_ those.
+            """
+            return re.sub(
+                'cc:{(?P<inner>[^}]*)}end_cc', 'cc:\{\g<inner>\}end_cc',
+                compose_kernel_command_line(params))
+
         template = self.get_template(
             kernel_params.purpose, kernel_params.arch,
             kernel_params.subarch)
         namespace = self.compose_template_namespace(kernel_params)
+        # Bug#1651452 - kernel command needs some extra escapes, but ONLY for
+        # UEFI.  And so we fix it here, instead of in the common code.  See
+        # also src/provisioningserver/kernel_opts.py.
+        namespace['kernel_command'] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     def _find_and_copy_bootloaders(self, destination, log_missing=True):
