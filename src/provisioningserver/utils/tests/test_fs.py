@@ -55,6 +55,7 @@ from provisioningserver.utils.fs import (
 )
 import provisioningserver.utils.fs as fs_module
 from testtools.matchers import (
+    DirContains,
     DirExists,
     EndsWith,
     Equals,
@@ -258,6 +259,12 @@ class TestAtomicDelete(MAASTestCase):
         deletedpath = os.path.join(filedir, deletedname)
         self.assertThat(os_remove, MockCalledOnceWith(deletedpath))
         self.assertThat(deletedpath, FileContains(contents))
+
+    def test_leaves_nothing_behind_on_error(self):
+        dirname = self.make_dir()
+        filename = os.path.join(dirname, "does-not-exist")
+        self.assertRaises(FileNotFoundError, atomic_delete, filename)
+        self.assertThat(dirname, DirContains([]))
 
 
 class TestAtomicSymlink(MAASTestCase):

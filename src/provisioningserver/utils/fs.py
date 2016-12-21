@@ -183,9 +183,11 @@ def atomic_delete(filename):
     """
     fd, del_filename = tempfile.mkstemp(
         ".deleted", ".", os.path.dirname(filename))
-    os.close(fd)
-    rename(filename, del_filename)
-    os.remove(del_filename)
+    try:
+        os.close(fd)
+        rename(filename, del_filename)
+    finally:
+        os.remove(del_filename)
 
 
 def create_provisional_symlink(src_dir, dst):
