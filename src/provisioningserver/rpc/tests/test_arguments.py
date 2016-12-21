@@ -69,7 +69,7 @@ class TestStructureAsJSON(MAASTestCase):
     example = {
         "an": "example", "structure": 12.34,
         "with": None, "and": ["lists", "of", "things"],
-        "and": {"an": "embedded structure"},
+        "and also": {"an": "embedded structure"},
     }
 
     def test_round_trip(self):

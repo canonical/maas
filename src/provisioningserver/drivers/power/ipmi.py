@@ -136,13 +136,6 @@ IPMI_ERRORS = {
             "  Check BMC configuration and try again."),
         'exception': PowerSettingError
     },
-    'driver timeout': {
-        'message': (
-            "The inband driver has timed out communicating to the local BMC or"
-            " service processor.  MAAS performed several retries."
-            "  Check BMC configuration and try again."),
-        'exception': PowerConnError
-    },
 }
 
 
