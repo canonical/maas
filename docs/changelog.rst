@@ -36,6 +36,8 @@ LP: #1642033    IPs with multiple names can corrupt DNS zone data
 
 LP: #1646955    'main_archive_hostname' is not defined
 
+LP: #1651452    Use correct escaping for EFI's kernel command line datasource_list.
+
 
 2.1.2
 =====
