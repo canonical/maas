@@ -108,6 +108,19 @@ adulterated.
    changing your locales on your workstation to ones present on the
    server will solve the issue.
 
+
+Emitting subunit
+^^^^^^^^^^^^^^^^
+
+Pass the ``--with-subunit`` flag to any of the test runners (e.g.
+``bin/test.rack``) to produce a `subunit`_ stream of test results. This
+may be useful for parallelising test runs, or to allow later analysis of
+a test run. The optional ``--subunit-fd`` flag can be used to direct the
+results to a different file descriptor, to ensure a clean stream.
+
+.. _subunit: https://launchpad.net/subunit/
+
+
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

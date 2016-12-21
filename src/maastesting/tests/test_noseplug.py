@@ -6,7 +6,10 @@
 __all__ = []
 
 from optparse import OptionParser
-from os import makedirs
+from os import (
+    devnull,
+    makedirs,
+)
 from os.path import (
     dirname,
     join,
@@ -30,14 +33,17 @@ from maastesting.noseplug import (
     Resources,
     Scenarios,
     Select,
+    Subunit,
 )
 from maastesting.testcase import MAASTestCase
 import nose.case
+from subunit import TestProtocolClient
 from testresources import OptimisingTestSuite
 from testtools.matchers import (
     AllMatch,
     Equals,
     HasLength,
+    Is,
     IsInstance,
     MatchesListwise,
     MatchesSetwise,
@@ -356,6 +362,48 @@ class TestSelect(MAASTestCase):
             join(directory, factory.make_name("other-child"))))
 
 
+class TestSubunit(MAASTestCase):
+
+    def test__options_adds_options(self):
+        select = Subunit()
+        parser = OptionParser()
+        select.options(parser=parser, env={})
+        self.assertThat(
+            parser.option_list[-2:],
+            MatchesListwise([
+                # The --with-subunit option.
+                MatchesStructure.byEquality(
+                    action="store_true", default=None,
+                    dest="enable_plugin_subunit",
+                ),
+                # The --subunit-fd option.
+                MatchesStructure.byEquality(
+                    action="store", default=1, dest="subunit_fd",
+                    metavar="FD", type="int", _short_opts=[],
+                    _long_opts=["--subunit-fd"],
+                )
+            ]))
+
+    def test__configure_opens_stream(self):
+        subunit = Subunit()
+        parser = OptionParser()
+        subunit.add_options(parser=parser, env={})
+        with open(devnull, "wb") as fd:
+            options, rest = parser.parse_args(
+                ["--with-subunit", "--subunit-fd", str(fd.fileno())])
+            subunit.configure(options, sentinel.conf)
+            self.assertThat(subunit.stream.fileno(), Equals(fd.fileno()))
+            self.assertThat(subunit.stream.mode, Equals("wb"))
+
+    def test__prepareTestResult_returns_subunit_client(self):
+        subunit = Subunit()
+        with open(devnull, "wb") as stream:
+            subunit.stream = stream
+            result = subunit.prepareTestResult(sentinel.result)
+            self.assertThat(result, IsInstance(TestProtocolClient))
+            self.assertThat(result, MatchesStructure(_stream=Is(stream)))
+
+
 class TestMain(MAASTestCase):
 
     def test__sets_addplugins(self):
@@ -363,9 +411,10 @@ class TestMain(MAASTestCase):
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY)))
+            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY)))
         plugins = noseplug.TestProgram.call_args[1]["addplugins"]
         self.assertThat(plugins, MatchesSetwise(
             IsInstance(Crochet), IsInstance(Resources),
             IsInstance(Scenarios), IsInstance(Select),
+            IsInstance(Subunit),
         ))

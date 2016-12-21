@@ -12,6 +12,7 @@ __all__ = [
 ]
 
 import inspect
+import io
 import logging
 import unittest
 
@@ -261,6 +262,52 @@ class Select(Plugin):
         return inspect.getdoc(self)
 
 
+class Subunit(Plugin):
+    """Emit test results as a subunit stream."""
+
+    name = "subunit"
+    option_fd = "%s_fd" % name
+    log = logging.getLogger('nose.plugins.%s' % name)
+    score = 2000  # Run really early, beating even xunit.
+
+    def options(self, parser, env):
+        """Add options to Nose's parser.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        super(Subunit, self).options(parser, env)
+        parser.add_option(
+            "--%s-fd" % self.name, type=int,
+            dest=self.option_fd, action="store", default=1, help=(
+                "Emit subunit via a specific numeric file descriptor, "
+                "stdout (1) by default."
+            ),
+            metavar="FD",
+        )
+
+    def configure(self, options, conf):
+        """Configure, based on the parsed options.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        super(Subunit, self).configure(options, conf)
+        if self.enabled:
+            # Process --${name}-fd.
+            fd = getattr(options, self.option_fd)
+            self.stream = io.open(fd, "wb")
+
+    def prepareTestResult(self, result):
+        from subunit import TestProtocolClient
+        return TestProtocolClient(self.stream)
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
+
+
 def main():
     """Invoke Nose's `TestProgram` with extra plugins.
 
@@ -269,5 +316,5 @@ def main():
     flags ``--with-crochet``, ``--with-resources``, ``--with-scenarios``,
     and/or ``--with-select``.
     """
-    plugins = Crochet(), Resources(), Scenarios(), Select()
+    plugins = Crochet(), Resources(), Scenarios(), Select(), Subunit()
     return TestProgram(addplugins=plugins)
