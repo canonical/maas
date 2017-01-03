@@ -56,6 +56,7 @@ from maasserver.exceptions import (
     PowerProblem,
 )
 from maasserver.models import (
+    BlockDevice,
     bmc as bmc_module,
     BondInterface,
     BootResource,
@@ -73,6 +74,7 @@ from maasserver.models import (
     Node,
     node as node_module,
     OwnerData,
+    PhysicalBlockDevice,
     PhysicalInterface,
     RackController,
     RegionController,
@@ -119,6 +121,7 @@ from maasserver.testing.factory import (
     factory,
     RANDOM,
 )
+from maasserver.testing.matchers import MatchesSetwiseWithAll
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -155,6 +158,13 @@ from metadataserver.user_data import (
     disk_erasing,
 )
 from netaddr import IPAddress
+from provisioningserver.drivers.chassis import (
+    DiscoveredChassis,
+    DiscoveredChassisHints,
+    DiscoveredMachine,
+    DiscoveredMachineBlockDevice,
+    DiscoveredMachineInterface,
+)
 from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -2059,6 +2069,21 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         self.assertEqual('eth12', node.get_next_ifname(
             ifnames=['eth10:5', 'eth11:bob']))
+
+    def test_get_next_block_device_name_names_returns_sane_default(self):
+        node = factory.make_Node()
+        self.assertEqual('sda', node.get_next_block_device_name(
+            block_device_names=[]))
+
+    def test_get_next_block_device_name_names_returns_next_available(self):
+        node = factory.make_Node()
+        self.assertEqual('sdb', node.get_next_block_device_name(
+            block_device_names=['sda', 'sdf']))
+
+    def test_get_next_block_device_name_ignores_different_prefix(self):
+        node = factory.make_Node()
+        self.assertEqual('sda', node.get_next_block_device_name(
+            block_device_names=['vda', 'vdb']))
 
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
@@ -8876,6 +8901,85 @@ class TestControllerGetDiscoveryState(MAASServerTestCase):
 
 class TestChassis(MAASServerTestCase):
 
+    def make_discovered_block_device(
+            self, model=None, serial=None, id_path=None):
+        if id_path is None:
+            if model is None:
+                model = factory.make_name("model")
+            if serial is None:
+                serial = factory.make_name("serial")
+        else:
+            model = None
+            serial = None
+        return DiscoveredMachineBlockDevice(
+            model=model,
+            serial=serial,
+            size=random.randint(1024**3, 1024**4),
+            block_size=random.choice([512, 4096]),
+            tags=[
+                factory.make_name("tag")
+                for _ in range(3)
+            ],
+            id_path=id_path,
+        )
+
+    def make_discovered_interface(self, mac_address=None):
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        return DiscoveredMachineInterface(
+            mac_address=mac_address,
+            tags=[
+                factory.make_name("tag")
+                for _ in range(3)
+            ]
+        )
+
+    def make_discovered_machine(self, block_devices=None, interfaces=None):
+        if block_devices is None:
+            block_devices = [
+                self.make_discovered_block_device()
+                for _ in range(3)
+            ]
+        if interfaces is None:
+            interfaces = [
+                self.make_discovered_interface()
+                for _ in range(3)
+            ]
+        return DiscoveredMachine(
+            cores=random.randint(8, 120),
+            cpu_speed=random.randint(2000, 4000),
+            memory=random.randint(8192, 8192 * 8),
+            interfaces=interfaces,
+            block_devices=block_devices,
+            power_state=random.choice([POWER_STATE.ON, POWER_STATE.OFF]),
+            power_parameters={
+                factory.make_name('key'): factory.make_name('value'),
+            },
+            tags=[
+                factory.make_name('tag')
+                for _ in range(3)
+            ],
+        )
+
+    def make_discovered_chassis(self, machines=None):
+        if machines is None:
+            machines = [
+                self.make_discovered_machine()
+                for _ in range(3)
+            ]
+        return DiscoveredChassis(
+            cores=random.randint(8, 120),
+            cpu_speed=random.randint(2000, 4000),
+            memory=random.randint(8192, 8192 * 8),
+            local_storage=random.randint(20000, 40000),
+            hints=DiscoveredChassisHints(
+                cores=random.randint(8, 16),
+                cpu_speed=random.randint(2000, 4000),
+                memory=random.randint(8192, 8192 * 2),
+                local_storage=random.randint(10000, 20000),
+            ),
+            machines=machines)
+
     def test__domain_is_always_empty(self):
         hostname = factory.make_hostname()
         domain = factory.make_name("domain")
@@ -8883,6 +8987,302 @@ class TestChassis(MAASServerTestCase):
             hostname="%s.%s" % (hostname, domain))
         self.assertEquals(hostname, chassis.hostname)
         self.assertIsNone(chassis.domain)
+
+    def test_sync_chassis_cpu_memory_and_hints(self):
+        discovered = self.make_discovered_chassis()
+        chassis = factory.make_Chassis()
+        chassis.sync(discovered)
+        self.assertThat(
+            chassis, MatchesStructure(
+                cpu_count=Equals(discovered.cores),
+                cpu_speed=Equals(discovered.cpu_speed),
+                memory=Equals(discovered.memory),
+                chassis_hints=MatchesStructure(
+                    cores=Equals(discovered.hints.cores),
+                    cpu_speed=Equals(discovered.hints.cpu_speed),
+                    memory=Equals(discovered.hints.memory),
+                    local_storage=Equals(discovered.hints.local_storage),
+                ),
+            ))
+
+    def test_sync_chassis_creates_new_machines(self):
+        discovered = self.make_discovered_chassis()
+        mock_set_default_storage_layout = self.patch(
+            Machine, "set_default_storage_layout")
+        mock_set_initial_networking_configuration = self.patch(
+            Machine, "set_initial_networking_configuration")
+        chassis = factory.make_Chassis()
+        chassis.sync(discovered)
+        machine_macs = [
+            machine.interfaces[0].mac_address
+            for machine in discovered.machines
+        ]
+        created_machines = Machine.objects.filter(
+            interface__mac_address__in=machine_macs).distinct()
+        default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
+        self.assertThat(
+            created_machines,
+            MatchesSetwise(*[
+                MatchesStructure(
+                    bmc=Equals(chassis.bmc),
+                    cpu_count=Equals(machine.cores),
+                    cpu_speed=Equals(machine.cpu_speed),
+                    memory=Equals(machine.memory),
+                    power_state=Equals(machine.power_state),
+                    instance_power_parameters=Equals(machine.power_parameters),
+                    tags=MatchesSetwiseWithAll(*[
+                        MatchesStructure(name=Equals(tag))
+                        for tag in machine.tags
+                    ]),
+                    physicalblockdevice_set=MatchesSetwiseWithAll(*[
+                        MatchesStructure(
+                            name=Equals(
+                                BlockDevice._get_block_name_from_idx(idx)),
+                            id_path=Equals(bd.id_path),
+                            model=Equals(bd.model),
+                            serial=Equals(bd.serial),
+                            size=Equals(bd.size),
+                            block_size=Equals(bd.block_size),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in bd.tags
+                            ])
+                        )
+                        for idx, bd in enumerate(machine.block_devices)
+                    ]),
+                    interface_set=MatchesSetwiseWithAll(*[
+                        MatchesStructure(
+                            name=Equals('eth%d' % idx),
+                            mac_address=Equals(nic.mac_address),
+                            vlan=Equals(default_vlan),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in nic.tags
+                            ])
+                        )
+                        for idx, nic in enumerate(machine.interfaces)
+                    ]),
+                )
+                for machine in discovered.machines
+            ]))
+        self.assertThat(
+            mock_set_default_storage_layout.call_count,
+            Equals(len(discovered.machines)))
+        self.assertThat(
+            mock_set_initial_networking_configuration.call_count,
+            Equals(len(discovered.machines)))
+
+    def test_sync_chassis_deletes_missing_machines(self):
+        chassis = factory.make_Chassis()
+        machine = factory.make_Node()
+        machine.parent = chassis
+        machine.save()
+        discovered = self.make_discovered_chassis(machines=[])
+        chassis.sync(discovered)
+        self.assertIsNone(reload_object(machine))
+
+    def test_sync_moves_machine_under_chassis(self):
+        chassis = factory.make_Chassis()
+        machine = factory.make_Node(interface=True)
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        self.assertThat(machine.parent_id, Equals(chassis.id))
+        self.assertThat(machine.bmc, Equals(chassis.bmc))
+
+    def test_sync_updates_machine_properties(self):
+        chassis = factory.make_Chassis()
+        machine = factory.make_Node(interface=True)
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        self.assertThat(machine, MatchesStructure(
+            cpu_count=Equals(discovered_machine.cores),
+            cpu_speed=Equals(discovered_machine.cpu_speed),
+            memory=Equals(discovered_machine.memory),
+            power_state=Equals(discovered_machine.power_state),
+            instance_power_parameters=Equals(
+                discovered_machine.power_parameters),
+            tags=MatchesSetwiseWithAll(*[
+                MatchesStructure(name=Equals(tag))
+                for tag in discovered_machine.tags
+            ]),
+        ))
+
+    def test_sync_updates_machine_bmc_deletes_old_bmc(self):
+        chassis = factory.make_Chassis()
+        rack_controller = factory.make_RackController()
+        machine = factory.make_Node(
+            interface=True, power_type='virsh',
+            bmc_connected_to=rack_controller)
+        old_bmc = machine.bmc
+        old_bmc.node_set.exclude(id=machine.id).delete()
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        old_bmc = reload_object(old_bmc)
+        self.assertIsNone(old_bmc)
+        self.assertThat(machine.bmc, Equals(chassis.bmc))
+
+    def test_sync_updates_machine_bmc_keeps_old_bmc(self):
+        chassis = factory.make_Chassis()
+        rack_controller = factory.make_RackController()
+        machine = factory.make_Node(
+            interface=True, power_type='virsh',
+            bmc_connected_to=rack_controller)
+        old_bmc = machine.bmc
+
+        # Create another machine sharing the BMC. This should prevent the
+        # BMC from being deleted.
+        other_machine = factory.make_Node(interface=True)
+        other_machine.bmc = machine.bmc
+        other_machine.instance_power_parameter = {
+            "power_id": factory.make_name("power_id"),
+        }
+        other_machine.save()
+
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        old_bmc = reload_object(old_bmc)
+        self.assertIsNotNone(old_bmc)
+        self.assertThat(machine.bmc, Equals(chassis.bmc))
+
+    def test_sync_updates_existing_machine_block_devices(self):
+        chassis = factory.make_Chassis()
+        machine = factory.make_Node(with_boot_disk=False)
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine)
+        keep_model_bd = factory.make_PhysicalBlockDevice(node=machine)
+        keep_path_bd = factory.make_PhysicalBlockDevice(
+            node=machine, id_path=factory.make_name("id_path"))
+        delete_model_bd = factory.make_PhysicalBlockDevice(node=machine)
+        delete_path_bd = factory.make_PhysicalBlockDevice(
+            node=machine, id_path=factory.make_name("id_path"))
+        dkeep_model_bd = self.make_discovered_block_device(
+            model=keep_model_bd.model, serial=keep_model_bd.serial)
+        dkeep_path_bd = self.make_discovered_block_device(
+            id_path=keep_path_bd.id_path)
+        dnew_model_bd = self.make_discovered_block_device()
+        dnew_path_bd = self.make_discovered_block_device(
+            id_path=factory.make_name("id_path"))
+        discovered_machine = self.make_discovered_machine(
+            block_devices=[
+                dkeep_model_bd, dkeep_path_bd, dnew_model_bd, dnew_path_bd],
+            interfaces=[
+                self.make_discovered_interface(
+                    mac_address=boot_interface.mac_address)])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        keep_model_bd = reload_object(keep_model_bd)
+        keep_path_bd = reload_object(keep_path_bd)
+        delete_model_bd = reload_object(delete_model_bd)
+        delete_path_bd = reload_object(delete_path_bd)
+        new_model_bd = PhysicalBlockDevice.objects.filter(
+            node=machine, model=dnew_model_bd.model,
+            serial=dnew_model_bd.serial).first()
+        new_path_bd = PhysicalBlockDevice.objects.filter(
+            node=machine, id_path=dnew_path_bd.id_path).first()
+        self.assertIsNone(delete_model_bd)
+        self.assertIsNone(delete_path_bd)
+        self.assertThat(
+            keep_model_bd,
+            MatchesStructure(
+                size=Equals(dkeep_model_bd.size),
+                block_size=Equals(dkeep_model_bd.block_size),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dkeep_model_bd.tags
+                ])))
+        self.assertThat(
+            keep_path_bd,
+            MatchesStructure(
+                size=Equals(dkeep_path_bd.size),
+                block_size=Equals(dkeep_path_bd.block_size),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dkeep_path_bd.tags
+                ])))
+        self.assertThat(
+            new_model_bd,
+            MatchesStructure(
+                size=Equals(dnew_model_bd.size),
+                block_size=Equals(dnew_model_bd.block_size),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dnew_model_bd.tags
+                ])))
+        self.assertThat(
+            new_path_bd,
+            MatchesStructure(
+                size=Equals(dnew_path_bd.size),
+                block_size=Equals(dnew_path_bd.block_size),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dnew_path_bd.tags
+                ])))
+
+    def test_sync_updates_existing_machine_interfaces(self):
+        chassis = factory.make_Chassis()
+        machine = factory.make_Node()
+        other_vlan = factory.make_Fabric().get_default_vlan()
+        keep_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine, vlan=other_vlan)
+        delete_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine)
+        dkeep_interface = self.make_discovered_interface(
+            mac_address=keep_interface.mac_address)
+        dnew_interface = self.make_discovered_interface()
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[dkeep_interface, dnew_interface])
+        discovered_chassis = self.make_discovered_chassis(
+            machines=[discovered_machine])
+        chassis.sync(discovered_chassis)
+        machine = reload_object(machine)
+        keep_interface = reload_object(keep_interface)
+        delete_interface = reload_object(delete_interface)
+        new_interface = machine.interface_set.filter(
+            mac_address=dnew_interface.mac_address).first()
+        self.assertIsNone(delete_interface)
+        self.assertThat(
+            keep_interface,
+            MatchesStructure(
+                vlan=Equals(other_vlan),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dkeep_interface.tags
+                ])))
+        self.assertThat(
+            new_interface,
+            MatchesStructure(
+                vlan=Equals(
+                    Fabric.objects.get_default_fabric().get_default_vlan()),
+                tags=MatchesSetwise(*[
+                    Equals(tag)
+                    for tag in dnew_interface.tags
+                ])))
 
 
 class TestStorage(MAASServerTestCase):

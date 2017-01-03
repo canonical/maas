@@ -18,6 +18,7 @@ from collections import (
 )
 from datetime import timedelta
 from functools import partial
+from itertools import count
 from operator import attrgetter
 import random
 import re
@@ -89,6 +90,7 @@ from maasserver.fields import (
     MAASIPAddressField,
     MAC,
 )
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC
 from maasserver.models.bootresource import BootResource
 from maasserver.models.cleansave import CleanSave
@@ -209,6 +211,7 @@ from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("node")
+chassislog = get_maas_logger("chassis")
 
 
 # Holds the known `bios_boot_methods`. If `bios_boot_method` is not in this
@@ -1347,6 +1350,21 @@ class Node(CleanSave, TimestampedModel):
         else:
             ifnum = max(used_ethX) + 1
             return "eth%d" % ifnum
+
+    def get_block_device_names(self):
+        return list(self.blockdevice_set.all().values_list('name', flat=True))
+
+    def get_next_block_device_name(self, block_device_names=None, prefix='sd'):
+        """
+        Scans the block devices on this Node and returns the next free block
+        device name in the format '{prefix}X', where X is [a-z]+.
+        """
+        if block_device_names is None:
+            block_device_names = self.get_block_device_names()
+        for idx in count(0):
+            name = BlockDevice._get_block_name_from_idx(idx, prefix=prefix)
+            if name not in block_device_names:
+                return name
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
@@ -4613,6 +4631,308 @@ class Chassis(Node):
             # away the rest.
             self.hostname, _ = self.hostname.split('.', 1)
         self.domain = None
+
+    def sync_hints(self, discovered_hints):
+        """Sync the chassis hints with `discovered_hints`."""
+        self.chassis_hints.cores = discovered_hints.cores
+        self.chassis_hints.cpu_speed = discovered_hints.cpu_speed
+        self.chassis_hints.memory = discovered_hints.memory
+        self.chassis_hints.local_storage = discovered_hints.local_storage
+        self.chassis_hints.save()
+
+    def _find_existing_machine(self, discovered_machine, mac_machine_map):
+        """Find a `Machine` in `mac_machine_map` based on the interface MAC
+        addresses from `discovered_machine`."""
+        for interface in discovered_machine.interfaces:
+            if interface.mac_address in mac_machine_map:
+                return mac_machine_map[interface.mac_address]
+        return None
+
+    def _create_block_device(self, discovered_bd, machine, name=None):
+        """Create's a new `PhysicalBlockDevice` for `machine`."""
+        if name is None:
+            name = machine.get_next_block_device_name()
+        model = discovered_bd.model
+        serial = discovered_bd.serial
+        if model is None:
+            model = ""
+        if serial is None:
+            serial = ""
+        return PhysicalBlockDevice.objects.create(
+            node=machine,
+            name=name,
+            id_path=discovered_bd.id_path,
+            model=model,
+            serial=serial,
+            size=discovered_bd.size,
+            block_size=discovered_bd.block_size,
+            tags=discovered_bd.tags)
+
+    def _create_interface(self, discovered_nic, machine, name=None):
+        """Create's a new physical `Interface` for `machine`."""
+        # XXX blake_r 2016-12-20: First pass just connected all interfaces
+        # to the default fabric and VLAN. This will change once we have
+        # better discovery of what interface are connected where.
+        vlan = Fabric.objects.get_default_fabric().get_default_vlan()
+        if name is None:
+            name = machine.get_next_ifname()
+        nic, created = PhysicalInterface.objects.get_or_create(
+            mac_address=discovered_nic.mac_address, defaults={
+                'name': name,
+                'node': machine,
+                'tags': discovered_nic.tags,
+                'vlan': vlan,
+            })
+        if not created:
+            chassislog.warning(
+                "%s: interface with MAC address %s was discovered on "
+                "machine %s and was moved from %s." % (
+                    self.hostname, discovered_nic.mac_address,
+                    machine.hostname, nic.node.hostname))
+            nic.name = name
+            nic.node = machine
+            nic.tags = discovered_nic.tags
+            nic.vlan = vlan
+            nic.ip_addresses.all().delete()
+            nic.save()
+        return nic
+
+    def _create_machine(self, discovered_machine):
+        """Create's a `Machine` from `discovered_machines` for this chassis."""
+        # Create the machine.
+        machine = Machine(
+            status=NODE_STATUS.READY,
+            cpu_count=discovered_machine.cores,
+            cpu_speed=discovered_machine.cpu_speed,
+            memory=discovered_machine.memory,
+            power_state=discovered_machine.power_state,
+            parent=self)
+        machine.bmc = self.bmc
+        machine.instance_power_parameters = discovered_machine.power_parameters
+        machine.set_random_hostname()
+        machine.save()
+
+        # Assign the discovered tags.
+        for discovered_tag in discovered_machine.tags:
+            tag, _ = Tag.objects.get_or_create(name=discovered_tag)
+            machine.tags.add(tag)
+
+        # Create the discovered block devices and set the initial storage
+        # layout for the machine.
+        for idx, discovered_bd in enumerate(discovered_machine.block_devices):
+            self._create_block_device(
+                discovered_bd, machine,
+                name=BlockDevice._get_block_name_from_idx(idx))
+        machine.set_default_storage_layout()
+
+        # Create the discovered interface and set the default networking
+        # configuration.
+        for idx, discovered_nic in enumerate(discovered_machine.interfaces):
+            self._create_interface(
+                discovered_nic, machine, name='eth%d' % idx)
+        machine.set_initial_networking_configuration()
+
+        return machine
+
+    def _sync_machine(self, discovered_machine, existing_machine):
+        """Sync's the information from `discovered_machine` to update
+        `existing_machine`."""
+        # Log if the machine is moving under a chassis or being moved from
+        # a different chassis.
+        if existing_machine.parent_id != self.id:
+            if existing_machine.parent_id is None:
+                chassislog.warning(
+                    "%s: %s has been moved under the chassis, previously "
+                    "it was not part of any chassis." % (
+                        self.hostname, existing_machine.hostname))
+            else:
+                chassislog.warning(
+                    "%s: %s has been moved under the chassis, previously "
+                    "it was part of chassis %s." % (
+                        self.hostname, existing_machine.hostname,
+                        existing_machine.parent.hostname))
+            existing_machine.parent = self
+
+        # Sync machine instance values.
+        existing_machine.cpu_count = discovered_machine.cores
+        existing_machine.cpu_speed = discovered_machine.cpu_speed
+        existing_machine.memory = discovered_machine.memory
+        existing_machine.power_state = discovered_machine.power_state
+
+        # Ensure that the BMC is correct. BMC migration needs to be careful
+        # to make sure to cleanup the old BMC if needed.
+        if existing_machine.bmc_id != self.bmc_id:
+            old_bmc = existing_machine.bmc
+            existing_machine.bmc = self.bmc
+            bmc_in_use = Node.objects.filter(
+                bmc=old_bmc).exclude(id=existing_machine.id).exists()
+            if not bmc_in_use:
+                old_bmc.delete()
+        existing_machine.instance_power_parameters = (
+            discovered_machine.power_parameters)
+        existing_machine.save()
+
+        # Sync the tags to make sure they match the discovered machine.
+        add_tags = set(discovered_machine.tags)
+        for existing_tag_inst in existing_machine.tags.all():
+            if existing_tag_inst.name in add_tags:
+                add_tags.remove(existing_tag_inst.name)
+            else:
+                existing_machine.tags.remove(existing_tag_inst)
+        for tag in add_tags:
+            tag, _ = Tag.objects.get_or_create(name=tag)
+            existing_machine.tags.add(tag)
+
+        # Sync the block devices and interfaces on the machine.
+        self._sync_block_devices(
+            discovered_machine.block_devices, existing_machine)
+        self._sync_interfaces(discovered_machine.interfaces, existing_machine)
+
+    def _sync_block_devices(self, block_devices, existing_machine):
+        """Sync the `block_devices` to the `existing_machine`."""
+        model_mapping = {
+            '%s/%s' % (block_device.model, block_device.serial): block_device
+            for block_device in block_devices
+            if block_device.model and block_device.serial
+        }
+        path_mapping = {
+            block_device.id_path: block_device
+            for block_device in block_devices
+            if not block_device.model or not block_device.serial
+        }
+        existing_block_devices = map(
+            lambda bd: bd.actual_instance,
+            existing_machine.blockdevice_set.all())
+        existing_block_devices = [
+            block_device
+            for block_device in existing_block_devices
+            if isinstance(block_device, PhysicalBlockDevice)
+        ]
+        for block_device in existing_block_devices:
+            if block_device.model and block_device.serial:
+                key = '%s/%s' % (block_device.model, block_device.serial)
+                if key in model_mapping:
+                    self._sync_block_device(
+                        model_mapping.pop(key), block_device)
+                else:
+                    block_device.delete()
+            else:
+                if block_device.id_path in path_mapping:
+                    self._sync_block_device(
+                        path_mapping.pop(block_device.id_path), block_device)
+        for _, discovered_block_device in model_mapping.items():
+            self._create_block_device(
+                discovered_block_device, existing_machine)
+        for _, discovered_block_device in path_mapping.items():
+            self._create_block_device(
+                discovered_block_device, existing_machine)
+
+    def _sync_block_device(self, discovered_bd, existing_bd):
+        """Sync the `discovered_bd` with the `existing_bd`.
+
+        The model, serial, and id_path is not handled here because if either
+        changed then no way of matching between an existing block device is
+        possible.
+        """
+        existing_bd.size = discovered_bd.size
+        existing_bd.block_size = discovered_bd.block_size
+        existing_bd.tags = discovered_bd.tags
+        existing_bd.save()
+
+    def _sync_interfaces(self, interfaces, existing_machine):
+        """Sync the `interfaces` to the `existing_machine`."""
+        mac_mapping = {
+            nic.mac_address: nic
+            for nic in interfaces
+        }
+        # interface_set has been preloaded so filtering is done locally.
+        physical_interfaces = [
+            nic
+            for nic in existing_machine.interface_set.all()
+            if nic.type == INTERFACE_TYPE.PHYSICAL
+        ]
+        for existing_nic in physical_interfaces:
+            if existing_nic.mac_address in mac_mapping:
+                self._sync_interface(
+                    mac_mapping.pop(existing_nic.mac_address), existing_nic)
+            else:
+                existing_nic.delete()
+        for _, discovered_nic in mac_mapping.items():
+            self._create_interface(discovered_nic, existing_machine)
+
+    def _sync_interface(self, discovered_nic, existing_interface):
+        """Sync the `discovered_nic` with the `existing_interface`.
+
+        The MAC address is not handled here because if the MAC address has
+        changed then no way of matching between an existing interface is
+        possible.
+        """
+        # XXX blake_r 2016-12-20: At the moment only update the tags on the
+        # interface. This needs to be improved to sync the connected VLAN. At
+        # the moment we do not override what is set, allowing users to adjust
+        # the VLAN if discovery is not identifying it correctly.
+        existing_interface.tags = discovered_nic.tags
+        existing_interface.save()
+
+    def sync_machines(self, discovered_machines):
+        """Sync the children machines on this chassis from
+        `discovered_machines`."""
+        all_macs = [
+            interface.mac_address
+            for machine in discovered_machines
+            for interface in machine.interfaces
+        ]
+        existing_machines = list(
+            Machine.objects.filter(
+                interface__mac_address__in=all_macs)
+            .prefetch_related("interface_set")
+            .prefetch_related('blockdevice_set__physicalblockdevice')
+            .prefetch_related('blockdevice_set__virtualblockdevice')
+            .distinct())
+        child_machines = {
+            machine.id: machine
+            for machine in Machine.objects.filter(parent=self)
+        }
+        mac_machine_map = {
+            interface.mac_address: machine
+            for machine in existing_machines
+            for interface in machine.interface_set.all()
+        }
+        for discovered_machine in discovered_machines:
+            existing_machine = self._find_existing_machine(
+                discovered_machine, mac_machine_map)
+            if existing_machine is None:
+                new_machine = self._create_machine(discovered_machine)
+                chassislog.info(
+                    "%s: discovered new machine: %s" % (
+                        self.hostname, new_machine.hostname))
+            else:
+                self._sync_machine(discovered_machine, existing_machine)
+                existing_machines.remove(existing_machine)
+                child_machines.pop(existing_machine.id, None)
+        for _, remove_machine in child_machines.items():
+            remove_machine.delete()
+            chassislog.warning(
+                "%s: machine %s no longer exists and was deleted." % (
+                    self.hostname, remove_machine.hostname))
+
+    def sync(self, discovered_chassis):
+        """Sync the chassis and children machines from the
+        `discovered_chassis`.
+
+        This method ensures consistency with what is discovered by a chassis
+        driver and what is known to MAAS in the data model. Any machines,
+        interfaces, and/or block devices that do not match the
+        `discovered_chassis` values will be removed.
+        """
+        self.cpu_count = discovered_chassis.cores
+        self.cpu_speed = discovered_chassis.cpu_speed
+        self.memory = discovered_chassis.memory
+        self.save()
+        self.sync_hints(discovered_chassis.hints)
+        self.sync_machines(discovered_chassis.machines)
+        chassislog.info(
+            "%s: finished syncing discovered information" % self.hostname)
 
 
 class Storage(Node):

@@ -13,6 +13,7 @@ from testtools.content import (
 )
 from testtools.matchers import (
     Matcher,
+    MatchesSetwise,
     Mismatch,
 )
 
@@ -47,3 +48,20 @@ class HasStatusCode(Matcher):
             }
 
             return Mismatch(description, details)
+
+
+class MatchesSetwiseWithAll(MatchesSetwise):
+    """Match `observed` using `MatchesSetwise` calling `all()` before the
+    matching. This is useful when a matching needs to be performed
+    on a related manager on an objects.
+
+    machine = Machine(...)
+    self.assertThat(
+        machine,
+        MatchesStructure(
+            interfaces=MatchesSetwiseWithAll(
+                MatchesStructure(mac_address=Equals(mac_address)))))
+    """
+
+    def match(self, observed):
+        return super(MatchesSetwiseWithAll, self).match(observed.all())

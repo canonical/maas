@@ -17,6 +17,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import (
+    Chassis,
     ChassisHints,
     Controller,
     Device,
@@ -25,6 +26,7 @@ from maasserver.models import (
     RackController,
     RegionController,
     Service,
+    Storage,
 )
 from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
@@ -37,6 +39,8 @@ NODE_CLASSES = [
     Controller,
     RackController,
     RegionController,
+    Chassis,
+    Storage,
 ]
 
 signals = SignalsManager()

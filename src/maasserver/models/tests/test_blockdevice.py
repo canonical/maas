@@ -34,6 +34,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
+from maastesting.testcase import MAASTestCase
 from testtools import ExpectedException
 from testtools.matchers import Equals
 
@@ -424,6 +425,31 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertTrue(
             available_size >= 0 and available_size < PARTITION_ALIGNMENT_SIZE,
             "Should create a partition for the entire disk.")
+
+
+class TestBlockDeviceBlockNameIdx(MAASTestCase):
+
+    scenarios = (
+        ('0', {'idx': 0, 'name': 'sda'}),
+        ('25', {'idx': 25, 'name': 'sdz'}),
+        ('26', {'idx': 26, 'name': 'sdaa'}),
+        ('27', {'idx': 27, 'name': 'sdab'}),
+        ('51', {'idx': 51, 'name': 'sdaz'}),
+        ('52', {'idx': 52, 'name': 'sdba'}),
+        ('53', {'idx': 53, 'name': 'sdbb'}),
+        ('701', {'idx': 701, 'name': 'sdzz'}),
+        ('702', {'idx': 702, 'name': 'sdaaa'}),
+        ('703', {'idx': 703, 'name': 'sdaab'}),
+        ('18277', {'idx': 18277, 'name': 'sdzzz'}),
+    )
+
+    def test__get_block_name_from_idx(self):
+        self.assertEqual(
+            self.name, BlockDevice._get_block_name_from_idx(self.idx))
+
+    def test__get_idx_from_block_name(self):
+        self.assertEqual(
+            self.idx, BlockDevice._get_idx_from_block_name(self.name))
 
 
 class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):

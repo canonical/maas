@@ -8,6 +8,8 @@ __all__ = [
     ]
 
 from collections import Iterable
+import re
+import string
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
@@ -294,3 +296,54 @@ class BlockDevice(CleanSave, TimestampedModel):
                     "Cannot delete block device because its part of "
                     "a %s." % filesystem_group.get_nice_name())
         super(BlockDevice, self).delete()
+
+    @staticmethod
+    def _get_block_name_from_idx(idx, prefix='sd'):
+        """Calculate a block name based on the `idx`.
+
+        Drive#  Name
+        0	    sda
+        25	    sdz
+        26	    sdaa
+        27	    sdab
+        51	    sdaz
+        52	    sdba
+        53	    sdbb
+        701	    sdzz
+        702	    sdaaa
+        703	    sdaab
+        18277   sdzzz
+        """
+        name = ""
+        while idx >= 0:
+            name = string.ascii_lowercase[idx % 26] + name
+            idx = (idx // 26) - 1
+        return prefix + name
+
+    @staticmethod
+    def _get_idx_from_block_name(name, prefix='sd'):
+        """Calculate a idx based on `name`.
+
+        Name   Drive#
+        sda    0
+        sdz    25
+        sdaa   26
+        sdab   27
+        sdaz   51
+        sdba   52
+        sdbb   53
+        sdzz   701
+        sdaaa  702
+        sdaab  703
+        sdzzz  18277
+        """
+        match = re.match('%s([a-z]+)' % prefix, name)
+        if match is None:
+            return None
+        else:
+            idx = 0
+            suffix = match.group(1)
+            for col, char in enumerate(reversed(suffix)):
+                digit = ord(char) + (0 if col == 0 else 1) - ord("a")
+                idx += digit * (26 ** col)
+            return idx
