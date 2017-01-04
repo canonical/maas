@@ -320,9 +320,20 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {nodes[pick]},
             {'subnets': [subnets[pick].name]})
 
+    def test_rejects_space_not_connected_to_anything(self):
+        space1 = factory.make_Space('foo')
+        factory.make_Space('bar')
+        v1 = factory.make_VLAN(space=space1)
+        s1 = factory.make_Subnet(vlan=v1, space=None)
+        factory.make_Node_with_Interface_on_Subnet(subnet=s1)
+        form = AcquireNodeForm(data={
+            'subnets': 'space:bar',
+        })
+        self.assertThat(form.is_valid(), Equals(False), dict(form.errors))
+
     def test_subnets_filters_by_space(self):
         subnets = [
-            factory.make_Subnet()
+            factory.make_Subnet(space=RANDOM)
             for _ in range(3)
             ]
         nodes = [
@@ -339,7 +350,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_subnets_filters_by_multiple_not_space_arguments(self):
         # Create 3 different subnets (will be on 3 random spaces)
         subnets = [
-            factory.make_Subnet()
+            factory.make_Subnet(space=RANDOM)
             for _ in range(3)
             ]
         nodes = [
@@ -389,7 +400,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         subnets = [
             factory.make_Subnet(vlan=vlan)
             for vlan in vlans
-            ]
+        ]
         nodes = [
             factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
             for subnet in subnets

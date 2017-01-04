@@ -31,7 +31,6 @@ from django.db.models import (
     TextField,
 )
 from django.db.models.query import QuerySet
-from maasserver import DefaultMeta
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -188,7 +187,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
                 it with '0x' or '0b'.
             ' 'vlan:' Synonym for 'vid' for compatibility with older MAAS
                 versions.
-            * 'space:' Matches the name of this subnet's space.
+            * 'space:' Matches the name of this subnet's VLAN's space.
 
         If no specifier is given, the input will be treated as a CIDR. If
         the input is not a valid CIDR, it will be treated as subnet name.
@@ -217,7 +216,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
             'interface': (Interface.objects, 'ip_addresses__subnet'),
             'ip': self._add_ip_in_subnet_query,
             'name': "__name",
-            'space': (Space.objects, 'subnet'),
+            'space': (Space.objects, 'vlan__subnet'),
             'vid': self._add_vlan_vid_query,
             'vlan': (VLAN.objects, 'subnet'),
         }
@@ -284,15 +283,13 @@ class SubnetManager(Manager, SubnetQueriesMixin):
         queryset = SubnetQuerySet(self.model, using=self._db)
         return queryset
 
-    def create_from_cidr(self, cidr, vlan=None, space=None):
+    def create_from_cidr(self, cidr, vlan=None):
         """Create a subnet from the given CIDR."""
         name = "subnet-" + str(cidr)
-        from maasserver.models import (Space, VLAN)
-        if space is None:
-            space = Space.objects.get_default_space()
+        from maasserver.models import VLAN
         if vlan is None:
             vlan = VLAN.objects.get_default_vlan()
-        return self.create(name=name, cidr=cidr, vlan=vlan, space=space)
+        return self.create(name=name, cidr=cidr, vlan=vlan)
 
     def _find_fabric(self, fabric):
         from maasserver.models import Fabric
@@ -344,11 +341,9 @@ class SubnetManager(Manager, SubnetQueriesMixin):
 
 class Subnet(CleanSave, TimestampedModel):
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-        unique_together = (
-            ('name', 'space'),
-        )
+    def __init__(self, *args, **kwargs):
+        assert 'space' not in kwargs, "Subnets can no longer be in spaces."
+        super().__init__(*args, **kwargs)
 
     objects = SubnetManager()
 
@@ -362,9 +357,6 @@ class Subnet(CleanSave, TimestampedModel):
     vlan = ForeignKey(
         'VLAN', default=get_default_vlan, editable=True, blank=False,
         null=False, on_delete=PROTECT)
-
-    space = ForeignKey(
-        'Space', editable=True, blank=False, null=False, on_delete=PROTECT)
 
     # XXX:fabric: unique constraint should be relaxed once proper support for
     # fabrics is implemented. The CIDR must be unique withing a Fabric, not
@@ -402,6 +394,11 @@ class Subnet(CleanSave, TimestampedModel):
             return "%s (%s)" % (self.name, self.cidr)
         else:
             return self.name
+
+    @property
+    def space(self):
+        """Backward compatibility shim to get the space for this subnet."""
+        return self.vlan.space
 
     def get_ipnetwork(self) -> IPNetwork:
         return IPNetwork(self.cidr)

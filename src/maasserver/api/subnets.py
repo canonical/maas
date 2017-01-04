@@ -145,13 +145,9 @@ class SubnetHandler(OperationsHandler):
 
     @classmethod
     def space(cls, subnet):
-        """\
-        Return the name of the space.
-
-        Only the name is returned because the space endpoint will return
-        a list of all subnets in that space. If this returned the subnet
-        object then it would be an infinite loop.
-        """
+        """Return the name of the space, or None if the space is undefined."""
+        if subnet.space is None:
+            return None
         return subnet.space.get_name()
 
     def read(self, request, id):

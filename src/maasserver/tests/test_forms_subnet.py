@@ -9,7 +9,6 @@ import random
 
 from maasserver.forms_subnet import SubnetForm
 from maasserver.models.fabric import Fabric
-from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -25,11 +24,22 @@ class TestSubnetForm(MAASServerTestCase):
             "cidr": ["This field is required."],
             }, form.errors)
 
+    def test__rejects_provided_space(self):
+        space = factory.make_Space()
+        form = SubnetForm({
+            "space": space.id, "cidr": factory._make_random_network()
+        })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEqual({
+            "space": [
+                "Spaces may no longer be set on subnets. Set the space on the "
+                "underlying VLAN."
+            ]}, form.errors)
+
     def test__creates_subnet(self):
         subnet_name = factory.make_name("subnet")
         subnet_description = factory.make_name("description")
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
@@ -42,7 +52,6 @@ class TestSubnetForm(MAASServerTestCase):
             "name": subnet_name,
             "description": subnet_description,
             "vlan": vlan.id,
-            "space": space.id,
             "cidr": cidr,
             "gateway_ip": gateway_ip,
             "dns_servers": ','.join(dns_servers),
@@ -52,27 +61,11 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 name=subnet_name, description=subnet_description,
-                vlan=vlan, space=space, cidr=cidr,
-                gateway_ip=gateway_ip, dns_servers=dns_servers))
+                vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
+                dns_servers=dns_servers))
 
     def test__creates_subnet_name_equal_to_cidr(self):
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
-        network = factory.make_ip4_or_6_network()
-        cidr = str(network.cidr)
-        form = SubnetForm({
-            "vlan": vlan.id,
-            "space": space.id,
-            "cidr": cidr,
-        })
-        self.assertTrue(form.is_valid(), form.errors)
-        subnet = form.save()
-        self.assertThat(
-            subnet, MatchesStructure.byEquality(
-                name=cidr, vlan=vlan, space=space, cidr=cidr))
-
-    def test__creates_subnet_in_default_space(self):
-        vlan = factory.make_VLAN()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         form = SubnetForm({
@@ -83,8 +76,7 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = form.save()
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=cidr, vlan=vlan, cidr=cidr,
-                space=Space.objects.get_default_space()))
+                name=cidr, vlan=vlan, cidr=cidr))
 
     def test__creates_subnet_in_default_fabric_and_vlan(self):
         network = factory.make_ip4_or_6_network()
@@ -97,8 +89,7 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 name=cidr, cidr=cidr,
-                vlan=Fabric.objects.get_default_fabric().get_default_vlan(),
-                space=Space.objects.get_default_space()))
+                vlan=Fabric.objects.get_default_fabric().get_default_vlan()))
 
     def test__creates_subnet_in_default_vlan_in_fabric(self):
         fabric = factory.make_Fabric()
@@ -113,8 +104,7 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 name=cidr, cidr=cidr,
-                vlan=fabric.get_default_vlan(),
-                space=Space.objects.get_default_space()))
+                vlan=fabric.get_default_vlan()))
 
     def test__creates_subnet_in_default_fabric_with_vid(self):
         vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
@@ -128,9 +118,7 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = form.save()
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=cidr, cidr=cidr,
-                vlan=vlan,
-                space=Space.objects.get_default_space()))
+                name=cidr, cidr=cidr, vlan=vlan))
 
     def test__creates_subnet_in_fabric_with_vid(self):
         fabric = factory.make_Fabric()
@@ -146,9 +134,7 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = form.save()
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=cidr, cidr=cidr,
-                vlan=vlan,
-                space=Space.objects.get_default_space()))
+                name=cidr, cidr=cidr, vlan=vlan))
 
     def test__error_for_unknown_vid_in_default_fabric(self):
         fabric = factory.make_Fabric()
@@ -194,7 +180,7 @@ class TestSubnetForm(MAASServerTestCase):
             "vlan": ["VLAN %s is not in fabric %s." % (vlan, fabric)]
             }, form.errors)
 
-    def test__doest_require_vlan_space_or_cidr_on_update(self):
+    def test__doest_require_vlan_or_cidr_on_update(self):
         subnet = factory.make_Subnet()
         form = SubnetForm(instance=subnet, data={})
         self.assertTrue(form.is_valid(), form.errors)
@@ -204,7 +190,6 @@ class TestSubnetForm(MAASServerTestCase):
         new_description = factory.make_name("description")
         subnet = factory.make_Subnet()
         new_vlan = factory.make_VLAN()
-        new_space = factory.make_Space()
         new_network = factory.make_ip4_or_6_network()
         new_cidr = str(new_network.cidr)
         new_gateway_ip = factory.pick_ip_in_network(new_network)
@@ -217,7 +202,6 @@ class TestSubnetForm(MAASServerTestCase):
             "name": new_name,
             "description": new_description,
             "vlan": new_vlan.id,
-            "space": new_space.id,
             "cidr": new_cidr,
             "gateway_ip": new_gateway_ip,
             "dns_servers": ','.join(new_dns_servers),
@@ -228,8 +212,8 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertThat(
             subnet, MatchesStructure.byEquality(
                 name=new_name, description=new_description,
-                vlan=new_vlan, space=new_space, cidr=new_cidr,
-                gateway_ip=new_gateway_ip, dns_servers=new_dns_servers))
+                vlan=new_vlan, cidr=new_cidr, gateway_ip=new_gateway_ip,
+                dns_servers=new_dns_servers))
 
     def test__updates_subnet_name_to_cidr(self):
         subnet = factory.make_Subnet()
@@ -273,9 +257,8 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = reload_object(subnet)
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=new_name, vlan=subnet.vlan, space=subnet.space,
-                cidr=subnet.cidr, gateway_ip=subnet.gateway_ip,
-                dns_servers=subnet.dns_servers))
+                name=new_name, vlan=subnet.vlan, cidr=subnet.cidr,
+                gateway_ip=subnet.gateway_ip, dns_servers=subnet.dns_servers))
 
     def test__clears_gateway_and_dns_ervers(self):
         subnet = factory.make_Subnet()

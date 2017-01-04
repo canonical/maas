@@ -59,8 +59,8 @@ class TestRoutablePairs(MAASServerTestCase):
         node2, if2, sn2, sip2 = self.make_node_with_address(space, network2)
 
         # Routes between all addresses are found, even back to themselves.
-        left = node1.id, if1.id, sn1.id, sip1.ip
-        right = node2.id, if2.id, sn2.id, sip2.ip
+        left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
+        right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
         row = lambda ent1, ent2: ent1 + ent2 + (space.id, )
         expected = [
             row(left, left),
@@ -84,8 +84,8 @@ class TestRoutablePairs(MAASServerTestCase):
         # Only routes from left to left and right to right are found: right is
         # not routable from left, and left is not routable from right because
         # the spaces differ.
-        left = node1.id, if1.id, sn1.id, sip1.ip
-        right = node2.id, if2.id, sn2.id, sip2.ip
+        left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
+        right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
         expected = [
             left + left + (space1.id,),
             right + right + (space2.id,),
@@ -106,8 +106,8 @@ class TestRoutablePairs(MAASServerTestCase):
         # Only routes from left to left and right to right are found: right is
         # not routable from left, and left is not routable from right because
         # the address families differ.
-        left = node1.id, if1.id, sn1.id, sip1.ip
-        right = node2.id, if2.id, sn2.id, sip2.ip
+        left = node1.id, if1.id, sn1.id, sn1.vlan.id, sip1.ip
+        right = node2.id, if2.id, sn2.id, sn2.vlan.id, sip2.ip
         expected = [
             left + left + (space.id,),
             right + right + (space.id,),

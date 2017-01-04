@@ -50,7 +50,10 @@ from maasserver.models.tag import Tag
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+)
 from maasserver.utils.orm import (
     reload_object,
     transactional,
@@ -121,7 +124,8 @@ class TransactionalHelpersMixin:
         if params is None:
             params = {}
         params['with_boot_disk'] = False
-        return factory.make_Node(**params)
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        return factory.make_Node(vlan=vlan, **params)
 
     @transactional
     def update_node(self, system_id, params):
@@ -138,10 +142,11 @@ class TransactionalHelpersMixin:
     def create_device_with_parent(self, params=None):
         if params is None:
             params = {}
+        vlan = factory.make_VLAN(space=factory.make_Space())
         parent = factory.make_Node(with_boot_disk=False)
         params["node_type"] = NODE_TYPE.DEVICE
         params["parent"] = parent
-        device = factory.make_Node(**params)
+        device = factory.make_Node(vlan=vlan, **params)
         return device, parent
 
     @transactional
@@ -232,7 +237,7 @@ class TransactionalHelpersMixin:
     def create_subnet(self, params=None):
         if params is None:
             params = {}
-        return factory.make_Subnet(**params)
+        return factory.make_Subnet(**params, space=RANDOM)
 
     @transactional
     def update_subnet(self, id, params):
@@ -247,7 +252,7 @@ class TransactionalHelpersMixin:
     def create_vlan(self, params=None):
         if params is None:
             params = {}
-        return factory.make_VLAN(**params)
+        return factory.make_VLAN(**params, space=RANDOM)
 
     @transactional
     def update_vlan(self, id, params):

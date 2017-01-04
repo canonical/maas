@@ -111,7 +111,6 @@ from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.service import Service
-from maasserver.models.space import Space
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
@@ -275,14 +274,14 @@ class NodeQueriesMixin(MAASQueriesMixin):
         spaces.
         """
         return self.filter(
-            interface__ip_addresses__subnet__space__in=spaces)
+            interface__ip_addresses__subnet__vlan__space__in=spaces)
 
     def exclude_spaces(self, spaces):
         """Return the set of nodes without any interfaces in the specified
         spaces.
         """
         return self.exclude(
-            interface__ip_addresses__subnet__space__in=spaces)
+            interface__ip_addresses__subnet__vlan__space__in=spaces)
 
     def filter_by_fabrics(self, fabrics):
         """Return the set of nodes with at least one interface in the specified
@@ -4005,7 +4004,6 @@ class Controller(Node):
                         cidr=str(ip_network.cidr), defaults={
                             "name": str(ip_network.cidr),
                             "vlan": vlan,
-                            "space": Space.objects.get_default_space(),
                         })
 
                     # Make sure that the subnet is on the same VLAN as the
@@ -4044,7 +4042,6 @@ class Controller(Node):
                     cidr=str(ip_network.cidr), defaults={
                         "name": str(ip_network.cidr),
                         "vlan": vlan,
-                        "space": Space.objects.get_default_space(),
                     })
 
                 # Make sure that the subnet is on the same VLAN as the

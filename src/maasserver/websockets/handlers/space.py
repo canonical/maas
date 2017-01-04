@@ -20,7 +20,7 @@ class SpaceHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             Space.objects.all().prefetch_related(
-                "subnet_set__staticipaddress_set__interface_set"))
+                "vlan_set__subnet_set__staticipaddress_set__interface_set"))
         pk = 'id'
         form = SpaceForm
         form_requires_request = False
@@ -38,10 +38,10 @@ class SpaceHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         data["name"] = obj.get_name()
-        data["subnet_ids"] = [
-            subnet.id
-            for subnet in obj.subnet_set.all()
-        ]
+        data["vlan_ids"] = list(obj.vlan_set.order_by("id").values_list(
+            'id', flat=True))
+        data["subnet_ids"] = list(obj.subnet_set.order_by("id").values_list(
+            'id', flat=True))
         return data
 
     def delete(self, parameters):

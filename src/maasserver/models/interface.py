@@ -130,8 +130,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         # Circular imports.
         from maasserver.models import Space
         space = Space.objects.get_object_by_specifiers_or_raise(space)
-        current_q = op(
-            current_q, Q(vlan__subnet__space=space) | Q(vlan__space=space))
+        current_q = op(current_q, Q(vlan__space=space))
         return current_q
 
     def _add_default_query(self, current_q, op, item):

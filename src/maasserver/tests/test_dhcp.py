@@ -836,14 +836,14 @@ class TestMakeSubnetConfig(MAASServerTestCase):
     def test__sets_ntp_from_dict_argument(self):
         rack_controller = factory.make_RackController(interface=False)
         vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[])
+        subnet = factory.make_Subnet(vlan=vlan, dns_servers=[], space=None)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
         address = factory.make_StaticIPAddress(
             interface=interface, subnet=subnet,
             alloc_type=IPADDRESS_TYPE.STICKY)
         ntp_servers = {
-            (subnet.space_id, subnet.get_ipnetwork().version): address.ip,
+            (vlan.space_id, subnet.get_ipnetwork().version): address.ip,
         }
         default_domain = Domain.objects.get_default_domain()
         config = dhcp.make_subnet_config(

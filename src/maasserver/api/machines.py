@@ -1289,9 +1289,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # constraints, these need to be added to IGNORED_FIELDS in
         # src/maasserver/node_constraint_filter_forms.py.
         comment = get_optional_param(request.POST, 'comment')
+        input_constraints = str([
+            param for param in request.data.lists() if param[0] != 'op'])
         maaslog.info(
-            "Request from user %s to acquire a machine with constraints %s",
-            request.user.username, request.data)
+            "Request from user %s to acquire a machine with constraints: %s",
+            request.user.username, input_constraints)
         bridge_all = get_optional_param(
             request.POST, 'bridge_all', default=False, validator=StringBool)
         bridge_stp = get_optional_param(
@@ -1323,8 +1325,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     message = "No machine available."
                 else:
                     message = (
-                        "No available machine matches constraints: %s"
-                        % constraints)
+                        'No available machine matches constraints: %s '
+                        '(resolved to "%s")' % (
+                            input_constraints, constraints))
                 raise NodesNotAvailable(message)
             agent_name = request.data.get('agent_name', '')
             if not dry_run:

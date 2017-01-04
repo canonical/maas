@@ -107,12 +107,14 @@ maasserver_routable_pairs = dedent("""\
     SELECT if_left.node_id AS left_node_id,
            if_left.id AS left_interface_id,
            subnet_left.id AS left_subnet_id,
+           vlan_left.id AS left_vlan_id,
            sip_left.ip AS left_ip,
            if_right.node_id AS right_node_id,
            if_right.id AS right_interface_id,
            subnet_right.id AS right_subnet_id,
+           vlan_right.id AS right_vlan_id,
            sip_right.ip AS right_ip,
-           subnet_left.space_id AS space_id
+           vlan_left.space_id AS space_id
       FROM maasserver_interface AS if_left
       JOIN maasserver_interface_ip_addresses AS ifia_left
         ON if_left.id = ifia_left.interface_id
@@ -120,8 +122,12 @@ maasserver_routable_pairs = dedent("""\
         ON ifia_left.staticipaddress_id = sip_left.id
       JOIN maasserver_subnet AS subnet_left
         ON sip_left.subnet_id = subnet_left.id
+      JOIN maasserver_vlan AS vlan_left
+        ON subnet_left.vlan_id = vlan_left.id
+      JOIN maasserver_vlan AS vlan_right
+        ON vlan_left.space_id IS NOT DISTINCT FROM vlan_right.space_id
       JOIN maasserver_subnet AS subnet_right
-        ON subnet_left.space_id = subnet_right.space_id
+        ON vlan_right.id = subnet_right.vlan_id
       JOIN maasserver_staticipaddress AS sip_right
         ON subnet_right.id = sip_right.subnet_id
       JOIN maasserver_interface_ip_addresses AS ifia_right

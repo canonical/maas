@@ -21,7 +21,10 @@ from maasserver.testing.api import (
     APITestCase,
     explain_unexpected_response,
 )
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+)
 from maasserver.utils.orm import reload_object
 from provisioningserver.utils.network import (
     inet_ntop,
@@ -81,7 +84,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.become_admin()
         subnet_name = factory.make_name("subnet")
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
@@ -97,7 +99,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         response = self.client.post(uri, {
             "name": subnet_name,
             "vlan": vlan.id,
-            "space": space.id,
             "cidr": cidr,
             "gateway_ip": gateway_ip,
             "dns_servers": ','.join(dns_servers),
@@ -111,7 +112,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(subnet_name, created_subnet['name'])
         self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
-        self.assertEqual(space.get_name(), created_subnet['space'])
         self.assertEqual(cidr, created_subnet['cidr'])
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
@@ -123,7 +123,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.become_admin()
         subnet_name = factory.make_name("subnet")
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
@@ -137,7 +136,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         response = self.client.post(uri, {
             "name": subnet_name,
             "vlan": vlan.id,
-            "space": space.id,
             "cidr": cidr,
             "gateway_ip": gateway_ip,
             "dns_servers": ','.join(dns_servers),
@@ -149,7 +147,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(subnet_name, created_subnet['name'])
         self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
-        self.assertEqual(space.get_name(), created_subnet['space'])
         self.assertEqual(cidr, created_subnet['cidr'])
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
@@ -159,7 +156,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.become_admin()
         subnet_name = factory.make_name("subnet")
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
@@ -173,7 +169,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
         response = self.client.post(uri, {
             "name": subnet_name,
             "vlan": vlan.id,
-            "space": space.id,
             "cidr": cidr,
             "gateway_ip": gateway_ip,
             "dns_servers": ','.join(dns_servers),
@@ -185,7 +180,6 @@ class TestSubnetsAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(subnet_name, created_subnet['name'])
         self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
-        self.assertEqual(space.get_name(), created_subnet['space'])
         self.assertEqual(cidr, created_subnet['cidr'])
         self.assertEqual(gateway_ip, created_subnet['gateway_ip'])
         self.assertEqual(dns_servers, created_subnet['dns_servers'])
@@ -201,7 +195,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_create_requires_name_vlan_space_cidr(self):
+    def test_create_requires_cidr(self):
         self.become_admin()
         uri = get_subnets_uri()
         response = self.client.post(uri, {})
@@ -221,7 +215,7 @@ class TestSubnetAPI(APITestCase.ForUser):
             get_subnet_uri(subnet))
 
     def test_read(self):
-        subnet = factory.make_Subnet()
+        subnet = factory.make_Subnet(space=RANDOM)
         uri = get_subnet_uri(subnet)
         response = self.client.get(uri)
 

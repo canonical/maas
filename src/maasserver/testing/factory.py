@@ -157,6 +157,12 @@ undefined = object()
 RANDOM = object()
 
 
+# Use `RANDOM_OR_NONE` instead of `None` for default factory arguments when
+# `None` is a reasonable value for the argument and a random value /or/ None is
+# desired.
+RANDOM_OR_NONE = object()
+
+
 class Messages:
     """A class to record messages published by Django messaging
     framework.
@@ -856,22 +862,35 @@ class Factory(maastesting.factory.Factory):
         key.save()
         return key
 
+    def _maybe_make_Space(self, space):
+        if isinstance(space, Space):
+            return space
+        make_random_space = False
+        if space is RANDOM_OR_NONE:
+            make_random_space = random.choice([True, False])
+        if space is RANDOM:
+            make_random_space = True
+        if make_random_space:
+            space = factory.make_Space()
+        else:
+            space = None
+        return space
+
     def make_Space(self, name=None):
         space = Space(name=name)
         space.save()
         return space
 
-    def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
-                    gateway_ip=RANDOM, dns_servers=None, host_bits=None,
-                    fabric=None, vid=None, dhcp_on=False, version=None,
-                    rdns_mode=RDNS_MODE.DEFAULT, allow_proxy=True,
-                    managed=True):
+    def make_Subnet(self, name=None, vlan=None, cidr=None, gateway_ip=RANDOM,
+                    dns_servers=None, host_bits=None, fabric=None, vid=None,
+                    dhcp_on=False, version=None, rdns_mode=RDNS_MODE.DEFAULT,
+                    allow_proxy=True, managed=True, space=RANDOM_OR_NONE):
         if name is None:
             name = factory.make_name('name')
+        space = self._maybe_make_Space(space)
         if vlan is None:
-            vlan = factory.make_VLAN(fabric=fabric, vid=vid, dhcp_on=dhcp_on)
-        if space is None:
-            space = factory.make_Space()
+            vlan = factory.make_VLAN(
+                fabric=fabric, vid=vid, dhcp_on=dhcp_on, space=space)
         network = None
         if cidr is None:
             network = factory.make_ip4_or_6_network(
@@ -885,9 +904,12 @@ class Factory(maastesting.factory.Factory):
                 self.make_ip_address() for _ in range(random.randint(1, 3))]
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode,
+            dns_servers=dns_servers, rdns_mode=rdns_mode,
             allow_proxy=allow_proxy, managed=managed)
         subnet.save()
+        if subnet.vlan.space != space and space not in (undefined, None):
+            subnet.vlan.space = space
+            subnet.vlan.save()
         return subnet
 
     def make_StaticRoute(
@@ -1047,8 +1069,7 @@ class Factory(maastesting.factory.Factory):
         if vid is None:
             # Don't create the vid=0 VLAN, it's auto-created.
             vid = self._get_available_vid(fabric)
-        if space is RANDOM:
-            space = factory.make_Space()
+        space = self._maybe_make_Space(space)
         vlan = VLAN(
             name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on, space=space,
             primary_rack=primary_rack, secondary_rack=secondary_rack,

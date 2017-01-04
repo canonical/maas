@@ -321,7 +321,6 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
         subnets = {subnet4, subnet6a, subnet6b}
         for node in nodes:
             populate_node_with_addresses(node, subnets)
-
         for node in nodes:
             peers = get_peers_for(node)
             self.assertThat(peers, Not(HasLength(0)))

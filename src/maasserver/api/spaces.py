@@ -10,13 +10,17 @@ from maasserver.api.support import (
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_space import SpaceForm
-from maasserver.models import Space
+from maasserver.models import (
+    Space,
+    Subnet,
+)
 from piston3.utils import rc
 
 
 DISPLAYED_SPACE_FIELDS = (
     'id',
     'name',
+    'vlans',
     'subnets',
 )
 
@@ -68,12 +72,39 @@ class SpaceHandler(OperationsHandler):
     @classmethod
     def name(cls, space):
         """Return the name of the space."""
+        if space is None:
+            return None
         return space.get_name()
 
     @classmethod
     def subnets(cls, space):
-        """Return all subnets in this space."""
-        return space.subnet_set.all()
+        """Return an abbreviated view of each subnet in the space."""
+        subnets = Subnet.objects.filter(vlan__space=space)
+        return [
+            {
+                "id": subnet.id,
+                "name": subnet.name,
+                "cidr": str(subnet.cidr),
+                "vlan": subnet.vlan_id
+            }
+            for subnet in subnets
+        ]
+
+    @classmethod
+    def vlans(cls, space):
+        """Return an abbreviated view of each VLAN in the space."""
+        return [
+            {
+                "id": vlan.id,
+                "vid": vlan.vid,
+                "name": vlan.name,
+                "fabric": {
+                    "id": vlan.fabric.id,
+                    "name": vlan.fabric.name,
+                }
+            }
+            for vlan in space.vlan_set.all()
+        ]
 
     def read(self, request, id):
         """Read space.

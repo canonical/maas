@@ -80,7 +80,6 @@ from maasserver.models import (
     RegionController,
     RegionRackRPCConnection,
     Service,
-    Space,
     Storage,
     Subnet,
     UnknownInterface,
@@ -4009,9 +4008,11 @@ class NodeManagerTest(MAASServerTestCase):
         # Create a throwaway node and a throwaway space.
         # (to ensure they are filtered out.)
         factory.make_Space()
-        factory.make_Node_with_Interface_on_Subnet()
+        vlan1 = factory.make_VLAN(space=factory.make_Space())
+        vlan2 = factory.make_VLAN(space=factory.make_Space())
+        factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
         node = factory.make_Node_with_Interface_on_Subnet(
-            with_dhcp_rack_primary=False)
+            with_dhcp_rack_primary=False, vlan=vlan2)
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
@@ -4020,10 +4021,12 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_filter_nodes_by_not_spaces(self):
         factory.make_Space()
+        vlan1 = factory.make_VLAN(space=factory.make_Space())
+        vlan2 = factory.make_VLAN(space=factory.make_Space())
         extra_node = factory.make_Node_with_Interface_on_Subnet(
-            with_dhcp_rack_primary=False)
+            with_dhcp_rack_primary=False, vlan=vlan1)
         node = factory.make_Node_with_Interface_on_Subnet(
-            with_dhcp_rack_primary=False)
+            with_dhcp_rack_primary=False, vlan=vlan2)
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
@@ -6144,7 +6147,6 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 name=str(network.cidr),
                 cidr=str(network.cidr),
                 vlan=default_vlan,
-                space=Space.objects.get_default_space(),
                 gateway_ip=gateway_ip,
             ))
         eth0_addresses = list(eth0.ip_addresses.all())
@@ -6197,7 +6199,6 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 name=str(network.cidr),
                 cidr=str(network.cidr),
                 vlan=default_vlan,
-                space=Space.objects.get_default_space(),
             ))
         discovered_addresses = list(eth0.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED))
@@ -6662,7 +6663,6 @@ class TestUpdateInterfaces(MAASServerTestCase):
                 name=str(vlan_network.cidr),
                 cidr=str(vlan_network.cidr),
                 vlan=created_vlan,
-                space=Space.objects.get_default_space(),
             ))
         vlan_addresses = list(vlan_interface.ip_addresses.all())
         self.assertThat(vlan_addresses, HasLength(1))

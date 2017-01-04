@@ -51,7 +51,7 @@ class SpaceQueriesMixin(MAASQueriesMixin):
         specifier_types = {
             None: self._add_default_query,
             'name': "__name",
-            'subnet': (Subnet.objects, 'space'),
+            'subnet': (Subnet.objects, 'vlan__space'),
         }
         return super(SpaceQueriesMixin, self).get_specifiers_q(
             specifiers, specifier_types=specifier_types, separator=separator,
@@ -174,3 +174,10 @@ class Space(CleanSave, TimestampedModel):
     def clean(self, *args, **kwargs):
         super(Space, self).clean(*args, **kwargs)
         self.clean_name()
+
+    @property
+    def subnet_set(self):
+        """Backward compatibility shim to get the subnets on this space."""
+        # Circular imports.
+        from maasserver.models import Subnet
+        return Subnet.objects.filter(vlan__space=self)

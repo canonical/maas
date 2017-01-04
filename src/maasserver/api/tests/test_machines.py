@@ -609,7 +609,8 @@ class TestMachinesAPI(APITestCase.ForUser):
                 'name': hostname,
             })
         expected_response = (
-            "No available machine matches constraints: name=%s" % hostname
+            "No available machine matches constraints: [('name', "
+            "['%s'])] (resolved to \"name=%s\")" % (hostname, hostname)
         ).encode(settings.DEFAULT_CHARSET)
         self.assertEqual(http.client.CONFLICT, response.status_code)
         self.assertEqual(expected_response, response.content)
@@ -1011,8 +1012,10 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_POST_allocate_with_subnet_specifier_renders_error(self):
         space = factory.make_Space('foo')
-        s1 = factory.make_Subnet(space=space)
-        s2 = factory.make_Subnet(space=space)
+        v1 = factory.make_VLAN(space=space)
+        v2 = factory.make_VLAN(space=space)
+        s1 = factory.make_Subnet(vlan=v1, space=None)
+        s2 = factory.make_Subnet(vlan=v2, space=None)
         factory.make_Node_with_Interface_on_Subnet(subnet=s1)
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
@@ -1020,7 +1023,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         })
         self.assertThat(response.status_code, Equals(http.client.CONFLICT))
         expected_response = (
-            "No available machine matches constraints: subnets=%d,%d" % (
+            "No available machine matches constraints: [('subnets', "
+            "['space:foo'])] (resolved to \"subnets=%d,%d\")" % (
                 s1.pk, s2.pk)).encode(settings.DEFAULT_CHARSET)
         self.assertThat(response.content, Equals(expected_response))
 

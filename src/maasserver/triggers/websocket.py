@@ -497,11 +497,13 @@ SPACE_NODE_NOTIFY = dedent("""\
           maasserver_node,
           maasserver_space,
           maasserver_subnet,
+          maasserver_vlan,
           maasserver_interface,
           maasserver_interface_ip_addresses AS ip_link,
           maasserver_staticipaddress
         WHERE maasserver_space.id = %s
-        AND maasserver_subnet.space_id = maasserver_space.id
+        AND maasserver_subnet.vlan_id = maasserver_vlan.id
+        AND maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
         AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
         AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
         AND ip_link.interface_id = maasserver_interface.id

@@ -31,7 +31,8 @@ class SubnetHandler(TimestampedModelHandler):
     class Meta:
         queryset = (
             Subnet.objects.all()
-                  .select_related('space', 'vlan')
+                  .select_related('vlan')
+                  .select_related('vlan__space')
                   .prefetch_related('vlan__fabric')
                   .prefetch_related('staticipaddress_set__user')
                   .prefetch_related(
@@ -63,6 +64,7 @@ class SubnetHandler(TimestampedModelHandler):
         data['statistics'] = metadata.render_json(
             include_ranges=True, include_suggestions=True)
         data['version'] = IPNetwork(subnet.cidr).version
+        data['space'] = subnet.vlan.space_id
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)

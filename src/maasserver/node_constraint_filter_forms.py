@@ -681,7 +681,9 @@ class AcquireNodeForm(RenamableFieldsForm):
         :param field_name: Name of the constraint on this form, e.g. `zone`.
         :return: A constraint string, or `None` if the constraint is not set.
         """
-        value = self.cleaned_data[field_name]
+        value = self.cleaned_data.get(field_name, None)
+        if value is None:
+            return None
         if isinstance(self.fields[field_name], MultipleChoiceField):
             output = describe_multi_constraint_value(value)
         elif field_name == 'arch' and not isinstance(value, str):

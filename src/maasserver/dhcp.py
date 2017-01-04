@@ -255,9 +255,9 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
             IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED})
     rack_addresses = rack_addresses.exclude(subnet__isnull=True)
     rack_addresses = rack_addresses.order_by(
-        "subnet__space_id", "subnet__cidr", "ip")
+        "subnet__vlan__space_id", "subnet__cidr", "ip")
     rack_addresses = rack_addresses.values_list(
-        "subnet__space_id", "subnet__cidr", "ip")
+        "subnet__vlan__space_id", "subnet__cidr", "ip")
 
     def get_space_id_and_family(record):
         space_id, cidr, ip = record
@@ -396,7 +396,8 @@ def make_subnet_config(
 
     if isinstance(ntp_servers, dict):
         try:
-            ntp_server = ntp_servers[subnet.space_id, subnet.get_ip_version()]
+            ntp_server = ntp_servers[
+                subnet.vlan.space_id, subnet.get_ip_version()]
         except KeyError:
             ntp_servers = []
         else:

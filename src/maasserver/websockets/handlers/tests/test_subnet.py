@@ -39,7 +39,7 @@ class TestSubnetHandler(MAASServerTestCase):
                 if subnet.dns_servers is not None else ''
             ),
             "vlan": subnet.vlan_id,
-            "space": subnet.space_id,
+            "space": subnet.vlan.space_id,
             "rdns_mode": subnet.rdns_mode,
             "allow_proxy": subnet.allow_proxy,
             "cidr": subnet.cidr,

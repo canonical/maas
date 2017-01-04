@@ -24,10 +24,10 @@ class TestSpaceHandler(MAASServerTestCase):
             "description": space.description,
             "updated": dehydrate_datetime(space.updated),
             "created": dehydrate_datetime(space.created),
-            "subnet_ids": [
-                subnet.id
-                for subnet in space.subnet_set.all()
-            ],
+            "subnet_ids": sorted(
+                subnet.id for subnet in space.subnet_set.all()),
+            "vlan_ids": sorted(
+                vlan.id for vlan in space.vlan_set.all())
         }
         return data
 

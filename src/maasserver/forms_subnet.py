@@ -141,8 +141,11 @@ class SubnetForm(MAASModelForm):
 
     def _clean_space(self, cleaned_data):
         space = cleaned_data.get("space", None)
-        if space is None:
-            cleaned_data["space"] = Space.objects.get_default_space()
+        if space is not None:
+            set_form_error(
+                self, "space",
+                "Spaces may no longer be set on subnets. Set the space on the "
+                "underlying VLAN.")
         return cleaned_data
 
     def _clean_dns_servers(self, cleaned_data):

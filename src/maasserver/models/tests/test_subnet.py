@@ -32,7 +32,11 @@ from maasserver.models.subnet import (
     create_cidr,
     Subnet,
 )
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+    RANDOM_OR_NONE,
+)
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -146,9 +150,11 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
             [subnet1, subnet2])
 
     def test__filter_by_specifiers_matches_space_name_if_requested(self):
-        subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
-        subnet2 = factory.make_Subnet(name="subnet2")
-        factory.make_Subnet(name="subnet3")
+        subnet1 = factory.make_Subnet(
+            name="subnet1", cidr="8.8.8.0/24", space=RANDOM)
+        subnet2 = factory.make_Subnet(
+            name="subnet2", space=RANDOM)
+        factory.make_Subnet(name="subnet3", space=RANDOM_OR_NONE)
         self.assertItemsEqual(
             Subnet.objects.filter_by_specifiers(
                 ["space:%s" % subnet1.space.name,
@@ -427,7 +433,7 @@ class SubnetTest(MAASServerTestCase):
     def test_creates_subnet(self):
         name = factory.make_name('name')
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
+        factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
@@ -438,19 +444,19 @@ class SubnetTest(MAASServerTestCase):
         allow_proxy = factory.pick_bool()
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode,
+            dns_servers=dns_servers, rdns_mode=rdns_mode,
             allow_proxy=allow_proxy)
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
-            name=name, vlan=vlan, cidr=cidr, space=space,
-            gateway_ip=gateway_ip, dns_servers=dns_servers,
-            rdns_mode=rdns_mode, allow_proxy=allow_proxy))
+            name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
+            dns_servers=dns_servers, rdns_mode=rdns_mode,
+            allow_proxy=allow_proxy))
 
     def test_creates_subnet_with_correct_defaults(self):
         name = factory.make_name('name')
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
+        factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
@@ -459,17 +465,17 @@ class SubnetTest(MAASServerTestCase):
             for _ in range(random.randint(1, 3))]
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers)
+            dns_servers=dns_servers)
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
-            name=name, vlan=vlan, cidr=cidr, space=space,
-            gateway_ip=gateway_ip, dns_servers=dns_servers,
-            rdns_mode=RDNS_MODE.DEFAULT, allow_proxy=True))
+            name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
+            dns_servers=dns_servers, rdns_mode=RDNS_MODE.DEFAULT,
+            allow_proxy=True))
 
     def test_creates_subnet_with_default_name_if_name_is_none(self):
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
+        factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
@@ -479,17 +485,16 @@ class SubnetTest(MAASServerTestCase):
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         subnet = Subnet(
             name=None, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode)
+            dns_servers=dns_servers, rdns_mode=rdns_mode)
         subnet.save()
         subnet_from_db = Subnet.objects.get(cidr=cidr)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
-            name=str(cidr), vlan=vlan, cidr=cidr, space=space,
+            name=str(cidr), vlan=vlan, cidr=cidr,
             gateway_ip=gateway_ip, dns_servers=dns_servers,
             rdns_mode=rdns_mode))
 
     def test_creates_subnet_with_default_name_if_name_is_empty(self):
         vlan = factory.make_VLAN()
-        space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
@@ -499,13 +504,17 @@ class SubnetTest(MAASServerTestCase):
         rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         subnet = Subnet(
             name="", vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode)
+            dns_servers=dns_servers, rdns_mode=rdns_mode)
         subnet.save()
         subnet_from_db = Subnet.objects.get(cidr=cidr)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
-            name=str(cidr), vlan=vlan, cidr=cidr, space=space,
-            gateway_ip=gateway_ip, dns_servers=dns_servers,
-            rdns_mode=rdns_mode))
+            name=str(cidr), vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
+            dns_servers=dns_servers, rdns_mode=rdns_mode))
+
+    def test_disallows_creation_with_space(self):
+        with ExpectedException(AssertionError):
+            space = factory.make_Space()
+            Subnet(space=space)
 
     def test_validates_gateway_ip(self):
         error = self.assertRaises(
@@ -534,11 +543,10 @@ class SubnetTest(MAASServerTestCase):
     def test_create_from_cidr_creates_subnet(self):
         vlan = factory.make_VLAN()
         cidr = str(factory.make_ip4_or_6_network().cidr)
-        space = factory.make_Space()
         name = "subnet-" + cidr
-        subnet = Subnet.objects.create_from_cidr(cidr, vlan, space)
+        subnet = Subnet.objects.create_from_cidr(cidr, vlan)
         self.assertThat(subnet, MatchesStructure.byEquality(
-            name=name, vlan=vlan, cidr=cidr, space=space,
+            name=name, vlan=vlan, cidr=cidr,
             gateway_ip=None, dns_servers=[]))
 
     def test_get_subnets_with_ip_finds_matching_subnet(self):

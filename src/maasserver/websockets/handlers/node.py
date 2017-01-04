@@ -50,7 +50,7 @@ def node_prefetch(queryset):
         .select_related('boot_interface', 'owner', 'zone', 'domain')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')
-        .prefetch_related('interface_set__ip_addresses__subnet__space')
+        .prefetch_related('interface_set__ip_addresses__subnet__vlan__space')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__fabric')
         .prefetch_related('interface_set__vlan__fabric')
         .prefetch_related('special_filesystems')
@@ -474,7 +474,8 @@ class NodeHandler(TimestampedModelHandler):
     def get_all_space_names(self, subnets):
         space_names = set()
         for subnet in subnets:
-            space_names.add(subnet.space.name)
+            if subnet.space is not None:
+                space_names.add(subnet.space.name)
         return list(space_names)
 
     def get_blockdevices_for(self, obj):

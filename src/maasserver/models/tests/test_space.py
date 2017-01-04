@@ -11,7 +11,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
-from django.db.models import ProtectedError
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.space import (
     DEFAULT_SPACE_NAME,
@@ -19,8 +18,11 @@ from maasserver.models.space import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import MatchesStructure
-from testtools.testcase import ExpectedException
+from maasserver.utils.orm import reload_object
+from testtools.matchers import (
+    Equals,
+    MatchesStructure,
+)
 
 
 class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
@@ -199,8 +201,9 @@ class SpaceTest(MAASServerTestCase):
         space.delete()
         self.assertItemsEqual([], Space.objects.filter(name=name))
 
-    def test_cant_be_deleted_if_contains_subnet(self):
+    def test_sets_null_if_contains_vlan(self):
         space = factory.make_Space()
-        factory.make_Subnet(space=space)
-        with ExpectedException(ProtectedError):
-            space.delete()
+        subnet = factory.make_Subnet(space=space)
+        space.delete()
+        subnet = reload_object(subnet)
+        self.assertThat(subnet.vlan.space, Equals(None))

@@ -79,7 +79,7 @@ class VLANHandler(TimestampedModelHandler):
         if not for_list:
             data["node_ids"] = sorted([node.id for node in nodes])
             data["space_ids"] = sorted(list({
-                subnet.space_id
+                subnet.vlan.space_id
                 for subnet in obj.subnet_set.all()
             }))
         return data

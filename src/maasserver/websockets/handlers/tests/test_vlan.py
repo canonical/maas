@@ -57,16 +57,16 @@ class TestVLANHandler(MAASServerTestCase):
                 for interface in vlan.interface_set.all()
                 if interface.node_id is not None
             }))
-            data['space_ids'] = sorted([
+            data['space_ids'] = sorted({
                 subnet.space.id
                 for subnet in vlan.subnet_set.all()
-                ])
+                })
         return data
 
     def test_get(self):
         user = factory.make_User()
         handler = VLANHandler(user, {})
-        vlan = factory.make_VLAN()
+        vlan = factory.make_VLAN(space=factory.make_Space())
         for _ in range(3):
             factory.make_Subnet(vlan=vlan)
         for _ in range(3):

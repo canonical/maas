@@ -32,7 +32,6 @@ from maasserver.models import (
     interface as interface_module,
     MDNS,
     Neighbour,
-    Space,
     StaticIPAddress,
     Subnet,
     VLAN,
@@ -536,8 +535,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test__filter_by_specifiers_matches_space_by_subnet(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
-        subnet1 = factory.make_Subnet(space=space1)
-        subnet2 = factory.make_Subnet(space=space2)
+        vlan1 = factory.make_VLAN(space=space1)
+        vlan2 = factory.make_VLAN(space=space2)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(
@@ -560,8 +561,8 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
         vlan2 = factory.make_VLAN(space=space2)
-        subnet1 = factory.make_Subnet(vlan=vlan1)
-        subnet2 = factory.make_Subnet(vlan=vlan2)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(
@@ -635,8 +636,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test__get_matching_node_map(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
-        subnet1 = factory.make_Subnet(space=space1)
-        subnet2 = factory.make_Subnet(space=space2)
+        vlan1 = factory.make_VLAN(space=space1)
+        vlan2 = factory.make_VLAN(space=space2)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(
@@ -662,8 +665,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test__get_matching_node_map_with_multiple_interfaces(self):
         space1 = factory.make_Space()
         space2 = factory.make_Space()
-        subnet1 = factory.make_Subnet(space=space1)
-        subnet2 = factory.make_Subnet(space=space2)
+        vlan1 = factory.make_VLAN(space=space1)
+        vlan2 = factory.make_VLAN(space=space2)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(
@@ -1772,10 +1777,8 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         interface.update_ip_addresses([cidr])
 
         default_fabric = Fabric.objects.get_default_fabric()
-        default_space = Space.objects.get_default_space()
         subnets = Subnet.objects.filter(
-            cidr=str(network.cidr), vlan__fabric=default_fabric,
-            space=default_space)
+            cidr=str(network.cidr), vlan__fabric=default_fabric)
         self.assertEqual(1, len(subnets))
         self.assertEqual(1, interface.ip_addresses.count())
         self.assertThat(
