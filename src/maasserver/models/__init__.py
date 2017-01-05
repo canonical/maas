@@ -46,6 +46,7 @@ __all__ = [
     'Neighbour',
     'Node',
     'NodeGroupToRackController',
+    'Notification',
     'OwnerData',
     'PackageRepository',
     'Partition',
@@ -147,6 +148,7 @@ from maasserver.models.node import (
     RegionController,
     Storage,
 )
+from maasserver.models.notification import Notification
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
