@@ -28,16 +28,16 @@ from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.drivers.chassis import ChassisDriverRegistry
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
-from provisioningserver.drivers.power import PowerDriverRegistry
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,

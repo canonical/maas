@@ -197,7 +197,7 @@ def get_driver_choices(driver_type=DriverType.power):
     return [
         (name, description)
         for name, description in get_driver_types(
-            driver_type=driver_type).items()
+            driver_type=driver_type, ignore_errors=True).items()
         ]
 
 

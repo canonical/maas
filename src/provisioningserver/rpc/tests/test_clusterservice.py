@@ -57,18 +57,16 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network_v1,
 )
 from provisioningserver.drivers.chassis import (
-    ChassisDriverRegistry,
     DiscoveredChassis,
     DiscoveredChassisHints,
 )
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
 )
-from provisioningserver.drivers.power import (
-    PowerDriverRegistry,
-    PowerError,
-)
+from provisioningserver.drivers.power import PowerError
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     boot_images,

@@ -8,7 +8,7 @@ from django.db import (
 )
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import timestampedmodel
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 # Derived from Subnet model.
 def raw_subnet_id_containing_ip(ip):

@@ -6,21 +6,33 @@
 __all__ = []
 
 import random
-from unittest.mock import Mock
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from maasserver.clusterrpc import chassis as chassis_module
-from maasserver.clusterrpc.chassis import discover_chassis
+from maasserver.clusterrpc.chassis import (
+    discover_chassis,
+    get_best_discovered_result,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.chassis import (
     DiscoveredChassis,
     DiscoveredChassisHints,
 )
-from provisioningserver.rpc.exceptions import UnknownChassisType
+from provisioningserver.rpc.exceptions import (
+    ChassisActionFail,
+    UnknownChassisType,
+)
 from testtools.matchers import (
     Equals,
+    Is,
     IsInstance,
+    MatchesAny,
     MatchesDict,
 )
 from twisted.internet import reactor
@@ -131,3 +143,48 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
         self.assertThat(discovered[1], MatchesDict({
             rack_id: IsInstance(CancelledError),
         }))
+
+
+class TestGetBestDiscoveredResult(MAASTestCase):
+
+    def test_returns_one_of_the_discovered(self):
+        self.assertThat(get_best_discovered_result(({
+            factory.make_name("system_id"): sentinel.first,
+            factory.make_name("system_id"): sentinel.second,
+            }, {})), MatchesAny(Is(sentinel.first), Is(sentinel.second)))
+
+    def test_returns_None(self):
+        self.assertIsNone(get_best_discovered_result(({}, {})))
+
+    def test_raises_unknown_exception(self):
+        exc_type = factory.make_exception_type()
+        self.assertRaises(exc_type, get_best_discovered_result, ({}, {
+            factory.make_name("system_id"): exc_type(),
+        }))
+
+    def test_raises_UnknownChassisType_over_unknown(self):
+        exc_type = factory.make_exception_type()
+        self.assertRaises(
+            UnknownChassisType, get_best_discovered_result, ({}, {
+                factory.make_name("system_id"): exc_type(),
+                factory.make_name("system_id"): UnknownChassisType("unknown"),
+            }))
+
+    def test_raises_NotImplemended_over_UnknownChassisType(self):
+        exc_type = factory.make_exception_type()
+        self.assertRaises(
+            NotImplementedError, get_best_discovered_result, ({}, {
+                factory.make_name("system_id"): exc_type(),
+                factory.make_name("system_id"): UnknownChassisType("unknown"),
+                factory.make_name("system_id"): NotImplementedError(),
+            }))
+
+    def test_raises_ChassisActionFail_over_NotImplemended(self):
+        exc_type = factory.make_exception_type()
+        self.assertRaises(
+            ChassisActionFail, get_best_discovered_result, ({}, {
+                factory.make_name("system_id"): exc_type(),
+                factory.make_name("system_id"): UnknownChassisType("unknown"),
+                factory.make_name("system_id"): NotImplementedError(),
+                factory.make_name("system_id"): ChassisActionFail(),
+            }))

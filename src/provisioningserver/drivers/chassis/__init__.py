@@ -19,7 +19,6 @@ from abc import (
 )
 
 import attr
-from jsonschema import validate
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
@@ -28,7 +27,6 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerDriverBase,
 )
-from provisioningserver.utils.registry import Registry
 
 # JSON schema for what a chassis driver definition should look like.
 JSON_CHASSIS_DRIVER_SCHEMA = {
@@ -266,26 +264,3 @@ class ChassisDriver(PowerDriver, ChassisDriverBase):
     """Default chassis driver."""
 
     composable = False
-
-
-class ChassisDriverRegistry(Registry):
-    """Registry for chassis drivers."""
-
-    @classmethod
-    def get_schema(cls, detect_missing_packages=True):
-        """Returns the full schema for the registry."""
-        schemas = [
-            driver.get_schema(detect_missing_packages=detect_missing_packages)
-            for _, driver in cls
-        ]
-        validate(schemas, JSON_CHASSIS_DRIVERS_SCHEMA)
-        return schemas
-
-
-from provisioningserver.drivers.chassis.null import NullChassisDriver
-
-chassis_drivers = [
-    NullChassisDriver()
-]
-for driver in chassis_drivers:
-    ChassisDriverRegistry.register_item(driver.name, driver)

@@ -6,11 +6,18 @@ __all__ = [
     "ChassisHandler",
     ]
 
+from django.shortcuts import get_object_or_404
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
 )
+from maasserver.api.support import (
+    admin_method,
+    operation,
+)
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import ChassisForm
 from maasserver.models.node import Chassis
 from piston3.utils import rc
 
@@ -37,6 +44,9 @@ class ChassiHandler(NodeHandler):
     model = Chassis
     fields = DISPLAYED_CHASSIS_FIELDS
 
+    # Remove following operations inherited from NodesHandler.
+    details = power_parameters = None
+
     @classmethod
     def chassis_type(cls, chassis):
         return chassis.power_type
@@ -54,6 +64,23 @@ class ChassiHandler(NodeHandler):
         chassis.delete()
         return rc.DELETED
 
+    @admin_method
+    @operation(idempotent=True)
+    def chassis_parameters(self, request, system_id):
+        """Obtain chassis parameters.
+
+        This method is reserved for admin users and returns a 403 if the
+        user is not one.
+
+        This returns the chassis parameters, if any, configured for a
+        chassis. For some types of chassis this will include private
+        information such as passwords and secret keys.
+
+        Returns 404 if the chassis is not found.
+        """
+        chassis = get_object_or_404(self.model, system_id=system_id)
+        return chassis.power_parameters
+
     @classmethod
     def resource_uri(cls, chassis=None):
         # This method is called by piston in two different contexts:
@@ -70,9 +97,29 @@ class ChassiHandler(NodeHandler):
 class ChassisHandler(NodesHandler):
     """Manage the collection of all the chassis in the MAAS."""
     api_doc_section_name = "Chassis"
-    create = update = delete = None
+    update = delete = None
     base_model = Chassis
+
+    # Remove following operations inherited from NodesHandler.
+    is_registered = set_zone = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('chassis_handler', [])
+
+    @admin_method
+    def create(self, request):
+        """Create a Chassis.
+
+        :param chassis_type: Type of chassis to create.
+        :param hostname: Hostname for the chassis (optional).
+
+        Returns 503 if the chassis could not be discovered.
+        Returns 404 if the chassis is not found.
+        Returns 403 if the user does not have permission to create a chassis.
+        """
+        form = ChassisForm(data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)

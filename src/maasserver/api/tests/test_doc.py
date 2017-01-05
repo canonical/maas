@@ -28,6 +28,7 @@ from maasserver.api.doc import (
     describe_resource,
     find_api_resources,
     generate_api_docs,
+    generate_chassis_types_doc,
     generate_power_types_doc,
     get_api_description_hash,
     hash_canonical,
@@ -50,7 +51,8 @@ from maastesting.testcase import MAASTestCase
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -419,7 +421,7 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
     def test__generate_power_types_doc_generates_describes_power_type(self):
         power_driver = random.choice([
             driver
-            for _, driver in PowerDriverRegistry
+            for _, driver in PowerDriverRegistry.only_power()
             if len(driver.settings) > 0
         ])
         doc = generate_power_types_doc()
@@ -430,6 +432,26 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
                 power_driver.description,
                 power_driver.settings[0]['name'],
                 power_driver.settings[0]['label']]))
+
+
+class TestGenerateChassisTypesDoc(MAASTestCase):
+    """Tests for `generate_chassis_types_doc`."""
+
+    def test__generate_chassis_types_doc_generates_doc(self):
+        doc = generate_chassis_types_doc()
+        self.assertThat(doc, ContainsAll(["Chassis types", "null"]))
+
+    def test__generate_chassis_types_doc_generates_describes_types(self):
+        chassis_driver = random.choice([
+            driver
+            for _, driver in ChassisDriverRegistry
+        ])
+        doc = generate_chassis_types_doc()
+        self.assertThat(
+            doc,
+            ContainsAll([
+                chassis_driver.name,
+                chassis_driver.description]))
 
 
 class TestDescribeCanonical(MAASTestCase):

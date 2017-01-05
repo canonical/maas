@@ -6,8 +6,14 @@
 __all__ = []
 
 import http.client
+import random
 
 from django.core.urlresolvers import reverse
+from maasserver import forms
+from maasserver.clusterrpc.driver_parameters import (
+    DriverType,
+    get_driver_choices,
+)
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
@@ -16,6 +22,10 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from provisioningserver.drivers.chassis import (
+    DiscoveredChassis,
+    DiscoveredChassisHints,
+)
 
 
 class TestChassisAPI(APITestCase.ForUser):
@@ -85,6 +95,57 @@ class TestChassisAPI(APITestCase.ForUser):
                 'resource_uri',
             ],
             list(parsed_result[0]))
+
+    def test_create_requires_admin(self):
+        chassis_type = random.choice(
+            get_driver_choices(driver_type=DriverType.chassis))[0]
+        response = self.client.post(reverse('chassis_handler'), {
+            "chassis_type": chassis_type,
+        })
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_create_creates_chassis(self):
+        self.become_admin()
+        discovered_chassis = DiscoveredChassis(
+            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+            local_storage=random.randint(1024, 1024 * 1024),
+            cpu_speed=random.randint(2048, 4048),
+            hints=DiscoveredChassisHints(
+                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+                local_storage=random.randint(1024, 1024 * 1024),
+                cpu_speed=random.randint(2048, 4048)))
+        discovered_rack_1 = factory.make_RackController()
+        discovered_rack_2 = factory.make_RackController()
+        failed_rack = factory.make_RackController()
+        self.patch(forms, "discover_chassis").return_value = ({
+            discovered_rack_1.system_id: discovered_chassis,
+            discovered_rack_2.system_id: discovered_chassis,
+        }, {
+            failed_rack.system_id: factory.make_exception(),
+        })
+        chassis_type = random.choice(
+            get_driver_choices(driver_type=DriverType.chassis))[0]
+
+        response = self.client.post(reverse('chassis_handler'), {
+            "chassis_type": chassis_type,
+        })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(parsed_result['chassis_type'], chassis_type)
+
+    def test_create_proper_return_on_exception(self):
+        self.become_admin()
+        failed_rack = factory.make_RackController()
+        self.patch(forms, "discover_chassis").return_value = ({}, {
+            failed_rack.system_id: factory.make_exception(),
+        })
+        chassis_type = random.choice(
+            get_driver_choices(driver_type=DriverType.chassis))[0]
+
+        response = self.client.post(reverse('chassis_handler'), {
+            "chassis_type": chassis_type,
+        })
+        self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
 
 
 def get_chassi_uri(chassis):

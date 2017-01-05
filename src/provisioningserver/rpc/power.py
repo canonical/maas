@@ -15,9 +15,9 @@ import sys
 
 from provisioningserver.drivers.power import (
     get_error_message,
-    PowerDriverRegistry,
     PowerError,
 )
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_TYPES,
     send_node_event,

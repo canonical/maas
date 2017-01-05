@@ -30,7 +30,6 @@ from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
-from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.twisted import pause
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -390,56 +389,3 @@ class PowerDriver(PowerDriverBase):
         else:
             # Report the last error.
             raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
-
-
-class PowerDriverRegistry(Registry):
-    """Registry for power drivers."""
-
-    @classmethod
-    def get_schema(cls, detect_missing_packages=True):
-        """Returns the full schema for the registry."""
-        schemas = [
-            driver.get_schema(detect_missing_packages=detect_missing_packages)
-            for _, driver in cls
-        ]
-        validate(schemas, JSON_POWER_DRIVERS_SCHEMA)
-        return schemas
-
-
-from provisioningserver.drivers.power.amt import AMTPowerDriver
-from provisioningserver.drivers.power.apc import APCPowerDriver
-from provisioningserver.drivers.power.dli import DLIPowerDriver
-from provisioningserver.drivers.power.wedge import WedgePowerDriver
-from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
-from provisioningserver.drivers.power.hmc import HMCPowerDriver
-from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
-from provisioningserver.drivers.power.manual import ManualPowerDriver
-from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
-from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
-from provisioningserver.drivers.power.mscm import MSCMPowerDriver
-from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
-from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
-from provisioningserver.drivers.power.virsh import VirshPowerDriver
-from provisioningserver.drivers.power.vmware import VMwarePowerDriver
-from provisioningserver.drivers.power.nova import NovaPowerDriver
-
-power_drivers = [
-    AMTPowerDriver(),
-    APCPowerDriver(),
-    DLIPowerDriver(),
-    WedgePowerDriver(),
-    FenceCDUPowerDriver(),
-    HMCPowerDriver(),
-    IPMIPowerDriver(),
-    ManualPowerDriver(),
-    MicrosoftOCSPowerDriver(),
-    MoonshotIPMIPowerDriver(),
-    MSCMPowerDriver(),
-    SeaMicroPowerDriver(),
-    UCSMPowerDriver(),
-    VirshPowerDriver(),
-    VMwarePowerDriver(),
-    NovaPowerDriver(),
-]
-for driver in power_drivers:
-    PowerDriverRegistry.register_item(driver.name, driver)

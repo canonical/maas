@@ -18,7 +18,6 @@ from provisioningserver.drivers.chassis import (
     ChassisConnError,
     ChassisDriver,
     ChassisDriverBase,
-    ChassisDriverRegistry,
     ChassisError,
     DiscoveredChassis,
     DiscoveredChassisHints,
@@ -28,7 +27,6 @@ from provisioningserver.drivers.chassis import (
     get_error_message,
     JSON_CHASSIS_DRIVER_SCHEMA,
 )
-from provisioningserver.utils.testing import RegistryFixture
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -525,47 +523,6 @@ class TestChassisDriverBase(MAASTestCase):
         fake_driver = make_chassis_driver_base()
         #: doesn't raise ValidationError
         validate(fake_driver.get_schema(), JSON_CHASSIS_DRIVER_SCHEMA)
-
-
-class TestChassisDriverRegistry(MAASTestCase):
-
-    def setUp(self):
-        super(TestChassisDriverRegistry, self).setUp()
-        # Ensure the global registry is empty for each test run.
-        self.useFixture(RegistryFixture())
-
-    def test_registry(self):
-        self.assertItemsEqual([], ChassisDriverRegistry)
-        ChassisDriverRegistry.register_item("driver", sentinel.driver)
-        self.assertIn(
-            sentinel.driver,
-            (item for name, item in ChassisDriverRegistry))
-
-    def test_get_schema(self):
-        fake_driver_one = make_chassis_driver_base()
-        fake_driver_two = make_chassis_driver_base()
-        ChassisDriverRegistry.register_item(
-            fake_driver_one.name, fake_driver_one)
-        ChassisDriverRegistry.register_item(
-            fake_driver_two.name, fake_driver_two)
-        self.assertItemsEqual([
-            {
-                'name': fake_driver_one.name,
-                'description': fake_driver_one.description,
-                'fields': [],
-                'queryable': fake_driver_one.queryable,
-                'missing_packages': fake_driver_one.detect_missing_packages(),
-                'composable': fake_driver_one.composable,
-            },
-            {
-                'name': fake_driver_two.name,
-                'description': fake_driver_two.description,
-                'fields': [],
-                'queryable': fake_driver_two.queryable,
-                'missing_packages': fake_driver_two.detect_missing_packages(),
-                'composable': fake_driver_two.composable,
-            }],
-            ChassisDriverRegistry.get_schema())
 
 
 class TestGetErrorMessage(MAASTestCase):

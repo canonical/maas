@@ -26,7 +26,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.rpc import getAllClients
 from provisioningserver.drivers import SETTING_SCOPE
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger
 
 

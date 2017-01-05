@@ -159,7 +159,7 @@ from netaddr import (
 )
 import petname
 from piston3.models import Token
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -4634,7 +4634,10 @@ class Chassis(Node):
         self.chassis_hints.cores = discovered_hints.cores
         self.chassis_hints.cpu_speed = discovered_hints.cpu_speed
         self.chassis_hints.memory = discovered_hints.memory
-        self.chassis_hints.local_storage = discovered_hints.local_storage
+        # XXX blake_r 2017-01-05: local_storage field needs to be changed to
+        # a BigIntegerField to hold larger values. At the moment we set this
+        # to zero to work around the issues.
+        self.chassis_hints.local_storage = 0  # discovered_hints.local_storage
         self.chassis_hints.save()
 
     def _find_existing_machine(self, discovered_machine, mac_machine_map):

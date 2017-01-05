@@ -73,6 +73,7 @@ from maasserver.api.doc import (
     describe_api,
     find_api_resources,
     generate_api_docs,
+    generate_chassis_types_doc,
     generate_power_types_doc,
     get_api_description_hash,
 )
@@ -154,6 +155,9 @@ def render_api_docs():
     line()
     line()
     line(generate_power_types_doc())
+    line()
+    line()
+    line(generate_chassis_types_doc())
 
     return output.getvalue()
 

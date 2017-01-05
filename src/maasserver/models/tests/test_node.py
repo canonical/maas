@@ -164,7 +164,7 @@ from provisioningserver.drivers.chassis import (
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
 )
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -9001,7 +9001,7 @@ class TestChassis(MAASServerTestCase):
                     cores=Equals(discovered.hints.cores),
                     cpu_speed=Equals(discovered.hints.cpu_speed),
                     memory=Equals(discovered.hints.memory),
-                    local_storage=Equals(discovered.hints.local_storage),
+                    local_storage=Equals(0),
                 ),
             ))
 

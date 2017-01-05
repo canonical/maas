@@ -48,7 +48,7 @@ from maasserver.utils.orm import (
     reload_object,
 )
 from maastesting.twisted import always_succeed_with
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,

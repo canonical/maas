@@ -30,7 +30,7 @@ from maasserver.models import (
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,

@@ -11,8 +11,8 @@ from unittest.mock import Mock
 
 from fixtures import Fixture
 from maasserver.clusterrpc import driver_parameters
-from provisioningserver.drivers.chassis import ChassisDriverRegistry
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from testtools import monkey
 
 

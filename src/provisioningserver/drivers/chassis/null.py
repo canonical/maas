@@ -28,7 +28,7 @@ class NullChassisDriver(ChassisDriver):
             DiscoveredChassis(
                 cores=0, cpu_speed=0, local_storage=0, memory=0,
                 hints=DiscoveredChassisHints(
-                    cores=0, local_storage=0, memory=0)))
+                    cores=0, cpu_speed=0, local_storage=0, memory=0)))
 
     def compose(self, system_id, context):
         return None

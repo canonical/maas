@@ -32,13 +32,11 @@ from provisioningserver.drivers.power import (
     PowerConnError,
     PowerDriver,
     PowerDriverBase,
-    PowerDriverRegistry,
     PowerError,
     PowerFatalError,
     PowerSettingError,
     PowerToolError,
 )
-from provisioningserver.utils.testing import RegistryFixture
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
@@ -176,45 +174,6 @@ class TestPowerDriverBase(MAASTestCase):
         fake_driver = make_power_driver_base()
         #: doesn't raise ValidationError
         validate(fake_driver.get_schema(), JSON_POWER_DRIVER_SCHEMA)
-
-
-class TestPowerDriverRegistry(MAASTestCase):
-
-    def setUp(self):
-        super(TestPowerDriverRegistry, self).setUp()
-        # Ensure the global registry is empty for each test run.
-        self.useFixture(RegistryFixture())
-
-    def test_registry(self):
-        self.assertItemsEqual([], PowerDriverRegistry)
-        PowerDriverRegistry.register_item("driver", sentinel.driver)
-        self.assertIn(
-            sentinel.driver,
-            (item for name, item in PowerDriverRegistry))
-
-    def test_get_schema(self):
-        fake_driver_one = make_power_driver_base()
-        fake_driver_two = make_power_driver_base()
-        PowerDriverRegistry.register_item(
-            fake_driver_one.name, fake_driver_one)
-        PowerDriverRegistry.register_item(
-            fake_driver_two.name, fake_driver_two)
-        self.assertItemsEqual([
-            {
-                'name': fake_driver_one.name,
-                'description': fake_driver_one.description,
-                'fields': [],
-                'queryable': fake_driver_one.queryable,
-                'missing_packages': fake_driver_one.detect_missing_packages(),
-            },
-            {
-                'name': fake_driver_two.name,
-                'description': fake_driver_two.description,
-                'fields': [],
-                'queryable': fake_driver_two.queryable,
-                'missing_packages': fake_driver_two.detect_missing_packages(),
-            }],
-            PowerDriverRegistry.get_schema())
 
 
 class TestGetErrorMessage(MAASTestCase):

@@ -8,10 +8,10 @@ __all__ = [
 ]
 
 from provisioningserver.drivers.chassis import (
-    ChassisDriverRegistry,
     DiscoveredChassis,
     get_error_message,
 )
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
@@ -57,6 +57,8 @@ def discover_chassis(chassis_type, context, system_id=None, hostname=None):
     def catch_all(failure):
         """Convert all failures into `ChassisActionFail` unless already a
         `ChassisActionFail` or `NotImplementedError`."""
+        # Log locally to help debugging.
+        log.err(failure, "Failed to discover chassis.")
         if failure.check(NotImplementedError, ChassisActionFail):
             return failure
         else:

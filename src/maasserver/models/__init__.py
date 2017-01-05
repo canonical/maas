@@ -7,6 +7,7 @@ __all__ = [
     'Bcache',
     'BlockDevice',
     'BMC',
+    'BMCRoutableRackControllerRelationship',
     'BondInterface',
     'BootResource',
     'BootResourceFile',
@@ -94,7 +95,10 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bmc import BMC
+from maasserver.models.bmc import (
+    BMC,
+    BMCRoutableRackControllerRelationship,
+)
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet

@@ -9,6 +9,10 @@ __all__ = [
 
 from maasserver.rpc import getAllClients
 from provisioningserver.rpc.cluster import DiscoverChassis
+from provisioningserver.rpc.exceptions import (
+    ChassisActionFail,
+    UnknownChassisType,
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferWithTimeout,
@@ -50,3 +54,26 @@ def discover_chassis(
         return discovered, failures
 
     return dl.addCallback(cb_results)
+
+
+def get_best_discovered_result(discovered):
+    """Return the `DiscoveredChassis` from `discovered` or raise an error
+    if nothing was discovered or the best error return from the rack
+    controlllers."""
+    discovered, exceptions = discovered
+    if len(discovered) > 0:
+        # Return the first `DiscoveredChassis`. They should all be the same.
+        return list(discovered.values())[0]
+    elif len(exceptions) > 0:
+        # Raise the best exception that provides the most detail.
+        for exc_type in [
+                ChassisActionFail, NotImplementedError,
+                UnknownChassisType, None]:
+            for _, exc in exceptions.items():
+                if exc_type is not None:
+                    if isinstance(exc, exc_type):
+                        raise exc
+                else:
+                    raise exc
+    else:
+        return None

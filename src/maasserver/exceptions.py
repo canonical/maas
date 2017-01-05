@@ -199,3 +199,13 @@ class PowerProblem(MAASAPIException):
     information.
     """
     api_error = int(http.client.SERVICE_UNAVAILABLE)
+
+
+class ChassisProblem(MAASAPIException):
+    """Raised when there's a problem with a chassis operation.
+
+    This could be a problem with parameters, a problem with the chassis
+    controller, or something else.  The exception text will contain more
+    information.
+    """
+    api_error = int(http.client.SERVICE_UNAVAILABLE)

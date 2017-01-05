@@ -33,7 +33,8 @@ from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from provisioningserver.drivers.power import PowerDriverRegistry
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
 def accumulate_api_resources(resolver, accumulator):
@@ -83,20 +84,62 @@ def generate_power_types_doc():
     line = partial(print, file=output)
 
     line('Power types')
-    line('-----------')
+    line('```````````')
     line()
     line("This is the list of the supported power types and their "
          "associated power parameters.  Note that the list of usable "
-         "power types for a particular cluster might be a subset of this "
-         "list if the cluster in question is from an older version of "
-         "MAAS.")
+         "power types for a particular rack controller might be a subset of "
+         "this list if the rack controller in question is from an older "
+         "version of MAAS.")
     line()
-    for _, driver in PowerDriverRegistry:
+    for _, driver in PowerDriverRegistry.only_power():
         title = "%s (%s)" % (driver.name, driver.description)
         line(title)
         line('=' * len(title))
         line('')
         line("Power parameters:")
+        line('')
+        for field in driver.settings:
+            field_description = []
+            field_description.append(
+                "* %s (%s)." % (field['name'], field['label']))
+            choices = field.get('choices', [])
+            if len(choices) > 0:
+                field_description.append(
+                    " Choices: %s" % ', '.join(
+                        "'%s' (%s)" % (choice[0], choice[1])
+                        for choice in choices))
+            default = field.get('default', '')
+            if default is not '':
+                field_description.append("  Default: '%s'." % default)
+            line(''.join(field_description))
+        line('')
+    return output.getvalue()
+
+
+def generate_chassis_types_doc():
+    """Generate ReST documentation for the supported chassis types.
+
+    The documentation is derived from the `ChassisDriverRegistry`.
+    """
+    output = StringIO()
+    line = partial(print, file=output)
+
+    line('Chassis types')
+    line('`````````````')
+    line()
+    line("This is the list of the supported chassis types and their "
+         "associated parameters.  Note that the list of usable chassis types "
+         "for a particular rack controller might be a subset of this "
+         "list if the rack controller in question is from an older version of "
+         "MAAS.")
+    line()
+    for _, driver in ChassisDriverRegistry:
+        title = "%s (%s)" % (driver.name, driver.description)
+        line(title)
+        line('=' * len(title))
+        line('')
+        line("Parameters:")
         line('')
         for field in driver.settings:
             field_description = []

@@ -15,10 +15,10 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from provisioningserver.drivers.chassis import (
-    ChassisDriverRegistry,
     DiscoveredChassis,
     DiscoveredChassisHints,
 )
+from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.rpc import (
     chassis,
     exceptions,

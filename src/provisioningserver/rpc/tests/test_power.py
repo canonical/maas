@@ -33,9 +33,9 @@ from maastesting.twisted import (
 from provisioningserver.drivers.power import (
     DEFAULT_WAITING_POLICY,
     get_error_message as get_driver_error_message,
-    PowerDriverRegistry,
     PowerError,
 )
+from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc import (
     exceptions,
