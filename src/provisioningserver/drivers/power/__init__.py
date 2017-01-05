@@ -30,7 +30,10 @@ from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
-from provisioningserver.utils.twisted import pause
+from provisioningserver.utils.twisted import (
+    IAsynchronous,
+    pause,
+)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -325,8 +328,15 @@ class PowerDriver(PowerDriverBase):
         exc_info = None, None, None
         for waiting_time in self.wait_time:
             try:
-                state = yield deferToThread(
-                    self.power_query, system_id, context)
+                # Power queries are predominantly transactional and thus
+                # blocking/synchronous. Genuinely non-blocking/asynchronous
+                # methods must out themselves explicitly.
+                if IAsynchronous.providedBy(self.power_query):
+                    # The @asynchronous decorator will DTRT.
+                    state = yield self.power_query(system_id, context)
+                else:
+                    state = yield deferToThread(
+                        self.power_query, system_id, context)
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -355,8 +365,15 @@ class PowerDriver(PowerDriverBase):
         for waiting_time in self.wait_time:
             # Try to change state.
             try:
-                yield deferToThread(
-                    power_func, system_id, context)
+                # Power methods are predominantly transactional and thus
+                # blocking/synchronous. Genuinely non-blocking/asynchronous
+                # methods must out themselves explicitly.
+                if IAsynchronous.providedBy(power_func):
+                    # The @asynchronous decorator will DTRT.
+                    yield power_func(system_id, context)
+                else:
+                    yield deferToThread(
+                        power_func, system_id, context)
             except PowerFatalError:
                 raise  # Don't retry.
             except PowerError:
@@ -368,8 +385,15 @@ class PowerDriver(PowerDriverBase):
                 yield pause(waiting_time, self.clock)
                 # Try to get power state.
                 try:
-                    state = yield deferToThread(
-                        self.power_query, system_id, context)
+                    # Power queries are predominantly transactional and thus
+                    # blocking/synchronous. Genuinely non-blocking/asynchronous
+                    # methods must out themselves explicitly.
+                    if IAsynchronous.providedBy(self.power_query):
+                        # The @asynchronous decorator will DTRT.
+                        state = yield self.power_query(system_id, context)
+                    else:
+                        state = yield deferToThread(
+                            self.power_query, system_id, context)
                 except PowerFatalError:
                     raise  # Don't retry.
                 except PowerError:

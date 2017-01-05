@@ -8946,6 +8946,7 @@ class TestChassis(MAASServerTestCase):
                 for _ in range(3)
             ]
         return DiscoveredMachine(
+            architecture='amd64/generic',
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
             memory=random.randint(8192, 8192 * 8),
@@ -8968,6 +8969,7 @@ class TestChassis(MAASServerTestCase):
                 for _ in range(3)
             ]
         return DiscoveredChassis(
+            architecture='amd64/generic',
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
             memory=random.randint(8192, 8192 * 8),
@@ -8988,12 +8990,13 @@ class TestChassis(MAASServerTestCase):
         self.assertEquals(hostname, chassis.hostname)
         self.assertIsNone(chassis.domain)
 
-    def test_sync_chassis_cpu_memory_and_hints(self):
+    def test_sync_chassis_arch_cpu_memory_and_hints(self):
         discovered = self.make_discovered_chassis()
         chassis = factory.make_Chassis()
         chassis.sync(discovered)
         self.assertThat(
             chassis, MatchesStructure(
+                architecture=Equals(discovered.architecture),
                 cpu_count=Equals(discovered.cores),
                 cpu_speed=Equals(discovered.cpu_speed),
                 memory=Equals(discovered.memory),
@@ -9024,6 +9027,7 @@ class TestChassis(MAASServerTestCase):
             created_machines,
             MatchesSetwise(*[
                 MatchesStructure(
+                    architecture=Equals(chassis.architecture),
                     bmc=Equals(chassis.bmc),
                     cpu_count=Equals(machine.cores),
                     cpu_speed=Equals(machine.cpu_speed),
@@ -9107,6 +9111,7 @@ class TestChassis(MAASServerTestCase):
         chassis.sync(discovered_chassis)
         machine = reload_object(machine)
         self.assertThat(machine, MatchesStructure(
+            architecture=Equals(discovered_machine.architecture),
             cpu_count=Equals(discovered_machine.cores),
             cpu_speed=Equals(discovered_machine.cpu_speed),
             memory=Equals(discovered_machine.memory),

@@ -87,6 +87,7 @@ class TestChassisAPI(APITestCase.ForUser):
             [
                 'hostname',
                 'system_id',
+                'architectures',
                 'cpu_count',
                 'memory',
                 'chassis_type',
@@ -107,6 +108,7 @@ class TestChassisAPI(APITestCase.ForUser):
     def test_create_creates_chassis(self):
         self.become_admin()
         discovered_chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=random.randint(2, 4), memory=random.randint(1024, 4096),
             local_storage=random.randint(1024, 1024 * 1024),
             cpu_speed=random.randint(2048, 4048),

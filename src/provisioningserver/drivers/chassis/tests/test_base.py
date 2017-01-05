@@ -11,12 +11,14 @@ from unittest.mock import sentinel
 from jsonschema import validate
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers import make_setting_field
+from provisioningserver.drivers import (
+    make_setting_field,
+    SETTING_SCOPE,
+)
 from provisioningserver.drivers.chassis import (
     ChassisActionError,
     ChassisAuthError,
     ChassisConnError,
-    ChassisDriver,
     ChassisDriverBase,
     ChassisError,
     DiscoveredChassis,
@@ -137,6 +139,7 @@ class TestDiscoveredClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine = DiscoveredMachine(
+            architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             power_state=power_state, interfaces=interfaces,
             block_devices=block_devices, tags=tags)
@@ -197,11 +200,13 @@ class TestDiscoveredClasses(MAASTestCase):
             ]
             machines.append(
                 DiscoveredMachine(
+                    architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
         chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
         self.assertEquals(cores, chassis.cores)
@@ -248,14 +253,17 @@ class TestDiscoveredClasses(MAASTestCase):
             ]
             machines.append(
                 DiscoveredMachine(
+                    architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
         chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines)
         self.assertThat(chassis.asdict(), MatchesDict({
+            "architecture": Equals("amd64/generic"),
             "cores": Equals(cores),
             "cpu_speed": Equals(cpu_speed),
             "memory": Equals(memory),
@@ -268,6 +276,7 @@ class TestDiscoveredClasses(MAASTestCase):
             }),
             "machines": MatchesListwise([
                 MatchesDict({
+                    "architecture": Equals("amd64/generic"),
                     "cores": Equals(machine.cores),
                     "cpu_speed": Equals(machine.cpu_speed),
                     "memory": Equals(machine.memory),
@@ -327,14 +336,17 @@ class TestDiscoveredClasses(MAASTestCase):
             ]
             machines_data.append(
                 dict(
+                    architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     interfaces=interfaces, block_devices=block_devices))
         chassis_data = dict(
+            architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, hints=hints, machines=machines_data)
         chassis = DiscoveredChassis.fromdict(chassis_data)
         self.assertThat(chassis, IsInstance(DiscoveredChassis))
         self.assertThat(chassis, MatchesStructure(
+            architecture=Equals('amd64/generic'),
             cores=Equals(cores),
             cpu_speed=Equals(cpu_speed),
             memory=Equals(memory),
@@ -352,6 +364,7 @@ class TestDiscoveredClasses(MAASTestCase):
                 MatchesAll(
                     IsInstance(DiscoveredMachine),
                     MatchesStructure(
+                        architecture=Equals('amd64/generic'),
                         cores=Equals(machine['cores']),
                         cpu_speed=Equals(machine['cpu_speed']),
                         memory=Equals(machine['memory']),
@@ -508,11 +521,33 @@ class TestChassisDriverBase(MAASTestCase):
             make_setting_field(
                 fake_setting, fake_setting.title()),
             ]
-        fake_driver = make_chassis_driver_base()
-        self.assertItemsEqual({
+        fake_driver = make_chassis_driver_base(
+            fake_name, fake_description, fake_settings)
+        self.assertEquals({
             'name': fake_name,
             'description': fake_description,
             'fields': fake_settings,
+            'queryable': fake_driver.queryable,
+            'missing_packages': [],
+            'composable': fake_driver.composable,
+            },
+            fake_driver.get_schema())
+
+    def test_get_schema_ignores_scope_node_fields(self):
+        fake_name = factory.make_name('name')
+        fake_description = factory.make_name('description')
+        fake_setting = factory.make_name('setting')
+        bmc_setting = make_setting_field(
+            fake_setting, fake_setting.title())
+        node_setting = make_setting_field(
+            factory.make_name('name'), factory.make_name('setting'),
+            scope=SETTING_SCOPE.NODE)
+        fake_driver = make_chassis_driver_base(
+            fake_name, fake_description, [bmc_setting, node_setting])
+        self.assertEquals({
+            'name': fake_name,
+            'description': fake_description,
+            'fields': [bmc_setting],
             'queryable': fake_driver.queryable,
             'missing_packages': [],
             'composable': fake_driver.composable,
@@ -548,41 +583,3 @@ class TestGetErrorMessage(MAASTestCase):
 
     def test_return_msg(self):
         self.assertEqual(self.message, get_error_message(self.exception))
-
-
-class FakeChassisDriver(ChassisDriver):
-
-    name = ""
-    description = ""
-    settings = []
-    ip_extractor = None
-    queryable = True
-
-    def __init__(self, name, description, settings):
-        self.name = name
-        self.description = description
-        self.settings = settings
-        super(FakeChassisDriver, self).__init__()
-
-    def detect_missing_packages(self):
-        raise NotImplementedError
-
-    def power_on(self, system_id, context):
-        raise NotImplementedError
-
-    def power_off(self, system_id, context):
-        raise NotImplementedError
-
-    def power_query(self, system_id, context):
-        raise NotImplementedError
-
-
-def make_chassis_driver(name=None, description=None, settings=None):
-    if name is None:
-        name = factory.make_name('diskless')
-    if description is None:
-        description = factory.make_name('description')
-    if settings is None:
-        settings = []
-    return FakeChassisDriver(
-        name, description, settings)

@@ -37,10 +37,14 @@ from provisioningserver.drivers.power import (
     PowerSettingError,
     PowerToolError,
 )
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
 
 
 class FakePowerDriverBase(PowerDriverBase):
@@ -251,6 +255,45 @@ def make_power_driver(name=None, description=None, settings=None,
         name, description, settings, wait_time=wait_time, clock=clock)
 
 
+class AsyncFakePowerDriver(FakePowerDriver):
+
+    def __init__(self, name, description, settings, wait_time=None,
+                 clock=reactor, query_result=None):
+        super(AsyncFakePowerDriver, self).__init__(
+            name, description, settings, wait_time=None, clock=reactor)
+        self.power_query_result = query_result
+        self.power_on_called = 0
+        self.power_off_called = 0
+
+    @asynchronous
+    def power_on(self, system_id, context):
+        self.power_on_called += 1
+        return succeed(None)
+
+    @asynchronous
+    def power_off(self, system_id, context):
+        self.power_off_called += 1
+        return succeed(None)
+
+    @asynchronous
+    def power_query(self, system_id, context):
+        return succeed(self.power_query_result)
+
+
+def make_async_power_driver(
+        name=None, description=None, settings=None, wait_time=None,
+        clock=reactor, query_result=None):
+    if name is None:
+        name = factory.make_name('diskless')
+    if description is None:
+        description = factory.make_name('description')
+    if settings is None:
+        settings = []
+    return AsyncFakePowerDriver(
+        name, description, settings, wait_time=wait_time, clock=clock,
+        query_result=query_result)
+
+
 class TestPowerDriverPowerAction(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -277,6 +320,20 @@ class TestPowerDriverPowerAction(MAASTestCase):
         method = getattr(driver, self.action)
         result = yield method(system_id, context)
         self.assertEqual(result, None)
+
+    @inlineCallbacks
+    def test_success_async(self):
+        system_id = factory.make_name('system_id')
+        context = {'context': factory.make_name('context')}
+        mock_deferToThread = self.patch(power, "deferToThread")
+        driver = make_async_power_driver(
+            wait_time=[0], query_result=self.action)
+        method = getattr(driver, self.action)
+        result = yield method(system_id, context)
+        self.assertEqual(result, None)
+        call_count = getattr(driver, "%s_called" % self.action_func)
+        self.assertEqual(1, call_count)
+        self.assertThat(mock_deferToThread, MockNotCalled())
 
     @inlineCallbacks
     def test_handles_fatal_error_on_first_call(self):

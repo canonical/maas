@@ -59,6 +59,7 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
             for _ in range(3)
         ]
         chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
             memory=random.randint(1024, 4096),
@@ -89,6 +90,7 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
     def test__returns_discovered_chassis_and_errors(self):
         chassis_type = factory.make_name("chassis")
         chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
             memory=random.randint(1024, 4096),

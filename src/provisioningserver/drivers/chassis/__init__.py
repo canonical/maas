@@ -22,6 +22,7 @@ import attr
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
+    SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import (
     PowerDriver,
@@ -158,6 +159,7 @@ class DiscoveredMachineBlockDevice:
 @attr.s
 class DiscoveredMachine:
     """Discovered machine."""
+    architecture = attr.ib(convert=str)
     cores = attr.ib(convert=int)
     cpu_speed = attr.ib(convert=int)
     memory = attr.ib(convert=int)
@@ -185,7 +187,7 @@ class DiscoveredChassisHints:
 @attr.s
 class DiscoveredChassis:
     """Discovered chassis information."""
-
+    architecture = attr.ib(convert=str)
     cores = attr.ib(convert=int)
     cpu_speed = attr.ib(convert=int)
     memory = attr.ib(convert=int)
@@ -245,6 +247,14 @@ class ChassisDriverBase(PowerDriverBase):
         schema = super(ChassisDriverBase, self).get_schema(
             detect_missing_packages=detect_missing_packages)
         schema['composable'] = self.composable
+        # Exclude all fields scoped to the NODE as they are not required for
+        # a chassis, they are only required for a machine that belongs to the
+        # chassis.
+        schema['fields'] = [
+            field
+            for field in schema['fields']
+            if field['scope'] == SETTING_SCOPE.BMC
+        ]
         return schema
 
 

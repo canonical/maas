@@ -2787,6 +2787,7 @@ class TestClusterProtocol_DiscoverChassis(MAASTestCase):
             chassis, 'discover_chassis')
         mock_discover_chassis.return_value = succeed({
             "chassis": DiscoveredChassis(
+                architecture='amd64/generic',
                 cores=random.randint(1, 8),
                 cpu_speed=random.randint(1000, 3000),
                 memory=random.randint(1024, 8192),

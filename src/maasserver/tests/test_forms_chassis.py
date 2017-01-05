@@ -42,6 +42,7 @@ class TestChassisForm(MAASServerTestCase):
 
     def test_creates_chassis_with_discovered_information(self):
         discovered_chassis = DiscoveredChassis(
+            architecture='amd64/generic',
             cores=random.randint(2, 4), memory=random.randint(1024, 4096),
             local_storage=random.randint(1024, 1024 * 1024),
             cpu_speed=random.randint(2048, 4048),
@@ -66,6 +67,7 @@ class TestChassisForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         chassis = form.save()
         self.assertThat(chassis, MatchesStructure(
+            architecture=Equals('amd64/generic'),
             hostname=MatchesAll(Not(Is(None)), Not(Equals(''))),
             cpu_count=Equals(discovered_chassis.cores),
             memory=Equals(discovered_chassis.memory),

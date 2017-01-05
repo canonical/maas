@@ -4701,6 +4701,7 @@ class Chassis(Node):
         """Create's a `Machine` from `discovered_machines` for this chassis."""
         # Create the machine.
         machine = Machine(
+            architecture=discovered_machine.architecture,
             status=NODE_STATUS.READY,
             cpu_count=discovered_machine.cores,
             cpu_speed=discovered_machine.cpu_speed,
@@ -4754,6 +4755,7 @@ class Chassis(Node):
             existing_machine.parent = self
 
         # Sync machine instance values.
+        existing_machine.architecture = discovered_machine.architecture
         existing_machine.cpu_count = discovered_machine.cores
         existing_machine.cpu_speed = discovered_machine.cpu_speed
         existing_machine.memory = discovered_machine.memory
@@ -4925,6 +4927,7 @@ class Chassis(Node):
         interfaces, and/or block devices that do not match the
         `discovered_chassis` values will be removed.
         """
+        self.architecture = discovered_chassis.architecture
         self.cpu_count = discovered_chassis.cores
         self.cpu_speed = discovered_chassis.cpu_speed
         self.memory = discovered_chassis.memory

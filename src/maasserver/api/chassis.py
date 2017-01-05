@@ -25,6 +25,7 @@ from piston3.utils import rc
 DISPLAYED_CHASSIS_FIELDS = (
     'system_id',
     'hostname',
+    'architectures',
     'cpu_count',
     'memory',
     'chassis_type',
@@ -46,6 +47,13 @@ class ChassiHandler(NodeHandler):
 
     # Remove following operations inherited from NodesHandler.
     details = power_parameters = None
+
+    @classmethod
+    def architectures(cls, chassis):
+        # At the moment we only store one architecture. In the future we might
+        # support multiple so we return 'architectures' instead of
+        # 'architecture' with a list.
+        return [chassis.architecture]
 
     @classmethod
     def chassis_type(cls, chassis):

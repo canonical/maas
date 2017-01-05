@@ -207,6 +207,7 @@ class TestIPNetwork(MAASTestCase):
 class TestDiscoveredChassis(MAASTestCase):
 
     example = DiscoveredChassis(
+        architecture='amd64/generic',
         cores=random.randint(1, 8), cpu_speed=random.randint(1000, 3000),
         memory=random.randint(1024, 8192), local_storage=0,
         hints=DiscoveredChassisHints(
