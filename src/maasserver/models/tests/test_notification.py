@@ -12,6 +12,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
+    AfterPreprocessing,
     Equals,
     HasLength,
     Is,
@@ -150,6 +151,55 @@ class TestNotificationManager(MAASServerTestCase):
             HasLength(1))
 
 
+class TestFindingAndDismissingNotifications(MAASServerTestCase):
+    """Tests for finding and dismissing notifications."""
+
+    def notify(self, user):
+        message = factory.make_name("message")
+        return (
+            Notification.objects.create_for_user(message, user),
+            Notification.objects.create_for_users(message),
+            Notification.objects.create_for_admins(message),
+        )
+
+    def assertNotifications(self, user, notifications):
+        self.assertThat(
+            Notification.objects.find_for_user(user),
+            AfterPreprocessing(list, Equals(notifications)))
+
+    def test_find_and_dismiss_notifications_for_user(self):
+        user = factory.make_User()
+        n_for_user, n_for_users, n_for_admins = self.notify(user)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        n_for_user.dismiss(user)
+        self.assertNotifications(user, [n_for_users])
+        n_for_users.dismiss(user)
+        self.assertNotifications(user, [])
+
+    def test_find_and_dismiss_notifications_for_users(self):
+        user = factory.make_User("user")
+        user2 = factory.make_User("user2")
+        n_for_user, n_for_users, n_for_admins = self.notify(user)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        self.assertNotifications(user2, [n_for_users])
+        n_for_users.dismiss(user2)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        self.assertNotifications(user2, [])
+
+    def test_find_and_dismiss_notifications_for_admins(self):
+        user = factory.make_User("user")
+        admin = factory.make_admin("admin")
+        n_for_user, n_for_users, n_for_admins = self.notify(user)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        self.assertNotifications(admin, [n_for_users, n_for_admins])
+        n_for_users.dismiss(admin)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        self.assertNotifications(admin, [n_for_admins])
+        n_for_admins.dismiss(admin)
+        self.assertNotifications(user, [n_for_user, n_for_users])
+        self.assertNotifications(admin, [])
+
+
 class TestNotification(MAASServerTestCase):
     """Tests for the `Notification`."""
 
@@ -171,3 +221,35 @@ class TestNotification(MAASServerTestCase):
         self.assertThat(str(error), Equals(repr("thing")))
         self.assertThat(notification.id, Is(None))
         self.assertThat(Notification.objects.all(), HasLength(0))
+
+
+class TestNotificationRepresentation(MAASServerTestCase):
+    """Tests for the `Notification` representation."""
+
+    def test_for_user(self):
+        notification = Notification(
+            user=factory.make_User("foobar"),
+            message="The cat in the {place}",
+            context=dict(place="bear trap"))
+        self.assertThat(
+            notification, AfterPreprocessing(repr, Equals(
+                "<Notification user='foobar' users=False admins=False "
+                "'The cat in the bear trap'>")))
+
+    def test_for_users(self):
+        notification = Notification(
+            users=True, message="The cat in the {place}",
+            context=dict(place="blender"))
+        self.assertThat(
+            notification, AfterPreprocessing(repr, Equals(
+                "<Notification user=None users=True admins=False "
+                "'The cat in the blender'>")))
+
+    def test_for_admins(self):
+        notification = Notification(
+            admins=True, message="The cat in the {place}",
+            context=dict(place="lava pit"))
+        self.assertThat(
+            notification, AfterPreprocessing(repr, Equals(
+                "<Notification user=None users=False admins=True "
+                "'The cat in the lava pit'>")))

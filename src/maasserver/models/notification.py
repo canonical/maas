@@ -13,6 +13,7 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
+    Model,
     TextField,
 )
 from maasserver import DefaultMeta
@@ -62,6 +63,26 @@ class NotificationManager(Manager):
             ident=ident, user=user, users=users, admins=admins,
             message=message, context={} if context is None else context)
 
+    def find_for_user(self, user):
+        """Find notifications for the given user.
+
+        :return: A `RawQuerySet` of `Notification` instances that haven't been
+            dismissed by `user`.
+        """
+        if user.is_superuser:
+            where = "notification.users OR notification.admins"
+        else:
+            where = "notification.users"
+        return self.raw(self._sql_find_for_user % where, [user.id, user.id])
+
+    _sql_find_for_user = """\
+    SELECT notification.* FROM maasserver_notification AS notification
+    LEFT OUTER JOIN maasserver_notificationdismissal AS dismissal ON
+      (dismissal.notification_id = notification.id AND dismissal.user_id = %%s)
+    WHERE (notification.user_id = %%s OR %s) AND dismissal.id IS NULL
+    ORDER BY notification.updated, notification.id
+    """
+
 
 class Notification(CleanSave, TimestampedModel):
     """A notification message.
@@ -101,6 +122,36 @@ class Notification(CleanSave, TimestampedModel):
         """Render this notification's message using its context."""
         return self.message.format(**self.context)
 
+    def dismiss(self, user):
+        """Dismiss this notification.
+
+        :param user: The user dismissing this notification.
+        """
+        NotificationDismissal.objects.get_or_create(
+            notification=self, user=user)
+
     def clean(self):
         super(Notification, self).clean()
         self.render()  # Just check it works.
+
+    def __repr__(self):
+        return "<Notification user=%s users=%r admins=%r %r>" % (
+            ("None" if self.user is None else repr(self.user.username)),
+            self.users, self.admins, self.render(),
+        )
+
+
+class NotificationDismissal(Model):
+    """A notification dismissal.
+
+    :ivar notification: The notification which has been dismissed.
+    :ivar user: The user that has dismissed the linked notification.
+    """
+
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
+    objects = Manager()
+
+    notification = ForeignKey(Notification, null=False, blank=False)
+    user = ForeignKey(User, null=False, blank=False)
