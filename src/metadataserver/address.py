@@ -74,7 +74,7 @@ def get_ip_address(interface):
         all_addresses = sorted(get_all_addresses_for_interface(interface))
         return all_addresses[0]
     except Exception as e:
-        logger.warn(
+        logger.warning(
             "Could not determine address for apparent default interface "
             "%s (%s)"
             % (interface, e))

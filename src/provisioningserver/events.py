@@ -112,6 +112,8 @@ class EVENT_TYPES:
     REGION_IMPORT_WARNING = "REGION_IMPORT_WARNING"
     REGION_IMPORT_ERROR = "REGION_IMPORT_ERROR"
     REGION_IMPORT_INFO = "REGION_IMPORT_INFO"
+    # Script result storage and lookup events
+    SCRIPT_RESULT_ERROR = "SCRIPT_RESULT_ERROR"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -311,6 +313,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.REGION_IMPORT_INFO: EventDetail(
         description=("Region import info"),
         level=INFO,
+    ),
+    EVENT_TYPES.SCRIPT_RESULT_ERROR: EventDetail(
+        description=("Script result lookup or storage error"),
+        level=ERROR,
     ),
 }
 

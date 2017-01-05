@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -8,7 +8,10 @@ __all__ = [
     "Messages",
     ]
 
-from datetime import timedelta
+from datetime import (
+    datetime,
+    timedelta,
+)
 import hashlib
 from io import BytesIO
 from itertools import (
@@ -124,11 +127,20 @@ from maasserver.worker_user import get_worker_user
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
-from metadataserver.enum import RESULT_TYPE
+from metadataserver.enum import (
+    RESULT_TYPE,
+    RESULT_TYPE_CHOICES,
+    SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
+    SCRIPT_TYPE_CHOICES,
+)
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
     NodeResult,
+    Script,
+    ScriptResult,
+    ScriptSet,
 )
 from netaddr import (
     IPAddress,
@@ -616,6 +628,71 @@ class Factory(maastesting.factory.Factory):
             dnsrr.ip_addresses = ip_addresses
             dnsrr.save()
         return dnsrr
+
+    def make_Script(
+            self, name=None, description=None, tags=None, script_type=None,
+            timeout=None, destructive=False, default=False, script=None):
+        if name is None:
+            name = self.make_name('name')
+        if description is None:
+            description = self.make_string()
+        if tags is None:
+            tags = [factory.make_name('tag') for _ in range(3)]
+        if script_type is None:
+            script_type = self.pick_choice(SCRIPT_TYPE_CHOICES)
+        if timeout is None:
+            timeout = timedelta(random.randint(0, 600))
+        if script is None:
+            script = VersionedTextFile.objects.create(data=self.make_string())
+        return Script.objects.create(
+            name=name, description=description, tags=tags,
+            script_type=script_type, timeout=timeout, destructive=destructive,
+            default=default, script=script)
+
+    def make_ScriptSet(self, last_ping=None, node=None, result_type=None):
+        if last_ping is None:
+            last_ping = datetime.now()
+        if node is None:
+            node = self.make_Node()
+        if result_type is None:
+            result_type = self.pick_choice(RESULT_TYPE_CHOICES)
+        return ScriptSet.objects.create(
+            last_ping=last_ping, node=node, result_type=result_type)
+
+    def make_ScriptResult(
+            self, script_set=None, script=None, script_version=None,
+            status=None, exit_status=None, script_name=None, stdout=None,
+            stderr=None, result=None):
+        if script_set is None:
+            script_set = self.make_ScriptSet()
+        if script is None and script_name is None:
+            script = self.make_Script()
+        if status is None:
+            status = self.pick_choice(SCRIPT_STATUS_CHOICES)
+        if status in (SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING):
+            # Pending and running script results shouldn't have results stored.
+            if stdout is None:
+                stdout = b''
+            if stderr is None:
+                stderr = b''
+            if result is None:
+                result = ''
+        else:
+            if exit_status is None:
+                exit_status = random.randint(0, 255)
+            if stdout is None:
+                stdout = self.make_string().encode('utf-8')
+            if stderr is None:
+                stderr = self.make_string().encode('utf-8')
+            if result is None:
+                result = ''
+            if script_version is None and script_name is None:
+                script_version = script.script
+        return ScriptResult.objects.create(
+            script_set=script_set, script=script,
+            script_version=script_version, status=status,
+            exit_status=exit_status, script_name=script_name,
+            stdout=Bin(stdout), stderr=Bin(stderr), result=result)
 
     def make_NodeResult_for_commissioning(
             self, node=None, name=None, script_result=None, data=None):
