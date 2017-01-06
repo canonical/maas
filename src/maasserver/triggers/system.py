@@ -995,7 +995,8 @@ DNS_CONFIG_INSERT = dedent("""\
           (serial, created, source)
         VALUES
           (nextval('maasserver_zone_serial_seq'), now(), substring(
-            ('Configuration ' || NEW.name || ' set to ' || NEW.value)
+            ('Configuration ' || NEW.name || ' set to ' ||
+             COALESCE(NEW.value, 'NULL'))
             FOR 255));
       END IF;
       RETURN NEW;

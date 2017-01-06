@@ -15,8 +15,8 @@ from unittest.mock import (
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
+    MAASLegacyTransactionServerTestCase,
     MAASServerTestCase,
-    MAASTransactionServerTestCase,
 )
 from maasserver.tests.models import FieldChangeTestModel
 from maasserver.utils import signals as signals_module
@@ -55,7 +55,7 @@ def pick_django_signal():
         random.choice(django_signal_names))
 
 
-class ConnectToFieldChangeTest(MAASTransactionServerTestCase):
+class ConnectToFieldChangeTest(MAASLegacyTransactionServerTestCase):
     """Testing for the method `connect_to_field_change`."""
 
     apps = ['maasserver.tests']

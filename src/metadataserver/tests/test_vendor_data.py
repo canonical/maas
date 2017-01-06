@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from maasserver.dbviews import register_view
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -127,7 +126,6 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         self.assertThat(dict(configuration), Equals({}))
 
     def test_yields_boot_cluster_address_when_machine_has_booted(self):
-        register_view("maasserver_routable_pairs")
         Config.objects.set_config("ntp_external_only", False)
 
         machine = factory.make_Machine()

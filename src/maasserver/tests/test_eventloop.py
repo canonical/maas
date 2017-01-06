@@ -24,6 +24,7 @@ from maasserver.regiondservices import service_monitor_service
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.listener import FakePostgresListenerService
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import dbtasks
 from maasserver.utils.orm import (
     DisabledDatabaseConnection,
@@ -308,7 +309,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["service-monitor"]["only_on_master"])
 
 
-class TestDisablingDatabaseConnections(MAASTestCase):
+class TestDisablingDatabaseConnections(MAASServerTestCase):
 
     @wait_for_reactor
     def test_connections_are_all_stubs_in_the_event_loop(self):

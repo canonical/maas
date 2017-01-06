@@ -24,8 +24,8 @@ from maasserver.forms import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
+    MAASLegacyTransactionServerTestCase,
     MAASServerTestCase,
-    MAASTransactionServerTestCase,
 )
 from maasserver.tests.models import GenericTestModel
 from testtools.matchers import Equals
@@ -128,7 +128,7 @@ class TestHelpers(MAASServerTestCase):
             AdminMachineWithMACAddressesForm, get_machine_create_form(admin))
 
 
-class TestMAASModelForm(MAASTransactionServerTestCase):
+class TestMAASModelForm(MAASLegacyTransactionServerTestCase):
 
     apps = ['maasserver.tests']
 

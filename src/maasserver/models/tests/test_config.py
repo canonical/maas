@@ -9,11 +9,15 @@ from socket import gethostname
 
 from django.db import IntegrityError
 from fixtures import TestWithFixtures
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    signals,
+)
 import maasserver.models.config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.matchers import Is
 
 
 class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
@@ -162,3 +166,30 @@ class ConfigTest(MAASServerTestCase):
         Config.objects.set_config(name, value)
 
         self.assertEqual([], recorder.calls)
+
+
+class SettingConfigTest(MAASServerTestCase):
+    """Testing of the :class:`Config` model and setting each option."""
+
+    scenarios = tuple(
+        (name, {"name": name})
+        for name in get_default_config()
+    )
+
+    def setUp(self):
+        super(SettingConfigTest, self).setUp()
+        # Some of these setting we have to be careful about.
+        if self.name in {"enable_http_proxy", "http_proxy"}:
+            manager = signals.bootsources.signals
+            self.addCleanup(manager.enable)
+            manager.disable()
+
+    def test_can_be_initialised_to_None_without_crashing(self):
+        Config.objects.set_config(self.name, None)
+        self.assertThat(Config.objects.get_config(self.name), Is(None))
+
+    def test_can_be_modified_from_None_without_crashing(self):
+        Config.objects.set_config(self.name, None)
+        something = [factory.make_name("value")]
+        Config.objects.set_config(self.name, something)
+        self.assertEqual(something, Config.objects.get_config(self.name))

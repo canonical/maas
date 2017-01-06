@@ -5,17 +5,12 @@
 
 __all__ = []
 
-from maasserver.dbviews import register_view
 from maasserver.testing import sampledata
 from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestPopulates(MAASServerTestCase):
     """Tests for `sampledata.populate`."""
-
-    def setUp(self):
-        super().setUp()
-        register_view("maasserver_discovery")
 
     def test__runs(self):
         sampledata.populate()

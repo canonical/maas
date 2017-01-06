@@ -7,7 +7,6 @@ __all__ = []
 
 from itertools import product
 
-from maasserver.dbviews import register_view
 from maasserver.models.node import Node
 from maasserver.routablepairs import find_addresses_between_nodes
 from maasserver.testing.factory import factory
@@ -17,10 +16,6 @@ from testtools import ExpectedException
 
 class TestFindAddressesBetweenNodes(MAASServerTestCase):
     """Tests for `maasserver.routablepairs.find_addresses_between_nodes`."""
-
-    def setUp(self):
-        super(TestFindAddressesBetweenNodes, self).setUp()
-        register_view("maasserver_routable_pairs")
 
     def test__yields_nothing_when_no_nodes_given(self):
         self.assertItemsEqual(

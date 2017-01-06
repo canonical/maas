@@ -19,7 +19,6 @@ from django.core.exceptions import (
 from fixtures import FakeLogger
 from hypothesis import given
 from hypothesis.strategies import integers
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -752,7 +751,6 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Contains(gateway_ip_2))
 
     def get__get_iprange_usage_includes_neighbours_on_request(self):
-        register_view("maasserver_discovery")
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
         rackif = factory.make_Interface(vlan=subnet.vlan)
@@ -762,7 +760,6 @@ class SubnetIPRangeTest(MAASServerTestCase):
             MAASIPRange("10.0.0.1", purpose="neighbour")))
 
     def get__get_iprange_usage_excludes_neighbours_by_default(self):
-        register_view("maasserver_discovery")
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
         rackif = factory.make_Interface(vlan=subnet.vlan)
@@ -853,10 +850,6 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
 
 class TestSubnetGetMAASIPSetForNeighbours(MAASServerTestCase):
 
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     def test__returns_observed_neighbours(self):
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
@@ -878,10 +871,6 @@ class TestSubnetGetMAASIPSetForNeighbours(MAASServerTestCase):
 
 
 class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test__returns_least_recently_seen_neighbour(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -930,10 +919,6 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
                 type=IPRANGE_TYPE.RESERVED)
             subnet = reload_object(subnet)
         return subnet
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test__raises_if_no_free_addresses(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1017,9 +1002,6 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
 
 
 class TestUnmanagedSubnets(MAASServerTestCase):
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test__allocation_uses_reserved_range(self):
         # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.

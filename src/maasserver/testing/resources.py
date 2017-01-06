@@ -1,0 +1,261 @@
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Resources for testing the MAAS region application."""
+
+__all__ = [
+    "DjangoDatabasesManager",
+]
+
+from itertools import count
+import os
+from pathlib import Path
+import re
+from sys import __stderr__
+
+from maasserver.testing import tablecounts
+from maastesting.matchers import GreaterThanOrEqual
+from postgresfixture import ClusterFixture
+import psycopg2
+from psycopg2.errorcodes import DUPLICATE_DATABASE
+from testresources import TestResourceManager
+from testtools.matchers import (
+    Equals,
+    GreaterThan,
+    MatchesDict,
+)
+
+
+here = Path(__file__).parent
+
+
+# Set `MAAS_DEBUG_RESOURCES` to anything in the calling environment to
+# activate some debugging help for the code in this module.
+if os.environ.get("MAAS_DEBUG_RESOURCES") is None:
+    def debug(message, **args):
+        """Throw away all messages."""
+else:
+    def debug(message, **args):
+        """Write a debug message to stderr, delimiting for visibility."""
+        args = {
+            name: value() if callable(value) else value
+            for name, value in args.items()
+        }
+        print(
+            "<< " + message.format(**args) + " >>",
+            file=__stderr__, flush=True)
+
+
+class DatabaseClusterManager(TestResourceManager):
+    """Resource manager for a PostgreSQL cluster."""
+
+    setUpCost = 3
+    testDownCost = 2
+
+    def make(self, dependencies):
+        cluster = ClusterFixture("db", preserve=True)
+        cluster.setUp()
+        return cluster
+
+    def clean(self, cluster):
+        cluster.cleanUp()
+
+
+class DjangoDatabases(list):
+    """A list of Django database settings dicts.
+
+    This is required instead of a plain list so that `testresources` can set
+    instance attributes to match the database's dependencies, for example
+    `cluster`.
+    """
+
+
+class DjangoPristineDatabaseManager(TestResourceManager):
+    """Resource manager for pristine Django databases."""
+
+    resources = (
+        ("cluster", DatabaseClusterManager()),
+    )
+
+    setUpCost = 25
+    tearDownCost = 1
+
+    def make(self, dependencies):
+        cluster = dependencies["cluster"]
+        with cluster.lock:
+            return self._make(cluster)
+
+    def _make(self, cluster):
+        # Ensure that Django is initialised.
+        import django
+        django.setup()
+
+        # Import other modules without risk of toy throwing from Django.
+        from django.conf import settings
+        from django.core.management import call_command
+        from maasserver import dbviews
+        from maasserver import triggers
+
+        # For each database, create a ${name}_test database.
+        databases = DjangoDatabases(
+            database for database in settings.DATABASES.values()
+            if database["HOST"] == cluster.datadir)
+
+        created = set()
+        with cluster.connect() as conn:
+            with conn.cursor() as cursor:
+                for database in databases:
+                    dbname = database["NAME"] + "_test"
+                    stmt = "CREATE DATABASE %s" % dbname
+                    try:
+                        cursor.execute(stmt)
+                    except psycopg2.ProgrammingError as error:
+                        if error.pgcode != DUPLICATE_DATABASE:
+                            raise
+                    else:
+                        created.add(dbname)
+                        debug(
+                            "Created {dbname}; statement: {stmt}",
+                            dbname=dbname, stmt=stmt)
+                    database["NAME"] = dbname
+
+        # Attempt to populate these databases from a dumped database script.
+        # This is *much* faster than falling back on Django's migrations.
+        for database in databases:
+            dbname = database["NAME"]
+            if dbname in created:
+                initial = here.joinpath("initial.%s.sql" % dbname)
+                if initial.is_file():
+                    cluster.execute(
+                        "psql", "--quiet", "--single-transaction",
+                        "--set=ON_ERROR_STOP=1", "--dbname", dbname,
+                        "--output", os.devnull, "--file", str(initial))
+
+        # First, drop any views that may already exist. We don't want views
+        # that that depend on a particular schema to prevent schema changes
+        # due to the dependency. The views will be recreated at the end of
+        # this process.
+        dbviews.drop_all_views()
+
+        # Apply all current migrations. We use `migrate` here instead of
+        # `dbupgrade` because we don't need everything that the latter
+        # provides, and, more importantly, we need it to run in-process so
+        # that it sees the effects of our settings changes.
+        call_command("migrate", interactive=False)
+
+        # Install all database functions, triggers, and views.
+        triggers.register_all_triggers()
+        dbviews.register_all_views()
+
+        # Ensure that there are no sessions from Django.
+        close_all_connections()
+
+        return databases
+
+    def clean(self, databases):
+        close_all_connections()
+        for database in databases:
+            dbname = database["NAME"]
+            assert dbname.endswith("_test")
+            database["NAME"] = dbname[:-5]
+
+
+def close_all_connections():
+    from django.db import connections
+    for conn in connections.all():
+        conn.close()
+
+
+# These are the expected row counts for tables in MAAS; those not mentioned
+# are assumed to have zero rows.
+expected_table_counts = {
+    'auth_permission': GreaterThan(0),
+    'auth_user': GreaterThanOrEqual(0),
+    'django_content_type': GreaterThan(0),
+    'django_migrations': GreaterThan(0),
+    # Mystery Django stuff here. No idea what django_site does; it seems to
+    # only ever contain a single row referring to "example.com".
+    'django_site': Equals(1),
+    # Tests do not use migrations, but were they to do so the following
+    # maasserver_* tables would have one row or more each.
+    'maasserver_dnspublication': Equals(1),
+    'maasserver_domain': Equals(1),
+    'maasserver_fabric': Equals(1),
+    'maasserver_packagerepository': Equals(2),
+    'maasserver_vlan': Equals(1),
+    'maasserver_zone': Equals(1),
+}
+
+
+def are_table_row_counts_expected():
+    """Check if all tables have expected row counts.
+
+    This considers only tables in the database's public schema, which, for
+    MAAS, means only application tables.
+    """
+    observed = tablecounts.get_table_row_counts()
+    expected = dict.fromkeys(observed, Equals(0))
+    expected.update(expected_table_counts)
+    mismatch = MatchesDict(expected).match(observed)
+    if mismatch is None:
+        return True
+    else:
+        debug("Table count mismatch: {desc}", desc=mismatch.describe)
+        return False
+
+
+class DjangoDatabasesManager(TestResourceManager):
+    """Resource manager for a Django database used for a test."""
+
+    resources = (
+        ("templates", DjangoPristineDatabaseManager()),
+    )
+
+    def __init__(self):
+        super(DjangoDatabasesManager, self).__init__()
+        self._count = count(1)
+
+    def make(self, dependencies):
+        databases = dependencies["templates"]
+        with databases.cluster.connect() as conn:
+            with conn.cursor() as cursor:
+                for database in databases:
+                    template = database["NAME"]
+                    dbname = "%s_%d_%d" % (
+                        template, os.getpid(), next(self._count))
+                    stmt = (
+                        "CREATE DATABASE %s WITH TEMPLATE %s"
+                        % (dbname, template))
+                    cursor.execute(stmt)
+                    debug(
+                        "Created {dbname}; statement: {stmt}",
+                        dbname=dbname, stmt=stmt)
+                    database["NAME"] = dbname
+        return databases
+
+    def clean(self, databases):
+        close_all_connections()
+        with databases.cluster.connect() as conn:
+            with conn.cursor() as cursor:
+                for database in databases:
+                    dbname = database["NAME"]
+                    template = re.search(r"^(.+)_\d+_\d+$", dbname).group(1)
+                    stmt = "DROP DATABASE %s" % dbname
+                    cursor.execute(stmt)
+                    debug(
+                        "Dropped {dbname}; statement: {stmt}",
+                        dbname=dbname, stmt=stmt)
+                    database["NAME"] = template
+
+    def isDirty(self):
+        from django.db import connections
+        in_transaction = any(
+            connection.in_atomic_block
+            for connection in connections.all())
+        if in_transaction:
+            debug("Database is CLEAN (in transaction)")
+            return False
+        else:
+            clean = are_table_row_counts_expected()
+            debug("Database is {state}", state="CLEAN" if clean else "DIRTY")
+            return not clean

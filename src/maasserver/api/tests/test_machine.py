@@ -15,7 +15,6 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
 from maasserver.api import machines as machines_module
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_TYPE,
@@ -49,8 +48,10 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.osystems import make_usable_osystem
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import (
@@ -81,13 +82,13 @@ from twisted.internet import defer
 import yaml
 
 
-class MachineAnonAPITest(APITestCase.ForAnonymous):
+class MachineAnonAPITest(MAASServerTestCase):
 
     def test_machine_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = MAASSensibleOAuthClient(get_node_init_user(), token)
         response = client.get(reverse('machines_handler'))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
 class MachinesAPILoggedInTest(APITestCase.ForUserAndAdmin):
@@ -1348,10 +1349,6 @@ class TestMachineAPI(APITestCase.ForUser):
 
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):
     """The following TestMachineAPI tests require APITransactionTestCase."""
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         self.patch(node_module, 'power_driver_check')

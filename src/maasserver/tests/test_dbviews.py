@@ -9,7 +9,6 @@ from django.db import connection
 from maasserver.dbviews import (
     _ALL_VIEWS,
     register_all_views,
-    register_view,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -34,10 +33,6 @@ class TestDatabaseViews(MAASServerTestCase):
 
 class TestRoutablePairs(MAASServerTestCase):
     """Tests for the `maasserver_routable_pairs` view."""
-
-    def setUp(self):
-        super(TestRoutablePairs, self).setUp()
-        register_view("maasserver_routable_pairs")
 
     def test__contains_nothing_when_there_are_no_nodes(self):
         with connection.cursor() as cursor:

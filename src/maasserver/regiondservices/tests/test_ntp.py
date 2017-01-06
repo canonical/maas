@@ -8,7 +8,6 @@ __all__ = []
 from os.path import join
 
 from crochet import wait_for
-from maasserver.dbviews import register_view
 from maasserver.models.config import Config
 from maasserver.regiondservices import ntp
 from maasserver.service_monitor import service_monitor
@@ -68,7 +67,6 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionNetworkTimeProtocolService, self).setUp()
-        register_view("maasserver_routable_pairs")
         self.useFixture(MAASRootFixture())
 
     @transactional
@@ -144,10 +142,6 @@ class TestRegionNetworkTimeProtocolService_Errors(
 
 class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
     """Database tests for `RegionNetworkTimeProtocolService`."""
-
-    def setUp(self):
-        super(TestRegionNetworkTimeProtocolService_Database, self).setUp()
-        register_view("maasserver_routable_pairs")
 
     def test__getConfiguration_returns_configuration_object(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)

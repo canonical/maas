@@ -16,7 +16,6 @@ from unittest.mock import sentinel
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from maasserver import locks
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -66,10 +65,6 @@ from twisted.python.failure import Failure
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
-
-    def setUp(self):
-        super(TestStaticIPAddressManager, self).setUp()
-        register_view("maasserver_discovery")
 
     def test_filter_by_ip_family_ipv4(self):
         network_v4 = factory.make_ipv4_network()
@@ -328,8 +323,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
     )
 
     def test_allocate_new_works_under_extreme_concurrency(self):
-        register_view("maasserver_discovery")
-
         ipv6 = (self.ip_version == 6)
         subnet = factory.make_managed_Subnet(ipv6=ipv6)
         count = 20  # Allocate this number of IP addresses.

@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_TYPE,
@@ -44,11 +43,6 @@ from testtools.matchers import (
 
 
 class TestDeviceHandler(MAASTransactionServerTestCase):
-
-    @transactional
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def dehydrate_ip_assignment(self, device):
         boot_interface = device.get_boot_interface()

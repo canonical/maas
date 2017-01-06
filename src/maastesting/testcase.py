@@ -33,12 +33,7 @@ from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
 import testtools
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-)
 import testtools.matchers
-from twisted.logger import formatEventAsClassicLogText
 
 
 @nottest
@@ -139,37 +134,33 @@ class MAASTestCase(
         If crochet is managing the Twisted reactor, use `MAASCrochetRunTest`,
         otherwise default to `MAASRunTest`.
         """
-        if crochet._watchdog.is_alive():
-            return MAASCrochetRunTest
-        else:
+        try:
+            watchdog = crochet._watchdog
+        except AttributeError:
             return MAASRunTest
+        else:
+            if watchdog.is_alive():
+                return MAASCrochetRunTest
+            else:
+                return MAASRunTest
 
     def setUp(self):
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())
-        self.addDetail("Twisted logs", Content(
-            UTF8_TEXT, lambda: (
-                formatEventAsClassicLogText(event).encode("utf-8")
-                for event in twistedLog.events)))
+        self.addDetail("Twisted logs", twistedLog.getContent())
 
-        self.maybeCheckTableRowCounts()
         self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()
         self.setUpResources()
+        self.addCleanup(self.tearDownResources)
 
     def setUpResources(self):
         testresources.setUpResources(
             self, self.resources, testresources._get_result())
 
     def tearDown(self):
-        self.tearDownResources()
         super(MAASTestCase, self).tearDown()
         self.checkDatabaseUse()
-
-    def maybeCheckTableRowCounts(self):
-        if self.database_use_possible:
-            from maastesting.tablecounts import check_table_row_counts
-            check_table_row_counts(self)
 
     def maybeCloseDatabaseConnections(self):
         """Close database connections if their use is not permitted."""

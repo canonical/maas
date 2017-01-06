@@ -479,7 +479,7 @@ class TestNodeDeprecatedPreseedContext(
 
 
 class TestNodePreseedContext(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
@@ -537,7 +537,7 @@ class TestPreseedTemplate(MAASTestCase):
 
 
 class TestRenderPreseed(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -785,7 +785,7 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
 
 
 class TestGetCurtinUserData(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
@@ -851,7 +851,7 @@ class TestGetCurtinUserData(
 
 
 class TestGetCurtinUserDataOS(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata` using os specific scenarios."""
 
     # Create a scenario for each possible os specific preseed.
@@ -872,7 +872,7 @@ class TestGetCurtinUserDataOS(
 
 
 class TestCurtinUtilities(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
@@ -1501,6 +1501,7 @@ class TestPreseedMethods(
 
     These tests check that the preseed templates render and 'look right'.
     """
+
     def assertSystemInfo(self, config):
         self.assertThat(config, ContainsDict({
             'system_info': MatchesDict({
@@ -1606,7 +1607,7 @@ class TestPreseedMethods(
 
 
 class TestPreseedURLs(
-        PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase):
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):

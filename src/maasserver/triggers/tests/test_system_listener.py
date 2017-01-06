@@ -28,7 +28,10 @@ from maasserver.models.interface import (
     UnknownInterface,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASLegacyTransactionServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.testing import (
     DNSHelpersMixin,
@@ -3355,30 +3358,6 @@ class TestDNSConfigListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_sends_message_for_config_windows_kms_host_insert(self):
-        kms_host_new = factory.make_name("kms-host-new")
-        yield deferToDatabase(register_system_triggers)
-        yield self.capturePublication()
-        dv = DeferredValue()
-        listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                Config.objects.set_config,
-                "windows_kms_host", kms_host_new)
-            yield dv.get(timeout=2)
-            yield self.assertPublicationUpdated()
-        finally:
-            yield listener.stopService()
-        self.assertThat(
-            self.getCapturedPublication().source, Equals(
-                "Configuration windows_kms_host set to %s"
-                % json.dumps(kms_host_new)))
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_sends_message_for_config_upstream_dns_update(self):
         upstream_dns_old = factory.make_ip_address()
         upstream_dns_new = factory.make_ip_address()
@@ -3461,6 +3440,36 @@ class TestDNSConfigListener(
                 "Configuration default_dns_ttl changed from %s to %s"
                 % (json.dumps(default_dns_ttl_old),
                    json.dumps(default_dns_ttl_new))))
+
+
+class TestDNSConfigListenerLegacy(
+        MAASLegacyTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """Legacy end-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_windows_kms_host_insert(self):
+        kms_host_new = factory.make_name("kms-host-new")
+        yield deferToDatabase(register_system_triggers)
+        yield self.capturePublication()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "windows_kms_host", kms_host_new)
+            yield dv.get(timeout=2)
+            yield self.assertPublicationUpdated()
+        finally:
+            yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration windows_kms_host set to %s"
+                % json.dumps(kms_host_new)))
 
     @wait_for_reactor
     @inlineCallbacks

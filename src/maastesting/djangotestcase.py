@@ -171,8 +171,10 @@ def check_for_rogue_database_activity(test):
 
 
 class InstallDjangoAppsMixin:
-    """Mixin provides the ability to install extra applications into the
-    Djanog INSTALLED_APPS setting."""
+    """Install extra applications into the Django ``INSTALLED_APPS`` setting.
+
+    :deprecated: Do NOT use in new tests.
+    """
 
     def _setup_apps(self, apps):
         self._did_set_apps = False
@@ -213,6 +215,8 @@ class DjangoTestCase(
     application-specific subclass like `MAASServerTestCase`.
 
     Supports test resources and (non-Django) fixtures.
+
+    :deprecated: Do NOT use in new tests.
     """
 
     client_class = SensibleClient
@@ -224,6 +228,9 @@ class DjangoTestCase(
     # for django. These applications will have syncdb performed so the models
     # exist in the database.
     apps = []
+
+    # This attribute is used as a tag with Nose.
+    legacy = True
 
     def _fixture_setup(self):
         super(DjangoTestCase, self)._fixture_setup()
@@ -249,6 +256,8 @@ class DjangoTransactionTestCase(
 
     The basic Django TestCase class uses transactions to speed up tests
     so this class should only be used when tests involve transactions.
+
+    :deprecated: Do NOT use in new tests.
     """
 
     client_class = SensibleClient
@@ -260,6 +269,9 @@ class DjangoTransactionTestCase(
     # for django. These applications will have syncdb performed so the models
     # exist in the database.
     apps = []
+
+    # This attribute is used as a tag with Nose.
+    legacy = True
 
     def _fixture_setup(self):
         super(DjangoTransactionTestCase, self)._fixture_setup()

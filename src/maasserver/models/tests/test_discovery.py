@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from maasserver.dbviews import register_view
 from maasserver.models import (
     Discovery,
     discovery as discovery_module,
@@ -28,10 +27,6 @@ from testtools.matchers import (
 
 
 class TestDiscoveryModel(MAASServerTestCase):
-
-    def setUp(self):
-        super().setUp()
-        register_view("maasserver_discovery")
 
     def test_mac_organization(self):
         discovery = factory.make_Discovery(mac_address="48:51:b7:00:00:00")

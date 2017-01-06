@@ -14,17 +14,10 @@ from django.contrib.auth.models import User
 user_name = 'maas-init-node'
 
 
-# Cached, shared reference to this special user.  Keep internal to this
-# module.
-node_init_user = None
-
-
 def get_node_init_user():
-    global node_init_user
-    if node_init_user is None:
-        node_init_user, _ = User.objects.get_or_create(
-            username=user_name, defaults=dict(
-                first_name="Node-init user", last_name="Special user",
-                email="node-init-user@localhost", is_staff=False,
-                is_superuser=False, is_active=False))
+    node_init_user, _ = User.objects.get_or_create(
+        username=user_name, defaults=dict(
+            first_name="Node-init user", last_name="Special user",
+            email="node-init-user@localhost", is_staff=False,
+            is_superuser=False, is_active=False))
     return node_init_user

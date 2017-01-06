@@ -86,7 +86,9 @@ class TestDBUpgrade(MAASTransactionServerTestCase):
             self, mock, database="default", call=2):
         call = mock.call_args_list[call]
         cmds = [
-            Equals(sys.argv[0]),
+            Equals(sys.executable),
+            Equals('-m'),
+            Equals('maasserver'),
             Equals('dbupgrade'),
             Equals("--database"),
             Equals(database),

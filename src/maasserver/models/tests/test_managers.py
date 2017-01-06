@@ -1,18 +1,18 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver model managers."""
 
 __all__ = []
 
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import MAASLegacyTransactionServerTestCase
 from maasserver.tests.models import (
     BulkManagerParentTestModel,
     BulkManagerTestModel,
 )
 
 
-class BulkManagerTest(MAASTransactionServerTestCase):
+class BulkManagerTest(MAASLegacyTransactionServerTestCase):
 
     apps = ['maasserver.tests']
 

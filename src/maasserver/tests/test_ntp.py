@@ -7,7 +7,6 @@ __all__ = []
 
 from operator import methodcaller
 
-from maasserver.dbviews import register_view
 from maasserver.models.config import Config
 from maasserver.ntp import (
     get_peers_for,
@@ -120,7 +119,6 @@ class TestGetServersFor_Rack(TestGetServersFor_Common):
     """Tests `get_servers_for` for `RackController` nodes."""
 
     def test_yields_region_addresses(self):
-        register_view("maasserver_routable_pairs")
         Config.objects.set_config("ntp_external_only", False)
 
         rack = factory.make_RackController()
@@ -148,8 +146,6 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
     """Tests `get_servers_for` for `Machine` nodes."""
 
     def test_yields_rack_addresses_before_first_boot(self):
-        register_view("maasserver_routable_pairs")
-
         machine = factory.make_Machine()
         machine.boot_cluster_ip = None
         machine.save()
@@ -173,8 +169,6 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         }))
 
     def test_yields_boot_rack_addresses_when_machine_has_booted(self):
-        register_view("maasserver_routable_pairs")
-
         machine = factory.make_Machine()
         address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=machine))
@@ -211,8 +205,6 @@ class TestGetServersFor_Device(TestGetServersFor_Common):
     """Tests `get_servers_for` for `Device` nodes."""
 
     def test_yields_rack_addresses(self):
-        register_view("maasserver_routable_pairs")
-
         device = factory.make_Device()
         address = factory.make_StaticIPAddress(
             interface=factory.make_Interface(node=device))
@@ -260,7 +252,6 @@ class TestGetServersFor_Selection(MAASServerTestCase):
     def setUp(self):
         super(TestGetServersFor_Selection, self).setUp()
         Config.objects.set_config("ntp_external_only", False)
-        register_view("maasserver_routable_pairs")
 
     def test_prefers_ipv6_to_ipv4_peers_then_highest_numerically(self):
         subnet4 = factory.make_Subnet(version=4)
@@ -288,10 +279,6 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
         ("region", {"make_node": factory.make_RegionController}),
         ("region+rack", {"make_node": factory.make_RegionRackController}),
     )
-
-    def setUp(self):
-        super(TestGetPeersFor_Region_RegionRack, self).setUp()
-        register_view("maasserver_routable_pairs")
 
     def test_yields_peer_addresses(self):
         node1 = self.make_node()

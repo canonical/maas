@@ -36,7 +36,6 @@ from maasserver.clusterrpc.power import (
     power_query,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -4259,10 +4258,6 @@ class TestNodeParentRelationShip(MAASServerTestCase):
 class TestNodeNetworking(MAASTransactionServerTestCase):
     """Tests for methods on the `Node` related to networking."""
 
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     def test__create_acquired_bridges_doesnt_call_on_bridge(self):
         mock_create_acquired_bridge = self.patch(
             Interface, "create_acquired_bridge")
@@ -4839,10 +4834,6 @@ class TestGetDefaultGateways(MAASServerTestCase):
 class TestGetDefaultDNSServers(MAASServerTestCase):
     """Tests for `Node.get_default_dns_servers`."""
 
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     def make_Node_with_RackController(
             self, ipv4=True, ipv6=True, ipv4_gateway=True, ipv6_gateway=True,
             ipv4_subnet_dns=None, ipv6_subnet_dns=None):
@@ -5016,7 +5007,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestNode_Start, self).setUp()
         self.patch_autospec(node_module, 'power_driver_check')
-        register_view("maasserver_discovery")
 
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh",

@@ -288,11 +288,12 @@ class Command(BaseCommand):
     @classmethod
     def _perform_django_migrations(cls, database):
         """Perform the django migrations."""
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
         cmd = [
-            sys.argv[0], "dbupgrade", "--database", database,
-            "--django",
+            sys.executable, "-m", "maasserver", "dbupgrade",
+            "--database", database, "--django",
         ]
-        process = subprocess.Popen(cmd)
+        process = subprocess.Popen(cmd, env=env)
         return process.wait()
 
     @classmethod

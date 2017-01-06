@@ -15,6 +15,10 @@ import inspect
 from textwrap import dedent
 
 from fixtures import Fixture
+from testtools.content import (
+    Content,
+    UTF8_TEXT,
+)
 from testtools.deferredruntest import CaptureTwistedLogs
 from testtools.monkey import patch
 from testtools.twistedsupport._deferred import extract_result
@@ -101,6 +105,21 @@ class TwistedLoggerFixture(Fixture):
 
     # For compatibility with fixtures.FakeLogger.
     output = property(dump)
+
+    def getContent(self):
+        """Return a `Content` instance for this fixture.
+
+        `TwistedLoggerFixture` does not automatically add details to itself
+        because more often than not these logs are meant to be tested directly
+        and not kept.
+        """
+        def render(events=self.events):
+            for event in events:
+                rendered = formatEvent(event)
+                if rendered is not None:
+                    yield rendered.encode("utf-8")
+
+        return Content(UTF8_TEXT, render)
 
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()

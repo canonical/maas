@@ -4,13 +4,15 @@
 """Custom test-case classes."""
 
 __all__ = [
+    'MAASLegacyServerTestCase',
+    'MAASLegacyTransactionServerTestCase',
     'MAASServerTestCase',
     'MAASTransactionServerTestCase',
     'SeleniumTestCase',
     'SerializationFailureTestCase',
     'TestWithoutCrochetMixin',
     'UniqueViolationTestCase',
-    ]
+]
 
 from itertools import count
 import socketserver
@@ -27,6 +29,7 @@ from django.core.urlresolvers import reverse
 from django.db import (
     close_old_connections,
     connection,
+    reset_queries,
     transaction,
 )
 from django.db.utils import (
@@ -41,6 +44,7 @@ from maasserver.testing.fixtures import (
     PackageRepositoryFixture,
 )
 from maasserver.testing.orm import PostCommitHooksTestMixin
+from maasserver.testing.resources import DjangoDatabasesManager
 from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils.orm import (
     is_serialization_failure,
@@ -51,6 +55,7 @@ from maastesting.djangotestcase import (
     DjangoTransactionTestCase,
 )
 from maastesting.fixtures import DisplayFixture
+from maastesting.testcase import MAASTestCase
 from maastesting.utils import run_isolated
 
 
@@ -62,10 +67,24 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
     client_class = MAASSensibleClient
 
-    # For each piece of default data introduced via migrations we need
-    # to also include a data fixture. This needs to be representative,
-    # but can be a reduced set.
-    fixtures = []
+    @property
+    def client(self):
+        """Create a client on demand, and cache it.
+
+        There are only a small number of tests that need this. They could
+        probably all be migrated to use `APITestCase`'s features instead (and
+        those of its descendants).
+        """
+        try:
+            return self.__client
+        except AttributeError:
+            self.__client = self.client_class()
+            return self.__client
+
+    @client.setter
+    def client(self, client):
+        """Set the current client."""
+        self.__client = client
 
     @classmethod
     def setUpClass(cls):
@@ -73,15 +92,19 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         register_mac_type(connection.cursor())
 
     def setUp(self):
+        reset_queries()  # Formerly this was handled by... Django?
         super(MAASRegionTestCaseBase, self).setUp()
 
+    def setUpFixtures(self):
+        """This should be called by a subclass once other set-up is done."""
         # Avoid circular imports.
         from maasserver.models import signals
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         from maasserver.clusterrpc.testing import driver_parameters
         self.useFixture(driver_parameters.StaticDriverTypesFixture())
-        self.useFixture(PackageRepositoryFixture())
+
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(IntroCompletedFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
@@ -107,15 +130,89 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
 
+    def assertNotInTransaction(self):
+        self.assertFalse(connection.in_atomic_block, (
+            "Default connection is engaged in a transaction."))
 
-class MAASServerTestCase(
+
+class MAASLegacyServerTestCase(
         MAASRegionTestCaseBase, DjangoTestCase):
+    """Legacy :class:`TestCase` variant for region testing.
+
+    :deprecated: Do NOT use in new tests.
+    """
+
+    def setUp(self):
+        super(MAASLegacyServerTestCase, self).setUp()
+        self.setUpFixtures()
+
+    def setUpFixtures(self):
+        super(MAASLegacyServerTestCase, self).setUpFixtures()
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
+        self.useFixture(PackageRepositoryFixture())
+
+
+class MAASLegacyTransactionServerTestCase(
+        MAASRegionTestCaseBase, DjangoTransactionTestCase):
+    """Legacy :class:`TestCase` variant for *transaction* region testing.
+
+    :deprecated: Do NOT use in new tests.
+    """
+
+    def setUp(self):
+        super(MAASLegacyTransactionServerTestCase, self).setUp()
+        self.setUpFixtures()
+
+    def setUpFixtures(self):
+        super(MAASLegacyTransactionServerTestCase, self).setUpFixtures()
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
+        self.useFixture(PackageRepositoryFixture())
+
+
+class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for region testing."""
 
+    resources = (
+        ("databases", DjangoDatabasesManager()),
+    )
 
-class MAASTransactionServerTestCase(
-        MAASRegionTestCaseBase, DjangoTransactionTestCase):
+    # The database may be used in tests. See `MAASTestCase` for details.
+    database_use_permitted = True
+
+    def setUp(self):
+        super(MAASServerTestCase, self).setUp()
+        self.beginTransaction()
+        self.addCleanup(self.endTransaction)
+        self.setUpFixtures()
+
+    def beginTransaction(self):
+        """Begin new transaction using Django's `atomic`."""
+        self.assertNotInTransaction()
+        self.__atomic = transaction.atomic()
+        self.__atomic.__enter__()
+
+    def endTransaction(self):
+        """Rollback transaction using Django's `atomic`."""
+        transaction.set_rollback(True)
+        self.__atomic.__exit__(None, None, None)
+        self.assertNotInTransaction()
+
+
+class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
     """:class:`TestCase` variant for *transaction* region testing."""
+
+    resources = (
+        ("databases", DjangoDatabasesManager()),
+    )
+
+    # The database may be used in tests. See `MAASTestCase` for details.
+    database_use_permitted = True
+
+    def setUp(self):
+        super(MAASTransactionServerTestCase, self).setUp()
+        self.assertNotInTransaction()
+        self.addCleanup(self.assertNotInTransaction)
+        self.setUpFixtures()
 
 
 # Django supports Selenium tests only since version 1.4.
@@ -246,7 +343,7 @@ class TestWithoutCrochetMixin:
 
 
 class SerializationFailureTestCase(
-        DjangoTransactionTestCase, PostCommitHooksTestMixin):
+        MAASTransactionServerTestCase, PostCommitHooksTestMixin):
 
     def create_stest_table(self):
         with connection.cursor() as cursor:
@@ -330,7 +427,7 @@ class SerializationFailureTestCase(
 
 
 class UniqueViolationTestCase(
-        DjangoTransactionTestCase, PostCommitHooksTestMixin):
+        MAASTransactionServerTestCase, PostCommitHooksTestMixin):
 
     def create_uvtest_table(self):
         with connection.cursor() as cursor:

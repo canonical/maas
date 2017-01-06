@@ -75,9 +75,9 @@ class TestDNSUtilities(MAASServerTestCase):
         # A 'sys_dns' signal is also sent, but that is a side-effect of
         # inserting into the DNS publications table, and is tested as part of
         # the system triggers code.
-        self.assertRaises(
-            DNSPublication.DoesNotExist,
-            DNSPublication.objects.get_most_recent)
+        self.assertThat(
+            DNSPublication.objects.get_most_recent(),
+            MatchesStructure.byEquality(source="Initial publication"))
         dns_force_reload()
         self.assertThat(
             DNSPublication.objects.get_most_recent(),

@@ -157,7 +157,6 @@ class TestEventsAPI(APITestCase.ForUser):
             [event.id for event in reversed(events)],
             extract_event_ids(parsed_result))
         self.assertEqual(len(events), parsed_result['count'])
-        self.assertNumQueries(1)
 
     def test_GET_query_with_some_matching_ids_returns_matching_nodes(self):
         # If some nodes match the requested ids and some don't, only the

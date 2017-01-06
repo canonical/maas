@@ -48,7 +48,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.boot.tests import test_tftppath
 from provisioningserver.boot.tftppath import compose_image_path
@@ -401,7 +400,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
                 param['release']))
 
 
-class TestRackControllersImporter(MAASTestCase):
+class TestRackControllersImporter(MAASServerTestCase):
     """Tests for `RackControllersImporter`."""
 
     def test__init_with_single_system_id(self):

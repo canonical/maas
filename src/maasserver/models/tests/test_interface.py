@@ -16,7 +16,6 @@ from django.core.exceptions import (
 from django.db import transaction
 from django.http import Http404
 from fixtures import FakeLogger
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -2031,10 +2030,6 @@ class UpdateIpAddressesTest(MAASServerTestCase):
 class TestLinkSubnet(MAASTransactionServerTestCase):
     """Tests for `Interface.link_subnet`."""
 
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     def test__AUTO_creates_link_to_AUTO_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         auto_subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2327,11 +2322,6 @@ class TestUnlinkSubnet(MAASServerTestCase):
 
 class TestUpdateIPAddress(MAASTransactionServerTestCase):
     """Tests for `Interface.update_ip_address`."""
-
-    @transactional
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test__switch_dhcp_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2658,10 +2648,6 @@ class TestUpdateLinkById(MAASServerTestCase):
 
 class TestClaimAutoIPs(MAASTransactionServerTestCase):
     """Tests for `Interface.claim_auto_ips`."""
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def test__claims_all_auto_ip_addresses(self):
         with transaction.atomic():

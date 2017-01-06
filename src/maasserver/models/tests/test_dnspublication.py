@@ -86,6 +86,11 @@ class TestDNSPublication(MAASServerTestCase):
 class TestDNSPublicationManager(MAASServerTestCase):
     """Test `DNSPublicationManager`."""
 
+    def setUp(self):
+        super(TestDNSPublicationManager, self).setUp()
+        # These tests expect the DNSPublication table to be empty.
+        DNSPublication.objects.all().delete()
+
     def test_get_most_recent_returns_record_with_highest_id(self):
         DNSPublication(serial=3).save()
         DNSPublication(serial=30).save()

@@ -9,7 +9,6 @@ import http.client
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -221,11 +220,6 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
         ("with_force", {"force": True}),
     )
 
-    @transactional
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
-
     @property
     def force_should_work(self):
         # The 'force' parameter should only work if (1) the user-under-test
@@ -371,10 +365,6 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         ("with_ip_param", {"ip_param": "ip"}),
         ("with_ip_address_param", {"ip_param": "ip_address"}),
     )
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     def post_reservation_request(
             self, subnet=None, ip_address=None, network=None, mac=None,

@@ -39,7 +39,10 @@ from maasserver.models import (
     VersionedTextFile,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASLegacyServerTestCase,
+    MAASServerTestCase,
+)
 from maasserver.tests.models import (
     CIDRTestModel,
     IPv4CIDRTestModel,
@@ -257,7 +260,7 @@ class TestMACAddressField(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_mac, '00:11:222:33:44:55')
 
 
-class TestJSONObjectField(MAASServerTestCase):
+class TestJSONObjectField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 
@@ -297,7 +300,7 @@ class TestJSONObjectField(MAASServerTestCase):
         self.assertRaises(TypeError, JSONFieldModel.objects.get, value__gte=3)
 
 
-class TestXMLField(MAASServerTestCase):
+class TestXMLField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 
@@ -344,7 +347,7 @@ class TestEditableBinaryField(MAASServerTestCase):
         self.assertTrue(EditableBinaryField().editable)
 
 
-class TestMAASIPAddressField(MAASServerTestCase):
+class TestMAASIPAddressField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 
@@ -356,7 +359,7 @@ class TestMAASIPAddressField(MAASServerTestCase):
         self.assertItemsEqual([ip_object], results)
 
 
-class TestLargeObjectField(MAASServerTestCase):
+class TestLargeObjectField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 
@@ -474,7 +477,7 @@ class TestLargeObjectField(MAASServerTestCase):
             AssertionError, field.to_python, factory.make_string())
 
 
-class TestCIDRField(MAASServerTestCase):
+class TestCIDRField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 
@@ -496,7 +499,7 @@ class TestCIDRField(MAASServerTestCase):
         self.assertEqual(normalized_cidr, reload_object(instance).cidr)
 
 
-class TestIPv4CIDRField(MAASServerTestCase):
+class TestIPv4CIDRField(MAASLegacyServerTestCase):
 
     apps = ['maasserver.tests']
 

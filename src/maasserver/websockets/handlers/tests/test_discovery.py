@@ -11,7 +11,6 @@ from datetime import (
 )
 import time
 
-from maasserver.dbviews import register_view
 from maasserver.models.discovery import Discovery
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -20,10 +19,6 @@ from maasserver.websockets.handlers.discovery import DiscoveryHandler
 
 
 class TestDiscoveryHandler(MAASServerTestCase):
-
-    def setUp(self):
-        super().setUp()
-        register_view("maasserver_discovery")
 
     def dehydrate_discovery(self, discovery: Discovery, for_list=False):
         data = {

@@ -21,7 +21,6 @@ from maasserver.api.discoveries import (
     user_friendly_scan_results,
 )
 from maasserver.clusterrpc.utils import RPCResults
-from maasserver.dbviews import register_view
 from maasserver.models import Subnet
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -80,7 +79,6 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
 
     def setUp(self):
         super().setUp()
-        register_view("maasserver_discovery")
         # Patch to ensure an actual scan is not attempted.
         scan_all_rack_networks_mock = self.patch(
             discoveries_module.scan_all_rack_networks)
@@ -182,7 +180,6 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 
     def setUp(self):
         super().setUp()
-        register_view("maasserver_discovery")
         # Patch to ensure an actual scan is not attempted.
         self.scan_all_rack_networks_mock = self.patch(
             discoveries_module.scan_all_rack_networks)
@@ -315,10 +312,6 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 
 
 class TestDiscoveryAPI(APITestCase.ForUser):
-
-    def setUp(self):
-        super().setUp()
-        register_view("maasserver_discovery")
 
     def test_handler_path(self):
         discovery = factory.make_Discovery()

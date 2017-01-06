@@ -16,7 +16,6 @@ from unittest.mock import (
 from urllib.parse import urlparse
 
 from maasserver import server_address
-from maasserver.dbviews import register_view
 from maasserver.dns import zonegenerator
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
@@ -130,10 +129,10 @@ class TestGetDNSServerAddress(MAASServerTestCase):
 class TestGetDNSSearchPaths(MAASServerTestCase):
 
     def test__returns_all_authoritative_domains(self):
-        domain_names = [
+        domain_names = get_dns_search_paths()
+        domain_names.update(
             factory.make_Domain(authoritative=True).name
-            for _ in range(3)
-        ]
+            for _ in range(3))
         for _ in range(3):
             factory.make_Domain(authoritative=False)
         self.assertItemsEqual(
@@ -506,10 +505,6 @@ class TestZoneGenerator(MAASServerTestCase):
 
 class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
     """Tests for TTL in :class:ZoneGenerator`."""
-
-    def setUp(self):
-        register_view("maasserver_discovery")
-        return super().setUp()
 
     @transactional
     def test_domain_ttl_overrides_global(self):

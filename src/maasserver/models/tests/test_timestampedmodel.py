@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`TimestampedModel` tests."""
@@ -14,8 +14,8 @@ from random import randint
 from django.db import transaction
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.testcase import (
+    MAASLegacyTransactionServerTestCase,
     MAASServerTestCase,
-    MAASTransactionServerTestCase,
 )
 from maasserver.tests.models import TimestampedModelTestModel
 
@@ -25,7 +25,7 @@ def make_time_in_the_recent_past():
     return datetime.now() - many_seconds_ago
 
 
-class TimestampedModelTest(MAASTransactionServerTestCase):
+class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
     """Testing for the class `TimestampedModel`."""
 
     apps = ['maasserver.tests']

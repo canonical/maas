@@ -9,7 +9,6 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -1074,7 +1073,6 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
                     }))
 
     def test_link_subnet_creates_link_on_device(self):
-        register_view("maasserver_discovery")
         parent = factory.make_Node()
         device = factory.make_Device(
             owner=self.user, parent=parent)

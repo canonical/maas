@@ -63,6 +63,7 @@ build: \
   bin/test.rack \
   bin/test.config \
   bin/test.region \
+  bin/test.region.legacy \
   bin/test.testing \
   bin/test.js \
   bin/test.e2e \
@@ -120,6 +121,11 @@ bin/test.region: \
   bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) \
   bin/maas-region bin/maas-rack
 	$(buildout) install region-test
+	@touch --no-create $@
+
+bin/test.region.legacy: \
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+	$(buildout) install region-test-legacy
 	@touch --no-create $@
 
 bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
@@ -213,6 +219,7 @@ define test-scripts
   bin/test.rack
   bin/test.config
   bin/test.region
+  bin/test.region.legacy
   bin/test.testing
   bin/test.js
 endef
@@ -238,6 +245,11 @@ test-failed: $(strip $(test-scripts))
 
 clean-failed:
 	$(RM) .noseids
+
+src/maasserver/testing/initial.maas_test.sql: bin/database syncdb
+	bin/database --preserve run -- pg_dump maas --format=plain > $@
+
+test-initial-data: src/maasserver/testing/initial.maas_test.sql
 
 define test-template
 $(test) --with-xunit --xunit-file=xunit.$(notdir $(test)).xml || touch .failed
@@ -475,7 +487,7 @@ define phony_targets
   test+coverage
   test+lxd
   test-failed
-  test-migrations
+  test-initial-data
 endef
 
 #

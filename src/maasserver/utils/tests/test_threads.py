@@ -10,6 +10,7 @@ from unittest.mock import sentinel
 
 from crochet import wait_for
 from django.db import connection
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
     orm,
     threads,
@@ -108,7 +109,7 @@ class TestInstallFunctions(MAASTestCase):
         self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
 
 
-class TestDeferToDatabase(MAASTestCase):
+class TestDeferToDatabase(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
@@ -125,7 +126,7 @@ class TestDeferToDatabase(MAASTestCase):
             (sentinel.called, sentinel.a, sentinel.b)))
 
 
-class TestCallOutToDatabase(MAASTestCase):
+class TestCallOutToDatabase(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks

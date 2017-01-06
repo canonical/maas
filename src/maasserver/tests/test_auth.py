@@ -9,7 +9,6 @@ from functools import partial
 import http.client
 
 from django.core.urlresolvers import reverse
-from maasserver.dbviews import register_view
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
@@ -316,10 +315,6 @@ class TestMAASAuthorizationBackendForAdminRestricted(MAASServerTestCase):
     scenarios = (
         ("discovery", {"factory": factory.make_Discovery}),
         )
-
-    def setUp(self):
-        super().setUp()
-        register_view("maasserver_discovery")
 
     def test_user_cannot_view(self):
         backend = MAASAuthorizationBackend()

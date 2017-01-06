@@ -148,7 +148,6 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.scenarios = merge_scenarios(
             scenarios_users, scenarios_clients, self.scenarios)
 
-    @transactional
     def setUp(self):
         if not callable(self.userfactory):
             raise AssertionError(

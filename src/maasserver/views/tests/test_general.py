@@ -35,6 +35,10 @@ from testtools.matchers import ContainsAll
 class Test404500(MAASServerTestCase):
     """Test pages displayed when an error 404 or an error 500 occur."""
 
+    def setUp(self):
+        super(Test404500, self).setUp()
+        self.patch(settings, "DEBUG", False)
+
     def test_404(self):
         self.client_log_in()
         response = self.client.get('/no-found-page/')
