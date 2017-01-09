@@ -1082,6 +1082,46 @@ describe("NodeDetailsController", function() {
                 });
         });
 
+        it("calls performAction with hwe kernel", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            $scope.osSelection.osystem = "ubuntu";
+            $scope.osSelection.release = "ubuntu/xenial";
+            $scope.osSelection.hwe_kernel = "hwe-16.04-edge";
+            $scope.actionGo();
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
+                node, "deploy", {
+                    osystem: "ubuntu",
+                    distro_series: "xenial",
+                    hwe_kernel: "hwe-16.04-edge"
+                });
+        });
+
+        it("calls performAction with ga kernel", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            $scope.osSelection.osystem = "ubuntu";
+            $scope.osSelection.release = "ubuntu/xenial";
+            $scope.osSelection.hwe_kernel = "ga-16.04";
+            $scope.actionGo();
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
+                node, "deploy", {
+                    osystem: "ubuntu",
+                    distro_series: "xenial",
+                    hwe_kernel: "ga-16.04"
+                });
+        });
+
         it("calls performAction with commissionOptions", function() {
             var controller = makeController();
             spyOn(MachinesManager, "performAction").and.returnValue(
