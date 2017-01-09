@@ -37,3 +37,16 @@ class TestGetVendorForMac(MAASTestCase):
         self.assertEqual(
             "Unknown Vendor",
             get_vendor_for_mac(factory.make_mac_address()))
+
+    def test_get_vendor_survives_index_error(self):
+        try:
+            arr = []
+            arr[3]
+        except IndexError as exc:
+            error = exc
+        eui_result = MagicMock()
+        eui_result.oui.registration.side_effect = error
+        self.patch(mac, "EUI").return_value = eui_result
+        self.assertEqual(
+            "Unknown Vendor",
+            get_vendor_for_mac(factory.make_mac_address()))
