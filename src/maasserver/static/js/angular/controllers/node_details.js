@@ -616,7 +616,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.distro_series = release;
                 // hwe_kernel is optional so only include it if its specified
                 if(angular.isString($scope.osSelection.hwe_kernel) &&
-                   ($scope.osSelection.hwe_kernel.indexOf('hwe-') >= 0)) {
+                   ($scope.osSelection.hwe_kernel.indexOf('hwe-') >= 0 ||
+                    $scope.osSelection.hwe_kernel.indexOf('ga-') >= 0)) {
                     extra.hwe_kernel = $scope.osSelection.hwe_kernel;
                 }
             } else if($scope.actionOption.name === "commission") {

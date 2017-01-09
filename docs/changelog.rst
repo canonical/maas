@@ -38,6 +38,8 @@ LP: #1646955    'main_archive_hostname' is not defined
 
 LP: #1651452    Use correct escaping for EFI's kernel command line datasource_list.
 
+LP: #1654432    Unable to deploy ga kernel on node-details page
+
 
 2.1.2
 =====
