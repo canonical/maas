@@ -18,7 +18,9 @@ def get_vendor_for_mac(mac):
     data = EUI(mac)
     try:
         return data.oui.registration().org
-    except (NotRegisteredError, UnicodeDecodeError):
+    except (IndexError, NotRegisteredError, UnicodeDecodeError):
+        # Bug#1655049: IndexError is raised for some unicode strings.  See also
+        # Bug#1628761.
         # UnicodeDecodeError can be raised if the name of the vendor cannot
         # be decoded from ascii. This is something broken in the netaddr
         # library, we are just catching the error here not to break the UI.
