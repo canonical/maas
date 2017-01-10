@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 
+from django.db.models.query import QuerySet
 from maasserver.models.notification import Notification
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -16,6 +17,8 @@ from testtools.matchers import (
     Equals,
     HasLength,
     Is,
+    IsInstance,
+    MatchesAll,
     MatchesStructure,
     Not,
 )
@@ -165,7 +168,10 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
     def assertNotifications(self, user, notifications):
         self.assertThat(
             Notification.objects.find_for_user(user),
-            AfterPreprocessing(list, Equals(notifications)))
+            MatchesAll(
+                IsInstance(QuerySet),  # Not RawQuerySet.
+                AfterPreprocessing(list, Equals(notifications)),
+            ))
 
     def test_find_and_dismiss_notifications_for_user(self):
         user = factory.make_User()

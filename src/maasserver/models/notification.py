@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from django.contrib.auth.models import User
+from django.db import connection
 from django.db.models import (
     BooleanField,
     CharField,
@@ -66,17 +67,28 @@ class NotificationManager(Manager):
     def find_for_user(self, user):
         """Find notifications for the given user.
 
-        :return: A `RawQuerySet` of `Notification` instances that haven't been
+        :return: A `QuerySet` of `Notification` instances that haven't been
             dismissed by `user`.
         """
         if user.is_superuser:
             where = "notification.users OR notification.admins"
         else:
             where = "notification.users"
-        return self.raw(self._sql_find_for_user % where, [user.id, user.id])
+        # We want to return a QuerySet because things like the WebSocket
+        # handler code wants to use order_by. This seems reasonable. However,
+        # we can't do outer joins with Django so we have to use self.raw().
+        # However #2, that returns a RawQuerySet which doesn't do order_by.
+        # Nor can we do self.filter(id__in=self.raw(...)) to "legitimise" a
+        # raw query. Nope, we have to actually fetch those IDs then issue
+        # another query to get a QuerySet for a set of Notification rows.
+        with connection.cursor() as cursor:
+            find_ids = self._sql_find_ids_for_user % where
+            cursor.execute(find_ids, [user.id, user.id])
+            ids = [nid for (nid, ) in cursor.fetchall()]
+        return self.filter(id__in=ids)
 
-    _sql_find_for_user = """\
-    SELECT notification.* FROM maasserver_notification AS notification
+    _sql_find_ids_for_user = """\
+    SELECT notification.id FROM maasserver_notification AS notification
     LEFT OUTER JOIN maasserver_notificationdismissal AS dismissal ON
       (dismissal.notification_id = notification.id AND dismissal.user_id = %%s)
     WHERE (notification.user_id = %%s OR %s) AND dismissal.id IS NULL

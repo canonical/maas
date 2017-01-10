@@ -82,6 +82,7 @@ from maasserver.models import (
     MDNS,
     Neighbour,
     Node,
+    Notification,
     OwnerData,
     PackageRepository,
     Partition,
@@ -2066,6 +2067,29 @@ class Factory(maastesting.factory.Factory):
             name=name, url=url,
             distributions=distributions, disabled_pockets=disabled_pockets,
             components=components, arches=arches, key=key, default=default)
+
+    def make_Notification(
+            self, message=None, *, ident=None, user=None, users=False,
+            admins=False, context=None):
+
+        if context is None:
+            context_name = self.make_name("name")
+            context = {context_name: self.make_name("value")}
+
+        if message is None:
+            context_names = [key for key in context if key.isidentifier()]
+            if len(context_names) == 0:
+                message = self.make_name("message")
+            else:
+                context_name = random.choice(context_names)
+                message = self.make_name("message-{%s}" % context_name)
+
+        notification = Notification(
+            ident=ident, user=user, users=users, admins=admins,
+            message=message, context=context)
+        notification.save()
+
+        return notification
 
 
 # Create factory singleton.
