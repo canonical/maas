@@ -40,6 +40,7 @@ LP: #1651452    Use correct escaping for EFI's kernel command line datasource_li
 
 LP: #1654432    Unable to deploy ga kernel on node-details page
 
+LP: #1654450    MAAS shouldn't show newer kernels when edge kernels are added
 
 2.1.2
 =====

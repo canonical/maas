@@ -588,7 +588,7 @@ class TestValidateMinHweKernel(MAASServerTestCase):
         kernel = factory.make_kernel_string(generic_only=True)
         self.patch(
             BootResource.objects,
-            'get_usable_hwe_kernels').return_value = (kernel,)
+            'get_supported_hwe_kernels').return_value = (kernel,)
         self.assertEquals(kernel, validate_min_hwe_kernel(kernel))
 
     def test_returns_empty_string_when_none(self):

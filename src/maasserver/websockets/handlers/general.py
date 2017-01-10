@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The general handler for the WebSocket connection."""
@@ -86,7 +86,7 @@ class GeneralHandler(Handler):
         the flavor during deployment.
         """
         return list_hwe_kernel_choices(
-            BootResource.objects.get_usable_hwe_kernels()
+            BootResource.objects.get_supported_hwe_kernels()
         )
 
     def default_min_hwe_kernel(self, params):
