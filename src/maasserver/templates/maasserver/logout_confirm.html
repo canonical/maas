@@ -3,15 +3,25 @@
 {% block nav-active-logout %}active{% endblock %}
 {% block title %}Logout{% endblock %}
 {% block page-title %}Logout{% endblock %}
+{% block layout-modifiers %}logout{% endblock %}
+{% block notifications-class %}u-display--hidden{% endblock %}
 
 {% block content %}
-<div class="twelve-col">
-    <h2>Are you sure you want to log out?</h2>
-    <form method="post" class="form">
-        {% csrf_token %}
-        <input type="hidden" name="post" value="yes" />
-        <input type="submit" value="Log out" class="button--primary button--inline" />
-        <a href="{% url 'index' %}" class="button--base button--inline">Cancel</a>
-    </form>
-</div>
+    {% block page-title-block %}
+    {% endblock %}
+    <div class="row">
+        <div class="wrapper--inner">
+            <div class="action-card action-card--login">
+                <h1 class="action-card__title">Logout</h1>
+                <p class="u-text--subtle u-border--bottom u-border--dotted u-padding--bottom u-margin--bottom">Are you sure you want to log out?</p>
+                <form method="post" class="form">
+                    {% csrf_token %}
+                    <input type="hidden" name="post" value="yes" />
+                    <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">Cancel</a>
+                    <input type="submit" value="Yes" class="button--primary u-width--half u-display--block u-float--right" />
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock %}
+button--inline

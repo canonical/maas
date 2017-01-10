@@ -16,10 +16,11 @@
     width: 100%;
     display: inline-block;
     clear: both;
+    overflow: hidden;
 
     .action-card__title {
       font-size: $h2;
-      margin-bottom: 20px;
+      margin: 0 0 20px;
     }
 
     .action-card__controls {
@@ -29,6 +30,17 @@
       margin: 10px 0 0;
       padding: 10px 0 0;
       box-sizing: border-box;
+    }
+
+    &--login {
+      display: block;
+      margin: 0 auto;
+      max-width: 350px;
+      padding-bottom: 20px;
+
+      .action-card__title {
+        margin-bottom: 10px;
+      }
     }
   }
 }
