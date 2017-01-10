@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BootResource`."""
@@ -173,6 +173,21 @@ class TestBootResourceManager(MAASServerTestCase):
         self.assertIsInstance(usable_arches, list)
         self.assertItemsEqual(
             arches, usable_arches)
+
+    def test_get_usable_hwe_kernel_doesnt_include_all_subarches(self):
+        factory.make_usable_boot_resource(
+            architecture='amd64/hwe-16.04',
+            extra={'subarches': 'hwe-p,hwe-t,hwe-16.04,hwe-16.10'})
+        self.assertEquals(
+            ['hwe-16.04'], BootResource.objects.get_usable_hwe_kernels())
+
+    def test_get_supported_hwe_kernel_includes_all_subarches(self):
+        factory.make_usable_boot_resource(
+            architecture='amd64/hwe-16.04',
+            extra={'subarches': 'hwe-p,hwe-t,hwe-16.04,hwe-16.10'})
+        self.assertEquals(
+            ['hwe-p', 'hwe-t', 'hwe-16.04', 'hwe-16.10'],
+            BootResource.objects.get_supported_hwe_kernels())
 
     def test_get_commissionable_resource_returns_iterable(self):
         os = factory.make_name('os')

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource."""
@@ -230,9 +230,10 @@ class BootResourceManager(Manager):
             return False
         return True
 
-    def get_usable_hwe_kernels(
-            self, name=None, architecture=None, kflavor=None):
-        """Return the set of usable kernels for architecture and release."""
+    def get_hwe_kernels(
+            self, name=None, architecture=None, kflavor=None,
+            include_subarches=False):
+        """Return the set of kernels."""
         from maasserver.utils.osystems import get_release_version_from_string
 
         if not name:
@@ -257,7 +258,7 @@ class BootResourceManager(Manager):
                     subarch_parts[1] = 'rolling'
                     kernels.add('-'.join(subarch_parts))
 
-            if "subarches" in resource.extra:
+            if include_subarches and "subarches" in resource.extra:
                 for subarch in resource.extra["subarches"].split(","):
                     if subarch.startswith("hwe-") or subarch.startswith("ga-"):
                         if kflavor is None:
@@ -276,6 +277,28 @@ class BootResourceManager(Manager):
         # preserves the chronological order of the kernels.
         return sorted(
             kernels, key=lambda k: get_release_version_from_string(k))
+
+    def get_usable_hwe_kernels(
+            self, name=None, architecture=None, kflavor=None):
+        """Return the set of usable kernels for the given name, arch, kflavor.
+
+        Returns only the list of kernels which MAAS has downloaded. For example
+        if Trusty and Xenial have been downloaded this will return hwe-t,
+        ga-16.04, hwe-16.04, hwe-16.04-edge, hwe-16.04-lowlatency, and
+        hwe-16.04-lowlatency-edge."""
+        return self.get_hwe_kernels(name, architecture, kflavor, False)
+
+    def get_supported_hwe_kernels(
+            self, name=None, architecture=None, kflavor=None):
+        """Return the set of supported kernels for the given name, arch,
+        kflavor.
+
+        Returns the list of kernels downloaded by MAAS and the subarches each
+        of those kernels support. For example if Trusty and Xenial have been
+        downloaded this will return hwe-p, hwe-q, hwe-r, hwe-s, hwe-t, hwe-u,
+        hwe-v, hwe-w, ga-16.04, hwe-16.04, hwe-16.04-edge,
+        hwe-16.04-lowlatency, and hwe-16.04-lowlatency-edge."""
+        return self.get_hwe_kernels(name, architecture, kflavor, True)
 
     def get_kpackage_for_node(self, node):
         """Return the kernel package name for the kernel specified."""

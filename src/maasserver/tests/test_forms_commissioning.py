@@ -40,18 +40,18 @@ class TestCommissioningFormForm(MAASServerTestCase):
 
     def test_commissioningform_contains_real_and_ui_choice(self):
         release = factory.pick_ubuntu_release()
-        name = "ubuntu/" + release
+        name = 'ubuntu/%s' % release
+        arch = factory.make_name('arch')
         kernel = 'hwe-' + release[0]
         # Disable boot sources signals otherwise the test fails due to unrun
         # post-commit tasks at the end of the test.
-        self.useFixture(SignalsDisabled("bootsources"))
+        self.useFixture(SignalsDisabled('bootsources'))
         factory.make_BootSourceCache(
             os=name,
             subarch=kernel,
             release=release)
         factory.make_usable_boot_resource(
-            name=name,
-            extra={'subarches': kernel},
+            name=name, architecture='%s/%s' % (arch, kernel),
             rtype=BOOT_RESOURCE_TYPE.SYNCED)
         Config.objects.set_config(
             'commissioning_distro_series',

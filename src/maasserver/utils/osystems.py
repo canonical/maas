@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for working with operating systems."""
 
@@ -78,10 +78,8 @@ def list_all_usable_hwe_kernels(releases):
         for release in osystems:
             os_release = osystem + '/' + release['name']
             kernels[osystem][release['name']] = list_hwe_kernel_choices(
-                sorted([
-                    i for i in BootResource.objects.get_usable_hwe_kernels(
-                        os_release)
-                    if release_a_newer_than_b(i, release['name'])]))
+                sorted(BootResource.objects.get_usable_hwe_kernels(os_release))
+            )
     return kernels
 
 
@@ -473,7 +471,7 @@ def validate_min_hwe_kernel(min_hwe_kernel):
     """Check that the min_hwe_kernel is avalible."""
     if not min_hwe_kernel or min_hwe_kernel == "":
         return ""
-    usable_kernels = BootResource.objects.get_usable_hwe_kernels()
+    usable_kernels = BootResource.objects.get_supported_hwe_kernels()
     if min_hwe_kernel not in usable_kernels:
         raise ValidationError('%s is not a usable kernel.' % min_hwe_kernel)
     else:
