@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.utils.osystems`."""
@@ -41,7 +41,10 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
     validate_osystem_and_distro_series,
 )
-from maastesting.matchers import MockAnyCall
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+)
 
 
 class TestOsystems(MAASServerTestCase):
@@ -580,6 +583,22 @@ class TestValidateHweKernel(MAASServerTestCase):
         self.assertThat(
             mock_get_config, MockAnyCall('commissioning_distro_series'))
         self.assertEqual('hwe-v', kernel)
+
+    def test_validate_hwe_kern_sets_hwe_kern_to_min_hwe_kern_for_edge(self):
+        # Regression test for LP:1654412
+        mock_get_usable_hwe_kernels = self.patch(
+            BootResource.objects, 'get_usable_hwe_kernels')
+        mock_get_usable_hwe_kernels.return_value = (
+            'hwe-16.04', 'hwe-16.04-edge')
+        arch = factory.make_name('arch')
+
+        kernel = validate_hwe_kernel(
+            None, 'hwe-16.04-edge', '%s/generic' % arch, 'ubuntu', 'xenial')
+
+        self.assertEquals('hwe-16.04-edge', kernel)
+        self.assertThat(
+            mock_get_usable_hwe_kernels,
+            MockCalledOnceWith('ubuntu/xenial', arch, 'generic'))
 
 
 class TestValidateMinHweKernel(MAASServerTestCase):
