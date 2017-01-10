@@ -247,7 +247,9 @@ clean-failed:
 	$(RM) .noseids
 
 src/maasserver/testing/initial.maas_test.sql: bin/database syncdb
-	bin/database --preserve run -- pg_dump maas --format=plain > $@
+	bin/database --preserve run -- \
+	    pg_dump maas --no-owner --no-privileges \
+	        --format=plain > $@
 
 test-initial-data: src/maasserver/testing/initial.maas_test.sql
 
