@@ -42,6 +42,8 @@ LP: #1654432    Unable to deploy ga kernel on node-details page
 
 LP: #1654450    MAAS shouldn't show newer kernels when edge kernels are added
 
+LP: #1654412	Unable to set edge kernel as the min_hwe_kernel and deploy with the default kernel
+
 2.1.2
 =====
 

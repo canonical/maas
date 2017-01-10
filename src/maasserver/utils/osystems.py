@@ -446,11 +446,15 @@ def validate_hwe_kernel(
                 (hwe_kernel, min_hwe_kernel))
         return hwe_kernel
     elif(min_hwe_kernel and validate_kernel_str(min_hwe_kernel)):
-        kernel_parts = min_hwe_kernel.split('-')
-        if len(kernel_parts) == 2:
-            kflavor = 'generic'
-        else:
-            kflavor = kernel_parts[2]
+        # Determine what kflavor is being used by check against a list of
+        # known kflavors.
+        valid_kflavors = {
+            br.kflavor for br in BootResource.objects.exclude(kflavor=None)}
+        kflavor = 'generic'
+        for kernel_part in min_hwe_kernel.split('-'):
+            if kernel_part in valid_kflavors:
+                kflavor = kernel_part
+                break
         usable_kernels = BootResource.objects.get_usable_hwe_kernels(
             os_release, arch, kflavor)
         for i in usable_kernels:
