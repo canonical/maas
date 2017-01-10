@@ -163,9 +163,6 @@ class TestCreateChassisHints(MAASServerTestCase):
         chassis = factory.make_Node(node_type=NODE_TYPE.CHASSIS)
         chassis.node_type = NODE_TYPE.DEVICE
         chassis.save()
-        error = None
-        try:
-            reload_object(chassis).chassis_hints
-        except ChassisHints.DoesNotExist as exc:
-            error = exc
-        self.assertIsNotNone(error)
+        self.assertRaises(
+            ChassisHints.DoesNotExist,
+            lambda: chassis.chassis_hints)

@@ -115,15 +115,10 @@ for klass in NODE_CLASSES:
 
 def create_chassis_hints(sender, instance, created, **kwargs):
     """Create `ChassisHints` when `Chassis` is created."""
-    try:
-        chassis_hints = instance.chassis_hints
-    except ChassisHints.DoesNotExist:
-        chassis_hints = None
     if instance.node_type == NODE_TYPE.CHASSIS:
-        if chassis_hints is None:
-            ChassisHints.objects.create(chassis=instance)
-    elif chassis_hints is not None:
-        chassis_hints.delete()
+        ChassisHints.objects.get_or_create(chassis=instance)
+    else:
+        ChassisHints.objects.filter(chassis=instance).delete()
 
 for klass in NODE_CLASSES:
     signals.watch(
