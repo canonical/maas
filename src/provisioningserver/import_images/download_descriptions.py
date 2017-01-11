@@ -117,6 +117,13 @@ class RepoDumper(BasicMirrorWriter):
             maaslog.warning(
                 "I/O error while syncing boot images. If this problem "
                 "persists, verify network connectivity and disk usage.")
+            # This MUST NOT suppress the I/O error because callers use
+            # self.boot_images_dict as the "return" value. Suppressing
+            # exceptions here gives the caller no reason to doubt that
+            # boot_images_dict is not utter garbage and so pass it up the
+            # stack where it is then acted upon, to empty out BootImageCache
+            # for example. True story.
+            raise
 
 
 def value_passes_filter_list(filter_list, property_value):

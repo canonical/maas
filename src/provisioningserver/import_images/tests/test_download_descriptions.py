@@ -393,20 +393,18 @@ class TestRepoDumper(MAASTestCase):
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 
-    def test_sync_does_not_propagate_ioerror(self):
+    def test_sync_does_propagate_ioerror(self):
+        io_error = factory.make_exception_type(bases=(IOError,))
+
         mock_sync = self.patch(download_descriptions.BasicMirrorWriter, "sync")
-        mock_sync.side_effect = IOError()
+        mock_sync.side_effect = io_error()
 
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
 
         with FakeLogger("maas.import-images", level=logging.INFO) as maaslog:
-            # What we're testing here is that sync() doesn't raise IOError...
-            dumper.sync(sentinel.reader, sentinel.path)
-            # ... but we'll validate that we properly called the [mock]
-            # superclass method, and logged something, as well.
-            self.assertThat(
-                mock_sync, MockCalledOnceWith(sentinel.reader, sentinel.path))
+            self.assertRaises(
+                io_error, dumper.sync, sentinel.reader, sentinel.path)
             self.assertDocTestMatches(
                 "...error...syncing boot images...", maaslog.output)
 
