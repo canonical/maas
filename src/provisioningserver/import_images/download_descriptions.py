@@ -121,7 +121,7 @@ class RepoDumper(BasicMirrorWriter):
             # self.boot_images_dict as the "return" value. Suppressing
             # exceptions here gives the caller no reason to doubt that
             # boot_images_dict is not utter garbage and so pass it up the
-            # stack where it is then acted upon, to empty out BootImageCache
+            # stack where it is then acted upon, to empty out BootSourceCache
             # for example. True story.
             raise
 
