@@ -25,22 +25,6 @@
         {% include "maasserver/css-conf.html" %}
     {% endblock %}
 
-    {% block js-conf %}
-        {% include "maasserver/js-conf.html" %}
-    {% endblock %}
-
-    <!-- Only present on none AngularJS pages. The MAAS AngularJS module
-         handles sending page views between routes.
-    -->
-    <script>
-        window.ga = window.ga || function() {
-            (window.ga.q = window.ga.q || []).push(arguments);
-        };
-        window.ga.l = +new Date();
-        window.ga('create', 'UA-1018242-63', 'auto');
-        window.ga('send', 'pageview');
-    </script>
-
     {% block head %}
     {% endblock %}
 </head>
@@ -156,7 +140,7 @@
     </header>
     <main id="body">
         {% block page-title-block %}
-        <header class="page-header" sticky>
+        <header class="page-header" sticky media-query="min-width: 769px">
             <div class="wrapper--inner">
                 <h1 class="page-header__title">{% block page-title %}{% endblock %}</h1>
             </div>
@@ -194,7 +178,7 @@
             </div>
         </div>
     </main>
-    <footer class="u-padding--top u-border--top u-margin--top u-float--left u-width--full">
+    <footer class="p-footer">
         <div class="wrapper--inner clearfix">
             <div class="twelve-col">
                 <div class="eight-col">
@@ -212,7 +196,7 @@
                     {% endblock %}
                 </div>
                 <div class="four-col last-col">
-                    <svg version="1.1" id="ubuntu__x5F__orange" class="u-float--right" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                    <svg version="1.1" id="ubuntu__x5F__orange" class="p-footer__logo" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
                     	 x="0px" y="0px" width="107.208px" height="24.076px" viewBox="70.867 73.051 107.208 24.076"
                     	 enable-background="new 70.867 73.051 107.208 24.076" xml:space="preserve">
                     <g>
@@ -273,5 +257,20 @@
             </div>
         </div>
     </footer>
+    {% block js-conf %}
+        {% include "maasserver/js-conf.html" %}
+    {% endblock %}
+
+    <!-- Only present on none AngularJS pages. The MAAS AngularJS module
+         handles sending page views between routes.
+    -->
+    <script>
+        window.ga = window.ga || function() {
+            (window.ga.q = window.ga.q || []).push(arguments);
+        };
+        window.ga.l = +new Date();
+        window.ga('create', 'UA-1018242-63', 'auto');
+        window.ga('send', 'pageview');
+    </script>
 </body>
 </html>

@@ -12,11 +12,19 @@
     dt {
       clear: left;
       color: $cool-grey;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        color: $warm-grey;
+      }
     }
 
     dd {
       color: $cool-grey;
       margin-left: 0;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        text-align: right;
+      }
     }
 
     dt,
@@ -26,6 +34,10 @@
       line-height: 36px;
       margin-bottom: 10px !important;
       word-wrap: break-word;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 50% !important;
+      }
 
       &:last-child {
         margin-bottom: 0;

@@ -9,7 +9,7 @@
     <meta name="description" content="{% block meta_description %}{% endblock %}" />
     <meta name="keywords" content="{% block meta_keywords %}{% endblock %}" />
     <meta name="author" content="Canonical" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, user-scalable=no"/>
 
     <!--[if IE]>
         <meta http-equiv="X-UA-Compatible" content="IE=8">
@@ -18,8 +18,6 @@
     <link rel="shortcut icon" href="{{ STATIC_URL }}assets/images/logos/favicon.ico" />
 
     {% include "maasserver/css-conf.html" %}
-
-    {% include "maasserver/js-conf.html" %}
 </head>
 <body data-ng-init="site = '{{ global_options.site_name }}'" data-maas-version-reloader>
     <header class="banner global" role="banner">
@@ -157,7 +155,7 @@
         <div data-ng-view></div>
         <div class="push"></div>
     </main>
-    <footer class="u-padding u-padding--bottom-none u-border--top u-float--left u-width--full" data-maas-error-toggle>
+    <footer class="p-footer" data-maas-error-toggle>
         <div class="wrapper--inner clearfix">
             <div class="twelve-col">
                 <div class="eight-col">
@@ -175,7 +173,7 @@
                     {% endblock %}
                 </div>
                 <div class="four-col last-col">
-                    <svg version="1.1" id="ubuntu__x5F__orange" class="u-float--right" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                    <svg version="1.1" id="ubuntu__x5F__orange" class="p-footer__logo" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
                     	 x="0px" y="0px" width="107.208px" height="24.076px" viewBox="70.867 73.051 107.208 24.076"
                     	 enable-background="new 70.867 73.051 107.208 24.076" xml:space="preserve">
                     <g>
@@ -236,5 +234,6 @@
             </div>
         </div>
     </footer>
+    {% include "maasserver/js-conf.html" %}
 </body>
 </html>

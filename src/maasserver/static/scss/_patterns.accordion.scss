@@ -7,6 +7,25 @@
 /// MAAS Accordion
 /// @group maas accordion
 @mixin maas-accordion {
+  .p-mobile-nav {
+    display: none;
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      display: block;
+      width: 100%;
+
+      &__link {
+        width: 100%;
+        float: left;
+        display: block;
+        padding: 15px 10px;
+        margin: 0;
+        background: $white;
+        z-index: 10;
+        top: 0;
+      }
+    }
+  }
   // scss-lint:disable NestingDepth SelectorDepth
   .accordion {
     box-sizing: border-box;
@@ -15,6 +34,10 @@
     background: $white;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
     margin-bottom: 40px;
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      margin-bottom: 0;
+    }
 
     &.is-disabled {
       opacity: .5;
@@ -27,6 +50,26 @@
       border-bottom: 1px dotted $muted-grey;
       padding: 8px 20px 9px;
       margin: 0;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        border-bottom: 0;
+        background: $transparent url('#{$asset-path}images/forms/chevron_down.svg') top 20px right 20px no-repeat;
+
+        &.is-active {
+          border-bottom: 1px dotted $muted-grey;
+          background-image: url('#{$asset-path}images/icons/cross.svg');
+
+          + .accordion__content {
+              display: block;
+          }
+        }
+      }
+    }
+
+    .accordion__content {
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: none;
+      }
     }
 
     // accordion data block, contains all filter links and controls.
@@ -48,6 +91,10 @@
           + .accordion__tab-content {
             max-height: 400px;
             transition: max-height .5s ease-in;
+
+            @media only screen and (max-width : $breakpoint-medium) {
+              max-height: 150px;
+            }
           }
         }
       }

@@ -56,17 +56,6 @@
     color: $headline-color;
   }
 
-  // Create heading styles
-  @each $h in $heading-size {
-    #{nth($h, 1)} {
-      font-size: #{(nth($h, 2)/16px)*1em};
-
-      small {
-        font-size: 75%;
-      }
-    }
-  }
-
   // Additional font sizes
   .gigantic {
     @include font-size($gigantic);

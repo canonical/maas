@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ fabric.name $}</h1>
             <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
@@ -89,14 +89,14 @@
                         </thead>
                         <tbody>
                             <tr class="table__row table__row--no-hover" data-ng-repeat="row in rows | orderBy:predicate:reverse track by $index">
-                                <td class="table__column--15">
+                                <td class="table__column--15" aria-label="VLAN">
                                     <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                                 </td>
-                                <td class="table__column--50">
+                                <td class="table__column--50" aria-label="Subnet">
                                     <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                                 </td>
-                                <td class="table__column--10">{$ row.subnet.statistics.available_string $}</td>
-                                <td class="table__column--25">
+                                <td class="table__column--10" aria-label="Available">{$ row.subnet.statistics.available_string $}</td>
+                                <td class="table__column--25" aria-label="Space">
                                     <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                                 </td>
                             </tr>

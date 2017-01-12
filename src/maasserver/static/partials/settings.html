@@ -47,16 +47,16 @@
                                 data-ng-repeat="snippet in snippets track by snippet.id"
                                 data-ng-class="{ 'is-active': editSnippet === snippet || deleteSnippet === snippet }">
                                 <div data-ng-if="editSnippet !== snippet">
-                                    <div class="table__data table-col--20">
+                                    <div class="table__data table-col--20" aria-label="Name">
                                         <span>{$ snippet.name $}</span>
                                     </div>
-                                    <div class="table__data table-col--15">
+                                    <div class="table__data table-col--15" aria-label="Type">
                                         <span>{$ getSnippetTypeText(snippet) $}</span>
                                     </div>
-                                    <div class="table__data table-col--35">
+                                    <div class="table__data table-col--35" aria-label="Applies to">
                                         <span>{$ getSnippetAppliesToText(snippet) $}</span>
                                     </div>
-                                    <div class="table__data table-col--10">
+                                    <div class="table__data table-col--10" aria-label="Enabled">
                                         <div class="onoffswitch">
                                             <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-{$ snippet.id $}"
                                                 data-ng-model="snippet.enabled"
@@ -67,12 +67,20 @@
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="table__data table-col--20">
+                                    <div class="table__data table--mobile-controls table-col--20">
                                         <div class="table__controls">
-                                            <a class="icon icon--edit tooltip" aria-label="Edit"
-                                                data-ng-click="snippetEnterEdit(snippet)">Edit</a>
-                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                            <div class="u-display--desktop">
+                                                <a class="icon icon--edit tooltip" aria-label="Edit"
+                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</a>
+                                                <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                            </div>
+                                            <div class="u-display--mobile">
+                                                <a class="button--secondary" aria-label="Edit"
+                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</a>
+                                                <a class="button--secondary" aria-label="Remove"
+                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -80,21 +88,21 @@
                                     table-form="true" save-on-blur="false" after-save="snippetExitEdit"
                                     data-ng-if="editSnippet === snippet">
                                     <div class="table__data table-col--20">
-                                        <maas-obj-field type="text" key="name" placeholder="Name"
+                                        <maas-obj-field type="text" key="name" placeholder="Name" class="u-margin--none"
                                             disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--15">
                                         <maas-obj-field type="options" key="type" placeholder="Select type"
                                             disable-label="true" input-class="table__input u-margin--none"
-                                            options="type for type in snippetTypes"></maas-obj-field>
+                                            class="u-margin--none" options="type for type in snippetTypes"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--35">
                                         <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
-                                            disable-label="true" input-class="table__input u-margin--none"
+                                            disable-label="true" input-class="table__input u-margin--none" class="u-margin--none"
                                             options="subnet.id as getSubnetName(subnet) for subnet in subnets"
                                             data-ng-if="editSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
                                         <maas-obj-field type="options" key="node" placeholder="Choose node"
-                                            disable-label="true" input-class="table__input u-margin--none"
+                                            disable-label="true" input-class="table__input u-margin--none" class="u-margin--none"
                                             options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
                                             data-ng-if="editSnippet.$maasForm.getValue('type') === 'Node'"></maas-obj-field>
                                     </div>
@@ -107,8 +115,27 @@
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
+                                        <div class="table__dropdown-title">
+                                            <h2 data-ng-click="snippetExitEdit(snippet)" class="u-float--left">Editing {$ snippet.name $}</h2>
+                                            <i data-ng-click="snippetExitEdit(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        </div>
                                         <div class="table__row form is-active">
                                             <div class="table__data table-col--100 u-padding--top-none">
+                                                <div class="u-display--mobile">
+                                                    <maas-obj-field type="text" key="name" placeholder="Name"
+                                                        label="Name" input-class="table__input u-margin--none"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="type" placeholder="Select type"
+                                                        label="Select type" input-class="table__input u-margin--none"
+                                                        options="type for type in snippetTypes"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
+                                                        label="Choose subnet" input-class="table__input u-margin--none"
+                                                        options="subnet.id as getSubnetName(subnet) for subnet in subnets"
+                                                        data-ng-if="editSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="node" placeholder="Choose node"
+                                                        label="Choose node" input-class="table__input u-margin--none"
+                                                        options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
+                                                        data-ng-if="editSnippet.$maasForm.getValue('type') === 'Node'"></maas-obj-field>
+                                                </div>
                                                 <maas-obj-field type="textarea" key="value" placeholder="Custom DHCP snippet"
                                                     disable-label="true" input-width="twelve"></maas-obj-field>
                                             </div>
@@ -126,6 +153,10 @@
                                     </div>
                                 </maas-obj-form>
                                 <div class="table__dropdown" data-ng-if="deleteSnippet === snippet">
+                                    <div class="table__dropdown-title">
+                                        <h2 data-ng-click="snippetExitRemove(snippet)" class="u-float--left">Removing {$ snippet.name $}</h2>
+                                        <i data-ng-click="snippetExitRemove(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                               <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this snippet?</p>
@@ -141,37 +172,75 @@
                                 <maas-obj-form obj="newSnippet" manager="snippetsManager" manager-method="createItem"
                                     table-form="true" save-on-blur="false" after-save="snippetAddCancel">
                                     <div class="table__dropdown">
+                                        <div class="table__dropdown-title">
+                                            <h2 data-ng-click="snippetAddCancel()" class="u-float--left">Adding snippet</h2>
+                                            <i data-ng-click="snippetAddCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        </div>
                                         <div class="table__row form is-active">
-                                            <div class="table__data table-col--20">
+                                            <div class="u-display--desktop">
+                                                <div class="table__data table-col--20">
+                                                    <maas-obj-field type="text" key="name" placeholder="Name"
+                                                        disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
+                                                </div>
+                                                <div class="table__data table-col--15">
+                                                    <maas-obj-field type="options" key="type" placeholder="Select type"
+                                                        disable-label="true" input-class="table__input u-margin--none"
+                                                        options="type for type in snippetTypes"></maas-obj-field>
+                                                </div>
+                                                <div class="table__data table-col--35">
+                                                    <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
+                                                        disable-label="true" input-class="table__input u-margin--none"
+                                                        options="subnet.id as getSubnetName(subnet) for subnet in subnets"
+                                                        data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
+                                                    <maas-obj-field type="options" key="node" placeholder="Choose node"
+                                                        disable-label="true" input-class="table__input u-margin--none"
+                                                        options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
+                                                        data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">
+                                                    </maas-obj-field>
+                                                </div>
+                                                <div class="table__data table-col--10">
+                                                    <div class="onoffswitch">
+                                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
+                                                            data-ng-model="newSnippet.data.enabled"
+                                                            data-ng-disabled="newSnippet.saving" checked>
+                                                        <label class="onoffswitch-label" for="newEnabled">
+                                                            <span class="onoffswitch-inner"></span>
+                                                            <span class="onoffswitch-switch"></span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="table__data u-display--mobile">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
-                                                    disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
-                                            </div>
-                                            <div class="table__data table-col--15">
+                                                    label="Name" input-class="table__input"></maas-obj-field>
                                                 <maas-obj-field type="options" key="type" placeholder="Select type"
-                                                    disable-label="true" input-class="table__input u-margin--none"
+                                                    label="Select type" input-class="table__input"
                                                     options="type for type in snippetTypes"></maas-obj-field>
-                                            </div>
-                                            <div class="table__data table-col--35">
                                                 <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
-                                                    disable-label="true" input-class="table__input u-margin--none"
+                                                    label="Choose subnet" input-class="table__input u-margin--none"
                                                     options="subnet.id as getSubnetName(subnet) for subnet in subnets"
                                                     data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'"></maas-obj-field>
                                                 <maas-obj-field type="options" key="node" placeholder="Choose node"
-                                                    disable-label="true" input-class="table__input u-margin--none"
+                                                    label="Choose node" input-class="table__input u-margin--none"
                                                     options="node.system_id as node.fqdn group by node.node_type_display for node in machines.concat(devices).concat(controllers)"
                                                     data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">
                                                 </maas-obj-field>
-                                            </div>
-                                            <div class="table__data table-col--10">
-                                                <div class="onoffswitch">
-                                                    <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
-                                                        data-ng-model="newSnippet.data.enabled"
-                                                        data-ng-disabled="newSnippet.saving" checked>
-                                                    <label class="onoffswitch-label" for="newEnabled">
-                                                        <span class="onoffswitch-inner"></span>
-                                                        <span class="onoffswitch-switch"></span>
-                                                    </label>
-                                                </div>
+                                                <dl>
+                                                    <dt>
+                                                        <label for="newEnabled">Enabled</label>
+                                                    </dt>
+                                                      <dd>
+                                                          <div class="onoffswitch u-margin--top-small">
+                                                              <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
+                                                                  data-ng-model="newSnippet.data.enabled"
+                                                                  data-ng-disabled="newSnippet.saving" checked>
+                                                              <label class="onoffswitch-label" for="newEnabled">
+                                                                  <span class="onoffswitch-inner"></span>
+                                                                  <span class="onoffswitch-switch"></span>
+                                                              </label>
+                                                          </div>
+                                                      </dd>
+                                                </dl>
                                             </div>
                                             <div class="table__data table-col--100 u-padding--top-none">
                                                 <maas-obj-field type="textarea" key="value" placeholder="Custom DHCP snippet"
@@ -270,7 +339,7 @@
                                 data-ng-repeat="repository in repositories track by repository.id"
                                 data-ng-class="{ 'is-active': editRepository === repository || deleteRepository === repository }">
                                 <div data-ng-if="editRepository !== repository">
-                                    <div class="table__data table-col--20">
+                                    <div class="table__data table-col--20" aria-label="Name">
                                         <span data-ng-if="repository.name === 'main_archive'">
                                             Ubuntu archive
                                         </span>
@@ -281,8 +350,8 @@
                                             {$ repository.name $}
                                         </span>
                                     </div>
-                                    <div class="table__data table-col--55">{$ repository.url $}</div>
-                                    <div class="table__data table-col--10">
+                                    <div class="table__data table-col--55" aria-label="URL">{$ repository.url $}</div>
+                                    <div class="table__data table-col--10" aria-label="Enabled">
                                         <div class="onoffswitch" data-ng-if="!isMirror(repository)">
                                             <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-repo-{$ repository.id $}"
                                                 data-ng-model="repository.enabled"
@@ -304,13 +373,22 @@
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="table__data table-col--15">
+                                    <div class="table__data table--mobile-controls table-col--15">
                                         <div class="table__controls">
-                                            <a class="icon icon--edit tooltip" aria-label="Edit"
-                                                data-ng-click="repositoryEnterEdit(repository)">Edit</a>
-                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                data-ng-if="!isMirror(repository)"
-                                                data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                            <div class="u-display--desktop">
+                                                <a class="icon icon--edit tooltip" aria-label="Edit"
+                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</a>
+                                                <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                                    data-ng-if="!isMirror(repository)"
+                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                            </div>
+                                            <div class="u-display--mobile">
+                                                <a class="button--secondary" aria-label="Edit"
+                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</a>
+                                                <a class="button--secondary" aria-label="Remove"
+                                                    data-ng-if="!isMirror(repository)"
+                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -345,30 +423,54 @@
                                         </div>
                                     </div>
                                     <div class="table__dropdown form">
+                                        <div class="table__dropdown-title">
+                                            <h2 data-ng-click="repositoryExitEdit()" class="u-float--left">
+                                              <span data-ng-if="repository.name === 'main_archive'">
+                                                  Editing Ubuntu archive
+                                              </span>
+                                              <span data-ng-if="repository.name === 'ports_archive'">
+                                                  Editing Ubuntu extra architectures
+                                              </span>
+                                              <span data-ng-if="repository.name !== 'main_archive' && repository.name !== 'ports_archive'">
+                                                  Editing {$ repository.name $}
+                                              </span>
+                                            </h2>
+                                            <i data-ng-click="repositoryExitEdit()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        </div>
                                         <div class="table__row is-active">
-                                            <div class="table__data table-col--100">
-                                                <div class="six-col">
-                                                    <div class="form__group form__group--inline">
+                                            <div class="table__data table-col--100 form form--stack">
+                                                <div class="form__fieldset six-col">
+                                                    <div class="form__group u-display--mobile" data-ng-if="!isMirror(repository)">
+                                                        <maas-obj-field type="text" key="name" placeholder="Name"
+                                                            label="Name" input-class="table__input u-margin--none"
+                                                            data-ng-if="!isMirror(repository)"></maas-obj-field>
+                                                    </div>
+                                                    <div class="form__group u-display--mobile" data-ng-if="editRepository === repository">
+                                                        <maas-obj-field type="text" key="url" placeholder="URL"
+                                                            label="URL" input-class="table__input u-margin--none"
+                                                            data-ng-if="editRepository === repository"></maas-obj-field>
+                                                    </div>
+                                                    <div class="form__group">
                                                         <maas-obj-field type="textarea" key="key" label="Key"
                                                             label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
                                                 </div>
-                                                <div class="six-col last-col">
-                                                    <div class="form__group form__group--inline">
+                                                <div class="form__fieldset six-col last-col">
+                                                    <div class="form__group u-align--left-mobile">
                                                         <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                             label-width="two" input-width="three" values="known_architectures"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline"
+                                                    <div class="form__group u-align--left-mobile"
                                                         data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                         <maas-obj-field type="tags" key="distributions" label="Distributions"
                                                             placeholder="Add a distribution" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline"
+                                                    <div class="form__group"
                                                         data-ng-if="!isMirror(editRepository) && !isPPA(editRepository)">
                                                         <maas-obj-field type="tags" key="components" label="Components"
                                                             placeholder="Add a component" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline"
+                                                    <div class="form__group u-align--left-mobile"
                                                         data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
                                                         <maas-obj-field type="checkboxes" key="disabled_pockets" label="Disabled Pockets"
                                                             label-width="two" input-width="three" values="pockets_to_disable"></maas-obj-field>
@@ -389,6 +491,10 @@
                                     </div>
                                 </maas-obj-form>
                                 <div class="table__dropdown" data-ng-if="deleteRepository === repository">
+                                    <div class="table__dropdown-title">
+                                        <h2 data-ng-click="repositoryExitRemove()" class="u-float--left">Removing {$ repository.name $}</h2>
+                                        <i data-ng-click="repositoryExitRemove()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                               <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this repository?</p>
@@ -404,33 +510,47 @@
                                 <maas-obj-form obj="newRepository" manager="packageRepositoriesManager" manager-method="createItem"
                                     table-form="true" save-on-blur="false" after-save="repositoryAddCancel">
                                     <div class="table__data table-col--20">
-                                        <maas-obj-field type="text" key="name" placeholder="Name" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
+                                        <maas-obj-field class="u-margin--none" type="text" key="name" placeholder="Name" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--55">
-                                        <maas-obj-field type="text" key="url" placeholder="URL" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
+                                        <maas-obj-field class="u-margin--none" type="text" key="url" placeholder="URL" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--10">
-                                        <maas-obj-field type="onoffswitch" key="enabled" disable-label="true"></maas-obj-field>
+                                        <maas-obj-field class="u-margin--none" type="onoffswitch" key="enabled" disable-label="true"></maas-obj-field>
                                     </div>
                                     <div class="table__dropdown form">
+                                        <div class="table__dropdown-title">
+                                            <h2 data-ng-click="repositoryAddCancel" class="u-float--left">Adding <span data-ng-if="isPPA(newRepository)">PPA</span><span data-ng-if="!isPPA(newRepository)">repository</span></h2>
+                                            <i data-ng-click="repositoryAddCancel" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        </div>
                                         <div class="table__row is-active">
-                                            <div class="table__data table-col--100">
+                                            <div class="table__data table-col--100 form form--stack">
                                                 <div class="six-col">
-                                                    <div class="form__group form__group--inline">
+                                                    <div class="u-display--mobile">
+                                                        <maas-obj-field type="text" key="name" placeholder="Name" label="Name" input-class="table__input u-margin--none"></maas-obj-field>
+                                                        <maas-obj-field type="text" key="url" placeholder="URL" label="URL" input-class="table__input u-margin--none"></maas-obj-field>
+                                                        <dl>
+                                                            <dt>Enable</dt>
+                                                                <dd>
+                                                                    <maas-obj-field type="onoffswitch" key="enabled" disable-label="true"></maas-obj-field>
+                                                                </dd>
+                                                        </dl>
+                                                    </div>
+                                                    <div class="form__group">
                                                         <maas-obj-field type="textarea" key="key" label="Key"
                                                             label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
                                                 </div>
                                                 <div class="six-col last-col">
-                                                    <div class="form__group form__group--inline">
+                                                    <div class="u-align--left-mobile">
                                                         <maas-obj-field type="checkboxes" key="arches" label="Architectures"
                                                             label-width="two" input-width="three" values="known_architectures"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline" data-ng-if="!isPPA(newRepository)">
+                                                    <div data-ng-if="!isPPA(newRepository)">
                                                         <maas-obj-field type="tags" key="distributions" label="Distributions"
                                                             placeholder="Add a distribution" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group form__group--inline" data-ng-if="!isPPA(newRepository)">
+                                                    <div data-ng-if="!isPPA(newRepository)">
                                                         <maas-obj-field type="tags" key="components" label="Components"
                                                             placeholder="Add a component" label-width="two" input-width="three"></maas-obj-field>
                                                     </div>

@@ -18,6 +18,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $rootScope.title = "Loading...";
         $rootScope.page = "nodes";
 
+        $scope.disableSticking = false;
+
         // Initial values.
         $scope.loaded = false;
         $scope.node = null;

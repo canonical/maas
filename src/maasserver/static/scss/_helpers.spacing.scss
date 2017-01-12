@@ -45,4 +45,10 @@
       }
     }
   }
+
+  .u-mobile-margin--bottom {
+    @media only screen and (max-width : $breakpoint-medium) {
+      margin-bottom: 20px !important;
+    }
+  }
 }

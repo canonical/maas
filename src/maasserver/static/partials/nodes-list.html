@@ -1,4 +1,4 @@
-<header class="page-header" sticky>
+<header class="page-header" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
         <h1 class="page-header__title">{$ $parent.site $} MAAS</h1>
@@ -549,97 +549,102 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
     <aside class="three-col">
         <div class="accordion maas-accordion" data-ng-show="currentpage === 'nodes'"
             data-ng-class="{ 'is-disabled': tabs.nodes.actionOption }">
-            <h3 class="accordion__title">Filter by</h3>
-            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.status.length">
-                <h4 class="accordion__tab-title maas-accordion-tab is-active">Status</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                        <li class="accordion__tab-item" data-ng-repeat="status in tabs.nodes.metadata.status | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('status', status.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('status', status.name, 'nodes')">{$ status.name $} ({$ status.count $})</a>
-                        </li>
-                    </ul>
+            <h3 class="accordion__title"
+            ng-class="{'is-active': isActive}"
+            ng-init="isActive = false"
+            ng-click="isActive = !isActive">Filter by</h3>
+            <div class="accordion__content">
+                <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.status.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab is-active">Status</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+                            <li class="accordion__tab-item" data-ng-repeat="status in tabs.nodes.metadata.status | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('status', status.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('status', status.name, 'nodes')">{$ status.name $} ({$ status.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.owner.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Owner</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="owner in tabs.nodes.metadata.owner | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('owner', owner.name, 'nodes')">{$ owner.name $} ({$ owner.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.owner.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Owner</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="owner in tabs.nodes.metadata.owner | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('owner', owner.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('owner', owner.name, 'nodes')">{$ owner.name $} ({$ owner.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.release.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">OS/Release</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="release in tabs.nodes.metadata.release | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('release', release.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('release', release.name, 'nodes')">{$ getReleaseTitle(release.name) $} ({$ release.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.release.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">OS/Release</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="release in tabs.nodes.metadata.release | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('release', release.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('release', release.name, 'nodes')">{$ getReleaseTitle(release.name) $} ({$ release.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.tags.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Tags</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="tag in tabs.nodes.metadata.tags | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('tags', tag.name, 'nodes')">{$ tag.name $} ({$ tag.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.tags.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Tags</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="tag in tabs.nodes.metadata.tags | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('tags', tag.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('tags', tag.name, 'nodes')">{$ tag.name $} ({$ tag.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.storage_tags.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Storage Tags</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="tag in tabs.nodes.metadata.storage_tags | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('storage_tags', tag.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('storage_tags', tag.name, 'nodes')">{$ tag.name $} ({$ tag.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.storage_tags.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Storage Tags</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="tag in tabs.nodes.metadata.storage_tags | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('storage_tags', tag.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('storage_tags', tag.name, 'nodes')">{$ tag.name $} ({$ tag.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.subnets.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Subnets</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="subnet in tabs.nodes.metadata.subnets | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('subnets', subnet.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('subnets', subnet.name, 'nodes')">{$ subnet.name $} ({$ subnet.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.subnets.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Subnets</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="subnet in tabs.nodes.metadata.subnets | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('subnets', subnet.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('subnets', subnet.name, 'nodes')">{$ subnet.name $} ({$ subnet.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.fabrics.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Fabrics</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="fabric in tabs.nodes.metadata.fabrics | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('fabrics', fabric.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('fabrics', fabric.name, 'nodes')">{$ fabric.name $} ({$ fabric.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.fabrics.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Fabrics</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="fabric in tabs.nodes.metadata.fabrics | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('fabrics', fabric.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('fabrics', fabric.name, 'nodes')">{$ fabric.name $} ({$ fabric.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.spaces.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Spaces</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="space in tabs.nodes.metadata.spaces | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('spaces', space.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('spaces', space.name, 'nodes')">{$ space.name $} ({$ space.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.spaces.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Spaces</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="space in tabs.nodes.metadata.spaces | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('spaces', space.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('spaces', space.name, 'nodes')">{$ space.name $} ({$ space.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
-            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.zone.length">
-                <h4 class="accordion__tab-title maas-accordion-tab">Zones</h4>
-                <div class="accordion__tab-content">
-                    <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="zone in tabs.nodes.metadata.zone | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'nodes') }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('zone', zone.name, 'nodes')">{$ zone.name $} ({$ zone.count $})</a>
-                        </li>
-                    </ul>
+                <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.zone.length">
+                    <h4 class="accordion__tab-title maas-accordion-tab">Zones</h4>
+                    <div class="accordion__tab-content">
+                        <ul class="accordion__tab-list">
+                            <li class="accordion__tab-item" data-ng-repeat="zone in tabs.nodes.metadata.zone | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('zone', zone.name, 'nodes') }">
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('zone', zone.name, 'nodes')">{$ zone.name $} ({$ zone.count $})</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -696,7 +701,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             <table id="nodes-listing">
                 <thead>
                     <tr>
-                        <th class="table-col--3">
+                        <th class="table-col--3 u-display--medium" aria-label="Select all">
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-checked="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="check-all"></label>
@@ -715,7 +720,6 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <a href="" class="u-align--center" data-ng-click="sortTable('power_state', 'nodes')" data-ng-class="{'is-sorted': tabs.nodes.predicate === 'power_state', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Power</a>
                         </th>
-                        <th class="table-col--3"></th>
                         <th>
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <a href="" data-ng-click="sortTable('status', 'nodes')" data-ng-class="{'is-sorted': tabs.nodes.predicate === 'status', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Status</a>
@@ -747,30 +751,30 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     <tr
                         data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
                         data-ng-class="{ 'table--error': !supportsAction(node, 'nodes'), selected: node.$selected }">
-                        <td class="table-col--3">
+                        <td class="table-col--3" aria-label="Select node">
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="{$ node.fqdn $}"></label>
                         </td>
                         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                        <td class="u-align--left" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
-                            <a href="#/node/machine/{$ node.system_id $}">{$ node.fqdn $}</a>
+                        <td class="u-align--left" aria-label="FQDN" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
+                            <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
                         </td>
                         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                        <td class="ng-hide u-align--left" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
-                            <a href="#/node/machine/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                            <a href="#/node/machine/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                        <td class="ng-hide u-align--left" aria-label="MAC" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
+                            <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                            <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
                         </td>
-                        <td class="powerstate u-align--center">
-                            <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span>
+                        <td class="powerstate u-align--center" aria-label="Power state">
+                            <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $} u-display--desktop"></span>
+                            <span class="u-display--mobile u-text--{$ node.power_state $}"><span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span> {$ node.power_state $}</span>
                         </td>
-                        <td class="table-col--3"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin"></i></td>
-                        <td class="status u-text--truncate">{$ getStatusText(node) $}</td>
-                        <td class="table-col--10">{$ node.owner $}</td>
-                        <td class="u-align--right">{$ node.cpu_count $}</td>
-                        <td class="u-align--right">{$ node.memory $}</td>
-                        <td class="u-align--right">{$ node.physical_disk_count $}</td>
-                        <td class="u-align--right">{$ node.storage $}</td>
+                        <td class="status u-text--truncate" aria-label="Status">{$ getStatusText(node) $} <i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i></td>
+                        <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
+                        <td class="u-align--right u-display--desktop" aria-label="CPU">{$ node.cpu_count $}</td>
+                        <td class="u-align--right u-display--desktop" aria-label="Memory">{$ node.memory $}</td>
+                        <td class="u-align--right u-display--desktop" aria-label="Disks">{$ node.physical_disk_count $}</td>
+                        <td class="u-align--right u-display--desktop" aria-label="Storage">{$ node.storage $}</td>
                     </tr>
                 </tbody>
             </table>

@@ -10,10 +10,16 @@
   .tabs {
     display: inline-block;
 
+    @media only screen and (max-width : $breakpoint-medium) {
+      margin: 0 0 20px;
+      width: 100%;
+    }
+
     .tabs__tab {
       @include font-size(18px);
       display: inline-block;
       list-style-type: none;
+      margin: 0;
 
       .tabs__tab-link {
         color: $warm-grey;

@@ -9,16 +9,22 @@
 @mixin maas-display {
   .u-align {
 
-    &--right {
-      text-align: right !important;
+    @media only screen and (min-width : $breakpoint-medium) {
+      &--right {
+        text-align: right !important;
+      }
+
+      &--left {
+        text-align: left !important;
+      }
+
+      &--center {
+        text-align: center !important;
+      }
     }
 
-    &--left {
+    &--left-mobile {
       text-align: left !important;
-    }
-
-    &--center {
-      text-align: center !important;
     }
   }
 
@@ -65,6 +71,12 @@
 
     &--block {
       display: block !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        &-mobile {
+          display: block !important;
+        }
+      }
     }
 
     &--inline {
@@ -78,6 +90,23 @@
     &--hidden {
       display: none !important;
     }
+
+    &--desktop {
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: none !important;
+        position: absolute !important;
+        visibility: hidden !important;
+      }
+    }
+
+    &--mobile {
+      display: none !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: block !important;
+      }
+    }
   }
 
   .u-width {
@@ -88,14 +117,41 @@
 
     &--half {
       width: 50% !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100% !important;
+      }
     }
 
     &--third {
       width: calc(100%/3) !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100% !important;
+      }
     }
 
     &--quater {
       width: 25% !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100% !important;
+      }
+    }
+  }
+
+  .u-scroll {
+
+    &--none {
+      overflow: hidden;
+    }
+  }
+
+  .u-mobile {
+
+    &--offscreen {
+      left: -100vw;
+      display: none !important;
     }
   }
 }

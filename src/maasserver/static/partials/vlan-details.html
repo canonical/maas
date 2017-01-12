@@ -1,12 +1,12 @@
 <div data-ng-if="!vlanDetails.loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div data-ng-if="vlanDetails.loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ vlanDetails.title $}</h1>
             <!-- "Take action" dropdown -->
@@ -292,9 +292,9 @@
                     </header>
                     <section class="table__body">
                         <div class="table__row" data-ng-repeat="row in vlanDetails.relatedSubnets">
-                            <div class="table__data table-col--60"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
-                            <div class="table__data table-col--10">{$ row.subnet.statistics.usage_string $}</div>
-                            <div class="table__data table-col--30"><a href="#space/{$ row.space.id $}">{$ row.space.name $}</a></div>
+                            <div class="table__data table-col--60" aria-label="Subnet"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
+                            <div class="table__data table-col--10" aria-label="Used">{$ row.subnet.statistics.usage_string $}</div>
+                            <div class="table__data table-col--30" aria-label="Space"><a href="#space/{$ row.space.id $}">{$ row.space.name $}</a></div>
                         </div>
                     </section>
                 </div>

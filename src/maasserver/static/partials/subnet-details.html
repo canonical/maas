@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
           <h1 class="page-header__title">{$ subnet.cidr $}</h1>
             <!-- "Take action" dropdown -->
@@ -108,23 +108,31 @@
                             data-ng-class="{'is-active': isStaticRouteInEditMode(staticRoute) || isStaticRouteInDeleteMode(staticRoute)}">
                             <maas-obj-form obj="staticRoute" manager="staticRoutesManager" table-form="true"
                                 save-on-blur="false" after-save="ipRangeClearEditMode">
-                                <div class="table__data table-col--30 form__fieldset">
+                                <div class="table__data table-col--30 form__fieldset" aria-label="Gateway IP">
                                     <span data-ng-if="!isStaticRouteInEditMode(staticRoute)">{$ staticRoute.gateway_ip $}</span>
                                     <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP"
                                         disable-label="true" input-class="table__input u-margin--none"
                                         data-ng-if="isStaticRouteInEditMode(staticRoute)"></maas-obj-field>
                                 </div>
-                                <div class="table__data table-col--50">{$ getSubnetCIDR(staticRoute.destination) $}</div>
-                                <div class="table__data table-col--11">{$ staticRoute.metric $}</div>
-                                <div class="table__data table-col--9">
+                                <div class="table__data table-col--50" aria-label="Destination">{$ getSubnetCIDR(staticRoute.destination) $}</div>
+                                <div class="table__data table-col--11" aria-label="Metric">{$ staticRoute.metric $}</div>
+                                <div class="table__data table-col--9 table--mobile-controls">
                                     <div class="table__controls" data-ng-if="isSuperUser()">
-                                      <a class="icon icon--edit tooltip u-margin--right" aria-label="Edit row"
+                                      <a class="icon icon--edit u-display--desktop tooltip u-margin--right" aria-label="Edit row"
                                           data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
-                                      <a class="icon icon--delete tooltip" aria-label="Remove"
+                                      <a class="icon icon--delete u-display--desktop tooltip" aria-label="Remove"
+                                          data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
+                                      <a class="button--secondary u-display--mobile" aria-label="Edit row"
+                                          data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
+                                      <a class="button--secondary u-display--mobile" aria-label="Remove"
                                           data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
                                     </div>
                                 </div>
                                 <div class="table__dropdown" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
+                                    <div class="table__dropdown-title">
+                                        <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left">Remove {$ staticRoute.gateway_ip $}</h2>
+                                        <i data-ng-click="staticRouteCancelDelete()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left u-margin--top-tiny">
                                               <p><span class="icon icon--warning u-margin--right-small"></span>Are you sure you want to remove this static route?</p>
@@ -136,6 +144,10 @@
                                     </div>
                                 </div>
                                 <div class="table__dropdown" data-ng-if="isStaticRouteInEditMode(staticRoute)">
+                                    <div class="table__dropdown-title">
+                                        <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left">Editing {$ staticRoute.gateway_ip $}</h2>
+                                        <i data-ng-click="staticRouteToggleEditMode(staticRoute)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
                                             <div class="form__fieldset six-col">
@@ -153,8 +165,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="table__dropdown" data-ng-if="isStaticRouteInEditMode(staticRoute)">
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                             <maas-obj-errors></maas-obj-errors>
@@ -178,9 +188,16 @@
                                 </div>
                                 <div class="table__data table-col--70"></div>
                                 <div class="table__dropdown">
+                                    <div class="table__dropdown-title">
+                                        <h2 data-ng-click="cancelAddStaticRoute()" class="u-float--left">Adding static route</h2>
+                                        <i data-ng-click="cancelAddStaticRoute()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
                                             <div class="form__fieldset six-col">
+                                                <div class="form__group u-display--mobile">
+                                                    <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" label-width="two" input-width="three" placeholder="Gateway IP"></maas-obj-field>
+                                                </div>
                                                 <div class="form__group">
                                                     <maas-obj-field type="options" key="destination" label="Destination"
                                                         label-width="two" input-width="three" placeholder="Choose destination"
@@ -195,8 +212,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="table__dropdown">
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                             <maas-obj-errors></maas-obj-errors>
@@ -281,16 +296,17 @@
                     </thead>
                     <tbody>
                         <tr data-ng-repeat="ip in subnet.ip_addresses | orderBy:predicate:reverse track by ip.ip">
-                            <td class="table-col--20">{$ ip.ip $}</td>
-                            <td class="table-col--10">{$ getAllocType(ip.alloc_type) $}</td>
-                            <td class="table-col--15" data-ng-switch="ip.node_summary.node_type">
-                                <span data-ng-switch-when="0"><a href="#/node/machine/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                            <td class="table-col--20" aria-label="IP Address">{$ ip.ip $}</td>
+                            <td class="table-col--10" aria-label="Type">{$ getAllocType(ip.alloc_type) $}</td>
+                            <td class="table-col--15" aria-label="Node" data-ng-switch="ip.node_summary.node_type">
+                                <span data-ng-switch-when="0"><a href="#/node/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
+                                <span data-ng-switch-when="1">{$ ip.node_summary.hostname $}</span>
                                 <span data-ng-switch-when="2"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                                 <span data-ng-switch-when="3"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                                 <span data-ng-switch-when="4"><a href="#/node/controller/{$ ip.node_summary.system_id $}">{$ ip.node_summary.hostname $}</a></span>
                                 <span data-ng-switch-default>{$ ip.node_summary.hostname $}</span>
                             </td>
-                            <td class="table-col--10" data-ng-switch="ip.node_summary.node_type">
+                            <td class="table-col--10" aria-label="Interface" data-ng-switch="ip.node_summary.node_type">
                                 <span data-ng-switch-when="0">{$ ip.node_summary.via $}</span>
                                 <span data-ng-switch-when="1">{$ ip.node_summary.via $}</span>
                                 <span data-ng-switch-when="2">{$ ip.node_summary.via $}</span>
@@ -298,9 +314,9 @@
                                 <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
                                 <span data-ng-switch-default>Unknown</span>
                             </td>
-                            <td class="table-col--10">{$ getNodeType(ip.node_summary.node_type) $}</td>
-                            <td class="table-col--10">{$ ip.user ? ip.user : "MAAS" $}</td>
-                            <td class="table-col--25">
+                            <td class="table-col--10" aria-label="Usage">{$ getNodeType(ip.node_summary.node_type) $}</td>
+                            <td class="table-col--10" aria-label="Owner">{$ ip.user ? ip.user : "MAAS" $}</td>
+                            <td class="table-col--25" aria-label="Last seen">
                                 <time>{$ ip.updated $}</time>
                             </td>
                         </tr>

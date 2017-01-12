@@ -1,4 +1,4 @@
-<header class="page-header" sticky>
+<header class="page-header" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <h1 class="page-header__title">
             <ng-pluralize data-ng-hide="loading" count="domains.length"
@@ -60,10 +60,10 @@
                     <main class="table-body">
                         <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                            <div class="table__data table-col--25"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></div>
-                            <div class="table__data table-col--25">{$ row.hosts $}</div>
-                            <div class="table__data table-col--25">{$ row.resource_count $}</div>
-                            <div class="table__data table-col--25">{$ row.authoritative ? "Yes" : "No" $}</div>
+                            <div class="table__data table-col--25" aria-label="Domain"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></div>
+                            <div class="table__data table-col--25" aria-label="Hosts">{$ row.hosts $}</div>
+                            <div class="table__data table-col--25" aria-label="Total records">{$ row.resource_count $}</div>
+                            <div class="table__data table-col--25" aria-label="Authorative">{$ row.authoritative ? "Yes" : "No" $}</div>
                         </div>
                     </main>
                 </div>

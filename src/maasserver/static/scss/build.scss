@@ -29,6 +29,7 @@
 // Theme pattern styles
 @import 'patterns.accordion';
 @import 'patterns.action-card';
+@import 'patterns.footer';
 @import 'patterns.header';
 @import 'patterns.page-header';
 @import 'patterns.search';
@@ -65,6 +66,7 @@
   @include maas-tooltips;
   @include maas-accordion;
   @include maas-action-card;
+  @include maas-footer;
   @include maas-header;
   @include maas-page-header;
   @include maas-search;

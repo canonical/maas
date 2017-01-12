@@ -56,6 +56,10 @@
       opacity: 1 !important;
       z-index: 1000;
       visibility: visible;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: none;
+      }
     }
 
     &.tooltip--right {

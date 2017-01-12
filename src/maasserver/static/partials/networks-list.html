@@ -1,4 +1,4 @@
-<header class="page-header" sticky>
+<header class="page-header" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <h1 class="page-header__title">Subnets</h1>
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -120,7 +120,7 @@
                         <option value="fabric" selected="selected">Fabrics</option>
                         <option value="space">Spaces</option>
                     </select>
-                    <span class="icon icon--help tooltip tooltip--right u-margin--left-small"
+                    <span class="icon icon--help tooltip tooltip--right u-margin--left-small u-display--desktop"
                           aria-label="Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of subnets that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric."></span>
                 </div>
             </form>
@@ -137,10 +137,10 @@
             <table class="table-listing ng-hide" data-ng-show="groupBy === 'space'">
                 <thead>
                     <tr class="table-listing__row">
-                        <th class="table__column--3 ng-hide">
+                        <!-- <th class="table__column--3 ng-hide">
                             <input class="checkbox" type="checkbox" id="spaces-all" />
                             <label class="checkbox-label" for="spaces-all"></label>
-                        </th>
+                        </th> -->
                         <th class="table__column--20">Space</th>
                         <th class="table__column--30">Subnet</th>
                         <th class="table__column--13 align-right">Available IPs</th>
@@ -150,25 +150,25 @@
                 </thead>
                 <tbody>
                     <tr class="table-listing__row" data-ng-repeat="row in group.spaces.rows">
-                        <td class="table-listing__cell table__column--3 ng-hide">
+                        <!-- <td class="table-listing__cell table__column--3 ng-hide">
                             <div data-ng-if="row.space_name">
                                 <input class="checkbox" type="checkbox" id="space-{$ row.space.id $}" />
                                 <label class="checkbox-label" for="space-{$ row.space.id $}"></label>
                             </div>
-                        </td>
-                        <td class="table-listing__cell table__column--20">
+                        </td> -->
+                        <td class="table-listing__cell table__column--20" aria-label="Space">
                             <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--30">
+                        <td class="table-listing__cell table__column--30" aria-label="Subnet">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--13 align-right">
+                        <td class="table-listing__cell table__column--13 align-right" aria-label="Available IPs">
                             {$ row.subnet.statistics.available_string $}
                         </td>
-                        <td class="table-listing__cell table__column--20">
+                        <td class="table-listing__cell table__column--20" aria-label="VLAN">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--20">
+                        <td class="table-listing__cell table__column--20" aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
                     </tr>
@@ -178,10 +178,10 @@
             <table class="table-listing ng-hide" data-ng-show="groupBy === 'fabric'">
                 <thead>
                     <tr class="table-listing__row">
-                        <th class="table__column--3 ng-hide">
+                        <!-- <th class="table__column--3 ng-hide">
                             <input class="checkbox" type="checkbox" id="fabrics-all" />
                             <label class="checkbox-label" for="fabrics-all"></label>
-                        </th>
+                        </th> -->
                         <th class="table__column--15">Fabric</th>
                         <th class="table__column--15">VLAN</th>
                         <th class="table__column--27">Subnet</th>
@@ -191,25 +191,25 @@
                 </thead>
                 <tbody>
                     <tr class="table-listing__row" data-ng-repeat="row in group.fabrics.rows">
-                        <td class="table-listing__cell table__column--3 ng-hide">
+                        <!-- <td class="table-listing__cell table__column--3 ng-hide">
                             <div data-ng-if="row.fabric_name">
                                 <input class="checkbox" type="checkbox" id="fabric-{$ row.fabric.id $}" />
                                 <label class="checkbox-label" for="fabric-{$ row.fabric.id $}"></label>
                             </div>
-                        </td>
-                        <td class="table-listing__cell table__column--15">
+                        </td> -->
+                        <td class="table-listing__cell table__column--15" aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--15">
+                        <td class="table-listing__cell table__column--15" aria-label="VLAN">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--27">
+                        <td class="table-listing__cell table__column--27" aria-label="Subnet">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--15 align-right">
+                        <td class="table-listing__cell table__column--15 align-right" aria-label="Available IPs">
                             {$ row.subnet.statistics.available_string $}
                         </td>
-                        <td class="table-listing__cell table__column--25">
+                        <td class="table-listing__cell table__column--25" aria-label="Space">
                             <a href="#/space/{$ row.space.id $}">{$ row.space.name $}</a>
                         </td>
                     </tr>

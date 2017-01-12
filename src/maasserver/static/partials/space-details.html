@@ -1,12 +1,12 @@
 <div data-ng-hide="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">Loading...</h1>
         </div>
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header" sticky>
+    <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ space.name $}</h1>
             <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultSpace() && !loading">

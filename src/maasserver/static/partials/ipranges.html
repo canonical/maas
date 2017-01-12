@@ -13,12 +13,12 @@
             <div class="table__row"
 		data-ng-repeat="iprange in (subnetIPRanges = ipranges | filterBySubnet:obj | orderBy:'start_ip')"
                 data-ng-class="{ 'is-active': isIPRangeInEditMode(iprange) || isIPRangeInDeleteMode(iprange)}">
-		<div class="table__data table-col--20">{$ iprange.start_ip $}</div>
-                <div class="table__data table-col--20">{$ iprange.end_ip $}</div>
-                <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user_username $}</div>
-                <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved" $}</div>
-                <div class="table__data table-col--31">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</div>
-                <div class="table__data table-col--9">
+		<div class="table__data table-col--20" aria-label="Start IP Address">{$ iprange.start_ip $}</div>
+                <div class="table__data table-col--20" aria-label="End IP Address">{$ iprange.end_ip $}</div>
+                <div class="table__data table-col--10" aria-label="Owner">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user_username $}</div>
+                <div class="table__data table-col--10" aria-label="Type">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved" $}</div>
+                <div class="table__data table-col--31" aria-label="Comment">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</div>
+                <div class="table__data table-col--9 table--mobile-controls">
                     <div class="table__controls" data-ng-if="ipRangeCanBeModified(iprange)">
                         <a class="icon icon--edit u-margin--right tooltip" aria-label="Edit row"
                             data-ng-click="ipRangeToggleEditMode(iprange)">Edit</a>
@@ -83,17 +83,23 @@
             <div class="table__row is-active form form--stack" data-ng-if="newRange">
                 <maas-obj-form obj="newRange" manager="iprangeManager" manager-method="createItem"
                     table-form="true" save-on-blur="false" after-save="cancelAddRange">
-                    <div class="table__data table-col--100">
-                        <div class="form__fieldset six-col">
-                            <maas-obj-field type="text" key="start_ip" label="Start IP address"
-                                label-width="two" input-width="three"></maas-obj-field>
-                        </div>
-                        <div class="form__fieldset six-col last-col">
-                            <maas-obj-field type="text" key="end_ip" label="End IP address"
-                                label-width="two" input-width="three"></maas-obj-field>
-                        </div>
-                    </div>
                     <div class="table__dropdown">
+                        <div class="table__dropdown-title">
+                            <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left">&lsaquo;&nbsp;&nbsp;Reserve range</h2>
+                            <i data-ng-click="staticRouteToggleEditMode(staticRoute)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                        </div>
+                        <div class="table__row is-active">
+                            <div class="table__data table-col--100">
+                                <div class="form__fieldset six-col">
+                                    <maas-obj-field type="text" key="start_ip" label="Start IP address"
+                                        label-width="two" input-width="three"></maas-obj-field>
+                                </div>
+                                <div class="form__fieldset six-col last-col">
+                                    <maas-obj-field type="text" key="end_ip" label="End IP address"
+                                        label-width="two" input-width="three"></maas-obj-field>
+                                </div>
+                            </div>
+                        </div>
                         <div class="table__row is-active">
                             <div class="table__data u-float--left">
                                 <maas-obj-errors></maas-obj-errors>

@@ -34,6 +34,19 @@
       border-color: rgb(178, 178, 178);
       border-bottom-style: dotted;
       border-bottom-width: 1px;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        background: $white;
+        border: 0;
+        border-radius: 2px;
+        box-sizing: border-box;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        display: block;
+        margin-bottom: 20px;
+        width: 100%;
+        padding: 0 10px;
+        float: left;
+      }
     }
 
     // Table cell styles
@@ -49,6 +62,55 @@
       vertical-align: top;
       backface-visibility: hidden;
       position: relative;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        box-sizing: border-box;
+        display: block;
+        margin: 0;
+        min-height: 45px;
+        padding-left: 50%;
+        width: 100% !important;
+        text-align: right;
+        position: relative;
+        border-bottom: 0 !important;
+        border-top: 0;
+
+        label,
+        dl,
+        dt,
+        p {
+          text-align: left;
+        }
+
+        &:first-child {
+          border-top: 0;
+        }
+
+        &::before {
+          content: attr(aria-label);
+          display: block;
+          width: 50%;
+          height: 100%;
+          font-size: 16px;
+          color: $warm-grey;
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          text-align: left !important;
+        }
+
+        &.table--mobile-controls {
+          padding-left: 10px;
+          width: 100% !important;
+          text-align: center !important;
+
+          @media only screen and (max-width : $breakpoint-medium) {
+            &::before {
+              display: none;
+            }
+          }
+        }
+      }
     }
 
     // Table header row styles
@@ -59,6 +121,16 @@
       &:hover {
         background-color: transparent;
       }
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100%;
+        border: 0;
+        display: block;
+
+        &:hover {
+          background-color: $white;
+        }
+      }
     }
 
     // Table header cell styles
@@ -67,6 +139,31 @@
       background: none;
       color: $table-header-color;
       font-size: 13px;
+      display: table-cell;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: none;
+        width: 100%;
+
+        &::before {
+          content: attr(aria-label);
+          display: block;
+          width: 50%;
+          height: 100%;
+          font-size: 16px;
+          color: $cool-grey;
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          text-align: left !important;
+          font-weight: 300;
+        }
+
+        &.u-display--medium {
+          display: block;
+          border-bottom: 0;
+        }
+      }
 
       input {
 
@@ -75,8 +172,25 @@
 
           + label {
             margin: 0;
-            top: -3px;
+            top: 0px;
+            min-height: 16px;
+
+            &:before {
+              top: 0;
+
+              @media only screen and (max-width : $breakpoint-medium) {
+                top: 2px;
+              }
+            }
           }
+        }
+
+        &[type="checkbox"]:checked + label:after {
+          top: 0;
+        }
+
+        &[type="radio"]:checked + label:after {
+          top: 3px;
         }
       }
     }
@@ -124,7 +238,8 @@
 
         + label {
           margin: 0;
-          top: -1px;
+          top: 0px;
+          min-height: 16px;
         }
       }
     }
@@ -190,8 +305,13 @@
     }
 
     thead {
-      width: 100% !important;
-      display: table-header-group !important;
+      width: 100%;
+      display: table-header-group;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        display: block;
+        width: 100%;
+      }
 
       tr {
         @extend %table-header-row;
@@ -234,6 +354,14 @@
         @extend %table-divide;
       }
     }
+
+    tbody {
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100%;
+        display: block;
+      }
+    }
   }
 
   // Table styles used to replicate the table layout but where extra interaction
@@ -264,6 +392,10 @@
   .table {
     @extend %table;
     display: table;
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      display: block;
+    }
 
     // Table row style
     .table__row {
@@ -322,6 +454,13 @@
     }
 
     .table__data {
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        border-color: rgb(178, 178, 178);
+        border-bottom-style: dotted;
+        border-bottom-width: 1px;
+        padding-left: 50%;
+      }
 
       a:link,
       a:visited {
@@ -457,11 +596,28 @@
       opacity: 0;
       z-index: -1000;
 
+      @media only screen and (max-width : $breakpoint-medium) {
+        opacity: 1;
+        z-index: 1;
+        text-align: center;
+
+        .icon {
+          transform: scale(1.5, 1.5);
+          margin: 20px !important;
+        }
+      }
+
       &--secondary {
         opacity: 0;
         z-index: -1000;
         width: auto;
         text-align: left;
+
+        @media only screen and (max-width : $breakpoint-medium) {
+          opacity: 1;
+          z-index: 1;
+          text-align: center;
+        }
       }
 
       a,
@@ -538,17 +694,62 @@
     .table__dropdown {
       width: 100%;
 
+      @media only screen and (max-width : $breakpoint-medium) {
+        background: #fff;
+        border: 0;
+        box-sizing: border-box;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        position: fixed;
+        z-index: 1000;
+        overflow-y: scroll;
+        width: 100% !important;
+        padding-top: 74px;
+        padding-bottom: 10px;
+      }
+
+      .table__dropdown-title {
+        display: none;
+
+        @media only screen and (max-width : $breakpoint-medium) {
+          width: 100%;
+          float: left;
+          display: block;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+          padding: 15px 10px;
+          margin: 0;
+          background: $white;
+          position: fixed;
+          z-index: 10;
+          top: 0;
+
+          > h2 {
+            margin: 0;
+          }
+        }
+      }
+
       // Table dropdown row style, add class to .table__row
       .table__row {
         border-bottom: 0;
         display: none;
         position: relative;
 
+        @media only screen and (max-width : $breakpoint-medium) {
+          box-shadow: none;
+        }
+
         &--indent {
-          padding-left: 41px !important;
+          padding-left: 41px;
           float: left;
           width: 100%;
           box-sizing: border-box;
+
+          @media only screen and (max-width : $breakpoint-medium) {
+            padding-left: 0;
+          }
         }
 
         &:before {
@@ -598,6 +799,42 @@
 
         &.is-active {
 
+          @media only screen and (max-width : $breakpoint-medium) {
+            padding: 0 !important;
+            display: block;
+          }
+
+          .table__data {
+
+            @media only screen and (max-width : $breakpoint-medium) {
+              padding: 10px 10px 0;
+              border-top: 0;
+
+              &:before {
+                display: none;
+              }
+
+              .six-col {
+                margin-bottom: 10px;
+
+                &:last-child {
+                  margin-bottom: 0;
+                }
+              }
+            }
+
+            &--children {
+              @media only screen and (max-width : $breakpoint-medium) {
+                padding: 10px 10px 10px 50% !important;
+                border-top: 1px dotted #d2d2d2;
+
+                &:before {
+                  display: block;
+                }
+              }
+            }
+          }
+
           .table__input {
             background-color: $white;
             border-color: $alto-grey;
@@ -605,8 +842,59 @@
             pointer-events: all;
 
             &[disabled] {
-              border-color: transparent;
               cursor: pointer;
+            }
+          }
+
+          @media only screen and (max-width : $breakpoint-medium) {
+            margin-bottom: 0;
+
+            &::before {
+              display: none;
+            }
+
+            &.table__dropdown-controls {
+
+              @media only screen and (max-width : $breakpoint-medium) {
+                top: inherit !important;
+                margin: 0;
+                z-index: 2000;
+                padding-bottom: 0;
+                height: auto !important;
+                bottom: 0 !important;
+
+                [class^="button--"] {
+                  width: 48%;
+                  float: left;
+                  margin: 0 1%;
+                  height: auto;
+                  overflow: hidden;
+                  white-space: normal;
+                  line-height: 1.5;
+
+                  + [class^="button--"] {
+                    width: 48%;
+                    float: left;
+                    margin: 0 1%;
+                  }
+                }
+
+                &.u-position--top {
+                  top: 20px;
+                }
+
+                &.u-remove--shadow {
+                  box-shadow: none !important;
+                }
+
+                .table__data {
+                  min-height: auto;
+
+                  &::before {
+                    display: none;
+                  }
+                }
+              }
             }
           }
         }

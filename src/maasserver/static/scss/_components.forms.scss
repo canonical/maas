@@ -146,11 +146,21 @@
         margin: 0 20px 0 0;
         vertical-align: top;
 
+        @media only screen and (max-width : $breakpoint-medium) {
+          display: block;
+          width: 100%;
+        }
+
         .form__group-label {
           margin-bottom: 0;
           margin-right: 10px;
           vertical-align: top;
           line-height: 34px;
+
+          @media only screen and (max-width : $breakpoint-medium) {
+            display: block;
+            width: 100%;
+          }
 
           .icon--left {
             position: absolute;
@@ -165,6 +175,11 @@
           display: inline-block;
           width: auto;
           min-height: 34px;
+
+          @media only screen and (max-width : $breakpoint-medium) {
+            display: block;
+            width: 100%;
+          }
         }
 
         [type='checkbox'] + label,

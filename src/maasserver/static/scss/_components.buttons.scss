@@ -56,6 +56,17 @@
     padding-top: 15px;
     padding-bottom: 15px;
   }
+
+  [class^="button--"] {
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      margin-top: 0px;
+
+      + [class^="button--"] {
+        margin-top: 10px;
+      }
+    }
+  }
 }
 
 @mixin maas-button-group {
@@ -66,9 +77,17 @@
     clear: both;
     min-width: 160px;
 
+    @media only screen and (max-width : $breakpoint-medium) {
+      width: 100%;
+    }
+
     &.button-group--inline {
       display: inline-block;
       width: auto;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100%;
+      }
     }
 
     .button-group__link {
@@ -106,6 +125,10 @@
       top: 36px;
       clear: both;
       min-width: 160px;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        width: 100%;
+      }
     }
 
     .button-group__item {
@@ -159,5 +182,13 @@
   &.button--inline {
     display: inline-block;
     width: auto;
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      width: 100%;
+    }
+  }
+
+  @media only screen and (max-width : $breakpoint-medium) {
+    width: 100%;
   }
 }

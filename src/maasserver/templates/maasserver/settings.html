@@ -55,21 +55,27 @@
                 <tbody>
                     {% for user_item in user_list %}
                     <tr class="user {% cycle 'even' 'odd' %}" id="{{ user_item.username }}">
-                        <td>
+                        <td aria-label="User">
                             <a class="user" href="{% url 'accounts-view' user_item.username %}">{{ user_item.username }}</a>
                         </td>
-                        <td>{{ user_item.node_set.count }}</td>
-                        <td>{{ user_item.last_login }}</td>
-                        <td>
+                        <td aria-label="Number of nodes in use">{{ user_item.node_set.count }}</td>
+                        <td aria-label="Last seen">{{ user_item.last_login }}</td>
+                        <td aria-label="MAAS Admin">
                             {% if user_item.is_superuser %} Yes {% endif %}
                         </td>
-                        <td class="u-align--right">
-                            <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="icon icon--edit">
-                                edit
+                        <td class="u-align--right table--mobile-controls">
+                            <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="icon icon--edit u-display--desktop">
+                                Edit
+                            </a>
+                            <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="button--secondary u-display--mobile">
+                                Edit
                             </a>
                             {% if user != user_item %}
-                            <a title="Delete user {{ user_item.username }}" class="icon icon--delete" href="{% url 'accounts-del' user_item.username %}">
+                            <a title="Delete user {{ user_item.username }}" class="icon icon--delete u-display--desktop" href="{% url 'accounts-del' user_item.username %}">
                                 delete
+                            </a>
+                            <a title="Delete user {{ user_item.username }}" class="button--secondary u-display--mobile u-margin--top-small" href="{% url 'accounts-del' user_item.username %}">
+                                Delete
                             </a>
                             <form method="POST" action="{% url 'accounts-del' user_item.username %}">
                                 {% csrf_token %}

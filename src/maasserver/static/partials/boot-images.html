@@ -121,7 +121,7 @@
                     </header>
                     <main class="table__body">
                         <div class="table__row table--error" data-ng-if="!ltsIsSelected()">
-                            <div class="table__data table-col--100">
+                            <div class="table__data table-col--100" aria-label="Error">
                                 <i class="icon icon--error"></i> Select at least one 14.04+ LTS release and one architecture.
                             </div>
                         </div>
@@ -130,15 +130,15 @@
                             <div class="table__data table-col--2">
                                 <i class="icon {$ image.icon $}"></i>
                             </div>
-                            <div class="table__data table-col--23">
+                            <div class="table__data table-col--23" aria-label="Release">
                                 {$ image.title $} <i class="icon icon--warning tooltip"
                                     aria-label="Image no longer exists at the source."
                                     data-ng-if="canBeRemoved(image)"></i>
                             </div>
-                            <div class="table__data table-col--15">{$ image.arch $}</div>
-                            <div class="table__data table-col--20">{$ image.size $}</div>
-                            <div class="table__data table-col--37">{$ image.status $}</div>
-                            <div class="table__data table-col--3">
+                            <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
+                            <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
+                            <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
+                            <div class="table__data table-col--3 table--mobile-controls">
                                 <div class="table__controls" data-ng-if="isSuperUser() && canBeRemoved(image)">
                                     <a class="icon icon--delete tooltip" aria-label="Remove"
                                         data-ng-click="deleteImage(image)">Remove</a>
@@ -205,12 +205,12 @@
                     <div class="table__data table-col--2">
                         <i class="icon {$ image.icon $}"></i>
                     </div>
-                    <div class="table__data table-col--23">
+                    <div class="table__data table-col--23" aria-label="Release">
                         {$ image.title $}
                     </div>
-                    <div class="table__data table-col--15">{$ image.arch $}</div>
-                    <div class="table__data table-col--20">{$ image.size $}</div>
-                    <div class="table__data table-col--30">{$ image.status $}</div>
+                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
+                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
+                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
                 </div>
             </main>
         </section>
@@ -246,12 +246,12 @@
                     <div class="table__data table-col--2">
                         <i class="icon {$ image.icon $}"></i>
                     </div>
-                    <div class="table__data table-col--23">
+                    <div class="table__data table-col--23" aria-label="Release">
                         {$ image.title $}
                     </div>
-                    <div class="table__data table-col--15">{$ image.arch $}</div>
-                    <div class="table__data table-col--20">{$ image.size $}</div>
-                    <div class="table__data table-col--30">{$ image.status $}</div>
+                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
+                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
+                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
                 </div>
             </main>
         </section>
@@ -279,12 +279,12 @@
                     <div class="table__data table-col--2">
                         <i class="icon {$ image.icon $}"></i>
                     </div>
-                    <div class="table__data table-col--23">
+                    <div class="table__data table-col--23" aria-label="Release">
                         {$ image.title $}
                     </div>
-                    <div class="table__data table-col--15">{$ image.arch $}</div>
-                    <div class="table__data table-col--20">{$ image.size $}</div>
-                    <div class="table__data table-col--30">{$ image.status $}</div>
+                    <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
+                    <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
+                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
                 </div>
             </main>
         </section>

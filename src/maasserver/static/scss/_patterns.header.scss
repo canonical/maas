@@ -10,6 +10,29 @@
 
   .banner {
     background-color: $black;
+    min-height: 49px;
+
+    .nav-primary {
+
+      .logo {
+
+        a {
+          border-bottom: 0;
+
+          svg,
+          img {
+            vertical-align: middle;
+          }
+        }
+      }
+    }
+
+    .nav-toggle {
+
+      a {
+        border-bottom: 0;
+      }
+    }
 
     @media only screen and (min-width: $navigation-threshold) {
       box-shadow: none;

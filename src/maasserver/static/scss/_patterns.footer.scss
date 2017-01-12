@@ -1,0 +1,30 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-footer
+/// @since        0.0.1
+////
+
+/// MAAS footer styling
+/// @group maas footer
+@mixin maas-footer {
+
+  .p-footer {
+    border-top: 1px dotted $alto-grey;
+    float: left;
+    margin-top: 20px;
+    padding: 20px 20px 0;
+    width: 100%;
+
+    @media only screen and (max-width : $breakpoint-medium) {
+      padding: 20px 10px 0;
+    }
+
+    &__logo {
+      float: right;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        float: left;
+      }
+    }
+  }
+}

@@ -9,19 +9,15 @@
 {% block content %}
     {% block page-title-block %}
     {% endblock %}
-    <div class="row">
-        <div class="wrapper--inner">
-            <div class="action-card action-card--login">
-                <h1 class="action-card__title">Logout</h1>
-                <p class="u-text--subtle u-border--bottom u-border--dotted u-padding--bottom u-margin--bottom">Are you sure you want to log out?</p>
-                <form method="post" class="form">
-                    {% csrf_token %}
-                    <input type="hidden" name="post" value="yes" />
-                    <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">Cancel</a>
-                    <input type="submit" value="Yes" class="button--primary u-width--half u-display--block u-float--right" />
-                </form>
-            </div>
-        </div>
-    </div>
+      <div class="action-card action-card--login">
+          <h1 class="action-card__title">Logout</h1>
+          <p class="u-text--subtle u-border--bottom u-border--dotted u-padding--bottom u-margin--bottom">Are you sure you want to log out?</p>
+          <form method="post" class="form">
+              {% csrf_token %}
+              <input type="hidden" name="post" value="yes" />
+              <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">Cancel</a>
+              <input type="submit" value="Yes" class="button--primary u-width--half u-display--block u-float--right" />
+          </form>
+      </div>
 {% endblock %}
 button--inline
