@@ -61,7 +61,6 @@ build: \
   bin/twistd.region \
   bin/test.cli \
   bin/test.rack \
-  bin/test.config \
   bin/test.region \
   bin/test.region.legacy \
   bin/test.testing \
@@ -163,10 +162,6 @@ bin/test.rack: \
 	$(buildout) install rack-test
 	@touch --no-create $@
 
-bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install config-test
-	@touch --no-create $@
-
 bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install flake8
 	@touch --no-create $@
@@ -217,7 +212,6 @@ bin/sass:
 define test-scripts
   bin/test.cli
   bin/test.rack
-  bin/test.config
   bin/test.region
   bin/test.region.legacy
   bin/test.testing
