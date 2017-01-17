@@ -182,124 +182,213 @@ class TestExtractArchiveTar(MAASTestCase):
 class TestRepoWriter(MAASTestCase):
     """Tests for `RepoWriter`."""
 
-    def make_product(self, ftype=None):
-        if ftype is None:
-            ftype = factory.make_name('ftype')
+    def make_product(self, **kwargs):
         return {
             'content_id': 'maas:v2:download',
             'product_name': factory.make_string(),
             'version_name': datetime.utcnow().strftime('%Y%m%d'),
             'sha256': factory.make_name('sha256'),
             'size': random.randint(2, 2**16),
-            'ftype': ftype,
+            'ftype': factory.make_name('ftype'),
             'path': '/path/to/%s' % factory.make_name('filename'),
             'os': factory.make_name('os'),
             'release': factory.make_name('release'),
             'arch': factory.make_name('arch'),
             'label': factory.make_name('label'),
+            **kwargs,
         }
 
     def test_inserts_archive(self):
-        product = self.make_product('archive.tar.xz')
         product_mapping = ProductMapping()
         subarch = factory.make_name('subarch')
+        product = self.make_product(ftype='archive.tar.xz', subarch=subarch)
         product_mapping.add(product, subarch)
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
         mock_extract_archive_tar = self.patch(
             download_resources, 'extract_archive_tar')
         mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
         repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
         self.assertThat(
             mock_extract_archive_tar,
             MockCalledOnceWith(
-                mock.ANY, os.path.basename(product['path']), product['sha256'],
+                None, os.path.basename(product['path']), product['sha256'],
                 {'sha256': product['sha256']}, product['size'], None))
+        # links are mocked out by the mock_insert_file above.
         self.assertThat(
             mock_link_resources,
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=[subarch],
+                label=product['label'], subarches={subarch},
                 bootloader_type=None))
 
     def test_inserts_root_image(self):
-        product = self.make_product('root-image.gz')
         product_mapping = ProductMapping()
         subarch = factory.make_name('subarch')
+        product = self.make_product(ftype='root-image.gz', subarch=subarch)
         product_mapping.add(product, subarch)
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
         mock_insert_root_image = self.patch(
             download_resources, 'insert_root_image')
         mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
         repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
         self.assertThat(
             mock_insert_root_image,
             MockCalledOnceWith(
-                mock.ANY, product['sha256'], {'sha256': product['sha256']},
+                None, product['sha256'], {'sha256': product['sha256']},
                 product['size'], None))
+        # links are mocked out by the mock_insert_file above.
         self.assertThat(
             mock_link_resources,
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=[subarch],
+                label=product['label'], subarches={subarch},
                 bootloader_type=None))
 
     def test_inserts_file(self):
-        product = self.make_product()
         product_mapping = ProductMapping()
         subarch = factory.make_name('subarch')
+        product = self.make_product(subarch=subarch)
         product_mapping.add(product, subarch)
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, 'insert_file')
         mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
         repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
         self.assertThat(
             mock_insert_file,
             MockCalledOnceWith(
-                mock.ANY, os.path.basename(product['path']), product['sha256'],
+                None, os.path.basename(product['path']), product['sha256'],
                 {'sha256': product['sha256']}, product['size'], None))
+        # links are mocked out by the mock_insert_file above.
         self.assertThat(
             mock_link_resources,
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=[subarch],
+                label=product['label'], subarches={subarch},
                 bootloader_type=None))
 
     def test_inserts_rolling_links(self):
-        product = self.make_product()
-        product['subarch'] = 'hwe-16.04'
-        product['rolling'] = True
         product_mapping = ProductMapping()
+        product = self.make_product(subarch='hwe-16.04', rolling=True)
         product_mapping.add(product, 'hwe-16.04')
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping)
         self.patch(
             download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, 'insert_file')
         mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
         repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
         self.assertThat(
             mock_insert_file,
             MockCalledOnceWith(
-                mock.ANY, os.path.basename(product['path']), product['sha256'],
+                None, os.path.basename(product['path']), product['sha256'],
                 {'sha256': product['sha256']}, product['size'], None))
+        # links are mocked out by the mock_insert_file above.
         self.assertThat(
             mock_link_resources,
             MockCalledOnceWith(
                 snapshot_path=None, links=mock.ANY, osystem=product['os'],
                 arch=product['arch'], release=product['release'],
-                label=product['label'], subarches=['hwe-16.04', 'hwe-rolling'],
+                label=product['label'], subarches={'hwe-16.04', 'hwe-rolling'},
+                bootloader_type=None))
+
+    def test_only_creates_links_for_its_own_subarch(self):
+        # Regression test for LP:1656425
+        product_name = factory.make_name('product_name')
+        version_name = factory.make_name('version_name')
+        product_mapping = ProductMapping()
+        for subarch in [
+                'hwe-p', 'hwe-q', 'hwe-r', 'hwe-s', 'hwe-t', 'hwe-u', 'hwe-v',
+                'hwe-w', 'ga-16.04']:
+            product = self.make_product(
+                product_name=product_name, version_name=version_name,
+                subarch=subarch)
+            product_mapping.add(product, subarch)
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
+        self.patch(
+            download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
+        mock_insert_file = self.patch(download_resources, 'insert_file')
+        mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
+        repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
+        self.assertThat(
+            mock_insert_file,
+            MockCalledOnceWith(
+                None, os.path.basename(product['path']), product['sha256'],
+                {'sha256': product['sha256']}, product['size'], None))
+        # links are mocked out by the mock_insert_file above.
+        self.assertThat(
+            mock_link_resources,
+            MockCalledOnceWith(
+                snapshot_path=None, links=mock.ANY, osystem=product['os'],
+                arch=product['arch'], release=product['release'],
+                label=product['label'], subarches={'ga-16.04'},
+                bootloader_type=None))
+
+    def test_inserts_generic_link_for_generic_kflavor(self):
+        product_mapping = ProductMapping()
+        product = self.make_product(subarch='ga-16.04', kflavor='generic')
+        product_mapping.add(product, 'ga-16.04')
+        repo_writer = download_resources.RepoWriter(
+            None, None, product_mapping)
+        self.patch(
+            download_resources, 'products_exdata').return_value = product
+        # Prevent MAAS from trying to actually write the file.
+        mock_insert_file = self.patch(download_resources, 'insert_file')
+        mock_link_resources = self.patch(download_resources, 'link_resources')
+        # We only need to provide the product as the other fields are only used
+        # when writing the actual files to disk.
+        repo_writer.insert_item(product, None, None, None, None)
+        # None is used for the store and the content source as we're not
+        # writing anything to disk.
+        self.assertThat(
+            mock_insert_file,
+            MockCalledOnceWith(
+                None, os.path.basename(product['path']), product['sha256'],
+                {'sha256': product['sha256']}, product['size'], None))
+        # links are mocked out by the mock_insert_file above.
+        self.assertThat(
+            mock_link_resources,
+            MockCalledOnceWith(
+                snapshot_path=None, links=mock.ANY, osystem=product['os'],
+                arch=product['arch'], release=product['release'],
+                label=product['label'], subarches={'ga-16.04', 'generic'},
                 bootloader_type=None))
 
 

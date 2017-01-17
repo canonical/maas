@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Simplestreams code to download boot resources."""
@@ -287,11 +287,33 @@ class RepoWriter(BasicMirrorWriter):
                 self.store, filename, tag, checksums, size, contentsource)
 
         osystem = get_os_from_product(item)
-        subarches = self.product_mapping.get(item)
+
+        # link_resources creates a hardlink for every subarch. Every Ubuntu
+        # product in a SimpleStream contains a list of subarches which list
+        # what subarches are a subset of that subarch. For example Xenial
+        # ga-16.04 has the subarches list hwe-{p,q,r,s,t,u,v,w},ga-16.04.
+        # Kernel flavors are the same arch, the only difference is the kernel
+        # config. So ga-16.04-lowlatency has the same subarch list as ga-16.04.
+        # If we create hard links for all subarches a kernel flavor may
+        # overwrite the generic kernel hard link. This happens if a kernel
+        # flavor is processed after the generic kernel. Since MAAS doesn't use
+        # the other hard links only create hard links for the subarch of the
+        # product we have and a rolling link if it's a rolling kernel.
+        if 'subarch' in item:
+            # MAAS uses the 'generic' subarch when it doesn't know which
+            # subarch to use. This happens during enlistment and commissioning.
+            # Allow the 'generic' kflavor to own the 'generic' hardlink.
+            if item.get('kflavor') == 'generic':
+                subarches = {item['subarch'], 'generic'}
+            else:
+                subarches = {item['subarch']}
+        else:
+            subarches = {'generic'}
+
         if item.get('rolling', False):
             subarch_parts = item['subarch'].split('-')
             subarch_parts[1] = 'rolling'
-            subarches.append('-'.join(subarch_parts))
+            subarches.add('-'.join(subarch_parts))
         link_resources(
             snapshot_path=self.root_path, links=links,
             osystem=osystem, arch=item['arch'], release=item['release'],
