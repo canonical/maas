@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the boot_resources module."""
@@ -25,12 +25,14 @@ from unittest.mock import (
 )
 
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnce,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
+    MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
@@ -599,12 +601,29 @@ class TestMain(MAASTestCase):
         mock_try_send_rack_event = self.patch(
             boot_resources, 'try_send_rack_event')
         mock_maaslog = self.patch(boot_resources.maaslog, 'warning')
+        self.patch(boot_resources.os.path, 'exists').return_value = True
         self.patch(boot_resources, 'call_and_check').side_effect = (
             ExternalProcessError(
                 returncode=2, cmd=('tgt-admin',), output='error'))
         boot_resources.update_targets_conf(factory.make_name("snapshot"))
         self.assertThat(mock_try_send_rack_event, MockCalledOnce())
         self.assertThat(mock_maaslog, MockCalledOnce())
+
+    def test_update_targets_only_runs_when_conf_exists(self):
+        # Regression test for LP:1655721
+        temp_dir = self.useFixture(TempDirectory()).path
+        self.useFixture(ClusterConfigurationFixture(tftp_root=temp_dir))
+        mock_ensureService = self.patch(
+            boot_resources.service_monitor, "ensureService")
+        mock_call_and_check = self.patch(boot_resources, "call_and_check")
+        mock_path_exists = self.patch(boot_resources.os.path, 'exists')
+        mock_path_exists.return_value = False
+        boot_resources.update_targets_conf(temp_dir)
+        self.assertThat(mock_ensureService, MockCalledOnceWith("tgt"))
+        self.assertThat(
+            mock_path_exists,
+            MockCalledOnceWith(os.path.join(temp_dir, 'maas.tgt')))
+        self.assertThat(mock_call_and_check, MockNotCalled())
 
 
 class TestMetaContains(MAASTestCase):

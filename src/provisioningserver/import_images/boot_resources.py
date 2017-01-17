@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -208,6 +208,12 @@ def update_targets_conf(snapshot):
 
     # Update the tgt config.
     targets_conf = os.path.join(snapshot, 'maas.tgt')
+
+    # The targets_conf may not exist in the event the BootSource is broken
+    # and images havn't been imported yet. This fixes LP:1655721
+    if not os.path.exists(targets_conf):
+        return
+
     try:
         call_and_check(sudo([
             '/usr/sbin/tgt-admin',
