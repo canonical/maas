@@ -38,10 +38,7 @@ class TestGetConfigForm(MAASServerTestCase):
         maas_name = factory.make_string()
         Config.objects.set_config('maas_name', maas_name)
         form = get_config_form('maas_name')
-        # The form contains only one field.
-        self.assertItemsEqual(['maas_name'], form.fields)
-        # The form is populated with the value of the 'maas_name'
-        # config item.
+        # The form is populated with the value of the 'maas_name' config item.
         self.assertEqual(
             {'maas_name': maas_name}, form.initial)
 

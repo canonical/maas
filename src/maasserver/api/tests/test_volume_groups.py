@@ -120,7 +120,7 @@ class TestVolumeGroups(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertItemsEqual(
             ['name'], json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET)))
+                response.content.decode(settings.DEFAULT_CHARSET)).keys())
 
     def test_create_creates_with_block_devices_and_partitions(self):
         self.become_admin()

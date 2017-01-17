@@ -131,7 +131,7 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(exit_status, script_result.exit_status)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
-        self.assertItemsEqual(result, script_result.result)
+        self.assertEqual(result, script_result.result)
         self.assertEquals(
             script_result.script.script, script_result.script_version)
 

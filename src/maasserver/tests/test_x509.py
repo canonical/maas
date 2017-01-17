@@ -127,10 +127,10 @@ class TestWinRMX509(MAASTestCase):
 
     def test_get_cert_details(self):
         cert, winrmx509 = self.make_certificate()
-        self.assertItemsEqual({
+        self.assertEqual({
             'subject': cert.get_subject().CN,
             'thumbprint': cert.digest('SHA1'),
-            'contents': self.dump_certificate(cert),
+            'contents': self.dump_certificate(cert).decode('utf-8'),
             }, winrmx509.get_cert_details(winrmx509.pem_file))
 
     def test_write_privatekey(self):

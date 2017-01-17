@@ -155,7 +155,7 @@ class TestWindowsOS(MAASTestCase):
             'hostname',
             ]
         preseed = osystem.compose_preseed('default', node, token, url)
-        self.assertItemsEqual(required_keys, preseed)
+        self.assertItemsEqual(required_keys, preseed.keys())
 
     def test_compose_preseed_uses_only_hostname(self):
         osystem = WindowsOS()

@@ -2233,7 +2233,7 @@ class TestClusterProtocol_Refresh(MAASTestCase):
                 "token_secret": token_secret,
             })
 
-        self.assertItemsEqual(
+        self.assertEqual(
             {
                 'hostname': hostname,
                 'osystem': osystem,

@@ -85,7 +85,7 @@ class TestHelpers(APITestCase.ForUser):
         self.assertEqual(False, dict_representation['complete'])
         self.assertEqual(
             resource_set.progress, dict_representation['progress'])
-        self.assertItemsEqual(
+        self.assertEqual(
             boot_resource_file_to_dict(rfile),
             dict_representation['files'][rfile.filename])
 
@@ -109,7 +109,7 @@ class TestHelpers(APITestCase.ForUser):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         dict_representation = boot_resource_to_dict(resource, with_sets=True)
-        self.assertItemsEqual(
+        self.assertEqual(
             boot_resource_set_to_dict(resource_set),
             dict_representation['sets'][resource_set.version])
 

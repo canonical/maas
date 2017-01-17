@@ -249,11 +249,15 @@ class TestDNSDataMapping(MAASServerTestCase):
             # nothing, which is what we need to find.
             nodes = Node.objects.filter(
                 hostname=h_name, domain=dnsresource.domain)
-        if nodes.count() > 0:
-            system_id = nodes.first().system_id
+        if nodes.exists():
+            node = nodes.first()
+            system_id = node.system_id
+            node_type = node.node_type
         else:
             system_id = None
-        mapping = HostnameRRsetMapping(system_id)
+            node_type = None
+        mapping = HostnameRRsetMapping(
+            system_id=system_id, node_type=node_type)
         for data in dnsresource.dnsdata_set.all():
             if raw_ttl or data.ttl is not None:
                 ttl = data.ttl
@@ -280,7 +284,7 @@ class TestDNSDataMapping(MAASServerTestCase):
         # in the returned mapping.
         factory.make_DNSResource(domain=domain, no_ip_addresses=True)
         actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
-        self.assertItemsEqual(expected_mapping, actual)
+        self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_returns_mapping_at_domain(self):
         parent = Domain.objects.get_default_domain()
@@ -299,14 +303,14 @@ class TestDNSDataMapping(MAASServerTestCase):
         # in the returned mapping.
         factory.make_DNSResource(domain=domain, no_ip_addresses=True)
         actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
-        self.assertItemsEqual(expected_mapping, actual)
+        self.assertEqual(expected_mapping, actual)
         # We are done with dnsrr from the child domain's perspective, make it
         # look like it would if it were in the parent domain.
         dnsrr.name = name
         dnsrr.domain = parent
         expected_parent = self.make_mapping(dnsrr)
         actual_parent = DNSData.objects.get_hostname_dnsdata_mapping(parent)
-        self.assertItemsEqual(expected_parent, actual_parent)
+        self.assertEqual(expected_parent, actual_parent)
 
     def test_get_hostname_dnsdata_mapping_handles_ttl(self):
         # We create 2 domains, one with a ttl, one withoout.
@@ -323,7 +327,7 @@ class TestDNSDataMapping(MAASServerTestCase):
             for dnsrr in dom.dnsresource_set.all():
                 expected_mapping.update(self.make_mapping(dnsrr))
             actual = DNSData.objects.get_hostname_dnsdata_mapping(dom)
-            self.assertItemsEqual(expected_mapping, actual)
+            self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_returns_raw_ttl(self):
         # We create 2 domains, one with a ttl, one withoout.
@@ -344,4 +348,4 @@ class TestDNSDataMapping(MAASServerTestCase):
                     dnsrr, raw_ttl=True))
             actual = DNSData.objects.get_hostname_dnsdata_mapping(
                 dom, raw_ttl=True)
-            self.assertItemsEqual(expected_mapping, actual)
+            self.assertEqual(expected_mapping, actual)

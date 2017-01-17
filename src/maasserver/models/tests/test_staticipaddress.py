@@ -442,7 +442,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             ttl = Config.objects.get_config('default_dns_ttl')
         mapping = HostnameIPMapping(
             system_id=node.system_id, node_type=node.node_type, ttl=ttl)
-        for ip in node.boot_interface.ip_addresses.all():
+        for ip in node.boot_interface.ip_addresses.exclude(ip=None):
             mapping.ips.add(str(ip.ip))
         return {node.fqdn: mapping}
 
@@ -471,7 +471,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             for node in dom.node_set.all():
                 expected_mapping.update(self.make_mapping(node))
             actual = StaticIPAddress.objects.get_hostname_ip_mapping(dom)
-            self.assertItemsEqual(expected_mapping, actual)
+            self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_ip_mapping_returns_raw_ttl(self):
         # We create 2 domains, one with a ttl, one withoout.
@@ -502,7 +502,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                     node, raw_ttl=True))
             actual = StaticIPAddress.objects.get_hostname_ip_mapping(
                 dom, raw_ttl=True)
-            self.assertItemsEqual(expected_mapping, actual)
+            self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_ip_mapping_picks_mac_with_static_address(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -584,7 +584,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             ip=factory.pick_ip_in_network(ipv6_network), subnet=ipv6_subnet)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.domain)
-        self.assertItemsEqual(
+        self.assertEqual(
             {node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {ipv4_address.ip, ipv6_address.ip},
                 node.node_type)},
@@ -610,7 +610,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             ip=factory.pick_ip_in_network(ipv6_network), subnet=ipv6_subnet)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.domain)
-        self.assertItemsEqual(
+        self.assertEqual(
             {node.fqdn: HostnameIPMapping(
                 node.system_id, 30,
                 {ipv4_address.ip, ipv6_address.ip}, node.node_type)},

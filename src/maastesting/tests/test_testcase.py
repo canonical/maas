@@ -23,6 +23,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
+    Contains,
     DirExists,
     FileExists,
 )
@@ -102,3 +103,30 @@ class TestTestCase(MAASTestCase):
         self.assertRaises(TypeError, self.method_to_be_patched, c=7)
         self.assertRaises(TypeError, self.method_to_be_patched, 8)
         self.assertRaises(TypeError, self.method_to_be_patched, b=9)
+
+    def test_assertItemsEqual_rejects_mappings(self):
+        self.assertRaises(AssertionError, self.assertItemsEqual, {}, [])
+        self.assertRaises(AssertionError, self.assertItemsEqual, [], {})
+        self.assertRaises(AssertionError, self.assertItemsEqual, {}, {})
+        self.assertItemsEqual([], [])
+
+    def test_assertItemsEqual_forwards_message(self):
+        message = factory.make_name("message")
+        error = self.assertRaises(
+            AssertionError, self.assertItemsEqual, [1], [2], message)
+        self.assertThat(str(error), Contains(message))
+
+    def test_assertSequenceEqual_rejects_mappings(self):
+        self.assertRaises(AssertionError, self.assertSequenceEqual, {}, [])
+        self.assertRaises(AssertionError, self.assertSequenceEqual, [], {})
+        self.assertRaises(AssertionError, self.assertSequenceEqual, {}, {})
+        self.assertSequenceEqual([], [])
+
+    def test_assertSequenceEqual_ignores_mappings_if_seq_type_is_set(self):
+        self.assertSequenceEqual({}, {}, seq_type=dict)
+
+    def test_assertSequenceEqual_forwards_message(self):
+        message = factory.make_name("message")
+        error = self.assertRaises(
+            AssertionError, self.assertSequenceEqual, [1], [2], message)
+        self.assertThat(str(error), Contains(message))

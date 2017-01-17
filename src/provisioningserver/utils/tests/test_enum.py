@@ -14,13 +14,13 @@ from provisioningserver.utils.enum import (
 
 class TestEnum(MAASTestCase):
 
-    def test_map_enum_includes_all_enum_values(self):
+    def test_map_enum_includes_all_enum_keys(self):
 
         class Enum:
             ONE = 1
             TWO = 2
 
-        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum))
+        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum).keys())
 
     def test_map_enum_omits_private_or_special_methods(self):
 
@@ -36,7 +36,7 @@ class TestEnum(MAASTestCase):
 
             VALUE = 9
 
-        self.assertItemsEqual(['VALUE'], map_enum(Enum))
+        self.assertItemsEqual(['VALUE'], map_enum(Enum).keys())
 
     def test_map_enum_maps_values(self):
 

@@ -51,6 +51,7 @@ from testtools.matchers import (
     Contains,
     Equals,
     IsInstance,
+    KeysEqual,
     MatchesAll,
     MatchesStructure,
     Not,
@@ -105,7 +106,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "lease_socket_service", "node_monitor", "ntp", "rpc", "tftp",
             "image_service", "service_monitor",
             ]
-        self.assertItemsEqual(expected_services, service.namedServices)
+        self.assertThat(service.namedServices, KeysEqual(*expected_services))
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")

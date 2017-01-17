@@ -59,7 +59,7 @@ class TestEvents(MAASTestCase):
 
     def test_every_event_has_details(self):
         all_events = map_enum(EVENT_TYPES)
-        self.assertItemsEqual(all_events.values(), EVENT_DETAILS)
+        self.assertItemsEqual(all_events.values(), EVENT_DETAILS.keys())
         self.assertThat(
             EVENT_DETAILS.values(), AllMatch(IsInstance(EventDetail)))
 

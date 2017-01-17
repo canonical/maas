@@ -164,8 +164,10 @@ class TestPowerDriverBase(MAASTestCase):
             make_setting_field(
                 fake_setting, fake_setting.title()),
             ]
-        fake_driver = make_power_driver_base()
-        self.assertItemsEqual({
+        fake_driver = make_power_driver_base(
+            name=fake_name, description=fake_description,
+            settings=fake_settings)
+        self.assertEqual({
             'name': fake_name,
             'description': fake_description,
             'fields': fake_settings,

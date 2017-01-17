@@ -219,7 +219,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         machine = Machine.objects.get(system_id=system_id)
         self.assertEquals('', machine.power_type)
-        self.assertItemsEqual({}, machine.power_parameters)
+        self.assertEqual({}, machine.power_parameters)
 
     def test_POST_handles_error_when_unable_to_access_bmc(self):
         # Regression test for LP1600328

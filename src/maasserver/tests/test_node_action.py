@@ -877,7 +877,7 @@ class TestMarkFixedAction(MAASServerTestCase):
         node = factory.make_Node(status=status)
         actions = compile_node_actions(
             node, factory.make_admin(), classes=[MarkFixed])
-        self.assertItemsEqual([], actions)
+        self.assertEqual({}, actions)
 
 
 class TestImportImagesAction(MAASServerTestCase):

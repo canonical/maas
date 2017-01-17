@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from random import randint
+
 from django.core.exceptions import ValidationError
 from maasserver.models import (
     DNSData,
@@ -33,12 +35,14 @@ class TestDomainHandler(MAASServerTestCase):
             "name": domain.name,
             "displayname": displayname,
             "authoritative": domain.authoritative,
-            "ttl": None,
+            "ttl": domain.ttl,
             "updated": dehydrate_datetime(domain.updated),
             "created": dehydrate_datetime(domain.created),
             }
-        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
+            domain, raw_ttl=True)
+        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
+            domain, raw_ttl=True)
         domainname_len = len(domain.name)
         for name, info in ip_map.items():
             name = name[:-domainname_len - 1]
@@ -79,7 +83,8 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain()
         factory.make_DNSData(domain=domain)
         factory.make_DNSResource(domain=domain)
-        self.assertItemsEqual(
+        factory.make_DNSResource(domain=domain, address_ttl=randint(0, 300))
+        self.assertEqual(
             self.dehydrate_domain(domain),
             handler.get({"id": domain.id}))
 

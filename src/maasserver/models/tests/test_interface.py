@@ -648,15 +648,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         nodes1, map1 = Interface.objects.get_matching_node_map(
             "space:%s" % space1.name)
         self.assertItemsEqual(nodes1, [node1.id])
-        self.assertItemsEqual(map1, {node1.id: [iface1.id]})
+        self.assertEqual(map1, {node1.id: [iface1.id]})
         nodes2, map2 = Interface.objects.get_matching_node_map(
             "space:%s" % space2.name)
         self.assertItemsEqual(nodes2, [node2.id])
-        self.assertItemsEqual(map2, {node2.id: [iface2.id]})
+        self.assertEqual(map2, {node2.id: [iface2.id]})
         nodes3, map3 = Interface.objects.get_matching_node_map(
             ["space:%s" % space1.name, "space:%s" % space2.name])
         self.assertItemsEqual(nodes3, [node1.id, node2.id])
-        self.assertItemsEqual(map3, {
+        self.assertEqual(map3, {
             node1.id: [iface1.id],
             node2.id: [iface2.id],
         })
@@ -666,29 +666,31 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         space2 = factory.make_Space()
         vlan1 = factory.make_VLAN(space=space1)
         vlan2 = factory.make_VLAN(space=space2)
-        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
-        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=space1)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=space2)
         node1 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet1, with_dhcp_rack_primary=False)
         node2 = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        iface3 = factory.make_Interface(node=node1)
+        iface3 = factory.make_Interface(node=node1, subnet=subnet1)
         factory.make_StaticIPAddress(interface=iface3, subnet=subnet1)
         nodes1, map1 = Interface.objects.get_matching_node_map(
             "space:%s" % space1.name)
-        self.assertItemsEqual(nodes1, [node1.id])
-        self.assertItemsEqual(map1, {node1.id: [iface1.id, iface3.id]})
+        self.assertItemsEqual(nodes1, {node1.id})
+        map1[node1.id].sort()
+        self.assertEqual(map1, {node1.id: sorted([iface1.id, iface3.id])})
         nodes2, map2 = Interface.objects.get_matching_node_map(
             "space:%s" % space2.name)
-        self.assertItemsEqual(nodes2, [node2.id])
-        self.assertItemsEqual(map2, {node2.id: [iface2.id]})
+        self.assertItemsEqual(nodes2, {node2.id})
+        self.assertEqual(map2, {node2.id: [iface2.id]})
         nodes3, map3 = Interface.objects.get_matching_node_map(
             ["space:%s" % space1.name, "space:%s" % space2.name])
-        self.assertItemsEqual(nodes3, [node1.id, node2.id])
-        self.assertItemsEqual(map3, {
-            node1.id: [iface1.id, iface3.id],
+        self.assertItemsEqual(nodes3, {node1.id, node2.id})
+        map3[node1.id].sort()
+        self.assertEqual(map3, {
+            node1.id: sorted([iface1.id, iface3.id]),
             node2.id: [iface2.id],
         })
 
@@ -705,7 +707,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         nodes, map = Interface.objects.get_matching_node_map(
             tags_specifier)
         self.assertItemsEqual(nodes, [node.id])
-        self.assertItemsEqual(map, {node.id: [interface.id]})
+        self.assertEqual(map, {node.id: [interface.id]})
 
     def test__get_matching_node_map_by_tag(self):
         tags = [
@@ -717,7 +719,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         nodes, map = Interface.objects.get_matching_node_map(
             "tag:%s" % random.choice(tags))
         self.assertItemsEqual(nodes, [node.id])
-        self.assertItemsEqual(map, {node.id: [interface.id]})
+        self.assertEqual(map, {node.id: [interface.id]})
 
 
 class InterfaceTest(MAASServerTestCase):

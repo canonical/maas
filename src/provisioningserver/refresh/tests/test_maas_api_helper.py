@@ -39,8 +39,8 @@ class TestHeaders(MAASTestCase):
         self.assertIn('oauth_nonce', oauth_arguments)
         oauth_arguments.pop('oauth_nonce', None)
 
-        self.assertItemsEqual({
-            'oauth_timestamp': int(time.time()),
+        self.assertEqual({
+            'oauth_timestamp': format(time.time(), ".0f"),
             'oauth_version': '1.0',
             'oauth_signature_method': 'PLAINTEXT',
             'oauth_consumer_key': consumer_key,
@@ -68,7 +68,7 @@ class TestHeaders(MAASTestCase):
         headers = {}
         maas_api_helper.authenticate_headers(
             factory.make_name("url"), headers, {})
-        self.assertItemsEqual({}, headers)
+        self.assertEqual({}, headers)
 
 
 class MAASMockHTTPHandler(urllib.request.HTTPHandler):
@@ -134,7 +134,7 @@ class TestEncode(MAASTestCase):
         data, headers = maas_api_helper.encode_multipart_data({}, {})
         m = re.search('boundary=([a-zA-Z]+)', headers['Content-Type'])
         boundary = m.group(1)
-        self.assertItemsEqual({
+        self.assertEqual({
             'Content-Type': "multipart/form-data; boundary=%s" % boundary,
             'Content-Length': str(len(data)),
             }, headers)
@@ -148,7 +148,7 @@ class TestEncode(MAASTestCase):
         data, headers = maas_api_helper.encode_multipart_data(params, {})
         m = re.search('boundary=([a-zA-Z]+)', headers['Content-Type'])
         boundary = m.group(1)
-        self.assertItemsEqual({
+        self.assertEqual({
             'Content-Type': "multipart/form-data; boundary=%s" % boundary,
             'Content-Length': str(len(data)),
             }, headers)
@@ -165,7 +165,7 @@ class TestEncode(MAASTestCase):
         data, headers = maas_api_helper.encode_multipart_data({}, files)
         m = re.search('boundary=([a-zA-Z]+)', headers['Content-Type'])
         boundary = m.group(1)
-        self.assertItemsEqual({
+        self.assertEqual({
             'Content-Type': "multipart/form-data; boundary=%s" % boundary,
             'Content-Length': str(len(data)),
             }, headers)

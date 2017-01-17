@@ -7,7 +7,8 @@ __all__ = [
     'StaticDriverTypesFixture',
     ]
 
-from unittest.mock import Mock
+from copy import deepcopy
+from functools import wraps
 
 from fixtures import Fixture
 from maasserver.clusterrpc import driver_parameters
@@ -21,22 +22,40 @@ class StaticDriverTypesFixture(Fixture):
 
     This patches out the `get_all_power_types_from_racks` and
     `get_all_chassis_types_from_racks` call. It's a common enough requirement
-    that it's been folded into a fixture.
+    that it's been folded into a fixture. This prevents communication with a
+    non-existent rack controller when fetching driver types.
     """
 
-    def setUp(self):
-        super(StaticDriverTypesFixture, self).setUp()
-        # This patch prevents communication with a non-existent rack
-        # controller when fetching driver types.
+    def _setUp(self):
+        self._interceptPowerTypesQuery()
+        self._interceptChassisTypesQuery()
+
+    def _interceptPowerTypesQuery(self):
         power_types = PowerDriverRegistry.get_schema(
             detect_missing_packages=False)
-        chassis_types = ChassisDriverRegistry.get_schema(
-            detect_missing_packages=False)
+
+        @wraps(driver_parameters.get_all_power_types_from_racks)
+        def get_all_power_types_from_racks(
+                controllers=None, ignore_errors=True):
+            # Callers can mutate this, so deep copy.
+            return deepcopy(power_types)
+
         restore = monkey.patch(
             driver_parameters, 'get_all_power_types_from_racks',
-            Mock(return_value=power_types))
+            get_all_power_types_from_racks)
         self.addCleanup(restore)
+
+    def _interceptChassisTypesQuery(self):
+        chassis_types = ChassisDriverRegistry.get_schema(
+            detect_missing_packages=False)
+
+        @wraps(driver_parameters.get_all_chassis_types_from_racks)
+        def get_all_chassis_types_from_racks(
+                controllers=None, ignore_errors=True):
+            # Callers can mutate this, so deep copy.
+            return deepcopy(chassis_types)
+
         restore = monkey.patch(
             driver_parameters, 'get_all_chassis_types_from_racks',
-            Mock(return_value=chassis_types))
+            get_all_chassis_types_from_racks)
         self.addCleanup(restore)

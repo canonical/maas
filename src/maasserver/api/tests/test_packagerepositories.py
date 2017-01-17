@@ -47,7 +47,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         del parsed_package_repository['resource_uri']
         self.assertItemsEqual(
             DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
-            parsed_package_repository)
+            parsed_package_repository.keys())
 
     def test_read_by_name(self):
         package_repository = factory.make_PackageRepository()
@@ -62,7 +62,7 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         del parsed_package_repository['resource_uri']
         self.assertItemsEqual(
             DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
-            parsed_package_repository)
+            parsed_package_repository.keys())
 
     def test_read_404_when_bad_id(self):
         response = self.client.get(

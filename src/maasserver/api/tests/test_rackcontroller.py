@@ -81,7 +81,7 @@ class TestRackControllerAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.OK, response))
         self.assertItemsEqual(
             ['connected', 'images', 'status'],
-            json_load_bytes(response.content))
+            json_load_bytes(response.content).keys())
 
     def test_GET_list_boot_images_denied_if_not_admin(self):
         rack = factory.make_RackController(owner=factory.make_User())

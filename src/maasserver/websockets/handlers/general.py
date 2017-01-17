@@ -123,7 +123,7 @@ class GeneralHandler(Handler):
         if (not reload_object(self.user).is_superuser and node_type in [
                 NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
-            return {}
+            return []
 
         actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():

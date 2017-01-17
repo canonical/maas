@@ -10,8 +10,12 @@ __all__ = [
     ]
 
 import abc
-from collections import Sequence
+from collections import (
+    Mapping,
+    Sequence,
+)
 from contextlib import contextmanager
+from functools import wraps
 from importlib import import_module
 import os
 from unittest import mock
@@ -34,6 +38,11 @@ from nose.tools import nottest
 import testresources
 import testtools
 import testtools.matchers
+from testtools.matchers import (
+    AllMatch,
+    IsInstance,
+    Not,
+)
 
 
 @nottest
@@ -198,9 +207,22 @@ class MAASTestCase(
         """
         return factory.make_file(self.make_dir(), name, contents)
 
-    # Django's implementation for this seems to be broken and was
-    # probably only added to support compatibility with python 2.6.
-    assertItemsEqual = testtools.TestCase.assertItemsEqual
+    @wraps(testtools.TestCase.assertItemsEqual)
+    def assertItemsEqual(self, expected_seq, actual_seq, msg=None):
+        """Override testtools' version to prevent use of mappings."""
+        self.assertThat(
+            (expected_seq, actual_seq), AllMatch(Not(IsInstance(Mapping))),
+            "Mappings cannot be compared with assertItemsEqual")
+        return super().assertItemsEqual(expected_seq, actual_seq, msg)
+
+    @wraps(testtools.TestCase.assertSequenceEqual)
+    def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
+        """Override testtools' version to prevent use of mappings."""
+        if seq_type is None:
+            self.assertThat(
+                (seq1, seq2), AllMatch(Not(IsInstance(Mapping))),
+                "Mappings cannot be compared with assertSequenceEqual")
+        return super().assertSequenceEqual(seq1, seq2, msg, seq_type)
 
     def assertAttributes(self, tested_object, attributes):
         """Check multiple attributes of `tested_object` against a dict.

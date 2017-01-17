@@ -35,7 +35,7 @@ class TestGlobalServiceMonitor(MAASTestCase):
     def test__includes_all_services(self):
         self.assertItemsEqual(
             ["bind9", "ntp_region", "proxy"],
-            service_monitor._services)
+            service_monitor._services.keys())
 
 
 class TestProxyService(MAASTransactionServerTestCase):

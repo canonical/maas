@@ -124,17 +124,21 @@ class TestGeneralHandler(MAASServerTestCase):
             ("%s/%s" % (osystem["name"], release["name"]), release["title"])
             for release in osystem["releases"]
         ]
+        self.patch(general, "list_osystem_choices").return_value = [
+            (osystem["name"], osystem["title"]),
+        ]
+        self.patch(general, "list_release_choices").return_value = releases
         expected_osinfo = {
             "osystems": [
                 (osystem["name"], osystem["title"]),
             ],
             "releases": releases,
-            "kernels": None,
+            "kernels": {},
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(
                 "default_distro_series"),
         }
-        self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
+        self.assertEqual(expected_osinfo, handler.osinfo({}))
 
     def test_machine_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
@@ -158,7 +162,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_device_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertItemsEqual([], handler.device_actions({}))
+        self.assertEqual([], handler.device_actions({}))
 
     def test_region_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
@@ -169,7 +173,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_region_controller_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertItemsEqual([], handler.region_controller_actions({}))
+        self.assertEqual([], handler.region_controller_actions({}))
 
     def test_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
@@ -179,7 +183,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_rack_controller_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertItemsEqual([], handler.rack_controller_actions({}))
+        self.assertEqual([], handler.rack_controller_actions({}))
 
     def test_region_and_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
@@ -190,8 +194,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_region_and_rack_controller_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertItemsEqual(
-            [], handler.region_and_rack_controller_actions({}))
+        self.assertEqual([], handler.region_and_rack_controller_actions({}))
 
     def test_random_hostname_checks_hostname_existence(self):
         existing_node = factory.make_Node(hostname="hostname")

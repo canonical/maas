@@ -342,7 +342,7 @@ class TestZoneGenerator(MAASServerTestCase):
                 reverse_zone(default_domain, "10/24")))
         expected_map = {'john': HostnameRRsetMapping(
             None, {(30, 'A', '127.0.0.1'), (30, 'NS', 'john')})}
-        self.assertItemsEqual(expected_map, zones[0]._other_mapping)
+        self.assertEqual(expected_map, zones[0]._other_mapping)
 
     def test_returns_interface_ips_but_no_nulls(self):
         default_domain = Domain.objects.get_default_domain().name
@@ -386,12 +386,15 @@ class TestZoneGenerator(MAASServerTestCase):
                 None,
                 {(default_ttl, dnsdata.rrtype, dnsdata.rrdata)})}.items(),
             zones[0]._other_mapping.items())
-        self.assertItemsEqual({
+        self.assertEqual({
             node.fqdn: HostnameIPMapping(
-                node.system_id, 30, {'%s' % boot_ip.ip}, node.node_type),
+                node.system_id, default_ttl,
+                {'%s' % boot_ip.ip}, node.node_type),
             '%s.%s' % (interfaces[0].name, node.fqdn): HostnameIPMapping(
-                None, default_ttl, {'%s' % sip.ip}, None)},
+                node.system_id, default_ttl,
+                {'%s' % sip.ip}, node.node_type)},
             zones[1]._mapping)
+        self.assertEqual({}, zones[2]._mapping)
 
     def rfc2317_network(self, network):
         """Returns the network that rfc2317 glue goes in, if any."""
@@ -432,8 +435,8 @@ class TestZoneGenerator(MAASServerTestCase):
                 forward_zone(domain.name),
                 reverse_zone(domain.name, subnet1.cidr),
                 reverse_zone(domain.name, subnet2.cidr)))
-        self.assertItemsEqual({}, zones[1]._rfc2317_ranges)
-        self.assertItemsEqual({net}, zones[2]._rfc2317_ranges)
+        self.assertEqual(set(), zones[1]._rfc2317_ranges)
+        self.assertEqual({net}, zones[2]._rfc2317_ranges)
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         default_domain = Domain.objects.get_default_domain().name
@@ -526,10 +529,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._mapping.items())
-        self.assertItemsEqual(
-            expected_reverse.items(), zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._mapping)
+        self.assertEqual(expected_reverse, zones[1]._mapping)
 
     @transactional
     def test_node_ttl_overrides_domain(self):
@@ -553,10 +554,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._mapping.items())
-        self.assertItemsEqual(
-            expected_reverse.items(), zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._mapping)
+        self.assertEqual(expected_reverse, zones[1]._mapping)
 
     @transactional
     def test_dnsresource_address_does_not_affect_addresses_when_node_set(self):
@@ -586,10 +585,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._mapping.items())
-        self.assertItemsEqual(
-            expected_reverse.items(), zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._mapping)
+        self.assertEqual(expected_reverse, zones[1]._mapping)
 
     @transactional
     def test_dnsresource_address_overrides_domain(self):
@@ -623,10 +620,8 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._mapping.items())
-        self.assertItemsEqual(
-            expected_reverse.items(), zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._mapping)
+        self.assertEqual(expected_reverse, zones[1]._mapping)
 
     @transactional
     def test_dnsdata_inherits_global(self):
@@ -645,10 +640,9 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._other_mapping.items())
-        self.assertItemsEqual([], zones[0]._mapping.items())
-        self.assertItemsEqual([], zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._other_mapping)
+        self.assertEqual({}, zones[0]._mapping)
+        self.assertEqual({}, zones[1]._mapping)
         self.assertEqual(None, dnsdata.ttl)
 
     @transactional
@@ -668,10 +662,9 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._other_mapping.items())
-        self.assertItemsEqual([], zones[0]._mapping.items())
-        self.assertItemsEqual([], zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._other_mapping)
+        self.assertEqual({}, zones[0]._mapping)
+        self.assertEqual({}, zones[1]._mapping)
         self.assertEqual(None, dnsdata.ttl)
 
     @transactional
@@ -691,7 +684,6 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial=random.randint(0, 65535)).as_list()
-        self.assertItemsEqual(
-            expected_forward.items(), zones[0]._other_mapping.items())
-        self.assertItemsEqual([], zones[0]._mapping.items())
-        self.assertItemsEqual([], zones[1]._mapping.items())
+        self.assertEqual(expected_forward, zones[0]._other_mapping)
+        self.assertEqual({}, zones[0]._mapping)
+        self.assertEqual({}, zones[1]._mapping)

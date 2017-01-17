@@ -69,7 +69,7 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCESELECTION_FIELDS,
-            returned_boot_source_selection)
+            returned_boot_source_selection.keys())
         self.assertThat(
             boot_source_selection,
             MatchesStructure.byEquality(**returned_boot_source_selection))

@@ -21,6 +21,11 @@ from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+    MatchesDict,
+)
 
 
 class TestExtractBool(MAASTestCase):
@@ -110,9 +115,12 @@ class TestGetOverridedQueryDict(MAASTestCase):
         }
         data = {field_name: DictCharField(fields)}
         results = get_overridden_query_dict(defaults, data, fields)
-        expected = {key: [value] for key, value in defaults.items()}
-        expected.update(fields)
-        self.assertItemsEqual(expected, results)
+        expected = {key: Equals(value) for key, value in defaults.items()}
+        expected.update({
+            name: IsInstance(value.__class__)
+            for name, value in fields.items()
+        })
+        self.assertThat(results, MatchesDict(expected))
 
 
 def make_fake_request(auth_header):

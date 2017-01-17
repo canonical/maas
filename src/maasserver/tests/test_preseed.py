@@ -458,7 +458,7 @@ class TestPreseedContext(MAASServerTestCase):
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
              'server_url', 'syslog_host_port'],
-            context)
+            context.keys())
 
 
 class TestNodeDeprecatedPreseedContext(
@@ -475,7 +475,7 @@ class TestNodeDeprecatedPreseedContext(
              'ports_archive_hostname', 'ports_archive_directory',
              'enable_http_proxy', 'http_proxy'
              ],
-            context)
+            context.keys())
 
 
 class TestNodePreseedContext(
@@ -493,7 +493,7 @@ class TestNodePreseedContext(
              'node_disable_pxe_data', 'node_disable_pxe_url',
              'preseed_data', 'third_party_drivers', 'license_key',
              ],
-            context)
+            context.keys())
 
     def test_context_contains_third_party_drivers(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1315,8 +1315,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         context = get_curtin_context(node)
-        self.assertItemsEqual(
-            ['curtin_preseed'], context)
+        self.assertItemsEqual(['curtin_preseed'], context.keys())
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_image_calls_get_boot_images_for(self):

@@ -64,8 +64,7 @@ class ConfigFormTest(MAASServerTestCase):
         Config.objects.set_config('field1', value)
         form = TestOptionForm()
 
-        self.assertItemsEqual(['field1'], form.initial)
-        self.assertEqual(value, form.initial['field1'])
+        self.assertEqual({'field1': value}, form.initial)
 
     def test_form_loads_initial_values_from_default_value(self):
         value = factory.make_string()
@@ -75,8 +74,7 @@ class ConfigFormTest(MAASServerTestCase):
         self.addCleanup(lambda: DEFAULT_CONFIG.pop('field1'))
         form = TestOptionForm()
 
-        self.assertItemsEqual(['field1'], form.initial)
-        self.assertEqual(value, form.initial['field1'])
+        self.assertEqual({'field1': value}, form.initial)
 
     def test_validates_composite_form(self):
         value1 = factory.make_string(5)

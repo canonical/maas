@@ -635,17 +635,17 @@ class TestGetReleaseFromDistroInfo(MAASServerTestCase):
 
     def test_finds_by_series(self):
         release = self.pick_release()
-        self.assertItemsEqual(
+        self.assertEqual(
             release, get_release_from_distro_info(release['series']))
 
     def test_finds_by_series_first_letter(self):
         release = self.pick_release()
-        self.assertItemsEqual(
+        self.assertEqual(
             release, get_release_from_distro_info(release['series'][0]))
 
     def test_finds_by_version(self):
         release = self.pick_release()
-        self.assertItemsEqual(
+        self.assertEqual(
             release, get_release_from_distro_info(release['version']))
 
     def test_returns_none_when_not_found(self):

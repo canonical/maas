@@ -105,7 +105,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         power_parameters['mac_address'] = ''
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
-        self.assertItemsEqual(power_parameters, machine.power_parameters)
+        self.assertEqual(power_parameters, machine.power_parameters)
         self.assertEqual(power_type, machine.power_type)
 
     def test_POST_create_creates_machine_with_arch_only(self):
@@ -269,7 +269,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertItemsEqual(
-            ['architecture'], parsed_result, response.content)
+            ['architecture'], parsed_result.keys(), response.content)
 
     def test_POST_create_creates_machine_with_domain(self):
         domain = factory.make_Domain()
@@ -457,7 +457,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
         self.assertEqual([], machines_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
-        new_power_address = factory.make_url()
+        new_power_address = factory.make_ip_address()  # XXX: URLs don't work.
         new_power_id = factory.make_name('power_id')
         response = self.client.post(
             reverse('machines_handler'), {
@@ -474,7 +474,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual('virsh', machine.power_type)
-        self.assertItemsEqual(
+        self.assertEqual(
             {
                 'power_pass': '',
                 'power_id': new_power_id,

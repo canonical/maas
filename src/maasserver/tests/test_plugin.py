@@ -110,7 +110,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "status-monitor",
             "web",
         ]
-        self.assertItemsEqual(expected_services, service.namedServices)
+        self.assertItemsEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")

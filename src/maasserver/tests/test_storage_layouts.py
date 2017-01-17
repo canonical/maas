@@ -466,7 +466,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             'root_device',
             'root_size',
             'boot_size',
-            ], layout.fields)
+            ], layout.fields.keys())
 
     def test__creates_layout_with_mbr_defaults(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -858,7 +858,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             'vg_name',
             'lv_name',
             'lv_size',
-            ], layout.fields)
+            ], layout.fields.keys())
 
     def test_get_vg_name_returns_default_if_not_set(self):
         node = make_Node_with_uefi_boot_method()
@@ -1445,7 +1445,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             'cache_mode',
             'cache_size',
             'cache_no_part',
-            ], layout.fields)
+            ], layout.fields.keys())
 
     def test_configure_storage_creates_flat_layout_if_no_cache_device(self):
         node = make_Node_with_uefi_boot_method()

@@ -36,4 +36,4 @@ class TestUbuntuForm(MAASServerTestCase):
             'main_archive': 'http://archive.ubuntu.com/ubuntu'
         }
         form = UbuntuForm()
-        self.assertItemsEqual(initial_values, form.initial)
+        self.assertEqual(initial_values, form.initial)

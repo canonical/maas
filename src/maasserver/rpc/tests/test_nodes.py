@@ -236,7 +236,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
         power_parameters = {
-            'power_address': factory.make_url(),
+            'power_address': factory.make_ip_address(),  # XXX: URLs break.
             'power_pass': factory.make_name('power_pass'),
             'power_id': factory.make_name('power_id'),
         }
@@ -248,7 +248,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         # Reload the object from the DB so that we're sure its power
         # parameters are being persisted.
         node = reload_object(node)
-        self.assertItemsEqual(power_parameters, node.power_parameters)
+        self.assertEqual(power_parameters, node.power_parameters)
 
     def test__forces_generic_subarchitecture_if_missing(self):
         self.prepare_rack_rpc()

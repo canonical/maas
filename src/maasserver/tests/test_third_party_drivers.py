@@ -112,4 +112,4 @@ class TestDriversConfig(MAASServerTestCase):
             self.assertItemsEqual(
                 ['blacklist', 'comment', 'key_binary', 'modaliases',
                  'module', 'repository', 'package'],
-                entry)
+                entry.keys())

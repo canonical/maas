@@ -221,7 +221,7 @@ class TestMakeSettingField(MAASTestCase):
             name, label, field_type=field_type,
             choices=choices, default=default, required=True,
             scope=SETTING_SCOPE.NODE)
-        self.assertItemsEqual({
+        self.assertEqual({
             'name': name,
             'label': label,
             'field_type': field_type,

@@ -188,7 +188,7 @@ class TestRenamableFieldsForm(MAASServerTestCase):
     def test_rename_field_renames_field(self):
         form = TestRenamableForm()
         form.rename_field('field1', 'new_field')
-        self.assertItemsEqual(form.fields, ['new_field', 'field2'])
+        self.assertItemsEqual(form.fields.keys(), ['new_field', 'field2'])
 
     def test_rename_field_updates_mapping(self):
         form = TestRenamableForm()

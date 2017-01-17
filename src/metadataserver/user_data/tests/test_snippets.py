@@ -59,7 +59,7 @@ class TestSnippets(MAASTestCase):
         contents = factory.make_string()
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, 'snippet.py', contents=contents)
-        self.assertItemsEqual(
+        self.assertEqual(
             {'snippet_py': contents},
             get_snippet_context(snippets_dir=snippets_dir))
 
