@@ -121,6 +121,42 @@ class TestSpaceAPI(APITestCase.ForUser):
         ]
         self.assertItemsEqual(subnet_ids, parsed_subnets)
 
+    def test_includes_vlan_objects(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        uri = get_space_uri(space)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_space = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        parsed_vlan = parsed_space['vlans'][0]
+        self.assertThat(parsed_vlan, ContainsDict({
+            "id": Equals(vlan.id),
+            "vid": Equals(vlan.vid),
+            "fabric_id": Equals(vlan.fabric_id),
+        }))
+
+    def test_includes_legacy_subnet_objects(self):
+        space = factory.make_Space()
+        subnet = factory.make_Subnet(space=space)
+        uri = get_space_uri(space)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_space = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        parsed_subnet = parsed_space['subnets'][0]
+        self.assertThat(parsed_subnet, ContainsDict({
+            "id": Equals(subnet.id),
+            "cidr": Equals(str(subnet.cidr)),
+        }))
+        self.assertThat(parsed_subnet['vlan'], ContainsDict({
+            "id": Equals(subnet.vlan.id),
+            "vid": Equals(subnet.vlan.vid),
+            "fabric_id": Equals(subnet.vlan.fabric_id),
+        }))
+
     def test_read_404_when_bad_id(self):
         uri = reverse(
             'space_handler', args=[random.randint(100, 1000)])

@@ -18,6 +18,7 @@ from piston3.utils import rc
 
 
 DISPLAYED_SPACE_FIELDS = (
+    'resource_uri',
     'id',
     'name',
     'vlans',
@@ -78,33 +79,11 @@ class SpaceHandler(OperationsHandler):
 
     @classmethod
     def subnets(cls, space):
-        """Return an abbreviated view of each subnet in the space."""
-        subnets = Subnet.objects.filter(vlan__space=space)
-        return [
-            {
-                "id": subnet.id,
-                "name": subnet.name,
-                "cidr": str(subnet.cidr),
-                "vlan": subnet.vlan_id
-            }
-            for subnet in subnets
-        ]
+        return Subnet.objects.filter(vlan__space=space)
 
     @classmethod
     def vlans(cls, space):
-        """Return an abbreviated view of each VLAN in the space."""
-        return [
-            {
-                "id": vlan.id,
-                "vid": vlan.vid,
-                "name": vlan.name,
-                "fabric": {
-                    "id": vlan.fabric.id,
-                    "name": vlan.fabric.name,
-                }
-            }
-            for vlan in space.vlan_set.all()
-        ]
+        return space.vlan_set.all()
 
     def read(self, request, id):
         """Read space.
