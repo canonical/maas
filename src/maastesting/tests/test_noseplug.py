@@ -25,6 +25,7 @@ import crochet as crochet_module
 from maastesting import noseplug
 from maastesting.factory import factory
 from maastesting.matchers import (
+    IsCallable,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -33,6 +34,7 @@ from maastesting.noseplug import (
     Resources,
     Scenarios,
     Select,
+    SelectBucket,
     Subunit,
 )
 from maastesting.testcase import MAASTestCase
@@ -362,6 +364,85 @@ class TestSelect(MAASTestCase):
             join(directory, factory.make_name("other-child"))))
 
 
+class TestSelectBucket(MAASTestCase):
+
+    def test__options_adds_options(self):
+        select = SelectBucket()
+        parser = OptionParser()
+        select.options(parser=parser, env={})
+        self.assertThat(
+            parser.option_list[-2:],
+            MatchesListwise([
+                # The --with-select-bucket option.
+                MatchesStructure.byEquality(
+                    action="store_true", default=None,
+                    dest="enable_plugin_select_bucket",
+                ),
+                # The --select-bucket option.
+                MatchesStructure.byEquality(
+                    action="callback", default=None,
+                    dest="select-bucket_selected_bucket",
+                    metavar="BUCKET/BUCKETS", type="string",
+                    _short_opts=[], _long_opts=["--select-bucket"],
+                )
+            ]))
+
+    def test__configure_parses_selected_bucket(self):
+        select = SelectBucket()
+        parser = OptionParser()
+        select.add_options(parser=parser, env={})
+        options, rest = parser.parse_args(
+            ["--with-select-bucket", "--select-bucket", "8/13"])
+        select.configure(options, sentinel.conf)
+        self.assertThat(select, MatchesStructure(_selectTest=IsCallable()))
+
+    @staticmethod
+    def _make_test_with_id(test_id):
+        test = unittest.TestCase()
+        test.id = lambda: test_id
+        return test
+
+    def test__prepareTestRunner_wraps_given_runner_and_filters_tests(self):
+        select = SelectBucket()
+        parser = OptionParser()
+        select.add_options(parser=parser, env={})
+        options, rest = parser.parse_args(
+            ["--with-select-bucket", "--select-bucket", "8/13"])
+        select.configure(options, sentinel.conf)
+
+        # We start at 65 because chr(65) is "A" and so makes a nice readable
+        # ID for the test. We end at 77 because chr(77) is "M", a readable ID
+        # once again, but more importantly it means we'll have 13 tests, which
+        # is the modulus we started with.
+        tests = map(self._make_test_with_id, map(chr, range(65, 78)))
+        test = unittest.TestSuite(tests)
+        self.assertThat(test.countTestCases(), Equals(13))
+
+        class MockTestRunner:
+            def run(self, test):
+                self.test = test
+
+        runner = runner_orig = MockTestRunner()
+        runner = select.prepareTestRunner(runner)
+        self.assertThat(runner, IsInstance(noseplug.SelectiveTestRunner))
+
+        runner.run(test)
+
+        self.assertThat(runner_orig.test, IsInstance(type(test)))
+        self.assertThat(runner_orig.test.countTestCases(), Equals(1))
+        # Note how the test with ID of "H" is the only one selected.
+        self.assertThat({t.id() for t in runner_orig.test}, Equals({"H"}))
+        self.assertThat(ord("H") % 13, Equals(7))
+
+    def test__prepareTestRunner_does_nothing_when_no_bucket_selected(self):
+        select = SelectBucket()
+        parser = OptionParser()
+        select.add_options(parser=parser, env={})
+        options, rest = parser.parse_args(["--with-select-bucket"])
+        select.configure(options, sentinel.conf)
+        self.assertThat(select.prepareTestRunner(sentinel.runner), Is(None))
+
+
 class TestSubunit(MAASTestCase):
 
     def test__options_adds_options(self):
@@ -411,10 +492,10 @@ class TestMain(MAASTestCase):
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY)))
+            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY, ANY)))
         plugins = noseplug.TestProgram.call_args[1]["addplugins"]
         self.assertThat(plugins, MatchesSetwise(
             IsInstance(Crochet), IsInstance(Resources),
             IsInstance(Scenarios), IsInstance(Select),
-            IsInstance(Subunit),
+            IsInstance(SelectBucket), IsInstance(Subunit),
         ))

@@ -65,11 +65,6 @@ if 'DEV_DB_NAME' in os.environ:
 # Example: "/home/media/media.lawrence.com/media/"
 MEDIA_ROOT = abspath("media/development")
 
-INSTALLED_APPS += (
-    'maastesting',
-    'django_nose',
-)
-
 INTERNAL_IPS = ('127.0.0.1', '::1')
 
 # Make all nodes' metadata visible.  This is not safe; do not enable it
@@ -111,6 +106,8 @@ NOSE_PLUGINS = [
     "maastesting.noseplug.Resources",
     "maastesting.noseplug.Scenarios",
     "maastesting.noseplug.Select",
+    "maastesting.noseplug.SelectBucket",
+    "maastesting.noseplug.Subunit",
 ]
 
 # Fix crooked settings.

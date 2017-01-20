@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nose plugins for MAAS."""
@@ -14,6 +14,8 @@ __all__ = [
 import inspect
 import io
 import logging
+import optparse
+import sys
 import unittest
 
 from nose.case import Test
@@ -22,6 +24,21 @@ from nose.plugins.base import Plugin
 from testresources import OptimisingTestSuite
 from testscenarios import generate_scenarios
 from twisted.python.filepath import FilePath
+
+
+def flattenTests(tests):
+    """Recursively eliminate nested test suites.
+
+    A `TestSuite` can contain zero or more tests or other suites, or a mix of
+    both. This function undoes all of this nesting. Be sure you know what you
+    intend when doing this, because any behaviour that is endowed by those
+    nested test suites will be lost.
+    """
+    for test in tests:
+        if isinstance(test, unittest.TestSuite):
+            yield from flattenTests(test)
+        else:
+            yield test
 
 
 class Crochet(Plugin):
@@ -97,17 +114,9 @@ class Resources(Plugin):
 
         :return: An instance of :class:`OptimisingTestSuite`.
         """
-        tests = self._flattenTests(test)
+        tests = flattenTests(test)
         tests = map(self._hoistResources, tests)
         return OptimisingTestSuite(tests)
-
-    def _flattenTests(self, tests):
-        """Recursively eliminate test suites."""
-        for test in tests:
-            if isinstance(test, unittest.TestSuite):
-                yield from self._flattenTests(test)
-            else:
-                yield test
 
     def _hoistResources(self, test):
         """Hoist resources from the real test to Nose's test wrapper."""
@@ -262,6 +271,143 @@ class Select(Plugin):
         return inspect.getdoc(self)
 
 
+class SelectBucket(Plugin):
+    """Select tests from buckets derived from their names.
+
+    Each test's ID is hashed into a number. This number, modulo the given
+    number of "buckets", defines the "bucket" for the test. This bucket can
+    then be selected by an option. This gives a caller a rough but stable way
+    to split up a test suite into parts, for running in parallel perhaps.
+
+    Note that, when using this plug-in, the nose-progressive plug-in will be
+    inoperative. Both this and nose-progressive attempt to customise the test
+    runner, but this wins.
+    """
+
+    name = "select-bucket"
+    option_selected_bucket = "%s_selected_bucket" % name
+    log = logging.getLogger('nose.plugins.%s' % name)
+    score = 10001  # Run before nose-progressive.
+
+    def options(self, parser, env):
+        """Add options to Nose's parser.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        # This plugin is not compatible with django-nose. Nose passes in an
+        # optparse-based argument parser, which django-nose later strips,
+        # putting the options into an argparse-based parser. This breaks
+        # because argparse uses `type` and `action` instead of `callback` but
+        # django-nose does not provide a compatibility shim for that. We could
+        # probably work around that here, but django-nose is deprecated in
+        # MAAS so it's not worth the effort. Hence, when django_nose has been
+        # loaded, this plugin is simply disabled.
+        if "django_nose" in sys.modules:
+            return
+
+        super(SelectBucket, self).options(parser, env)
+        parser.add_option(
+            "--%s" % self.name, dest=self.option_selected_bucket,
+            action="callback", callback=self._ingestSelectedBucket,
+            type="str", metavar="BUCKET/BUCKETS", default=None, help=(
+                "Select the number of buckets in which to split tests, and "
+                "which of these buckets to then run, e.g. 8/13 will split "
+                "tests into 13 buckets and will run those in the 8th bucket "
+                "(well... the 7th; the bucket number is indexed from 1)."
+            ),
+        )
+
+    def configure(self, options, conf):
+        """Configure, based on the parsed options.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        super(SelectBucket, self).configure(options, conf)
+        if self.enabled:
+            bucket_buckets = getattr(options, self.option_selected_bucket)
+            if bucket_buckets is None:
+                self._selectTest = None
+            else:
+                bucket, buckets = bucket_buckets
+                offset = bucket - 1  # Zero-based bucket number.
+                self._selectTest = lambda test: (
+                    sum(map(ord, test.id())) % buckets == offset)
+
+    def _ingestSelectedBucket(self, option, option_string, value, parser):
+        """Callback for the `--select-bucket` option.
+
+        The recognises values that match \d+/\d+, i.e. two integers. The
+        latter is the total number of buckets, the first is which of those
+        buckets to select (starting at 1).
+        """
+        try:
+            value = self._parseSelectedBucket(value)
+        except ValueError as error:
+            raise optparse.OptionValueError(
+                "%s: %s" % (option_string, error))
+        else:
+            setattr(parser.values, option.dest, value)
+
+    def _parseSelectedBucket(self, option):
+        """Helper for `_ingestSelectedBucket`."""
+        if option is None:
+            return None
+        elif "/" in option:
+            bucket, buckets = option.split("/", 1)
+            try:
+                bucket = int(bucket)
+                buckets = int(buckets)
+            except ValueError:
+                raise ValueError("not bucket/buckets")
+            else:
+                if buckets <= 0:
+                    raise ValueError("buckets must be >= 0")
+                elif bucket <= 0:
+                    raise ValueError("bucket must be >= 0")
+                elif bucket > buckets:
+                    raise ValueError("bucket must be <= buckets")
+                else:
+                    return bucket, buckets
+        else:
+            raise ValueError("not bucket/buckets")
+
+    def prepareTestRunner(self, runner):
+        """Convert `runner` to a selective variant.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        if self._selectTest is not None:
+            return SelectiveTestRunner(runner, self._selectTest)
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
+
+
+class SelectiveTestRunner:
+    """Wrap a test runner in order to filter the test suite to run."""
+
+    def __init__(self, runner, select):
+        super(SelectiveTestRunner, self).__init__()
+        self._runner = runner
+        self._select = select
+
+    def run(self, test):
+        if isinstance(test, unittest.TestSuite):
+            tests = flattenTests(test)
+            tests = filter(self._select, tests)
+            test = type(test)(tests)
+        else:
+            raise TypeError(
+                "Expected test suite, got %s: %r" % (
+                    type(test).__class__.__name__, test))
+
+        return self._runner.run(test)
+
+
 class Subunit(Plugin):
     """Emit test results as a subunit stream."""
 
@@ -311,10 +457,9 @@ class Subunit(Plugin):
 def main():
     """Invoke Nose's `TestProgram` with extra plugins.
 
-    Specifically the `Crochet`, `Resources`, `Scenarios`, and `Select`
-    plugins. At the command-line it's still necessary to enable these with the
-    flags ``--with-crochet``, ``--with-resources``, ``--with-scenarios``,
-    and/or ``--with-select``.
+    At the command-line it's still necessary to enable these with the flags
+    ``--with-crochet``, ``--with-resources``, ``--with-scenarios``, and so on.
     """
-    plugins = Crochet(), Resources(), Scenarios(), Select(), Subunit()
-    return TestProgram(addplugins=plugins)
+    return TestProgram(addplugins=(
+        Crochet(), Resources(), Scenarios(), Select(), SelectBucket(),
+        Subunit()))
