@@ -297,7 +297,7 @@ lint-py: sources = setup.py src templates twisted
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' -print0 \
-	    | xargs -r0 bin/flake8 --ignore=E123,E402,E731 --isolated
+	    | xargs -r0 bin/flake8 --ignore=E123,E305,E402,E731 --isolated
 
 # Ignore tests when checking complexity. The maximum complexity ought to
 # be close to 10 but MAAS has many functions that are over that so we
@@ -308,7 +308,7 @@ lint-py-complexity: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
 	  ! -path '*/tests/*' ! -path '*/testing/*' ! -name 'testing.py' \
-	  -print0 | xargs -r0 bin/flake8 --ignore=E123,E402,E731 \
+	  -print0 | xargs -r0 bin/flake8 --ignore=E123,E305,E402,E731 \
 	              --isolated --max-complexity=$(maximum)
 
 # Statically check imports against policy.
