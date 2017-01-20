@@ -13,14 +13,30 @@ import time
 import urllib
 
 from maastesting.factory import factory
-from maastesting.matchers import MockAnyCall
+from maastesting.matchers import (
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    MockAnyCall,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import maas_api_helper
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    MatchesAll,
+    MatchesDict,
+)
 
 
 class TestHeaders(MAASTestCase):
 
     def test_oauth_headers(self):
+        now = time.time()
+        is_about_now = MatchesAll(
+            GreaterThanOrEqual(int(now)),
+            LessThanOrEqual(int(now) + 3),
+        )
+
         url = factory.make_name("url")
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
@@ -39,14 +55,15 @@ class TestHeaders(MAASTestCase):
         self.assertIn('oauth_nonce', oauth_arguments)
         oauth_arguments.pop('oauth_nonce', None)
 
-        self.assertEqual({
-            'oauth_timestamp': format(time.time(), ".0f"),
-            'oauth_version': '1.0',
-            'oauth_signature_method': 'PLAINTEXT',
-            'oauth_consumer_key': consumer_key,
-            'oauth_token': token_key,
-            'oauth_signature': "%s%%26%s" % (consumer_secret, token_secret),
-            }, oauth_arguments)
+        self.assertThat(oauth_arguments, MatchesDict({
+            'oauth_timestamp': AfterPreprocessing(int, is_about_now),
+            'oauth_version': Equals('1.0'),
+            'oauth_signature_method': Equals('PLAINTEXT'),
+            'oauth_consumer_key': Equals(consumer_key),
+            'oauth_token': Equals(token_key),
+            'oauth_signature': Equals(
+                "%s%%26%s" % (consumer_secret, token_secret)),
+        }))
 
     def test_authenticate_headers_appends_oauth(self):
         url = factory.make_name("url")
