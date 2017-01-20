@@ -960,6 +960,30 @@ def node_type_change():
         region_and_rack_controller=NODE_TYPE.REGION_AND_RACK_CONTROLLER))
 
 
+def render_notification_dismissal_notification_procedure(
+        proc_name, event_name):
+    """Send the notification_id and user_id when a notification is dismissed.
+
+    Why not send the surrogate primary key as we do for most/all other models?
+    The surrogate primary key exists only because Django won't let us do
+    without. It's just not interesting. We only want the notification's ID and
+    the user's ID, and we may as well put those in the notification because
+    they're really short and it saves an extra trip to the database to load
+    the row.
+    """
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        DECLARE
+        BEGIN
+          PERFORM pg_notify(
+              '%s', CAST(NEW.notification_id AS text) || ':' ||
+              CAST(NEW.user_id AS text));
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """ % (proc_name, event_name))
+
+
 @transactional
 def register_websocket_triggers():
     """Register all websocket triggers into the database."""
@@ -1736,6 +1760,33 @@ def register_websocket_triggers():
         "maasserver_packagerepository", "packagerepository_delete_notify",
         "delete")
 
+    # Node type change.
     register_procedure(node_type_change())
     register_trigger(
         "maasserver_node", "node_type_change_notify", "update")
+
+    # Notification table.
+    register_procedure(
+        render_notification_procedure(
+            'notification_create_notify', 'notification_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'notification_update_notify', 'notification_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'notification_delete_notify', 'notification_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_notification", "notification_create_notify", "insert")
+    register_trigger(
+        "maasserver_notification", "notification_update_notify", "update")
+    register_trigger(
+        "maasserver_notification", "notification_delete_notify", "delete")
+
+    # NotificationDismissal table.
+    register_procedure(
+        render_notification_dismissal_notification_procedure(
+            'notificationdismissal_create_notify',
+            'notificationdismissal_create'))
+    register_trigger(
+        "maasserver_notificationdismissal",
+        "notificationdismissal_create_notify", "insert")

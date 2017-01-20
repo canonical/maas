@@ -3246,3 +3246,89 @@ class TestNodeTypeChange(
         finally:
             yield listener1.stopService()
             yield listener2.stopService()
+
+
+class TestNotificationListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """Tests for notifications relating to the `Notification` model."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("notification", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            notification = yield deferToDatabase(factory.make_Notification)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % notification.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("notification", lambda *args: dv.set(args))
+        notification = yield deferToDatabase(factory.make_Notification)
+
+        def update_notification(notification):
+            notification.users = not notification.users
+            notification.admins = not notification.admins
+            notification.save()
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(update_notification, notification)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % notification.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("notification", lambda *args: dv.set(args))
+        notification = yield deferToDatabase(factory.make_Notification)
+        notification_id = notification.id  # Capture before delete.
+        yield listener.startService()
+        try:
+            yield deferToDatabase(notification.delete)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % notification_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestNotificationDismissalListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """Tests relating to the `NotificationDismissal` model.
+
+    At present `NotificationDismissal` rows are only ever created.
+    """
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("notificationdismissal", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            user = yield deferToDatabase(factory.make_User)
+            notification = yield deferToDatabase(factory.make_Notification)
+            yield deferToDatabase(notification.dismiss, user)
+            yield dv.get(timeout=2)
+            self.assertEqual(
+                ('create', '%d:%d' % (notification.id, user.id)),
+                dv.value)
+        finally:
+            yield listener.stopService()
