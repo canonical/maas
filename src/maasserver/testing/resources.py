@@ -82,7 +82,7 @@ class DjangoPristineDatabaseManager(TestResourceManager):
 
     def make(self, dependencies):
         cluster = dependencies["cluster"]
-        with cluster.lock:
+        with cluster.lock.exclusive:
             return self._make(cluster)
 
     def _make(self, cluster):

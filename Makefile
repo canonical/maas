@@ -66,6 +66,7 @@ build: \
   bin/test.testing \
   bin/test.js \
   bin/test.e2e \
+  bin/test.parallel \
   bin/py bin/ipy \
   $(js_enums)
 
@@ -108,6 +109,11 @@ bin/buildout: bootstrap-buildout.py
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
+	@touch --no-create $@
+
+bin/test.parallel: \
+  bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install parallel-test
 	@touch --no-create $@
 
 bin/maas-region bin/twistd.region: \
