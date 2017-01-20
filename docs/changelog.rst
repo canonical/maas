@@ -16,6 +16,8 @@ LP: #1654412	Unable to set edge kernel as the min_hwe_kernel and deploy with the
 
 LP: #1656425    Ephemeral environments using the wrong kernel
 
+LP: #1655721    MAAS shouldn't update TGT config when there are no boot sources
+
 2.1.3
 =====
 
