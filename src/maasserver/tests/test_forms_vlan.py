@@ -277,11 +277,33 @@ class TestVLANForm(MAASServerTestCase):
         vlan = reload_object(vlan)
         self.assertEquals(space.id, vlan.space.id)
 
+    def test_update_sets_space_by_specifier(self):
+        vlan = factory.make_VLAN()
+        space = factory.make_Space()
+        form = VLANForm(instance=vlan, data={
+            "space": "name:" + space.name,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertEquals(space.id, vlan.space.id)
+
     def test_update_clears_space_when_None(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
         form = VLANForm(instance=vlan, data={
             "space": None,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.space)
+
+    def test_update_clears_space_when_empty(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(space=space)
+        form = VLANForm(instance=vlan, data={
+            "space": '',
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()

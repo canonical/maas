@@ -11,12 +11,18 @@ import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.models import Space
 from maasserver.testing.api import APITestCase
-from maasserver.testing.factory import factory
+from maasserver.testing.factory import (
+    factory,
+    RANDOM,
+)
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,
     Equals,
+    Is,
+    Not,
 )
 
 
@@ -126,7 +132,7 @@ class TestVlansAPI(APITestCase.ForUser):
         self.assertEqual(vlan_name, response_data['name'])
         self.assertEqual(vid, response_data['vid'])
         self.assertEqual(mtu, response_data['mtu'])
-        self.assertEqual(None, response_data['space'])
+        self.assertEqual(Space.UNDEFINED, response_data['space'])
 
     def test_create_with_space(self):
         self.become_admin()
@@ -239,6 +245,23 @@ class TestVlanAPI(APITestCase.ForUser):
             "resource_uri": Equals(get_vlan_uri(vlan)),
         }))
 
+    def test_read_without_space_returns_undefined_space(self):
+        vlan = factory.make_VLAN(space=None)
+        uri = get_vlan_uri(vlan, vlan.fabric)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(parsed_vlan, ContainsDict({
+            "id": Equals(vlan.id),
+            "name": Equals(vlan.get_name()),
+            "vid": Equals(vlan.vid),
+            "space": Equals(Space.UNDEFINED),
+            "resource_uri": Equals(get_vlan_uri(vlan)),
+        }))
+
     def test_read_404_when_bad_id(self):
         fabric = factory.make_Fabric()
         uri = reverse(
@@ -305,6 +328,40 @@ class TestVlanAPI(APITestCase.ForUser):
         self.assertEqual(new_name, vlan.name)
         self.assertEqual(new_vid, parsed_vlan['vid'])
         self.assertEqual(new_vid, vlan.vid)
+
+    def test_update_with_empty_space_clears_space(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric, space=RANDOM)
+        self.assertThat(vlan.space, Not(Is(None)))
+        uri = get_vlan_uri(vlan, fabric)
+        response = self.client.put(uri, {
+            "space": '',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.space, Is(None))
+        self.assertThat(parsed_vlan['space'], Equals(Space.UNDEFINED))
+
+    def test_update_with_undefined_space_clears_space(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric, space=RANDOM)
+        self.assertThat(vlan.space, Not(Is(None)))
+        uri = get_vlan_uri(vlan, fabric)
+        response = self.client.put(uri, {
+            "space": Space.UNDEFINED,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.space, Is(None))
+        self.assertThat(parsed_vlan['space'], Equals(Space.UNDEFINED))
 
     def test_update_admin_only(self):
         fabric = factory.make_Fabric()

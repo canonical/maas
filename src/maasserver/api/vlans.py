@@ -11,6 +11,7 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_vlan import VLANForm
 from maasserver.models import (
     Fabric,
+    Space,
     VLAN,
 )
 from piston3.utils import rc
@@ -42,27 +43,6 @@ class VlansHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
         return ('vlans_handler', ["fabric_id"])
-
-    @classmethod
-    def primary_rack(handler, vlan):
-        if vlan.primary_rack:
-            return vlan.primary_rack.system_id
-        else:
-            return None
-
-    @classmethod
-    def secondary_rack(handler, vlan):
-        if vlan.secondary_rack:
-            return vlan.secondary_rack.system_id
-        else:
-            return None
-
-    @classmethod
-    def space(handler, vlan):
-        if vlan.space:
-            return vlan.space.get_name()
-        else:
-            return None
 
     def read(self, request, fabric_id):
         """List all VLANs belonging to fabric.
@@ -126,7 +106,7 @@ class VlanHandler(OperationsHandler):
         if vlan.space:
             return vlan.space.get_name()
         else:
-            return None
+            return Space.UNDEFINED
 
     @classmethod
     def fabric(cls, vlan):
@@ -194,11 +174,23 @@ class VlanHandler(OperationsHandler):
             be configured to proxy reqests to the primary and/or secondary
             rack controller interfaces for the VLAN specified in this field.
         :type relay_vlan: ID of VLAN
+        :param space: The space this VLAN should be placed in. Passing in an
+            empty string (or the string 'undefined') will cause the VLAN to be
+            placed in the 'undefined' space.
+        :type space: unicode
 
         Returns 404 if the fabric or VLAN is not found.
         """
         vlan = self._get_vlan(request.user, NODE_PERMISSION.ADMIN, **kwargs)
-        form = VLANForm(instance=vlan, data=request.data)
+        data = {}
+        # If the user passed in a space, make the undefined space name a
+        # synonym for the empty space. But the Django request data object is
+        # immutable, so we must first copy its contents into our own dict.
+        for k, v in request.data.items():
+            data[k] = v
+        if 'space' in data and data['space'] == Space.UNDEFINED:
+            data['space'] = ''
+        form = VLANForm(instance=vlan, data=data)
         if form.is_valid():
             return form.save()
         else:

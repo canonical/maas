@@ -155,6 +155,12 @@ class SpaceTest(MAASServerTestCase):
             factory.make_Space,
             name='space-1999')
 
+    def test_undefined_name_raises_exception(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Space,
+            name=Space.UNDEFINED)
+
     def test_create_sets_name(self):
         space = Space.objects.create(name=None)
         self.assertEqual("space-%d" % space.id, space.name)

@@ -13,7 +13,10 @@ from maasserver.api.utils import get_optional_param
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_subnet import SubnetForm
-from maasserver.models import Subnet
+from maasserver.models import (
+    Space,
+    Subnet,
+)
 from piston3.utils import rc
 from provisioningserver.utils.network import IPRangeStatistics
 
@@ -147,7 +150,7 @@ class SubnetHandler(OperationsHandler):
     def space(cls, subnet):
         """Return the name of the space, or None if the space is undefined."""
         if subnet.space is None:
-            return None
+            return Space.UNDEFINED
         return subnet.space.get_name()
 
     def read(self, request, id):

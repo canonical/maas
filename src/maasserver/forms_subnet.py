@@ -52,7 +52,6 @@ class SubnetForm(MAASModelForm):
             'name',
             'description',
             'vlan',
-            'space',
             'cidr',
             'gateway_ip',
             'dns_servers',
@@ -68,6 +67,11 @@ class SubnetForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super(SubnetForm, self).clean()
+        if 'space' in self.data:
+            set_form_error(
+                self, "space",
+                "Spaces may no longer be set on subnets. Set the space on the "
+                "underlying VLAN.")
         # The default value for 'allow_proxy' is True.
         if 'allow_proxy' not in self.data:
             cleaned_data['allow_proxy'] = True
@@ -84,7 +88,6 @@ class SubnetForm(MAASModelForm):
             # the VLAN specifically. This is because we cannot make a correct
             # determination on what should be done in this case.
             cleaned_data = self._clean_vlan(cleaned_data)
-            cleaned_data = self._clean_space(cleaned_data)
         return cleaned_data
 
     def _clean_name(self, cleaned_data):
@@ -137,15 +140,6 @@ class SubnetForm(MAASModelForm):
                 set_form_error(
                     self, "vlan",
                     "VLAN %s is not in fabric %s." % (vlan, fabric))
-        return cleaned_data
-
-    def _clean_space(self, cleaned_data):
-        space = cleaned_data.get("space", None)
-        if space is not None:
-            set_form_error(
-                self, "space",
-                "Spaces may no longer be set on subnets. Set the space on the "
-                "underlying VLAN.")
         return cleaned_data
 
     def _clean_dns_servers(self, cleaned_data):

@@ -119,6 +119,9 @@ class Space(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`SpaceManager`.
     """
 
+    # Name of the undefined space.
+    UNDEFINED = "undefined"
+
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
         verbose_name = "Space"
@@ -151,8 +154,11 @@ class Space(CleanSave, TimestampedModel):
     def clean_name(self):
         reserved = re.compile('^space-\d+$')
         if self.name is not None and self.name != '':
+            if self.name == Space.UNDEFINED:
+                raise ValidationError(
+                    {'name': ["Reserved space name."]})
             if reserved.search(self.name):
-                if (self.id is None or self.name != 'space-%d' % self.id):
+                if self.id is None or self.name != 'space-%d' % self.id:
                     raise ValidationError(
                         {'name': ["Reserved space name."]})
         elif self.id is not None:

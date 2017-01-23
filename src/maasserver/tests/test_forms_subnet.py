@@ -24,7 +24,20 @@ class TestSubnetForm(MAASServerTestCase):
             "cidr": ["This field is required."],
             }, form.errors)
 
-    def test__rejects_provided_space(self):
+    def test__rejects_provided_space_on_update(self):
+        space = factory.make_Space()
+        subnet = factory.make_Subnet()
+        form = SubnetForm(instance=subnet, data={
+            "space": space.id
+        })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEqual({
+            "space": [
+                "Spaces may no longer be set on subnets. Set the space on the "
+                "underlying VLAN."
+            ]}, form.errors)
+
+    def test__rejects_space_on_create(self):
         space = factory.make_Space()
         form = SubnetForm({
             "space": space.id, "cidr": factory._make_random_network()

@@ -9,7 +9,10 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.fields import NodeChoiceField
+from maasserver.fields import (
+    NodeChoiceField,
+    SpecifierOrModelChoiceField,
+)
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
     RackController,
@@ -24,8 +27,8 @@ class VLANForm(MAASModelForm):
     # Linux doesn't allow lower than 552 for the MTU.
     mtu = forms.IntegerField(min_value=552, required=False)
 
-    space = forms.ModelChoiceField(
-        queryset=Space.objects.all(), required=False)
+    space = SpecifierOrModelChoiceField(
+        queryset=Space.objects.all(), required=False, empty_label="")
 
     class Meta:
         model = VLAN
@@ -128,6 +131,9 @@ class VLANForm(MAASModelForm):
         if (cleaned_data.get('secondary_rack') is None and
                 self.instance.secondary_rack is not None):
             self.instance.secondary_rack = None
+        if (cleaned_data.get('space') is "" and
+                self.instance.space is not None):
+            self.instance.space = None
         return cleaned_data
 
     def clean_dhcp_on(self):
