@@ -433,8 +433,8 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
                 "lsblk", "--exclude", "1,2,7", "-d", "-P",
                 "-o", "NAME,RO,RM,MODEL,ROTA")),
             call(("udevadm", "info", "-q", "all", "-n", name)),
-            call(("sudo", "blockdev", "--getsize64", "/dev/%s" % name)),
-            call(("sudo", "blockdev", "--getbsz", "/dev/%s" % name))))
+            call(("sudo", "-n", "blockdev", "--getsize64", "/dev/%s" % name)),
+            call(("sudo", "-n", "blockdev", "--getbsz", "/dev/%s" % name))))
 
     def test__returns_block_device(self):
         name = factory.make_name('name')

@@ -351,9 +351,9 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         if id_path is not None:
             block_info["ID_PATH"] = id_path
         device_size = check_output(
-            ("sudo", "blockdev", "--getsize64", block_path))
+            ("sudo", "-n", "blockdev", "--getsize64", block_path))
         device_block_size = check_output(
-            ("sudo", "blockdev", "--getbsz", block_path))
+            ("sudo", "-n", "blockdev", "--getbsz", block_path))
         block_info["SIZE"] = device_size.decode("utf-8").strip()
         block_info["BLOCK_SIZE"] = device_block_size.decode("utf-8").strip()
 
