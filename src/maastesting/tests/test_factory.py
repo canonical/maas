@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -8,11 +8,11 @@ __all__ = []
 from datetime import datetime
 from itertools import count
 import os.path
-import random
 from random import randint
 import subprocess
 from unittest.mock import sentinel
 
+from maastesting import factory as factory_module
 from maastesting.factory import (
     factory,
     TooManyRandomRetries,
@@ -23,7 +23,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.utils import FakeRandInt
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -59,17 +58,21 @@ class TestFactory(MAASTestCase):
         # Artificially limit randint to a very narrow range, to guarantee
         # some repetition in its output, and virtually guarantee that we test
         # both outcomes of the flip-a-coin call in make_vlan_tag.
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
-        outcomes = {factory.make_vlan_tag() for _ in range(1000)}
-        self.assertEqual({1}, outcomes)
+        random = self.patch(factory_module, "random")
+        random.randint.side_effect = [1, 2]
+        outcomes = {factory.make_vlan_tag(), factory.make_vlan_tag()}
+        self.assertEqual({1, 2}, outcomes)
 
     def test_make_vlan_tag_includes_None_if_allow_none(self):
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
+        random = self.patch(factory_module, "random")
+        random.choice.side_effect = [True, False, False]
+        random.randint.side_effect = [1, 2]
         self.assertEqual(
-            {None, 1},
+            {None, 1, 2},
             {
-                factory.make_vlan_tag(allow_none=True)
-                for _ in range(1000)
+                factory.make_vlan_tag(allow_none=True),
+                factory.make_vlan_tag(allow_none=True),
+                factory.make_vlan_tag(allow_none=True),
             })
 
     def test_make_ipv4_address(self):

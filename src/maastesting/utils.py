@@ -1,32 +1,17 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Testing utilities."""
 
 __all__ = [
     "age_file",
-    "content_from_file",
     "extract_word_list",
-    "get_write_time",
-    "FakeRandInt",
-    "preexec_fn",
-    "run_isolated",
     "sample_binary_data",
-    ]
+]
 
 import codecs
 import os
 import re
-import signal
-from sys import (
-    stderr,
-    stdout,
-)
-from traceback import print_exc
-
-import subunit
-from testtools.content import Content
-from testtools.content_type import UTF8_TEXT
 
 
 def age_file(path, seconds):
@@ -37,26 +22,6 @@ def age_file(path, seconds):
     os.utime(path, (atime, mtime - seconds))
 
 
-def get_write_time(path):
-    """Return last modification time of file at `path`."""
-    return os.stat(path).st_mtime
-
-
-def content_from_file(path):
-    """Alternative to testtools' version.
-
-    This keeps an open file-handle, so it can obtain the log even when the
-    file has been unlinked.
-    """
-    fd = open(path, "rb")
-
-    def iterate():
-        fd.seek(0)
-        return iter(fd)
-
-    return Content(UTF8_TEXT, iterate)
-
-
 def extract_word_list(string):
     """Return a list of words from a string.
 
@@ -64,75 +29,6 @@ def extract_word_list(string):
     semi-colons, or whitespace.
     """
     return re.findall("[^,;\s]+", string)
-
-
-def preexec_fn():
-    # Revert Python's handling of SIGPIPE. See
-    # http://bugs.python.org/issue1652 for more info.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-
-class BytesToStdout:
-    """File-like object to forward bytes to a text-mode `stdout`.
-
-    Bytes are decoded as ASCII and unrecognised characters are replaced.
-    """
-
-    def write(self, data):
-        string = data.decode("ascii", "replace")
-        stdout.write(string)
-
-
-def run_isolated(cls, self, result):
-    """Run a test suite or case in a subprocess.
-
-    This is derived from ``subunit.run_isolated``. Subunit's version
-    clobbers stdout by dup'ing the subunit's stream over the top, which
-    prevents effective debugging at the terminal. This variant does not
-    suffer from the same issue.
-    """
-    c2pread, c2pwrite = os.pipe()
-    pid = os.fork()
-    if pid == 0:
-        # Child: runs test and writes subunit to c2pwrite.
-        try:
-            os.close(c2pread)
-            stream = os.fdopen(c2pwrite, 'wb')
-            sender = subunit.TestProtocolClient(stream)
-            cls.run(self, sender)
-            stream.flush()
-            stdout.flush()
-            stderr.flush()
-        except:
-            # Print error and exit hard.
-            try:
-                print_exc(file=stderr)
-                stderr.flush()
-            finally:
-                os._exit(2)
-        finally:
-            # Exit hard.
-            os._exit(0)
-    else:
-        # TestProtocolServer, by default, will write non-subunit content to
-        # stdout as *bytes*. In Python 3 it assumes that stdout has a `buffer`
-        # attribute which can accept bytes. However, nose buffers test output,
-        # and replaces sys.stdout with only a StringIO instance.
-        try:
-            stdout.write(b"")
-        except TypeError:
-            try:
-                output = stdout.buffer
-            except AttributeError:
-                output = BytesToStdout()
-        else:
-            output = stdout
-        # Parent: receives subunit from c2pread.
-        os.close(c2pwrite)
-        stream = os.fdopen(c2pread, 'rb')
-        receiver = subunit.TestProtocolServer(result, output)
-        receiver.readFrom(stream)
-        os.waitpid(pid, 0)
 
 
 # Some horrible binary data that could never, ever, under any encoding
@@ -146,25 +42,3 @@ def run_isolated(cls, self, result):
 # (1) Provided, of course, that man know only about ASCII and
 # UTF.
 sample_binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'
-
-
-class FakeRandInt:
-    """Fake `randint` with forced limitations on its range.
-
-    This lets you set a forced minimum, and/or a forced maximum, on the range
-    of any call.  For example, if you pass `forced_maximum=3`, then a call
-    will never return more than 3.  If you don't set a maximum, or if the
-    call's maximum argument is less than the forced maximum, then the call's
-    maximum will be respected.
-    """
-    def __init__(self, real_randint, forced_minimum=None, forced_maximum=None):
-        self.real_randint = real_randint
-        self.minimum = forced_minimum
-        self.maximum = forced_maximum
-
-    def __call__(self, minimum, maximum):
-        if self.minimum is not None:
-            minimum = max(minimum, self.minimum)
-        if self.maximum is not None:
-            maximum = min(maximum, self.maximum)
-        return self.real_randint(minimum, maximum)

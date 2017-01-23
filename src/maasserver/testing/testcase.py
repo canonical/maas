@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -8,24 +8,15 @@ __all__ = [
     'MAASLegacyTransactionServerTestCase',
     'MAASServerTestCase',
     'MAASTransactionServerTestCase',
-    'SeleniumTestCase',
     'SerializationFailureTestCase',
-    'TestWithoutCrochetMixin',
     'UniqueViolationTestCase',
 ]
 
 from itertools import count
-import socketserver
 import sys
 import threading
-from unittest import SkipTest
-from unittest.mock import Mock
 import warnings
-import wsgiref
 
-import crochet
-import django
-from django.core.urlresolvers import reverse
 from django.db import (
     close_old_connections,
     connection,
@@ -36,7 +27,6 @@ from django.db.utils import (
     IntegrityError,
     OperationalError,
 )
-from fixtures import Fixture
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import (
@@ -54,9 +44,7 @@ from maastesting.djangotestcase import (
     DjangoTestCase,
     DjangoTransactionTestCase,
 )
-from maastesting.fixtures import DisplayFixture
 from maastesting.testcase import MAASTestCase
-from maastesting.utils import run_isolated
 
 
 class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
@@ -213,133 +201,6 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.assertNotInTransaction()
         self.addCleanup(self.assertNotInTransaction)
         self.setUpFixtures()
-
-
-# Django supports Selenium tests only since version 1.4.
-django_supports_selenium = (django.VERSION >= (1, 4))
-
-if django_supports_selenium:
-    from django.test import LiveServerTestCase
-    from selenium.webdriver.firefox.webdriver import WebDriver
-else:
-    LiveServerTestCase = object  # noqa
-
-
-class LogSilencerFixture(Fixture):
-
-    old_handle_error = wsgiref.handlers.BaseHandler.handle_error
-    old_log_exception = wsgiref.handlers.BaseHandler.log_exception
-
-    def setUp(self):
-        super(LogSilencerFixture, self).setUp()
-        self.silence_loggers()
-        self.addCleanup(self.unsilence_loggers)
-
-    def silence_loggers(self):
-        # Silence logging of errors to avoid the
-        # "IOError: [Errno 32] Broken pipe" error.
-        socketserver.BaseServer.handle_error = Mock()
-        wsgiref.handlers.BaseHandler.log_exception = Mock()
-
-    def unsilence_loggers(self):
-        """Restore original handle_error/log_exception methods."""
-        socketserver.BaseServer.handle_error = self.old_handle_error
-        wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
-
-
-class SeleniumTestCase(
-        DjangoTransactionTestCase, LiveServerTestCase,
-        PostCommitHooksTestMixin):
-    """Selenium-enabled test case.
-
-    Two users are pre-created: "user" for a regular user account, or "admin"
-    for an administrator account.  Both have the password "test".  You can log
-    in as either using `log_in`.
-    """
-
-    # Load the selenium test fixture.
-    fixtures = ['src/maastesting/protractor/fixture.yaml']
-
-    @classmethod
-    def setUpClass(cls):
-        if not django_supports_selenium:
-            return
-        cls.display = DisplayFixture()
-        cls.display.__enter__()
-
-        cls.silencer = LogSilencerFixture()
-        cls.silencer.__enter__()
-
-        cls.selenium = WebDriver()
-        super(SeleniumTestCase, cls).setUpClass()
-
-    def setUp(self):
-        if not django_supports_selenium:
-            raise SkipTest(
-                "Live tests only enabled if Django.version >=1.4.")
-        super(SeleniumTestCase, self).setUp()
-
-    @classmethod
-    def tearDownClass(cls):
-        if not django_supports_selenium:
-            return
-        cls.selenium.quit()
-        cls.display.__exit__(None, None, None)
-        cls.silencer.__exit__(None, None, None)
-        super(SeleniumTestCase, cls).tearDownClass()
-
-    def log_in(self, user='user', password='test'):
-        """Log in as the given user.  Defaults to non-admin user."""
-        self.get_page('login')
-        username_input = self.selenium.find_element_by_id("id_username")
-        username_input.send_keys(user)
-        password_input = self.selenium.find_element_by_id("id_password")
-        password_input.send_keys(password)
-        self.selenium.find_element_by_xpath('//input[@value="Login"]').click()
-
-    def get_page(self, *reverse_args, **reverse_kwargs):
-        """GET a page.  Arguments are passed on to `reverse`."""
-        path = reverse(*reverse_args, **reverse_kwargs)
-        return self.selenium.get("%s%s" % (self.live_server_url, path))
-
-
-class TestWithoutCrochetMixin:
-    """Ensure that Crochet's event-loop is not running.
-
-    Crochet's event-loop cannot easily be resurrected, so this runs each
-    test in a new subprocess. There we can stop Crochet without worrying
-    about how to get it going again.
-
-    Use this where tests must, for example, patch out global state
-    during testing, where those patches coincide with things that
-    Crochet expects to use too, ``time.sleep`` for example.
-    """
-
-    _dead_thread = threading.Thread()
-    _dead_thread.start()
-    _dead_thread.join()
-
-    def __call__(self, result=None):
-        if result is None:
-            result = self.defaultTestResult()
-        # nose.proxy.ResultProxy.assertMyTest() is weird, and makes
-        # things break, so we neutralise it here.
-        result.assertMyTest = lambda test: None
-        # Finally, run the test in a subprocess.
-        up = super(TestWithoutCrochetMixin, self.__class__)
-        run_isolated(up, self, result)
-
-    run = __call__
-
-    def setUp(self):
-        super(TestWithoutCrochetMixin, self).setUp()
-        # Ensure that Crochet's event-loop has shutdown. The following
-        # runs in the child process started by run_isolated() so we
-        # don't need to repair the damage we do.
-        if crochet._watchdog.is_alive():
-            crochet._watchdog._canary = self._dead_thread
-            crochet._watchdog.join()  # Wait for the watchdog to stop.
-            self.assertFalse(crochet.reactor.running)
 
 
 class SerializationFailureTestCase(

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for filesystem-related utilities."""
@@ -31,10 +31,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.utils import (
-    age_file,
-    get_write_time,
-)
+from maastesting.utils import age_file
 import provisioningserver.config
 from provisioningserver.utils.fs import (
     atomic_copy,
@@ -217,11 +214,11 @@ class TestAtomicCopy(MAASTestCase):
         contents = factory.make_bytes()
         dest = self.make_file(contents=contents)
         age_file(dest, 100)
-        original_write_time = get_write_time(dest)
+        original_write_time = os.stat(dest).st_mtime
         loader = self.make_file(contents=contents)
         atomic_copy(loader, dest)
         self.assertThat(dest, FileContains(contents))
-        self.assertEqual(original_write_time, get_write_time(dest))
+        self.assertEqual(original_write_time, os.stat(dest).st_mtime)
 
     def test__sweeps_aside_dot_new_if_any(self):
         contents = factory.make_bytes()
