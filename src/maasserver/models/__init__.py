@@ -23,8 +23,8 @@ __all__ = [
     'Config',
     'Controller',
     'Device',
-    'Discovery',
     'DHCPSnippet',
+    'Discovery',
     'DNSData',
     'DNSPublication',
     'DNSResource',
@@ -62,12 +62,13 @@ __all__ = [
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
     'Service',
+    'signals',
     'Space',
-    'Storage',
     'SSHKey',
     'SSLKey',
     'StaticIPAddress',
     'StaticRoute',
+    'Storage',
     'Subnet',
     'Tag',
     'Template',
@@ -79,7 +80,7 @@ __all__ = [
     'VLANInterface',
     'VolumeGroup',
     'Zone',
-    ]
+]
 
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
@@ -179,7 +180,6 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
-from maasserver.utils import ignore_unused
 from piston3.doc import HandlerDocumentation
 from provisioningserver.utils import is_instance_or_subclass
 
@@ -361,4 +361,3 @@ class MAASAuthorizationBackend(ModelBackend):
 
 # Ensure that all signals modules are loaded.
 from maasserver.models import signals
-ignore_unused(signals)

@@ -9,27 +9,28 @@ __all__ = [
     "BootResourceHandler",
     "ConfigHandler",
     "ControllerHandler",
-    "DHCPSnippetHandler",
     "DeviceHandler",
+    "DHCPSnippetHandler",
     "DiscoveryHandler",
     "DomainHandler",
     "EventHandler",
     "FabricHandler",
-    "GeneralHandler"
+    "GeneralHandler",
+    "IPRangeHandler",
     "IPRangeHandler",
     "MachineHandler",
+    "PackageRepositoryHandler",
     "ServiceHandler",
-    "SSHKeyHandler",
     "SpaceHandler",
+    "SSHKeyHandler",
     "StaticRouteHandler",
     "SubnetHandler",
     "TagHandler",
     "UserHandler",
     "VLANHandler",
     "ZoneHandler",
-    ]
+]
 
-from maasserver.utils import ignore_unused
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maasserver.websockets.handlers.config import ConfigHandler
 from maasserver.websockets.handlers.controller import ControllerHandler
@@ -54,27 +55,3 @@ from maasserver.websockets.handlers.tag import TagHandler
 from maasserver.websockets.handlers.user import UserHandler
 from maasserver.websockets.handlers.vlan import VLANHandler
 from maasserver.websockets.handlers.zone import ZoneHandler
-
-
-ignore_unused(BootResourceHandler)
-ignore_unused(ConfigHandler)
-ignore_unused(ControllerHandler)
-ignore_unused(DHCPSnippetHandler)
-ignore_unused(DeviceHandler)
-ignore_unused(DiscoveryHandler)
-ignore_unused(DomainHandler)
-ignore_unused(EventHandler)
-ignore_unused(FabricHandler)
-ignore_unused(GeneralHandler)
-ignore_unused(IPRangeHandler)
-ignore_unused(MachineHandler)
-ignore_unused(PackageRepositoryHandler)
-ignore_unused(ServiceHandler)
-ignore_unused(SSHKeyHandler)
-ignore_unused(SpaceHandler)
-ignore_unused(StaticRouteHandler)
-ignore_unused(SubnetHandler)
-ignore_unused(TagHandler)
-ignore_unused(UserHandler)
-ignore_unused(VLANHandler)
-ignore_unused(ZoneHandler)
