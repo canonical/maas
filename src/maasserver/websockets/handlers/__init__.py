@@ -19,6 +19,7 @@ __all__ = [
     "IPRangeHandler",
     "IPRangeHandler",
     "MachineHandler",
+    "NotificationHandler",
     "PackageRepositoryHandler",
     "ServiceHandler",
     "SpaceHandler",
@@ -43,6 +44,7 @@ from maasserver.websockets.handlers.fabric import FabricHandler
 from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 from maasserver.websockets.handlers.machine import MachineHandler
+from maasserver.websockets.handlers.notification import NotificationHandler
 from maasserver.websockets.handlers.packagerepository import (
     PackageRepositoryHandler,
 )

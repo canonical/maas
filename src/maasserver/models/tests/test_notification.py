@@ -228,6 +228,37 @@ class TestNotification(MAASServerTestCase):
         self.assertThat(notification.id, Is(None))
         self.assertThat(Notification.objects.all(), HasLength(0))
 
+    def test_is_relevant_to_user(self):
+        user = factory.make_User()
+        user2 = factory.make_User()
+        admin = factory.make_admin()
+
+        Yes, No = Is(True), Is(False)
+
+        notification_to_user = Notification(user=user)
+        self.assertThat(notification_to_user.is_relevant_to(None), No)
+        self.assertThat(notification_to_user.is_relevant_to(user), Yes)
+        self.assertThat(notification_to_user.is_relevant_to(user2), No)
+        self.assertThat(notification_to_user.is_relevant_to(admin), No)
+
+        notification_to_users = Notification(users=True)
+        self.assertThat(notification_to_users.is_relevant_to(None), No)
+        self.assertThat(notification_to_users.is_relevant_to(user), Yes)
+        self.assertThat(notification_to_users.is_relevant_to(user2), Yes)
+        self.assertThat(notification_to_users.is_relevant_to(admin), No)
+
+        notification_to_admins = Notification(admins=True)
+        self.assertThat(notification_to_admins.is_relevant_to(None), No)
+        self.assertThat(notification_to_admins.is_relevant_to(user), No)
+        self.assertThat(notification_to_admins.is_relevant_to(user2), No)
+        self.assertThat(notification_to_admins.is_relevant_to(admin), Yes)
+
+        notification_to_all = Notification(users=True, admins=True)
+        self.assertThat(notification_to_all.is_relevant_to(None), No)
+        self.assertThat(notification_to_all.is_relevant_to(user), Yes)
+        self.assertThat(notification_to_all.is_relevant_to(user2), Yes)
+        self.assertThat(notification_to_all.is_relevant_to(admin), Yes)
+
 
 class TestNotificationRepresentation(MAASServerTestCase):
     """Tests for the `Notification` representation."""

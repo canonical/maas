@@ -5,16 +5,31 @@
 
 __all__ = []
 
+from itertools import product
+import random
+from unittest.mock import sentinel
+
+from maasserver.models import User
 from maasserver.models.notification import NotificationDismissal
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    Handler,
+)
 from maasserver.websockets.handlers.notification import NotificationHandler
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
+from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
     Equals,
     Is,
+    IsInstance,
+    MatchesAll,
     MatchesDict,
     MatchesListwise,
     Not,
@@ -113,3 +128,125 @@ class TestNotificationHandler(MAASServerTestCase):
         self.assertThat(notifications, AllMatch(Not(HasBeenDismissedBy(user))))
         handler.dismiss({"id": [str(ntfn.id) for ntfn in notifications]})
         self.assertThat(notifications, AllMatch(HasBeenDismissedBy(user)))
+
+
+class TestNotificationHandlerListening(MAASServerTestCase):
+    """Tests for `NotificationHandler` listening to database messages."""
+
+    def test_on_listen_for_notification_up_calls(self):
+        super_on_listen = self.patch(Handler, "on_listen")
+        super_on_listen.return_value = sentinel.on_listen
+
+        user = factory.make_User()
+        handler = NotificationHandler(user, {})
+
+        self.assertThat(
+            handler.on_listen("notification", sentinel.action, sentinel.pk),
+            Is(sentinel.on_listen))
+        self.assertThat(
+            super_on_listen, MockCalledOnceWith(
+                "notification", sentinel.action, sentinel.pk))
+
+    def test_on_listen_for_dismissal_up_calls_with_delete(self):
+        super_on_listen = self.patch(Handler, "on_listen")
+        super_on_listen.return_value = sentinel.on_listen
+
+        user = factory.make_User()
+        handler = NotificationHandler(user, {})
+        notification = factory.make_Notification(user=user)
+
+        # A dismissal notification from the database.
+        dismissal = "%d:%d" % (notification.id, user.id)
+
+        self.assertThat(
+            handler.on_listen(
+                "notificationdismissal", sentinel.action, dismissal),
+            Is(sentinel.on_listen))
+        self.assertThat(
+            super_on_listen, MockCalledOnceWith(
+                "notification", "delete", notification.id))
+
+    def test_on_listen_for_dismissal_for_other_user_does_nothing(self):
+        super_on_listen = self.patch(Handler, "on_listen")
+        super_on_listen.return_value = sentinel.on_listen
+
+        user = factory.make_User()
+        handler = NotificationHandler(user, {})
+        notification = factory.make_Notification(user=user)
+
+        # A dismissal notification from the database FOR ANOTHER USER.
+        dismissal = "%d:%d" % (notification.id, random.randrange(1, 99999))
+
+        self.assertThat(handler.on_listen(
+            "notificationdismissal", sentinel.action, dismissal), Is(None))
+        self.assertThat(super_on_listen, MockNotCalled())
+
+    def test_listen_reloads_user(self):
+        admin = factory.make_admin()
+        handler = NotificationHandler(admin, {})
+        notification = factory.make_Notification(admins=True)
+
+        # The notification is currently relevant to `admin`.
+        self.assertThat(handler.listen(
+            "notification", "create", notification.id), Equals(notification))
+
+        # Change `admin` to a regular user in the database.
+        admin_alt = User.objects.get(id=admin.id)
+        admin_alt.is_superuser = False
+        admin_alt.save()
+
+        # The change is noticed because `handler.listen` reloads the user,
+        # meaning the notification is no longer relevant.
+        self.assertThat(handler.listen(
+            "notification", "create", notification.id), Is(None))
+
+
+class TestNotificationHandlerListeningScenarios(MAASServerTestCase):
+    """Tests for `NotificationHandler` listening to database messages."""
+
+    scenarios_users = (
+        ("user", dict(make_user=factory.make_User)),
+        ("admin", dict(make_user=factory.make_admin)),
+    )
+
+    scenarios_notifications = (
+        ("to-user=%s;to-users=%s;to-admins=%s" % scenario,
+         dict(zip(("to_user", "to_users", "to_admins"), scenario)))
+        for scenario in product(
+            (False, True, "Other"),  # To specific user.
+            (False, True),           # To all users.
+            (False, True),           # To all admins.
+        )
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_users, scenarios_notifications)
+
+    def test_on_listen(self):
+        user = self.make_user()
+
+        if self.to_user is False:
+            to_user = None
+        elif self.to_user is True:
+            to_user = user
+        else:
+            to_user = factory.make_User()
+
+        notification = factory.make_Notification(
+            user=to_user, users=self.to_users, admins=self.to_admins)
+
+        if notification.is_relevant_to(user):
+            expected = MatchesAll(
+                IsInstance(tuple),
+                MatchesListwise((
+                    Equals("notification"), Equals("create"),
+                    MatchesRenderedNotification(notification),
+                )),
+                first_only=True,
+            )
+        else:
+            expected = Is(None)
+
+        handler = NotificationHandler(user, {})
+        self.assertThat(handler.on_listen(
+            "notification", "create", notification.id), expected)

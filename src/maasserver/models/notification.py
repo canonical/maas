@@ -134,6 +134,14 @@ class Notification(CleanSave, TimestampedModel):
         """Render this notification's message using its context."""
         return self.message.format(**self.context)
 
+    def is_relevant_to(self, user):
+        """Is this notification relevant to the given user?"""
+        return user is not None and (
+            (self.user_id is not None and self.user_id == user.id) or
+            (self.users and not user.is_superuser) or
+            (self.admins and user.is_superuser)
+        )
+
     def dismiss(self, user):
         """Dismiss this notification.
 

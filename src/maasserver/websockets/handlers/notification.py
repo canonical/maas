@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from maasserver.models.notification import Notification
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -19,6 +20,7 @@ class NotificationHandler(TimestampedModelHandler):
         object_class = Notification
         allowed_methods = {'list', 'get', 'dismiss'}
         exclude = list_exclude = {"context"}
+        listen_channels = {'notification', 'notificationdismissal'}
 
     def get_queryset(self):
         """Return `Notifications` for the current user."""
@@ -39,3 +41,33 @@ class NotificationHandler(TimestampedModelHandler):
         notifications = self.get_queryset().filter(id__in=ids)
         for notification in notifications:
             notification.dismiss(self.user)
+
+    def on_listen(self, channel, action, pk):
+        """Intercept `on_listen` because dismissals must be handled specially.
+
+        The docstring for `on_listen` suggests that handlers should override
+        `listen` instead of `on_listen`. However, `Handler.on_listen` makes an
+        assumption about notifications from the database that does not hold
+        here: dismissals are notified as "$notification_id:$user_id" strings,
+        not as simply "$notification_id".
+        """
+        if channel == "notification":
+            return super().on_listen(channel, action, pk)
+        elif channel == "notificationdismissal":
+            pk, user_id = map(int, pk.split(":"))
+            if self.user.id == user_id:
+                # Send a dismissal as a delete of the notification.
+                return super().on_listen("notification", "delete", pk)
+            else:
+                return None  # Not relevant to this user.
+        else:
+            return None  # Channel not recognised.
+
+    def listen(self, channel, action, pk):
+        """Only deal with notifications that are relevant to the user."""
+        notification = super().listen(channel, action, pk)
+        user = reload_object(self.user)  # Check for up-to-date privs.
+        if notification.is_relevant_to(user):
+            return notification
+        else:
+            return None
