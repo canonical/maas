@@ -17,10 +17,10 @@ import os
 from textwrap import dedent
 
 # Name of the file where the node info scripts store lshw output.
-LSHW_OUTPUT_NAME = '00-maas-01-lshw.out'
+LSHW_OUTPUT_NAME = '00-maas-01-lshw'
 
 # Name of the file where the node info scripts store LLDP output.
-LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp.out'
+LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -240,7 +240,7 @@ def lldpd_capture():
     check_call(("lldpctl", "-f", "xml"))
 
 
-LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases.out'
+LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
 LIST_MODALIASES_SCRIPT = dedent("""\
     #!/bin/sh
     find /sys -name modalias -print0 | xargs -0 cat | sort -u
@@ -393,17 +393,17 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'run_on_controller': True,
     }),
-    ('00-maas-01-cpuinfo.out', {
+    ('00-maas-01-cpuinfo', {
         'content': CPUINFO_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': True,
     }),
-    ('00-maas-02-virtuality.out', {
+    ('00-maas-02-virtuality', {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': True,
     }),
-    ('00-maas-03-install-lldpd.out', {
+    ('00-maas-03-install-lldpd', {
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
@@ -419,12 +419,12 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'run_on_controller': False,
     }),
-    ('00-maas-07-block-devices.out', {
+    ('00-maas-07-block-devices', {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': null_hook,
         'run_on_controller': True,
     }),
-    ('99-maas-01-wait-for-lldpd.out', {
+    ('99-maas-01-wait-for-lldpd', {
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
@@ -435,12 +435,12 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'hook': null_hook,
         'run_on_controller': False,
     }),
-    ('99-maas-03-network-interfaces.out', {
+    ('99-maas-03-network-interfaces', {
         'content': IPADDR_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': False,
     }),
-    ('99-maas-04-network-interfaces-with-sriov.out', {
+    ('99-maas-04-network-interfaces-with-sriov', {
         'content': SRIOV_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': False,

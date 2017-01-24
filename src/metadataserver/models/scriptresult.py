@@ -84,14 +84,20 @@ class ScriptResult(CleanSave, TimestampedModel):
     def store_result(
             self, exit_status, stdout=None, stderr=None, result=None,
             script_version_id=None):
-        # Make sure we're not overwriting an existing result
-        # XXX ltrager 2016-12-07 - Only allow SCRIPT_STATUS.RUNNING once script
-        # status tracking is implemented.
-        assert self.status in (SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING)
-        assert self.stdout == b''
-        assert self.stderr == b''
-        assert self.result == ''
-        assert self.script_version is None
+        # Don't allow ScriptResults to be overwritten unless the node is a
+        # controller. Controllers are allowed to overwrite their results to
+        # prevent new ScriptSets being created everytime a controller starts.
+        # This also allows us to avoid creating an RPC call for the rack
+        # controller to create a new ScriptSet.
+        if not self.script_set.node.is_controller:
+            # Allow both PENDING and RUNNING scripts incase the node didn't
+            # inform MAAS the Script was being run, it just uploaded results.
+            assert self.status in (
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING)
+            assert self.stdout == b''
+            assert self.stderr == b''
+            assert self.result == ''
+            assert self.script_version is None
 
         self.exit_status = exit_status
         if exit_status == 0:

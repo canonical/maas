@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to rack controllers."""
@@ -32,6 +32,7 @@ from maasserver.utils.orm import (
     transactional,
     with_connection,
 )
+from metadataserver.models import ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.utils import typed
@@ -117,6 +118,13 @@ def register(
             "Region controller '%s' converted '%s' into a rack controller.",
             this_region.hostname, node.hostname)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
+        node.save()
+
+    if node.current_commissioning_script_set is None:
+        # Create a ScriptSet so the rack can store its commissioning data
+        # which is sent on connect.
+        script_set = ScriptSet.objects.create_commissioning_script_set(node)
+        node.current_commissioning_script_set = script_set
         node.save()
 
     rackcontroller = node.as_rack_controller()

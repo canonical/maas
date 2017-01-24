@@ -148,6 +148,11 @@ class TestMachineHandler(MAASServerTestCase):
             "bios_boot_method": node.bios_boot_method,
             "commissioning_results": handler.dehydrate_node_results(
                 node, RESULT_TYPE.COMMISSIONING),
+            "current_commissioning_script_set": (
+                node.current_commissioning_script_set_id),
+            "current_testing_script_set": node.current_testing_script_set_id,
+            "current_installation_script_set": (
+                node.current_installation_script_set_id),
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),

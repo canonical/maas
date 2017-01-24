@@ -228,7 +228,7 @@ class TestRefresh(MAASTestCase):
             echo 'test script'
             """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
-            ('test_script.out', {
+            ('test_script', {
                 'content': TEST_SCRIPT.encode('ascii'),
                 'name': 'test_script',
                 'run_on_controller': True,
@@ -242,7 +242,7 @@ class TestRefresh(MAASTestCase):
             exit 1
             """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
-            ('test_script.out', {
+            ('test_script', {
                 'content': TEST_SCRIPT.encode('ascii'),
                 'name': 'test_script',
                 'run_on_controller': True,
@@ -317,7 +317,7 @@ class TestRefresh(MAASTestCase):
             'WORKING',
             'Finished test_script [1/1]: 0',
             {
-                'test_script.out': b'test script\n',
+                'test_script': b'test script\n',
                 'test_script.err': b'',
             },
             0,

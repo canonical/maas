@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -152,7 +152,6 @@ from maasserver.utils.threads import (
     deferToDatabase,
 )
 from maasserver.worker_user import get_worker_user
-from metadataserver.enum import RESULT_TYPE
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -671,7 +670,7 @@ class RegionControllerManager(ControllerManager):
         """
         maas_id = get_maas_id()
         if maas_id is None:
-            return self._find_or_create_running_controller()
+            node = self._find_or_create_running_controller()
         else:
             try:
                 node = Node.objects.get(system_id=maas_id)
@@ -680,9 +679,22 @@ class RegionControllerManager(ControllerManager):
                 # has not been cleaned-up sufficiently from a previous life?
                 # Regardless, a deliberate act has brought this about, like a
                 # purge of the database, so we continue instead of crashing.
-                return self._find_or_create_running_controller()
+                node = self._find_or_create_running_controller()
             else:
-                return self._upgrade_running_node(node)
+                node = self._upgrade_running_node(node)
+
+        # A region needs to have a commissioning_script_set available to
+        # allow commissioning data to be sent on start.
+        if node.current_commissioning_script_set is None:
+            # Avoid circular dependencies
+            from metadataserver.models import ScriptSet
+
+            script_set = ScriptSet.objects.create_commissioning_script_set(
+                node)
+            node.current_commissioning_script_set = script_set
+            node.save()
+
+        return node
 
     def _find_or_create_running_controller(self):
         """Find the controller for the current host, or create one.
@@ -1006,6 +1018,22 @@ class Node(CleanSave, TimestampedModel):
         "RegionControllerProcess", null=True, editable=False,
         on_delete=SET_NULL, related_name="+")
 
+    # The ScriptSet for the currently running, or last run, commissioning
+    # ScriptSet.
+    current_commissioning_script_set = ForeignKey(
+        "metadataserver.ScriptSet", blank=True, null=True, on_delete=SET_NULL,
+        related_name="+")
+
+    # The ScriptSet for the currently running, or last run, installation.
+    current_installation_script_set = ForeignKey(
+        "metadataserver.ScriptSet", blank=True, null=True, on_delete=SET_NULL,
+        related_name="+")
+
+    # The ScriptSet for the currently running, or last run, test ScriptSet.
+    current_testing_script_set = ForeignKey(
+        "metadataserver.ScriptSet", blank=True, null=True, on_delete=SET_NULL,
+        related_name="+")
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -1269,6 +1297,8 @@ class Node(CleanSave, TimestampedModel):
 
     def _start_deployment(self):
         """Mark a node as being deployed."""
+        # Avoid circular dependencies
+        from metadataserver.models import ScriptSet
         if self.on_network() is False:
             raise ValidationError(
                 {"network":
@@ -1277,6 +1307,8 @@ class Node(CleanSave, TimestampedModel):
         if len(storage_layout_issues) > 0:
             raise ValidationError({"storage": storage_layout_issues})
         self.status = NODE_STATUS.DEPLOYING
+        script_set = ScriptSet.objects.create_installation_script_set(self)
+        self.current_installation_script_set = script_set
         self.save()
 
     def end_deployment(self):
@@ -1666,8 +1698,8 @@ class Node(CleanSave, TimestampedModel):
             time.
         """
         # Avoid circular imports.
+        from metadataserver.models import ScriptSet
         from metadataserver.user_data.commissioning import generate_user_data
-        from metadataserver.models import NodeResult
 
         # Only commission if power type is configured.
         if self.power_type == '':
@@ -1687,8 +1719,9 @@ class Node(CleanSave, TimestampedModel):
         # Generate the specific user data for commissioning this node.
         commissioning_user_data = generate_user_data(node=self)
 
-        # Clear any existing commissioning results.
-        NodeResult.objects.clear_results(self)
+        # Create a new ScriptSet for this commissioning run.
+        script_set = ScriptSet.objects.create_commissioning_script_set(self)
+        self.current_commissioning_script_set = script_set
 
         # Clear the current storage configuration if networking is not being
         # skipped during commissioning.
@@ -2426,11 +2459,9 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = None
         self.save()
 
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
         # Clear installation results
-        NodeResult.objects.filter(
-            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
+        if self.current_installation_script_set is not None:
+            self.current_installation_script_set.delete()
 
         # Clear the nodes acquired filesystems.
         self._clear_acquired_filesystems()
@@ -2559,11 +2590,9 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = ''
         self.save()
 
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
         # Clear installation results
-        NodeResult.objects.filter(
-            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
+        if self.current_installation_script_set is not None:
+            self.current_installation_script_set.delete()
 
     @transactional
     def update_power_state(self, power_state):
@@ -4223,14 +4252,6 @@ class Controller(Node):
         return token
 
     @transactional
-    def _get_current_node_result_ids(self):
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
-        # The IDs of existing results
-        results = NodeResult.objects.filter(node=self)
-        return results.values_list('id', flat=True)
-
-    @transactional
     def _signal_start_of_refresh(self):
         self._register_request_event(
             self.owner, EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
@@ -4287,19 +4308,6 @@ class RackController(Controller):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
-    @transactional
-    def _delete_node_result(self, ids):
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
-
-        # Delete existing node results. This is a bit shonky for rack
-        # controllers because it assumes that the commissioning scripts will
-        # run to completion on rack controller. After deletion there will be a
-        # period when the rack controller has no results in the database while
-        # waiting to recieve the new data. If uploading fails this will leave
-        # the rack controller with no NodeResults.
-        NodeResult.objects.filter(id__in=ids).delete()
-
     @inlineCallbacks
     def refresh(self):
         """Refresh the hardware and networking columns of the rack controller.
@@ -4318,9 +4326,6 @@ class RackController(Controller):
 
         token = yield deferToDatabase(self._get_token_for_controller)
 
-        # Cache existing results. If we're doing the refresh we'll delete them.
-        result_ids = yield deferToDatabase(self._get_current_node_result_ids)
-
         yield deferToDatabase(self._signal_start_of_refresh)
 
         try:
@@ -4333,7 +4338,6 @@ class RackController(Controller):
             # handle it and don't update the database.
             return
         else:
-            yield deferToDatabase(self._delete_node_result, result_ids)
             yield deferToDatabase(self._process_sys_info, response)
 
     def add_chassis(
@@ -4555,13 +4559,6 @@ class RegionController(Controller):
         else:
             super().delete()
 
-    @transactional
-    def _delete_node_results(self):
-        # Avoid circular imports.
-        from metadataserver.models import NodeResult
-
-        NodeResult.objects.filter(node=self).delete()
-
     @inlineCallbacks
     def refresh(self):
         """Refresh the region controller."""
@@ -4577,7 +4574,6 @@ class RegionController(Controller):
             with NamedLock('refresh'):
                 token = yield deferToDatabase(self._get_token_for_controller)
                 yield deferToDatabase(self._signal_start_of_refresh)
-                yield deferToDatabase(self._delete_node_results)
                 sys_info = yield deferToThread(get_sys_info)
                 yield deferToDatabase(self._process_sys_info, sys_info)
                 yield deferToThread(

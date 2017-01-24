@@ -176,11 +176,11 @@ main() {
       [ -f "$script" -a -f "$script" ] || continue
       name=${script##*/}
       signal WORKING "starting ${name} [$cur/$total]"
-      "$script" > "${OUT_D}/${name}.out" 2> "${OUT_D}/${name}.err"
+      "$script" > "${OUT_D}/${name}" 2> "${OUT_D}/${name}.err"
       ret=$?
       signal_result \
          "$ret" "finished $name [$cur/$total]: $ret" \
-         "${OUT_D}/${name}.out" \
+         "${OUT_D}/${name}" \
          "${OUT_D}/${name}.err"
       if [ $ret -ne 0 ]; then
           numfailed=$(($numfailed+1))

@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Construct sample application data dynamically."""
@@ -31,6 +31,9 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.fields import Bin
+from metadataserver.models import ScriptSet
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.ipaddr import get_mac_addresses
 
@@ -416,17 +419,52 @@ def populate_main():
         for _ in range(random.randint(25, 100)):
             factory.make_Event(node=machine)
 
+        # Add in commissioning results.
+        if status != NODE_STATUS.NEW:
+            script_set = ScriptSet.objects.create_commissioning_script_set(
+                machine)
+            machine.current_commissioning_script_set = script_set
+            machine.save()
+
+        # Only add in results in states where commissiong should be completed.
+        if status not in [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING]:
+            if status == NODE_STATUS.FAILED_COMMISSIONING:
+                exit_status = random.randint(1, 255)
+                script_status = SCRIPT_STATUS.FAILED
+            else:
+                exit_status = 0
+                script_status = SCRIPT_STATUS.PASSED
+            for script_result in machine.current_commissioning_script_set:
+                # Can't use script_result.store_result as it will try to
+                # process the result and fail on the fake data.
+                script_result.status = script_status
+                script_result.exit_status = exit_status
+                script_result.stdout = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.stderr = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.save()
+
         # Add installation results.
         if status in [
                 NODE_STATUS.DEPLOYING,
                 NODE_STATUS.DEPLOYED,
                 NODE_STATUS.FAILED_DEPLOYMENT]:
-            script_result = 0
-            if status == NODE_STATUS.FAILED_DEPLOYMENT:
-                script_result = 1
-            factory.make_NodeResult_for_installation(
-                node=machine, script_result=script_result,
-                name="curtin.log", data=factory.make_string().encode("ascii"))
+            script_set = ScriptSet.objects.create_installation_script_set(
+                machine)
+            machine.current_installation_script_set = script_set
+            machine.save()
+
+        if status == NODE_STATUS.DEPLOYED:
+            for script_result in machine.current_installation_script_set:
+                stdout = factory.make_string().encode('utf-8')
+                script_result.store_result(0, stdout)
+        elif status == NODE_STATUS.FAILED_DEPLOYMENT:
+            for script_result in machine.current_installation_script_set:
+                exit_status = random.randint(1, 255)
+                stdout = factory.make_string().encode('utf-8')
+                stderr = factory.make_string().encode('utf-8')
+                script_result.store_result(exit_status, stdout, stderr)
 
         # Add children devices to the deployed machine.
         if status == NODE_STATUS.DEPLOYED:

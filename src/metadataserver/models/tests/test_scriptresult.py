@@ -7,6 +7,7 @@ import json
 import random
 from unittest.mock import MagicMock
 
+from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     Event,
     EventType,
@@ -69,6 +70,28 @@ class TestScriptResult(MAASServerTestCase):
             status=SCRIPT_STATUS.RUNNING, result=factory.make_string())
         self.assertRaises(
             AssertionError, script_result.store_result, random.randint(0, 255))
+
+    def test_store_result_allows_controllers_to_overwrite(self):
+        node = factory.make_Node(node_type=random.choice([
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.RACK_CONTROLLER]))
+        script_set = factory.make_ScriptSet(node=node)
+        script_result = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED)
+        exit_status = random.randint(0, 255)
+        stdout = factory.make_bytes()
+        stderr = factory.make_bytes()
+        result = factory.make_string()
+
+        script_result.store_result(
+            random.randint(0, 255), factory.make_bytes(), factory.make_bytes(),
+            factory.make_string())
+        script_result.store_result(exit_status, stdout, stderr, result)
+
+        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(stdout, script_result.stdout)
+        self.assertEquals(stderr, script_result.stderr)
+        self.assertEquals(result, script_result.result)
 
     def test_store_result_sets_status_to_passed_with_exit_code_zero(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)

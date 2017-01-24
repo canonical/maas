@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata progress reporting API."""
@@ -27,10 +27,8 @@ from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockNotCalled
 from metadataserver import api
-from metadataserver.models import (
-    NodeKey,
-    NodeResult,
-)
+from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.utils import typed
 
@@ -368,7 +366,12 @@ class TestStatusAPI(MAASServerTestCase):
 
     def test_status_with_file_no_compression_succeeds(self):
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
+            interface=True, status=NODE_STATUS.COMMISSIONING,
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
         contents = b'These are the contents of the file.'
         encoded_content = encode_as_base64(contents)
@@ -380,7 +383,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
             'files': [
                 {
-                    "path": "sample.txt",
+                    "path": script_result.name,
                     "encoding": "base64",
                     "content": encoded_content
                 }
@@ -388,7 +391,7 @@ class TestStatusAPI(MAASServerTestCase):
         }
         response = call_status(client, node, payload)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(contents, NodeResult.objects.get(node=node).data)
+        self.assertEqual(contents, reload_object(script_result).stdout)
 
     def test_status_with_file_invalid_statuses_fails(self):
         """Adding files should fail for every status that's neither
@@ -440,7 +443,16 @@ class TestStatusAPI(MAASServerTestCase):
         for node_status, target_status in [
                 (NODE_STATUS.COMMISSIONING, NODE_STATUS.FAILED_COMMISSIONING),
                 (NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT)]:
-            node = factory.make_Node(interface=True, status=node_status)
+            node = factory.make_Node(
+                interface=True, status=node_status,
+                with_empty_script_sets=True)
+            if node_status == NODE_STATUS.COMMISSIONING:
+                script_set = node.current_commissioning_script_set
+            elif node_status == NODE_STATUS.DEPLOYING:
+                script_set = node.current_installation_script_set
+            script_result = script_set.scriptresult_set.first()
+            script_result.status = SCRIPT_STATUS.RUNNING
+            script_result.save()
             client = make_node_client(node=node)
             contents = b'These are the contents of the file.'
             encoded_content = encode_as_base64(bz2.compress(contents))
@@ -452,7 +464,7 @@ class TestStatusAPI(MAASServerTestCase):
                 'description': 'Commissioning',
                 'files': [
                     {
-                        "path": "sample.txt",
+                        "path": script_result.name,
                         "encoding": "base64",
                         "compression": "bzip2",
                         "content": encoded_content
@@ -464,12 +476,17 @@ class TestStatusAPI(MAASServerTestCase):
             self.assertEqual(
                 target_status, reload_object(node).status)
             # Check the node result.
-            self.assertEqual(contents, NodeResult.objects.get(node=node).data)
+            self.assertEqual(contents, reload_object(script_result).stdout)
 
     def test_status_with_results_succeeds(self):
         """Adding a script result should succeed"""
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
+            interface=True, status=NODE_STATUS.COMMISSIONING,
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
         contents = b'These are the contents of the file.'
         encoded_content = encode_as_base64(bz2.compress(contents))
@@ -481,7 +498,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
             'files': [
                 {
-                    "path": "lshw",
+                    "path": script_result.name,
                     "encoding": "base64",
                     "compression": "bzip2",
                     "content": encoded_content,
@@ -491,16 +508,20 @@ class TestStatusAPI(MAASServerTestCase):
         }
         response = call_status(client, node, payload)
         self.assertEqual(http.client.OK, response.status_code)
-        # Check the node result.
-        node_result = NodeResult.objects.get(node=node)
-        self.assertEqual(contents, node_result.data)
-        self.assertEqual(-42, node_result.script_result)
+        script_result = reload_object(script_result)
+        self.assertEqual(contents, script_result.stdout)
+        self.assertEqual(-42, script_result.exit_status)
 
-    def test_status_with_results_no_script_result_defaults_to_zero(self):
+    def test_status_with_results_no_exit_status_defaults_to_zero(self):
         """Adding a script result should succeed without a return code defaults
         it to zero."""
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
+            interface=True, status=NODE_STATUS.COMMISSIONING,
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
         contents = b'These are the contents of the file.'
         encoded_content = encode_as_base64(bz2.compress(contents))
@@ -512,7 +533,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
             'files': [
                 {
-                    "path": "lshw",
+                    "path": script_result.name,
                     "encoding": "base64",
                     "compression": "bzip2",
                     "content": encoded_content,
@@ -521,9 +542,7 @@ class TestStatusAPI(MAASServerTestCase):
         }
         response = call_status(client, node, payload)
         self.assertEqual(http.client.OK, response.status_code)
-        # Check the node result.
-        node_result = NodeResult.objects.get(node=node)
-        self.assertEqual(0, node_result.script_result)
+        self.assertEqual(0, reload_object(script_result).exit_status)
 
     def test_status_with_missing_event_type_fails(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -586,7 +605,8 @@ class TestStatusAPI(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_stores_virtual_tag_on_node_if_virtual(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         content = 'virtual'.encode('utf-8')
         payload = {
@@ -597,7 +617,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
             'files': [
                 {
-                    "path": "00-maas-02-virtuality.out",
+                    "path": "00-maas-02-virtuality",
                     "encoding": "base64",
                     "content": encode_as_base64(content),
                 }
@@ -608,13 +628,14 @@ class TestStatusAPI(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(
             ["virtual"], [each_tag.name for each_tag in node.tags.all()])
-        self.assertEqual(content, NodeResult.objects.get(node=node).data)
-        self.assertEqual(
-            "00-maas-02-virtuality.out",
-            NodeResult.objects.get(node=node).name)
+        for script_result in node.current_commissioning_script_set:
+            if script_result.name == "00-maas-02-virtuality":
+                break
+        self.assertEqual(content, script_result.stdout)
 
     def test_status_removes_virtual_tag_on_node_if_not_virtual(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
         client = make_node_client(node=node)
@@ -627,7 +648,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
             'files': [
                 {
-                    "path": "00-maas-02-virtuality.out",
+                    "path": "00-maas-02-virtuality",
                     "encoding": "base64",
                     "content": encode_as_base64(content),
                 }
@@ -638,7 +659,7 @@ class TestStatusAPI(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(
             [], [each_tag.name for each_tag in node.tags.all()])
-        self.assertEqual(content, NodeResult.objects.get(node=node).data)
-        self.assertEqual(
-            "00-maas-02-virtuality.out",
-            NodeResult.objects.get(node=node).name)
+        for script_result in node.current_commissioning_script_set:
+            if script_result.name == "00-maas-02-virtuality":
+                break
+        self.assertEqual(content, script_result.stdout)

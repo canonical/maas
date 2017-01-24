@@ -228,7 +228,7 @@ def set_virtual_tag(node, output, exit_status):
     if 'none' in decoded_output:
         node.tags.remove(tag)
     elif decoded_output == '':
-        logger.warn(
+        logger.warning(
             "No virtual type reported in VIRTUALITY_SCRIPT output for node "
             "%s", node.system_id)
     else:
@@ -390,13 +390,13 @@ def update_node_physical_block_devices(node, output, exit_status):
 
 # Register the post processing hooks.
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
-NODE_INFO_SCRIPTS['00-maas-01-cpuinfo.out']['hook'] = parse_cpuinfo
-NODE_INFO_SCRIPTS['00-maas-02-virtuality.out']['hook'] = set_virtual_tag
-NODE_INFO_SCRIPTS['00-maas-07-block-devices.out']['hook'] = (
+NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
+NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
+NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
     update_node_physical_block_devices)
-NODE_INFO_SCRIPTS['99-maas-03-network-interfaces.out']['hook'] = (
+NODE_INFO_SCRIPTS['99-maas-03-network-interfaces']['hook'] = (
     update_node_network_information)
-NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov.out']['hook'] = (
+NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)
 
 

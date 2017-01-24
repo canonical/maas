@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -15,13 +15,22 @@ __all__ = [
 
 import base64
 import bz2
+from functools import partial
 import http.client
+from io import BytesIO
+from itertools import chain
 import json
+import tarfile
+import time
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from formencode.validators import (
+    Int,
+    String,
+)
 from maasserver.api.nodes import store_node_power_parameters
 from maasserver.api.support import (
     operation,
@@ -30,6 +39,7 @@ from maasserver.api.support import (
 from maasserver.api.utils import (
     extract_oauth_key,
     get_mandatory_param,
+    get_optional_param,
 )
 from maasserver.enum import (
     NODE_STATUS,
@@ -60,17 +70,20 @@ from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one
 from metadataserver import logger
 from metadataserver.enum import (
-    RESULT_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
     SIGNAL_STATUS,
 )
-from metadataserver.fields import Bin
 from metadataserver.models import (
-    CommissioningScript,
     NodeKey,
-    NodeResult,
     NodeUserData,
+    Script,
+    ScriptResult,
 )
-from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
+from metadataserver.models.commissioningscript import (
+    add_script_to_archive,
+    NODE_INFO_SCRIPTS,
+)
 from metadataserver.user_data import poweroff
 from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
@@ -192,6 +205,65 @@ def add_event_to_node_event_log(
         event_description="'%s' %s" % (origin, description))
 
 
+def process_file(
+        results, script_set, script_name, content, request):
+    """Process a file sent to MAAS over the metadata service."""
+
+    script_result_id = get_optional_param(
+        request, 'script_result_id', None, Int)
+
+    # The .err indicates this should be stored in the STDERR column of the
+    # ScriptResult. When finding or creating a ScriptResult don't include the
+    # .err in the name. If given, we look up by script_result_id along with
+    # the name to allow .err in the name.
+    if script_name.endswith('.err'):
+        script_name = script_name[0:-4]
+        key = 'stderr'
+    else:
+        key = 'stdout'
+
+    try:
+        script_result = script_set.scriptresult_set.get(id=script_result_id)
+    except ScriptResult.DoesNotExist:
+        # If the script_result_id doesn't exist or wasn't sent try to find the
+        # ScriptResult by script_name. Since ScriptResults can get their name
+        # from the Script they are linked to or its own script_name field we
+        # have to iterate over the list of script_results.
+        script_result_found = False
+        for script_result in script_set:
+            if script_result.name == script_name:
+                script_result_found = True
+                break
+
+        # If the ScriptResult wasn't found by id or name create an entry for
+        # it.
+        if not script_result_found:
+            script_result = ScriptResult.objects.create(
+                script_set=script_set, script_name=script_name,
+                status=SCRIPT_STATUS.RUNNING)
+
+    # Store the processed file in the given results dictionary. This allows
+    # requests with multipart file uploads to include STDOUT and STDERR.
+    if script_result in results:
+        results[script_result][key] = content
+    else:
+        # Internally this is called exit_status, cloud-init sends this as
+        # result, using the StatusHandler, and previously the commissioning
+        # scripts sent this as script_result.
+        for exit_status_name in ['exit_status', 'script_result', 'result']:
+            exit_status = get_optional_param(
+                request, exit_status_name, None, Int)
+            if exit_status is not None:
+                break
+        if exit_status is None:
+            exit_status = 0
+
+        results[script_result] = {
+            'exit_status': exit_status,
+            key: content,
+        }
+
+
 class MetadataViewHandler(OperationsHandler):
     create = update = delete = None
 
@@ -209,10 +281,9 @@ class StatusHandler(MetadataViewHandler):
     read = update = delete = None
 
     def create(self, request, system_id):
-        """Receive and process a status message from a node.
+        """Receive and process a status message from a node, usally cloud-init.
 
-        A node can call this to report progress of its
-        commissioning/installation process to the metadata server.
+        A node can call this to report progress of its booting or deployment.
 
         Calling this from a node that is not Allocated, Commissioning, Ready,
         or Failed Tests will update the substatus_message node attribute.
@@ -266,6 +337,9 @@ class StatusHandler(MetadataViewHandler):
         a script, the `result` key will hold its value. If `result` is not
         sent, it is interpreted as zero.
 
+        `script_result_id`, when present, MAAS will search for an existing
+        ScriptResult with the given id to store files present.
+
         """
 
         def _retrieve_content(compression, encoding, content):
@@ -288,22 +362,6 @@ class StatusHandler(MetadataViewHandler):
 
             content = sent_file['content'].encode("ascii")
             return decompress(decode(content))
-
-        def _save_commissioning_result(node, path, exit_status, content):
-            # Depending on the name of the file received, we need to invoke a
-            # function to process it.
-            if sent_file['path'] in NODE_INFO_SCRIPTS:
-                postprocess_hook = NODE_INFO_SCRIPTS[path]['hook']
-                postprocess_hook(
-                    node=node, output=content, exit_status=exit_status)
-            return NodeResult.objects.store_data(
-                node, path, script_result=exit_status,
-                result_type=RESULT_TYPE.COMMISSIONING, data=Bin(content))
-
-        def _save_installation_result(node, path, content):
-            return NodeResult.objects.store_data(
-                node, path, script_result=0,
-                result_type=RESULT_TYPE.INSTALLATION, data=Bin(content))
 
         def _is_top_level(activity_name):
             """Top-level events do not have slashes in theit names."""
@@ -338,31 +396,36 @@ class StatusHandler(MetadataViewHandler):
             raise MAASAPIBadRequest(message)
 
         # Optional attributes.
-        result = message.get('result')
+        result = get_optional_param(message, 'result', None, String)
 
         # Add this event to the node event log.
         add_event_to_node_event_log(
             node, origin, activity_name, description, result)
 
-        # Save attached files, if any.
+        # Group files together with the ScriptResult they belong.
+        results = {}
         for sent_file in message.get('files', []):
-
-            content = _retrieve_content(
-                compression=sent_file.get('compression'),
-                encoding=sent_file['encoding'],
-                content=sent_file['content'])
-
             # Set the result type according to the node's status.
             if (node.status == NODE_STATUS.COMMISSIONING or
                     node.node_type != NODE_TYPE.MACHINE):
-                _save_commissioning_result(
-                    node, sent_file['path'], sent_file.get('result', 0),
-                    content)
+                script_set = node.current_commissioning_script_set
             elif node.status == NODE_STATUS.DEPLOYING:
-                _save_installation_result(node, sent_file['path'], content)
+                script_set = node.current_installation_script_set
             else:
                 raise MAASAPIBadRequest(
                     "Invalid status for saving files: %d" % node.status)
+
+            script_name = get_mandatory_param(sent_file, 'path', String)
+            content = _retrieve_content(
+                compression=get_optional_param(
+                    sent_file, 'compression', None, String),
+                encoding=get_mandatory_param(sent_file, 'encoding', String),
+                content=get_mandatory_param(sent_file, 'content', String))
+            process_file(results, script_set, script_name, content, sent_file)
+
+        # Commit results to the database.
+        for script_result, args in results.items():
+            script_result.store_result(**args)
 
         # At the end of a top-level event, we change the node status.
         if _is_top_level(activity_name) and event_type == 'finish':
@@ -438,36 +501,25 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_subfields.remove('user-data')
         return make_list_response(sorted(shown_subfields))
 
-    def _store_installation_results(self, node, request):
-        """Store installation result file for `node`."""
-        for name, uploaded_file in request.FILES.items():
-            raw_content = uploaded_file.read()
-            NodeResult.objects.store_data(
-                node, name, script_result=0,
-                result_type=RESULT_TYPE.INSTALLATION, data=Bin(raw_content))
+    def _store_results(self, node, script_set, request):
+        """Store uploaded results."""
+        # Group files together with the ScriptResult they belong.
+        results = {}
+        for script_name, uploaded_file in request.FILES.items():
+            content = uploaded_file.read()
+            process_file(
+                results, script_set, script_name, content, request.POST)
 
-    def _store_commissioning_results(self, node, request):
-        """Store commissioning result files for `node`."""
-        script_result = int(request.POST.get('script_result', 0))
-        for name, uploaded_file in request.FILES.items():
-            raw_content = uploaded_file.read()
-            if name in NODE_INFO_SCRIPTS:
-                postprocess_hook = NODE_INFO_SCRIPTS[name]['hook']
-                postprocess_hook(
-                    node=node, output=raw_content,
-                    exit_status=script_result)
-            NodeResult.objects.store_data(
-                node, name, script_result,
-                result_type=RESULT_TYPE.COMMISSIONING, data=Bin(raw_content))
+        # Commit results to the database.
+        for script_result, args in results.items():
+            script_result.store_result(**args)
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
         """Signal commissioning/installation/entering-rescue-mode status.
 
-        A commissioning/installing/entering-rescue-mode node can call this
-        to report progress of the
-        commissioning/installation/entering-rescue-mode process to the
-        metadata server.
+        A node booted into an ephemeral environment can call this to report
+        progress of any scripts given to it by MAAS.
 
         Calling this from a node that is not Allocated, Commissioning, Ready,
         Broken, Deployed, or Failed Tests is an error. Signaling
@@ -480,15 +532,16 @@ class VersionIndexHandler(MetadataViewHandler):
             commissioning/installation/entering-rescue-mode has completed
             successfully), or "FAILED" (to signal failure), or
             "WORKING" (for progress reports).
-        :param script_result: If this call uploads files, this parameter must
-            be provided and will be stored as the return value for the script
-            which produced these files.
         :param error: An optional error string. If given, this will be stored
             (overwriting any previous error string), and displayed in the MAAS
             UI. If not given, any previous error string will be cleared.
+        :param script_result_id: What ScriptResult this signal is for. If the
+            signal contains a file upload the id will be used to find the
+            ScriptResult row.
+        :param exit_status: The return code of the script run.
         """
         node = get_queried_node(request, for_mac=mac)
-        status = get_mandatory_param(request.POST, 'status')
+        status = get_mandatory_param(request.POST, 'status', String)
         target_status = None
         if (node.status not in self.signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
@@ -514,7 +567,8 @@ class VersionIndexHandler(MetadataViewHandler):
                 node.node_type != NODE_TYPE.MACHINE):
 
             # Store the commissioning results.
-            self._store_commissioning_results(node, request)
+            self._store_results(
+                node, node.current_commissioning_script_set, request)
 
             # This is skipped when its the rack controller using this endpoint.
             if node.node_type not in (
@@ -550,7 +604,8 @@ class VersionIndexHandler(MetadataViewHandler):
                 populate_tags_for_single_node(Tag.objects.all(), node)
 
         elif node.status == NODE_STATUS.DEPLOYING:
-            self._store_installation_results(node, request)
+            self._store_results(
+                node, node.current_installation_script_set, request)
             if status == SIGNAL_STATUS.FAILED:
                 node.mark_failed(
                     comment="Installation failed (refer to the "
@@ -580,7 +635,7 @@ class VersionIndexHandler(MetadataViewHandler):
             # if not in rescue mode.
             if node.status != NODE_STATUS.RESCUE_MODE:
                 node.owner = None
-        node.error = request.POST.get('error', '')
+        node.error = get_optional_param(request.POST, 'error', '', String)
 
         # Done.
         node.save()
@@ -732,11 +787,45 @@ class CurtinUserDataHandler(MetadataViewHandler):
 class CommissioningScriptsHandler(MetadataViewHandler):
     """Return a tar archive containing the commissioning scripts."""
 
+    def _iter_builtin_scripts(self):
+        for script in NODE_INFO_SCRIPTS.values():
+            yield script['name'], script['content']
+
+    def _iter_user_scripts(self):
+        for script in Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING):
+            try:
+                # Check if the script is a base64 encoded binary.
+                content = base64.b64decode(script.script.data)
+            except:
+                # If it isn't encode the text as binary data.
+                content = script.script.data.encode()
+            yield script.name, content
+
+    def _iter_scripts(self):
+        return chain(
+            self._iter_builtin_scripts(),
+            self._iter_user_scripts(),
+        )
+
+    def _get_archive(self):
+        """Produce a tar archive of all commissionig scripts.
+
+        Each of the scripts will be in the `ARCHIVE_PREFIX` directory.
+        """
+        binary = BytesIO()
+        scripts = sorted(self._iter_scripts())
+        with tarfile.open(mode='w', fileobj=binary) as tarball:
+            add_script = partial(
+                add_script_to_archive, tarball, mtime=time.time())
+            for name, content in scripts:
+                add_script(name, content)
+        return binary.getvalue()
+
     def read(self, request, version, mac=None):
         check_version(version)
         return HttpResponse(
-            CommissioningScript.objects.get_archive(),
-            content_type='application/tar')
+            self._get_archive(), content_type='application/tar')
 
 
 class EnlistMetaDataHandler(OperationsHandler):

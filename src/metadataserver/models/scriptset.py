@@ -11,16 +11,88 @@ from django.db.models import (
     DateTimeField,
     ForeignKey,
     IntegerField,
+    Manager,
     Model,
 )
 from maasserver.models.cleansave import CleanSave
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
 )
+from metadataserver.models.script import Script
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+
+
+class ScriptSetManager(Manager):
+
+    def create_commissioning_script_set(self, node):
+        """Create a new commissioning ScriptSet with ScriptResults
+
+        ScriptResults will be created for all builtin commissioning scripts
+        and custom commissioning scripts if the node is not a controller.
+        """
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+
+        script_set = self.create(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+
+        for script_name, data in NODE_INFO_SCRIPTS.items():
+            if node.is_controller and not data['run_on_controller']:
+                continue
+            ScriptResult.objects.create(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                script_name=script_name)
+
+        # MAAS doesn't run custom commissioning scripts during controller
+        # refresh.
+        if node.is_controller:
+            return script_set
+
+        for script in Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING):
+            ScriptResult.objects.create(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                script=script, script_version=script.script)
+
+        return script_set
+
+    def create_testing_script_set(self, node):
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+
+        script_set = self.create(
+            node=node, result_type=RESULT_TYPE.TESTING)
+
+        for script in Script.objects.filter(
+                script_type=SCRIPT_TYPE.TESTING):
+            ScriptResult.objects.create(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING,
+                script=script, script_version=script.script)
+
+        return script_set
+
+    def create_installation_script_set(self, node):
+        """Create a new installation ScriptSet with a ScriptResult."""
+        # Avoid circular dependencies.
+        from metadataserver.models import ScriptResult
+
+        script_set = self.create(
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
+        # Curtin uploads the installation log using the full path we specify in
+        # the preseed.
+        ScriptResult.objects.create(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING,
+            script_name=CURTIN_INSTALL_LOG)
+        return script_set
 
 
 class ScriptSet(CleanSave, Model):
+
+    objects = ScriptSetManager()
 
     last_ping = DateTimeField(blank=True, null=True)
 

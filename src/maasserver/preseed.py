@@ -1,9 +1,10 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
 
 __all__ = [
+    'CURTIN_INSTALL_LOG',
     'compose_enlistment_preseed_url',
     'compose_preseed_url',
     'curtin_supports_webhook_events',
@@ -82,6 +83,11 @@ GENERIC_FILENAME = 'generic'
 
 # Node operating systems which we can deploy with IPv6 networking.
 OS_WITH_IPv6_SUPPORT = ['ubuntu']
+
+
+# The path to the Curtin installation log. Curtin uploads this file to MAAS
+# with its full path once the deployment is finished.
+CURTIN_INSTALL_LOG = "/tmp/install.log"
 
 
 def curtin_supports_custom_storage():
@@ -188,8 +194,8 @@ def curtin_maas_reporter(node, events_support=True):
                 },
             },
             'install': {
-                'log_file': '/tmp/install.log',
-                'post_files': ['/tmp/install.log']
+                'log_file': CURTIN_INSTALL_LOG,
+                'post_files': [CURTIN_INSTALL_LOG]
             }
         }
     else:

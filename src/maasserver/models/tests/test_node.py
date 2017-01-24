@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -105,6 +105,7 @@ from maasserver.node_status import (
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TRANSITIONS,
 )
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 import maasserver.server_address as server_address_module
 from maasserver.storage_layouts import (
@@ -144,12 +145,11 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.fields import Bin
+from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import (
     NodeKey,
-    NodeResult,
     NodeUserData,
+    ScriptResult,
 )
 from metadataserver.user_data import (
     commissioning,
@@ -719,6 +719,10 @@ class TestRegionControllerManagerGetOrCreateRunningController(
             # possible if the MAAS ID file is removed, the hostname is
             # changed, and all MAC addresses differ.
             self.assertControllerNotDiscovered(region, host)
+
+        # The region node should always have a ScriptSet to allow refresh
+        # on start to upload commissioning results.
+        self.assertIsNotNone(region.current_commissioning_script_set)
 
     def assertControllerCreated(self, region):
         # A controller is created and it is always a region controller.
@@ -1909,20 +1913,25 @@ class TestNode(MAASServerTestCase):
     def test_release_clears_installation_results(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
-        self.patch(Node, '_set_status_expires')
-        self.patch(node, '_stop')
-        self.patch(node, '_set_status')
-        node_result = factory.make_NodeResult_for_installation(node=node)
-        self.assertEqual(
-            [node_result], list(NodeResult.objects.filter(
-                node=node, result_type=RESULT_TYPE.INSTALLATION)))
         with post_commit_hooks:
+            node = factory.make_Node(
+                status=NODE_STATUS.ALLOCATED, owner=owner,
+                agent_name=agent_name, with_empty_script_sets=True)
+            self.patch(Node, '_set_status_expires')
+            self.patch(node, '_stop')
+            self.patch(node, '_set_status')
+            installation_result_ids = [
+                script_result.id for script_result in
+                node.current_installation_script_set]
+
             node.release()
-        self.assertEqual(
-            [], list(NodeResult.objects.filter(
-                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+
+        node = reload_object(node)
+        self.assertIsNone(node.current_installation_script_set)
+        for id in installation_result_ids:
+            self.assertRaises(
+                ScriptResult.DoesNotExist,
+                ScriptResult.objects.get, id=id)
 
     def test_release_deletes_dynamic_machine(self):
         agent_name = factory.make_name('agent-name')
@@ -2396,20 +2405,19 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_start, MockCalledOnceWith(
             admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
 
-    def test_start_commissioning_clears_node_commissioning_results(self):
+    def test_start_commissioning_adds_commissioning_script_set(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
             lambda user, user_data, old_status, allow_power_cycle: (
                 post_commit()))
-        NodeResult.objects.store_data(
-            node, factory.make_string(),
-            random.randint(0, 10),
-            RESULT_TYPE.COMMISSIONING,
-            Bin(factory.make_bytes()))
+
         with post_commit_hooks:
             node.start_commissioning(factory.make_admin())
-        self.assertItemsEqual([], node.noderesult_set.all())
+
+        node = reload_object(node)
+
+        self.assertIsNotNone(node.current_commissioning_script_set)
 
     def test_start_commissioning_clears_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
@@ -2464,19 +2472,22 @@ class TestNode(MAASServerTestCase):
         self.assertThat(clear_networking, MockNotCalled())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
-        node = factory.make_Node()
-        filename = factory.make_string()
-        data = factory.make_bytes()
-        script_result = random.randint(0, 10)
-        NodeResult.objects.store_data(
-            node, filename, script_result, RESULT_TYPE.COMMISSIONING,
-            Bin(data))
-        other_node = factory.make_Node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(with_empty_script_sets=True)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        stdout = factory.make_bytes()
+        factory.make_ScriptResult(
+            script=script, stdout=stdout,
+            script_set=node.current_commissioning_script_set)
+        other_node = factory.make_Node(
+            status=NODE_STATUS.NEW, with_empty_script_sets=True)
         self.patch(Node, "_start").return_value = None
         with post_commit_hooks:
             other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
-            data, NodeResult.objects.get_data(node, filename))
+            stdout,
+            ScriptResult.objects.get(
+                script_set=node.current_commissioning_script_set,
+                script=script).stdout)
 
     def test_start_commissioning_reverts_to_sane_state_on_error(self):
         # When start_commissioning encounters an error when trying to
@@ -2911,15 +2922,17 @@ class TestNode(MAASServerTestCase):
             NodeStateViolation, node.mark_fixed, factory.make_User())
 
     def test_mark_fixed_clears_installation_results(self):
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        node_result = factory.make_NodeResult_for_installation(node=node)
-        self.assertEqual(
-            [node_result], list(NodeResult.objects.filter(
-                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        node = factory.make_Node(
+            status=NODE_STATUS.BROKEN, with_empty_script_sets=True)
+        installation_result_ids = [
+            script_result.id
+            for script_result in node.current_installation_script_set]
         node.mark_fixed(factory.make_User())
-        self.assertEqual(
-            [], list(NodeResult.objects.filter(
-                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        self.assertIsNone(reload_object(node).current_installation_script_set)
+        for id in installation_result_ids:
+            self.assertRaises(
+                ScriptResult.DoesNotExist,
+                ScriptResult.objects.get, id=id)
 
     def test_update_power_state(self):
         node = factory.make_Node()
@@ -3027,6 +3040,14 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         node._start_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
+
+    def test_start_deployment_creates_installation_script_set(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
+        node._start_deployment()
+        self.assertIsNotNone(node.current_installation_script_set)
+        node.current_installation_script_set.scriptresult_set.get(
+            script_name=CURTIN_INSTALL_LOG)
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -8283,26 +8304,6 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test_refresh_clears_node_results(self):
-        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed({
-            'hostname': self.rackcontroller.hostname,
-            'architecture': self.rackcontroller.architecture,
-            'osystem': '',
-            'distro_series': '',
-            'interfaces': {},
-        })
-        node_result = yield deferToDatabase(
-            factory.make_NodeResult_for_installation, node=self.rackcontroller)
-
-        yield self.rackcontroller.refresh()
-
-        def has_results():
-            return NodeResult.objects.filter(id=node_result.id).exists()
-
-        self.assertFalse((yield deferToDatabase(has_results)))
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
     def test_refresh_does_nothing_when_locked(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.fail(
             RefreshAlreadyInProgress())
@@ -8813,28 +8814,6 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
             MockCalledOnceWith(
                 region.system_id, token.consumer.key, token.key,
                 token.secret, 'http://127.0.0.1:5240/MAAS'))
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test__clears_node_results(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        node_result = yield deferToDatabase(
-            factory.make_NodeResult_for_installation, node=region)
-        self.patch(node_module, 'get_maas_id').return_value = region.system_id
-        self.patch(node_module, 'refresh')
-        self.patch(node_module, 'get_sys_info').return_value = {
-            'hostname': region.hostname,
-            'architecture': region.architecture,
-            'osystem': '',
-            'distro_series': '',
-            'interfaces': {},
-        }
-        yield region.refresh()
-
-        def has_results():
-            return NodeResult.objects.filter(id=node_result.id).exists()
-
-        self.assertFalse((yield deferToDatabase(has_results)))
 
     @wait_for_reactor
     @defer.inlineCallbacks

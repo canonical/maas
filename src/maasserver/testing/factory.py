@@ -389,7 +389,8 @@ class Factory(maastesting.factory.Factory):
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined,
             with_boot_disk=True, vlan=None, fabric=None,
-            bmc_connected_to=None, owner_data={}, dynamic=False, **kwargs):
+            bmc_connected_to=None, owner_data={}, dynamic=False,
+            with_empty_script_sets=False, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -482,6 +483,20 @@ class Factory(maastesting.factory.Factory):
         # Add owner data.
         OwnerData.objects.set_owner_data(node, owner_data)
 
+        if with_empty_script_sets:
+            commissioning_script_set = (
+                ScriptSet.objects.create_commissioning_script_set(node))
+            node.current_commissioning_script_set = commissioning_script_set
+
+            testing_script_set = (
+                ScriptSet.objects.create_testing_script_set(node))
+            node.current_testing_script_set = testing_script_set
+
+            installation_script_set = (
+                ScriptSet.objects.create_installation_script_set(node))
+            node.current_installation_script_set = installation_script_set
+
+            node.save()
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:

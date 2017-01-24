@@ -1,18 +1,24 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
 
 __all__ = []
 
+import base64
 from collections import namedtuple
 from datetime import datetime
 import http.client
 from io import BytesIO
 import json
+from math import (
+    ceil,
+    floor,
+)
 import os.path
 import random
 import tarfile
+import time
 from unittest.mock import (
     ANY,
     Mock,
@@ -37,6 +43,7 @@ from maasserver.models import (
     Event,
     SSHKey,
     Tag,
+    VersionedTextFile,
 )
 from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
@@ -66,12 +73,15 @@ from metadataserver.api import (
     make_text_response,
     MetaDataHandler,
     poweroff as api_poweroff,
+    process_file,
     UnknownMetadataVersion,
 )
-from metadataserver.enum import RESULT_TYPE
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import (
     NodeKey,
-    NodeResult,
     NodeUserData,
 )
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
@@ -81,6 +91,7 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -223,6 +234,123 @@ class TestHelpers(MAASServerTestCase):
         self.assertIn(description, event.description)
         self.assertEqual(
             EVENT_TYPES.REQUEST_CONTROLLER_REFRESH, event.type.name)
+
+    def test_process_file_creates_new_entry_for_stdout(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stdout = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, script_result.name, stdout,
+            request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+            },
+            results[script_result])
+
+    def test_process_file_creates_adds_field_for_stdout(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stdout = factory.make_string()
+        stderr = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, '%s.err' % script_result.name,
+            stderr, request)
+        process_file(
+            results, script_result.script_set, script_result.name, stdout,
+            request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+                'stderr': stderr,
+            },
+            results[script_result])
+
+    def test_process_file_creates_new_entry_for_stderr(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stderr = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, '%s.err' % script_result.name,
+            stderr, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stderr': stderr,
+            },
+            results[script_result])
+
+    def test_process_file_creates_adds_field_for_stderr(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stdout = factory.make_string()
+        stderr = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, script_result.name, stdout,
+            request)
+        process_file(
+            results, script_result.script_set, '%s.err' % script_result.name,
+            stderr, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+                'stderr': stderr,
+            },
+            results[script_result])
+
+    def test_process_file_finds_script_result_by_id(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stdout = factory.make_string()
+        request = {
+            'exit_status': random.randint(0, 255),
+            'script_result_id': script_result.id
+        }
+
+        process_file(
+            results, script_result.script_set,
+            factory.make_name('script_name'), stdout, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+            },
+            results[script_result])
+
+    def test_creates_new_script_result(self):
+        results = {}
+        script_name = factory.make_name('script_name')
+        script_set = factory.make_ScriptSet()
+        stdout = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(results, script_set, script_name, stdout, request)
+        script_result, value = list(results.items())[0]
+
+        self.assertEquals(script_name, script_result.name)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+            },
+            value)
 
 
 def make_node_client(node=None):
@@ -722,7 +850,18 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.useFixture(SignalsDisabled("power"))
 
     def test_commissioning_scripts(self):
-        script = factory.make_CommissioningScript()
+        start_time = floor(time.time())
+        # Create custom commissioing scripts
+        binary_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            script=VersionedTextFile.objects.create(
+                data=base64.b64encode(sample_binary_data)),
+            )
+        text_script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            script=VersionedTextFile.objects.create(
+                data=factory.make_string()),
+            )
         response = make_node_client().get(
             reverse('commissioning-scripts', args=['latest']))
         self.assertEqual(
@@ -738,9 +877,35 @@ class TestCommissioningAPI(MAASServerTestCase):
                 'application/x-tgz',
             })
         archive = tarfile.open(fileobj=BytesIO(response.content))
-        self.assertIn(
-            os.path.join(ARCHIVE_PREFIX, script.name),
-            archive.getnames())
+        end_time = ceil(time.time())
+
+        # Validate all builtin scripts are included
+        for script in NODE_INFO_SCRIPTS.values():
+            path = os.path.join(ARCHIVE_PREFIX, script['name'])
+            member = archive.getmember(path)
+            self.assertGreaterEqual(member.mtime, start_time)
+            self.assertLessEqual(member.mtime, end_time)
+            self.assertEqual(0o755, member.mode)
+            self.assertEqual(
+                script['content'], archive.extractfile(path).read())
+
+        # Validate custom binary commissioning script
+        path = os.path.join(ARCHIVE_PREFIX, binary_script.name)
+        member = archive.getmember(path)
+        self.assertGreaterEqual(member.mtime, start_time)
+        self.assertLessEqual(member.mtime, end_time)
+        self.assertEqual(0o755, member.mode)
+        self.assertEqual(sample_binary_data, archive.extractfile(path).read())
+
+        # Validate custom text commissioning script
+        path = os.path.join(ARCHIVE_PREFIX, text_script.name)
+        member = archive.getmember(path)
+        self.assertGreaterEqual(member.mtime, start_time)
+        self.assertLessEqual(member.mtime, end_time)
+        self.assertEqual(0o755, member.mode)
+        self.assertEqual(
+            text_script.script.data,
+            archive.extractfile(path).read().decode('utf-8'))
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -797,19 +962,24 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_accepts_non_machine_results(self):
         node = factory.make_Node(
+            with_empty_script_sets=True,
             node_type=factory.pick_choice(
                 NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]))
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
-        script_result = random.randint(0, 10)
-        filename = factory.make_string()
+        exit_status = random.randint(0, 255)
+        output = factory.make_string()
         response = call_signal(
-            client, script_result=script_result,
-            files={filename: factory.make_string().encode('ascii')})
+            client, script_result=exit_status,
+            files={script_result.name: output.encode('ascii')})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        result = NodeResult.objects.get(node=node)
-        self.assertEqual(RESULT_TYPE.COMMISSIONING, result.result_type)
-        self.assertEqual(script_result, result.script_result)
+        script_result = reload_object(script_result)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(output, script_result.stdout.decode('utf-8'))
 
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -819,29 +989,38 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
-    def test_signaling_stores_script_result(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+    def test_signaling_stores_exit_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
-        script_result = random.randint(0, 10)
-        filename = factory.make_string()
+        exit_status = random.randint(0, 255)
         response = call_signal(
-            client, script_result=script_result,
-            files={filename: factory.make_string().encode('ascii')})
+            client, script_result=exit_status,
+            files={script_result.name: factory.make_string().encode('ascii')})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        result = NodeResult.objects.get(node=node)
-        self.assertEqual(script_result, result.script_result)
+        script_result = reload_object(script_result)
+        self.assertEqual(exit_status, script_result.exit_status)
 
     def test_signaling_stores_empty_script_result(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
-            client, script_result=random.randint(0, 10),
-            files={factory.make_string(): ''.encode('ascii')})
+            client, script_result=random.randint(0, 255),
+            files={script_result.name: ''.encode('ascii')})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        result = NodeResult.objects.get(node=node)
-        self.assertEqual(b'', result.data)
+        script_result = reload_object(script_result)
+        self.assertEqual(b'', script_result.stdout)
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_User()
@@ -949,62 +1128,86 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signalling_stores_files_for_any_status(self):
         self.useFixture(SignalsDisabled("power"))
         statuses = ['WORKING', 'OK', 'FAILED']
-        filename = factory.make_string()
-        nodes = {
-            status: factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-            for status in statuses}
+        nodes = {}
+        script_results = {}
+        for status in statuses:
+            node = factory.make_Node(
+                status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+            script_result = (
+                node.current_commissioning_script_set.scriptresult_set.first())
+            script_result.status = SCRIPT_STATUS.RUNNING
+            script_result.save()
+            nodes[status] = node
+            script_results[status] = script_result
         for status, node in nodes.items():
+            script_result = script_results[status]
             client = make_node_client(node=node)
-            script_result = random.randint(0, 10)
+            exit_status = random.randint(0, 10)
             call_signal(
                 client, status=status,
-                script_result=script_result,
-                files={filename: factory.make_bytes()})
-        self.assertEqual(
-            {status: filename for status in statuses},
-            {
-                status: NodeResult.objects.get(node=node).name
-                for status, node in nodes.items()})
+                script_result=exit_status,
+                files={script_result.name: factory.make_bytes()})
+        for script_result in script_results.values():
+            self.assertIsNotNone(script_result.stdout)
 
     def test_signal_stores_file_contents(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
         text = factory.make_string().encode('ascii')
-        script_result = random.randint(0, 10)
+        exit_status = random.randint(0, 255)
         response = call_signal(
-            client, script_result=script_result, files={'file.txt': text})
+            client, script_result=exit_status,
+            files={script_result.name: text})
+        script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            text, NodeResult.objects.get_data(node, 'file.txt'))
+        self.assertEqual(text, script_result.stdout)
 
     def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
-        script_result = random.randint(0, 10)
+        exit_status = random.randint(0, 10)
         response = call_signal(
-            client, script_result=script_result,
-            files={'file.txt': unicode_text.encode('utf-8')})
+            client, script_result=exit_status,
+            files={script_result.name: unicode_text.encode('utf-8')})
+        script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            unicode_text.encode("utf-8"),
-            NodeResult.objects.get_data(node, 'file.txt'))
+        self.assertEqual(unicode_text.encode("utf-8"), script_result.stdout)
 
     def test_signal_stores_multiple_files(self):
-        contents = {
-            factory.make_string(): factory.make_string().encode('ascii')
-            for counter in range(3)}
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_results = []
+        contents = {}
+        for script_result in node.current_commissioning_script_set:
+            script_result.status = SCRIPT_STATUS.RUNNING
+            script_result.save()
+            script_results.append(script_result)
+
+            contents[script_result.name] = factory.make_string().encode(
+                'ascii')
+
         client = make_node_client(node=node)
-        script_result = random.randint(0, 10)
+        exit_status = random.randint(0, 255)
         response = call_signal(
-            client, script_result=script_result, files=contents)
+            client, script_result=exit_status, files=contents)
+
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             contents,
             {
-                result.name: result.data
-                for result in node.noderesult_set.all()
+                script_result.name: reload_object(script_result).stdout
+                for script_result in script_results
             })
 
     def test_signal_stores_files_up_to_documented_size_limit(self):
@@ -1013,50 +1216,57 @@ class TestCommissioningAPI(MAASServerTestCase):
         # anybody's business, but files up to this size should work.
         size_limit = 2 ** 20
         contents = factory.make_string(size_limit, spaces=True)
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
         client = make_node_client(node=node)
-        script_result = random.randint(0, 10)
+        exit_status = random.randint(0, 255)
         response = call_signal(
-            client, script_result=script_result,
-            files={'output.txt': contents.encode('utf-8')})
+            client, script_result=exit_status,
+            files={script_result.name: contents.encode('utf-8')})
+        script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        stored_data = NodeResult.objects.get_data(
-            node, 'output.txt')
-        self.assertEqual(size_limit, len(stored_data))
+        self.assertEqual(size_limit, len(script_result.stdout))
 
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         content = 'qemu'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality.out': content})
+            files={'00-maas-02-virtuality': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             ['virtual'], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_removes_virtual_tag_on_node_if_not_virtual(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
         client = make_node_client(node=node)
         content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality.out': content})
+            files={'00-maas-02-virtuality': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             [], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_leaves_untagged_physical_node_unaltered(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality.out': content})
+            files={'00-maas-02-virtuality': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(0, len(node.tags.all()))
@@ -1136,7 +1346,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result='0')
+        response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1147,7 +1357,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_RackController()
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result='0')
+        response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1157,7 +1367,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='WORKING', script_result='0')
+        response = call_signal(client, status='WORKING', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1167,7 +1377,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='FAILED', script_result='0')
+        response = call_signal(client, status='FAILED', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1179,7 +1389,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node, "set_initial_networking_configuration")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result='0')
+        response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1191,7 +1401,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node, "set_initial_networking_configuration")
         node = factory.make_RackController()
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result='0')
+        response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1202,7 +1412,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node, "set_initial_networking_configuration")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='WORKING', script_result='0')
+        response = call_signal(client, status='WORKING', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1213,7 +1423,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node, "set_initial_networking_configuration")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
-        response = call_signal(client, status='FAILED', script_result='0')
+        response = call_signal(client, status='FAILED', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,

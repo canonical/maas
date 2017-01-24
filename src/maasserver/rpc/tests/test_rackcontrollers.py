@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd. This software is licnesed under the
+# Copyright 2016-2017 Canonical Ltd. This software is licnesed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module;`maasserver.rpc.rackcontroller`."""
@@ -217,6 +217,12 @@ class TestRegisterRackController(MAASServerTestCase):
         }
         register(interfaces=interfaces)
         self.assertEqual(node_count + 1, len(Node.objects.all()))
+
+    def test_always_has_current_commissioning_script_set(self):
+        hostname = factory.make_name('hostname')
+        register(hostname=hostname)
+        rack = RackController.objects.get(hostname=hostname)
+        self.assertIsNotNone(rack.current_commissioning_script_set)
 
     def test_logs_creating_new_rackcontroller(self):
         logger = self.useFixture(FakeLogger("maas"))
