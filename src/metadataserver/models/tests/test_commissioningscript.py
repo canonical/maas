@@ -6,18 +6,11 @@
 __all__ = []
 
 import doctest
-from io import BytesIO
 import json
-from math import (
-    ceil,
-    floor,
-)
 import os.path
 import random
 from random import randint
-import tarfile
 from textwrap import dedent
-import time
 
 from fixtures import FakeLogger
 from maasserver.enum import (
@@ -35,12 +28,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
-from metadataserver.models import (
-    CommissioningScript,
-    commissioningscript as cs_module,
-)
+from metadataserver.models import CommissioningScript
 from metadataserver.models.commissioningscript import (
-    ARCHIVE_PREFIX,
     extract_router_mac_addresses,
     parse_cpuinfo,
     set_virtual_tag,
@@ -60,11 +49,6 @@ from testtools.matchers import (
 )
 
 
-def open_tarfile(content):
-    """Open tar file from raw binary data."""
-    return tarfile.open(fileobj=BytesIO(content))
-
-
 def make_script_name(base_name=None, number=None):
     """Make up a name for a commissioning script."""
     if base_name is None:
@@ -73,61 +57,6 @@ def make_script_name(base_name=None, number=None):
         number = randint(0, 99)
     return factory.make_name(
         '%0.2d-%s' % (number, factory.make_name(base_name)))
-
-
-class TestCommissioningScriptManager(MAASServerTestCase):
-
-    def test_get_archive_wraps_scripts_in_tar(self):
-        script = factory.make_CommissioningScript()
-        path = os.path.join(ARCHIVE_PREFIX, script.name)
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertTrue(archive.getmember(path).isfile())
-        self.assertEqual(script.content, archive.extractfile(path).read())
-
-    def test_get_archive_wraps_all_scripts(self):
-        scripts = {factory.make_CommissioningScript() for counter in range(3)}
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertThat(
-            archive.getnames(),
-            ContainsAll({
-                os.path.join(ARCHIVE_PREFIX, script.name)
-                for script in scripts
-                }))
-
-    def test_get_archive_supports_binary_scripts(self):
-        script = factory.make_CommissioningScript(content=sample_binary_data)
-        path = os.path.join(ARCHIVE_PREFIX, script.name)
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertEqual(script.content, archive.extractfile(path).read())
-
-    def test_get_archive_includes_builtin_scripts(self):
-        name = factory.make_name('00-maas')
-        path = os.path.join(ARCHIVE_PREFIX, name)
-        content = factory.make_string().encode('ascii')
-        data = dict(name=name, content=content, hook='hook')
-        self.patch(cs_module, 'NODE_INFO_SCRIPTS', {name: data})
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertIn(path, archive.getnames())
-        self.assertEqual(content, archive.extractfile(path).read())
-
-    def test_get_archive_sets_sensible_mode(self):
-        for counter in range(3):
-            factory.make_CommissioningScript()
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertEqual({0o755}, {info.mode for info in archive.getmembers()})
-
-    def test_get_archive_initializes_file_timestamps(self):
-        # The mtime on a file inside the tarball is reasonable.
-        # It would otherwise default to the Epoch, and GNU tar warns
-        # annoyingly about improbably old files.
-        start_time = floor(time.time())
-        script = factory.make_CommissioningScript()
-        path = os.path.join(ARCHIVE_PREFIX, script.name)
-        archive = open_tarfile(CommissioningScript.objects.get_archive())
-        timestamp = archive.getmember(path).mtime
-        end_time = ceil(time.time())
-        self.assertGreaterEqual(timestamp, start_time)
-        self.assertLessEqual(timestamp, end_time)
 
 
 class TestCommissioningScript(MAASServerTestCase):

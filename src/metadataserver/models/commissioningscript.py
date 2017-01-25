@@ -9,20 +9,13 @@ __all__ = [
     'CommissioningScript',
     ]
 
-from functools import partial
-from io import BytesIO
-from itertools import chain
 import json
 import logging
 import math
-import os.path
 import re
-import tarfile
-from time import time as now
 
 from django.db.models import (
     CharField,
-    Manager,
     Model,
 )
 from lxml import etree
@@ -41,11 +34,6 @@ from provisioningserver.utils.ipaddr import parse_ip_addr
 
 
 logger = logging.getLogger(__name__)
-
-
-# Path prefix for commissioning scripts.  Commissioning scripts will be
-# extracted into this directory.
-ARCHIVE_PREFIX = "commissioning.d"
 
 
 # Some machines have a <size> element in their memory <node> with the total
@@ -391,49 +379,6 @@ NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)
 
 
-def add_script_to_archive(tarball, name, content, mtime):
-    """Add a commissioning script to an archive of commissioning scripts."""
-    assert isinstance(content, bytes), "Script content must be binary."
-    tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
-    tarinfo.size = len(content)
-    # Mode 0755 means: u=rwx,go=rx
-    tarinfo.mode = 0o755
-    # Modification time defaults to Epoch, which elicits annoying
-    # warnings when decompressing.
-    tarinfo.mtime = mtime
-    tarball.addfile(tarinfo, BytesIO(content))
-
-
-class CommissioningScriptManager(Manager):
-    """Utility for the collection of `CommissioningScript`s."""
-
-    def _iter_builtin_scripts(self):
-        for script in NODE_INFO_SCRIPTS.values():
-            yield script['name'], script['content']
-
-    def _iter_user_scripts(self):
-        for script in self.all():
-            yield script.name, script.content
-
-    def _iter_scripts(self):
-        return chain(
-            self._iter_builtin_scripts(),
-            self._iter_user_scripts())
-
-    def get_archive(self):
-        """Produce a tar archive of all commissioning scripts.
-
-        Each of the scripts will be in the `ARCHIVE_PREFIX` directory.
-        """
-        binary = BytesIO()
-        scripts = sorted(self._iter_scripts())
-        with tarfile.open(mode='w', fileobj=binary) as tarball:
-            add_script = partial(add_script_to_archive, tarball, mtime=now())
-            for name, content in scripts:
-                add_script(name, content)
-        return binary.getvalue()
-
-
 class CommissioningScript(Model):
     """User-provided commissioning script.
 
@@ -443,8 +388,6 @@ class CommissioningScript(Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-
-    objects = CommissioningScriptManager()
 
     name = CharField(max_length=255, null=False, editable=True, unique=True)
     content = BinaryField(null=False)

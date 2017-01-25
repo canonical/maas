@@ -8,6 +8,7 @@ __all__ = [
     'CommissioningScriptsHandler',
     'CurtinUserDataHandler',
     'IndexHandler',
+    'MAASScriptsHandler',
     'MetaDataHandler',
     'UserDataHandler',
     'VersionIndexHandler',
@@ -20,6 +21,8 @@ import http.client
 from io import BytesIO
 from itertools import chain
 import json
+from operator import itemgetter
+import os
 import tarfile
 import time
 
@@ -80,10 +83,7 @@ from metadataserver.models import (
     Script,
     ScriptResult,
 )
-from metadataserver.models.commissioningscript import (
-    add_script_to_archive,
-    NODE_INFO_SCRIPTS,
-)
+from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.user_data import poweroff
 from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
@@ -784,8 +784,23 @@ class CurtinUserDataHandler(MetadataViewHandler):
             content_type='application/octet-stream')
 
 
+def add_file_to_tar(tar, path, content, mtime, permission=0o755):
+    """Add a script to a tar."""
+    assert isinstance(content, bytes), "Script content must be binary."
+    tarinfo = tarfile.TarInfo(name=path)
+    tarinfo.size = len(content)
+    tarinfo.mode = permission
+    # Modification time defaults to Epoch, which elicits annoying
+    # warnings when decompressing.
+    tarinfo.mtime = mtime
+    tar.addfile(tarinfo, BytesIO(content))
+
+
 class CommissioningScriptsHandler(MetadataViewHandler):
-    """Return a tar archive containing the commissioning scripts."""
+    """Return a tar archive containing the commissioning scripts.
+
+    This endpoint is deprecated in favor of MAASScriptsHandler below.
+    """
 
     def _iter_builtin_scripts(self):
         for script in NODE_INFO_SCRIPTS.values():
@@ -817,15 +832,97 @@ class CommissioningScriptsHandler(MetadataViewHandler):
         scripts = sorted(self._iter_scripts())
         with tarfile.open(mode='w', fileobj=binary) as tarball:
             add_script = partial(
-                add_script_to_archive, tarball, mtime=time.time())
+                add_file_to_tar, tarball, mtime=time.time())
             for name, content in scripts:
-                add_script(name, content)
+                add_script(os.path.join("commissioning.d", name), content)
         return binary.getvalue()
 
     def read(self, request, version, mac=None):
         check_version(version)
         return HttpResponse(
             self._get_archive(), content_type='application/tar')
+
+
+class MAASScriptsHandler(OperationsHandler):
+
+    def _add_script_set_to_tar(self, script_set, tar, prefix, mtime):
+        if script_set is None:
+            return []
+        meta_data = []
+        for script_result in script_set:
+            # Don't rerun Scripts which have already run.
+            if script_result.status not in (
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING):
+                continue
+
+            path = os.path.join(prefix, script_result.name)
+            if script_result.script is None:
+                # Check if its a builtin in commissioning script and pull the
+                # data from the source.
+                if script_result.name in NODE_INFO_SCRIPTS:
+                    add_file_to_tar(
+                        tar, path,
+                        NODE_INFO_SCRIPTS[script_result.name]['content'],
+                        mtime)
+                    meta_data.append({
+                        'name': script_result.name,
+                        'path': path,
+                        'script_result_id': script_result.id,
+                    })
+                else:
+                    # Script was deleted by the user and it is not a builtin
+                    # commissioning script. Don't expect a result.
+                    script_result.delete()
+                    continue
+            else:
+                content = script_result.script.script.data.encode()
+                add_file_to_tar(tar, path, content, mtime)
+                meta_data.append({
+                    'name': script_result.name,
+                    'path': path,
+                    'script_result_id': script_result.id,
+                    'script_version_id': script_result.script.script.id,
+                })
+        return meta_data
+
+    def read(self, request, version, mac=None):
+        """Returns a tar containing user and status selected scripts.
+
+        The tar produced will contain scripts which are set to be run during
+        a node's status and/or user selected scripts. The tar is currently
+        uncompressed as all API requests are already gziped. This may change
+        so auto-decompress is suggested. If the node returns a script status
+        and calls this request again only the scripts which havn't been run
+        will be returned.
+        """
+        node = get_queried_node(request)
+        binary = BytesIO()
+        mtime = time.time()
+        tar_meta_data = {}
+        # Responses are currently gzip compressed using
+        # django.middleware.gzip.GZipMiddleware.
+        with tarfile.open(mode='w', fileobj=binary) as tar:
+            # Commissioning scripts should only be run during commissioning.
+            if node.status == NODE_STATUS.COMMISSIONING:
+                meta_data = self._add_script_set_to_tar(
+                    node.current_commissioning_script_set, tar,
+                    'commissioning', mtime)
+                if meta_data != []:
+                    tar_meta_data['commissioning_scripts'] = sorted(
+                        meta_data, key=itemgetter('name', 'script_result_id'))
+
+            # Always send testing scripts.
+            meta_data = self._add_script_set_to_tar(
+                node.current_testing_script_set, tar, 'testing', mtime)
+            if meta_data != []:
+                tar_meta_data['testing_scripts'] = sorted(
+                    meta_data, key=itemgetter('name', 'script_result_id'))
+
+            add_file_to_tar(
+                tar, 'index.json', json.dumps({'1.0': tar_meta_data}).encode(),
+                mtime, 0o644)
+        return HttpResponse(
+            binary.getvalue(), content_type='application/x-tar')
 
 
 class EnlistMetaDataHandler(OperationsHandler):

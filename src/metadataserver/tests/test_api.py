@@ -15,6 +15,7 @@ from math import (
     ceil,
     floor,
 )
+from operator import itemgetter
 import os.path
 import random
 import tarfile
@@ -84,7 +85,6 @@ from metadataserver.models import (
     NodeKey,
     NodeUserData,
 )
-from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 from metadataserver.nodeinituser import get_node_init_user
 from netaddr import IPNetwork
 from provisioningserver.events import (
@@ -843,6 +843,207 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
 
 
+class TestMAASScripts(MAASServerTestCase):
+
+    def extract_and_validate_file(
+            self, tar, path, start_time, end_time, content):
+        member = tar.getmember(path)
+        self.assertGreaterEqual(member.mtime, start_time)
+        self.assertLessEqual(member.mtime, end_time)
+        self.assertEqual(0o755, member.mode)
+        self.assertEqual(content, tar.extractfile(path).read())
+
+    def test__returns_all_scripts_when_commissioning(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        # XXX ltrager 2017-01-23 - Needed until builtin tests are added
+        factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            status=SCRIPT_STATUS.PENDING)
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEquals(
+            node.current_commissioning_script_set.scriptresult_set.count() +
+            node.current_testing_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()))
+
+        commissioning_meta_data = []
+        for script_result in node.current_commissioning_script_set:
+            path = os.path.join('commissioning', script_result.name)
+            md_item = {
+                'name': script_result.name,
+                'path': path,
+                'script_result_id': script_result.id,
+            }
+            if script_result.script is None:
+                content = NODE_INFO_SCRIPTS[script_result.name]['content']
+            else:
+                content = script_result.script.script.data.encode()
+                md_item['script_version_id'] = script_result.script.script.id
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, content)
+            commissioning_meta_data.append(md_item)
+
+        testing_meta_data = []
+        for script_result in node.current_testing_script_set:
+            path = os.path.join('testing', script_result.name)
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time,
+                script_result.script.script.data.encode())
+            testing_meta_data.append({
+                'name': script_result.name,
+                'path': path,
+                'script_result_id': script_result.id,
+                'script_version_id': script_result.script.script.id,
+            })
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'commissioning_scripts': sorted(
+                    commissioning_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+    def test__returns_testing_scripts_when_testing(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        # XXX ltrager 2017-01-23 - Needed until builtin tests are added
+        factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            status=SCRIPT_STATUS.PENDING)
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEquals(
+            node.current_testing_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()))
+
+        testing_meta_data = []
+        for script_result in node.current_testing_script_set:
+            path = os.path.join('testing', script_result.name)
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time,
+                script_result.script.script.data.encode())
+            testing_meta_data.append({
+                'name': script_result.name,
+                'path': path,
+                'script_result_id': script_result.id,
+                'script_version_id': script_result.script.script.id,
+            })
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+    def test__removes_scriptless_script_result(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+
+        script_result = factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            status=SCRIPT_STATUS.PENDING)
+        script_result.script.delete()
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        self.assertEquals(1, len(tar.getmembers()))
+
+        self.assertEquals(
+            0, node.current_testing_script_set.scriptresult_set.count())
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual({'1.0': {}}, meta_data)
+
+    def test__only_returns_scripts_which_havnt_been_run(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+
+        already_run_script = factory.make_ScriptResult(
+            script_set=node.current_commissioning_script_set,
+            status=SCRIPT_STATUS.PASSED)
+        factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            status=SCRIPT_STATUS.FAILED)
+
+        response = make_node_client(node=node).get(
+            reverse('maas-scripts', args=['latest']))
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertEquals('application/x-tar', response['Content-Type'])
+        tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        self.assertEquals(
+            node.current_commissioning_script_set.scriptresult_set.count(),
+            len(tar.getmembers()))
+
+        commissioning_meta_data = []
+        for script_result in node.current_commissioning_script_set:
+            if script_result.id == already_run_script.id:
+                continue
+            path = os.path.join('commissioning', script_result.name)
+            md_item = {
+                'name': script_result.name,
+                'path': path,
+                'script_result_id': script_result.id,
+            }
+            if script_result.script is None:
+                content = NODE_INFO_SCRIPTS[script_result.name]['content']
+            else:
+                content = script_result.script.script.data.encode()
+                md_item['script_result_id'] = script_result.script.script.id
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, content)
+            commissioning_meta_data.append(md_item)
+
+        meta_data = json.loads(
+            tar.extractfile('index.json').read().decode('utf-8'))
+        self.assertDictEqual(
+            {'1.0': {
+                'commissioning_scripts': sorted(
+                    commissioning_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+            }}, meta_data)
+
+
 class TestCommissioningAPI(MAASServerTestCase):
 
     def setUp(self):
@@ -881,7 +1082,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
         # Validate all builtin scripts are included
         for script in NODE_INFO_SCRIPTS.values():
-            path = os.path.join(ARCHIVE_PREFIX, script['name'])
+            path = os.path.join('commissioning.d', script['name'])
             member = archive.getmember(path)
             self.assertGreaterEqual(member.mtime, start_time)
             self.assertLessEqual(member.mtime, end_time)
@@ -890,7 +1091,7 @@ class TestCommissioningAPI(MAASServerTestCase):
                 script['content'], archive.extractfile(path).read())
 
         # Validate custom binary commissioning script
-        path = os.path.join(ARCHIVE_PREFIX, binary_script.name)
+        path = os.path.join('commissioning.d', binary_script.name)
         member = archive.getmember(path)
         self.assertGreaterEqual(member.mtime, start_time)
         self.assertLessEqual(member.mtime, end_time)
@@ -898,7 +1099,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(sample_binary_data, archive.extractfile(path).read())
 
         # Validate custom text commissioning script
-        path = os.path.join(ARCHIVE_PREFIX, text_script.name)
+        path = os.path.join('commissioning.d', text_script.name)
         member = archive.getmember(path)
         self.assertGreaterEqual(member.mtime, start_time)
         self.assertLessEqual(member.mtime, end_time)

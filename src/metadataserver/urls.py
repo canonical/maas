@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API URLs."""
@@ -21,6 +21,7 @@ from metadataserver.api import (
     EnlistUserDataHandler,
     EnlistVersionIndexHandler,
     IndexHandler,
+    MAASScriptsHandler,
     MetaDataHandler,
     StatusHandler,
     UserDataHandler,
@@ -38,6 +39,8 @@ version_index_handler = OperationsResource(
     VersionIndexHandler, authentication=api_auth)
 index_handler = OperationsResource(
     IndexHandler, authentication=api_auth)
+maas_scripts_handler = OperationsResource(
+    MAASScriptsHandler, authentication=api_auth)
 commissioning_scripts_handler = OperationsResource(
     CommissioningScriptsHandler, authentication=api_auth)
 
@@ -80,8 +83,11 @@ node_patterns = patterns(
     # metadata API, hence the "maas-" prefix.
     # Scripts are returned as a tar arhive, but the format is not
     # reflected in the http filename.  The response's MIME type is
-    # definitive.  We may yet choose to compress the file, without
-    # changing its name on the API.
+    # definitive. maas-scripts is xz compressed while
+    # maas-commissioning-scripts is not.
+    url(
+        r'^/*(?P<version>[^/]+)/maas-scripts',
+        maas_scripts_handler, name='maas-scripts'),
     url(
         r'^/*(?P<version>[^/]+)/maas-commissioning-scripts',
         commissioning_scripts_handler, name='commissioning-scripts'),
