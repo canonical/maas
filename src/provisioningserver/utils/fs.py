@@ -45,6 +45,7 @@ import tempfile
 import threading
 from time import sleep
 
+from provisioningserver.path import get_path
 from provisioningserver.utils import sudo
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
@@ -485,7 +486,7 @@ class FileLock(SystemLock):
 
 
 class RunLock(SystemLock):
-    """Always create a lock file at ``/run/lock/maas@${path,modified}``.
+    """Lock file at ``${MAAS_ROOT}/run/lock/maas@${path,modified}``.
 
     This implements an advisory file lock, by proxy, on the given file-system
     path. This is especially useful if you do not have permissions to the
@@ -498,12 +499,12 @@ class RunLock(SystemLock):
     def __init__(self, path):
         abspath = FilePath(path).asTextMode().path.lstrip("/")
         discriminator = abspath.replace(":", "::").replace("/", ":")
-        lockpath = "/run/lock/maas@%s" % discriminator
+        lockpath = get_path("run", "lock", "maas@%s" % discriminator)
         super(RunLock, self).__init__(lockpath)
 
 
 class NamedLock(SystemLock):
-    """Always create a lock file at ``/run/lock/maas.${name}``.
+    """Lock file at ``${MAAS_ROOT}/run/lock/maas.${name}``.
 
     This implements an advisory lock, by proxy, for an abstract name. The name
     must be a string and can contain only numerical digits, hyphens, and ASCII
@@ -524,5 +525,5 @@ class NamedLock(SystemLock):
                 "Lock name contains illegal characters: %s"
                 % "".join(sorted(illegal)))
         else:
-            lockpath = "/run/lock/maas:%s" % name
+            lockpath = get_path("run", "lock", "maas:%s" % name)
             super(NamedLock, self).__init__(lockpath)

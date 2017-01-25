@@ -5,8 +5,6 @@
 
 __all__ = []
 
-from os.path import join
-
 from crochet import wait_for
 from maasserver.models.config import Config
 from maasserver.regiondservices import ntp
@@ -122,10 +120,6 @@ class TestRegionNetworkTimeProtocolService_Errors(
 
         # Ensure that we never actually execute against systemd.
         self.patch_autospec(service_monitor, "restartService")
-
-        maasroot = self.useFixture(MAASRootFixture()).path
-        with open(join(maasroot, "etc", "ntp.conf"), "w") as ntp_conf:
-            ntp_conf.write("# Placeholder NTP configuration file.\n")
 
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()

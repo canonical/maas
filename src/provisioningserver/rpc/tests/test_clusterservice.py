@@ -1229,6 +1229,7 @@ class TestClusterClient(MAASTestCase):
     #     self.assertTrue(client.isSecure())
 
     def test_authenticateRegion_accepts_matching_digests(self):
+        set_shared_secret_on_filesystem(factory.make_bytes())
         client = self.make_running_client()
 
         def calculate_digest(_, message):
@@ -1243,6 +1244,7 @@ class TestClusterClient(MAASTestCase):
         self.assertTrue(extract_result(d))
 
     def test_authenticateRegion_rejects_non_matching_digests(self):
+        set_shared_secret_on_filesystem(factory.make_bytes())
         client = self.make_running_client()
 
         def calculate_digest(_, message):

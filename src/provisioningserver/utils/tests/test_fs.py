@@ -33,6 +33,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
+from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import (
     atomic_copy,
     atomic_delete,
@@ -773,13 +774,13 @@ class TestRunLock(MAASTestCase):
 
     def test__string_path(self):
         filename = '/foo/bar/123:456.txt'
-        expected = '/run/lock/maas@foo:bar:123::456.txt'
+        expected = get_tentative_path('/run/lock/maas@foo:bar:123::456.txt')
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
     def test__byte_path(self):
         filename = b'/foo/bar/123:456.txt'
-        expected = '/run/lock/maas@foo:bar:123::456.txt'
+        expected = get_tentative_path('/run/lock/maas@foo:bar:123::456.txt')
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
@@ -789,7 +790,7 @@ class TestNamedLock(MAASTestCase):
 
     def test__string_name(self):
         name = factory.make_name("lock")
-        expected = '/run/lock/maas:' + name
+        expected = get_tentative_path('/run/lock/maas:' + name)
         observed = NamedLock(name).path
         self.assertEqual(expected, observed)
 

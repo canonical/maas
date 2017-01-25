@@ -19,6 +19,7 @@ from uuid import uuid4
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
+import maastesting
 from maastesting.factory import factory
 from maastesting.fixtures import ImportErrorFixture
 from maastesting.matchers import (
@@ -638,8 +639,9 @@ class TestClusterConfiguration(MAASTestCase):
         self.assertEqual({"tftp_port": example_port}, config.store)
 
     def test_default_tftp_root(self):
-        maas_root = os.getenv("MAAS_ROOT")
-        self.assertIsNotNone(maas_root)
+        # The default tftp_root is calculated relative to MAAS_ROOT at module
+        # import time, so we need to recreate that value.
+        maas_root = os.path.join(maastesting.root, "run")
         config = ClusterConfiguration({})
         self.assertEqual(
             os.path.join(maas_root, "var/lib/maas/boot-resources/current"),

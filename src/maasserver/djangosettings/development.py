@@ -63,7 +63,9 @@ if 'DEV_DB_NAME' in os.environ:
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = abspath("media/development")
+# To allow tests to run in parallel the current process's PID is part of this
+# path. See MediaRootFixture for details.
+MEDIA_ROOT = abspath("media/development.%d" % os.getpid())
 
 INTERNAL_IPS = ('127.0.0.1', '::1')
 

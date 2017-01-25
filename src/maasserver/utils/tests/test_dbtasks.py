@@ -291,7 +291,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            Unhandled failure in database task.
+            ...Unhandled failure in database task.
             Traceback (most recent call last):
             ...
             builtins.ZeroDivisionError: ...

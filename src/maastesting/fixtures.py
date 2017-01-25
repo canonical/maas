@@ -22,10 +22,9 @@ from io import (
 )
 import logging
 import os
+from pathlib import Path
 from subprocess import (
     CalledProcessError,
-    check_output,
-    DEVNULL,
     PIPE,
     Popen,
 )
@@ -404,7 +403,7 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
 
 
 class MAASRootFixture(fixtures.Fixture):
-    """Copy an existing `MAAS_ROOT` to a new temporary location.
+    """Create a new, pristine, `MAAS_ROOT` in a temporary location.
 
     Also updates `MAAS_ROOT` in the environment to point to this new location.
     """
@@ -416,10 +415,25 @@ class MAASRootFixture(fixtures.Fixture):
             raise NotADirectoryError("MAAS_ROOT is not defined.")
         elif os.path.isdir(maasroot):
             self.path = self.useFixture(TempDirectory()).join("run")
-            # Neither shutil.copytree nor /bin/cp deal with relative symlinks,
-            # but /bin/cp is much faster at copying dereferenced files.
-            command = "/bin/cp", "-r", "--dereference", maasroot, self.path
-            check_output(command, stdin=DEVNULL, stderr=PIPE)
+            # Work only in $MAAS_ROOT/run; reference the old $MAAS_ROOT.
+            etc = Path(self.path).joinpath("etc")
+            src = Path(maasroot)
+            # Create and populate $MAAS_ROOT/run/etc/{ntp,ntp.conf}. The
+            # `.keep` file is not strictly necessary, but it's created for
+            # consistency with the source tree's `run` directory.
+            ntp = etc.joinpath("ntp")
+            ntp.mkdir(parents=True)
+            ntp.joinpath(".keep").touch()
+            ntp_conf = etc.joinpath("ntp.conf")
+            ntp_conf.write_bytes(src.joinpath("etc", "ntp.conf").read_bytes())
+            # Create and populate $MAAS_ROOT/run/etc/maas.
+            maas = etc.joinpath("maas")
+            maas.mkdir(parents=True)
+            maas.joinpath("drivers.yaml").symlink_to(
+                src.joinpath("etc", "maas", "drivers.yaml").resolve())
+            maas.joinpath("templates").symlink_to(
+                src.joinpath("etc", "maas", "templates").resolve())
+            # Update the environment.
             self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
         else:
             raise NotADirectoryError(

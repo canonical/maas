@@ -9,6 +9,7 @@ from datetime import datetime
 import http.client
 import json
 import random
+from unittest.mock import ANY
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -519,8 +520,11 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         scan_all_rack_networks(cidrs=cidrs)
         self.assertThat(
             self.call_racks_sync_mock, MockCalledOnceWith(
-                cluster.ScanNetworks, controllers=self.started,
+                cluster.ScanNetworks, controllers=ANY,
                 kwargs={'cidrs': cidrs}))
+        # Check `controllers` separately because its order may vary.
+        controllers = self.call_racks_sync_mock.call_args[1]["controllers"]
+        self.assertItemsEqual(self.started, controllers)
 
     def test__calls_racks_synchronously_with_force_ping(self):
         scan_all_rack_networks(ping=True)

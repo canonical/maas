@@ -90,10 +90,6 @@ install-dependencies:
 	echo '/src/**/*.pyc' >> $@
 	echo '/etc/**/*.pyc' >> $@
 
-run/etc/ntp.conf: templates/ntp.conf
-	@mkdir -p $(@D)
-	@cp templates/ntp.conf $@
-
 configure-buildout:
 	utilities/configure-buildout
 
@@ -163,8 +159,7 @@ bin/maas-rack bin/twistd.rack: \
 	@touch --no-create $@
 
 bin/test.rack: \
-  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack \
-  run/etc/ntp.conf
+  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack
 	$(buildout) install rack-test
 	@touch --no-create $@
 
@@ -397,7 +392,7 @@ clean: stop clean-run clean-failed
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
-	$(RM) -r media/demo/* media/development
+	$(RM) -r media/demo/* media/development media/development.*
 	$(RM) $(js_enums) $(js_enums).tmp
 	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log

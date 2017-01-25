@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import re
 from unittest.mock import sentinel
 
 from fixtures import FakeLogger
@@ -15,14 +16,14 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-)
+from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    MatchesRegex,
+)
 
 
 class TestSubnetHandler(MAASServerTestCase):
@@ -160,8 +161,11 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         handler.scan({
             "id": subnet.id,
         })
-        self.assertThat(logger.output, DocTestMatches(
-            "User...%s...scan...%s" % (user.username, cidr)))
+        # Use MatchesRegex here rather than DocTestMatches because usernames
+        # can contain characters that confuse DocTestMatches (e.g. periods).
+        self.assertThat(logger.output, MatchesRegex(
+            "User '%s' initiated a neighbour discovery scan against subnet: %s"
+            % (re.escape(user.username), re.escape(str(cidr)))))
 
     def test__scan_ipv6_fails(self):
         user = factory.make_admin()

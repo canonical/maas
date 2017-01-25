@@ -217,6 +217,7 @@ class DjangoDatabasesManager(TestResourceManager):
 
     def make(self, dependencies):
         databases = dependencies["templates"]
+        clusterlock = databases.cluster.lock
         with databases.cluster.connect() as conn:
             with conn.cursor() as cursor:
                 for database in databases:
@@ -226,7 +227,11 @@ class DjangoDatabasesManager(TestResourceManager):
                     stmt = (
                         "CREATE DATABASE %s WITH TEMPLATE %s"
                         % (dbname, template))
-                    cursor.execute(stmt)
+                    # Create the database with a shared lock to the cluster to
+                    # avoid racing a DjangoPristineDatabaseManager.make in a
+                    # concurrently running test process.
+                    with clusterlock.shared:
+                        cursor.execute(stmt)
                     debug(
                         "Created {dbname}; statement: {stmt}",
                         dbname=dbname, stmt=stmt)

@@ -16,6 +16,7 @@ from django.db.models import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from metadataserver import DefaultMeta
 from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
@@ -90,6 +91,9 @@ class ScriptSetManager(Manager):
 
 
 class ScriptSet(CleanSave, Model):
+
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
 
     objects = ScriptSetManager()
 

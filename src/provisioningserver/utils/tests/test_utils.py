@@ -13,7 +13,6 @@ import os
 from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
-from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver
@@ -40,20 +39,17 @@ from testtools.matchers import (
 )
 
 
-def get_branch_dir(*path):
-    """Locate a file or directory relative to ``MAAS_ROOT``.
-
-    This function assumes that ``MAAS_ROOT`` has been set to a ``run``
-    subdirectory of this working-tree's root.
-    """
-    return os.path.abspath(os.path.join(root, "run", *path))
+def get_run_path(*path):
+    """Locate a file or directory relative to ``MAAS_ROOT``."""
+    maas_root = os.environ["MAAS_ROOT"]
+    return os.path.abspath(os.path.join(maas_root, *path))
 
 
 class TestLocateConfig(MAASTestCase):
     """Tests for `locate_config`."""
 
     def test_returns_branch_etc_maas(self):
-        self.assertEqual(get_branch_dir('etc/maas'), locate_config())
+        self.assertEqual(get_run_path('etc/maas'), locate_config())
         self.assertThat(locate_config(), DirExists())
 
     def test_defaults_to_global_etc_maas_if_variable_is_unset(self):
@@ -71,18 +67,18 @@ class TestLocateConfig(MAASTestCase):
     def test_locates_config_file(self):
         filename = factory.make_string()
         self.assertEqual(
-            get_branch_dir('etc/maas/', filename),
+            get_run_path('etc/maas/', filename),
             locate_config(filename))
 
     def test_locates_full_path(self):
         path = [factory.make_string() for counter in range(3)]
         self.assertEqual(
-            get_branch_dir('etc/maas/', *path),
+            get_run_path('etc/maas/', *path),
             locate_config(*path))
 
     def test_normalizes_path(self):
         self.assertEqual(
-            get_branch_dir('etc/maas/bar/szot'),
+            get_run_path('etc/maas/bar/szot'),
             locate_config('foo/.././bar///szot'))
 
 

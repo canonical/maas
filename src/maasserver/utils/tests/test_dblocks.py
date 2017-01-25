@@ -9,7 +9,7 @@ from contextlib import (
     closing,
     contextmanager,
 )
-from random import randint
+from random import randrange
 import sys
 
 from django.db import (
@@ -25,18 +25,24 @@ from maasserver.testing.testcase import (
 from maasserver.utils import dblocks
 from testtools.matchers import Equals
 
+# Use "high" objid numbers to avoid conflicts with predeclared locks.
+objid_min = 2 << 10
+objid_max = 2 << 16
+
 
 def get_locks():
-    """Return the set of locks held."""
-    stmt = "SELECT objid FROM pg_locks WHERE classid = %s"
+    """Return the set of locks held between `objid_min` and `objid_max`."""
     with closing(connection.cursor()) as cursor:
-        cursor.execute(stmt, [dblocks.classid])
+        cursor.execute(
+            "SELECT objid FROM pg_locks "
+            "WHERE classid = %s AND objid >= %s AND objid < %s",
+            [dblocks.classid, objid_min, objid_max])
         return {result[0] for result in cursor.fetchall()}
 
 
 def random_objid():
     """Return a 'high' objid that's won't coincide with predeclared locks."""
-    return randint(2 << 10, 2 << 16)
+    return randrange(objid_min, objid_max)
 
 
 @transaction.atomic
@@ -99,10 +105,15 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
 
-        locks_held_before = get_locks()
-        with lock:
-            locks_held = get_locks()
-        locks_held_after = get_locks()
+        # Take an exclusive lock on the database cluster to prevent this
+        # section from running concurrently with any other thusly delimited
+        # section. Note that `self.databases` is the test resource for the
+        # database(s), which then has a reference to the cluster resource.
+        with self.databases.cluster.lock.exclusive:
+            locks_held_before = get_locks()
+            with lock:
+                locks_held = get_locks()
+            locks_held_after = get_locks()
 
         locks_obtained = locks_held - locks_held_before
         self.assertEqual({objid}, locks_obtained)
@@ -266,12 +277,16 @@ class TestDatabaseXactLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
 
-        with transaction.atomic():
-            locks_held_before = get_locks()
-            with lock:
-                locks_held = get_locks()
-            locks_held_after = get_locks()
-        locks_held_after_txn = get_locks()
+        # Take an exclusive lock on the database cluster to prevent this
+        # section from running concurrently with any other thusly delimited
+        # section.
+        with self.databases.cluster.lock.exclusive:
+            with transaction.atomic():
+                locks_held_before = get_locks()
+                with lock:
+                    locks_held = get_locks()
+                locks_held_after = get_locks()
+            locks_held_after_txn = get_locks()
 
         locks_obtained = locks_held - locks_held_before
         self.assertEqual({objid}, locks_obtained)
