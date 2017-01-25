@@ -61,14 +61,13 @@ class ScriptSetManager(Manager):
         return script_set
 
     def create_testing_script_set(self, node):
+        """Create a new testing ScriptSet with ScriptResults."""
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
 
-        script_set = self.create(
-            node=node, result_type=RESULT_TYPE.TESTING)
+        script_set = self.create(node=node, result_type=RESULT_TYPE.TESTING)
 
-        for script in Script.objects.filter(
-                script_type=SCRIPT_TYPE.TESTING):
+        for script in Script.objects.filter(script_type=SCRIPT_TYPE.TESTING):
             ScriptResult.objects.create(
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
                 script=script, script_version=script.script)

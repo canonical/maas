@@ -16,6 +16,7 @@ __all__ = [
 
 import base64
 import bz2
+from datetime import datetime
 from functools import partial
 import http.client
 from io import BytesIO
@@ -62,6 +63,7 @@ from maasserver.models import (
 )
 from maasserver.models.event import Event
 from maasserver.models.tag import Tag
+from maasserver.node_status import NODE_TESTING_RESET_READY_TRANSITIONS
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
     get_curtin_userdata,
@@ -76,6 +78,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
+    SIGNAL_STATUS_CHOICES,
 )
 from metadataserver.models import (
     NodeKey,
@@ -263,6 +266,11 @@ def process_file(
             key: content,
         }
 
+        script_version_id = get_optional_param(
+            request, 'script_version_id', None, Int)
+        if script_version_id is not None:
+            results[script_result]['script_version_id'] = script_version_id
+
 
 class MetadataViewHandler(OperationsHandler):
     create = update = delete = None
@@ -281,7 +289,7 @@ class StatusHandler(MetadataViewHandler):
     read = update = delete = None
 
     def create(self, request, system_id):
-        """Receive and process a status message from a node, usally cloud-init.
+        """Receive and process a status message from a node, usually cloud-init
 
         A node can call this to report progress of its booting or deployment.
 
@@ -406,7 +414,9 @@ class StatusHandler(MetadataViewHandler):
         results = {}
         for sent_file in message.get('files', []):
             # Set the result type according to the node's status.
-            if (node.status == NODE_STATUS.COMMISSIONING or
+            if node.status == NODE_STATUS.TESTING:
+                script_set = node.current_testing_script_set
+            elif (node.status == NODE_STATUS.COMMISSIONING or
                     node.node_type != NODE_TYPE.MACHINE):
                 script_set = node.current_commissioning_script_set
             elif node.status == NODE_STATUS.DEPLOYING:
@@ -473,6 +483,8 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+        NODE_STATUS.TESTING,
+        NODE_STATUS.FAILED_TESTING,
         ]
 
     effective_signalable_states = [
@@ -480,15 +492,8 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.DISK_ERASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
+        NODE_STATUS.TESTING,
     ]
-
-    # Statuses that a commissioning node may signal, and the respective
-    # state transitions that they trigger on the node.
-    signaling_statuses = {
-        SIGNAL_STATUS.OK: NODE_STATUS.READY,
-        SIGNAL_STATUS.FAILED: NODE_STATUS.FAILED_COMMISSIONING,
-        SIGNAL_STATUS.WORKING: None,
-    }
 
     def read(self, request, version, mac=None):
         """Read the metadata index for this version."""
@@ -501,7 +506,7 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_subfields.remove('user-data')
         return make_list_response(sorted(shown_subfields))
 
-    def _store_results(self, node, script_set, request):
+    def _store_results(self, node, script_set, request, status):
         """Store uploaded results."""
         # Group files together with the ScriptResult they belong.
         results = {}
@@ -513,6 +518,106 @@ class VersionIndexHandler(MetadataViewHandler):
         # Commit results to the database.
         for script_result, args in results.items():
             script_result.store_result(**args)
+
+        script_set.last_ping = datetime.now()
+        script_set.save()
+
+        if status == SIGNAL_STATUS.WORKING:
+            script_result_id = get_optional_param(
+                request.POST, 'script_result_id', None, Int)
+            if script_result_id is not None:
+                script_result = script_set.find_script_result(script_result_id)
+                # Only update the script status if it was in a pending state
+                # incase the script result has been uploaded and proceeded
+                # already.
+                if script_result.status == SCRIPT_STATUS.PENDING:
+                    script_result.status = SCRIPT_STATUS.RUNNING
+                    script_result.save()
+
+    def _process_testing(self, node, request, status):
+        self._store_results(
+            node, node.current_testing_script_set, request, status)
+
+        if status == SIGNAL_STATUS.OK:
+            if node.previous_status in NODE_TESTING_RESET_READY_TRANSITIONS:
+                return NODE_STATUS.READY
+            elif node.previous_status == NODE_STATUS.FAILED_COMMISSIONING:
+                return NODE_STATUS.NEW
+            else:
+                return node.previous_status
+        elif status == SIGNAL_STATUS.FAILED:
+            return NODE_STATUS.FAILED_TESTING
+        else:
+            return None
+
+    def _process_commissioning(self, node, request, status):
+        self._store_results(
+            node, node.current_commissioning_script_set, request, status)
+
+        # This is skipped when its the rack controller using this endpoint.
+        if node.node_type not in (
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+            # Commissioning was successful setup the default storage layout
+            # and the initial networking configuration for the node.
+            if status == SIGNAL_STATUS.OK:
+                # XXX 2016-05-10 ltrager, LP:1580405 - Exceptions raised
+                # here are not logged or shown to the user.
+                node.set_default_storage_layout()
+                node.set_initial_networking_configuration()
+
+            # XXX 2014-10-21 newell, bug=1382075
+            # Auto detection for IPMI tries to save power parameters
+            # for Moonshot.  This causes issues if the node's power type
+            # is already MSCM as it uses SSH instead of IPMI.  This fix
+            # is temporary as power parameters should not be overwritten
+            # during commissioning because MAAS already has knowledge to
+            # boot the node.
+            # See MP discussion bug=1389808, for further details on why
+            # we are using bug fix 1382075 here.
+            if node.power_type != "mscm":
+                store_node_power_parameters(node, request)
+
+        signaling_statuses = {
+            SIGNAL_STATUS.OK: NODE_STATUS.READY,
+            SIGNAL_STATUS.FAILED: NODE_STATUS.FAILED_COMMISSIONING,
+            SIGNAL_STATUS.TESTING: NODE_STATUS.TESTING,
+        }
+        target_status = signaling_statuses.get(status)
+
+        if target_status is not None:
+            node.status_expires = None
+
+        # Recalculate tags when commissioning ends.
+        if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
+            populate_tags_for_single_node(Tag.objects.all(), node)
+
+        return target_status
+
+    def _process_deploying(self, node, request, status):
+        self._store_results(
+            node, node.current_installation_script_set, request, status)
+        if status == SIGNAL_STATUS.FAILED:
+            node.mark_failed(
+                comment="Installation failed (refer to the installation log "
+                "for more information).")
+        return None
+
+    def _process_disk_erasing(self, node, request, status):
+        if status == SIGNAL_STATUS.OK:
+            # disk erasing complete, release node
+            node.release()
+        elif status == SIGNAL_STATUS.FAILED:
+            node.mark_failed(comment="Failed to erase disks.")
+        return None
+
+    def _process_entering_rescue_mode(self, node, request, status):
+        if status == SIGNAL_STATUS.OK:
+            # entering rescue mode completed, set status
+            return NODE_STATUS.RESCUE_MODE
+        elif status == SIGNAL_STATUS.FAILED:
+            node.mark_failed(comment="Failed to enter rescue mode.")
+        return None
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
@@ -537,7 +642,8 @@ class VersionIndexHandler(MetadataViewHandler):
             UI. If not given, any previous error string will be cleared.
         :param script_result_id: What ScriptResult this signal is for. If the
             signal contains a file upload the id will be used to find the
-            ScriptResult row.
+            ScriptResult row. If the status is "WORKING" the ScriptResult
+            status will be set to running.
         :param exit_status: The return code of the script run.
         """
         node = get_queried_node(request, for_mac=mac)
@@ -551,11 +657,10 @@ class VersionIndexHandler(MetadataViewHandler):
 
         # These statuses are acceptable for commissioning, disk erasing,
         # entering rescue mode and deploying.
-        if (status not in self.signaling_statuses and
-                node.node_type == NODE_TYPE.MACHINE):
+        if status not in [choice[0] for choice in SIGNAL_STATUS_CHOICES]:
             raise MAASAPIBadRequest(
-                "Unknown commissioning/installation/entering-rescue-mode "
-                "status: '%s'" % status)
+                "Unknown commissioning, testing, installation, or "
+                "entering-rescue-mode status: '%s'" % status)
 
         if (node.status not in self.effective_signalable_states and
                 node.node_type == NODE_TYPE.MACHINE):
@@ -563,78 +668,46 @@ class VersionIndexHandler(MetadataViewHandler):
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
 
-        if (node.status == NODE_STATUS.COMMISSIONING or
-                node.node_type != NODE_TYPE.MACHINE):
+        if node.node_type == NODE_TYPE.MACHINE:
+            process_status_dict = {
+                NODE_STATUS.TESTING: self._process_testing,
+                NODE_STATUS.COMMISSIONING: self._process_commissioning,
+                NODE_STATUS.DEPLOYING: self._process_deploying,
+                NODE_STATUS.DISK_ERASING: self._process_disk_erasing,
+                NODE_STATUS.ENTERING_RESCUE_MODE:
+                    self._process_entering_rescue_mode,
+            }
+            process = process_status_dict[node.status]
+        else:
+            # Non-machine nodes can send testing results when in testing
+            # state, otherwise accept all signals as commissioning signals
+            # regardless of the node's state. This is because devices and
+            # controllers which were not deployed by MAAS will be in a NEW
+            # or other unknown state but may send commissioning data.
+            if node.status == NODE_STATUS.TESTING:
+                process = self._process_testing
+            else:
+                process = self._process_commissioning
 
-            # Store the commissioning results.
-            self._store_results(
-                node, node.current_commissioning_script_set, request)
+        target_status = process(node, request, status)
 
-            # This is skipped when its the rack controller using this endpoint.
-            if node.node_type not in (
-                    NODE_TYPE.RACK_CONTROLLER,
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER):
-
-                # Commissioning was successful setup the default storage layout
-                # and the initial networking configuration for the node.
-                if status == SIGNAL_STATUS.OK:
-                    # XXX 2016-05-10 ltrager, LP:1580405 - Exceptions raised
-                    # here are not logged or shown to the user.
-                    node.set_default_storage_layout()
-                    node.set_initial_networking_configuration()
-
-                # XXX 2014-10-21 newell, bug=1382075
-                # Auto detection for IPMI tries to save power parameters
-                # for Moonshot.  This causes issues if the node's power type
-                # is already MSCM as it uses SSH instead of IPMI.  This fix
-                # is temporary as power parameters should not be overwritten
-                # during commissioning because MAAS already has knowledge to
-                # boot the node.
-                # See MP discussion bug=1389808, for further details on why
-                # we are using bug fix 1382075 here.
-                if node.power_type != "mscm":
-                    store_node_power_parameters(node, request)
-
-            target_status = self.signaling_statuses.get(status)
-            if target_status in [NODE_STATUS.FAILED_COMMISSIONING,
-               NODE_STATUS.READY]:
-                node.status_expires = None
-            # Recalculate tags when commissioning ends.
-            if target_status == NODE_STATUS.READY:
-                populate_tags_for_single_node(Tag.objects.all(), node)
-
-        elif node.status == NODE_STATUS.DEPLOYING:
-            self._store_results(
-                node, node.current_installation_script_set, request)
-            if status == SIGNAL_STATUS.FAILED:
-                node.mark_failed(
-                    comment="Installation failed (refer to the "
-                            "installation log for more information).")
-            target_status = None
-        elif node.status == NODE_STATUS.DISK_ERASING:
-            if status == SIGNAL_STATUS.OK:
-                # disk erasing complete, release node
-                node.release()
-            elif status == SIGNAL_STATUS.FAILED:
-                node.mark_failed(comment="Failed to erase disks.")
-            target_status = None
-        elif node.status == NODE_STATUS.ENTERING_RESCUE_MODE:
-            if status == SIGNAL_STATUS.OK:
-                # entering rescue mode completed, set status
-                target_status = NODE_STATUS.RESCUE_MODE
-            elif status == SIGNAL_STATUS.FAILED:
-                node.mark_failed(comment="Failed to enter rescue mode.")
-                target_status = None
         if target_status in (None, node.status):
             # No status change.  Nothing to be done.
             return rc.ALL_OK
 
-        if node.node_type == NODE_TYPE.MACHINE:
+        # Only machines can change their status. This is to allow controllers
+        # to send refresh data without having their status changed to READY.
+        # The exception to this is if testing was run.
+        if (node.node_type == NODE_TYPE.MACHINE or
+                node.status == NODE_STATUS.TESTING):
             node.status = target_status
-            # When moving to a terminal state, remove the allocation
-            # if not in rescue mode.
-            if node.status != NODE_STATUS.RESCUE_MODE:
+
+            # When moving to a terminal state, remove the owner.
+            if target_status not in [
+                    NODE_STATUS.DEPLOYED, NODE_STATUS.RESCUE_MODE,
+                    NODE_STATUS.TESTING]:
                 node.owner = None
+
         node.error = get_optional_param(request.POST, 'error', '', String)
 
         # Done.

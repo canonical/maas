@@ -79,6 +79,7 @@ from metadataserver.api import (
 )
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
 from metadataserver.models import (
@@ -319,7 +320,7 @@ class TestHelpers(MAASServerTestCase):
         stdout = factory.make_string()
         request = {
             'exit_status': random.randint(0, 255),
-            'script_result_id': script_result.id
+            'script_result_id': script_result.id,
         }
 
         process_file(
@@ -330,6 +331,28 @@ class TestHelpers(MAASServerTestCase):
             {
                 'exit_status': request['exit_status'],
                 'stdout': stdout,
+            },
+            results[script_result])
+
+    def test_process_file_adds_script_version_id(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        stdout = factory.make_string()
+        request = {
+            'exit_status': random.randint(0, 255),
+            'script_result_id': script_result.id,
+            'script_version_id': script_result.script.script_id,
+        }
+
+        process_file(
+            results, script_result.script_set,
+            factory.make_name('script_name'), stdout, request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+                'script_version_id': script_result.script.script_id,
             },
             results[script_result])
 
@@ -349,6 +372,31 @@ class TestHelpers(MAASServerTestCase):
             {
                 'exit_status': request['exit_status'],
                 'stdout': stdout,
+            },
+            value)
+
+    def test_stores_script_version(self):
+        results = {}
+        script_name = factory.make_name('script_name')
+        script = factory.make_Script()
+        script.script = script.script.update(factory.make_string())
+        script_set = factory.make_ScriptSet()
+        stdout = factory.make_string()
+        request = {
+            'exit_status': random.randint(0, 255),
+            'script_version_id': script.script.id,
+        }
+
+        process_file(results, script_set, script_name, stdout, request)
+
+        script_result, value = list(results.items())[0]
+
+        self.assertEquals(script_name, script_result.name)
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'stdout': stdout,
+                'script_version_id': script.script.id,
             },
             value)
 
@@ -782,16 +830,20 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installation_result_does_not_affect_other_node(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        client = make_node_client(
-            node=factory.make_Node(status=NODE_STATUS.DEPLOYING))
+        other_node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
+        client = make_node_client(node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            NODE_STATUS.DEPLOYING, reload_object(node).status)
+            NODE_STATUS.DEPLOYING, reload_object(other_node).status)
 
     def test_signaling_installation_success_leaves_node_deploying(self):
-        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING,
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
@@ -800,7 +852,9 @@ class TestInstallingAPI(MAASServerTestCase):
     def test_signaling_installation_success_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYING,
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
@@ -808,7 +862,8 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
     def test_signaling_installation_success_is_idempotent(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
@@ -817,7 +872,8 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installation_success_does_not_clear_owner(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
@@ -825,7 +881,8 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installation_failure_makes_node_failed(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(http.client.OK, response.status_code)
@@ -834,13 +891,58 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installation_failure_is_idempotent(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
+
+    def test_signaling_installation_updates_last_ping(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        end_time = ceil(time.time())
+        script_set = node.current_installation_script_set
+        self.assertGreaterEqual(
+            ceil(script_set.last_ping.timestamp()), start_time)
+        self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
+
+    def test_signaling_installation_with_script_id_sets_script_to_run(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
+    def test_signaling_installation_with_script_id_ignores_not_pending(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first())
+        script_status = factory.pick_choice(
+            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+        script_result.status = script_status
+        script_result.save()
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(script_status, script_result.status)
 
 
 class TestMAASScripts(MAASServerTestCase):
@@ -1117,20 +1219,23 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_result_does_not_affect_other_node(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        client = make_node_client(
-            node=factory.make_Node(status=NODE_STATUS.COMMISSIONING))
+        other_node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        client = make_node_client(node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            NODE_STATUS.COMMISSIONING, reload_object(node).status)
+            NODE_STATUS.COMMISSIONING, reload_object(other_node).status)
 
     def test_signaling_commissioning_OK_repopulates_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result='0')
+        response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1183,7 +1288,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(output, script_result.stdout.decode('utf-8'))
 
     def test_signaling_accepts_WORKING_status(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
         self.assertEqual(http.client.OK, response.status_code)
@@ -1225,7 +1331,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         node.owner = user
         node.save()
         client = make_node_client(node=node)
@@ -1233,8 +1340,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(user, reload_object(node).owner)
 
-    def test_signaling_commissioning_success_makes_node_Ready(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+    def test_signaling_commissioning_success_makes_node_ready(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)
@@ -1242,7 +1350,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signalling_commissioning_success_clears_status_expires(self):
         node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now())
+            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(
@@ -1250,7 +1359,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertIsNone(reload_object(node).status_expires)
 
     def test_signaling_commissioning_success_is_idempotent(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
@@ -1258,7 +1368,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_success_clears_owner_on_machine(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         node.owner = factory.make_User()
         node.save()
         client = make_node_client(node=node)
@@ -1266,8 +1377,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNone(reload_object(node).owner)
 
-    def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+    def test_signaling_commissioning_failure_makes_node_failed_Tests(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(http.client.OK, response.status_code)
@@ -1277,7 +1389,8 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signaling_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(http.client.OK, response.status_code)
@@ -1285,7 +1398,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signalling_commissioning_clears_status_expires(self):
         node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now())
+            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(
@@ -1293,7 +1407,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertIsNone(reload_object(node).status_expires)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
@@ -1302,7 +1417,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_failure_sets_node_error(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         error_text = factory.make_string()
         response = call_signal(client, status='FAILED', error=error_text)
@@ -1310,7 +1426,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(error_text, reload_object(node).error)
 
     def test_signaling_commissioning_failure_clears_owner(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         node.owner = factory.make_User()
         node.save()
         client = make_node_client(node=node)
@@ -1320,13 +1437,14 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_no_error_clears_existing_error(self):
         node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, error=factory.make_string())
+            status=NODE_STATUS.COMMISSIONING, error=factory.make_string(),
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual('', reload_object(node).error)
 
-    def test_signalling_stores_files_for_any_status(self):
+    def test_signaling_stores_files_for_any_status(self):
         self.useFixture(SignalsDisabled("power"))
         statuses = ['WORKING', 'OK', 'FAILED']
         nodes = {}
@@ -1474,7 +1592,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_current_power_type_mscm_does_not_store_params(self):
         node = factory.make_Node(
-            power_type="mscm", status=NODE_STATUS.COMMISSIONING)
+            power_type="mscm", status=NODE_STATUS.COMMISSIONING,
+            with_empty_script_sets=True)
         client = make_node_client(node=node)
         params = dict(
             power_address=factory.make_ipv4_address(),
@@ -1491,7 +1610,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertNotEqual(params, node.power_parameters)
 
     def test_signal_refuses_bad_power_type(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(client, power_type="foo")
         self.expectThat(
@@ -1502,7 +1622,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             Equals("Bad power_type 'foo'"))
 
     def test_signal_power_type_stores_params(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         params = dict(
             power_address=factory.make_ipv4_address(),
@@ -1517,7 +1638,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(params, node.power_parameters)
 
     def test_signal_power_type_lower_case_works(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         params = dict(
             power_address=factory.make_ipv4_address(),
@@ -1532,7 +1654,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             params, node.power_parameters)
 
     def test_signal_invalid_power_parameters(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         response = call_signal(
             client, power_type="ipmi", power_parameters="badjson")
@@ -1545,7 +1668,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_sets_default_storage_layout_if_OK(self):
         self.patch_autospec(Node, "set_default_storage_layout")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1554,9 +1678,9 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
 
-    def test_signal_does_not_sets_default_storage_layout_if_rack(self):
+    def test_signal_does_not_set_default_storage_layout_if_rack(self):
         self.patch_autospec(Node, "set_default_storage_layout")
-        node = factory.make_RackController()
+        node = factory.make_RackController(with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1566,7 +1690,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_does_not_set_default_storage_layout_if_WORKING(self):
         self.patch_autospec(Node, "set_default_storage_layout")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='WORKING', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1576,7 +1701,8 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_does_not_set_default_storage_layout_if_FAILED(self):
         self.patch_autospec(Node, "set_default_storage_layout")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='FAILED', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1588,7 +1714,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.useFixture(SignalsDisabled("power"))
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1600,7 +1727,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_doesnt_call_sets_initial_network_config_if_rack(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
-        node = factory.make_RackController()
+        node = factory.make_RackController(with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1611,7 +1738,8 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_doesnt_call_sets_initial_network_config_if_WORKING(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='WORKING', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1622,13 +1750,188 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_doesnt_call_sets_initial_network_config_if_FAILED(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
         response = call_signal(client, status='FAILED', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockNotCalled())
+
+    def test_signaling_commissioning_updates_last_ping(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        end_time = ceil(time.time())
+        script_set = node.current_commissioning_script_set
+        self.assertGreaterEqual(
+            ceil(script_set.last_ping.timestamp()), start_time)
+        self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
+
+    def test_signaling_commissioning_with_script_id_sets_script_to_run(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
+    def test_signaling_commissioning_with_script_id_ignores_not_pending(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_status = factory.pick_choice(
+            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+        script_result.status = script_status
+        script_result.save()
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(script_status, script_result.status)
+
+
+class TestTestingAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.useFixture(SignalsDisabled("power"))
+
+    def test_other_user_than_node_cannot_signal_testing_result(self):
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        client = MAASSensibleOAuthClient(factory.make_User())
+        response = call_signal(client)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
+
+    def test_signaling_testing_result_does_not_affect_other_node(self):
+        other_node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
+            with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(other_node).status)
+
+    def test_signaling_testing_success_moves_node_to_previous_status(self):
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+    def test_signaling_testing_success_moves_node_to_ready_when_commiss(self):
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.COMMISSIONING,
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_signaling_testing_success_moves_node_to_new_when_f_commiss(self):
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.FAILED_COMMISSIONING,
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
+
+    def test_signaling_testing_success_does_not_clear_owner(self):
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
+            owner=factory.make_User(), with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(node.owner, reload_object(node).owner)
+
+    def test_signaling_testing_failure_makes_node_failed(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(
+            NODE_STATUS.FAILED_TESTING, reload_object(node).status)
+
+    def test_signaling_testing_testing_transitions_to_testing(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='TESTING')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
+
+    def test_signaling_testing_updates_last_ping(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        end_time = ceil(time.time())
+        script_set = node.current_testing_script_set
+        self.assertGreaterEqual(
+            ceil(script_set.last_ping.timestamp()), start_time)
+        self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
+
+    def test_signaling_testing_with_script_id_sets_script_to_run(self):
+        # XXX 2017-01-24 ltrager - Needed until builtin testing scripts are
+        # added.
+        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+
+    def test_signaling_testing_with_script_id_ignores_not_pending(self):
+        # XXX 2017-01-24 ltrager - Needed until builtin testing scripts are
+        # added.
+        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        script_status = factory.pick_choice(
+            SCRIPT_STATUS_CHOICES, but_not=[SCRIPT_STATUS.PENDING])
+        script_result.status = script_status
+        script_result.save()
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        script_result = reload_object(script_result)
+        self.assertEquals(script_status, script_result.status)
 
 
 class TestDiskErasingAPI(MAASServerTestCase):
