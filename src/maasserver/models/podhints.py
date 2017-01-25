@@ -1,33 +1,35 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model that holds hint information for a Chassis."""
+"""Model that holds hint information for a Pod."""
 
 __all__ = [
-    'ChassisHints',
+    'PodHints',
     ]
 
 
 from django.db.models import (
+    BigIntegerField,
     IntegerField,
     Model,
     OneToOneField,
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.node import Node
 
 
-class ChassisHints(CleanSave, Model):
-    """Hint information for a chassis."""
+class PodHints(CleanSave, Model):
+    """Hint information for a pod."""
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    chassis = OneToOneField(Node, related_name="chassis_hints")
+    pod = OneToOneField('BMC', related_name="hints")
 
     cores = IntegerField(default=0)
 
     memory = IntegerField(default=0)
 
-    local_storage = IntegerField(default=0)
+    local_storage = BigIntegerField(blank=False, null=False, default=0)
+
+    local_disks = IntegerField(blank=False, null=False, default=-1)

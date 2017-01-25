@@ -35,7 +35,7 @@ __all__ = [
 
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
-    AmpDiscoveredChassis,
+    AmpDiscoveredPod,
     AmpList,
     Bytes,
     CompressedAmpList,
@@ -109,15 +109,15 @@ class DescribePowerTypes(amp.Command):
     errors = []
 
 
-class DescribeChassisTypes(amp.Command):
-    """Get a JSON Schema describing this rack's chassis types.
+class DescribePodTypes(amp.Command):
+    """Get a JSON Schema describing this rack's pod types.
 
     :since: 2.2
     """
 
     arguments = []
     response = [
-        (b"chassis_types", StructureAsJSON()),
+        (b"types", StructureAsJSON()),
     ]
     errors = []
 
@@ -625,29 +625,29 @@ class AddChassis(amp.Command):
     errors = {}
 
 
-class DiscoverChassis(amp.Command):
-    """Discover all the chassis information.
+class DiscoverPod(amp.Command):
+    """Discover all the pod information.
 
     :since: 2.2
     """
     arguments = [
-        (b"system_id", amp.Unicode(optional=True)),
-        (b"hostname", amp.Unicode(optional=True)),
-        (b"chassis_type", amp.Unicode()),
+        (b"pod_id", amp.Integer(optional=True)),
+        (b"name", amp.Unicode(optional=True)),
+        (b"type", amp.Unicode()),
         # We can't define a tighter schema here because this is a highly
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
     response = [
-        (b"chassis", AmpDiscoveredChassis()),
+        (b"pod", AmpDiscoveredPod()),
     ]
     errors = {
-        exceptions.UnknownChassisType: (
-            b"UnknownChassisType"),
+        exceptions.UnknownPodType: (
+            b"UnknownPodType"),
         NotImplementedError: (
             b"NotImplementedError"),
-        exceptions.ChassisActionFail: (
-            b"ChassisActionFail"),
+        exceptions.PodActionFail: (
+            b"PodActionFail"),
     }
 
 

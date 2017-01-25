@@ -8,8 +8,8 @@ __all__ = []
 from unittest.mock import sentinel
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.chassis.tests.test_base import (
-    make_chassis_driver_base,
+from provisioningserver.drivers.pod.tests.test_base import (
+    make_pod_driver_base,
 )
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.drivers.power.tests.test_base import (
@@ -35,13 +35,13 @@ class TestPowerDriverRegistry(MAASTestCase):
     def test_get_schema(self):
         fake_driver_one = make_power_driver_base()
         fake_driver_two = make_power_driver_base()
-        fake_chassis_driver = make_chassis_driver_base()
+        fake_pod_driver = make_pod_driver_base()
         PowerDriverRegistry.register_item(
             fake_driver_one.name, fake_driver_one)
         PowerDriverRegistry.register_item(
             fake_driver_two.name, fake_driver_two)
         PowerDriverRegistry.register_item(
-            fake_chassis_driver.name, fake_chassis_driver)
+            fake_pod_driver.name, fake_pod_driver)
         self.assertItemsEqual([
             {
                 'name': fake_driver_one.name,

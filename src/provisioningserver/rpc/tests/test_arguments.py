@@ -11,9 +11,9 @@ import zlib
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import netaddr
-from provisioningserver.drivers.chassis import (
-    DiscoveredChassis,
-    DiscoveredChassisHints,
+from provisioningserver.drivers.pod import (
+    DiscoveredPod,
+    DiscoveredPodHints,
 )
 from provisioningserver.rpc import arguments
 from testtools import ExpectedException
@@ -204,20 +204,20 @@ class TestIPNetwork(MAASTestCase):
         self.assertThat(decoded, Equals(network))
 
 
-class TestDiscoveredChassis(MAASTestCase):
+class TestDiscoveredPod(MAASTestCase):
 
-    example = DiscoveredChassis(
-        architecture='amd64/generic',
+    example = DiscoveredPod(
+        architectures=['amd64/generic'],
         cores=random.randint(1, 8), cpu_speed=random.randint(1000, 3000),
         memory=random.randint(1024, 8192), local_storage=0,
-        hints=DiscoveredChassisHints(
+        hints=DiscoveredPodHints(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
             memory=random.randint(1024, 8192), local_storage=0),
         machines=[])
 
     def test_round_trip(self):
-        argument = arguments.AmpDiscoveredChassis()
+        argument = arguments.AmpDiscoveredPod()
         encoded = argument.toString(self.example)
         self.assertThat(encoded, IsInstance(bytes))
         decoded = argument.fromString(encoded)

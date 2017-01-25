@@ -1,20 +1,20 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Load all chassis drivers."""
+"""Load all pod drivers."""
 
 __all__ = [
-    "ChassisDriverRegistry",
+    "PodDriverRegistry",
     ]
 
 from jsonschema import validate
-from provisioningserver.drivers.chassis import JSON_CHASSIS_DRIVERS_SCHEMA
-from provisioningserver.drivers.chassis.null import NullChassisDriver
+from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
+from provisioningserver.drivers.pod.null import NullPodDriver
 from provisioningserver.utils.registry import Registry
 
 
-class ChassisDriverRegistry(Registry):
-    """Registry for chassis drivers."""
+class PodDriverRegistry(Registry):
+    """Registry for pod drivers."""
 
     @classmethod
     def get_schema(cls, detect_missing_packages=True):
@@ -23,12 +23,12 @@ class ChassisDriverRegistry(Registry):
             driver.get_schema(detect_missing_packages=detect_missing_packages)
             for _, driver in cls
         ]
-        validate(schemas, JSON_CHASSIS_DRIVERS_SCHEMA)
+        validate(schemas, JSON_POD_DRIVERS_SCHEMA)
         return schemas
 
 
-chassis_drivers = [
-    NullChassisDriver()
+pod_drivers = [
+    NullPodDriver()
 ]
-for driver in chassis_drivers:
-    ChassisDriverRegistry.register_item(driver.name, driver)
+for driver in pod_drivers:
+    PodDriverRegistry.register_item(driver.name, driver)

@@ -332,23 +332,19 @@ class NodesHandler(OperationsHandler):
 
         if self.base_model == Node:
             # Avoid circular dependencies
-            from maasserver.api.chassis import ChassisHandler
             from maasserver.api.devices import DevicesHandler
             from maasserver.api.machines import MachinesHandler
             from maasserver.api.rackcontrollers import RackControllersHandler
             from maasserver.api.regioncontrollers import (
                 RegionControllersHandler
             )
-            from maasserver.api.storage import StoragesHandler
             racks = RackControllersHandler().read(request).order_by("id")
             nodes = list(chain(
-                ChassisHandler().read(request).order_by("id"),
                 DevicesHandler().read(request).order_by("id"),
                 MachinesHandler().read(request).order_by("id"),
                 racks,
                 RegionControllersHandler().read(request).exclude(
                     id__in=racks).order_by("id"),
-                StoragesHandler().read(request).order_by("id"),
             ))
             return nodes
         else:

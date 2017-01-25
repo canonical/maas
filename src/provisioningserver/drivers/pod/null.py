@@ -1,33 +1,33 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Null chassis driver."""
+"""Null pod driver."""
 
 __all__ = [
-    "NullChassisDriver",
+    "NullPodDriver",
     ]
 
-from provisioningserver.drivers.chassis import (
-    ChassisDriver,
-    DiscoveredChassis,
-    DiscoveredChassisHints,
+from provisioningserver.drivers.pod import (
+    DiscoveredPod,
+    DiscoveredPodHints,
+    PodDriver,
 )
 from twisted.internet.defer import succeed
 
 
-class NullChassisDriver(ChassisDriver):
+class NullPodDriver(PodDriver):
 
     name = "null"
-    description = "Null Test Chassis Driver"
+    description = "Null Test Pod Driver"
     settings = []
     ip_extractor = None
     queryable = True
 
     def discover(self, system_id, context):
         return succeed(
-            DiscoveredChassis(
+            DiscoveredPod(
                 cores=0, cpu_speed=0, local_storage=0, memory=0,
-                hints=DiscoveredChassisHints(
+                hints=DiscoveredPodHints(
                     cores=0, cpu_speed=0, local_storage=0, memory=0)))
 
     def compose(self, system_id, context):

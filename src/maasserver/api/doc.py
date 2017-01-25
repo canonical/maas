@@ -33,7 +33,7 @@ from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
+from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
@@ -117,24 +117,24 @@ def generate_power_types_doc():
     return output.getvalue()
 
 
-def generate_chassis_types_doc():
-    """Generate ReST documentation for the supported chassis types.
+def generate_pod_types_doc():
+    """Generate ReST documentation for the supported pod types.
 
-    The documentation is derived from the `ChassisDriverRegistry`.
+    The documentation is derived from the `PodDriverRegistry`.
     """
     output = StringIO()
     line = partial(print, file=output)
 
-    line('Chassis types')
-    line('`````````````')
+    line('Pod types')
+    line('`````````')
     line()
-    line("This is the list of the supported chassis types and their "
-         "associated parameters.  Note that the list of usable chassis types "
+    line("This is the list of the supported pod types and their "
+         "associated parameters.  Note that the list of usable pod types "
          "for a particular rack controller might be a subset of this "
          "list if the rack controller in question is from an older version of "
          "MAAS.")
     line()
-    for _, driver in ChassisDriverRegistry:
+    for _, driver in PodDriverRegistry:
         title = "%s (%s)" % (driver.name, driver.description)
         line(title)
         line('=' * len(title))

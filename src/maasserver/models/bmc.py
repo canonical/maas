@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """BMC objects."""
@@ -9,28 +9,48 @@ __all__ = [
 
 import re
 
+from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import (
+    BigIntegerField,
     BooleanField,
     CharField,
     ForeignKey,
+    IntegerField,
     ManyToManyField,
     SET_NULL,
+    TextField,
 )
 from maasserver import DefaultMeta
-from maasserver.enum import IPADDRESS_TYPE
+from maasserver.enum import (
+    BMC_TYPE,
+    BMC_TYPE_CHOICES,
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.fields import JSONObjectField
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.fabric import Fabric
+from maasserver.models.interface import PhysicalInterface
+from maasserver.models.node import Machine
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.podhints import PodHints
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
+from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.rpc import getAllClients
+import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger
 
 
 maaslog = get_maas_logger("node")
+podlog = get_maas_logger("pod")
 
 
 class BMC(CleanSave, TimestampedModel):
@@ -54,6 +74,9 @@ class BMC(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         unique_together = ("power_type", "power_parameters", "ip_address")
 
+    bmc_type = IntegerField(
+        choices=BMC_TYPE_CHOICES, editable=False, default=BMC_TYPE.DEFAULT)
+
     ip_address = ForeignKey(
         StaticIPAddress, default=None, blank=True, null=True, editable=False,
         on_delete=SET_NULL)
@@ -76,14 +99,84 @@ class BMC(CleanSave, TimestampedModel):
         through="BMCRoutableRackControllerRelationship",
         related_name="routable_bmcs")
 
+    # Values for Pod's.
+    #  1. Name of the Pod.
+    #  2. List of architectures that a Pod supports.
+    #  3. Capabilities that the Pod supports.
+    #  4. Total cores in the Pod.
+    #  5. Fastest CPU speed in the Pod.
+    #  6. Total amount of memory in the Pod.
+    #  7. Total about in bytes of local storage available in the Pod.
+    #  8. Total number of available local disks in the Pod.
+    name = CharField(
+        max_length=255, default='', blank=True, unique=True)
+    architectures = ArrayField(
+        TextField(), blank=True, null=True, default=list)
+    capabilities = ArrayField(
+        TextField(), blank=True, null=True, default=list)
+    cores = IntegerField(blank=False, null=False, default=0)
+    cpu_speed = IntegerField(blank=False, null=False, default=0)
+    memory = IntegerField(blank=False, null=False, default=0)
+    local_storage = BigIntegerField(blank=False, null=False, default=0)
+    local_disks = IntegerField(blank=False, null=False, default=-1)
+
     def __str__(self):
         return "%s (%s)" % (
             self.id, self.ip_address if self.ip_address else "No IP")
+
+    def _as(self, model):
+        """Create a `model` that shares underlying storage with `self`.
+
+        In other words, the newly returned object will be an instance of
+        `model` and its `__dict__` will be `self.__dict__`. Not a copy, but a
+        reference to, so that changes to one will be reflected in the other.
+        """
+        new = object.__new__(model)
+        new.__dict__ = self.__dict__
+        return new
+
+    def as_bmc(self):
+        """Return a reference to self that behaves as a `BMC`."""
+        return self._as(BMC)
+
+    def as_pod(self):
+        """Return a reference to self that behaves as a `Pod`."""
+        return self._as(Pod)
+
+    _as_self = {
+        BMC_TYPE.BMC: as_bmc,
+        BMC_TYPE.POD: as_pod,
+    }
+
+    def as_self(self):
+        """Return a reference to self that behaves as its own type."""
+        return self._as_self[self.bmc_type](self)
 
     def delete(self):
         """Delete this BMC."""
         maaslog.info("%s: Deleting BMC", self)
         super(BMC, self).delete()
+
+    def save(self, *args, **kwargs):
+        """Save this BMC."""
+        super(BMC, self).save(*args, **kwargs)
+        # We let name be blank for the initial save, but fix it before the
+        # save completes.  This is because set_random_name() operates by
+        # trying to re-save the BMC with a random hostname, and retrying until
+        # there is no conflict.
+        if self.name == '':
+            self.set_random_name()
+
+    def set_random_name(self):
+        """Set a random `name`."""
+        while True:
+            self.name = petname.Generate(2, "-")
+            try:
+                self.save()
+            except ValidationError:
+                pass
+            else:
+                break
 
     def clean(self):
         """ Update our ip_address if the address extracted from our power
@@ -256,7 +349,8 @@ class BMC(CleanSave, TimestampedModel):
             self, routable_racks_ids, non_routable_racks_ids):
         """Set the `routable_rack_controllers` relationship to the new
         information."""
-        BMCRoutableRackControllerRelationship.objects.filter(bmc=self).delete()
+        BMCRoutableRackControllerRelationship.objects.filter(
+            bmc=self.as_bmc()).delete()
         self._create_racks_relationship(routable_racks_ids, True)
         self._create_racks_relationship(non_routable_racks_ids, False)
 
@@ -273,6 +367,382 @@ class BMC(CleanSave, TimestampedModel):
                 pass
             BMCRoutableRackControllerRelationship(
                 bmc=self, rack_controller=rack, routable=routable).save()
+
+
+class Pod(BMC):
+    """A `Pod` represents a `BMC` that controls multiple machines."""
+
+    class Meta:
+        proxy = True
+
+    def sync_hints(self, discovered_hints):
+        """Sync the hints with `discovered_hints`."""
+        try:
+            hints = self.hints
+        except PodHints.DoesNotExist:
+            hints = self.hints = PodHints()
+        hints.cores = discovered_hints.cores
+        hints.cpu_speed = discovered_hints.cpu_speed
+        hints.memory = discovered_hints.memory
+        hints.local_storage = discovered_hints.local_storage
+        hints.local_disks = discovered_hints.local_disks
+        hints.save()
+
+    def _find_existing_machine(self, discovered_machine, mac_machine_map):
+        """Find a `Machine` in `mac_machine_map` based on the interface MAC
+        addresses from `discovered_machine`."""
+        for interface in discovered_machine.interfaces:
+            if interface.mac_address in mac_machine_map:
+                return mac_machine_map[interface.mac_address]
+        return None
+
+    def _create_block_device(self, discovered_bd, machine, name=None):
+        """Create's a new `PhysicalBlockDevice` for `machine`."""
+        if name is None:
+            name = machine.get_next_block_device_name()
+        model = discovered_bd.model
+        serial = discovered_bd.serial
+        if model is None:
+            model = ""
+        if serial is None:
+            serial = ""
+        return PhysicalBlockDevice.objects.create(
+            node=machine,
+            name=name,
+            id_path=discovered_bd.id_path,
+            model=model,
+            serial=serial,
+            size=discovered_bd.size,
+            block_size=discovered_bd.block_size,
+            tags=discovered_bd.tags)
+
+    def _create_interface(self, discovered_nic, machine, name=None):
+        """Create's a new physical `Interface` for `machine`."""
+        # XXX blake_r 2016-12-20: First pass just connected all interfaces
+        # to the default fabric and VLAN. This will change once we have
+        # better discovery of what interface are connected where.
+        vlan = Fabric.objects.get_default_fabric().get_default_vlan()
+        if name is None:
+            name = machine.get_next_ifname()
+        nic, created = PhysicalInterface.objects.get_or_create(
+            mac_address=discovered_nic.mac_address, defaults={
+                'name': name,
+                'node': machine,
+                'tags': discovered_nic.tags,
+                'vlan': vlan,
+            })
+        if not created:
+            podlog.warning(
+                "%s: interface with MAC address %s was discovered on "
+                "machine %s and was moved from %s." % (
+                    self.name, discovered_nic.mac_address,
+                    machine.hostname, nic.node.hostname))
+            nic.name = name
+            nic.node = machine
+            nic.tags = discovered_nic.tags
+            nic.vlan = vlan
+            nic.ip_addresses.all().delete()
+            nic.save()
+        return nic
+
+    def _create_machine(self, discovered_machine):
+        """Create's a `Machine` from `discovered_machines` for this pod."""
+        # Create the machine.
+        machine = Machine(
+            architecture=discovered_machine.architecture,
+            status=NODE_STATUS.READY,
+            cpu_count=discovered_machine.cores,
+            cpu_speed=discovered_machine.cpu_speed,
+            memory=discovered_machine.memory,
+            power_state=discovered_machine.power_state)
+        machine.bmc = self
+        machine.instance_power_parameters = discovered_machine.power_parameters
+        machine.set_random_hostname()
+        machine.save()
+
+        # Assign the discovered tags.
+        for discovered_tag in discovered_machine.tags:
+            tag, _ = Tag.objects.get_or_create(name=discovered_tag)
+            machine.tags.add(tag)
+
+        # Create the discovered block devices and set the initial storage
+        # layout for the machine.
+        for idx, discovered_bd in enumerate(discovered_machine.block_devices):
+            self._create_block_device(
+                discovered_bd, machine,
+                name=BlockDevice._get_block_name_from_idx(idx))
+        machine.set_default_storage_layout()
+
+        # Create the discovered interface and set the default networking
+        # configuration.
+        for idx, discovered_nic in enumerate(discovered_machine.interfaces):
+            self._create_interface(
+                discovered_nic, machine, name='eth%d' % idx)
+        machine.set_initial_networking_configuration()
+
+        return machine
+
+    def _sync_machine(self, discovered_machine, existing_machine):
+        """Sync's the information from `discovered_machine` to update
+        `existing_machine`."""
+        # Log if the machine is moving under a pod or being moved from
+        # a different pod.
+        if existing_machine.bmc_id != self.id:
+            if (existing_machine.bmc_id is None or
+                    existing_machine.bmc.bmc_type == BMC_TYPE.BMC):
+                podlog.warning(
+                    "%s: %s has been moved under the pod, previously "
+                    "it was not part of any pod." % (
+                        self.name, existing_machine.hostname))
+            else:
+                podlog.warning(
+                    "%s: %s has been moved under the pod, previously "
+                    "it was part of pod %s." % (
+                        self.name, existing_machine.hostname,
+                        existing_machine.bmc.name))
+            existing_machine.bmc = self
+
+        # Sync machine instance values.
+        existing_machine.architecture = discovered_machine.architecture
+        existing_machine.cpu_count = discovered_machine.cores
+        existing_machine.cpu_speed = discovered_machine.cpu_speed
+        existing_machine.memory = discovered_machine.memory
+        existing_machine.power_state = discovered_machine.power_state
+        existing_machine.instance_power_parameters = (
+            discovered_machine.power_parameters)
+        existing_machine.save()
+
+        # Sync the tags to make sure they match the discovered machine.
+        add_tags = set(discovered_machine.tags)
+        for existing_tag_inst in existing_machine.tags.all():
+            if existing_tag_inst.name in add_tags:
+                add_tags.remove(existing_tag_inst.name)
+            else:
+                existing_machine.tags.remove(existing_tag_inst)
+        for tag in add_tags:
+            tag, _ = Tag.objects.get_or_create(name=tag)
+            existing_machine.tags.add(tag)
+
+        # Sync the block devices and interfaces on the machine.
+        self._sync_block_devices(
+            discovered_machine.block_devices, existing_machine)
+        self._sync_interfaces(discovered_machine.interfaces, existing_machine)
+
+    def _sync_block_devices(self, block_devices, existing_machine):
+        """Sync the `block_devices` to the `existing_machine`."""
+        model_mapping = {
+            '%s/%s' % (block_device.model, block_device.serial): block_device
+            for block_device in block_devices
+            if block_device.model and block_device.serial
+        }
+        path_mapping = {
+            block_device.id_path: block_device
+            for block_device in block_devices
+            if not block_device.model or not block_device.serial
+        }
+        existing_block_devices = map(
+            lambda bd: bd.actual_instance,
+            existing_machine.blockdevice_set.all())
+        existing_block_devices = [
+            block_device
+            for block_device in existing_block_devices
+            if isinstance(block_device, PhysicalBlockDevice)
+        ]
+        for block_device in existing_block_devices:
+            if block_device.model and block_device.serial:
+                key = '%s/%s' % (block_device.model, block_device.serial)
+                if key in model_mapping:
+                    self._sync_block_device(
+                        model_mapping.pop(key), block_device)
+                else:
+                    block_device.delete()
+            else:
+                if block_device.id_path in path_mapping:
+                    self._sync_block_device(
+                        path_mapping.pop(block_device.id_path), block_device)
+                else:
+                    block_device.delete()
+        for _, discovered_block_device in model_mapping.items():
+            self._create_block_device(
+                discovered_block_device, existing_machine)
+        for _, discovered_block_device in path_mapping.items():
+            self._create_block_device(
+                discovered_block_device, existing_machine)
+
+    def _sync_block_device(self, discovered_bd, existing_bd):
+        """Sync the `discovered_bd` with the `existing_bd`.
+
+        The model, serial, and id_path is not handled here because if either
+        changed then no way of matching between an existing block device is
+        possible.
+        """
+        existing_bd.size = discovered_bd.size
+        existing_bd.block_size = discovered_bd.block_size
+        existing_bd.tags = discovered_bd.tags
+        existing_bd.save()
+
+    def _sync_interfaces(self, interfaces, existing_machine):
+        """Sync the `interfaces` to the `existing_machine`."""
+        mac_mapping = {
+            nic.mac_address: nic
+            for nic in interfaces
+        }
+        # interface_set has been preloaded so filtering is done locally.
+        physical_interfaces = [
+            nic
+            for nic in existing_machine.interface_set.all()
+            if nic.type == INTERFACE_TYPE.PHYSICAL
+        ]
+        for existing_nic in physical_interfaces:
+            if existing_nic.mac_address in mac_mapping:
+                self._sync_interface(
+                    mac_mapping.pop(existing_nic.mac_address), existing_nic)
+            else:
+                existing_nic.delete()
+        for _, discovered_nic in mac_mapping.items():
+            self._create_interface(discovered_nic, existing_machine)
+
+    def _sync_interface(self, discovered_nic, existing_interface):
+        """Sync the `discovered_nic` with the `existing_interface`.
+
+        The MAC address is not handled here because if the MAC address has
+        changed then no way of matching between an existing interface is
+        possible.
+        """
+        # XXX blake_r 2016-12-20: At the moment only update the tags on the
+        # interface. This needs to be improved to sync the connected VLAN. At
+        # the moment we do not override what is set, allowing users to adjust
+        # the VLAN if discovery is not identifying it correctly.
+        existing_interface.tags = discovered_nic.tags
+        existing_interface.save()
+
+    def sync_machines(self, discovered_machines):
+        """Sync the machines on this pod from `discovered_machines`."""
+        all_macs = [
+            interface.mac_address
+            for machine in discovered_machines
+            for interface in machine.interfaces
+        ]
+        existing_machines = list(
+            Machine.objects.filter(
+                interface__mac_address__in=all_macs)
+            .prefetch_related("interface_set")
+            .prefetch_related('blockdevice_set__physicalblockdevice')
+            .prefetch_related('blockdevice_set__virtualblockdevice')
+            .distinct())
+        machines = {
+            machine.id: machine
+            for machine in Machine.objects.filter(bmc__id=self.id)
+        }
+        mac_machine_map = {
+            interface.mac_address: machine
+            for machine in existing_machines
+            for interface in machine.interface_set.all()
+        }
+        for discovered_machine in discovered_machines:
+            existing_machine = self._find_existing_machine(
+                discovered_machine, mac_machine_map)
+            if existing_machine is None:
+                new_machine = self._create_machine(discovered_machine)
+                podlog.info(
+                    "%s: discovered new machine: %s" % (
+                        self.name, new_machine.hostname))
+            else:
+                self._sync_machine(discovered_machine, existing_machine)
+                existing_machines.remove(existing_machine)
+                machines.pop(existing_machine.id, None)
+        for _, remove_machine in machines.items():
+            remove_machine.delete()
+            podlog.warning(
+                "%s: machine %s no longer exists and was deleted." % (
+                    self.name, remove_machine.hostname))
+
+    def sync(self, discovered_pod):
+        """Sync the pod and machines from the `discovered_pod`.
+
+        This method ensures consistency with what is discovered by a pod
+        driver and what is known to MAAS in the data model. Any machines,
+        interfaces, and/or block devices that do not match the
+        `discovered_pod` values will be removed.
+        """
+        self.architectures = discovered_pod.architectures
+        self.capabilities = discovered_pod.capabilities
+        self.cores = discovered_pod.cores
+        self.cpu_speed = discovered_pod.cpu_speed
+        self.memory = discovered_pod.memory
+        self.local_storage = discovered_pod.local_storage
+        self.local_disks = discovered_pod.local_disks
+        self.save()
+        self.sync_hints(discovered_pod.hints)
+        self.sync_machines(discovered_pod.machines)
+        podlog.info(
+            "%s: finished syncing discovered information" % self.name)
+
+    def get_used_cores(self, machines=None):
+        """Get the number of used cores in the pod.
+
+        :param machines: Deployed machines on this clusted. Only used when
+            the deployed machines have already been pulled from the database
+            and no extra query needs to be performed.
+        """
+        if machines is None:
+            machines = Machine.objects.filter(bmc__id=self.id)
+        return sum(
+            machine.cpu_count
+            for machine in machines
+        )
+
+    def get_used_memory(self, machines=None):
+        """Get the amount of used memory in the pod.
+
+        :param machines: Deployed machines on this clusted. Only used when
+            the deployed machines have already been pulled from the database
+            and no extra query needs to be performed.
+        """
+        if machines is None:
+            machines = Machine.objects.filter(bmc__id=self.id)
+        return sum(
+            machine.memory
+            for machine in machines
+        )
+
+    def get_used_local_storage(self, machines=None):
+        """Get the amount of used local storage in the pod.
+
+        :param machines: Deployed machines on this clusted. Only used when
+            the deployed machines have already been pulled from the database
+            and no extra query needs to be performed.
+        """
+        if machines is None:
+            machines = (
+                Machine.objects.filter(bmc__id=self.id)
+                .prefetch_related('blockdevice_set__virtualblockdevice')
+                .prefetch_related('blockdevice_set__physicalblockdevice'))
+        return sum(
+            blockdevice.size
+            for machine in machines
+            for blockdevice in machine.blockdevice_set.all()
+            if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
+        )
+
+    def get_used_local_disks(self, machines=None):
+        """Get the amount of used local disks in the pod.
+
+        :param machines: Deployed machines on this clusted. Only used when
+            the deployed machines have already been pulled from the database
+            and no extra query needs to be performed.
+        """
+        if machines is None:
+            machines = (
+                Machine.objects.filter(bmc__id=self.id)
+                .prefetch_related('blockdevice_set__virtualblockdevice')
+                .prefetch_related('blockdevice_set__physicalblockdevice'))
+        return len([
+            blockdevice
+            for machine in machines
+            for blockdevice in machine.blockdevice_set.all()
+            if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
+        ])
 
 
 class BMCRoutableRackControllerRelationship(CleanSave, TimestampedModel):

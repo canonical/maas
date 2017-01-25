@@ -207,18 +207,18 @@ class IPNetwork(amp.Argument):
         return network
 
 
-class AmpDiscoveredChassis(StructureAsJSON):
-    """Encode and decode `DiscoveredChassis` over the wire."""
+class AmpDiscoveredPod(StructureAsJSON):
+    """Encode and decode `DiscoveredPod` over the wire."""
 
     def toString(self, inObject):
         # Circular imports.
-        from provisioningserver.drivers.chassis import DiscoveredChassis
-        if not isinstance(inObject, DiscoveredChassis):
-            raise TypeError("%r is not of type DiscoveredChassis." % inObject)
-        return super(AmpDiscoveredChassis, self).toString(inObject.asdict())
+        from provisioningserver.drivers.pod import DiscoveredPod
+        if not isinstance(inObject, DiscoveredPod):
+            raise TypeError("%r is not of type DiscoveredPod." % inObject)
+        return super(AmpDiscoveredPod, self).toString(inObject.asdict())
 
     def fromString(self, inString):
         # Circular imports.
-        from provisioningserver.drivers.chassis import DiscoveredChassis
-        data = super(AmpDiscoveredChassis, self).fromString(inString)
-        return DiscoveredChassis.fromdict(data)
+        from provisioningserver.drivers.pod import DiscoveredPod
+        data = super(AmpDiscoveredPod, self).fromString(inString)
+        return DiscoveredPod.fromdict(data)

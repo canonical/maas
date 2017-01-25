@@ -201,10 +201,10 @@ class PowerProblem(MAASAPIException):
     api_error = int(http.client.SERVICE_UNAVAILABLE)
 
 
-class ChassisProblem(MAASAPIException):
-    """Raised when there's a problem with a chassis operation.
+class PodProblem(MAASAPIException):
+    """Raised when there's a problem with a pod operation.
 
-    This could be a problem with parameters, a problem with the chassis
+    This could be a problem with parameters, a problem with the pod's
     controller, or something else.  The exception text will contain more
     information.
     """

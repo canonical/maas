@@ -927,8 +927,6 @@ def node_type_change():
               WHEN {region_and_rack_controller} THEN
                 PERFORM pg_notify('controller_delete',CAST(
                   OLD.system_id AS TEXT));
-              WHEN {chassis} THEN
-                -- Do nothing.
             END CASE;
             CASE NEW.node_type
               WHEN {machine} THEN
@@ -946,8 +944,6 @@ def node_type_change():
               WHEN {region_and_rack_controller} THEN
                 PERFORM pg_notify('controller_create',CAST(
                   NEW.system_id AS TEXT));
-              WHEN {chassis} THEN
-                -- Do nothing.
             END CASE;
           END IF;
           RETURN NEW;
@@ -955,7 +951,7 @@ def node_type_change():
         $$ LANGUAGE plpgsql;
     """.format(
         machine=NODE_TYPE.MACHINE, device=NODE_TYPE.DEVICE,
-        chassis=NODE_TYPE.CHASSIS, rack_controller=NODE_TYPE.RACK_CONTROLLER,
+        rack_controller=NODE_TYPE.RACK_CONTROLLER,
         region_controller=NODE_TYPE.REGION_CONTROLLER,
         region_and_rack_controller=NODE_TYPE.REGION_AND_RACK_CONTROLLER))
 

@@ -56,21 +56,20 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network,
     make_shared_network_v1,
 )
-from provisioningserver.drivers.chassis import (
-    DiscoveredChassis,
-    DiscoveredChassisHints,
-)
-from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
 )
+from provisioningserver.drivers.pod import (
+    DiscoveredPod,
+    DiscoveredPodHints,
+)
+from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     boot_images,
-    chassis,
     cluster,
     clusterservice,
     common,
@@ -78,6 +77,7 @@ from provisioningserver.rpc import (
     exceptions,
     getRegionClient,
     osystems as osystems_rpc_module,
+    pods,
     power as power_module,
     region,
     tags,
@@ -411,25 +411,25 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
             PowerDriverRegistry.get_schema(), response["power_types"])
 
 
-class TestClusterProtocol_DescribeChassisTypes(MAASTestCase):
+class TestClusterProtocol_DescribePodTypes(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test_describe_chassis_types_is_registered(self):
+    def test_describe_pod_types_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DescribeChassisTypes.commandName)
+            cluster.DescribePodTypes.commandName)
         self.assertIsNotNone(responder)
 
     @inlineCallbacks
-    def test_describe_chassis_types_returns_jsonized_schema(self):
+    def test_describe_pod_types_returns_jsonized_schema(self):
 
         response = yield call_responder(
-            Cluster(), cluster.DescribeChassisTypes, {})
+            Cluster(), cluster.DescribePodTypes, {})
 
-        self.assertThat(response, KeysEqual("chassis_types"))
+        self.assertThat(response, KeysEqual("types"))
         self.assertItemsEqual(
-            ChassisDriverRegistry.get_schema(), response["chassis_types"])
+            PodDriverRegistry.get_schema(), response["types"])
 
 
 class TestPatchedURI(MAASTestCase):
@@ -2776,45 +2776,45 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         self.assertEquals({}, response.result)
 
 
-class TestClusterProtocol_DiscoverChassis(MAASTestCase):
+class TestClusterProtocol_DiscoverPod(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.DiscoverChassis.commandName)
+            cluster.DiscoverPod.commandName)
         self.assertIsNotNone(responder)
 
-    def test_calls_discover_chassis(self):
-        mock_discover_chassis = self.patch_autospec(
-            chassis, 'discover_chassis')
-        mock_discover_chassis.return_value = succeed({
-            "chassis": DiscoveredChassis(
-                architecture='amd64/generic',
+    def test_calls_discover_pod(self):
+        mock_discover_pod = self.patch_autospec(
+            pods, 'discover_pod')
+        mock_discover_pod.return_value = succeed({
+            "pod": DiscoveredPod(
+                architectures=['amd64/generic'],
                 cores=random.randint(1, 8),
                 cpu_speed=random.randint(1000, 3000),
                 memory=random.randint(1024, 8192),
                 local_storage=0,
-                hints=DiscoveredChassisHints(
+                hints=DiscoveredPodHints(
                     cores=random.randint(1, 8),
                     cpu_speed=random.randint(1000, 2000),
                     memory=random.randint(1024, 8192), local_storage=0),
                 machines=[]),
             })
-        chassis_type = factory.make_name('chassis_type')
+        pod_type = factory.make_name('pod_type')
         context = {
             "data": factory.make_name("data"),
         }
-        system_id = factory.make_name("system_id")
-        hostname = factory.make_hostname()
-        call_responder(Cluster(), cluster.DiscoverChassis, {
-            'chassis_type': chassis_type,
+        pod_id = random.randint(1, 100)
+        name = factory.make_name('pod')
+        call_responder(Cluster(), cluster.DiscoverPod, {
+            'type': pod_type,
             'context': context,
-            'system_id': system_id,
-            'hostname': hostname,
+            'pod_id': pod_id,
+            'name': name,
             })
         self.assertThat(
-            mock_discover_chassis, MockCalledOnceWith(
-                chassis_type, context, system_id=system_id, hostname=hostname))
+            mock_discover_pod, MockCalledOnceWith(
+                pod_type, context, pod_id=id, name=name))
 
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):

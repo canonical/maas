@@ -1,16 +1,16 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Base chassis driver."""
+"""Base pod driver."""
 
 __all__ = [
-    "ChassisActionError",
-    "ChassisAuthError",
-    "ChassisConnError",
-    "ChassisDriver",
-    "ChassisDriverBase",
-    "ChassisError",
-    "ChassisFatalError",
+    "PodActionError",
+    "PodAuthError",
+    "PodConnError",
+    "PodDriver",
+    "PodDriverBase",
+    "PodError",
+    "PodFatalError",
     ]
 
 from abc import (
@@ -29,9 +29,9 @@ from provisioningserver.drivers.power import (
     PowerDriverBase,
 )
 
-# JSON schema for what a chassis driver definition should look like.
-JSON_CHASSIS_DRIVER_SCHEMA = {
-    'title': "Chassis driver setting set",
+# JSON schema for what a pod driver definition should look like.
+JSON_POD_DRIVER_SCHEMA = {
+    'title': "Pod driver setting set",
     'type': 'object',
     'properties': {
         'name': {
@@ -61,41 +61,41 @@ JSON_CHASSIS_DRIVER_SCHEMA = {
     'required': ['name', 'description', 'fields', 'composable'],
 }
 
-# JSON schema for multple chassis drivers.
-JSON_CHASSIS_DRIVERS_SCHEMA = {
-    'title': "Chassis drivers parameters set",
+# JSON schema for multple pod drivers.
+JSON_POD_DRIVERS_SCHEMA = {
+    'title': "Pod drivers parameters set",
     'type': 'array',
-    'items': JSON_CHASSIS_DRIVER_SCHEMA,
+    'items': JSON_POD_DRIVER_SCHEMA,
 }
 
 
-class ChassisError(Exception):
-    """Base error for all chassis driver failure commands."""
+class PodError(Exception):
+    """Base error for all pod driver failure commands."""
 
 
-class ChassisFatalError(ChassisError):
-    """Error that is raised when the chassis action should not continue to
+class PodFatalError(PodError):
+    """Error that is raised when the pod action should not continue to
     retry at all.
 
-    This exception will cause the chassis action to fail instantly,
+    This exception will cause the pod action to fail instantly,
     without retrying.
     """
 
 
-class ChassisAuthError(ChassisFatalError):
-    """Error raised when chassis driver fails to authenticate to the chassis.
+class PodAuthError(PodFatalError):
+    """Error raised when pod driver fails to authenticate to the pod.
 
-    This exception will cause the chassis action to fail instantly,
+    This exception will cause the pod action to fail instantly,
     without retrying.
     """
 
 
-class ChassisConnError(ChassisError):
-    """Error raised when chassis driver fails to communicate to the chassis."""
+class PodConnError(PodError):
+    """Error raised when pod driver fails to communicate to the pod."""
 
 
-class ChassisActionError(ChassisError):
-    """Error when actually performing an action on the chassis, like `compose`
+class PodActionError(PodError):
+    """Error when actually performing an action on the pod, like `compose`
     or `discover`."""
 
 
@@ -137,6 +137,26 @@ def convert_list(expected):
     return convert
 
 
+class Capabilities:
+    """Capabilities that a pod supports."""
+
+    # Supports fixed local storage. Block devices are fixed in size locally
+    # and its possible to get a disk larger than requested.
+    FIXED_LOCAL_STORAGE = 'fixed_local_storage'
+
+    # Supports dynamic local storage. Block devices are dynamically created,
+    # attached locally and will always be the exact requested size.
+    DYNAMIC_LOCAL_STORAGE = 'dynamic_local_storage'
+
+    # Supports built-in iscsi storage. Remote block devices can be created of
+    # exact size with this pod connected storage systems.
+    ISCSI_STORAGE = 'iscsi_storage'
+
+    # Ability to over commit the cores and memory of the pod. Mainly used
+    # for virtual pod.
+    OVER_COMMIT = 'over_commit'
+
+
 @attr.s
 class DiscoveredMachineInterface:
     """Discovered machine interface."""
@@ -172,8 +192,8 @@ class DiscoveredMachine:
 
 
 @attr.s
-class DiscoveredChassisHints:
-    """Discovered chassis hints.
+class DiscoveredPodHints:
+    """Discovered pod hints.
 
     Hints provide helpful information to a user trying to compose a machine.
     Limiting the maximum cores allow request on a per machine basis.
@@ -182,17 +202,21 @@ class DiscoveredChassisHints:
     cpu_speed = attr.ib(convert=int)
     memory = attr.ib(convert=int)
     local_storage = attr.ib(convert=int)
+    local_disks = attr.ib(convert=int, default=-1)
 
 
 @attr.s
-class DiscoveredChassis:
-    """Discovered chassis information."""
-    architecture = attr.ib(convert=str)
+class DiscoveredPod:
+    """Discovered pod information."""
+    architectures = attr.ib(convert=convert_list(str))
     cores = attr.ib(convert=int)
     cpu_speed = attr.ib(convert=int)
     memory = attr.ib(convert=int)
     local_storage = attr.ib(convert=int)
-    hints = attr.ib(convert=convert_obj(DiscoveredChassisHints))
+    hints = attr.ib(convert=convert_obj(DiscoveredPodHints))
+    local_disks = attr.ib(convert=int, default=-1)
+    capabilities = attr.ib(
+        convert=convert_list(str), default=[Capabilities.FIXED_LOCAL_STORAGE])
     machines = attr.ib(
         convert=convert_list(DiscoveredMachine), default=[])
 
@@ -206,20 +230,20 @@ class DiscoveredChassis:
         return attr.asdict(self)
 
 
-class ChassisDriverBase(PowerDriverBase):
-    """Base driver for a chassis driver."""
+class PodDriverBase(PowerDriverBase):
+    """Base driver for a pod driver."""
 
     @abstractproperty
     def composable(self):
-        """Whether or not the chassis supports composition."""
+        """Whether or not the pod supports composition."""
 
     @abstractmethod
     def discover(self, context, system_id=None):
-        """Discover the chassis resources.
+        """Discover the pod resources.
 
-        :param context: Chassis settings.
-        :param system_id: Chassis system_id.
-        :returns: `Deferred` returning `DiscoveredChassis`.
+        :param context: Pod settings.
+        :param system_id: Pod system_id.
+        :returns: `Deferred` returning `DiscoveredPod`.
         :rtype: `twisted.internet.defer.Deferred`
         """
 
@@ -227,16 +251,16 @@ class ChassisDriverBase(PowerDriverBase):
     def compose(self, system_id, context):
         """Compose a node from parameters in context.
 
-        :param system_id: Chassis system_id.
-        :param context: Chassis settings.
+        :param system_id: Pod system_id.
+        :param context: Pod settings.
         """
 
     @abstractmethod
     def decompose(self, system_id, context):
         """Decompose a node.
 
-        :param system_id: Chassis system_id.
-        :param context:  Chassis settings.
+        :param system_id: Pod system_id.
+        :param context:  Pod settings.
         """
 
     def get_schema(self, detect_missing_packages=True):
@@ -244,12 +268,12 @@ class ChassisDriverBase(PowerDriverBase):
 
         Calculates the missing packages on each invoke.
         """
-        schema = super(ChassisDriverBase, self).get_schema(
+        schema = super(PodDriverBase, self).get_schema(
             detect_missing_packages=detect_missing_packages)
         schema['composable'] = self.composable
         # Exclude all fields scoped to the NODE as they are not required for
-        # a chassis, they are only required for a machine that belongs to the
-        # chassis.
+        # a pod, they are only required for a machine that belongs to the
+        # pod.
         schema['fields'] = [
             field
             for field in schema['fields']
@@ -260,17 +284,17 @@ class ChassisDriverBase(PowerDriverBase):
 
 def get_error_message(err):
     """Returns the proper error message based on error."""
-    if isinstance(err, ChassisAuthError):
-        return "Could not authenticate to chassis: %s" % err
-    elif isinstance(err, ChassisConnError):
-        return "Could not contact chassis: %s" % err
-    elif isinstance(err, ChassisActionError):
-        return "Failed to complete chassis action: %s" % err
+    if isinstance(err, PodAuthError):
+        return "Could not authenticate to pod: %s" % err
+    elif isinstance(err, PodConnError):
+        return "Could not contact pod: %s" % err
+    elif isinstance(err, PodActionError):
+        return "Failed to complete pod action: %s" % err
     else:
-        return "Failed talking to chassis: %s" % err
+        return "Failed talking to pod: %s" % err
 
 
-class ChassisDriver(PowerDriver, ChassisDriverBase):
-    """Default chassis driver."""
+class PodDriver(PowerDriver, PodDriverBase):
+    """Default pod driver."""
 
     composable = False

@@ -123,12 +123,12 @@ class UnknownPowerType(Exception):
     """Raised when trying to process an unknown power type."""
 
 
-class UnknownChassisType(Exception):
-    """Raised when trying to process an unknown chassis type."""
+class UnknownPodType(Exception):
+    """Raised when trying to process an unknown pod type."""
 
 
-class ChassisActionFail(Exception):
-    """Raised when performing a chassis action."""
+class PodActionFail(Exception):
+    """Raised when performing a pod action."""
 
 
 class CannotRegisterCluster(Exception):

@@ -31,6 +31,7 @@ from django.utils import timezone
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
+    BMC_TYPE,
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE,
@@ -60,7 +61,6 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     CacheSet,
-    Chassis,
     Config,
     Device,
     DHCPSnippet,
@@ -98,7 +98,6 @@ from maasserver.models import (
     SSLKey,
     StaticIPAddress,
     StaticRoute,
-    Storage,
     Subnet,
     Tag,
     VersionedTextFile,
@@ -308,20 +307,6 @@ class Factory(maastesting.factory.Factory):
             self.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
         return reload_object(device)
-
-    def make_Chassis(self, hostname=None, **kwargs):
-        if hostname is None:
-            hostname = self.make_string(20)
-        chassis = Chassis(hostname=hostname, **kwargs)
-        chassis.save()
-        return chassis
-
-    def make_Storage(self, hostname=None, **kwargs):
-        if hostname is None:
-            hostname = self.make_string(20)
-        storage = Storage(hostname=hostname, **kwargs)
-        storage.save()
-        return storage
 
     def make_RegionController(self, hostname=None, status=None, owner=None):
         if hostname is None:
@@ -542,6 +527,11 @@ class Factory(maastesting.factory.Factory):
             ip_address=ip_address, **kwargs)
         bmc.save()
         return bmc
+
+    def make_Pod(self, **kwargs):
+        kwargs['bmc_type'] = BMC_TYPE.POD
+        bmc = self.make_BMC(**kwargs)
+        return bmc.as_pod()
 
     def make_Domain(self, name=None, ttl=None, authoritative=True):
         if name is None:

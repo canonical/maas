@@ -9,16 +9,16 @@ specific 'parameters' which will be used when controlling the node in
 question.  These 'parameters' will be stored as a JSON object in the
 Node's power parameter field and its related BMC.  Even if we want
 to allow arbitrary parameters to be set using the API for maximum
-flexibility, each value of power or chassis type is associated with a set of
+flexibility, each value of power or pod type is associated with a set of
 'sensible' parameters.  That is used to validate data (but again, it is
 possible to bypass that validation step and store arbitrary parameters) and by
 the UI to display the right parameter fields that correspond to the
-selected power or chassis type.  The classes in this module are used to
-associate each power or chassis type with a set of parameters.
+selected power or pod type.  The classes in this module are used to
+associate each power or pod type with a set of parameters.
 
-The power and chassis types are retrieved from the rack controllers using
+The power and pod types are retrieved from the rack controllers using
 the json schema provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA and
-provisioningserver.drivers.chassis.JSON_CHASSIS_DRIVERS_SCHEMA respectively.
+provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA respectively.
 To add new parameters requires changes to drivers that run in the rack
 controllers.
 """
@@ -55,7 +55,7 @@ FIELD_TYPE_MAPPINGS = {
 class DriverType(enum.Enum):
     """Type's of different drivers."""
 
-    chassis = 'chassis'
+    pod = 'pod'
     power = 'power'
 
 
@@ -180,8 +180,8 @@ def get_driver_parameters(
         driver_type=DriverType.power):
     if driver_type is DriverType.power:
         params = get_all_power_types_from_racks()
-    elif driver_type is DriverType.chassis:
-        params = get_all_chassis_types_from_racks()
+    elif driver_type is DriverType.pod:
+        params = get_all_pod_types_from_racks()
     else:
         raise ValueError("Unknown driver_type.")
     return get_driver_parameters_from_json(
@@ -220,8 +220,8 @@ def get_driver_types(
     if driver_type is DriverType.power:
         power_types = get_all_power_types_from_racks(
             controllers, ignore_errors)
-    elif driver_type is DriverType.chassis:
-        power_types = get_all_chassis_types_from_racks(
+    elif driver_type is DriverType.pod:
+        power_types = get_all_pod_types_from_racks(
             controllers, ignore_errors)
     else:
         raise ValueError("Unknown driver_type.")
@@ -254,25 +254,25 @@ def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
     return sorted(merged_types, key=itemgetter("description"))
 
 
-def get_all_chassis_types_from_racks(controllers=None, ignore_errors=True):
-    """Query every rack controller and obtain all known chassis driver types.
+def get_all_pod_types_from_racks(controllers=None, ignore_errors=True):
+    """Query every rack controller and obtain all known pod driver types.
 
     :return: a list of power types matching the schema
-        provisioningserver.drivers.power.JSON_CHASSIS_DRIVERS_SCHEMA
+        provisioningserver.drivers.power.JSON_POD_DRIVERS_SCHEMA
     """
     merged_types = []
     responses = call_clusters(
         cluster.DescribeChassisTypes, controllers=controllers,
         ignore_errors=ignore_errors)
     for response in responses:
-        chassis_types = response['chassis_types']
-        for chassis_type in chassis_types:
-            name = chassis_type['name']
-            fields = chassis_type.get('fields', [])
-            description = chassis_type['description']
-            missing_packages = chassis_type['missing_packages']
+        types = response['types']
+        for pod_type in types:
+            name = pod_type['name']
+            fields = pod_type.get('fields', [])
+            description = pod_type['description']
+            missing_packages = pod_type['missing_packages']
             add_driver_parameters(
                 name, description, fields, missing_packages, merged_types,
-                queryable=chassis_type.get('queryable'),
-                composable=chassis_type.get('composable'))
+                queryable=pod_type.get('queryable'),
+                composable=pod_type.get('composable'))
     return sorted(merged_types, key=itemgetter("description"))

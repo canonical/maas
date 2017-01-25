@@ -296,7 +296,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
 class TestPowerTypes(MAASTestCase):
     # This is deliberately not using a MAASServerTestCase as that
     # patches the get_all_power_types_from_racks() and
-    # get_all_chassis_types_from_racks() function with data
+    # get_all_pod_types_from_racks() function with data
     # that's hidden from tests in here.  Instead the tests patch
     # explicitly here.
 
@@ -328,9 +328,9 @@ class TestPowerTypes(MAASTestCase):
             mocked, MockCalledOnceWith(
                 sentinel.nodegroup, sentinel.ignore_errors))
 
-    def test_get_chassis_driver_types_transforms_data_to_dict(self):
+    def test_get_pod_driver_types_transforms_data_to_dict(self):
         mocked = self.patch(
-            driver_parameters, "get_all_chassis_types_from_racks")
+            driver_parameters, "get_all_pod_types_from_racks")
         mocked.return_value = [
             {
                 "name": "namevalue",
@@ -346,15 +346,15 @@ class TestPowerTypes(MAASTestCase):
             "namevalue2": "descvalue2",
             }
         self.assertEqual(
-            expected, get_driver_types(driver_type=DriverType.chassis))
+            expected, get_driver_types(driver_type=DriverType.pod))
 
-    def test_get_chassis_driver_types_passes_args_through(self):
+    def test_get_pod_driver_types_passes_args_through(self):
         mocked = self.patch(
-            driver_parameters, "get_all_chassis_types_from_racks")
+            driver_parameters, "get_all_pod_types_from_racks")
         mocked.return_value = []
         get_driver_types(
             sentinel.nodegroup, sentinel.ignore_errors,
-            driver_type=DriverType.chassis)
+            driver_type=DriverType.pod)
         self.assertThat(
             mocked, MockCalledOnceWith(
                 sentinel.nodegroup, sentinel.ignore_errors))

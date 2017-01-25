@@ -60,10 +60,6 @@ from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
-from maasserver.clusterrpc.chassis import (
-    discover_chassis,
-    get_best_discovered_result,
-)
 from maasserver.clusterrpc.driver_parameters import (
     DriverType,
     get_driver_choices,
@@ -71,6 +67,10 @@ from maasserver.clusterrpc.driver_parameters import (
     get_driver_types,
 )
 from maasserver.clusterrpc.osystems import validate_license_key
+from maasserver.clusterrpc.pods import (
+    discover_pod,
+    get_best_discovered_result,
+)
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -83,8 +83,8 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.exceptions import (
-    ChassisProblem,
     NodeActionError,
+    PodProblem,
 )
 from maasserver.fields import (
     LargeObjectFile,
@@ -107,7 +107,6 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     CacheSet,
-    Chassis,
     Config,
     Controller,
     Device,
@@ -122,6 +121,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    Pod,
     RackController,
     RAID,
     SSHKey,
@@ -896,69 +896,100 @@ class ControllerForm(MAASModelForm, WithDriverMixin):
         return controller
 
 
-class ChassisForm(MAASModelForm, WithDriverMixin):
+class PodForm(MAASModelForm):
 
     class Meta:
-        model = Chassis
-        fields = ['hostname']
+        model = Pod
+        fields = ['name']
 
-    driver_type = DriverType.chassis
-
-    hostname = forms.CharField(
-        label="Host name", required=False, help_text=(
-            "The hostname of the chassis"))
+    name = forms.CharField(
+        label="Name", required=False, help_text=(
+            "The name of the pod"))
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
-        is_new = instance is None
-        super(ChassisForm, self).__init__(
+        self.is_new = instance is None
+        super(PodForm, self).__init__(
             data=data, instance=instance, **kwargs)
-        WithDriverMixin.set_up_driver_fields(
-            self, data, instance, type_required=is_new)
+        if data is None:
+            data = {}
+        type_value = data.get('type', self.initial.get('type'))
+        self.driver_types = get_driver_types(
+            ignore_errors=True, driver_type=DriverType.pod)
+        if len(self.driver_types) == 0:
+            type_value = ''
+        elif type_value not in self.driver_types:
+            type_value = (
+                '' if self.instance is None else self.instance.power_type)
+        choices = [
+            (name, description)
+            for name, description in self.driver_types.items()
+        ]
+        self.fields['type'] = forms.ChoiceField(
+            required=True, choices=choices, initial=type_value)
+        if not self.is_new:
+            if self.instance.power_type != '':
+                self.initial['type'] = self.instance.power_type
 
     def clean(self):
-        cleaned_data = super(ChassisForm, self).clean()
-        return WithDriverMixin.check_driver(self, cleaned_data)
+        cleaned_data = super(PodForm, self).clean()
+        if len(self.driver_types) == 0:
+            set_form_error(
+                self, 'type',
+                "No rack controllers are connected, unable to validate.")
+        elif (not self.is_new and
+                self.instance.power_type != self.cleaned_data.get('type')):
+            set_form_error(
+                self, 'type',
+                "Cannot change the type of a pod. Delete and re-create the "
+                "pod with a different type.")
+        return cleaned_data
 
     def save(self, *args, **kwargs):
-        """Persist the chassis into the database."""
-        chassis = super(ChassisForm, self).save(commit=False)
-        if not chassis.hostname:
-            chassis.set_random_hostname()
+        """Persist the pod into the database."""
+        pod = super(PodForm, self).save(commit=False)
+        if not pod.name:
+            pod.set_random_name()
 
-        WithDriverMixin.set_driver(self, chassis)
+        pod.power_type = self.cleaned_data.get('type')
+        pod.power_parameters = {
+            param: value
+            for param, value in self.data.items()
+            if param not in self.fields
+        }
+        pod.save()
+
         try:
-            discovered = discover_chassis(
-                chassis.power_type, chassis.power_parameters,
-                system_id=chassis.system_id, hostname=chassis.hostname)
+            discovered = discover_pod(
+                pod.power_type, pod.power_parameters,
+                id=pod.id, name=pod.name)
         except Exception as exc:
-            raise ChassisProblem(str(exc)) from exc
+            raise PodProblem(str(exc)) from exc
 
-        # Use the first discovered chassis object. All other objects are
+        # Use the first discovered pod object. All other objects are
         # ignored. The other rack controllers that also provided a result
-        # can route to the chassis.
+        # can route to the pod.
         try:
-            discovered_chassis = get_best_discovered_result(discovered)
+            discovered_pod = get_best_discovered_result(discovered)
         except Exception as error:
-            raise ChassisProblem(str(error))
-        if discovered_chassis is None:
-            raise ChassisProblem(
-                "No rack controllers connected to discover a chassis.")
-        chassis.sync(discovered_chassis)
+            raise PodProblem(str(error))
+        if discovered_pod is None:
+            raise PodProblem(
+                "No rack controllers connected to discover a pod.")
+        pod.sync(discovered_pod)
 
         # Save which rack controllers can route and which cannot.
-        bmc = chassis.bmc
         discovered_rack_ids = [rack_id for rack_id, _ in discovered[0].items()]
         for rack_controller in RackController.objects.all():
             routable = rack_controller.system_id in discovered_rack_ids
             relation, created = (
                 BMCRoutableRackControllerRelationship.objects.get_or_create(
-                    bmc=bmc,
+                    bmc=pod.as_bmc(),
                     rack_controller=rack_controller,
                     defaults={'routable': routable}))
             if not created and relation.routable != routable:
                 relation.routable = routable
                 relation.save()
-        return chassis
+        return pod
 
 
 NO_ARCHITECTURES_AVAILABLE = mark_safe(

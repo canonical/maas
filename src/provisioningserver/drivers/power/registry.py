@@ -8,8 +8,8 @@ __all__ = [
     ]
 
 from jsonschema import validate
-from provisioningserver.drivers.chassis import ChassisDriverBase
-from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
+from provisioningserver.drivers.pod import PodDriverBase
+from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
@@ -36,8 +36,8 @@ class PowerDriverRegistry(Registry):
     @classmethod
     def get_schema(cls, detect_missing_packages=True):
         """Returns the full schema for the registry."""
-        # Chassis drivers are not included in the schema because they should
-        # be used through `ChassisDriverRegistry`, except when a power action
+        # Pod drivers are not included in the schema because they should
+        # be used through `PodDriverRegistry`, except when a power action
         # is to be performed.
         schemas = [
             driver.get_schema(detect_missing_packages=detect_missing_packages)
@@ -48,9 +48,9 @@ class PowerDriverRegistry(Registry):
 
     @classmethod
     def only_power(cls):
-        """Return only drivers that are not also chassis drivers."""
+        """Return only drivers that are not also pod drivers."""
         for driver_name, driver in cls:
-            if not isinstance(driver, ChassisDriverBase):
+            if not isinstance(driver, PodDriverBase):
                 yield (driver_name, driver)
 
 
@@ -77,6 +77,6 @@ for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
 
 
-# Chassis drivers are also power drivers.
-for driver_name, driver in ChassisDriverRegistry:
+# Pod drivers are also power drivers.
+for driver_name, driver in PodDriverRegistry:
     PowerDriverRegistry.register_item(driver_name, driver)

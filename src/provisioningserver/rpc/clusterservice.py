@@ -28,13 +28,13 @@ from netaddr import IPAddress
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.drivers.chassis.registry import ChassisDriverRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
+from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -47,11 +47,11 @@ from provisioningserver.refresh import (
     refresh,
 )
 from provisioningserver.rpc import (
-    chassis,
     cluster,
     common,
     dhcp,
     exceptions,
+    pods,
     region,
 )
 from provisioningserver.rpc.boot_images import (
@@ -303,15 +303,15 @@ class Cluster(RPCProtocol):
             'power_types': list(PowerDriverRegistry.get_schema()),
         }
 
-    @cluster.DescribeChassisTypes.responder
-    def describe_chassis_types(self):
-        """describe_chassis_types()
+    @cluster.DescribePodTypes.responder
+    def describe_pod_types(self):
+        """describe_pod_types()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribeChassisTypes`.
+        :py:class:`~provisioningserver.rpc.cluster.DescribePodTypes`.
         """
         return {
-            'chassis_types': list(ChassisDriverRegistry.get_schema()),
+            'types': list(PodDriverRegistry.get_schema()),
         }
 
     @cluster.ListSupportedArchitectures.responder
@@ -603,16 +603,16 @@ class Cluster(RPCProtocol):
             maaslog.error(message)
         return {}
 
-    @cluster.DiscoverChassis.responder
-    def discover_chassis(
-            self, chassis_type, context, system_id=None, hostname=None):
-        """DiscoverChassis()
+    @cluster.DiscoverPod.responder
+    def discover_pod(
+            self, type, context, pod_id=None, name=None):
+        """DiscoverPod()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DiscoverChassis`.
+        :py:class:`~provisioningserver.rpc.cluster.DiscoverPod`.
         """
-        return chassis.discover_chassis(
-            chassis_type, context, system_id=system_id, hostname=hostname)
+        return pods.discover_pod(
+            type, context, pod_id=id, name=name)
 
     @cluster.ScanNetworks.responder
     def scan_all_networks(

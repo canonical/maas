@@ -12,21 +12,21 @@ from unittest.mock import (
 )
 
 from crochet import wait_for
-from maasserver.clusterrpc import chassis as chassis_module
-from maasserver.clusterrpc.chassis import (
-    discover_chassis,
+from maasserver.clusterrpc import pods as pods_module
+from maasserver.clusterrpc.pods import (
+    discover_pod,
     get_best_discovered_result,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.chassis import (
-    DiscoveredChassis,
-    DiscoveredChassisHints,
+from provisioningserver.drivers.pod import (
+    DiscoveredPod,
+    DiscoveredPodHints,
 )
 from provisioningserver.rpc.exceptions import (
-    ChassisActionFail,
-    UnknownChassisType,
+    PodActionFail,
+    UnknownPodType,
 )
 from testtools.matchers import (
     Equals,
@@ -48,23 +48,23 @@ from twisted.internet.task import deferLater
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestDiscoverChassis(MAASTransactionServerTestCase):
-    """Tests for `discover_chassis`."""
+class TestDiscoverPod(MAASTransactionServerTestCase):
+    """Tests for `discover_pod`."""
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_DiscoverChassis_on_all_clients(self):
+    def test__calls_DiscoverPod_on_all_clients(self):
         rack_ids = [
             factory.make_name("system_id")
             for _ in range(3)
         ]
-        chassis = DiscoveredChassis(
-            architecture='amd64/generic',
+        pod = DiscoveredPod(
+            architectures=['amd64/generic'],
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
             memory=random.randint(1024, 4096),
             local_storage=random.randint(500, 1000),
-            hints=DiscoveredChassisHints(
+            hints=DiscoveredPodHints(
                 cores=random.randint(1, 8),
                 cpu_speed=random.randint(1000, 3000),
                 memory=random.randint(1024, 4096),
@@ -74,28 +74,28 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
             client = Mock()
             client.ident = rack_id
             client.return_value = succeed({
-                "chassis": chassis,
+                "pod": pod,
             })
             clients.append(client)
 
-        self.patch(chassis_module, "getAllClients").return_value = clients
-        discovered = yield discover_chassis(factory.make_name("chassis"), {})
+        self.patch(pods_module, "getAllClients").return_value = clients
+        discovered = yield discover_pod(factory.make_name("pod"), {})
         self.assertEquals(({
-            rack_id: chassis
+            rack_id: pod
             for rack_id in rack_ids
         }, {}), discovered)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__returns_discovered_chassis_and_errors(self):
-        chassis_type = factory.make_name("chassis")
-        chassis = DiscoveredChassis(
-            architecture='amd64/generic',
+    def test__returns_discovered_pod_and_errors(self):
+        pod_type = factory.make_name("pod")
+        pod = DiscoveredPod(
+            architectures=['amd64/generic'],
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
             memory=random.randint(1024, 4096),
             local_storage=random.randint(500, 1000),
-            hints=DiscoveredChassisHints(
+            hints=DiscoveredPodHints(
                 cores=random.randint(1, 8),
                 cpu_speed=random.randint(1000, 3000),
                 memory=random.randint(1024, 4096),
@@ -105,7 +105,7 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
         client = Mock()
         error_rack_id = factory.make_name("system_id")
         client.ident = error_rack_id
-        exception = UnknownChassisType(chassis_type)
+        exception = UnknownPodType(pod_type)
         client.return_value = fail(exception)
         clients.append(client)
 
@@ -113,14 +113,14 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
         client = Mock()
         client.ident = valid_rack_id
         client.return_value = succeed({
-            "chassis": chassis
+            "pod": pod
         })
         clients.append(client)
 
-        self.patch(chassis_module, "getAllClients").return_value = clients
-        discovered = yield discover_chassis(chassis_type, {})
+        self.patch(pods_module, "getAllClients").return_value = clients
+        discovered = yield discover_pod(pod_type, {})
         self.assertEquals(({
-            valid_rack_id: chassis,
+            valid_rack_id: pod,
         }, {
             error_rack_id: exception,
         }), discovered)
@@ -138,9 +138,9 @@ class TestDiscoverChassis(MAASTransactionServerTestCase):
         client.ident = rack_id
         client.side_effect = defer_way_later
 
-        self.patch(chassis_module, "getAllClients").return_value = [client]
-        discovered = yield discover_chassis(
-            factory.make_name("chassis"), {}, timeout=0.5)
+        self.patch(pods_module, "getAllClients").return_value = [client]
+        discovered = yield discover_pod(
+            factory.make_name("pod"), {}, timeout=0.5)
         self.assertThat(discovered[0], Equals({}))
         self.assertThat(discovered[1], MatchesDict({
             rack_id: IsInstance(CancelledError),
@@ -164,29 +164,29 @@ class TestGetBestDiscoveredResult(MAASTestCase):
             factory.make_name("system_id"): exc_type(),
         }))
 
-    def test_raises_UnknownChassisType_over_unknown(self):
+    def test_raises_UnknownPodType_over_unknown(self):
         exc_type = factory.make_exception_type()
         self.assertRaises(
-            UnknownChassisType, get_best_discovered_result, ({}, {
+            UnknownPodType, get_best_discovered_result, ({}, {
                 factory.make_name("system_id"): exc_type(),
-                factory.make_name("system_id"): UnknownChassisType("unknown"),
+                factory.make_name("system_id"): UnknownPodType("unknown"),
             }))
 
-    def test_raises_NotImplemended_over_UnknownChassisType(self):
+    def test_raises_NotImplemended_over_UnknownPodType(self):
         exc_type = factory.make_exception_type()
         self.assertRaises(
             NotImplementedError, get_best_discovered_result, ({}, {
                 factory.make_name("system_id"): exc_type(),
-                factory.make_name("system_id"): UnknownChassisType("unknown"),
+                factory.make_name("system_id"): UnknownPodType("unknown"),
                 factory.make_name("system_id"): NotImplementedError(),
             }))
 
-    def test_raises_ChassisActionFail_over_NotImplemended(self):
+    def test_raises_PodActionFail_over_NotImplemended(self):
         exc_type = factory.make_exception_type()
         self.assertRaises(
-            ChassisActionFail, get_best_discovered_result, ({}, {
+            PodActionFail, get_best_discovered_result, ({}, {
                 factory.make_name("system_id"): exc_type(),
-                factory.make_name("system_id"): UnknownChassisType("unknown"),
+                factory.make_name("system_id"): UnknownPodType("unknown"),
                 factory.make_name("system_id"): NotImplementedError(),
-                factory.make_name("system_id"): ChassisActionFail(),
+                factory.make_name("system_id"): PodActionFail(),
             }))
