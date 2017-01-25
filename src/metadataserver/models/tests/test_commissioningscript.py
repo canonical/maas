@@ -18,11 +18,6 @@ from random import randint
 import tarfile
 from textwrap import dedent
 import time
-from unittest.mock import (
-    create_autospec,
-    Mock,
-    sentinel,
-)
 
 from fixtures import FakeLogger
 from maasserver.enum import (
@@ -38,9 +33,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
-from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
@@ -49,9 +42,6 @@ from metadataserver.models import (
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
     extract_router_mac_addresses,
-    inject_lldp_result,
-    inject_lshw_result,
-    inject_result,
     parse_cpuinfo,
     set_virtual_tag,
     update_hardware_details,
@@ -59,12 +49,7 @@ from metadataserver.models.commissioningscript import (
     update_node_network_interface_tags,
     update_node_physical_block_devices,
 )
-from metadataserver.models.noderesult import NodeResult
 from netaddr import IPNetwork
-from provisioningserver.refresh.node_info_scripts import (
-    LLDP_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
-)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -200,57 +185,6 @@ class TestExtractRouters(MAASServerTestCase):
         lldp_output = make_lldp_output(macs)
         routers = extract_router_mac_addresses(lldp_output)
         self.assertItemsEqual(macs, routers)
-
-
-class TestInjectResult(MAASServerTestCase):
-
-    def test_inject_result_stores_data(self):
-        node = factory.make_Node()
-        name = factory.make_name("result")
-        output = factory.make_bytes()
-        exit_status = next(factory.random_octets)
-
-        inject_result(node, name, output, exit_status)
-
-        self.assertThat(
-            NodeResult.objects.get(node=node, name=name),
-            MatchesStructure.byEquality(
-                node=node, name=name, script_result=exit_status,
-                result_type=RESULT_TYPE.COMMISSIONING,
-                data=output))
-
-    def test_inject_result_calls_hook(self):
-        node = factory.make_Node()
-        name = factory.make_name("result")
-        output = factory.make_bytes()
-        exit_status = next(factory.random_octets)
-        hook = Mock()
-        self.patch(
-            cs_module, "NODE_INFO_SCRIPTS",
-            {name: {"hook": hook}})
-
-        inject_result(node, name, output, exit_status)
-
-        self.assertThat(hook, MockCalledOnceWith(
-            node=node, output=output, exit_status=exit_status))
-
-    def inject_lshw_result(self):
-        # inject_lshw_result() just calls through to inject_result().
-        inject_result = self.patch(
-            cs_module, "inject_result",
-            create_autospec(cs_module.inject_result))
-        inject_lshw_result(sentinel.node, sentinel.output, sentinel.status)
-        self.assertThat(inject_result, MockCalledOnceWith(
-            sentinel.node, LSHW_OUTPUT_NAME, sentinel.output, sentinel.status))
-
-    def inject_lldp_result(self):
-        # inject_lldp_result() just calls through to inject_result().
-        inject_result = self.patch(
-            cs_module, "inject_result",
-            create_autospec(cs_module.inject_result))
-        inject_lldp_result(sentinel.node, sentinel.output, sentinel.status)
-        self.assertThat(inject_result, MockCalledOnceWith(
-            sentinel.node, LLDP_OUTPUT_NAME, sentinel.output, sentinel.status))
 
 
 class TestSetVirtualTag(MAASServerTestCase):

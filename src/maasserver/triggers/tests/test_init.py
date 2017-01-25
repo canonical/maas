@@ -160,8 +160,6 @@ class TestTriggersUsed(MAASServerTestCase):
         "iprange_iprange_subnet_insert_notify",
         "iprange_iprange_subnet_update_notify",
         "iprange_iprange_update_notify",
-        "metadataserver_noderesult_nd_noderesult_link_notify",
-        "metadataserver_noderesult_nd_noderesult_unlink_notify",
         "metadataserver_scriptresult_nd_scriptresult_link_notify",
         "metadataserver_scriptresult_nd_scriptresult_unlink_notify",
         "metadataserver_scriptresult_nd_scriptresult_update_notify",

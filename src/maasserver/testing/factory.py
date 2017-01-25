@@ -129,7 +129,6 @@ import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
 from metadataserver.enum import (
-    RESULT_TYPE,
     RESULT_TYPE_CHOICES,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
@@ -138,7 +137,6 @@ from metadataserver.enum import (
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
-    NodeResult,
     Script,
     ScriptResult,
     ScriptSet,
@@ -709,40 +707,6 @@ class Factory(maastesting.factory.Factory):
             script_version=script_version, status=status,
             exit_status=exit_status, script_name=script_name,
             stdout=Bin(stdout), stderr=Bin(stderr), result=result)
-
-    def make_NodeResult_for_commissioning(
-            self, node=None, name=None, script_result=None, data=None):
-        """Create a `NodeResult` as one would see from commissioning a node."""
-        if node is None:
-            node = self.make_Node()
-        if name is None:
-            name = "ncrname-" + self.make_string(92)
-        if data is None:
-            data = b"ncrdata-" + self.make_bytes()
-        if script_result is None:
-            script_result = random.randint(0, 10)
-        ncr = NodeResult(
-            node=node, name=name, script_result=script_result,
-            result_type=RESULT_TYPE.COMMISSIONING, data=Bin(data))
-        ncr.save()
-        return ncr
-
-    def make_NodeResult_for_installation(
-            self, node=None, name=None, script_result=None, data=None):
-        """Create a `NodeResult` as one would see from installing a node."""
-        if node is None:
-            node = self.make_Node()
-        if name is None:
-            name = "ncrname-" + self.make_string(92)
-        if data is None:
-            data = b"ncrdata-" + self.make_bytes()
-        if script_result is None:
-            script_result = random.randint(0, 10)
-        ncr = NodeResult(
-            node=node, name=name, script_result=script_result,
-            result_type=RESULT_TYPE.INSTALLATION, data=Bin(data))
-        ncr.save()
-        return ncr
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

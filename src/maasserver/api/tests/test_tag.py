@@ -34,7 +34,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
 )
-from metadataserver.models.commissioningscript import inject_lshw_result
 from testtools.matchers import MatchesStructure
 
 
@@ -306,12 +305,15 @@ class TestTagAPI(APITestCase.ForUser):
     def test_PUT_invalid_definition(self):
         self.become_admin()
         node = factory.make_Node()
-        inject_lshw_result(node, b'<node ><child/></node>')
         tag = factory.make_Tag(definition='//child')
         node.tags.add(tag)
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client.put(
-            self.get_tag_uri(tag), {'definition': 'invalid::tag'})
+            self.get_tag_uri(tag),
+            {
+                'name': 'bad tag',
+                'definition': 'invalid::tag',
+            })
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         # The tag should not be modified

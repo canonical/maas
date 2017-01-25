@@ -7,9 +7,6 @@
 __all__ = [
     'NODE_INFO_SCRIPTS',
     'CommissioningScript',
-    'inject_lldp_result',
-    'inject_lshw_result',
-    'inject_result',
     ]
 
 from functools import partial
@@ -35,14 +32,8 @@ from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.fields import (
-    Bin,
-    BinaryField,
-)
-from metadataserver.models.noderesult import NodeResult
+from metadataserver.fields import BinaryField
 from provisioningserver.refresh.node_info_scripts import (
-    LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
@@ -457,29 +448,3 @@ class CommissioningScript(Model):
 
     name = CharField(max_length=255, null=False, editable=True, unique=True)
     content = BinaryField(null=False)
-
-
-def inject_result(node, name, output, exit_status=0):
-    """Inject a `name` result and trigger related hooks, if any.
-
-    `output` and `exit_status` are recorded as `NodeResult`
-    instances with the `name` given. A built-in hook is then searched
-    for; if found, it is invoked.
-    """
-    assert isinstance(output, bytes)
-    NodeResult.objects.store_data(
-        node, name, script_result=exit_status,
-        result_type=RESULT_TYPE.COMMISSIONING, data=Bin(output))
-    if name in NODE_INFO_SCRIPTS:
-        postprocess_hook = NODE_INFO_SCRIPTS[name]['hook']
-        postprocess_hook(node=node, output=output, exit_status=exit_status)
-
-
-def inject_lshw_result(node, output, exit_status=0):
-    """Convenience to call `inject_result(name=LSHW_OUTPUT_NAME, ...)`."""
-    return inject_result(node, LSHW_OUTPUT_NAME, output, exit_status)
-
-
-def inject_lldp_result(node, output, exit_status=0):
-    """Convenience to call `inject_result(name=LLDP_OUTPUT_NAME, ...)`."""
-    return inject_result(node, LLDP_OUTPUT_NAME, output, exit_status)

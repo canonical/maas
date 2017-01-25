@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -270,25 +270,6 @@ maas_support__ssh_keys__by_user = dedent("""\
         sshkey.key
     """)
 
-maas_support__commissioning_result_summary = dedent("""\
-    SELECT
-        node.hostname,
-        count(nr) "result_count",
-        max(nr.script_result) "max_script_result",
-        max(nr.result_type) "max_result_type"
-    FROM
-        maasserver_node node
-    LEFT OUTER JOIN metadataserver_noderesult nr
-        ON nr.node_id = node.id
-    WHERE
-        node.node_type = 0
-    GROUP BY
-        node.hostname
-    ORDER BY
-        node.hostname
-    """)
-
-
 # Dictionary of view_name: view_sql tuples which describe the database views.
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
@@ -304,8 +285,6 @@ _ALL_VIEWS = {
     "maas_support__license_keys_present__excluding_key_material":
         maas_support__license_keys_present__excluding_key_material,
     "maas_support__ssh_keys__by_user": maas_support__ssh_keys__by_user,
-    "maas_support__commissioning_result_summary":
-        maas_support__commissioning_result_summary,
 }
 
 
