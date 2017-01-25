@@ -28,7 +28,6 @@ angular.module('MAAS').controller('VLANDetailsController', [
         var vm = this;
 
         var filterByVLAN = $filter('filterByVLAN');
-        var filterSpacesByVLAN = $filter('filterSpacesByVLAN');
         var filterControllersByVLAN = $filter('filterControllersByVLAN');
 
         // Set title and page.
@@ -71,7 +70,6 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.controllers = ControllersManager.getItems();
         vm.actionError = null;
         vm.relatedSubnets = [];
-        vm.relatedSpaces = [];
         vm.relatedControllers = [];
         vm.provideDHCPAction = {};
         vm.primaryRack = null;
@@ -242,7 +240,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
                     if(forRelay) {
                         dhcp.startIP = "";
                         dhcp.endIP = "";
-                        dhcp.startPlaceholder = iprange.start + "( optional)";
+                        dhcp.startPlaceholder = iprange.start + "(optional)";
                         dhcp.endPlaceholder = iprange.end + " (optional)";
                     } else {
                         dhcp.startIP = iprange.start;
@@ -473,24 +471,17 @@ angular.module('MAAS').controller('VLANDetailsController', [
 
         // Called from a $watch when the related subnets or spaces may have
         // changed.
-        function updateRelatedSubnetsAndSpaces() {
+        function updateRelatedSubnets() {
             var vlan = vm.vlan;
             if(!angular.isObject(vlan)) {
                 return;
             }
             var subnets = [];
-            var spaces = [];
-            angular.forEach(
-                    filterSpacesByVLAN(vm.spaces, vlan),
-                    function(space) {
-                spaces.push(space);
-            });
-            vm.relatedSpaces = spaces;
             angular.forEach(
                     filterByVLAN(vm.subnets, vlan), function(subnet) {
                 var space = SpacesManager.getItemFromList(subnet.space);
                 if(!angular.isObject(space)) {
-                    space = {name: ""};
+                    space = {name: "(undefined)"};
                 }
                 var row = {
                     subnet: subnet,
@@ -542,7 +533,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
             updateTitle();
             updateManagementRacks();
             updateRelatedControllers();
-            updateRelatedSubnetsAndSpaces();
+            updateRelatedSubnets();
             updatePossibleActions();
         }
 
@@ -582,9 +573,9 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 "vlanDetails.vlan.secondary_rack", updateManagementRacks);
 
             $scope.$watchCollection(
-                "vlanDetails.subnets", updateRelatedSubnetsAndSpaces);
+                "vlanDetails.subnets", updateRelatedSubnets);
             $scope.$watchCollection(
-                "vlanDetails.spaces", updateRelatedSubnetsAndSpaces);
+                "vlanDetails.spaces", updateRelatedSubnets);
             $scope.$watchCollection(
                 "vlanDetails.controllers", updateRelatedControllers);
         });

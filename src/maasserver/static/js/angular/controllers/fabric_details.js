@@ -61,13 +61,15 @@ angular.module('MAAS').controller('FabricDetailsController', [
                 if(subnets.length > 0) {
                     angular.forEach(subnets, function(subnet) {
                         var space = SpacesManager.getItemFromList(subnet.space);
+                        var space_name = (space === null) ?
+                            "(undefined)" : space.name;
                         var row = {
                             vlan: vlan,
                             vlan_name: VLANsManager.getName(vlan),
                             subnet: subnet,
                             subnet_name: SubnetsManager.getName(subnet),
                             space: space,
-                            space_name: space.name
+                            space_name: space_name
                         };
                         rows.push(row);
                     });

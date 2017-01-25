@@ -16,6 +16,7 @@ angular.module('MAAS').controller('NetworksListController', [
         var filterByVLAN = $filter('filterByVLAN');
         var filterByFabric = $filter('filterByFabric');
         var filterBySpace = $filter('filterBySpace');
+        var filterByNullSpace = $filter('filterByNullSpace');
 
         // Set title and page.
         $rootScope.title = "Subnets";
@@ -74,6 +75,7 @@ angular.module('MAAS').controller('NetworksListController', [
         $scope.group.fabrics = {};
         // User when grouping by spaces.
         $scope.group.spaces = {};
+        $scope.group.spaces.orphanVLANs = [];
 
         // Initializers for action objects.
         var actionObjectInitializers = {
@@ -201,6 +203,26 @@ angular.module('MAAS').controller('NetworksListController', [
             $scope.group.spaces.rows = rows;
         }
 
+        function updateOrphanVLANs() {
+            var rows = [];
+            var subnets = filterByNullSpace($scope.subnets);
+            subnets = $filter('orderBy')(subnets, ['cidr']);
+            angular.forEach(subnets, function(subnet) {
+                var vlan = VLANsManager.getItemFromList(subnet.vlan);
+                var fabric = FabricsManager.getItemFromList(vlan.fabric);
+                var row = {
+                    fabric: fabric,
+                    vlan: vlan,
+                    vlan_name: $scope.getVLANName(vlan),
+                    subnet: subnet,
+                    subnet_name: getSubnetName(subnet),
+                    space: null
+                };
+                rows.push(row);
+            });
+            $scope.group.spaces.orphanVLANs = rows;
+        }
+
         // Update the "Group by" selection. This is called from a few places:
         // * When the $watch notices data has changed
         // * When the URL bar is updated, after the URL is parsed and
@@ -211,6 +233,7 @@ angular.module('MAAS').controller('NetworksListController', [
             if(groupBy === 'space') {
                 $location.search('by', 'space');
                 updateSpacesGroupBy();
+                updateOrphanVLANs();
             } else {
                 // The only other option is 'fabric', but in case the user
                 // made a typo on the URL bar we just assume it was 'fabric'
@@ -273,10 +296,9 @@ angular.module('MAAS').controller('NetworksListController', [
 
                 $scope.updateActions();
 
-                $scope.$watch("subnets", $scope.updateGroupBy, true);
-                $scope.$watch("fabrics", $scope.updateGroupBy, true);
-                $scope.$watch("spaces", $scope.updateGroupBy, true);
-                $scope.$watch("vlans", $scope.updateGroupBy, true);
+                $scope.$watch(
+                    "[subnets, fabrics, spaces, vlans]",
+                    $scope.updateGroupBy, true);
 
                 // If the route has been updated, a new search string must
                 // potentially be rendered.
@@ -284,6 +306,7 @@ angular.module('MAAS').controller('NetworksListController', [
                     $scope.getURLParameters();
                     $scope.updateGroupBy();
                 });
+                $scope.updateGroupBy();
             });
     }
 ]);

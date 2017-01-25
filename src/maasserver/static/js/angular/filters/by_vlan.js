@@ -24,21 +24,6 @@ angular.module('MAAS').filter('filterByVLAN', function() {
     };
 });
 
-angular.module('MAAS').filter('filterSpacesByVLAN', function() {
-    return function(spaces, vlan) {
-        var filtered = [];
-        if(!angular.isObject(vlan)) {
-            return filtered;
-        }
-        angular.forEach(spaces, function(space) {
-            if(vlan.space_ids.indexOf(space.id) !== -1) {
-                filtered.push(space);
-            }
-        });
-        return filtered;
-    };
-});
-
 angular.module('MAAS').filter('filterControllersByVLAN', function() {
     return function(controllers, vlan) {
         var filtered = [];

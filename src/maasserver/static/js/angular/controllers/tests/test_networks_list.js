@@ -128,15 +128,16 @@ describe("NetworksListController", function() {
             return controller;
         }
 
+        function replaceArray(dest, source) {
+            Array.prototype.splice.apply(
+                dest, [0, source.length].concat(source));
+        }
+
         function doUpdates(controller, fabrics, spaces, vlans, subnets) {
-            $scope.fabrics = fabrics;
-            FabricsManager._items = fabrics;
-            $scope.spaces = spaces;
-            SpacesManager._items = spaces;
-            $scope.vlans = vlans;
-            VLANsManager._items = vlans;
-            $scope.subnets = subnets;
-            SubnetsManager._items = subnets;
+            replaceArray(FabricsManager._items, fabrics);
+            replaceArray(SpacesManager._items, spaces);
+            replaceArray(VLANsManager._items, vlans);
+            replaceArray(SubnetsManager._items, subnets);
             $rootScope.$digest();
         }
 
@@ -267,24 +268,47 @@ describe("NetworksListController", function() {
         });
 
         it("adding vlan updates lists appropriately", function() {
-            var fabrics = [ { id: 0, name: "fabric 0" } ];
-            var spaces = [ { id: 0, name: "space 0" } ];
-            var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
-            var subnets = [
-                { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
-            ];
+            var fabrics = [ { id: 0, name: "default" } ];
+            var spaces = [ { id: 0, name: "space-0" } ];
+            var vlans = [{
+                id: 1,
+                name: "vlan4",
+                space: 0,
+                vid: 4,
+                fabric: 0
+            }];
+            var subnets = [{
+                id: 0,
+                name: "subnet 0",
+                vlan: 1,
+                cidr: "10.20.0.0/16",
+                space: 0
+            }];
             var controller = setupController(fabrics, spaces, vlans, subnets);
             expect($scope.group.fabrics.rows.length).toBe(1);
-            vlans.push({id: 2, name: "vlan2", vid: 2, fabric: 0});
+            vlans.push({
+                id: 2,
+                name: "vlan2",
+                vid: 2,
+                fabric: 0,
+                space: null
+            });
+            subnets.push({
+                id: 1,
+                name: "subnet 1",
+                vlan: 2,
+                cidr: "10.21.0.0/16",
+                space: null
+            });
             doUpdates(controller, fabrics, spaces, vlans, subnets);
             // Fabric should have blank name
             expect($scope.group.fabrics.rows[1].fabric_name).toBe("");
             expect($scope.group.fabrics.rows.length).toBe(2);
             $scope.groupBy = "space";
             $scope.updateGroupBy();
-            // Orphaned VLANs should not be shown in the spaces view, since
-            // there is not path from the space to that VLAN.
+            // Orphaned VLANs are called out separately.
             expect($scope.group.spaces.rows.length).toBe(1);
+            expect($scope.group.spaces.orphanVLANs.length).toBe(1);
         });
 
         it("adding subnet updates lists", function() {

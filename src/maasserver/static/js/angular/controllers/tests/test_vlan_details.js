@@ -317,18 +317,15 @@ describe("VLANDetailsController", function() {
         expect(controller.relatedSubnets.length).toBe(2);
     });
 
-    it("updates relatedSpaces and relatedSubnets when spaces list changes",
+    it("updates relatedSubnets when spaces list changes",
         function() {
         var controller = makeControllerResolveSetActiveItem();
         expect(controller.spaces.length).toBe(1);
-        expect(controller.relatedSpaces.length).toBe(1);
         makeSpace(2002);
         vlan.space_ids.push(2002);
         makeSubnet(6002, 2002);
-        expect(controller.relatedSpaces.length).toBe(1);
         expect(controller.controllers.length).toBe(2);
         $scope.$digest();
-        expect(controller.relatedSpaces.length).toBe(2);
     });
 
     it("actionOption cleared on action success", function() {

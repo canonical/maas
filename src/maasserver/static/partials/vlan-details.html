@@ -232,7 +232,7 @@
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                     <maas-obj-field type="text" key="mtu" label="MTU" placeholder="VLAN MTU"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
-                    <maas-obj-field type="options" key="space" label="Space" placeholder="(not in a space)" placeholder-enabled="true"
+                    <maas-obj-field type="options" key="space" label="Space" placeholder="(undefined)" placeholder-enabled="true"
                         options="space.id as space.name for space in vlanDetails.spaces"
                         label-width="two" input-width="three"></maas-obj-field>
                     <maas-obj-field type="textarea" key="description" label="Description" placeholder="VLAN description"
@@ -263,14 +263,6 @@
                                 <a href="#/node/controller/{$ rack.system_id $}">{$ rack.hostname $}</a>
                             </span>&nbsp;
                         </dd>
-                        <div data-ng-if="vlanDetails.relatedSpaces.length">
-                            <dt class="two-col">Spaces</dt>
-                            <dd class="four-col last-col">
-                                <span class="u-margin--right-small" data-ng-repeat="space in vlanDetails.relatedSpaces">
-                                    <a href="#/space/{$ space.id $}">{$ space.name $}</a>
-                                </span>
-                            </dd>
-                        </div>
                     </dl>
                 </div>
             </maas-obj-form>

@@ -81,9 +81,32 @@
                     <maas-obj-field type="options" key="vlan" label="VLAN" placeholder="Choose VLAN"
                         options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.fabric"
                         label-width="two" input-width="three"></maas-obj-field>
-                    <maas-obj-field type="options" key="space" label="Space" placeholder="Choose space"
-                        options="space.id as space.name for space in spaces"
-                        label-width="two" input-width="three"></maas-obj-field>
+                    <div class="form__group form__group--adhoc form__group--subtle">
+                        <!-- XXX: The 'style' was needed to make this line up with the padding on the <select/> above. -->
+                        <style>
+                            div.form__group--adhoc div.form__group-label {
+                                padding: 7px 30px 14px 0px !important;
+                            }
+
+                            div.form__group--adhoc div.form__group-input {
+                                padding: 14px 30px 14px 10px !important;
+                            }
+                        </style>
+                        <div class="form__group-label two-col">
+                            Space
+                            <i class="icon icon--info tooltip u-margin--left-tiny"
+                               aria-label="Spaces define which VLANs have security properties in common.&#xa;For example, you might have spaces such as 'dmz', 'storage', or 'management'.&#xa;A space can be assigned on the VLAN details page."></i>
+                        </div>
+                        <div class="form__group-input three-col last-col">
+                            <a data-ng-if="space !== null" href="#/space/{$ space.id $}">{$ space.name $}</a>
+                            <span data-ng-if="space === null">
+                                (undefined)
+                                <i class="icon icon--warning tooltip"
+                                   style="position: relative; left: 5px; top: -5px;"
+                                   aria-label="This subnet does not belong to a space.&#xa;MAAS integrations require a space in order to determine the purpose of a network."></i>
+                            </span>
+                        </div>
+                    </div>
                 </fieldset>
             </maas-obj-form>
         </div>

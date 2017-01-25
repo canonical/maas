@@ -45,7 +45,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         $scope.subnetManager = SubnetsManager;
         $scope.staticRoutes = StaticRoutesManager.getItems();
         $scope.staticRoutesManager = StaticRoutesManager;
-        $scope.spaces = SpacesManager.getItems();
+        $scope.space = null;
         $scope.vlans = VLANsManager.getItems();
         $scope.fabrics = FabricsManager.getItems();
         $scope.actionError = null;
@@ -326,8 +326,13 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                 $scope.subnet.fabric = (
                     VLANsManager.getItemFromList($scope.subnet.vlan).fabric);
             };
+            var updateSpace = function() {
+                $scope.space = (
+                    SpacesManager.getItemFromList($scope.subnet.space));
+            };
             $scope.$watch("subnet.fabric", updateFabric);
             $scope.$watch("subnet.vlan", updateFabric);
+            $scope.$watch("subnet.space", updateSpace);
             $scope.$watch("subnet.cidr", updateIPVersion);
         }
 

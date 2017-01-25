@@ -42,6 +42,10 @@
                             type="options" key="fabric" label="to fabric" subtle="false"
                             options="f.id as f.name for f in fabrics"
                             placeholder="Select fabric"></maas-obj-field>
+                        <maas-obj-field
+                                subtle="false" type="options" key="space" label="in space"
+                                placeholder="(undefined)" placeholder-enabled="true"
+                                options="space.id as space.name for space in spaces"></maas-obj-field>
                         <maas-obj-errors></maas-obj-errors>
                     </fieldset>
                     <div class="page-header__controls">
@@ -92,11 +96,6 @@
                             subtle="false" type="options" key="vlan" label="Fabric &amp; VLAN" placeholder="Choose Fabric &amp; VLAN"
                             options="v.id as getVLANName(v) group by getFabricNameById(v.fabric) for v in vlans"
                             label-width="two" input-width="three"></maas-obj-field>
-
-                        <maas-obj-field
-                            subtle="false" type="options" key="space" label="Space" placeholder="Choose Space"
-                            options="space.id as space.name for space in spaces"
-                            label-width="two" input-width="three"></maas-obj-field>
                     </fieldset>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none">
@@ -117,11 +116,11 @@
                 <div class="form__group listing-filter">
                     <label class="u-margin--right-small" for="network-filter">Group by</label>
                     <select name="network-filter" class="listing-filter__select" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
-                        <option value="fabric" selected="selected">Fabrics</option>
+                        <option value="fabric">Fabrics</option>
                         <option value="space">Spaces</option>
                     </select>
                     <span class="icon icon--help tooltip tooltip--right u-margin--left-small u-display--desktop"
-                          aria-label="Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of subnets that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric."></span>
+                          aria-label="Fabric is a set of consistent interconnected VLANs that are capable of mutual communication.&#xa;Space is a grouping of networks (VLANs and their subnets) that are able to mutually communicate with each other.&#xa;Subnets within a space do not need to belong to the same fabric."></span>
                 </div>
             </form>
             <!-- XXX mpontillo temporarily hidden -->
@@ -142,10 +141,10 @@
                             <label class="checkbox-label" for="spaces-all"></label>
                         </th> -->
                         <th class="table__column--20">Space</th>
-                        <th class="table__column--30">Subnet</th>
-                        <th class="table__column--13 align-right">Available IPs</th>
                         <th class="table__column--20">VLAN</th>
                         <th class="table__column--20">Fabric</th>
+                        <th class="table__column--30">Subnet</th>
+                        <th class="table__column--13 align-right">Available IPs</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -159,21 +158,40 @@
                         <td class="table-listing__cell table__column--20" aria-label="Space">
                             <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
-                        <td class="table-listing__cell table__column--30" aria-label="Subnet">
-                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
-                        </td>
-                        <td class="table-listing__cell table__column--13 align-right" aria-label="Available IPs">
-                            {$ row.subnet.statistics.available_string $}
-                        </td>
                         <td class="table-listing__cell table__column--20" aria-label="VLAN">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td class="table-listing__cell table__column--20" aria-label="Fabric">
                             <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
+                        <td class="table-listing__cell table__column--30" aria-label="Subnet">
+                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--13 align-right" aria-label="Available IPs">
+                            {$ row.subnet.statistics.available_string $}
+                        </td>
+                    </tr>
+                    <tr class="table-listing__row" data-ng-repeat="row in group.spaces.orphanVLANs">
+                        <td class="table-listing__cell table__column--20" aria-label="Space">
+                            <a data-ng-if="$index === 0" href="#/space/{$ row.space.id $}">(undefined)</a>
+                            <span data-ng-if="$index === 0" class="icon icon--warning tooltip tooltip--right u-margin--left-small u-display--desktop"
+                              aria-label="MAAS integrations require a space in order to determine the purpose of a network.&#xa;Define a space for each subnet by selecting the space on the VLAN details page.&#xa;If an approprate space does not exist, one may be created on this page."></span>
+                        </td>
+                        <td class="table-listing__cell table__column--20">
+                            <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--20">
+                            <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--30">
+                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--13 align-right">
+                            {$ row.subnet.statistics.available_string $}
+                        </td>
                     </tr>
                 </tbody>
-            </table>
+         </table>
             <!-- Fabric grouped table -->
             <table class="table-listing ng-hide" data-ng-show="groupBy === 'fabric'">
                 <thead>
@@ -210,11 +228,12 @@
                             {$ row.subnet.statistics.available_string $}
                         </td>
                         <td class="table-listing__cell table__column--25" aria-label="Space">
-                            <a href="#/space/{$ row.space.id $}">{$ row.space.name $}</a>
+                            <a data-ng-if="row.space" href="#/space/{$ row.space.id $}">{$ row.space $}</a>
+                            <p data-ng-if="!row.space">(undefined)</p>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-    </div>
 </section>
+

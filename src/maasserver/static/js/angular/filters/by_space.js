@@ -5,7 +5,7 @@
  */
 
 angular.module('MAAS').filter('filterBySpace', function() {
-    return function(subnets, space) {
+    return function(objects, space) {
         var filtered = [];
         var id;
         if(angular.isObject(space)) {
@@ -15,9 +15,21 @@ angular.module('MAAS').filter('filterBySpace', function() {
         } else {
             return filtered;
         }
-        angular.forEach(subnets, function(subnet) {
-            if(subnet.space === id) {
-                filtered.push(subnet);
+        angular.forEach(objects, function(object) {
+            if(object.space === id) {
+                filtered.push(object);
+            }
+        });
+        return filtered;
+    };
+});
+
+angular.module('MAAS').filter('filterByNullSpace', function() {
+    return function(objects) {
+        var filtered = [];
+        angular.forEach(objects, function(object) {
+            if(object.space === null) {
+                filtered.push(object);
             }
         });
         return filtered;
