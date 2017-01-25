@@ -21,14 +21,12 @@ IPMI_CHANGE_STATIC_TO_DHCP="false"
 
 #### script setup ######
 TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
-SCRIPTS_D="${TEMP_D}/commissioning.d"
 IPMI_CONFIG_D="${TEMP_D}/ipmi.d"
 BIN_D="${TEMP_D}/bin"
-OUT_D="${TEMP_D}/out"
 PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 trap cleanup EXIT
 
-mkdir -p "$BIN_D" "$OUT_D" "$SCRIPTS_D" "$IPMI_CONFIG_D"
+mkdir -p "$BIN_D" "$OUT_D" "$IPMI_CONFIG_D"
 
 # Ensure that invocations of apt-get are not interactive by default,
 # here and in all subprocesses.
@@ -87,23 +85,6 @@ signal() {
    maas-signal "--config=${CRED_CFG}" "$@"
 }
 
-# Report result of a commissioning script: output file, error output
-# file if there was any error output, and return code.
-# Usage: signal <return-value> <message> <stdout-file> <stderr-file>
-signal_result() {
-   local result=$1 message="$2" stdout="$3" stderr="$4"
-   local files="--file=$stdout"
-   if [ -f "$stderr" -a -s "$stderr" ]
-   then
-      files="$files --file=$stderr"
-   fi
-   maas-signal \
-      "--config=${CRED_CFG}" \
-      "--script-result=$result" \
-      $files \
-      WORKING "$message"
-}
-
 fail() {
    [ -z "$CRED_CFG" ] || signal FAILED "$1"
    echo "FAILED: $1" 1>&2;
@@ -121,14 +102,14 @@ main() {
 
    # Install tools and load modules.
    aptget update
-   aptget install python3-yaml python3-oauthlib freeipmi-tools openipmi ipmitool
+   aptget install \
+      python3-yaml python3-oauthlib freeipmi-tools openipmi ipmitool
    load_modules
 
    # The main function, actually execute stuff that is written below.
    local script total=0 creds=""
 
-   find_creds_cfg ||
-      fail "failed to find credential config"
+   find_creds_cfg || fail "Failed to find credential config"
    creds="$_RET"
 
    # Get remote credentials into a local file.
@@ -140,7 +121,7 @@ main() {
          ;;
    esac
 
-   # Use global name read by signal() and fail.
+   # Use global name read by signal().
    CRED_CFG="$creds"
 
    # Power settings.
@@ -150,56 +131,21 @@ main() {
    fi
    power_type=$(maas-ipmi-autodetect-tool)
    case "$power_type" in
-       ipmi)
-           power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs})
-           ;;
-       moonshot)
-           power_settings=$(maas-moonshot-autodetect)
-           ;;
+      ipmi)
+         power_settings=$(maas-ipmi-autodetect \
+            --configdir "$IPMI_CONFIG_D" ${pargs})
+         ;;
+      moonshot)
+         power_settings=$(maas-moonshot-autodetect)
+         ;;
    esac
    if [ ! -z "$power_settings" ]; then
-      signal "--power-type=${power_type}" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
+      signal \
+         "--power-type=${power_type}" "--power-parameters=${power_settings}" \
+         WORKING "Finished [maas-ipmi-autodetect]"
    fi
 
-   # Download and extract commissioning scripts.  It will contain a
-   # commissioning.d directory, so this is how $SCRIPTS_D is created.
-   maas-get --config="${CRED_CFG}" maas-commissioning-scripts | tar -C "${TEMP_D}" -x
-
-   # Just get a count of how many scripts there are for progress reporting.
-   for script in "${SCRIPTS_D}/"*; do
-      [ -x "$script" -a -f "$script" ] || continue
-      total=$(($total+1))
-   done
-
-   local cur=1 numfailed=0 name="" failed="" separator=""
-   for script in "${SCRIPTS_D}/"*; do
-      [ -f "$script" -a -f "$script" ] || continue
-      name=${script##*/}
-      signal WORKING "starting ${name} [$cur/$total]"
-      "$script" > "${OUT_D}/${name}" 2> "${OUT_D}/${name}.err"
-      ret=$?
-      signal_result \
-         "$ret" "finished $name [$cur/$total]: $ret" \
-         "${OUT_D}/${name}" \
-         "${OUT_D}/${name}.err"
-      if [ $ret -ne 0 ]; then
-          numfailed=$(($numfailed+1))
-          failed="${failed}${separator}${name}"
-          separator=", "
-      fi
-      cur=$(($cur+1))
-   done
-
-   if [ $numfailed -eq 0 ]; then
-      ( cd "${OUT_D}" &&
-         signal OK "finished [$total/$total]" )
-      return 0
-   else
-      ( cd "${OUT_D}" &&
-         signal FAILED "failed [$numfailed/$total] ($failed)" )
-      return $numfailed
-   fi
-
+   maas-run-remote-scripts "--config=${CRED_CFG}" "${TEMP_D}"
 }
 
 load_modules() {
@@ -244,9 +190,9 @@ add_bin "maas-signal" <<"END_MAAS_SIGNAL"
 {{maas_signal_py}}
 END_MAAS_SIGNAL
 
-add_bin "maas-get" <<END_MAAS_GET
-{{maas_get_py}}
-END_MAAS_GET
+add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
+{{maas_run_remote_scripts_py}}
+END_MAAS_RUN_REMOTE_SCRIPTS
 
 
 main

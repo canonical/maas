@@ -1,16 +1,20 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Help functioners to send commissioning data to MAAS region."""
 
 __all__ = [
-    'encode_multipart_data',
     'geturl',
+    'read_config',
+    'signal',
     ]
 
+from collections import OrderedDict
 from email.utils import parsedate
+import json
 import mimetypes
 import random
+import socket
 import string
 import sys
 import time
@@ -19,6 +23,10 @@ import urllib.parse
 import urllib.request
 
 import oauthlib.oauth1 as oauth
+import yaml
+
+# Current MAAS metadata API version.
+MD_VERSION = '2012-03-01'
 
 
 def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
@@ -155,3 +163,97 @@ def encode_multipart_data(data, files):
     }
 
     return body, headers
+
+
+def read_config(url, creds):
+    """Read cloud-init config from given `url` into `creds` dict.
+
+    Updates any keys in `creds` that are None with their corresponding
+    values in the config.
+
+    Important keys include `metadata_url`, and the actual OAuth
+    credentials.
+    """
+    if url.startswith("http://") or url.startswith("https://"):
+        cfg_str = urllib.request.urlopen(urllib.request.Request(url=url))
+    else:
+        if url.startswith("file://"):
+            url = url[7:]
+        cfg_str = open(url, "r").read()
+
+    cfg = yaml.safe_load(cfg_str)
+
+    # Support reading cloud-init config for MAAS datasource.
+    if 'datasource' in cfg:
+        cfg = cfg['datasource']['MAAS']
+
+    for key in creds.keys():
+        if key in cfg and creds[key] is None:
+            creds[key] = cfg[key]
+
+
+class SignalException(Exception):
+
+    def __init__(self, error):
+        self.error = error
+
+    def __str__(self):
+        return self.error
+
+
+def signal(
+        url, creds, status, error=None, script_result_id=None,
+        files: dict=None, exit_status=None, script_version_id=None,
+        power_type=None, power_params=None):
+    """Send a node signal to a given maas_url."""
+    params = {
+        b'op': b'signal',
+        b'status': status.encode('utf-8'),
+    }
+
+    if error is not None:
+        params[b'error'] = error.encode('utf-8')
+
+    if script_result_id is not None:
+        params[b'script_result_id'] = str(script_result_id).encode('utf-8')
+
+    if exit_status is not None:
+        params[b'exit_status'] = str(exit_status).encode('utf-8')
+
+    if script_version_id is not None:
+        params[b'script_version_id'] = str(script_version_id).encode('utf-8')
+
+    if None not in (power_type, power_params):
+        params[b'power_type'] = power_type.encode('utf-8')
+        user, power_pass, power_address, driver = power_params.split(",")
+        # OrderedDict is used to make testing easier.
+        power_params = OrderedDict([
+            ('power_user', user),
+            ('power_pass', power_pass),
+            ('power_address', power_address),
+        ])
+        if power_type == 'moonshot':
+            power_params['power_hwaddress'] = driver
+        else:
+            power_params['power_driver'] = driver
+        params[b'power_parameters'] = json.dumps(power_params).encode()
+
+    data, headers = encode_multipart_data(
+        params, ({} if files is None else files))
+
+    try:
+        payload = geturl(url, creds=creds, headers=headers, data=data)
+        if payload != b'OK':
+            raise SignalException(
+                "Unexpected result sending region commissioning data: %s" % (
+                    payload))
+    except urllib.error.HTTPError as exc:
+        raise SignalException("HTTP error [%s]" % exc.code)
+    except urllib.error.URLError as exc:
+        raise SignalException("URL error [%s]" % exc.reason)
+    except socket.timeout as exc:
+        raise SignalException("Socket timeout [%s]" % exc)
+    except TypeError as exc:
+        raise SignalException(str(exc))
+    except Exception as exc:
+        raise SignalException("Unexpected error [%s]" % exc)

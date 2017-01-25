@@ -17,10 +17,13 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     Equals,
     MockAnyCall,
-    MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
+from provisioningserver.refresh.maas_api_helper import (
+    MD_VERSION,
+    SignalException,
+)
 from testtools.matchers import (
     Contains,
     DirExists,
@@ -129,129 +132,40 @@ class TestHelpers(MAASTestCase):
             }, Equals(refresh.get_sys_info()))
 
 
-class TestSignal(MAASTestCase):
-    def test_signal_formats_params(self):
-        encode_multipart_data = self.patch(refresh, 'encode_multipart_data')
-        encode_multipart_data.return_value = None, None
-        self.patch(refresh, 'geturl')
-
-        status = factory.make_name('status')
-        message = factory.make_name('message')
-
-        refresh.signal(None, None, status, message)
-        self.assertThat(
-            encode_multipart_data,
-            MockCalledWith({
-                b'op': b'signal',
-                b'status': status.encode('utf-8'),
-                b'error': message.encode('utf-8'),
-            }, {}))
-
-    def test_signal_formats_params_with_script_result(self):
-        encode_multipart_data = self.patch(refresh, 'encode_multipart_data')
-        encode_multipart_data.return_value = None, None
-        self.patch(refresh, 'geturl')
-
-        status = factory.make_name('status')
-        message = factory.make_name('message')
-        script_result = factory.make_name('script_result')
-
-        refresh.signal(None, None, status, message, {}, script_result)
-        self.assertThat(
-            encode_multipart_data,
-            MockCalledWith({
-                b'op': b'signal',
-                b'status': status.encode('utf-8'),
-                b'error': message.encode('utf-8'),
-                b'script_result': script_result.encode('utf-8'),
-            }, {}))
-
-    def test_signal_formats_params_with_ints(self):
-        encode_multipart_data = self.patch(refresh, 'encode_multipart_data')
-        encode_multipart_data.return_value = None, None
-        self.patch(refresh, 'geturl')
-
-        status = random.randint(1, 100)
-        message = factory.make_name('message')
-        script_result = random.randint(1, 100)
-
-        refresh.signal(None, None, status, message, {}, script_result)
-        self.assertThat(
-            encode_multipart_data,
-            MockCalledWith({
-                b'op': b'signal',
-                b'status': str(status).encode('utf-8'),
-                b'error': message.encode('utf-8'),
-                b'script_result': str(script_result).encode('utf-8'),
-            }, {}))
-
-    def test_not_ok_result_is_logged(self):
-        encode_multipart_data = self.patch(refresh, 'encode_multipart_data')
-        encode_multipart_data.return_value = None, None
-        result = factory.make_name('result')
-        self.patch(refresh, 'geturl').return_value = result
-        self.patch(refresh, 'maaslog')
-
-        status = factory.make_name('status')
-        message = factory.make_name('message')
-
-        refresh.signal(None, None, status, message)
-
-        self.assertThat(
-            refresh.maaslog.error,
-            MockAnyCall(
-                "Unexpected result sending region commissioning data: %s" %
-                result))
-
-    def test_exception_is_logged(self):
-        encode_multipart_data = self.patch(refresh, 'encode_multipart_data')
-        encode_multipart_data.return_value = None, None
-        error_message = factory.make_name('error_message')
-        self.patch(refresh, 'geturl').side_effect = Exception(error_message)
-        self.patch(refresh, 'maaslog')
-
-        status = factory.make_name('status')
-        message = factory.make_name('message')
-
-        refresh.signal(None, None, status, message)
-
-        self.assertThat(
-            refresh.maaslog.error,
-            MockAnyCall(
-                "unexpected error [%s]" % error_message))
-
-
 class TestRefresh(MAASTestCase):
-    def patch_scripts_success(self):
+    def patch_scripts_success(self, script_name=None):
+        if script_name is None:
+            script_name = factory.make_name('script_name')
         TEST_SCRIPT = dedent("""\
             #!/bin/sh
             echo 'test script'
             """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
-            ('test_script', {
+            (script_name, {
                 'content': TEST_SCRIPT.encode('ascii'),
-                'name': 'test_script',
+                'name': script_name,
                 'run_on_controller': True,
-            })
-        ])
+            })])
 
-    def patch_scripts_failure(self):
+    def patch_scripts_failure(self, script_name=None):
+        if script_name is None:
+            script_name = factory.make_name('script_name')
         TEST_SCRIPT = dedent("""\
             #!/bin/sh
             echo 'test failed'
             exit 1
             """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
-            ('test_script', {
+            (script_name, {
                 'content': TEST_SCRIPT.encode('ascii'),
-                'name': 'test_script',
+                'name': script_name,
                 'run_on_controller': True,
-            })
-        ])
+            })])
 
     def test_refresh_accepts_defined_url(self):
         signal = self.patch(refresh, 'signal')
-        self.patch_scripts_success()
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_success(script_name)
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -259,9 +173,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name('token_secret')
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        refresh.refresh(
+            system_id, consumer_key, token_key, token_secret, url)
         self.assertThat(signal, MockAnyCall(
-            "%s/metadata/status/%s/latest" % (url, system_id),
+            "%s/metadata/%s/" % (url, MD_VERSION),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -269,12 +184,13 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Starting test_script [1/1]',
+            'Starting %s [1/1]' % script_name,
         ))
 
     def test_refresh_signals_starting(self):
         signal = self.patch(refresh, 'signal')
-        self.patch_scripts_success()
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_success(script_name)
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -284,7 +200,7 @@ class TestRefresh(MAASTestCase):
 
         refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
         self.assertThat(signal, MockAnyCall(
-            "%s/metadata/status/%s/latest" % (url, system_id),
+            "%s/metadata/%s/" % (url, MD_VERSION),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -292,12 +208,13 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Starting test_script [1/1]',
+            'Starting %s [1/1]' % script_name,
         ))
 
     def test_refresh_signals_results(self):
         signal = self.patch(refresh, 'signal')
-        self.patch_scripts_success()
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_success(script_name)
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -307,7 +224,7 @@ class TestRefresh(MAASTestCase):
 
         refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
         self.assertThat(signal, MockAnyCall(
-            "%s/metadata/status/%s/latest" % (url, system_id),
+            "%s/metadata/%s/" % (url, MD_VERSION),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -315,17 +232,18 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Finished test_script [1/1]: 0',
-            {
-                'test_script': b'test script\n',
-                'test_script.err': b'',
+            'Finished %s [1/1]: 0' % script_name,
+            exit_status=0,
+            files={
+                script_name: b'test script\n',
+                '%s.err' % script_name: b'',
             },
-            0,
         ))
 
     def test_refresh_signals_finished(self):
         signal = self.patch(refresh, 'signal')
-        self.patch_scripts_success()
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_success(script_name)
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -335,7 +253,7 @@ class TestRefresh(MAASTestCase):
 
         refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
         self.assertThat(signal, MockAnyCall(
-            "%s/metadata/status/%s/latest" % (url, system_id),
+            "%s/metadata/%s/" % (url, MD_VERSION),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -343,7 +261,7 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'OK',
-            "Finished refreshing %s" % system_id
+            "Finished refreshing %s" % system_id,
         ))
 
     def test_refresh_signals_failure(self):
@@ -358,7 +276,7 @@ class TestRefresh(MAASTestCase):
 
         refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
         self.assertThat(signal, MockAnyCall(
-            "%s/metadata/status/%s/latest" % (url, system_id),
+            "%s/metadata/%s/" % (url, MD_VERSION),
             {
                 'consumer_secret': '',
                 'consumer_key': consumer_key,
@@ -402,3 +320,22 @@ class TestRefresh(MAASTestCase):
         self.assertThat(tmpdirs_before, Not(Contains(tmpdir_during)))
         self.assertThat(tmpdirs_during, Contains(tmpdir_during))
         self.assertThat(tmpdirs_after, Not(Contains(tmpdir_during)))
+
+    def test_refresh_logs_error(self):
+        signal = self.patch(refresh, 'signal')
+        maaslog = self.patch(refresh.maaslog, 'error')
+        error = factory.make_string()
+        signal.side_effect = SignalException(error)
+        self.patch_scripts_failure()
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+
+        self.assertThat(
+            maaslog,
+            MockAnyCall("Error during controller refresh: %s" % error))

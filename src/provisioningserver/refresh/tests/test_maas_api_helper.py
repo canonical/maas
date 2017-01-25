@@ -1,12 +1,14 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maas_api_helper functions."""
 
 __all__ = []
 
+from collections import OrderedDict
 from email.utils import formatdate
 from io import StringIO
+import json
 import random
 import re
 import time
@@ -17,6 +19,8 @@ from maastesting.matchers import (
     GreaterThanOrEqual,
     LessThanOrEqual,
     MockAnyCall,
+    MockCalledOnce,
+    MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import maas_api_helper
@@ -192,3 +196,288 @@ class TestEncode(MAASTestCase):
             '\r\nContent-Type: application/octet-stream\r\n\r\n%s\r\n--%s--'
             '\r\n' % (boundary, file, file, content, boundary),
             data.decode('utf-8'))
+
+
+class TestSignal(MAASTestCase):
+
+    def test_signal_formats_basic_params(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(None, None, status)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+            }, {}))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_error(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        error = factory.make_name('error')
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(None, None, status, error=error)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'error': error.encode('utf-8'),
+            }, {}))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_script_result_id(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        script_result_id = random.randint(1, 1000)
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(
+            None, None, status, script_result_id=script_result_id)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'script_result_id': str(script_result_id).encode('utf-8'),
+            }, {}))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_exit_status(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        exit_status = random.randint(0, 255)
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(None, None, status, exit_status=exit_status)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'exit_status': str(exit_status).encode('utf-8'),
+            }, {}))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_script_version_id(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        script_version_id = random.randint(1, 1000)
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(
+            None, None, status, script_version_id=script_version_id)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'script_version_id': str(script_version_id).encode('utf-8'),
+            }, {}))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_power_params(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        power_type = factory.make_name('power_type')
+        power_params = OrderedDict([
+            ('power_user', factory.make_name('power_user')),
+            ('power_pass', factory.make_name('power_pass')),
+            ('power_address', factory.make_url()),
+            ('power_driver', factory.make_name('power_driver')),
+        ])
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(
+            None, None, status, power_type=power_type,
+            power_params=','.join([value for value in power_params.values()]))
+
+        # XXX ltrager 2017-01-18 - The power_parameters JSON dump breaks
+        # MockCalledWith.
+        self.assertDictEqual(
+            mock_encode_multipart_data.call_args[0][0],
+            {
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'power_type': power_type.encode('utf-8'),
+                b'power_parameters': json.dumps(power_params).encode(),
+            })
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_params_with_moonshot_power_params(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        power_type = 'moonshot'
+        power_params = OrderedDict([
+            ('power_user', factory.make_name('power_user')),
+            ('power_pass', factory.make_name('power_pass')),
+            ('power_address', factory.make_url()),
+            ('power_hwaddress', factory.make_name('power_hwaddress')),
+        ])
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(
+            None, None, status, power_type=power_type,
+            power_params=','.join([value for value in power_params.values()]))
+
+        # XXX ltrager 2017-01-18 - The power_parameters JSON dump breaks
+        # MockCalledWith.
+        self.assertDictEqual(
+            mock_encode_multipart_data.call_args[0][0],
+            {
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+                b'power_type': power_type.encode('utf-8'),
+                b'power_parameters': json.dumps(power_params).encode(),
+            })
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_formats_files(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = b'OK'
+
+        status = factory.make_name('status')
+        files = {factory.make_name(): factory.make_bytes()}
+
+        # None used for url and creds as we're not actually sending data.
+        maas_api_helper.signal(None, None, status, files=files)
+
+        self.assertThat(
+            mock_encode_multipart_data,
+            MockCalledWith({
+                b'op': b'signal',
+                b'status': status.encode('utf-8'),
+            }, files))
+        self.assertThat(mock_geturl, MockCalledOnce())
+
+    def test_signal_raises_exception_if_not_ok(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.return_value = factory.make_name('bad_ret')
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)
+
+    def test_signal_raises_exception_on_httperror(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.side_effect = maas_api_helper.urllib.error.HTTPError(
+            None, None, None, None, None)
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)
+
+    def test_signal_raises_exception_on_urlerror(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.side_effect = maas_api_helper.urllib.error.URLError(None)
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)
+
+    def test_signal_raises_exception_on_socket_timeout(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.side_effect = maas_api_helper.socket.timeout()
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)
+
+    def test_signal_raises_exception_on_typeerror(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.side_effect = TypeError()
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)
+
+    def test_signal_raises_exception_on_unknown_exception(self):
+        mock_encode_multipart_data = self.patch(
+            maas_api_helper, 'encode_multipart_data')
+        mock_encode_multipart_data.return_value = None, None
+        mock_geturl = self.patch(maas_api_helper, 'geturl')
+        mock_geturl.side_effect = Exception()
+
+        status = factory.make_name('status')
+
+        # None used for url and creds as we're not actually sending data.
+        self.assertRaises(
+            maas_api_helper.SignalException,
+            maas_api_helper.signal, None, None, status)

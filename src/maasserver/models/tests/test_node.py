@@ -8812,8 +8812,7 @@ class TestRegionControllerRefresh(MAASTransactionServerTestCase):
         self.expectThat(
             mock_refresh,
             MockCalledOnceWith(
-                region.system_id, token.consumer.key, token.key,
-                token.secret, 'http://127.0.0.1:5240/MAAS'))
+                region.system_id, token.consumer.key, token.key, token.secret))
 
     @wait_for_reactor
     @defer.inlineCallbacks

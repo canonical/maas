@@ -39,7 +39,7 @@ class TestCommissioningUserData(MAASServerTestCase):
             user_data_script['Content-Disposition'])
         self.assertThat(
             base64.b64decode(user_data_script.get_payload()), ContainsAll({
-                b'maas-get',
+                b'maas-run-remote-scripts',
                 b'maas-signal',
                 b'maas-ipmi-autodetect',
                 b'def authenticate_headers',

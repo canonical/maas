@@ -4578,7 +4578,7 @@ class RegionController(Controller):
                 yield deferToDatabase(self._process_sys_info, sys_info)
                 yield deferToThread(
                     refresh, self.system_id, token.consumer.key, token.key,
-                    token.secret, 'http://127.0.0.1:5240/MAAS')
+                    token.secret)
         except NamedLock.NotAvailable:
             # Refresh already running.
             pass

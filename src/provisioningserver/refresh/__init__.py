@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Functionality to refresh rack controller hardware and networking details."""
@@ -7,12 +7,12 @@ import socket
 import stat
 import subprocess
 import tempfile
-import urllib
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
-    encode_multipart_data,
-    geturl,
+    MD_VERSION,
+    signal,
+    SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.network import get_all_interfaces_definition
@@ -77,43 +77,12 @@ def get_sys_info():
     }
 
 
-def signal(
-        url, creds, status, message, files: dict=None, script_result=None,
-        extra_headers=None):
-    """Send a node signal to a given maas_url."""
-    if isinstance(status, int):
-        status = str(status)
-    params = {
-        b"op": b"signal",
-        b"status": status.encode("utf-8"),
-        b"error": message.encode("utf-8"),
-    }
-    if script_result is not None:
-        if isinstance(script_result, int):
-            script_result = str(script_result)
-        params[b'script_result'] = script_result.encode("utf-8")
-
-    data, headers = encode_multipart_data(
-        params, ({} if files is None else files))
-
-    if extra_headers is not None:
-        headers.update(extra_headers)
+def signal_wrapper(*args, **kwargs):
+    """Wrapper to capture and log any SignalException from signal."""
     try:
-        payload = geturl(url, creds=creds, headers=headers, data=data)
-        if payload != b"OK":
-            maaslog.error(
-                "Unexpected result sending region commissioning data: %s" % (
-                    payload))
-    except urllib.error.HTTPError as exc:
-        maaslog.error("http error [%s]" % exc.code)
-    except urllib.error.URLError as exc:
-        maaslog.error("url error [%s]" % exc.reason)
-    except socket.timeout as exc:
-        maaslog.error("socket timeout [%s]" % exc)
-    except TypeError as exc:
-        maaslog.error(str(exc))
-    except Exception as exc:
-        maaslog.error("unexpected error [%s]" % exc)
+        signal(*args, **kwargs)
+    except SignalException as e:
+        maaslog.error("Error during controller refresh: %s" % e.error)
 
 
 @synchronous
@@ -122,7 +91,9 @@ def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
     maaslog.info(
         "Refreshing rack controller hardware information.")
 
-    url = "%s/metadata/status/%s/latest" % (maas_url, system_id)
+    if maas_url is None:
+        maas_url = 'http://127.0.0.1:5240/MAAS'
+    url = "%s/metadata/%s/" % (maas_url, MD_VERSION)
 
     creds = {
         'consumer_key': consumer_key,
@@ -130,34 +101,37 @@ def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
         'token_secret': token_secret,
         'consumer_secret': '',
     }
+
     scripts = {
         name: config
         for name, config in NODE_INFO_SCRIPTS.items()
-        if config["run_on_controller"]
+        if config['run_on_controller']
     }
 
     with tempfile.TemporaryDirectory(prefix='maas-commission-') as tmpdir:
         failed_scripts = runscripts(scripts, url, creds, tmpdir=tmpdir)
 
     if len(failed_scripts) == 0:
-        signal(url, creds, "OK", "Finished refreshing %s" % system_id)
+        signal_wrapper(
+            url, creds, 'OK', 'Finished refreshing %s' % system_id)
     else:
-        signal(url, creds, "FAILED", "Failed refreshing %s" % system_id)
+        signal_wrapper(
+            url, creds, 'FAILED', 'Failed refreshing %s' % system_id)
 
 
 def runscripts(scripts, url, creds, tmpdir):
     total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
-    for output_name, config in scripts.items():
-        signal(
-            url, creds, "WORKING", "Starting %s [%d/%d]" %
-            (config['name'], current_script, total_scripts))
+    for script_name, builtin_script in scripts.items():
+        signal_wrapper(
+            url, creds, 'WORKING', 'Starting %s [%d/%d]' %
+            (script_name, current_script, total_scripts))
 
         # Write script to /tmp and set it executable
-        script_path = os.path.join(tmpdir, config['name'])
+        script_path = os.path.join(tmpdir, script_name)
         with open(script_path, 'wb') as f:
-            f.write(config['content'])
+            f.write(builtin_script['content'])
         st = os.stat(script_path)
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
@@ -165,13 +139,13 @@ def runscripts(scripts, url, creds, tmpdir):
         proc = subprocess.Popen(
             script_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
-        signal(
+        signal_wrapper(
             url, creds,
             "WORKING", "Finished %s [%d/%d]: %d" %
-            (config['name'], current_script, total_scripts, proc.returncode),
-            {output_name: stdout, "%s.err" % config['name']: stderr},
-            proc.returncode)
+            (script_name, current_script, total_scripts, proc.returncode),
+            files={script_name: stdout, "%s.err" % script_name: stderr},
+            exit_status=proc.returncode)
         if proc.returncode != 0:
-            failed_scripts.append(config['name'])
+            failed_scripts.append(script_name)
         current_script += 1
     return failed_scripts
