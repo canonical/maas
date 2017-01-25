@@ -65,9 +65,10 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             parsed_package_repository.keys())
 
     def test_read_404_when_bad_id(self):
+        most_recent_repo = PackageRepository.objects.latest("id")
         response = self.client.get(
             reverse(
-                'package_repository_handler', args=[random.randint(0, 100)]))
+                'package_repository_handler', args=[most_recent_repo.id + 1]))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
@@ -120,10 +121,11 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.assertIsNotNone(reload_object(package_repository))
 
     def test_delete_404_when_invalid_id(self):
+        most_recent_repo = PackageRepository.objects.latest("id")
         self.become_admin()
         response = self.client.delete(
             reverse(
-                'package_repository_handler', args=[random.randint(0, 100)]))
+                'package_repository_handler', args=[most_recent_repo.id + 1]))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
