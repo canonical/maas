@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the maasserver application."""
@@ -96,6 +96,10 @@ class NODE_STATUS:
     EXITING_RESCUE_MODE = 19
     #: The node failed to exit rescue mode.
     FAILED_EXITING_RESCUE_MODE = 20
+    #: Running tests on Node
+    TESTING = 21
+    #: Testing has failed
+    FAILED_TESTING = 22
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -122,6 +126,8 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.FAILED_ENTERING_RESCUE_MODE, "Failed to enter rescue mode"),
     (NODE_STATUS.EXITING_RESCUE_MODE, "Exiting rescue mode"),
     (NODE_STATUS.FAILED_EXITING_RESCUE_MODE, "Failed to exit rescue mode"),
+    (NODE_STATUS.TESTING, "Testing node"),
+    (NODE_STATUS.FAILED_TESTING, "Tests failed on node"),
 )
 
 
@@ -143,6 +149,8 @@ ALLOCATED_NODE_STATUSES = [
     NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
     NODE_STATUS.EXITING_RESCUE_MODE,
     NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+    NODE_STATUS.TESTING,
+    NODE_STATUS.FAILED_TESTING,
 ]
 
 
