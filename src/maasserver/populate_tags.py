@@ -194,7 +194,7 @@ def populate_tags_for_single_node(tags, node):
     nodes need reevaluating locally, i.e. when there are no rack controllers
     connected.
     """
-    probed_details = get_single_probed_details(node.system_id)
+    probed_details = get_single_probed_details(node)
     probed_details_doc = merge_details(probed_details)
     # Same document, many queries: use XPathEvaluator.
     evaluator = etree.XPathEvaluator(probed_details_doc, namespaces=tag_nsmap)
@@ -218,7 +218,7 @@ def populate_tag_for_multiple_nodes(tag, nodes, batch_size=DEFAULT_BATCH_SIZE):
     xpath = etree.XPath(tag.definition, namespaces=tag_nsmap)
     # The XML details documents can be large so work in batches.
     for batch in gen_batches(nodes, batch_size):
-        probed_details = get_probed_details(node.system_id for node in batch)
+        probed_details = get_probed_details(batch)
         probed_details_docs_by_node = {
             node: merge_details(probed_details[node.system_id])
             for node in batch

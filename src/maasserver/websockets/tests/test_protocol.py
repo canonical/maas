@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.protocol`"""
@@ -479,7 +479,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @synchronous
     @transactional
     def make_node(self):
-        node = maas_factory.make_Node()
+        node = maas_factory.make_Node(with_empty_script_sets=True)
         # Need to ensure a byte string is included in order to fully exercise
         # the JSON encoder.
         fake_lshw = b"""<?xml version="1.0" standalone="yes" ?>
@@ -492,8 +492,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             <description>Computer</description>\
             </node>
             </list>"""
-        maas_factory.make_NodeResult_for_commissioning(
-            node=node, name=LSHW_OUTPUT_NAME, script_result=0, data=fake_lshw)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.find_script_result(
+            script_name=LSHW_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=fake_lshw)
         return node
 
     @wait_for_reactor

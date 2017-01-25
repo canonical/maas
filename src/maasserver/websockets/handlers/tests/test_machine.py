@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node`"""
@@ -90,7 +90,7 @@ from maasserver.websockets.handlers.machine import (
 )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.enum import RESULT_TYPE
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
@@ -146,13 +146,13 @@ class TestMachineHandler(MAASServerTestCase):
             "bmc": node.bmc_id,
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
-            "commissioning_results": handler.dehydrate_node_results(
-                node, RESULT_TYPE.COMMISSIONING),
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id),
             "current_testing_script_set": node.current_testing_script_set_id,
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
+            "commissioning_results": handler.dehydrate_script_set(
+                node.current_commissioning_script_set),
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
@@ -190,8 +190,8 @@ class TestMachineHandler(MAASServerTestCase):
             "hwe_kernel": make_hwe_kernel_ui_text(node.hwe_kernel),
             "hostname": node.hostname,
             "id": node.id,
-            "installation_results": handler.dehydrate_node_results(
-                node, RESULT_TYPE.INSTALLATION),
+            "installation_results": handler.dehydrate_script_set(
+                node.current_installation_script_set),
             "interfaces": [
                 handler.dehydrate_interface(interface, node)
                 for interface in node.interface_set.all().order_by('name')
@@ -731,14 +731,16 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_dehydrate_summary_output_returns_data(self):
         owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
+        node = factory.make_Node(owner=owner, with_empty_script_sets=True)
         handler = MachineHandler(owner, {})
         lldp_data = "<foo>bar</foo>".encode("utf-8")
-        factory.make_NodeResult_for_commissioning(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.find_script_result(
+            script_name=LLDP_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=lldp_data)
         observed = handler.dehydrate_summary_output(node, {})
         probed_details = merge_details_cleanly(
-            get_single_probed_details(node.system_id))
+            get_single_probed_details(node))
         self.assertEqual({
             "summary_xml": etree.tostring(
                 probed_details, encoding=str, pretty_print=True),
@@ -748,22 +750,27 @@ class TestMachineHandler(MAASServerTestCase):
                     pretty_print=True)).convert(),
             }, observed)
 
-    def test_dehydrate_node_results(self):
+    def test_dehydrate_script_set(self):
         owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {})
-        lldp_data = "<foo>bar</foo>".encode("utf-8")
-        result = factory.make_NodeResult_for_commissioning(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
-        self.assertEqual([{
-            "id": result.id,
-            "result": result.script_result,
-            "name": result.name,
-            "data": result.data,
-            "line_count": 1,
-            "created": dehydrate_datetime(result.created),
-            }],
-            handler.dehydrate_node_results(node, RESULT_TYPE.COMMISSIONING))
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PASSED)
+        self.assertEqual([
+            {
+                'id': script_result.id,
+                'result': script_result.exit_status,
+                'name': script_result.name,
+                'data': script_result.stdout,
+                'line_count': len(script_result.stdout.splitlines()),
+                'created': dehydrate_datetime(script_result.updated),
+            },
+            {
+                'id': script_result.id,
+                'result': script_result.exit_status,
+                'name': "%s.err" % script_result.name,
+                'data': script_result.stderr,
+                'line_count': len(script_result.stderr.splitlines()),
+                'created': dehydrate_datetime(script_result.updated),
+            }], handler.dehydrate_script_set(script_result.script_set))
 
     def test_dehydrate_events_only_includes_lastest_50(self):
         owner = factory.make_User()
@@ -874,23 +881,25 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get(self):
         user = factory.make_User()
         handler = MachineHandler(user, {})
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_empty_script_sets=True)
         factory.make_FilesystemGroup(node=node)
         node.owner = user
         node.save()
         for _ in range(100):
             factory.make_Event(node=node)
         lldp_data = "<foo>bar</foo>".encode("utf-8")
-        factory.make_NodeResult_for_commissioning(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.find_script_result(
+            script_name=LLDP_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=lldp_data)
         factory.make_PhysicalBlockDevice(node)
-
         Config.objects.set_config(
             name='enable_third_party_drivers', value=True)
         data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
-        factory.make_NodeResult_for_commissioning(
-            node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
-            data=data.encode("utf-8"))
+        script_result = script_set.find_script_result(
+            script_name=LIST_MODALIASES_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=data.encode("utf-8"))
 
         # Bond interface with a VLAN on top. With the bond set to STATIC
         # and the VLAN set to AUTO.

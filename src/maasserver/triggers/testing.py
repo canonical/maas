@@ -59,7 +59,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import NodeResult
+from metadataserver.models import ScriptSet
 from testtools.matchers import (
     GreaterThan,
     Is,
@@ -370,15 +370,25 @@ class TransactionalHelpersMixin:
         return ipaddress.subnet.space
 
     @transactional
-    def create_noderesult(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_NodeResult_for_commissioning(**params)
+    def create_scriptset(self, node):
+        script_set = ScriptSet.objects.create_commissioning_script_set(node)
+        node.current_commissioning_script_set = script_set
+        node.save()
+        return script_set
 
     @transactional
-    def delete_noderesult(self, id):
-        result = NodeResult.objects.get(id=id)
-        result.delete()
+    def delete_scriptset(self, script_set):
+        script_set.delete()
+
+    @transactional
+    def create_scriptresult(self, script_set, params=None):
+        if params is None:
+            params = {}
+        return factory.make_ScriptResult(script_set=script_set, **params)
+
+    @transactional
+    def delete_scriptresult(self, script_result):
+        script_result.delete()
 
     @transactional
     def create_interface(self, params=None):

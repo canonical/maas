@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the commissioning-related portions of the MAAS API."""
@@ -7,13 +7,21 @@ __all__ = []
 
 from base64 import b64encode
 import http.client
+from itertools import chain
+import random
 
 from django.core.urlresolvers import reverse
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
+from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 
 
@@ -51,7 +59,7 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
                 'name': name,
                 'content': factory.make_file_upload(content=content),
             })
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.OK))
 
         returned_script = json_load_bytes(response.content)
         self.assertEqual(
@@ -69,13 +77,13 @@ class CommissioningScriptsAPITest(APITestCase.ForUser):
 
     def test_GET_is_forbidden(self):
         response = self.client.get(self.get_url())
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_POST_is_forbidden(self):
         response = self.client.post(
             self.get_url(),
             {'name': factory.make_name('script')})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
 class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
@@ -87,13 +95,13 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
     def test_GET_returns_script_contents(self):
         script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(script.content, response.content)
 
     def test_GET_preserves_binary_data(self):
         script = factory.make_CommissioningScript(content=sample_binary_data)
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(sample_binary_data, response.content)
 
     def test_PUT_updates_contents(self):
@@ -104,7 +112,7 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         response = self.client.put(
             self.get_url(script.name),
             {'content': factory.make_file_upload(content=new_content)})
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.OK))
 
         self.assertEqual(new_content, reload_object(script).content)
 
@@ -127,128 +135,182 @@ class CommissioningScriptAPITest(APITestCase.ForUser):
         # (consumers of the MAAS) to see these.
         script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_PUT_is_forbidden(self):
         script = factory.make_CommissioningScript()
         response = self.client.put(
             self.get_url(script.name), {'content': factory.make_string()})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_DELETE_is_forbidden(self):
         script = factory.make_CommissioningScript()
         response = self.client.put(self.get_url(script.name))
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
 class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
 
-    def test_list_returns_commissioning_results(self):
-        commissioning_results = [
-            factory.make_NodeResult_for_commissioning()
-            for counter in range(3)]
+    def store_result(
+            self, script_result, stdout=None, stderr=None,
+            **kwargs):
+        # Create a test store_result which doesn't run the script hooks.
+        if stdout is not None:
+            script_result.stdout = Bin(stdout.encode('utf-8'))
+        if stderr is not None:
+            script_result.stderr = Bin(stderr.encode('utf-8'))
+        for arg, value in kwargs.items():
+            setattr(script_result, arg, value)
+        if script_result.exit_status == 0:
+            script_result.status = SCRIPT_STATUS.PASSED
+        else:
+            script_result.status = SCRIPT_STATUS.FAILED
+        script_result.save()
+
+    def test_list_returns_expected_fields(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.scriptresult_set.first()
+        self.store_result(
+            script_result, exit_status=0,
+            stdout=factory.make_name('stdout'))
+
         url = reverse('node_results_handler')
-        response = self.client.get(url)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        response = self.client.get(url, {'system_id': [node.system_id]})
+        self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
-                (
-                    commissioning_result.name,
-                    commissioning_result.script_result,
-                    b64encode(commissioning_result.data).decode("utf-8"),
-                    commissioning_result.node.system_id,
-                )
-                for commissioning_result in commissioning_results
-            ],
-            [
-                (
-                    result.get('name'),
-                    result.get('script_result'),
-                    result.get('data'),
-                    result.get('node').get('system_id'),
-                )
-                for result in parsed_results
-            ]
-        )
+        for parsed_result in parsed_results:
+            if parsed_result['name'] == script_result.name:
+                break
+        self.assertEquals(
+            node.current_commissioning_script_set.scriptresult_set.count() +
+            node.current_testing_script_set.scriptresult_set.count() +
+            node.current_installation_script_set.scriptresult_set.count(),
+            len(parsed_results))
+        self.assertItemsEqual([
+            'created', 'updated', 'id', 'name', 'script_result', 'node',
+            'data'], parsed_result.keys())
+        self.assertEquals(script_result.id, parsed_result['id'])
+        self.assertEquals(script_result.name, parsed_result['name'])
+        self.assertEquals(
+            script_result.exit_status, parsed_result['script_result'])
+        self.assertEquals(
+            {'system_id': script_set.node.system_id},
+            parsed_result['node'])
+        self.assertEquals(
+            script_result.stdout.decode('utf-8'), parsed_result['data'])
 
     def test_list_returns_with_multiple_empty_data(self):
-        commissioning_results = [
-            factory.make_NodeResult_for_commissioning(data=b"")
-            for counter in range(3)]
+        node = factory.make_Node(with_empty_script_sets=True)
+        for script_result in chain(
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            self.store_result(
+                script_result, exit_status=0, stdout='', stderr='')
+
         url = reverse('node_results_handler')
         response = self.client.get(url)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
-                (
-                    commissioning_result.name,
-                    commissioning_result.script_result,
-                    b64encode(commissioning_result.data).decode("utf-8"),
-                    commissioning_result.node.system_id,
-                )
-                for commissioning_result in commissioning_results
+                script_result.stdout.decode('utf-8')
+                for script_result in chain(
+                    node.current_commissioning_script_set,
+                    node.current_testing_script_set,
+                    node.current_installation_script_set)
             ],
-            [
-                (
-                    result.get('name'),
-                    result.get('script_result'),
-                    result.get('data'),
-                    result.get('node').get('system_id'),
-                )
-                for result in parsed_results
-            ]
-        )
+            [parsed_result.get('data') for parsed_result in parsed_results])
 
-    def test_list_can_be_filtered_by_node(self):
-        commissioning_results = [
-            factory.make_NodeResult_for_commissioning()
-            for counter in range(3)]
+    def test_list_returns_stderr(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        for script_result in chain(
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            self.store_result(
+                script_result, exit_status=0, stdout='', stderr='')
+
         url = reverse('node_results_handler')
-        response = self.client.get(
-            url,
-            {
-                'system_id': [
-                    commissioning_results[0].node.system_id,
-                    commissioning_results[1].node.system_id,
-                ],
-            }
-        )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        response = self.client.get(url, {'system_id': [node.system_id]})
+        self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
-            [b64encode(commissioning_results[0].data).decode("utf-8"),
-             b64encode(commissioning_results[1].data).decode("utf-8")],
-            [result.get('data') for result in parsed_results])
+            [
+                script_result.stdout.decode('utf-8')
+                for script_result in chain(
+                    node.current_commissioning_script_set,
+                    node.current_testing_script_set,
+                    node.current_installation_script_set)
+            ],
+            [parsed_result['data'] for parsed_result in parsed_results])
+
+    def test_list_shows_all_latest_results(self):
+        # XXX ltrager 2017-01-23 - Needed until builtin tests are added.
+        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_results = []
+        for script_result in node.current_commissioning_script_set:
+            self.store_result(script_result, exit_status=0)
+            script_results.append(script_result)
+
+        for script_result in node.current_testing_script_set:
+            self.store_result(script_result, exit_status=0)
+            script_results.append(script_result)
+
+        for script_result in node.current_installation_script_set:
+            script_result.store_result(exit_status=0)
+            script_results.append(script_result)
+
+        url = reverse('node_results_handler')
+        response = self.client.get(url, {'system_id': [node.system_id]})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            {script_result.id for script_result in script_results},
+            {parsed_result['id'] for parsed_result in parsed_results})
 
     def test_list_can_be_filtered_by_name(self):
-        commissioning_results = [
-            factory.make_NodeResult_for_commissioning()
-            for counter in range(3)]
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_results = []
+        for script_result in node.current_commissioning_script_set:
+            self.store_result(script_result, exit_status=0)
+            script_results.append(script_result)
+        script_result = random.choice(script_results)
+
         url = reverse('node_results_handler')
-        response = self.client.get(
-            url,
-            {
-                'name': commissioning_results[0].name
-            }
-        )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        response = self.client.get(url, {'name': script_result.name})
+        self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [b64encode(commissioning_results[0].data).decode("utf-8")],
-            [result.get('data') for result in parsed_results])
+        self.assertEquals(script_result.id, parsed_results[0]['id'])
 
     def test_list_displays_only_visible_nodes(self):
-        node = factory.make_Node(owner=factory.make_User())
-        factory.make_NodeResult_for_commissioning(node)
+        node = factory.make_Node(
+            owner=factory.make_User(), with_empty_script_sets=True)
+        for script_result in node.current_commissioning_script_set:
+            self.store_result(script_result, exit_status=0)
+
         url = reverse('node_results_handler')
         response = self.client.get(url)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
+        self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
         self.assertEqual([], parsed_results)
+
+    def test_list_displays_all_results(self):
+        script_results = []
+        for _ in range(3):
+            node = factory.make_Node(with_empty_script_sets=True)
+            for script_result in node.current_commissioning_script_set:
+                self.store_result(script_result, exit_status=0)
+                script_results.append(script_result)
+            for script_result in node.current_installation_script_set:
+                script_results.append(script_result)
+
+        url = reverse('node_results_handler')
+        response = self.client.get(url)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            {script_result.id for script_result in script_results},
+            {parsed_result['id'] for parsed_result in parsed_results})

@@ -229,7 +229,7 @@ class NodeHandler(OperationsHandler):
         Returns 404 if the node is not found.
         """
         node = get_object_or_404(self.model, system_id=system_id)
-        probe_details = get_single_probed_details(node.system_id)
+        probe_details = get_single_probed_details(node)
         probe_details_report = {
             name: None if data is None else bson.Binary(data)
             for name, data in probe_details.items()

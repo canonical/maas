@@ -49,8 +49,7 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_osystem_and_distro_series,
 )
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.models.noderesult import NodeResult
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
@@ -442,20 +441,15 @@ class MarkFixed(NodeAction):
         self.node.mark_fixed(self.user)
 
     def has_commissioning_data(self):
-        """Return True when the node is missing the required commissioning
+        """Return False when the node is missing the required commissioning
         data."""
-        results = list(NodeResult.objects.filter(
-            node=self.node, result_type=RESULT_TYPE.COMMISSIONING))
-        if len(results) == 0:
+        script_set = self.node.current_commissioning_script_set
+        if script_set is None:
             return False
-        failed_results = [
-            result
-            for result in results
-            if result.script_result != 0
-        ]
-        if len(failed_results) > 0:
-            return False
-        return True
+        else:
+            script_failures = script_set.scriptresult_set.exclude(
+                status=SCRIPT_STATUS.PASSED)
+            return not script_failures.exists()
 
 
 class ImportImages(NodeAction):

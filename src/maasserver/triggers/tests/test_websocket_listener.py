@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Use the `PostgresListenerService` to test all of the triggers from for
@@ -26,6 +26,7 @@ from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import register_websocket_triggers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
@@ -773,10 +774,10 @@ class TestDeviceWithParentStaticIPAddressListener(
             yield listener.stopService()
 
 
-class TestNodeNodeResultListener(
+class TestScriptSetListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    metadataserver_noderesult table that notifies its node."""
+    metadataserver_scriptset table that notifies its node."""
 
     scenarios = (
         ('machine', {
@@ -812,7 +813,7 @@ class TestNodeNodeResultListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_noderesult, {"node": node})
+            yield deferToDatabase(self.create_scriptset, node)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -823,24 +824,24 @@ class TestNodeNodeResultListener(
     def test__calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
-        result = yield deferToDatabase(self.create_noderesult, {"node": node})
+        result = yield deferToDatabase(self.create_scriptset, node)
 
         listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.delete_noderesult, result.id)
+            yield deferToDatabase(self.delete_scriptset, result)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
 
-class TestDeviceWithParentNodeResultListener(
+class TestDeviceWithParentScriptSetListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    metadataserver_noderesult table that notifies its node."""
+    metadataserver_scriptset table that notifies its node."""
 
     @wait_for_reactor
     @inlineCallbacks
@@ -853,7 +854,7 @@ class TestDeviceWithParentNodeResultListener(
         listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_noderesult, {"node": device})
+            yield deferToDatabase(self.create_scriptset, device)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
@@ -865,16 +866,104 @@ class TestDeviceWithParentNodeResultListener(
         yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         result = yield deferToDatabase(
-            self.create_noderesult, {"node": device})
+            self.create_scriptset, device)
 
         listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.delete_noderesult, result.id)
+            yield deferToDatabase(self.delete_scriptset, result)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestScriptResultListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    metadataserver_scriptresult table that notifies its node."""
+
+    scenarios = (
+        ('machine', {
+            'params': {'node_type': NODE_TYPE.MACHINE},
+            'listener': 'machine',
+            }),
+        ('device', {
+            'params': {'node_type': NODE_TYPE.DEVICE},
+            'listener': 'device',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_scriptresult, script_set)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+        script_result = yield deferToDatabase(
+            self.create_scriptresult, script_set,
+            {"status": SCRIPT_STATUS.PENDING})
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(script_result.store_result, 0)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+        script_set = yield deferToDatabase(self.create_scriptset, node)
+        script_result = yield deferToDatabase(
+            self.create_scriptresult, script_set)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_scriptresult, script_result)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stopService()
 

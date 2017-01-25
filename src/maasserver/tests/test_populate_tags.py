@@ -54,6 +54,10 @@ from maastesting.twisted import (
     always_succeed_with,
     extract_result,
 )
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
@@ -71,6 +75,30 @@ from twisted.internet import reactor
 from twisted.internet.base import DelayedCall
 from twisted.internet.task import Clock
 from twisted.internet.threads import blockingCallFromThread
+
+
+def make_script_result(node, script_name=None, stdout=None, exit_status=0):
+    script_set = node.current_commissioning_script_set
+    if script_set is None:
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        node.current_commissioning_script_set = script_set
+        node.save()
+    if exit_status == 0:
+        status = SCRIPT_STATUS.PASSED
+    else:
+        status = SCRIPT_STATUS.FAILED
+    return factory.make_ScriptResult(
+        script_set=script_set, status=status, exit_status=exit_status,
+        script_name=script_name, stdout=stdout)
+
+
+def make_lshw_result(node, stdout=None, exit_status=0):
+    return make_script_result(node, LSHW_OUTPUT_NAME, stdout, exit_status)
+
+
+def make_lldp_result(node, stdout=None, exit_status=0):
+    return make_script_result(node, LLDP_OUTPUT_NAME, stdout, exit_status)
 
 
 class TestDoPopulateTags(MAASServerTestCase):
@@ -303,10 +331,8 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_updates_node_with_all_applicable_tags(self):
         node = factory.make_Node()
-        factory.make_NodeResult_for_commissioning(
-            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
-        factory.make_NodeResult_for_commissioning(
-            node, LLDP_OUTPUT_NAME, 0, b"<bar/>")
+        make_lshw_result(node, b"<foo/>")
+        make_lldp_result(node, b"<bar/>")
         tags = [
             factory.make_Tag("foo", "/foo", populate=False),
             factory.make_Tag("bar", "//lldp:bar", populate=False),
@@ -318,8 +344,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_ignores_tags_with_unrecognised_namespaces(self):
         node = factory.make_Node()
-        factory.make_NodeResult_for_commissioning(
-            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
+        make_lshw_result(node, b"<foo/>")
         tags = [
             factory.make_Tag("foo", "/foo", populate=False),
             factory.make_Tag("lou", "//nge:bar", populate=False),
@@ -330,8 +355,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_ignores_tags_without_definition(self):
         node = factory.make_Node()
-        factory.make_NodeResult_for_commissioning(
-            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
+        make_lshw_result(node, b"<foo/>")
         tags = [
             factory.make_Tag("foo", "/foo", populate=False),
             Tag(name="empty", definition=""),
@@ -347,8 +371,7 @@ class TestPopulateTagForMultipleNodes(MAASServerTestCase):
     def test_updates_nodes_with_tag(self):
         nodes = [factory.make_Node() for _ in range(5)]
         for node in nodes[0:2]:
-            factory.make_NodeResult_for_commissioning(
-                node, LLDP_OUTPUT_NAME, 0, b"<bar/>")
+            make_lldp_result(node, b"<bar/>")
         tag = factory.make_Tag("bar", "//lldp:bar", populate=False)
         populate_tag_for_multiple_nodes(tag, nodes)
         self.assertItemsEqual(

@@ -18,9 +18,6 @@ from maasserver.third_party_drivers import (
     populate_kernel_opts,
 )
 from maastesting import root
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.fields import Bin
-from metadataserver.models import NodeResult
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
 )
@@ -30,16 +27,28 @@ class TestNodeModaliases(MAASServerTestCase):
 
     def test_uses_commissioning_modaliases(self):
         test_data = b'hulla\nbaloo'
-        node = factory.make_Node()
-        NodeResult.objects.store_data(
-            node, LIST_MODALIASES_OUTPUT_NAME, 0,
-            RESULT_TYPE.COMMISSIONING, Bin(test_data))
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.scriptresult_set.get(
+            script_name=LIST_MODALIASES_OUTPUT_NAME)
+        script_result.store_result(exit_status=0, stdout=test_data)
 
         aliases = node_modaliases(node)
         self.assertEqual(['hulla', 'baloo'], aliases)
 
     def test_survives_no_commissioning_data(self):
         node = factory.make_Node()
+        aliases = node_modaliases(node)
+        self.assertEqual([], aliases)
+
+    def test_only_returns_data_from_passed_results(self):
+        test_data = b'hulla\nbaloo'
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_set = node.current_commissioning_script_set
+        script_result = script_set.scriptresult_set.get(
+            script_name=LIST_MODALIASES_OUTPUT_NAME)
+        script_result.store_result(exit_status=1, stdout=test_data)
+
         aliases = node_modaliases(node)
         self.assertEqual([], aliases)
 

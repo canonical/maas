@@ -1,96 +1,91 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.models.nodeprobeddetails`."""
 
 __all__ = []
 
-from unittest.mock import create_autospec
-
-from maasserver.models import nodeprobeddetails
+from maasserver.models.nodeprobeddetails import (
+    get_probed_details,
+    get_single_probed_details,
+    script_output_nsmap,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
 )
 
 
-def make_lshw_result(node, data, script_result=0):
-    return factory.make_NodeResult_for_commissioning(
-        node=node, name=LSHW_OUTPUT_NAME,
-        data=data, script_result=script_result)
-
-
-def make_lldp_result(node, data, script_result=0):
-    return factory.make_NodeResult_for_commissioning(
-        node=node, name=LLDP_OUTPUT_NAME,
-        data=data, script_result=script_result)
-
-
 class TestNodeDetail(MAASServerTestCase):
 
-    def test_calls_through_to_get_probed_details(self):
-        node = factory.make_Node()
-        get_probed_details = self.patch(
-            nodeprobeddetails, "get_probed_details",
-            create_autospec(nodeprobeddetails.get_probed_details))
-        get_probed_details.return_value = {
-            node.system_id: {
-                "lshw": b"<lshw-data/>",
-                "lldp": b"<lldp-data/>",
-            },
-        }
+    def make_script_set_and_results(self, node, suffix="data"):
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        return script_set, [
+            factory.make_ScriptResult(
+                script_set=script_set, script_name=LSHW_OUTPUT_NAME,
+                exit_status=0, status=SCRIPT_STATUS.PASSED,
+                stdout=b"<lshw-%s/>" % suffix.encode()),
+            factory.make_ScriptResult(
+                script_set=script_set, script_name=LLDP_OUTPUT_NAME,
+                exit_status=0, status=SCRIPT_STATUS.PASSED,
+                stdout=b"<lldp-%s/>" % suffix.encode()),
+        ]
+
+    def test__returns_all_details(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_set = node.current_commissioning_script_set
+        for script_name, stdout in (
+                (LSHW_OUTPUT_NAME, b"<lshw-data/>"),
+                (LLDP_OUTPUT_NAME, b"<lldp-data/>")):
+            script_result = script_set.find_script_result(
+                script_name=script_name)
+            script_result.store_result(exit_status=0, stdout=stdout)
         self.assertDictEqual(
             {"lshw": b"<lshw-data/>", "lldp": b"<lldp-data/>"},
-            nodeprobeddetails.get_single_probed_details(node.system_id))
-        get_probed_details.assert_called_once_with((node.system_id,))
+            get_single_probed_details(node))
 
+    def test__returns_null_details_when_there_are_none(self):
+        node = factory.make_Node()
+        self.assertDictEqual(
+            {"lshw": None, "lldp": None}, get_single_probed_details(node))
 
-class TestNodesDetail(MAASServerTestCase):
+    def test__returns_only_details_from_okay_commissioning_results(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        script_set = node.current_commissioning_script_set
+        for script_name, stdout, exit_status in (
+                (LSHW_OUTPUT_NAME, b"<lshw-data/>", 0),
+                (LLDP_OUTPUT_NAME, b"<lldp-data/>", 1)):
+            script_result = script_set.find_script_result(
+                script_name=script_name)
+            script_result.store_result(exit_status=exit_status, stdout=stdout)
+        self.assertDictEqual(
+            {"lshw": b"<lshw-data/>", "lldp": None},
+            get_single_probed_details(node))
 
-    def get_details(self, nodes):
-        return nodeprobeddetails.get_probed_details(
-            node.system_id for node in nodes)
-
-    def test_returns_null_details_when_there_are_none(self):
-        nodes = [factory.make_Node(), factory.make_Node()]
-        expected = {
-            node.system_id: {"lshw": None, "lldp": None}
-            for node in nodes
-        }
-        self.assertDictEqual(expected, self.get_details(nodes))
-
-    def test_returns_all_details(self):
-        nodes = [factory.make_Node(), factory.make_Node()]
-        expected = {
-            node.system_id: {
-                "lshw": make_lshw_result(node, b"<node%d/>" % index).data,
-                "lldp": make_lldp_result(node, b"<node%d/>" % index).data,
-            }
-            for index, node in enumerate(nodes)
-        }
-        self.assertDictEqual(expected, self.get_details(nodes))
-
-    def test_returns_only_those_details_that_exist(self):
-        nodes = [factory.make_Node(), factory.make_Node()]
-        expected = {
-            node.system_id: {
-                "lshw": make_lshw_result(node, b"<node%d/>" % index).data,
-                "lldp": None,
-            }
-            for index, node in enumerate(nodes)
-        }
-        self.assertDictEqual(expected, self.get_details(nodes))
-
-    def test_returns_only_details_from_okay_commissioning_results(self):
-        nodes = [factory.make_Node(), factory.make_Node()]
+    def test_get_probed_details(self):
         expected = {}
-        for index, node in enumerate(nodes):
-            make_lshw_result(node, b"<node%d/>" % index)
-            make_lldp_result(node, b"<node%d/>" % index, script_result=1)
+        nodes = [factory.make_Node() for _ in range(3)]
+        for node in nodes:
+            # Create some old results. These will _not_ be returned by
+            # get probed_details.
+            self.make_script_set_and_results(node, "old")
+            # Create the current results. These will be returned by
+            # get_probed_details.
+            script_set, script_results = self.make_script_set_and_results(node)
+            node.current_commissioning_script_set = script_set
+            node.save()
             expected[node.system_id] = {
-                "lshw": b"<node%d/>" % index,
-                "lldp": None,
+                script_output_nsmap[result.script_name]: result.stdout
+                for result in script_results
             }
-        self.assertDictEqual(expected, self.get_details(nodes))
+            # Create some new but not current results. These will _not_ be
+            # returned by get_probed_details.
+            self.make_script_set_and_results(node, "new")
+        self.assertDictEqual(expected, get_probed_details(nodes))

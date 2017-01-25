@@ -34,6 +34,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.refresh.node_info_scripts import (
@@ -234,14 +238,26 @@ class TestNodeAPI(APITestCase.ForUser):
 class TestGetDetails(APITestCase.ForUser):
     """Tests for /api/2.0/nodes/<node>/?op=details."""
 
+    def make_script_result(self, node, script_result=0, script_name=None):
+        script_set = node.current_commissioning_script_set
+        if script_set is None:
+            script_set = factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            node.current_commissioning_script_set = script_set
+            node.save()
+        if script_result == 0:
+            status = SCRIPT_STATUS.PASSED
+        else:
+            status = SCRIPT_STATUS.FAILED
+        return factory.make_ScriptResult(
+            script_set=script_set, status=status, exit_status=script_result,
+            script_name=script_name)
+
     def make_lshw_result(self, node, script_result=0):
-        return factory.make_NodeResult_for_commissioning(
-            node=node, name=LSHW_OUTPUT_NAME,
-            script_result=script_result)
+        return self.make_script_result(node, script_result, LSHW_OUTPUT_NAME)
 
     def make_lldp_result(self, node, script_result=0):
-        return factory.make_NodeResult_for_commissioning(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=script_result)
+        return self.make_script_result(node, script_result, LLDP_OUTPUT_NAME)
 
     def get_details(self, node):
         url = reverse('node_handler', args=[node.system_id])
@@ -261,15 +277,15 @@ class TestGetDetails(APITestCase.ForUser):
         lshw_result = self.make_lshw_result(node)
         lldp_result = self.make_lldp_result(node)
         self.assertDictEqual(
-            {"lshw": lshw_result.data,
-             "lldp": lldp_result.data},
+            {"lshw": lshw_result.stdout,
+             "lldp": lldp_result.stdout},
             self.get_details(node))
 
     def test_GET_returns_only_those_details_that_exist(self):
         node = factory.make_Node()
         lshw_result = self.make_lshw_result(node)
         self.assertDictEqual(
-            {"lshw": lshw_result.data,
+            {"lshw": lshw_result.stdout,
              "lldp": None},
             self.get_details(node))
 

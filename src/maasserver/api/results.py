@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: `CommissioningResult`."""
@@ -7,6 +7,7 @@ __all__ = [
     'NodeResultsHandler',
     ]
 
+from formencode.validators import Int
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import (
     get_optional_list,
@@ -14,7 +15,7 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
-from metadataserver.models import NodeResult
+from metadataserver.models import ScriptResult
 
 
 class NodeResultsHandler(OperationsHandler):
@@ -22,7 +23,7 @@ class NodeResultsHandler(OperationsHandler):
     api_doc_section_name = "Commissioning results"
     create = update = delete = None
 
-    model = NodeResult
+    model = ScriptResult
     fields = (
         'name', 'script_result', 'result_type', 'updated', 'created',
         'node', 'data')
@@ -44,18 +45,51 @@ class NodeResultsHandler(OperationsHandler):
         # Get filters from request.
         system_ids = get_optional_list(request.GET, 'system_id')
         names = get_optional_list(request.GET, 'name')
-        result_type = get_optional_param(request.GET, 'result_type')
+        result_type = get_optional_param(
+            request.GET, 'result_type', None, Int)
         nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=system_ids)
-        results = NodeResult.objects.filter(node_id__in=nodes)
+        script_sets = []
+        for node in nodes:
+            if node.current_commissioning_script_set is not None:
+                script_sets.append(node.current_commissioning_script_set)
+            if node.current_installation_script_set is not None:
+                script_sets.append(node.current_installation_script_set)
+            if node.current_testing_script_set is not None:
+                script_sets.append(node.current_testing_script_set)
+
         if names is not None:
-            results = results.filter(name__in=names)
-        if result_type is not None:
-            results = results.filter(result_type__in=result_type)
-        # Convert the node objects into typed node objects so we get the
-        # proper listing.
-        for result in results:
-            result.node = result.node.as_self()
+            # Convert to a set; it's used for membership testing.
+            names = set(names)
+
+        results = []
+        for script_set in script_sets:
+            if (result_type is not None and
+                    script_set.result_type != result_type):
+                continue
+            for script_result in script_set:
+                if names is not None and script_result.name not in names:
+                    continue
+                results.append({
+                    'created': script_result.created,
+                    'updated': script_result.updated,
+                    'id': script_result.id,
+                    'name': script_result.name,
+                    'script_result': script_result.exit_status,
+                    'node': {'system_id': script_set.node.system_id},
+                    'data': script_result.stdout.decode('utf-8'),
+                })
+                if script_result.stderr != b'':
+                    results.append({
+                        'created': script_result.created,
+                        'updated': script_result.updated,
+                        'id': script_result.id,
+                        'name': '%s.err' % script_result.name,
+                        'script_result': script_result.exit_status,
+                        'node': {'system_id': script_set.node.system_id},
+                        'data': script_result.stderr.decode('utf-8'),
+                    })
+
         return results
 
     @classmethod

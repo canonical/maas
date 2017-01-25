@@ -39,8 +39,6 @@ from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.models import NodeResult
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -185,10 +183,10 @@ class NodeHandler(TimestampedModelHandler):
 
             # Machine output
             data = self.dehydrate_summary_output(obj, data)
-            data["commissioning_results"] = self.dehydrate_node_results(
-                obj, RESULT_TYPE.COMMISSIONING)
-            data["installation_results"] = self.dehydrate_node_results(
-                obj, RESULT_TYPE.INSTALLATION)
+            data["commissioning_results"] = self.dehydrate_script_set(
+                obj.current_commissioning_script_set)
+            data["installation_results"] = self.dehydrate_script_set(
+                obj.current_installation_script_set)
 
             # Third party drivers
             if Config.objects.get_config('enable_third_party_drivers'):
@@ -389,7 +387,7 @@ class NodeHandler(TimestampedModelHandler):
         """Dehydrate the machine summary output."""
         # Produce a "clean" composite details document.
         probed_details = merge_details_cleanly(
-            get_single_probed_details(obj.system_id))
+            get_single_probed_details(obj))
 
         # We check here if there's something to show instead of after
         # the call to get_single_probed_details() because here the
@@ -406,20 +404,34 @@ class NodeHandler(TimestampedModelHandler):
                     pretty_print=True)).convert()
         return data
 
-    def dehydrate_node_results(self, obj, result_type):
-        """Dehydrate node results with the given `result_type`."""
-        return [
-            {
-                "id": result.id,
-                "result": result.script_result,
-                "name": result.name,
-                "data": result.data,
-                "line_count": len(result.data.splitlines()),
-                "created": dehydrate_datetime(result.created),
-            }
-            for result in NodeResult.objects.filter(
-                node=obj, result_type=result_type)
-        ]
+    def dehydrate_script_set(self, script_set):
+        """Dehydrate ScriptResults in the format NodeResults were returned."""
+        if script_set is None:
+            return []
+        ret = []
+        # XXX ltrager 2016-12-22 - This method currently returns a dictionary
+        # identical to what was return with NodeResults. This method will be
+        # updated when the UI has an understanding of script_sets and
+        # script_results.
+        for script_result in script_set:
+            ret.append({
+                'id': script_result.id,
+                'result': script_result.exit_status,
+                'name': script_result.name,
+                'data': script_result.stdout,
+                'line_count': len(script_result.stdout.splitlines()),
+                'created': dehydrate_datetime(script_result.updated),
+            })
+            if script_result.stderr != b'':
+                ret.append({
+                    'id': script_result.id,
+                    'result': script_result.exit_status,
+                    'name': '%s.err' % script_result.name,
+                    'data': script_result.stderr,
+                    'line_count': len(script_result.stderr.splitlines()),
+                    'created': dehydrate_datetime(script_result.updated),
+                })
+        return sorted(ret, key=lambda i: i['name'])
 
     def dehydrate_events(self, obj):
         """Dehydrate the node events.

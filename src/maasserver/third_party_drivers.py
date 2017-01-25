@@ -26,6 +26,7 @@ from typing import List
 
 from formencode import ForEach
 from formencode.validators import String
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.config import (
     ConfigBase,
     ConfigMeta,
@@ -122,14 +123,16 @@ class DriversConfig(ConfigBase, Schema, metaclass=DriversConfigMeta):
 @typed
 def node_modaliases(node) -> List[str]:
     """Return a list of modaliases from the node."""
-    name = LIST_MODALIASES_OUTPUT_NAME
-    query = node.noderesult_set.filter(name__exact=name)
-
-    if len(query) == 0:
+    script_set = node.current_commissioning_script_set
+    if script_set is None:
         return []
 
-    results = query.first().data
-    return results.decode("utf-8").splitlines()
+    script_result = script_set.find_script_result(
+        script_name=LIST_MODALIASES_OUTPUT_NAME)
+    if script_result is None or script_result.status != SCRIPT_STATUS.PASSED:
+        return []
+    else:
+        return script_result.stdout.decode('utf-8').splitlines()
 
 
 def match_aliases_to_driver(detected_aliases, drivers):

@@ -70,8 +70,10 @@ from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
 )
-from metadataserver.enum import RESULT_TYPE
-from metadataserver.models.noderesult import NodeResult
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from netaddr import IPNetwork
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
@@ -813,10 +815,17 @@ class TestMarkBrokenAction(MAASServerTestCase):
 class TestMarkFixedAction(MAASServerTestCase):
 
     def make_commissioning_data(self, node, result=0, count=3):
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        node.current_commissioning_script_set = script_set
+        node.save()
+        if result == 0:
+            status = SCRIPT_STATUS.PASSED
+        else:
+            status = SCRIPT_STATUS.FAILED
         return [
-            NodeResult.objects.create(
-                node=node, name=factory.make_name(), script_result=result,
-                result_type=RESULT_TYPE.COMMISSIONING)
+            factory.make_ScriptResult(
+                script_set=script_set, exit_status=result, status=status)
             for _ in range(count)
             ]
 

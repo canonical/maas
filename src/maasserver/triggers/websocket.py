@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -960,6 +960,37 @@ def node_type_change():
         region_and_rack_controller=NODE_TYPE.REGION_AND_RACK_CONTROLLER))
 
 
+def render_script_result_notify(proc_name, script_set_id):
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        DECLARE
+          node RECORD;
+        BEGIN
+          SELECT
+            system_id, node_type INTO node
+          FROM
+            maasserver_node AS nodet,
+            metadataserver_scriptset AS scriptset
+          WHERE
+            scriptset.id = %s AND
+            scriptset.node_id = nodet.id;
+          IF node.node_type = %d THEN
+            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+          ELSIF node.node_type IN (%d, %d, %d) THEN
+            PERFORM pg_notify(
+              'controller_update',CAST(node.system_id AS text));
+          ELSIF node.node_type = %d THEN
+            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """ % (
+        proc_name, script_set_id, NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        NODE_TYPE.DEVICE))
+
+
 def render_notification_dismissal_notification_procedure(
         proc_name, event_name):
     """Send the notification_id and user_id when a notification is dismissed.
@@ -1495,16 +1526,35 @@ def register_websocket_triggers():
     # Node result table, update to linked node.
     register_procedure(
         render_node_related_notification_procedure(
-            'nd_noderesult_link_notify', 'NEW.node_id'))
+            'nd_scriptset_link_notify', 'NEW.node_id'))
     register_procedure(
         render_node_related_notification_procedure(
-            'nd_noderesult_unlink_notify', 'OLD.node_id'))
+            'nd_scriptset_unlink_notify', 'OLD.node_id'))
     register_trigger(
-        "metadataserver_noderesult",
-        "nd_noderesult_link_notify", "insert")
+        "metadataserver_scriptset",
+        "nd_scriptset_link_notify", "insert")
     register_trigger(
-        "metadataserver_noderesult",
-        "nd_noderesult_unlink_notify", "delete")
+        "metadataserver_scriptset",
+        "nd_scriptset_unlink_notify", "delete")
+
+    register_procedure(
+        render_script_result_notify(
+            "nd_scriptresult_link_notify", "NEW.script_set_id"))
+    register_procedure(
+        render_script_result_notify(
+            "nd_scriptresult_update_notify", "NEW.script_set_id"))
+    register_procedure(
+        render_script_result_notify(
+            "nd_scriptresult_unlink_notify", "OLD.script_set_id"))
+    register_trigger(
+        "metadataserver_scriptresult",
+        "nd_scriptresult_link_notify", "insert")
+    register_trigger(
+        "metadataserver_scriptresult",
+        "nd_scriptresult_update_notify", "update")
+    register_trigger(
+        "metadataserver_scriptresult",
+        "nd_scriptresult_unlink_notify", "delete")
 
     # Interface address table, update to linked node.
     register_procedure(
