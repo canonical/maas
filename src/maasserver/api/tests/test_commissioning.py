@@ -188,12 +188,13 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             node.current_installation_script_set.scriptresult_set.count(),
             len(parsed_results))
         self.assertItemsEqual([
-            'created', 'updated', 'id', 'name', 'script_result', 'node',
-            'data'], parsed_result.keys())
+            'created', 'updated', 'id', 'name', 'script_result', 'result_type',
+            'node', 'data'], parsed_result.keys())
         self.assertEquals(script_result.id, parsed_result['id'])
         self.assertEquals(script_result.name, parsed_result['name'])
         self.assertEquals(
             script_result.exit_status, parsed_result['script_result'])
+        self.assertEquals(script_set.result_type, parsed_result['result_type'])
         self.assertEquals(
             {'system_id': script_set.node.system_id},
             parsed_result['node'])

@@ -76,6 +76,7 @@ class NodeResultsHandler(OperationsHandler):
                     'id': script_result.id,
                     'name': script_result.name,
                     'script_result': script_result.exit_status,
+                    'result_type': script_set.result_type,
                     'node': {'system_id': script_set.node.system_id},
                     'data': script_result.stdout.decode('utf-8'),
                 })
@@ -86,6 +87,7 @@ class NodeResultsHandler(OperationsHandler):
                         'id': script_result.id,
                         'name': '%s.err' % script_result.name,
                         'script_result': script_result.exit_status,
+                        'result_type': script_set.result_type,
                         'node': {'system_id': script_set.node.system_id},
                         'data': script_result.stderr.decode('utf-8'),
                     })
