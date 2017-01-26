@@ -12,7 +12,6 @@ from maasserver.enum import RDNS_MODE_CHOICES
 from maasserver.fields import IPListFormField
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric
-from maasserver.models.space import Space
 from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.forms import set_form_error
@@ -30,9 +29,6 @@ class SubnetForm(MAASModelForm):
 
     vid = forms.IntegerField(
         min_value=0, max_value=4094, required=False)
-
-    space = forms.ModelChoiceField(
-        queryset=Space.objects.all(), required=False)
 
     rdns_mode = forms.ChoiceField(
         choices=RDNS_MODE_CHOICES, required=False)

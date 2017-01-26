@@ -70,6 +70,16 @@ class SubnetHandler(TimestampedModelHandler):
                 with_username=True, with_node_summary=True)
         return data
 
+    def update(self, parameters):
+        subnet = self.get_object(parameters)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, subnet), "Permission denied."
+        # The JavaScript object will still contain the space for backward
+        # compatibility, so we need to strip it out.
+        if 'space' in parameters:
+            del parameters['space']
+        return super().update(parameters)
+
     def delete(self, parameters):
         """Delete this Subnet."""
         subnet = self.get_object(parameters)

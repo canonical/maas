@@ -122,6 +122,55 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
             })
 
 
+class TestSubnetHandlerUpdate(MAASServerTestCase):
+
+    def test__update_as_admin_succeeds(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        new_description = "does anyone use this field?"
+        handler.update({
+            "id": subnet.id,
+            "description": new_description
+        })
+        subnet = reload_object(subnet)
+        self.assertThat(subnet.description, Equals(new_description))
+
+    def test__update_as_admin_succeeds_even_with_a_specified_space(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet(description="sad subnet")
+        space = factory.make_Space()
+        new_description = "happy subnet"
+        handler.update({
+            "id": subnet.id,
+            "space": space.id,
+            "description": new_description
+        })
+        subnet = reload_object(subnet)
+        self.assertThat(subnet.description, Equals(new_description))
+
+    def test__update_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.update({
+                "id": subnet.id,
+            })
+
+    def test__reloads_user(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.update({
+                "id": subnet.id,
+            })
+
+
 class TestSubnetHandlerScan(MAASServerTestCase):
 
     def setUp(self):
