@@ -395,6 +395,7 @@ checks = [
         Rule(
             Allow("django|django.**"),
             Allow("netaddr|netaddr.**"),
+            Allow("petname"),
             Allow("piston3.models"),
             Allow(StandardLibraries),
 

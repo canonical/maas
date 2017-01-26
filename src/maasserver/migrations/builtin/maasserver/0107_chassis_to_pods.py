@@ -89,7 +89,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='bmc',
             name='name',
-            field=models.CharField(max_length=255, default='', unique=True, blank=True),
+            field=models.CharField(max_length=255, default='', unique=False, blank=True),
         ),
         migrations.AlterField(
             model_name='node',
