@@ -36,10 +36,8 @@
 ./run-e2e/*
 ./run-e2e/etc/*
 ./run-e2e/etc/maas/*
-./run/*
-./run/etc/*
-./run/etc/maas/*
-./run/etc/ntp/*
+./run/etc/maas/rackd.conf
+./run/etc/maas/regiond.conf
 ./services/*/supervise
 ./src/maasserver/static/js/enums.js
 ./TAGS
