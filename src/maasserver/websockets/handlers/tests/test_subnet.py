@@ -122,6 +122,55 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
             })
 
 
+class TestSubnetHandlerCreate(MAASServerTestCase):
+
+    def test__create_as_admin_succeeds(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        vlan = factory.make_VLAN()
+        result = handler.create({
+            "vlan": vlan.id,
+            "cidr": "192.168.0.0/24",
+        })
+        subnet = Subnet.objects.get(id=result['id'])
+        self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
+
+    def test__create_as_admin_succeeds_even_with_a_specified_space(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        vlan = factory.make_VLAN()
+        space = factory.make_Space()
+        result = handler.create({
+            "vlan": vlan.id,
+            "cidr": "192.168.0.0/24",
+            "space": space.id,
+        })
+        subnet = Subnet.objects.get(id=result['id'])
+        self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
+
+    def test__create_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {})
+        vlan = factory.make_VLAN()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.create({
+                "vlan": vlan.id,
+                "cidr": "192.168.0.0/24",
+            })
+
+    def test__create_reloads_user(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        vlan = factory.make_VLAN()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.create({
+                "vlan": vlan.id,
+                "cidr": "192.168.0.0/24",
+            })
+
+
 class TestSubnetHandlerUpdate(MAASServerTestCase):
 
     def test__update_as_admin_succeeds(self):
