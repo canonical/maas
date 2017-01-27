@@ -55,6 +55,9 @@ JSON_POWER_DRIVER_SCHEMA = {
     'title': "Power driver setting set",
     'type': 'object',
     'properties': {
+        'driver_type': {
+            'type': 'string',
+        },
         'name': {
             'type': 'string',
         },
@@ -76,7 +79,7 @@ JSON_POWER_DRIVER_SCHEMA = {
             },
         },
     },
-    'required': ['name', 'description', 'fields'],
+    'required': ['driver_type', 'name', 'description', 'fields'],
 }
 
 # JSON schema for multple power drivers.
@@ -232,7 +235,7 @@ class PowerDriverBase(metaclass=ABCMeta):
         Calculates the missing packages on each invoke.
         """
         schema = dict(
-            name=self.name, description=self.description,
+            driver_type='power', name=self.name, description=self.description,
             fields=self.settings, queryable=self.queryable,
             missing_packages=(
                 self.detect_missing_packages()

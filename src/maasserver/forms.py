@@ -60,10 +60,11 @@ from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
+from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
-    DriverType,
     get_driver_choices,
     get_driver_parameters,
+    get_driver_parameters_from_json,
     get_driver_types,
 )
 from maasserver.clusterrpc.osystems import validate_license_key
@@ -165,6 +166,7 @@ from netaddr import (
     IPNetwork,
     valid_ipv6,
 )
+from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
@@ -221,34 +223,29 @@ class APIEditMixin:
         super(APIEditMixin, self)._post_clean()
 
 
-class WithDriverMixin:
-    """A form mixin which dynamically adds the correct fields depending on the
-    `driver_type`. This mixin overrides the 'save' method to persist
+class WithPowerTypeMixin:
+    """A form mixin which adds the correct power_type and power_parameter
+    fields. This mixin overrides the 'save' method to persist
     these fields and is intended to be used with a class inheriting from
     ModelForm.
     """
 
-    driver_type = DriverType.power
-
     def __init__(self, *args, **kwargs):
-        super(WithDriverMixin, self).__init__(*args, **kwargs)
+        super(WithPowerTypeMixin, self).__init__(*args, **kwargs)
         self.data = self.data.copy()
-        WithDriverMixin.set_up_driver_fields(self, self.data)
+        WithPowerTypeMixin.set_up_power_fields(self, self.data)
 
     @staticmethod
-    def _get_driver_type_value(form, data, machine):
+    def _get_power_type_value(form, data, machine):
         if data is None:
             data = {}
-
-        type_field_name = "%s_type" % form.driver_type.name
-        value = data.get(type_field_name, form.initial.get(type_field_name))
+        value = data.get('power_type', form.initial.get('power_type'))
 
         # If value is None (this is a machine creation form or this
         # form deals with an API call which does not change the value of
         # field) or invalid: get the machine's current 'power_type'
         # value or the default value if this form is not linked to a machine.
-        driver_types = get_driver_types(
-            ignore_errors=True, driver_type=form.driver_type)
+        driver_types = get_driver_types(ignore_errors=True)
         if len(driver_types) == 0:
             return ''
 
@@ -257,11 +254,11 @@ class WithDriverMixin:
         return value
 
     @staticmethod
-    def _get_driver_parameters(form, data, machine):
+    def _get_power_parameters(form, data, machine):
         if data is None:
             data = {}
 
-        params_field_name = '%s_parameters' % form.driver_type.name
+        params_field_name = 'power_parameters'
         parameters = data.get(
             params_field_name, form.initial.get(params_field_name, {}))
 
@@ -283,29 +280,27 @@ class WithDriverMixin:
         return parameters
 
     @staticmethod
-    def set_up_driver_fields(form, data, machine=None, type_required=False):
-        """Set up the correct fields based on the driver type.
+    def set_up_power_fields(form, data, machine=None, type_required=False):
+        """Set up the correct fields.
 
         This can't be done at the model level because the choices need to
         be generated on the fly by get_driver_choices().
         """
-        type_field_name = '%s_type' % form.driver_type.name
-        params_field_name = '%s_parameters' % form.driver_type.name
-        type_value = WithDriverMixin._get_driver_type_value(
+        type_field_name = 'power_type'
+        params_field_name = 'power_parameters'
+        type_value = WithPowerTypeMixin._get_power_type_value(
             form, data, machine)
-        choices = [BLANK_CHOICE] + get_driver_choices(
-            driver_type=form.driver_type)
+        choices = [BLANK_CHOICE] + get_driver_choices()
         form.fields[type_field_name] = forms.ChoiceField(
             required=type_required, choices=choices, initial=type_value)
-        parameters = WithDriverMixin._get_driver_parameters(
+        parameters = WithPowerTypeMixin._get_power_parameters(
             form, data, machine)
         skip_check = (
             form.data.get('%s_%s' % (
                 params_field_name, SKIP_CHECK_NAME)) == 'true')
         form.fields[params_field_name] = (
             get_driver_parameters(
-                parameters, driver_type=form.driver_type,
-                skip_check=skip_check)[type_value])
+                parameters, skip_check=skip_check)[type_value])
         if form.instance is not None:
             if form.instance.power_type != '':
                 form.initial[type_field_name] = form.instance.power_type
@@ -319,8 +314,8 @@ class WithDriverMixin:
         # without any validation.  Nobody can remember why this was
         # added at this stage but it might have been a request from
         # smoser, we think.
-        type_field_name = '%s_type' % form.driver_type.name
-        params_field_name = '%s_parameters' % form.driver_type.name
+        type_field_name = 'power_type'
+        params_field_name = 'power_parameters'
         skip_check = (
             form.data.get('%s_%s' % (
                 params_field_name, SKIP_CHECK_NAME)) == 'true')
@@ -328,8 +323,7 @@ class WithDriverMixin:
         # prevent saving the form as we can't validate the power
         # parameters and type.
         if not skip_check:
-            driver_types = get_driver_types(
-                ignore_errors=True, driver_type=form.driver_type)
+            driver_types = get_driver_types(ignore_errors=True)
             if len(driver_types) == 0:
                 set_form_error(
                     form, type_field_name,
@@ -343,13 +337,13 @@ class WithDriverMixin:
         return cleaned_data
 
     @staticmethod
-    def set_driver(form, machine):
-        """Set driver values onto the machine."""
+    def set_values(form, machine):
+        """Set values onto the machine."""
         # Only change type if the type was passed in the initial
         # data. clean_data will always have type, so we cannot use that
         # as a reference.
-        type_field_name = '%s_type' % form.driver_type.name
-        params_field_name = '%s_parameters' % form.driver_type.name
+        type_field_name = 'power_type'
+        params_field_name = 'power_parameters'
         type_changed = False
         if form.data.get(type_field_name) is not None:
             new_type = form.cleaned_data.get(type_field_name)
@@ -370,13 +364,13 @@ class WithDriverMixin:
                 params_field_name)
 
     def clean(self):
-        cleaned_data = super(WithDriverMixin, self).clean()
-        return WithDriverMixin.check_driver(self, cleaned_data)
+        cleaned_data = super(WithPowerTypeMixin, self).clean()
+        return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        node = super(WithDriverMixin, self).save()
-        WithDriverMixin.set_driver(self, node)
+        node = super(WithPowerTypeMixin, self).save()
+        WithPowerTypeMixin.set_values(self, node)
         node.save()
         return node
 
@@ -862,7 +856,7 @@ class DeviceForm(NodeForm):
         return device
 
 
-class ControllerForm(MAASModelForm, WithDriverMixin):
+class ControllerForm(MAASModelForm, WithPowerTypeMixin):
 
     class Meta:
         model = Controller
@@ -877,13 +871,13 @@ class ControllerForm(MAASModelForm, WithDriverMixin):
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         super(ControllerForm, self).__init__(
             data=data, instance=instance, **kwargs)
-        WithDriverMixin.set_up_driver_fields(self, data, instance)
+        WithPowerTypeMixin.set_up_power_fields(self, data, instance)
         if instance is not None:
             self.initial['zone'] = instance.zone.name
 
     def clean(self):
         cleaned_data = super(ControllerForm, self).clean()
-        return WithDriverMixin.check_driver(self, cleaned_data)
+        return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
@@ -891,7 +885,7 @@ class ControllerForm(MAASModelForm, WithDriverMixin):
         zone = self.cleaned_data.get('zone')
         if zone:
             controller.zone = zone
-        WithDriverMixin.set_driver(self, controller)
+        WithPowerTypeMixin.set_values(self, controller)
         controller.save()
         return controller
 
@@ -908,21 +902,26 @@ class PodForm(MAASModelForm):
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         self.is_new = instance is None
+        self.request = request
         super(PodForm, self).__init__(
             data=data, instance=instance, **kwargs)
         if data is None:
             data = {}
         type_value = data.get('type', self.initial.get('type'))
-        self.driver_types = get_driver_types(
-            ignore_errors=True, driver_type=DriverType.pod)
-        if len(self.driver_types) == 0:
+        self.drivers_orig = driver_parameters.get_all_power_types_from_racks()
+        self.drivers = {
+            driver['name']: driver
+            for driver in self.drivers_orig
+            if driver['driver_type'] == 'pod'
+        }
+        if len(self.drivers) == 0:
             type_value = ''
-        elif type_value not in self.driver_types:
+        elif type_value not in self.drivers:
             type_value = (
                 '' if self.instance is None else self.instance.power_type)
         choices = [
-            (name, description)
-            for name, description in self.driver_types.items()
+            (name, driver['description'])
+            for name, driver in self.drivers.items()
         ]
         self.fields['type'] = forms.ChoiceField(
             required=True, choices=choices, initial=type_value)
@@ -930,9 +929,24 @@ class PodForm(MAASModelForm):
             if self.instance.power_type != '':
                 self.initial['type'] = self.instance.power_type
 
+    def _clean_fields(self):
+        """Override to dynamically add fields based on the value of `type`
+        field."""
+        # Process the built-in fields first.
+        super(PodForm, self)._clean_fields()
+        # If no errors then we re-process with the fields required by the
+        # selected type for the pod.
+        if len(self.errors) == 0:
+            driver_fields = get_driver_parameters_from_json(
+                self.drivers_orig, None, scope=SETTING_SCOPE.BMC)
+            self.param_fields = (
+                driver_fields[self.cleaned_data['type']].field_dict)
+            self.fields.update(self.param_fields)
+            super(PodForm, self)._clean_fields()
+
     def clean(self):
         cleaned_data = super(PodForm, self).clean()
-        if len(self.driver_types) == 0:
+        if len(self.drivers) == 0:
             set_form_error(
                 self, 'type',
                 "No rack controllers are connected, unable to validate.")
@@ -950,18 +964,19 @@ class PodForm(MAASModelForm):
         if not pod.name:
             pod.set_random_name()
 
-        pod.power_type = self.cleaned_data.get('type')
+        pod.power_type = self.cleaned_data['type']
+        # Set power_parameters to the generated param_fields.
         pod.power_parameters = {
-            param: value
-            for param, value in self.data.items()
-            if param not in self.fields
+            param_name: self.cleaned_data[param_name]
+            for param_name in self.param_fields.keys()
+            if param_name in self.cleaned_data
         }
         pod.save()
 
         try:
             discovered = discover_pod(
                 pod.power_type, pod.power_parameters,
-                id=pod.id, name=pod.name)
+                pod_id=pod.id, name=pod.name)
         except Exception as exc:
             raise PodProblem(str(exc)) from exc
 
@@ -975,7 +990,7 @@ class PodForm(MAASModelForm):
         if discovered_pod is None:
             raise PodProblem(
                 "No rack controllers connected to discover a pod.")
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, self.request.user)
 
         # Save which rack controllers can route and which cannot.
         discovered_rack_ids = [rack_id for rack_id, _ in discovered[0].items()]
@@ -1056,7 +1071,7 @@ class AdminNodeForm(NodeForm):
         return node
 
 
-class AdminMachineForm(MachineForm, AdminNodeForm, WithDriverMixin):
+class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
     """A `MachineForm` which includes fields that only an admin may change."""
 
     class Meta:
@@ -1072,11 +1087,11 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithDriverMixin):
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         super(AdminMachineForm, self).__init__(
             data=data, instance=instance, **kwargs)
-        WithDriverMixin.set_up_driver_fields(self, data, instance)
+        WithPowerTypeMixin.set_up_power_fields(self, data, instance)
 
     def clean(self):
         cleaned_data = super(AdminMachineForm, self).clean()
-        return WithDriverMixin.check_driver(self, cleaned_data)
+        return WithPowerTypeMixin.check_driver(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
@@ -1084,7 +1099,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithDriverMixin):
         zone = self.cleaned_data.get('zone')
         if zone:
             machine.zone = zone
-        WithDriverMixin.set_driver(self, machine)
+        WithPowerTypeMixin.set_values(self, machine)
         if kwargs.get('commit', True):
             machine.save(*args, **kwargs)
             self.save_m2m()  # Save many to many relations.
@@ -1309,7 +1324,7 @@ class MachineWithMACAddressesForm(WithMACAddressesMixin, MachineForm):
 
 
 class MachineWithPowerAndMACAddressesForm(
-        WithDriverMixin, MachineWithMACAddressesForm):
+        WithPowerTypeMixin, MachineWithMACAddressesForm):
     """A version of the MachineForm which includes the power fields.
     """
 

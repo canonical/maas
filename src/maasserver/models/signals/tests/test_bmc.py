@@ -31,6 +31,7 @@ class TestCreatePodHints(MAASServerTestCase):
 
     def test_deletes_hints_when_chassis_converted_to_bmc(self):
         pod = factory.make_Pod()
+        pod = pod.as_bmc()
         pod.bmc_type = BMC_TYPE.BMC
         pod.save()
         self.assertRaises(

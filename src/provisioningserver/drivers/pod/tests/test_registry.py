@@ -38,19 +38,19 @@ class TestPodDriverRegistry(MAASTestCase):
             fake_driver_two.name, fake_driver_two)
         self.assertItemsEqual([
             {
+                'driver_type': 'pod',
                 'name': fake_driver_one.name,
                 'description': fake_driver_one.description,
                 'fields': [],
                 'queryable': fake_driver_one.queryable,
                 'missing_packages': fake_driver_one.detect_missing_packages(),
-                'composable': fake_driver_one.composable,
             },
             {
+                'driver_type': 'pod',
                 'name': fake_driver_two.name,
                 'description': fake_driver_two.description,
                 'fields': [],
                 'queryable': fake_driver_two.queryable,
                 'missing_packages': fake_driver_two.detect_missing_packages(),
-                'composable': fake_driver_two.composable,
             }],
             PodDriverRegistry.get_schema())

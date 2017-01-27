@@ -9,7 +9,7 @@ __all__ = [
 
 from jsonschema import validate
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
-from provisioningserver.drivers.pod.null import NullPodDriver
+from provisioningserver.drivers.pod.virsh import VirshPodDriver
 from provisioningserver.utils.registry import Registry
 
 
@@ -28,7 +28,7 @@ class PodDriverRegistry(Registry):
 
 
 pod_drivers = [
-    NullPodDriver()
+    VirshPodDriver(),
 ]
 for driver in pod_drivers:
     PodDriverRegistry.register_item(driver.name, driver)

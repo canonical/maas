@@ -92,7 +92,7 @@ def generate_power_types_doc():
          "this list if the rack controller in question is from an older "
          "version of MAAS.")
     line()
-    for _, driver in PowerDriverRegistry.only_power():
+    for _, driver in PowerDriverRegistry:
         title = "%s (%s)" % (driver.name, driver.description)
         line(title)
         line('=' * len(title))

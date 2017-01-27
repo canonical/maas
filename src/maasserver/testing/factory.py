@@ -31,7 +31,6 @@ from django.utils import timezone
 from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
-    BMC_TYPE,
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     CACHE_MODE_TYPE,
@@ -88,6 +87,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    Pod,
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
@@ -528,10 +528,18 @@ class Factory(maastesting.factory.Factory):
         bmc.save()
         return bmc
 
-    def make_Pod(self, **kwargs):
-        kwargs['bmc_type'] = BMC_TYPE.POD
-        bmc = self.make_BMC(**kwargs)
-        return bmc.as_pod()
+    def make_Pod(
+            self, pod_type=None, parameters=None, ip_address=None,
+            **kwargs):
+        if pod_type is None:
+            pod_type = 'virsh'
+        if parameters is None:
+            parameters = {}
+        pod = Pod(
+            power_type=pod_type, power_parameters=parameters,
+            ip_address=ip_address, **kwargs)
+        pod.save()
+        return pod
 
     def make_Domain(self, name=None, ttl=None, authoritative=True):
         if name is None:

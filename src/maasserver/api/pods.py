@@ -145,7 +145,7 @@ class PodsHandler(OperationsHandler):
         Returns 404 if the pod is not found.
         Returns 403 if the user does not have permission to create a pod.
         """
-        form = PodForm(data=request.data)
+        form = PodForm(data=request.data, request=request)
         if form.is_valid():
             return form.save()
         else:

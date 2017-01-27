@@ -416,12 +416,12 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
 
     def test__generate_power_types_doc_generates_doc(self):
         doc = generate_power_types_doc()
-        self.assertThat(doc, ContainsAll(["Power types", "IPMI"]))
+        self.assertThat(doc, ContainsAll(["Power types", "IPMI", "virsh"]))
 
     def test__generate_power_types_doc_generates_describes_power_type(self):
         power_driver = random.choice([
             driver
-            for _, driver in PowerDriverRegistry.only_power()
+            for _, driver in PowerDriverRegistry
             if len(driver.settings) > 0
         ])
         doc = generate_power_types_doc()
@@ -439,7 +439,7 @@ class TestGeneratePodTypesDoc(MAASTestCase):
 
     def test__generate_pod_types_doc_generates_doc(self):
         doc = generate_pod_types_doc()
-        self.assertThat(doc, ContainsAll(["Pod types", "null"]))
+        self.assertThat(doc, ContainsAll(["Pod types", "virsh"]))
 
     def test__generate_pod_types_doc_generates_describes_types(self):
         pod_driver = random.choice([

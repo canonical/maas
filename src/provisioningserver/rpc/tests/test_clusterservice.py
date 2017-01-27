@@ -64,7 +64,6 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
 )
-from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.path import get_path
@@ -409,27 +408,6 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
             PowerDriverRegistry.get_schema(), response["power_types"])
-
-
-class TestClusterProtocol_DescribePodTypes(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def test_describe_pod_types_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DescribePodTypes.commandName)
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_describe_pod_types_returns_jsonized_schema(self):
-
-        response = yield call_responder(
-            Cluster(), cluster.DescribePodTypes, {})
-
-        self.assertThat(response, KeysEqual("types"))
-        self.assertItemsEqual(
-            PodDriverRegistry.get_schema(), response["types"])
 
 
 class TestPatchedURI(MAASTestCase):

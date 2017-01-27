@@ -10,10 +10,6 @@ import random
 
 from django.core.urlresolvers import reverse
 from maasserver import forms
-from maasserver.clusterrpc.driver_parameters import (
-    DriverType,
-    get_driver_choices,
-)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -27,11 +23,26 @@ from provisioningserver.drivers.pod import (
 
 class TestPodsAPI(APITestCase.ForUser):
 
+    def make_pod_info(self):
+        # Use virsh pod type as the required fields are specific to the
+        # type of pod being created.
+        pod_type = 'virsh'
+        pod_ip_adddress = factory.make_ipv4_address()
+        pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
+        pod_password = factory.make_name('password')
+        return {
+            'type': pod_type,
+            'power_address': pod_power_address,
+            'power_pass': pod_password,
+            'ip_address': pod_ip_adddress,
+        }
+
     def test_handler_path(self):
         self.assertEqual(
             '/api/2.0/pods/', reverse('pods_handler'))
 
     def test_read_lists_pods(self):
+        factory.make_BMC()
         pods = [
             factory.make_Pod()
             for _ in range(3)
@@ -87,11 +98,8 @@ class TestPodsAPI(APITestCase.ForUser):
             list(parsed_result[0]['available']))
 
     def test_create_requires_admin(self):
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
-        response = self.client.post(reverse('pods_handler'), {
-            "type": pod_type,
-        })
+        response = self.client.post(
+            reverse('pods_handler'), self.make_pod_info())
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_create_creates_pod(self):
@@ -114,15 +122,37 @@ class TestPodsAPI(APITestCase.ForUser):
         }, {
             failed_rack.system_id: factory.make_exception(),
         })
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
-
-        response = self.client.post(reverse('pods_handler'), {
-            "type": pod_type,
-        })
+        pod_info = self.make_pod_info()
+        response = self.client.post(reverse('pods_handler'), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(parsed_result['type'], pod_type)
+        self.assertEqual(parsed_result['type'], pod_info['type'])
+
+    def test_create_duplicate_provides_nice_error(self):
+        self.become_admin()
+        pod_info = self.make_pod_info()
+        discovered_pod = DiscoveredPod(
+            architectures=['amd64/generic'],
+            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+            local_storage=random.randint(1024, 1024 * 1024),
+            cpu_speed=random.randint(2048, 4048),
+            hints=DiscoveredPodHints(
+                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+                local_storage=random.randint(1024, 1024 * 1024),
+                cpu_speed=random.randint(2048, 4048)))
+        discovered_rack_1 = factory.make_RackController()
+        discovered_rack_2 = factory.make_RackController()
+        failed_rack = factory.make_RackController()
+        self.patch(forms, "discover_pod").return_value = ({
+            discovered_rack_1.system_id: discovered_pod,
+            discovered_rack_2.system_id: discovered_pod,
+        }, {
+            failed_rack.system_id: factory.make_exception(),
+        })
+        response = self.client.post(reverse('pods_handler'), pod_info)
+        self.assertEqual(http.client.OK, response.status_code)
+        response = self.client.post(reverse('pods_handler'), pod_info)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_create_proper_return_on_exception(self):
         self.become_admin()
@@ -130,12 +160,9 @@ class TestPodsAPI(APITestCase.ForUser):
         self.patch(forms, "discover_pod").return_value = ({}, {
             failed_rack.system_id: factory.make_exception(),
         })
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
 
-        response = self.client.post(reverse('pods_handler'), {
-            "type": pod_type,
-        })
+        response = self.client.post(
+            reverse('pods_handler'), self.make_pod_info())
         self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
 
 

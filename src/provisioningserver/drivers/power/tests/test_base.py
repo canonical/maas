@@ -168,6 +168,7 @@ class TestPowerDriverBase(MAASTestCase):
             name=fake_name, description=fake_description,
             settings=fake_settings)
         self.assertEqual({
+            'driver_type': 'power',
             'name': fake_name,
             'description': fake_description,
             'fields': fake_settings,

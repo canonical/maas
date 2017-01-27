@@ -6,12 +6,10 @@
 __all__ = []
 
 import random
+from unittest.mock import MagicMock
 
+from django.core.exceptions import ValidationError
 from maasserver import forms
-from maasserver.clusterrpc.driver_parameters import (
-    DriverType,
-    get_driver_choices,
-)
 from maasserver.exceptions import PodProblem
 from maasserver.forms import PodForm
 from maasserver.testing.factory import factory
@@ -30,6 +28,20 @@ from testtools.matchers import (
 
 
 class TestPodForm(MAASServerTestCase):
+
+    def make_pod_info(self):
+        # Use virsh pod type as the required fields are specific to the
+        # type of pod being created.
+        pod_type = 'virsh'
+        pod_ip_adddress = factory.make_ipv4_address()
+        pod_power_address = 'qemu+ssh://user@%s/system' % pod_ip_adddress
+        pod_password = factory.make_name('password')
+        return {
+            'type': pod_type,
+            'power_address': pod_power_address,
+            'power_pass': pod_password,
+            'ip_address': pod_ip_adddress,
+        }
 
     def test_contains_limited_set_of_fields(self):
         form = PodForm()
@@ -58,11 +70,10 @@ class TestPodForm(MAASServerTestCase):
         }, {
             failed_rack.system_id: factory.make_exception(),
         })
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
-        form = PodForm(data={
-            'type': pod_type,
-        })
+        pod_info = self.make_pod_info()
+        request = MagicMock()
+        request.user = factory.make_User()
+        form = PodForm(data=pod_info, request=request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertThat(pod, MatchesStructure(
@@ -71,7 +82,12 @@ class TestPodForm(MAASServerTestCase):
             cores=Equals(discovered_pod.cores),
             memory=Equals(discovered_pod.memory),
             cpu_speed=Equals(discovered_pod.cpu_speed),
-            power_type=Equals(pod_type),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({
+                'power_address': pod_info['power_address'],
+                'power_pass': pod_info['power_pass'],
+            }),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
         ))
         routable_racks = [
             relation.rack_controller
@@ -87,13 +103,38 @@ class TestPodForm(MAASServerTestCase):
             routable_racks, [discovered_rack_1, discovered_rack_2])
         self.assertItemsEqual(not_routable_racks, [failed_rack])
 
+    def test_prevents_duplicate_pod(self):
+        discovered_pod = DiscoveredPod(
+            architectures=['amd64/generic'],
+            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+            local_storage=random.randint(1024, 1024 * 1024),
+            cpu_speed=random.randint(2048, 4048),
+            hints=DiscoveredPodHints(
+                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+                local_storage=random.randint(1024, 1024 * 1024),
+                cpu_speed=random.randint(2048, 4048)))
+        discovered_rack_1 = factory.make_RackController()
+        discovered_rack_2 = factory.make_RackController()
+        failed_rack = factory.make_RackController()
+        self.patch(forms, "discover_pod").return_value = ({
+            discovered_rack_1.system_id: discovered_pod,
+            discovered_rack_2.system_id: discovered_pod,
+        }, {
+            failed_rack.system_id: factory.make_exception(),
+        })
+        pod_info = self.make_pod_info()
+        request = MagicMock()
+        request.user = factory.make_User()
+        form = PodForm(data=pod_info, request=request)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        new_form = PodForm(data=pod_info)
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertRaises(ValidationError, new_form.save)
+
     def test_raises_unable_to_discover_because_no_racks(self):
         self.patch(forms, "discover_pod").return_value = ({}, {})
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
-        form = PodForm(data={
-            'type': pod_type,
-        })
+        form = PodForm(data=self.make_pod_info())
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(
@@ -105,11 +146,7 @@ class TestPodForm(MAASServerTestCase):
         self.patch(forms, "discover_pod").return_value = ({}, {
             failed_rack.system_id: exc,
         })
-        pod_type = random.choice(
-            get_driver_choices(driver_type=DriverType.pod))[0]
-        form = PodForm(data={
-            'type': pod_type,
-        })
+        form = PodForm(data=self.make_pod_info())
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(str(exc), str(error))

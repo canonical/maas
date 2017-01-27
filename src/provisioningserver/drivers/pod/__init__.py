@@ -13,16 +13,12 @@ __all__ = [
     "PodFatalError",
     ]
 
-from abc import (
-    abstractmethod,
-    abstractproperty,
-)
+from abc import abstractmethod
 
 import attr
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
-    SETTING_SCOPE,
 )
 from provisioningserver.drivers.power import (
     PowerDriver,
@@ -34,6 +30,9 @@ JSON_POD_DRIVER_SCHEMA = {
     'title': "Pod driver setting set",
     'type': 'object',
     'properties': {
+        'driver_type': {
+            'type': 'string',
+        },
         'name': {
             'type': 'string',
         },
@@ -54,11 +53,9 @@ JSON_POD_DRIVER_SCHEMA = {
                 'type': 'string',
             },
         },
-        'composable': {
-            'type': 'boolean',
-        },
     },
-    'required': ['name', 'description', 'fields', 'composable'],
+    'required': [
+        'driver_type', 'name', 'description', 'fields'],
 }
 
 # JSON schema for multple pod drivers.
@@ -139,6 +136,10 @@ def convert_list(expected):
 
 class Capabilities:
     """Capabilities that a pod supports."""
+
+    # Supports the ability for machines to be composable. Driver must
+    # implement the `compose` and `decompose` methods when set.
+    COMPOSABLE = 'composable'
 
     # Supports fixed local storage. Block devices are fixed in size locally
     # and its possible to get a disk larger than requested.
@@ -233,10 +234,6 @@ class DiscoveredPod:
 class PodDriverBase(PowerDriverBase):
     """Base driver for a pod driver."""
 
-    @abstractproperty
-    def composable(self):
-        """Whether or not the pod supports composition."""
-
     @abstractmethod
     def discover(self, context, system_id=None):
         """Discover the pod resources.
@@ -270,15 +267,7 @@ class PodDriverBase(PowerDriverBase):
         """
         schema = super(PodDriverBase, self).get_schema(
             detect_missing_packages=detect_missing_packages)
-        schema['composable'] = self.composable
-        # Exclude all fields scoped to the NODE as they are not required for
-        # a pod, they are only required for a machine that belongs to the
-        # pod.
-        schema['fields'] = [
-            field
-            for field in schema['fields']
-            if field['scope'] == SETTING_SCOPE.BMC
-        ]
+        schema['driver_type'] = 'pod'
         return schema
 
 
@@ -296,5 +285,3 @@ def get_error_message(err):
 
 class PodDriver(PowerDriver, PodDriverBase):
     """Default pod driver."""
-
-    composable = False

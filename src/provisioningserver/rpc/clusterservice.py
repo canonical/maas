@@ -34,7 +34,6 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
-from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -301,17 +300,6 @@ class Cluster(RPCProtocol):
         """
         return {
             'power_types': list(PowerDriverRegistry.get_schema()),
-        }
-
-    @cluster.DescribePodTypes.responder
-    def describe_pod_types(self):
-        """describe_pod_types()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribePodTypes`.
-        """
-        return {
-            'types': list(PodDriverRegistry.get_schema()),
         }
 
     @cluster.ListSupportedArchitectures.responder

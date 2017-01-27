@@ -18,10 +18,12 @@ from django.db.models import (
     CharField,
     ForeignKey,
     IntegerField,
+    Manager,
     ManyToManyField,
     SET_NULL,
     TextField,
 )
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BMC_TYPE,
@@ -53,6 +55,22 @@ maaslog = get_maas_logger("node")
 podlog = get_maas_logger("pod")
 
 
+class BaseBMCManager(Manager):
+    """A utility to manage the collection of BMCs."""
+
+    extra_filters = {}
+
+    def get_queryset(self):
+        queryset = QuerySet(self.model, using=self._db)
+        return queryset.filter(**self.extra_filters)
+
+
+class BMCManager(BaseBMCManager):
+    """Manager for `BMC` not `Pod`'s."""
+
+    extra_filters = {'bmc_type': BMC_TYPE.BMC}
+
+
 class BMC(CleanSave, TimestampedModel):
     """A `BMC` represents an existing 'baseboard management controller'.  For
     practical purposes in MAAS, this is any addressable device that can control
@@ -73,6 +91,10 @@ class BMC(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = ("power_type", "power_parameters", "ip_address")
+
+    objects = Manager()
+
+    bmcs = BMCManager()
 
     bmc_type = IntegerField(
         choices=BMC_TYPE_CHOICES, editable=False, default=BMC_TYPE.DEFAULT)
@@ -369,11 +391,29 @@ class BMC(CleanSave, TimestampedModel):
                 bmc=self, rack_controller=rack, routable=routable).save()
 
 
+class PodManager(BaseBMCManager):
+    """Manager for `Pod` not `BMC`'s."""
+
+    extra_filters = {'bmc_type': BMC_TYPE.POD}
+
+
 class Pod(BMC):
     """A `Pod` represents a `BMC` that controls multiple machines."""
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
+
+    objects = PodManager()
+
+    def __init__(self, *args, **kwargs):
+        super(Pod, self).__init__(
+            bmc_type=BMC_TYPE.POD, *args, **kwargs)
+
+    def unique_error_message(self, model_class, unique_check):
+        if unique_check == ('power_type', 'power_parameters', 'ip_address'):
+            raise ValidationError(
+                'Pod with type and parameters already exists.')
+        return super(Pod, self).unique_error_message(model_class, unique_check)
 
     def sync_hints(self, discovered_hints):
         """Sync the hints with `discovered_hints`."""
@@ -445,12 +485,14 @@ class Pod(BMC):
             nic.save()
         return nic
 
-    def _create_machine(self, discovered_machine):
+    def _create_machine(
+            self, discovered_machine, commissioning_user,
+            skip_commissioning=False):
         """Create's a `Machine` from `discovered_machines` for this pod."""
         # Create the machine.
         machine = Machine(
             architecture=discovered_machine.architecture,
-            status=NODE_STATUS.READY,
+            status=NODE_STATUS.NEW,
             cpu_count=discovered_machine.cores,
             cpu_speed=discovered_machine.cpu_speed,
             memory=discovered_machine.memory,
@@ -471,14 +513,20 @@ class Pod(BMC):
             self._create_block_device(
                 discovered_bd, machine,
                 name=BlockDevice._get_block_name_from_idx(idx))
-        machine.set_default_storage_layout()
+        if skip_commissioning:
+            machine.set_default_storage_layout()
 
         # Create the discovered interface and set the default networking
         # configuration.
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
             self._create_interface(
                 discovered_nic, machine, name='eth%d' % idx)
-        machine.set_initial_networking_configuration()
+        if skip_commissioning:
+            machine.set_initial_networking_configuration()
+
+        # New machines get commission started immediately unless skipped.
+        if not skip_commissioning:
+            machine.start_commissioning(commissioning_user)
 
         return machine
 
@@ -616,7 +664,7 @@ class Pod(BMC):
         existing_interface.tags = discovered_nic.tags
         existing_interface.save()
 
-    def sync_machines(self, discovered_machines):
+    def sync_machines(self, discovered_machines, commissioning_user):
         """Sync the machines on this pod from `discovered_machines`."""
         all_macs = [
             interface.mac_address
@@ -643,7 +691,8 @@ class Pod(BMC):
             existing_machine = self._find_existing_machine(
                 discovered_machine, mac_machine_map)
             if existing_machine is None:
-                new_machine = self._create_machine(discovered_machine)
+                new_machine = self._create_machine(
+                    discovered_machine, commissioning_user)
                 podlog.info(
                     "%s: discovered new machine: %s" % (
                         self.name, new_machine.hostname))
@@ -657,7 +706,7 @@ class Pod(BMC):
                 "%s: machine %s no longer exists and was deleted." % (
                     self.name, remove_machine.hostname))
 
-    def sync(self, discovered_pod):
+    def sync(self, discovered_pod, commissioning_user):
         """Sync the pod and machines from the `discovered_pod`.
 
         This method ensures consistency with what is discovered by a pod
@@ -674,7 +723,7 @@ class Pod(BMC):
         self.local_disks = discovered_pod.local_disks
         self.save()
         self.sync_hints(discovered_pod.hints)
-        self.sync_machines(discovered_pod.machines)
+        self.sync_machines(discovered_pod.machines, commissioning_user)
         podlog.info(
             "%s: finished syncing discovered information" % self.name)
 

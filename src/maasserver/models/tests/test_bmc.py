@@ -593,7 +593,8 @@ class TestPod(MAASServerTestCase):
     def test_sync_pod_properties_and_hints(self):
         discovered = self.make_discovered_pod()
         pod = factory.make_Pod()
-        pod.sync(discovered)
+        self.patch(pod, 'sync_machines')
+        pod.sync(discovered, factory.make_User())
         self.assertThat(
             pod, MatchesStructure(
                 architectures=Equals(discovered.architectures),
@@ -618,8 +619,10 @@ class TestPod(MAASServerTestCase):
             Machine, "set_default_storage_layout")
         mock_set_initial_networking_configuration = self.patch(
             Machine, "set_initial_networking_configuration")
+        mock_start_commissioning = self.patch(
+            Machine, "start_commissioning")
         pod = factory.make_Pod()
-        pod.sync(discovered)
+        pod.sync(discovered, factory.make_User())
         machine_macs = [
             machine.interfaces[0].mac_address
             for machine in discovered.machines
@@ -675,9 +678,12 @@ class TestPod(MAASServerTestCase):
             ]))
         self.assertThat(
             mock_set_default_storage_layout.call_count,
-            Equals(len(discovered.machines)))
+            Equals(0))
         self.assertThat(
             mock_set_initial_networking_configuration.call_count,
+            Equals(0))
+        self.assertThat(
+            mock_start_commissioning.call_count,
             Equals(len(discovered.machines)))
 
     def test_sync_pod_deletes_missing_machines(self):
@@ -686,7 +692,7 @@ class TestPod(MAASServerTestCase):
         machine.bmc = pod
         machine.save()
         discovered = self.make_discovered_pod(machines=[])
-        pod.sync(discovered)
+        pod.sync(discovered, factory.make_User())
         self.assertIsNone(reload_object(machine))
 
     def test_sync_moves_machine_under_pod(self):
@@ -698,7 +704,7 @@ class TestPod(MAASServerTestCase):
             interfaces=[discovered_interface])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         self.assertThat(machine.bmc.id, Equals(pod.id))
 
@@ -711,7 +717,7 @@ class TestPod(MAASServerTestCase):
             interfaces=[discovered_interface])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         self.assertThat(machine, MatchesStructure(
             architecture=Equals(discovered_machine.architecture),
@@ -729,19 +735,17 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_updates_machine_bmc_deletes_old_bmc(self):
         pod = factory.make_Pod()
-        rack_controller = factory.make_RackController()
-        machine = factory.make_Node(
-            interface=True, power_type='virsh',
-            bmc_connected_to=rack_controller)
-        old_bmc = machine.bmc
-        old_bmc.node_set.exclude(id=machine.id).delete()
+        machine = factory.make_Node(interface=True)
+        old_bmc = factory.make_BMC()
+        machine.bmc = old_bmc
+        machine.save()
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address)
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         old_bmc = reload_object(old_bmc)
         self.assertIsNone(old_bmc)
@@ -770,7 +774,7 @@ class TestPod(MAASServerTestCase):
             interfaces=[discovered_interface])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         old_bmc = reload_object(old_bmc)
         self.assertIsNotNone(old_bmc)
@@ -802,7 +806,7 @@ class TestPod(MAASServerTestCase):
                     mac_address=boot_interface.mac_address)])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         keep_model_bd = reload_object(keep_model_bd)
         keep_path_bd = reload_object(keep_path_bd)
@@ -867,7 +871,7 @@ class TestPod(MAASServerTestCase):
             interfaces=[dkeep_interface, dnew_interface])
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine])
-        pod.sync(discovered_pod)
+        pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         keep_interface = reload_object(keep_interface)
         delete_interface = reload_object(delete_interface)

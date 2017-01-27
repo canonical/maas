@@ -8,7 +8,6 @@ __all__ = [
     ]
 
 from jsonschema import validate
-from provisioningserver.drivers.pod import PodDriverBase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
@@ -41,17 +40,10 @@ class PowerDriverRegistry(Registry):
         # is to be performed.
         schemas = [
             driver.get_schema(detect_missing_packages=detect_missing_packages)
-            for _, driver in cls.only_power()
+            for _, driver in cls
         ]
         validate(schemas, JSON_POWER_DRIVERS_SCHEMA)
         return schemas
-
-    @classmethod
-    def only_power(cls):
-        """Return only drivers that are not also pod drivers."""
-        for driver_name, driver in cls:
-            if not isinstance(driver, PodDriverBase):
-                yield (driver_name, driver)
 
 
 # Register all the power drivers.

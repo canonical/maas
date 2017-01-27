@@ -29,7 +29,6 @@ __all__ = [
     'get_driver_parameters',
     ]
 
-import enum
 from operator import itemgetter
 
 from django import forms
@@ -50,13 +49,6 @@ FIELD_TYPE_MAPPINGS = {
     # This is used on the API so a password field is just a char field.
     'password': forms.CharField,
 }
-
-
-class DriverType(enum.Enum):
-    """Type's of different drivers."""
-
-    pod = 'pod'
-    power = 'power'
 
 
 def make_form_field(json_field):
@@ -92,11 +84,13 @@ def make_form_field(json_field):
 
 
 def add_driver_parameters(
-        name, description, fields, missing_packages, parameters_set,
-        queryable=None, composable=None):
+        driver_type, name, description, fields, missing_packages,
+        parameters_set, queryable=None):
     """Add new power type parameters to the given parameters_set if it
     does not already exist.
 
+    :param driver_type: Type of driver. Either `power` or `pod`.
+    :type driver_type: string
     :param name: The name of the power type for which to add parameters.
     :type name: string
     :param description: A longer description of the power type. This
@@ -122,6 +116,7 @@ def add_driver_parameters(
     }
     validate(fields, field_set_schema)
     params = {
+        'driver_type': driver_type,
         'name': name,
         'description': description,
         'fields': fields,
@@ -129,14 +124,12 @@ def add_driver_parameters(
     }
     if queryable is not None:
         params['queryable'] = queryable
-    if composable is not None:
-        params['composable'] = composable
     parameters_set.append(params)
 
 
 def get_driver_parameters_from_json(
         json_power_type_parameters, initial_power_params=None,
-        skip_check=False):
+        skip_check=False, scope=None):
     """Return power type parameters.
 
     :param json_power_type_parameters: Power type parameters expressed
@@ -163,6 +156,9 @@ def get_driver_parameters_from_json(
         fields = []
         has_required_field = False
         for json_field in power_type['fields']:
+            # Skip fields that do not match the scope.
+            if scope is not None and json_field['scope'] != scope:
+                continue
             field_name = json_field['name']
             if field_name in initial_power_params:
                 json_field['default'] = initial_power_params[field_name]
@@ -176,19 +172,13 @@ def get_driver_parameters_from_json(
 
 
 def get_driver_parameters(
-        initial_power_params=None, skip_check=False,
-        driver_type=DriverType.power):
-    if driver_type is DriverType.power:
-        params = get_all_power_types_from_racks()
-    elif driver_type is DriverType.pod:
-        params = get_all_pod_types_from_racks()
-    else:
-        raise ValueError("Unknown driver_type.")
+        initial_power_params=None, skip_check=False):
+    params = get_all_power_types_from_racks()
     return get_driver_parameters_from_json(
         params, initial_power_params, skip_check)
 
 
-def get_driver_choices(driver_type=DriverType.power):
+def get_driver_choices():
     """Mutate the power types returned from the cluster into a choices
     structure as used by Django.
 
@@ -196,13 +186,12 @@ def get_driver_choices(driver_type=DriverType.power):
     """
     return [
         (name, description)
-        for name, description in get_driver_types(
-            driver_type=driver_type, ignore_errors=True).items()
+        for name, description in get_driver_types(ignore_errors=True).items()
         ]
 
 
 def get_driver_types(
-        controllers=None, ignore_errors=False, driver_type=DriverType.power):
+        controllers=None, ignore_errors=False):
     """Return the choice of mechanism to control a node's power.
 
     :param controllers: Restrict to power types on the supplied
@@ -217,15 +206,9 @@ def get_driver_types(
     :return: Dictionary mapping power type to its description.
     """
     types = dict()
-    if driver_type is DriverType.power:
-        power_types = get_all_power_types_from_racks(
-            controllers, ignore_errors)
-    elif driver_type is DriverType.pod:
-        power_types = get_all_pod_types_from_racks(
-            controllers, ignore_errors)
-    else:
-        raise ValueError("Unknown driver_type.")
-    for power_type in power_types:
+    params = get_all_power_types_from_racks(
+        controllers=controllers, ignore_errors=ignore_errors)
+    for power_type in params:
         types[power_type['name']] = power_type['description']
     return types
 
@@ -234,7 +217,8 @@ def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
     """Query every rack controller and obtain all known power driver types.
 
     :return: a list of power types matching the schema
-        provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA
+        provisioningserver.drivers.power.JSON_POWER_DRIVERS_SCHEMA or
+        provisioningserver.drivers.pod.JSON_POD_DRIVERS_SCHEMA
     """
     merged_types = []
     responses = call_clusters(
@@ -243,36 +227,13 @@ def get_all_power_types_from_racks(controllers=None, ignore_errors=True):
     for response in responses:
         power_types = response['power_types']
         for power_type in power_types:
+            driver_type = power_type.get('driver_type', 'power')
             name = power_type['name']
             fields = power_type.get('fields', [])
             description = power_type['description']
             missing_packages = power_type['missing_packages']
             queryable = power_type.get('queryable')
             add_driver_parameters(
-                name, description, fields, missing_packages, merged_types,
-                queryable=queryable)
-    return sorted(merged_types, key=itemgetter("description"))
-
-
-def get_all_pod_types_from_racks(controllers=None, ignore_errors=True):
-    """Query every rack controller and obtain all known pod driver types.
-
-    :return: a list of power types matching the schema
-        provisioningserver.drivers.power.JSON_POD_DRIVERS_SCHEMA
-    """
-    merged_types = []
-    responses = call_clusters(
-        cluster.DescribeChassisTypes, controllers=controllers,
-        ignore_errors=ignore_errors)
-    for response in responses:
-        types = response['types']
-        for pod_type in types:
-            name = pod_type['name']
-            fields = pod_type.get('fields', [])
-            description = pod_type['description']
-            missing_packages = pod_type['missing_packages']
-            add_driver_parameters(
-                name, description, fields, missing_packages, merged_types,
-                queryable=pod_type.get('queryable'),
-                composable=pod_type.get('composable'))
+                driver_type, name, description, fields, missing_packages,
+                merged_types, queryable=queryable)
     return sorted(merged_types, key=itemgetter("description"))

@@ -167,7 +167,7 @@ def call_clusters(
                 "Exception during %s() on rack controller '%s' (%s): %s%s" % (
                     command_name, controller.hostname, controller.system_id,
                     exception_class, error))
-            logger.warn(human_readable_error)
+            logger.warning(human_readable_error)
             # For failures, there are two callbacks: one for the controller
             # that failed, the second for the specific failure that occurred.
             failed_callback(controller)

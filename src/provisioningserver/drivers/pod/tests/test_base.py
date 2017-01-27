@@ -11,10 +11,7 @@ from unittest.mock import sentinel
 from jsonschema import validate
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers import (
-    make_setting_field,
-    SETTING_SCOPE,
-)
+from provisioningserver.drivers import make_setting_field
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -413,7 +410,6 @@ class FakePodDriverBase(PodDriverBase):
     settings = []
     ip_extractor = None
     queryable = True
-    composable = False
 
     def __init__(self, name, description, settings):
         self.name = name
@@ -530,33 +526,12 @@ class TestPodDriverBase(MAASTestCase):
         fake_driver = make_pod_driver_base(
             fake_name, fake_description, fake_settings)
         self.assertEquals({
+            'driver_type': 'pod',
             'name': fake_name,
             'description': fake_description,
             'fields': fake_settings,
             'queryable': fake_driver.queryable,
             'missing_packages': [],
-            'composable': fake_driver.composable,
-            },
-            fake_driver.get_schema())
-
-    def test_get_schema_ignores_scope_node_fields(self):
-        fake_name = factory.make_name('name')
-        fake_description = factory.make_name('description')
-        fake_setting = factory.make_name('setting')
-        bmc_setting = make_setting_field(
-            fake_setting, fake_setting.title())
-        node_setting = make_setting_field(
-            factory.make_name('name'), factory.make_name('setting'),
-            scope=SETTING_SCOPE.NODE)
-        fake_driver = make_pod_driver_base(
-            fake_name, fake_description, [bmc_setting, node_setting])
-        self.assertEquals({
-            'name': fake_name,
-            'description': fake_description,
-            'fields': [bmc_setting],
-            'queryable': fake_driver.queryable,
-            'missing_packages': [],
-            'composable': fake_driver.composable,
             },
             fake_driver.get_schema())
 

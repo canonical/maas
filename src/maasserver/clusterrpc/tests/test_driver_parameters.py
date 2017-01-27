@@ -12,7 +12,6 @@ import jsonschema
 from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
     add_driver_parameters,
-    DriverType,
     get_driver_parameters_from_json,
     get_driver_types,
     JSON_POWER_DRIVERS_SCHEMA,
@@ -43,6 +42,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
 
     def test_includes_empty_power_type(self):
         json_parameters = [{
+            'driver_type': 'power',
             'name': 'something',
             'description': 'Meaningless',
             'fields': [{
@@ -58,6 +58,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
 
     def test_creates_dict_char_fields(self):
         json_parameters = [{
+            'driver_type': 'power',
             'name': 'something',
             'description': 'Meaningless',
             'fields': [{
@@ -77,6 +78,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
         field_name = factory.make_name('field_name')
         new_default = factory.make_name('new default')
         json_parameters = [{
+            'driver_type': 'power',
             'name': name,
             'description': factory.make_name('description'),
             'fields': [{
@@ -94,6 +96,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
 
     def test__manual_does_not_require_power_params(self):
         json_parameters = [{
+            'driver_type': 'power',
             'name': 'manual',
             'description': factory.make_name('description'),
             'fields': [{
@@ -251,16 +254,23 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
 
     def test_adding_existing_types_is_a_no_op(self):
         existing_parameters = [{
+            'driver_type': 'power',
             'name': 'blah',
             'description': 'baz',
             'fields': {},
         }]
         add_driver_parameters(
-            name='blah', description='baz', fields=[self.make_field()],
+            driver_type='power', name='blah', description='baz',
+            fields=[self.make_field()],
             missing_packages=[],
             parameters_set=existing_parameters)
         self.assertEqual(
-            [{'name': 'blah', 'description': 'baz', 'fields': {}}],
+            [{
+                'driver_type': 'power',
+                'name': 'blah',
+                'description': 'baz',
+                'fields': {},
+            }],
             existing_parameters)
 
     def test_adds_new_power_type_parameters(self):
@@ -268,25 +278,25 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
         fields = [self.make_field()]
         missing_packages = ['package1', 'package2']
         add_driver_parameters(
-            name='blah', description='baz', fields=fields,
+            driver_type='power', name='blah', description='baz', fields=fields,
             missing_packages=missing_packages,
             parameters_set=existing_parameters)
         self.assertEqual(
-            [{'name': 'blah', 'description': 'baz', 'fields': fields,
-              'missing_packages': missing_packages}],
+            [{'driver_type': 'power', 'name': 'blah', 'description': 'baz',
+              'fields': fields, 'missing_packages': missing_packages}],
             existing_parameters)
 
     def test_validates_new_parameters(self):
         self.assertRaises(
             jsonschema.ValidationError, add_driver_parameters,
-            name='blah', description='baz', fields=[{}],
+            driver_type='power', name='blah', description='baz', fields=[{}],
             missing_packages=[], parameters_set=[])
 
     def test_subsequent_parameters_set_is_valid(self):
         parameters_set = []
         fields = [self.make_field()]
         add_driver_parameters(
-            name='blah', description='baz', fields=fields,
+            driver_type='power', name='blah', description='baz', fields=fields,
             missing_packages=[],
             parameters_set=parameters_set)
         jsonschema.validate(
@@ -295,8 +305,7 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
 
 class TestPowerTypes(MAASTestCase):
     # This is deliberately not using a MAASServerTestCase as that
-    # patches the get_all_power_types_from_racks() and
-    # get_all_pod_types_from_racks() function with data
+    # patches the get_all_power_types_from_racks() function with data
     # that's hidden from tests in here.  Instead the tests patch
     # explicitly here.
 
@@ -305,10 +314,12 @@ class TestPowerTypes(MAASTestCase):
             driver_parameters, "get_all_power_types_from_racks")
         mocked.return_value = [
             {
+                "driver_type": "power",
                 "name": "namevalue",
                 "description": "descvalue",
             },
             {
+                "driver_type": "power",
                 "name": "namevalue2",
                 "description": "descvalue2",
             },
@@ -326,35 +337,5 @@ class TestPowerTypes(MAASTestCase):
         get_driver_types(sentinel.nodegroup, sentinel.ignore_errors)
         self.assertThat(
             mocked, MockCalledOnceWith(
-                sentinel.nodegroup, sentinel.ignore_errors))
-
-    def test_get_pod_driver_types_transforms_data_to_dict(self):
-        mocked = self.patch(
-            driver_parameters, "get_all_pod_types_from_racks")
-        mocked.return_value = [
-            {
-                "name": "namevalue",
-                "description": "descvalue",
-            },
-            {
-                "name": "namevalue2",
-                "description": "descvalue2",
-            },
-        ]
-        expected = {
-            "namevalue": "descvalue",
-            "namevalue2": "descvalue2",
-            }
-        self.assertEqual(
-            expected, get_driver_types(driver_type=DriverType.pod))
-
-    def test_get_pod_driver_types_passes_args_through(self):
-        mocked = self.patch(
-            driver_parameters, "get_all_pod_types_from_racks")
-        mocked.return_value = []
-        get_driver_types(
-            sentinel.nodegroup, sentinel.ignore_errors,
-            driver_type=DriverType.pod)
-        self.assertThat(
-            mocked, MockCalledOnceWith(
-                sentinel.nodegroup, sentinel.ignore_errors))
+                controllers=sentinel.nodegroup,
+                ignore_errors=sentinel.ignore_errors))

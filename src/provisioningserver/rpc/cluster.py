@@ -109,19 +109,6 @@ class DescribePowerTypes(amp.Command):
     errors = []
 
 
-class DescribePodTypes(amp.Command):
-    """Get a JSON Schema describing this rack's pod types.
-
-    :since: 2.2
-    """
-
-    arguments = []
-    response = [
-        (b"types", StructureAsJSON()),
-    ]
-    errors = []
-
-
 class ListSupportedArchitectures(amp.Command):
     """Report the cluster's supported architectures.
 
