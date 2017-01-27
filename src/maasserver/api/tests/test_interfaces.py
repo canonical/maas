@@ -31,6 +31,7 @@ from testtools.matchers import (
     MatchesDict,
     MatchesListwise,
     MatchesSetwise,
+    Not,
 )
 
 
@@ -1093,6 +1094,186 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
                 "mode": Equals(INTERFACE_LINK_TYPE.STATIC),
                 }))
 
+    def test_link_subnet_allows_subnet_with_link_up(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        uri = get_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_response = json_load_bytes(response.content)
+        self.assertThat(
+            parsed_response["links"][0], ContainsDict({
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                }))
+        self.assertThat(
+            parsed_response["links"][0]['subnet']['id'], Equals(subnet.id))
+
+    def test_link_subnet_allows_link_up_subnet_to_be_cleared(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_response = json_load_bytes(response.content)
+        self.assertThat(
+            parsed_response["links"][0], ContainsDict({
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                }))
+        self.assertThat(parsed_response["links"][0], Not(Contains("subnet")))
+
+    def test_link_subnet_allows_link_up_subnet_to_be_changed(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        subnet2 = factory.make_Subnet(vlan=interface.vlan)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet2.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_response = json_load_bytes(response.content)
+        self.assertThat(
+            parsed_response["links"][0], ContainsDict({
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                }))
+        self.assertThat(
+            parsed_response["links"][0]['subnet']['id'], Equals(subnet2.id))
+
+    def test_link_subnet_disallows_subnets_on_another_vlan(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan2 = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet2.id,
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_link_subnet_allows_link_up_subnet_to_be_forcibly_changed(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan2 = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "force": "True",
+            "subnet": subnet2.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_response = json_load_bytes(response.content)
+        self.assertThat(
+            parsed_response["links"][0], ContainsDict({
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                }))
+        self.assertThat(
+            parsed_response["links"][0]['subnet']['id'], Equals(subnet2.id))
+
+    def test_link_subnet_force_link_up_deletes_existing_links(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan2 = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.DHCP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "force": "True",
+            "subnet": subnet2.id,
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_response = json_load_bytes(response.content)
+        self.assertThat(
+            parsed_response["links"][0], ContainsDict({
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                }))
+        self.assertThat(
+            parsed_response["links"][0]['subnet']['id'], Equals(subnet2.id))
+
+    def test_link_subnet_without_force_link_up_returns_bad_request(self):
+        self.become_admin()
+        node = factory.make_Node(owner=self.user, status=NODE_STATUS.READY)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan2 = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        uri = get_interface_uri(interface)
+        self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.DHCP,
+            "subnet": subnet.id,
+            })
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.LINK_UP,
+            "force": "False",
+            "subnet": subnet2.id,
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
     def test_link_subnet_on_device_only_allows_static(self):
         parent = factory.make_Node()
         device = factory.make_Device(
@@ -1226,6 +1407,49 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             response = self.client.post(uri, {
                 "op": "unlink_subnet",
                 })
+            self.assertEqual(
+                http.client.CONFLICT, response.status_code, response.content)
+
+    def test_disconnect_deletes_links_and_clears_vlan(self):
+        # The form that is used is fully tested in test_forms_interface_link.
+        # This just tests that the form is saved and the updated interface
+        # is returned.
+        self.become_admin()
+        for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            subnet = factory.make_Subnet()
+            dhcp_ip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+                subnet=subnet, interface=interface)
+            uri = get_interface_uri(interface)
+            response = self.client.post(uri, {
+                "op": "disconnect",
+                })
+            self.assertEqual(
+                http.client.OK, response.status_code, response.content)
+            self.assertIsNone(reload_object(dhcp_ip))
+            self.assertIsNone(reload_object(interface).vlan)
+
+    def test_disconnect_requries_admin(self):
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+        uri = get_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "disconnect",
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_disconnect_409_when_not_ready_or_broken(self):
+        self.become_admin()
+        for status in STATUSES:
+            node = factory.make_Node(interface=True, status=status)
+            interface = node.get_boot_interface()
+            uri = get_interface_uri(interface)
+            response = self.client.post(uri, {
+                "op": "disconnect",
+            })
             self.assertEqual(
                 http.client.CONFLICT, response.status_code, response.content)
 
