@@ -58,6 +58,7 @@ class InterfaceLinkForm(forms.Form):
             INTERFACE_LINK_TYPE.STATIC,
             INTERFACE_LINK_TYPE.LINK_UP,
         ])
+        self.force = kwargs.pop("force", False)
         mode_choices = [
             (key, value)
             for key, value in INTERFACE_LINK_TYPE_CHOICES
@@ -74,7 +75,7 @@ class InterfaceLinkForm(forms.Form):
                 'invalid_choice': compose_invalid_choice_text(
                     'mode', mode_choices),
             })
-        if self.instance.vlan is None:
+        if self.instance.vlan is None or self.force is True:
             self.fields['subnet'].queryset = Subnet.objects.all()
         else:
             self.fields['subnet'].queryset = (
@@ -142,12 +143,21 @@ class InterfaceLinkForm(forms.Form):
 
     def _clean_mode_link_up(self):
         # Cannot set LINK_UP unless no other IP address are attached to
-        # this interface.
-        if self.instance.ip_addresses.count() > 0:
+        # this interface. But exclude STICKY addresses where the IP address is
+        # null, because the user could be trying to change the subnet for a
+        # LINK_UP address. And exclude DISCOVERED because what MAAS discovered
+        # doesn't matter with regard to the user's intention.
+        exclude_types = (
+            IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.DISCOVERED
+        )
+        has_active_links = self.instance.ip_addresses.exclude(
+            alloc_type__in=exclude_types, ip__isnull=True).count() > 0
+        if has_active_links and self.force is not True:
             set_form_error(
                 self, "mode",
                 "Cannot configure interface to link up (with no IP address) "
-                "while other links are already configured.")
+                "while other links are already configured. Specify force=True "
+                "to override this behavior and delete all links.")
 
     def _clean_default_gateway(self, cleaned_data):
         mode = cleaned_data.get("mode", None)
@@ -174,6 +184,21 @@ class InterfaceLinkForm(forms.Form):
         subnet = self.cleaned_data.get("subnet", None)
         ip_address = self.cleaned_data.get("ip_address", None)
         default_gateway = self.cleaned_data.get("default_gateway", False)
+        # If force=True, allow the user to select any subnet (this will
+        # implicitly change the VLAN).
+        if mode == INTERFACE_LINK_TYPE.LINK_UP or self.force is True:
+            # We're either setting the LINK_UP to a new subnet, or we're
+            # forcing the issue.
+            self.instance.clear_all_links(clearing_config=True)
+        # If the user wants to force a particular subnet to be linked, clear
+        # out the VLAN so that link_subnet() will reset the interface's subnet
+        # to be correct.
+        should_clear_vlan = (
+            self.force is True and subnet is not None and
+            self.instance.vlan is not None
+        )
+        if should_clear_vlan:
+            self.instance.vlan = None
         if not ip_address:
             ip_address = None
         link_ip = self.instance.link_subnet(

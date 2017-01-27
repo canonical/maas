@@ -4,11 +4,15 @@
 """API handlers: `Interface`."""
 
 from django.forms.utils import ErrorList
+from formencode.validators import StringBool
 from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.api.utils import get_mandatory_param
+from maasserver.api.utils import (
+    get_mandatory_param,
+    get_optional_param,
+)
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -556,6 +560,11 @@ class InterfaceHandler(OperationsHandler):
         :param ip_address: IP address for the interface in subnet. Only used
             when mode is STATIC. If not provided an IP address from subnet
             will be auto selected.
+        :param force: If True, allows LINK_UP to be set on the interface
+            even if other links already exist. Also allows the selection of any
+            VLAN, even a VLAN MAAS does not believe the interface to currently
+            be on. Using this option will cause all other links on the
+            interface to be deleted. (Defaults to False.)
         :param default_gateway: True sets the gateway IP address for the subnet
             as the default gateway for the node this interface belongs to.
             Option can only be used with the AUTO and STATIC modes.
@@ -578,6 +587,8 @@ class InterfaceHandler(OperationsHandler):
 
         Returns 404 if the node or interface is not found.
         """
+        force = get_optional_param(
+            request.POST, 'force', default=False, validator=StringBool)
         interface = Interface.objects.get_interface_or_404(
             system_id, id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
@@ -597,11 +608,35 @@ class InterfaceHandler(OperationsHandler):
             # Devices can only be set in static IP mode.
             allowed_modes = [INTERFACE_LINK_TYPE.STATIC]
         form = InterfaceLinkForm(
-            instance=interface, data=request.data, allowed_modes=allowed_modes)
+            instance=interface, data=request.data, allowed_modes=allowed_modes,
+            force=force)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def disconnect(self, request, system_id, id):
+        """Disconnect an interface.
+
+        Deletes any linked subnets and IP addresses, and disconnects the
+        interface from any associated VLAN.
+
+        Returns 404 if the node or interface is not found.
+        """
+        interface = Interface.objects.get_interface_or_404(
+            system_id, id, request.user, NODE_PERMISSION.EDIT)
+        node = interface.get_node()
+        raise_error_if_controller(node, "disconnect")
+        if node.node_type == NODE_TYPE.MACHINE:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                node, request.user, "disconnect")
+        interface.ip_addresses.all().delete()
+        interface.vlan = None
+        interface.save()
+        return interface
 
     @operation(idempotent=False)
     def unlink_subnet(self, request, system_id, id):

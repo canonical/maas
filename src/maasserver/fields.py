@@ -27,7 +27,10 @@ from json import (
 import re
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.core.validators import (
     RegexValidator,
     URLValidator,
@@ -662,7 +665,13 @@ class SpecifierOrModelChoiceField(forms.ModelChoiceField):
                     if obj is not None:
                         return obj
                 else:
-                    return self.queryset.get(id=object_id)
+                    try:
+                        return self.queryset.get(id=object_id)
+                    except ObjectDoesNotExist:
+                        # Re-raising this as a ValidationError prevents the API
+                        # from returning an internal server error rather than
+                        # a bad request.
+                        raise ValidationError("None found with id=%s." % value)
             raise e
 
 

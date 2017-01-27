@@ -418,7 +418,8 @@ class TestInterfaceLinkForm(MAASTransactionServerTestCase):
         self.assertEqual({
             "mode": [
                 "Cannot configure interface to link up (with no IP address) "
-                "while other links are already configured."]
+                "while other links are already configured. Specify force=True "
+                "to override this behavior and delete all links."]
             }, form.errors)
 
     @transactional
