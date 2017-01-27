@@ -641,7 +641,7 @@ class TestClusterConfiguration(MAASTestCase):
     def test_default_tftp_root(self):
         # The default tftp_root is calculated relative to MAAS_ROOT at module
         # import time, so we need to recreate that value.
-        maas_root = os.path.join(maastesting.root, "run")
+        maas_root = os.path.join(maastesting.root, ".run")
         config = ClusterConfiguration({})
         self.assertEqual(
             os.path.join(maas_root, "var/lib/maas/boot-resources/current"),

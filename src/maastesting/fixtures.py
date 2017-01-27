@@ -415,7 +415,7 @@ class MAASRootFixture(fixtures.Fixture):
             raise NotADirectoryError("MAAS_ROOT is not defined.")
         elif os.path.isdir(maasroot):
             self.path = self.useFixture(TempDirectory()).join("run")
-            # Work only in $MAAS_ROOT/run; reference the old $MAAS_ROOT.
+            # Work only in `run`; reference the old $MAAS_ROOT.
             etc = Path(self.path).joinpath("etc")
             src = Path(maasroot)
             # Create and populate $MAAS_ROOT/run/etc/{ntp,ntp.conf}. The

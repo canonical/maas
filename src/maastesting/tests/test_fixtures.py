@@ -256,7 +256,7 @@ class TestMAASRootFixture(MAASTestCase):
 
     def setUp(self):
         super(TestMAASRootFixture, self).setUp()
-        self.maasroot = os.path.join(root, "run")
+        self.maasroot = os.path.join(root, "run-skel")
         self.useFixture(EnvironmentVariable("MAAS_ROOT", self.maasroot))
 
     def test_creates_populates_and_removes_new_directory(self):
@@ -266,17 +266,6 @@ class TestMAASRootFixture(MAASTestCase):
             self.assertThat(fixture.path, Not(SamePath(self.maasroot)))
             files_expected = set(listdirs(self.maasroot))
             files_observed = set(listdirs(fixture.path))
-
-            # Some files, like regiond.conf and rackd.conf, may be created by
-            # concurrently running test suites. In particular, regiond.conf is
-            # created as a side-effect of loading Django's settings which
-            # takes place before tests are running. We ignore these files.
-            files_missing = files_expected - files_observed
-            if "etc/maas/regiond.conf" in files_missing:
-                files_expected.remove("etc/maas/regiond.conf")
-            if "etc/maas/rackd.conf" in files_missing:
-                files_expected.remove("etc/maas/rackd.conf")
-
             self.assertThat(files_observed, Equals(files_expected))
         self.assertThat(fixture.path, Not(PathExists()))
 

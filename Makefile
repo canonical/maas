@@ -49,7 +49,7 @@ npm_install := NODE_ENV=production NPM_CONFIG_PROGRESS="false" npm install \
 export PGDATABASE := maas
 
 # For anything we start, we want to hint as to its root directory.
-export MAAS_ROOT := $(CURDIR)/run
+export MAAS_ROOT := $(CURDIR)/.run
 
 build: \
   bin/buildout \
@@ -114,7 +114,7 @@ bin/test.parallel: \
 
 bin/maas-region bin/twistd.region: \
     bin/buildout buildout.cfg versions.cfg setup.py \
-    $(js_enums) $(scss_output)
+    $(js_enums) $(scss_output) .run
 	$(buildout) install region
 	@touch --no-create $@
 
@@ -141,7 +141,8 @@ bin/test.js: bin/karma bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install js-test
 	@touch --no-create $@
 
-bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
+bin/test.e2e: \
+    bin/protractor bin/buildout buildout.cfg versions.cfg setup.py .run-e2e
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
@@ -154,7 +155,7 @@ bin/test.testing: \
 	@touch --no-create $@
 
 bin/maas-rack bin/twistd.rack: \
-  bin/buildout buildout.cfg versions.cfg setup.py
+  bin/buildout buildout.cfg versions.cfg setup.py .run
 	$(buildout) install rack
 	@touch --no-create $@
 
@@ -369,6 +370,9 @@ man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
 man/%: docs/man/%.rst | bin/sphinx-build
 	bin/sphinx-build -b man docs man $^
 
+.run .run-e2e: run-skel
+	cp -av $^ $@
+
 enums: $(js_enums)
 
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
@@ -387,7 +391,7 @@ $(scss_theme):
 clean-styles:
 	$(RM) $(scss_output)
 
-clean: stop clean-run clean-failed
+clean: stop clean-failed
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -408,24 +412,9 @@ clean: stop clean-run clean-failed
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
+	$(RM) -r .run .run-e2e
 	$(RM) xunit.*.xml
 	$(RM) .failed
-
-# Be selective about what to remove from run and run-e2e.
-define clean-run-template
-find $(1) -depth ! -type d \
-    ! -path $(1)/etc/maas/templates \
-    ! -path $(1)/etc/maas/drivers.yaml \
-    ! -path $(1)/etc/ntp/.keep \
-    ! -path $(1)/etc/ntp.conf \
-    -print0 | xargs -r0 $(RM)
-find $(1) -depth -type d \
-    -print0 | xargs -r0 rmdir --ignore-fail-on-non-empty
-endef
-
-clean-run:
-	$(call clean-run-template,run)
-	$(call clean-run-template,run-e2e)
 
 clean+db: clean
 	while fuser db --kill -TERM; do sleep 1; done
@@ -451,7 +440,6 @@ define phony_targets
   clean
   clean+db
   clean-failed
-  clean-run
   clean-styles
   configure-buildout
   copyright

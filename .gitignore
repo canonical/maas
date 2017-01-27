@@ -11,6 +11,8 @@
 /.idea/workspace.xml
 /.installed.cfg
 /.noseids
+/.run
+/.run-e2e
 /bin
 /build
 /coverage
@@ -33,11 +35,6 @@
 /media/demo/*
 /media/development
 /parts
-/run-e2e/*
-/run-e2e/etc/*
-/run-e2e/etc/maas/*
-/run/etc/maas/rackd.conf
-/run/etc/maas/regiond.conf
 /services/*/supervise
 /src/maasserver/static/js/enums.js
 /TAGS
