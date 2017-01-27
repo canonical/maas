@@ -228,8 +228,8 @@
                             {$ row.subnet.statistics.available_string $}
                         </td>
                         <td class="table-listing__cell table__column--25" aria-label="Space">
-                            <a data-ng-if="row.space" href="#/space/{$ row.space.id $}">{$ row.space $}</a>
-                            <p data-ng-if="!row.space">(undefined)</p>
+                            <a data-ng-if="row.space !== null" href="#/space/{$ row.space.id $}">{$ row.space.name $}</a>
+                            <p data-ng-if="row.space === null">(undefined)</p>
                         </td>
                     </tr>
                 </tbody>
