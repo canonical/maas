@@ -1461,14 +1461,13 @@
                                     <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
                                     <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table-col--4 u-align--center" aria-label="Boot">
-                                        <span data-ng-hide="availableMode === 'edit' && item.$selected">
-                                            <input type="radio" name="boot-disk" id="{$ item.name $}-boot"
-                                                data-ng-click="setAsBootDisk(item)"
-                                                data-ng-checked="item.is_boot"
-                                                data-ng-if="item.type === 'physical'"
-                                                data-ng-disabled="isBootDiskDisabled(item, 'available')">
-                                            <label for="{$ item.name $}-boot"></label>
-                                        </span>
+                                        <input type="radio" name="boot-disk" id="{$ item.name $}-boot"
+                                            data-ng-click="setAsBootDisk(item)"
+                                            data-ng-checked="item.is_boot"
+                                            data-ng-if="item.type === 'physical'"
+                                            data-ng-disabled="isBootDiskDisabled(item, 'available')"
+                                            data-ng-hide="availableMode === 'edit' && item.$selected">
+                                        <label for="{$ item.name $}-boot" data-ng-hide="availableMode === 'edit' && item.$selected"></label>
                                     </div>
                                     <div class="table__data table-col--15" aria-label="Size">
                                         <span data-ng-hide="availableMode === 'edit' && item.$selected">

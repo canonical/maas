@@ -63,6 +63,53 @@
       backface-visibility: hidden;
       position: relative;
 
+      > input {
+
+        &[type='checkbox'] {
+
+          + label {
+            margin: 0;
+            min-height: 16px;
+
+            &:before {
+              top: 0;
+            }
+          }
+
+          &:checked {
+
+            + label {
+
+              &::after {
+                top: 0;
+              }
+            }
+          }
+        }
+
+        &[type='radio'] {
+
+          + label {
+            margin: 0;
+            min-height: 16px;
+
+            &:before {
+              top: 0;
+            }
+          }
+
+          &:checked {
+
+            + label {
+
+              &::after {
+                top: 3px;
+              }
+            }
+          }
+        }
+      }
+
       @media only screen and (max-width : $breakpoint-medium) {
         box-sizing: border-box;
         display: block;
@@ -227,21 +274,6 @@
 
     .numerical {
       text-align: right;
-    }
-
-    // Generic table form elements, covers general alignment of common form
-    // elements which can be found in all tables.
-    input {
-
-      &[type="radio"],
-      &[type="checkbox"] {
-
-        + label {
-          margin: 0;
-          top: 0px;
-          min-height: 16px;
-        }
-      }
     }
   }
 
@@ -912,6 +944,10 @@
           color: $pale-grey;
         }
       }
+    }
+
+    [class*="-col"] {
+      margin-bottom: 0;
     }
   }
 

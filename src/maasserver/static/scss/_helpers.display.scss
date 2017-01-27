@@ -94,17 +94,22 @@
     &--desktop {
 
       @media only screen and (max-width : $breakpoint-medium) {
-        display: none !important;
         position: absolute !important;
         visibility: hidden !important;
+        overflow: hidden;
+        width: 0;
+        height: 0;
       }
     }
 
     &--mobile {
-      display: none !important;
 
-      @media only screen and (max-width : $breakpoint-medium) {
-        display: block !important;
+      @media only screen and (min-width : $breakpoint-medium) {
+        position: absolute !important;
+        visibility: hidden !important;
+        overflow: hidden;
+        width: 0;
+        height: 0;
       }
     }
   }
