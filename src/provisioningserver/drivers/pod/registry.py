@@ -9,6 +9,7 @@ __all__ = [
 
 from jsonschema import validate
 from provisioningserver.drivers.pod import JSON_POD_DRIVERS_SCHEMA
+from provisioningserver.drivers.pod.rsd import RSDPodDriver
 from provisioningserver.drivers.pod.virsh import VirshPodDriver
 from provisioningserver.utils.registry import Registry
 
@@ -28,6 +29,7 @@ class PodDriverRegistry(Registry):
 
 
 pod_drivers = [
+    RSDPodDriver(),
     VirshPodDriver(),
 ]
 for driver in pod_drivers:
