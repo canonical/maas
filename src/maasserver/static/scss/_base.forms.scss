@@ -171,33 +171,20 @@
         content: '';
         position: absolute;
         left: 0;
-        top: 11px;
-        width: 11px;
-        height: 11px;
+        top: 9px;
+        width: 16px;
+        height: 16px;
         border: 1px solid $mid-grey;
         background: $white;
         border-radius: 2px;
-      }
-
-      &:after {
-        transition: opacity 0.4s ease;
-        opacity: 0;
-        content: '✔';
-        position: absolute;
-        line-height: 13px;
-        top: 11px;
-        left: 2px;
-        font-size: 10px;
-        color: $white;
+        box-sizing: border-box;
       }
 
       &:hover {
 
-        &:after {
-          font-size: 8px;
-          color: $alto-grey;
-          opacity: 1;
-          left: 3px;
+        &:before {
+          background: url('#{$asset-path}images/forms/checkbox-hover.svg') no-repeat;
+          background-size: 100% 100%;
         }
       }
     }
@@ -207,27 +194,10 @@
       + label {
 
         &:before {
-          background-color: $component-color;
-          border-color: $component-color;
-        }
+          background: url('#{$asset-path}images/forms/checkbox.svg') no-repeat;
+          background-size: 100% 100%;
 
-        &:after {
-          opacity: 1;
-          font-size: 12px;
-
-          @-moz-document url-prefix() {
-            font-size: 12px;
-            left: 1px;
-          }
-        }
-
-        &:hover {
-
-          &:after {
-            color: $white;
-            font-size: 12px;
-            left: 2px;
-          }
+          border: 0;
         }
       }
     }

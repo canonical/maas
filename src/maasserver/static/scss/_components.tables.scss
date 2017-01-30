@@ -72,11 +72,7 @@
             min-height: 16px;
 
             &:before {
-              top: 0;
-            }
-
-            &:after {
-              top: 0;
+              top: -2px;
             }
           }
         }

@@ -164,7 +164,7 @@
                             data-ng-if="showStopImportButton()"
                             data-ng-disabled="!canStopImport()"
                             data-ng-click="stopImport()">{$ getStopImportText() $}</a>
-                        <button class="button--secondary button--inline"
+                        <button class="button--positive button--inline"
                             data-ng-if="isSuperUser() && showSaveSelection()"
                             data-ng-disabled="!canSaveSelection()"
                             data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>
@@ -216,7 +216,7 @@
         </section>
         <div class="twelve-col" data-ng-if="!source.tooMany">
             <div class="u-align--right">
-                <button class="button--secondary button--inline"
+                <button class="button--positive button--inline"
                     data-ng-if="isSuperUser()"
                     data-ng-disabled="saving"
                     data-ng-click="saveOtherSelection()">{$ getSaveSelectionText() $}</button>

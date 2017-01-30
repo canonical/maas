@@ -15,21 +15,6 @@
     // scss-lint:enable DuplicateProperty
     margin: 0 auto;
     position: relative;
-    background: rgba($white, .4);
-
-    &:after {
-      content: '';
-      position: absolute;
-      display: block;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      background: url('#{$asset-path}images/backgrounds/background-paper.png');
-      height: 100%;
-      width: 100%;
-      z-index: -1;
-    }
 
     &--inner {
       max-width: $site-max-width;

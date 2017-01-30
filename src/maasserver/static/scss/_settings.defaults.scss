@@ -22,7 +22,7 @@ $half-spacing-unit:     $base-spacing-unit / 2!default;
 $line-height-ratio:     $base-line-height / $base-font-size;
 
 /// MAAS Text styles
-$text-color:            $cool-grey;
+$text-color:            #111;
 $headline-color:        $cool-grey;
 $alt-headline-color:    $warm-grey;
 $link-color:            $brand-color;
@@ -31,18 +31,18 @@ $link-hover:            #007aa6;
 $component-color:       #335280!default;
 
 // MAAS colours
-$off-white:             #fafafa!default;
 $pale-grey:             #bcbcbc!default;
 $muted-grey:            #b2b2b2!default;
 $gallery-grey:          #eee!default;
 $mercury-grey:          #e3e3e3!default;
-$off-white:             #f8f8f8!default;
+$off-white:             #f7f7f7!default;
 
 $loading:               #2ab7ec!default;
-$error:                 #d83832!default;
+$error:                 #c7162b;
 $information:           #2ab7ec!default;
 $outline:               #d2d2d2!default;
-$success:               #38b44a!default;
+$success:               #0e8420;
+$warning:               #f99b11;
 $disabled:              $gallery-grey;
 $editable:              $white;
 

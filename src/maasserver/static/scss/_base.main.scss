@@ -20,4 +20,9 @@
     color: $text-color;
     font: #{($base-font-size/16px)*1em}/#{$line-height-ratio} $base-font-family;
   }
+
+  body {
+    color: $text-color;
+    background: $off-white;
+  }
 }
