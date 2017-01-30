@@ -40,7 +40,7 @@
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
 
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <div class="page-header__controls u-float--right" data-ng-show="currentpage === 'nodes'">
+        <div class="page-header__controls u-float--right ng-hide" data-ng-show="currentpage === 'nodes'">
             <div data-ng-hide="tabs.nodes.selectedItems.length">
                 <div data-maas-cta="addHardwareOptions"
                     data-ng-model="addHardwareOption"
@@ -57,9 +57,9 @@
         </div>
 
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <div class="page-header__controls u-float--right" data-ng-show="currentpage === 'devices'">
+        <div class="page-header__controls u-float--rightng-hide" data-ng-show="currentpage === 'devices'">
             <div data-ng-hide="tabs.devices.selectedItems.length">
-                <button class="button--primary button--inline"
+                <button class="button--secondary button--inline"
                     data-ng-click="addDevice()"
                     data-ng-hide="addDeviceScope.viewable">Add Device</button>
                 <button class="button--secondary button--inline ng-hide"
@@ -78,9 +78,9 @@
         </div>
 
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-        <div class="page-header__controls u-float--right" data-ng-show="currentpage === 'controllers'">
+        <div class="page-header__controls u-float--rightng-hide" data-ng-show="currentpage === 'controllers'">
             <div data-ng-if="!tabs.controllers.selectedItems.length">
-                <button class="button--primary button--inline"
+                <button class="button--secondary button--inline"
                     data-ng-click="tabs.controllers.addController = true"
                     data-ng-hide="tabs.controllers.addController">Add rack controller</button>
                 <button class="button--secondary button--inline ng-hide"
@@ -123,9 +123,7 @@
                     <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'deploy'">
                         <div class="form__group">
                             <label for="image" class="form__group-label">Choose your image</label>
-                            <div class="form__group-input">
-                                <span data-maas-os-select="osinfo" data-ng-model="tabs.nodes.osSelection"></span>
-                            </div>
+                            <span data-maas-os-select="osinfo" data-ng-model="tabs.nodes.osSelection"></span>
                         </div>
                     </fieldset>
                     <fieldset class="form__fieldset" data-ng-if="tabs.nodes.actionOption.name === 'release'">
@@ -147,8 +145,48 @@
                     </fieldset>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="actionCancel('nodes')">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">Go</button>
-                        <button class="button--primary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
+                        <button class="button--inline" data-ng-class="tabs.nodes.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'commission'">Commission {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'acquire'">Acquire {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'deploy'">Deploy {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'release'">Release {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'set-zone'">Set zone for {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'on'">Power on {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'off'">Power off {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'abort'">Abort action for {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'mark-broken'">Mark {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'mark-fixed'">Mark {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
+                            </span>
+                            <span data-ng-if="tabs.nodes.actionOption.name === 'delete'">Delete {$ tabs.nodes.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                            </span>
+                        </button>
+                        <button class="button--secondary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
                     </div>
                 </form>
             </section>
@@ -291,7 +329,7 @@
                     <button class="button--secondary button--inline"
                         data-ng-class="{ disabled: machineHasError() }"
                         data-ng-click="saveMachine(true)">Save and add another</button>
-                    <button class="button--primary button--inline"
+                    <button class="button--positive button--inline"
                         data-ng-class="{ disabled: machineHasError() }"
                         data-ng-click="saveMachine(false)">Save machine</button>
                 </div>
@@ -305,7 +343,7 @@
                     <button class="button--secondary button--inline"
                         data-ng-class="{ disabled: chassisHasErrors() }"
                         data-ng-click="saveChassis(true)">Save and add another</button>
-                    <button class="button--primary button--inline"
+                    <button class="button--positive button--inline"
                         data-ng-class="{ disabled: chassisHasErrors() }"
                         data-ng-click="saveChassis(false)">Save chassis</button>
                 </div>
@@ -337,7 +375,14 @@
                     </fieldset>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="actionCancel('devices')">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo('devices')">Go</button>
+                        <button class="button--positive button--inline" data-ng-click="actionGo('devices')">
+                            <span data-ng-if="tabs.devices.actionOption.name === 'set-zone'">Set zone for {$ tabs.devices.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.devices.actionOption.name === 'delete'">Delete {$ tabs.devices.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.devices.selectedItems.length" when="{'one': 'device', 'other': 'devices'}"></span>
+                            </span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -405,19 +450,19 @@
                     </thead>
                     <tbody>
                         <tr data-ng-repeat="interface in device.interfaces">
-                            <td class="table-col--20">
+                            <td class="table-col--20" aria-label="MAC address">
                                 <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
                                     data-ng-model="interface.mac"
                                     data-ng-class="{ 'has-error': macHasError(interface) }">
                             </td>
-                            <td class="table-col--20">
+                            <td class="table-col--20" aria-label="IP assignment">
                                 <select name="ip-assignment" id="ip-assignment"
                                     placeholder="Select IP assignment" data-ng-model="interface.ipAssignment"
                                     data-ng-options="assigment.title for assigment in ipAssignments">
                                     <option value="" disabled selected>Select IP assignment</option>
                                 </select>
                             </td>
-                            <td class="table-col--20">
+                            <td class="table-col--20" aria-label="Subnet">
                                 <select name="subnet" id="subnet"
                                     placeholder="Select subnet" data-ng-model="interface.subnetId"
                                     data-ng-options="subnet.id as subnet.name for subnet in subnets"
@@ -425,7 +470,7 @@
                                     <option value="" disabled selected>Select subnet</option>
                                 </select>
                             </td>
-                            <td class="table-col--35">
+                            <td class="table-col--35" aria-label="IP address">
                                 <input type="text" id="ip-address" placeholder="000.000.000.000"
                                     data-ng-model="interface.ipAddress"
                                     data-ng-class="{ 'has-error': ipHasError(interface) }"
@@ -435,10 +480,13 @@
                                     data-ng-class="{ 'has-error': ipHasError(interface) }"
                                     data-ng-show="interface.ipAssignment.name === 'static'">
                             </td>
-                            <td class="table-col--5 u-u-align---right">
+                            <td class="table-col--5 u-u-align---right table--mobile-controls">
                                 <!-- space needed to set correct height -->
                                 <span data-ng-show="isPrimaryInterface(interface)">&nbsp;</span>
-                                <a title="icon icon--delete" class="icon icon--remove"
+                                <a title="Delete" class="icon icon--remove u-display--desktop"
+                                    data-ng-click="deleteInterface(interface)"
+                                    data-ng-hide="isPrimaryInterface(interface)">delete</a>
+                                <a class="button--secondary u-display--mobile"
                                     data-ng-click="deleteInterface(interface)"
                                     data-ng-hide="isPrimaryInterface(interface)">delete</a>
                             </td>
@@ -455,7 +503,7 @@
                         <button class="button--secondary button--inline"
                             data-ng-class="{ disabled: deviceHasError() }"
                             data-ng-click="save(true)">Save and add another</button>
-                        <button class="button--primary button--inline"
+                        <button class="button--positive button--inline"
                             data-ng-class="{ disabled: deviceHasError() }"
                             data-ng-click="save(false)">Save device</button>
                     </div>
@@ -483,7 +531,23 @@
                     </fieldset>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo('controllers')">Go</button>
+                        <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
+                            <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.controllers.actionOption.name === 'on'">Power on {$ tabs.controllers.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.controllers.actionOption.name === 'off'">Power off {$ tabs.controllers.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.controllers.actionOption.name === 'delete'">Delete {$ tabs.controllers.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                            </span>
+                            <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
+                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                            </span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -547,7 +611,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 <div class="row u-padding--top-none">
     <div class="wrapper--inner">
     <aside class="three-col">
-        <div class="accordion maas-accordion" data-ng-show="currentpage === 'nodes'"
+        <div class="accordion maas-accordion ng-hide" data-ng-show="currentpage === 'nodes'"
             data-ng-class="{ 'is-disabled': tabs.nodes.actionOption }">
             <h3 class="accordion__title"
             ng-class="{'is-active': isActive}"
@@ -685,7 +749,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
         </div>
     </aside>
     <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-    <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
+    <div class="nine-col last-col ng-hide" data-ng-show="currentpage === 'nodes'">
         <form>
             <div id="search-bar" class="search nine-col">
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -701,7 +765,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
             <table id="nodes-listing">
                 <thead>
                     <tr>
-                        <th class="table-col--3 u-display--medium" aria-label="Select all">
+                        <th class="table-col--3 u-display--block-mobile" aria-label="Select all">
                             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                             <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-checked="tabs.nodes.allViewableChecked" id="check-all" data-ng-disabled="hasActionsInProgress('nodes')" />
                             <label class="checkbox-label" for="check-all"></label>
@@ -831,18 +895,18 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <tr
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                     data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), selected: device.$selected }">
-                    <td class="table-col--3">
+                    <td class="table-col--3" aria-label="Select device">
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                         <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                     </td>
-                    <td class="table-col--24">{$ device.fqdn $}</td>
-                    <td class="table-col--25">
+                    <td class="table-col--24" aria-label="FQDN">{$ device.fqdn $}</td>
+                    <td class="table-col--25" aria-label="MAC">
                         {$ device.primary_mac $}
                         <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
                     </td>
-                    <td class="table-col--15">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
-                    <td class="table-col--20">{$ device.ip_address $}</td>
-                    <td class="table-col--12">{$ device.owner $}</td>
+                    <td class="table-col--15" aria-label="IP Assignment">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
+                    <td class="table-col--20" aria-label="IP Address">{$ device.ip_address $}</td>
+                    <td class="table-col--12" aria-label="Owner">{$ device.owner $}</td>
                 </tr>
             </tbody>
         </table>
@@ -893,17 +957,17 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                 <tr
                     data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
                     data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), selected: controller.$selected }">
-                    <td class="table-col--2">
+                    <td class="table-col--2" aria-label="Select controller">
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-checked="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
                         <label for="{$ controller.fqdn $}" class="checkbox-label"></label>
                     </td>
-                    <td class="table-col--19">
+                    <td class="table-col--19" aria-label="FQDN">
                         <a href="#/node/controller/{$ controller.system_id $}">{$ controller.fqdn $}</a>
                     </td>
-                    <td class="table-col--4 u-align--center" data-maas-controller-status="controller" data-maas-services="services"></td>
-                    <td class="table-col--25">{$ controller.node_type_display $}</td>
-                    <td class="table-col--15">{$ controller.last_image_sync || 'Never' $}</td>
-                    <td class="table-col--15">
+                    <td class="table-col--4 u-align--center" data-maas-controller-status="controller" data-maas-services="services" aria-label="Status"></td>
+                    <td class="table-col--25" aria-label="Type">{$ controller.node_type_display $}</td>
+                    <td class="table-col--15" aria-label="Last image sync">{$ controller.last_image_sync || 'Never' $}</td>
+                    <td class="table-col--15" aria-label="Image status">
                         <maas-controller-image-status system-id="controller.system_id"></maas-controller-image-status>
                     </td>
                 </tr>

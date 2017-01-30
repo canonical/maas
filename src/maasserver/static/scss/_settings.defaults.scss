@@ -28,6 +28,7 @@ $alt-headline-color:    $warm-grey;
 $link-color:            $brand-color;
 $link-border:           #c2c2c2;
 $link-hover:            #007aa6;
+$component-color:       #335280!default;
 
 // MAAS colours
 $off-white:             #fafafa!default;
@@ -61,6 +62,7 @@ $header-link-color:     $white;
 $site-max-width:        1440px;
 $breakpoint-large:      $site-max-width;
 $breakpoint-medium:     768px;
+$breakpoint-min-medium: 769px;
 
 // MAAS states
 $states: (

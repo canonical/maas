@@ -139,6 +139,11 @@
         width: auto;
         margin: 0;
         vertical-align: middle;
+
+        @media only screen and (max-width : $breakpoint-medium) {
+          display: block;
+          width: 100%;
+        }
       }
 
       .form__group {
@@ -179,6 +184,12 @@
           @media only screen and (max-width : $breakpoint-medium) {
             display: block;
             width: 100%;
+
+            + input,
+            + select,
+            + .form__group-input {
+              margin-top: 10px;
+            }
           }
         }
 
@@ -188,7 +199,7 @@
         }
 
         .onoffswitch {
-          margin: 9px 0 0;
+          margin: 10px 0;
         }
 
         .onoffswitch-external-label {

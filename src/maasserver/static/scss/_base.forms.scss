@@ -18,6 +18,11 @@
     &[type='email'],
     &[type='url'],
     &[type='tel'] {
+      /* Remove First */
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+
       @extend %input-elements;
       padding: 7px 10px;
       box-shadow: none;
@@ -61,6 +66,11 @@
 
   // Text area styles
   textarea {
+    /* Remove First */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
     height: auto;
     min-height: 175px;
     padding: 7px 10px !important;
@@ -151,6 +161,7 @@
 
     + label {
       min-height: 34px;
+      line-height: 34px;
       position: relative;
       padding-left: 25px;
       cursor: pointer;
@@ -160,35 +171,63 @@
         content: '';
         position: absolute;
         left: 0;
-        top: 6px;
+        top: 11px;
         width: 11px;
         height: 11px;
         border: 1px solid $mid-grey;
         background: $white;
         border-radius: 2px;
       }
+
+      &:after {
+        transition: opacity 0.4s ease;
+        opacity: 0;
+        content: '✔';
+        position: absolute;
+        line-height: 13px;
+        top: 11px;
+        left: 2px;
+        font-size: 10px;
+        color: $white;
+      }
+
+      &:hover {
+
+        &:after {
+          font-size: 8px;
+          color: $alto-grey;
+          opacity: 1;
+          left: 3px;
+        }
+      }
     }
 
     &:checked {
 
-      + label:before {
-        background-color: $input-checked;
-        border-color: $input-checked;
-      }
+      + label {
 
-      + label:after {
-        content: '✔';
-        position: absolute;
-        line-height: 13px;
-        top: 5px;
-        left: 3px;
-        font-size: 10px;
-        color: $white;
-        transition: all .2s;
+        &:before {
+          background-color: $component-color;
+          border-color: $component-color;
+        }
 
-        @-moz-document url-prefix() {
-          font-size: 13px;
-          left: 1px;
+        &:after {
+          opacity: 1;
+          font-size: 12px;
+
+          @-moz-document url-prefix() {
+            font-size: 12px;
+            left: 1px;
+          }
+        }
+
+        &:hover {
+
+          &:after {
+            color: $white;
+            font-size: 12px;
+            left: 2px;
+          }
         }
       }
     }
@@ -231,6 +270,28 @@
         background: $white;
         border-radius: 50%;
       }
+
+      &:after {
+        transition: opacity 0.4s ease;
+        opacity: 0;
+        content: '';
+        position: absolute;
+      }
+
+      &:hover {
+
+        &:after {
+          content: '';
+          position: absolute;
+          left: 4px;
+          top: 9px;
+          width: 7px;
+          height: 7px;
+          background: $alto-grey;
+          border-radius: 50%;
+          opacity: 1;
+        }
+      }
     }
 
     &:checked {
@@ -242,8 +303,9 @@
         top: 8px;
         width: 9px;
         height: 9px;
-        background: $input-checked;
+        background: $component-color;
         border-radius: 50%;
+        opacity: 1;
       }
     }
   }
@@ -280,7 +342,8 @@
     display: inline-block;
     vertical-align: middle;
     width: 38px;
-    margin: 0 0 4px;
+    height: 16px;
+    margin: 10px 0 0;
     //scss-lint:disable VendorPrefixes
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -350,7 +413,7 @@
     &:before {
       content: '';
       padding-left: 10px;
-      background-color: $success;
+      background-color: $component-color;
       color: $white;
     }
 

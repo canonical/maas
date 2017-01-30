@@ -10,7 +10,7 @@
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ fabric.name $}</h1>
             <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
-                <button class="button--primary button--inline"
+                <button class="button--destructive button--inline"
                     data-ng-click="deleteButton()"
                     data-ng-hide="confirmingDelete">Delete fabric</button>
             </div>
@@ -24,19 +24,19 @@
                     </div>
                 </section>
                 <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
-                    <p class="page-header__message page-header__message--warning">
+                    <p class="page-header__message page-header__message--error">
                         Are you sure you want to delete this fabric?
                     </p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Go</button>
+                        <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete fabric</button>
                     </div>
                 </section>
                 <section class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
                     <p class="page-header__message page-header__message--error">{$ error $}</p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
+                        <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
                     </div>
                 </section>
             </div>

@@ -19,6 +19,7 @@
 @import 'components.buttons';
 @import 'components.forms';
 @import 'components.code';
+@import 'components.grid';
 @import 'components.notifications';
 @import 'components.icons';
 @import 'components.list-tree';
@@ -54,6 +55,7 @@
   @include maas-definition-list;
   @include maas-wrapper;
   @include maas-row;
+  @include maas-grid;
   @include maas-buttons;
   @include maas-button-group;
   @include maas-form-layouts;

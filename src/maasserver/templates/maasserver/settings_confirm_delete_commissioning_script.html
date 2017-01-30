@@ -9,8 +9,10 @@
     <p>This action is permanent and can not be undone.</p>
     <form method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
-        <input type="submit" value="Delete commissioning script" class="button--primary button--inline u-float--right" />
-        <a class="button--secondary button--inline" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
+        <div class="u-float--right">
+            <a class="button--secondary button--inline" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
+            <button type="submit" class="button--destructive button--inline" />Delete commissioning script</button>
+        </div>
     </form>
 </div>
 {% endblock %}

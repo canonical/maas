@@ -11,7 +11,7 @@
 	    <ul>
 	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
 	    </ul>
-	    <input type="submit" value="+ Add zone" class="button--primary button--inline u-float--right" />
+	    <button type="submit" class="button--positive button--inline u-float--right" />Add zone</button>
 	    <a class="button--secondary button--inline" href="{% url 'zone-list' %}">Cancel</a>
 	</form>
 </div>

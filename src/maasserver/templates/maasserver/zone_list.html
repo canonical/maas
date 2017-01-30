@@ -50,7 +50,7 @@
     </table>
     {% include "maasserver/pagination.html" %}
     {% if user.is_superuser %}
-    <a class="button--primary button--inline u-float--right" href="{% url 'zone-add' %}">Add zone</a>
+    <a class="button--secondary button--inline u-float--right" href="{% url 'zone-add' %}">Add zone</a>
     {% endif %}
 </div>
 {% endblock %}

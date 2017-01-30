@@ -151,7 +151,7 @@
                                     </div>
                                     <div class="table__data u-float--right">
                                           <a class="button--base button--inline" data-ng-click="deleteImage()">Cancel</a>
-                                          <button class="button--primary button--inline" data-ng-click="confirmDeleteImage()">Remove</button>
+                                          <button class="button--destructive button--inline" data-ng-click="confirmDeleteImage()">Remove</button>
                                     </div>
                                 </div>
                             </div>
@@ -159,7 +159,7 @@
                     </main>
                 </section>
                 <div class="twelve-col" data-ng-if="!source.tooMany">
-                    <div class="u-float--right">
+                    <div class="u-align--right">
                         <a class="button--base button--inline"
                             data-ng-if="showStopImportButton()"
                             data-ng-disabled="!canStopImport()"
@@ -215,7 +215,7 @@
             </main>
         </section>
         <div class="twelve-col" data-ng-if="!source.tooMany">
-            <div class="u-float--right">
+            <div class="u-align--right">
                 <button class="button--secondary button--inline"
                     data-ng-if="isSuperUser()"
                     data-ng-disabled="saving"

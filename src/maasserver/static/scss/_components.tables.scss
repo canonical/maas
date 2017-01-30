@@ -74,15 +74,9 @@
             &:before {
               top: 0;
             }
-          }
 
-          &:checked {
-
-            + label {
-
-              &::after {
-                top: 0;
-              }
+            &:after {
+              top: 0;
             }
           }
         }
@@ -96,6 +90,13 @@
             &:before {
               top: 0;
             }
+
+            &:hover {
+
+              &:after {
+                top: 4px;
+              }
+            }
           }
 
           &:checked {
@@ -108,6 +109,10 @@
             }
           }
         }
+      }
+
+      .onoffswitch {
+        margin: 0;
       }
 
       @media only screen and (max-width : $breakpoint-medium) {
@@ -206,9 +211,10 @@
           font-weight: 300;
         }
 
-        &.u-display--medium {
+        &.u-display--block-mobile {
           display: block;
           border-bottom: 0;
+          text-align: right;
         }
       }
 
@@ -972,6 +978,10 @@
   @each $state, $color in $states {
     .table--#{$state} {
       border-color: $color;
+
+      @media only screen and (max-width: $breakpoint-medium) {
+        background-color: lighten($color, 40%);
+      }
 
       .table__header,
       .table__data,

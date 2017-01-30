@@ -9,7 +9,7 @@
         </h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain() && !loading">
-            <button class="button--primary button--inline"
+            <button class="button--destructive button--inline"
                 data-ng-click="deleteButton()"
                 data-ng-hide="confirmingDelete">Delete domain</button>
         </div>
@@ -23,12 +23,12 @@
                 </div>
             </div>
               <div class="page-header__section ng-hide" data-ng-show="canBeDeleted() && !error">
-                <p class="page-header__message page-header__message--warning">
+                <p class="page-header__message page-header__message--error">
                     Are you sure you want to delete this domain?
                 </p>
                 <div class="page-header__controls">
                     <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
-                    <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Go</button>
+                    <button class="button--destructive button--inline" data-ng-click="deleteConfirmButton()">Delete domain</button>
                 </div>
             </div>
               <div class="page-header__section ng-hide" data-ng-show="canBeDeleted() && error">
@@ -37,7 +37,7 @@
                 </p>
                 <div class="page-header__controls">
                     <a href="" class="button--base button--inline" data-ng-click="cancelDeleteButton()">Cancel</a>
-                    <button class="button--primary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
+                    <button class="button--secondary button--inline" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
         </div>
@@ -60,7 +60,7 @@
                     </header>
                     <main class="table-body">
                         <div class="table__row table__row--no-hover" data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
-                          <div class="table__data table-col--25">
+                          <div class="table__data table-col--25" aria-label="Name">
                             <span data-ng-if="row.system_id == null">{$ row.name $}</span>
                             <span data-ng-if="row.system_id !== null">
                                 <div data-ng-switch="row.node_type">
@@ -76,8 +76,8 @@
                                 </div>
                             </span>
                           </div>
-                          <div class="table__data table-col--25">{$ row.rrtype $}</div>
-                          <div class="table__data table-col--50">{$ row.rrdata $}</div>
+                          <div class="table__data table-col--25" aria-label="Type">{$ row.rrtype $}</div>
+                          <div class="table__data table-col--50" aria-label="Data">{$ row.rrdata $}</div>
                         </div>
                     </main>
                 </div>

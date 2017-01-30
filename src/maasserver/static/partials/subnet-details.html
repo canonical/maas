@@ -24,7 +24,7 @@
                     </p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelAction()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo()">Go</button>
+                        <button class="button--positive button--inline" data-ng-click="actionGo()">Activate subnet mapping</button>
                     </div>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!actionError && actionOption.name == 'delete'">
@@ -33,14 +33,14 @@
                     </p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelAction()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo()">Go</button>
+                        <button class="button--destructive button--inline" data-ng-click="actionGo()">Delete subnet</button>
                     </div>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="actionError">
                     <p class="page-header__message page-header__message--error">{$ actionError $}</p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancelAction()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionRetry()">Retry</button>
+                        <button class="button--secondary button--inline" data-ng-click="actionRetry()">Retry</button>
                     </div>
                 </section>
   	    </div>
@@ -162,7 +162,7 @@
                                         </div>
                                         <div class="table__data u-float--right">
                                               <a class="button--base button--inline" data-ng-click="staticRouteCancelDelete()">Cancel</a>
-                                              <button class="button--primary button--inline" data-ng-click="staticRouteConfirmDelete()">Remove</button>
+                                              <button class="button--destructive button--inline" data-ng-click="staticRouteConfirmDelete()">Remove</button>
                                         </div>
                                     </div>
                                 </div>
@@ -194,7 +194,7 @@
                                         </div>
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline" data-ng-click="staticRouteToggleEditMode(staticRoute)">Cancel</a>
-                                            <button class="button--primary button--inline" maas-obj-save>Save</button>
+                                            <button class="button--positive button--inline" maas-obj-save>Save static route</button>
                                         </div>
                                     </div>
                                 </div>
@@ -241,7 +241,7 @@
                                         </div>
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline" data-ng-click="cancelAddStaticRoute()">Cancel</a>
-                                            <button class="button--primary button--inline" maas-obj-save>Add</button>
+                                            <button class="button--positive button--inline" maas-obj-save>Save static route</button>
                                         </div>
                                     </div>
                                 </div>

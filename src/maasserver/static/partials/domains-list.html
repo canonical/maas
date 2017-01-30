@@ -7,7 +7,7 @@
         </h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls" data-ng-show="isSuperUser()">
-            <button class="button--primary button--inline"
+            <button class="button--secondary button--inline"
                 data-ng-click="addDomain()"
                 data-ng-hide="addDomainScope.viewable">Add domain</button>
             <button class="button--secondary button--inline"
@@ -35,7 +35,7 @@
                         <button class="button--secondary button--inline"
                             data-ng-class="{ disabled: domainHasError() }"
                             data-ng-click="save(true)">Save and add another</button>
-                        <button class="button--primary button--inline"
+                        <button class="button--positive button--inline"
                             data-ng-class="{ disabled: domainHasError() }"
                             data-ng-click="save(false)">Save domain</button>
                     </div>

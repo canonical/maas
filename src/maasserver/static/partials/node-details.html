@@ -24,7 +24,7 @@
             <a href="" class="button--base button--inline u-margin--bottom-small ng-hide"
                 data-ng-show="header.editing"
                 data-ng-click="cancelEditHeader()">Cancel</a>
-            <a href="" class="button--primary button--inline u-margin--bottom-small ng-hide"
+            <a href="" class="button--positive button--inline u-margin--bottom-small ng-hide"
                 data-ng-show="header.editing"
                 data-ng-disabled="editHeaderInvalid()"
                 data-ng-click="saveEditHeader()">Save</a>
@@ -88,7 +88,60 @@
                         </fieldset>
                         <div class="page-header__controls">
                             <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                            <button class="button--primary button--inline" data-ng-click="actionGo()">Go</button>
+                            <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                <span data-ng-if="actionOption.name === 'commission'">Commission
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'acquire'">Acquire
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'deploy'">Deploy
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'release'">Release
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'set-zone'">Set zone for
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'on'">Power on
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'off'">Power off
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'abort'">Abort action on
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'rescue-mode'">Rescue
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'exit-rescue-mode'">Exit rescue mode
+                                </span>
+                                <span data-ng-if="actionOption.name === 'mark-broken'">Mark
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span> as broken
+                                </span>
+                                <span data-ng-if="actionOption.name === 'mark-fixed'">Mark
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span> as fixed
+                                </span>
+                                <span data-ng-if="actionOption.name === 'delete'">Delete
+                                    <span data-ng-if="!isController">machine</span>
+                                    <span data-ng-if="isController">controller</span>
+                                </span>
+                                <span data-ng-if="actionOption.name === 'import-images'">Import images
+                                </span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -100,7 +153,7 @@
                     </p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="actionGo()">Retry</button>
+                        <button class="button--secondary button--inline" data-ng-click="actionGo()">Retry</button>
                     </div>
                 </div>
 
@@ -159,7 +212,7 @@
                 <div class="four-col last-col u-align--right ng-hide" data-ng-show="summary.editing">
                     <a href="" class="button--base button--inline"
                        data-ng-click="cancelEditSummary()">Cancel</a>
-                    <button class="button--primary button--inline"
+                    <button class="button--positive button--inline"
                         data-ng-class="{ secondary: invalidArchitecture() }"
                         data-ng-click="saveEditSummary()">Save changes</button>
                 </div>
@@ -346,7 +399,7 @@
             <div class="four-col last-col u-align--right" data-ng-show="power.editing">
                 <a href="" class="button--base button--inline"
                     data-ng-click="cancelEditPower()">Cancel</a>
-                <button class="button--primary button--inline"
+                <button class="button--positive button--inline"
                     data-ng-class="{ secondary: invalidPowerType() }"
                     data-ng-click="saveEditPower()">Save changes</button>
             </div>
@@ -859,13 +912,13 @@
                                               </div>
                                               <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="confirmRemove(interface)">Remove</button>
+                                                    <button class="button--destructive button--inline" data-ng-click="confirmRemove(interface)">Remove</button>
                                               </div>
                                           </div>
                                           <div class="table__row is-active" data-ng-if="isEditing(interface)">
                                               <div class="table__data u-float--right">
                                                   <a class="button--base button--inline" data-ng-click="editCancel()">Cancel</a>
-                                                  <button class="button--primary button--inline" data-ng-disabled="isInterfaceNameInvalid(editInterface) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)" data-ng-click="editSave()">Save</button>
+                                                  <button class="button--positive button--inline" data-ng-disabled="isInterfaceNameInvalid(editInterface) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)" data-ng-click="editSave()">Save</button>
                                               </div>
                                           </div>
                                           <div class="table__row is-active" data-ng-if="isShowingAdd() && !newInterface.saving">
@@ -879,7 +932,7 @@
                                               </div>
                                               <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="addInterface()">Add</button>
+                                                    <button class="button--positive button--inline" data-ng-click="addInterface()">Add</button>
                                               </div>
                                           </div>
                                       </div>
@@ -977,7 +1030,7 @@
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
-                                            <button class="button--primary button--inline"
+                                            <button class="button--positive button--inline"
                                                 data-ng-click="addBond()"
                                                 data-ng-disabled="cannotAddBond()">Save</button>
                                         </div>
@@ -1059,7 +1112,7 @@
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
-                                            <button class="button--primary button--inline"
+                                            <button class="button--positive button--inline"
                                                 data-ng-click="addBridge()"
                                                 data-ng-disabled="cannotAddBridge()">Save</button>
                                         </div>
@@ -1159,7 +1212,7 @@
                                           </div>
                                           <div class="table__data u-float--right">
                                               <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
-                                              <button class="button--primary button--inline"
+                                              <button class="button--positive button--inline"
                                                   data-ng-click="addPhysicalInterface()"
                                                   data-ng-disabled="cannotAddPhysicalInterface()">Save</button>
                                           </div>
@@ -1213,8 +1266,7 @@
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table-col--3"></div>
-                                <div class="table__header table-col--15">Name</div>
+                                <div class="table__header table-col--18">Name</div>
                                 <div class="table__header table-col--10">Size</div>
                                 <div class="table__header table-col--10">File system</div>
                                 <div class="table__header table-col--32">Mount point</div>
@@ -1230,8 +1282,7 @@
                             <div data-ng-repeat="filesystem in filesystems">
                                 <div class="table__row"
                                     data-ng-class="{ 'is-active': filesystem.$selected }">
-                                    <div class="table__data table-col--3 u-display--desktop"></div>
-                                    <div class="table__data table-col--15" aria-label="Name">{$ filesystem.name $}</div>
+                                    <div class="table__data table-col--18" aria-label="Name">{$ filesystem.name $}</div>
                                     <div class="table__data table-col--10" aria-label="Size">{$ filesystem.size_human $}</div>
                                     <div class="table__data table-col--10" aria-label="File system">{$ filesystem.fstype $}</div>
                                     <div class="table__data table-col--32" aria-label="Mount point">{$ filesystem.mount_point $}</div>
@@ -1263,7 +1314,7 @@
                                                 </div>
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="filesystemCancel()">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
+                                                    <button class="button--secondary button--inline" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
                                                 </div>
                                             </div>
                                             <div data-ng-if="filesystemMode === 'delete'">
@@ -1272,7 +1323,7 @@
                                                 </div>
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="filesystemCancel(filesystem)">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
+                                                    <button class="button--destructive button--inline" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1287,9 +1338,9 @@
                                         <h2 data-ng-click="cancel()" class="u-float--left">Adding filesystem</h2>
                                         <i data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                     </div>
-                                    <div class="table__row form form--stack is-active u-padding--top u-padding--right u-padding--left box-sizing">
-                                        <div class="table__data">
-                                            <div class="form__fieldset six-col">
+                                    <div class="table__row form form--stack is-active">
+                                        <div class="table__data table-col--100">
+                                            <fieldset class="form__fieldset six-col">
                                                 <dl>
                                                     <dt class="two-col">Description</dt>
                                                     <dd class="three-col" ng-bind="description"></dd>
@@ -1303,8 +1354,8 @@
                                                         <option value="ramfs">ramfs</option>
                                                     </select>
                                                 </div>
-                                            </div>
-                                            <div class="form__fieldset six-col last-col">
+                                            </fieldset>
+                                            <fieldset class="form__fieldset six-col last-col">
                                                 <div class="form__group">
                                                     <label class="two-col" for="mount-point">Mount point</label>
                                                     <input type="text" id="mount-point" class="table__input three-col"
@@ -1316,14 +1367,14 @@
                                                     <input type="text" id="mount-options" class="table__input three-col"
                                                            placeholder="Separated by commas, no spaces" ng-model="filesystem.mountOptions">
                                                 </div>
-                                            </div>
+                                            </fieldset>
                                         </div>
                                     </div>
                                     <div class="table__row is-active">
                                       <div class="table__data u-float--right">
                                           <a class="button--base button--inline"
                                               ng-click="cancel()">Cancel</a>
-                                          <button class="button--primary button--inline ng-binding"
+                                          <button class="button--secondary button--inline ng-binding"
                                               ng-disabled="!canMount()"
                                               ng-click="mount()">Mount</button>
                                       </div>
@@ -1391,7 +1442,7 @@
                                                 </div>
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="cacheSetCancel()">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
+                                                    <button class="button--destructive button--inline" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1774,7 +1825,7 @@
                                             <div data-ng-if="availableMode === 'edit'">
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
-                                                    <button class="button--primary button--inline"
+                                                    <button class="button--positive button--inline"
                                                         data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
                                                         data-ng-click="availableConfirmEdit(item)">Save</button>
                                                 </div>
@@ -1785,13 +1836,13 @@
                                                 </div>
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
-                                                    <button class="button--primary button--inline" data-ng-click="availableConfirmDelete(item)">Remove</button>
+                                                    <button class="button--destructive button--inline" data-ng-click="availableConfirmDelete(item)">Remove</button>
                                                 </div>
                                             </div>
                                               <div data-ng-if="availableMode === 'partition'">
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
-                                                    <button class="button--primary button--inline"
+                                                    <button class="button--positive button--inline"
                                                         data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmPartition(item)">Add partition</button>
                                                 </div>
@@ -1799,7 +1850,7 @@
                                             <div data-ng-if="availableMode === 'logical-volume'">
                                                 <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
-                                                    <button class="button--primary button--inline"
+                                                    <button class="button--positive button--inline"
                                                         data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
                                                 </div>
@@ -1912,7 +1963,7 @@
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline"
                                                 data-ng-click="availableCancel()">Cancel</a>
-                                            <button class="button--primary button--inline"
+                                            <button class="button--positive button--inline"
                                                 data-ng-disabled="!createBcacheCanSave()"
                                                 data-ng-click="availableConfirmCreateBcache()">Create bcache</button>
                                         </div>
@@ -2029,7 +2080,7 @@
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline"
                                                 data-ng-click="availableCancel()">Cancel</a>
-                                            <button class="button--primary button--inline"
+                                            <button class="button--positive button--inline"
                                                 data-ng-disabled="!createRAIDCanSave()"
                                                 data-ng-click="availableConfirmCreateRAID()">Create RAID</button>
                                         </div>
@@ -2091,7 +2142,7 @@
                                         <div class="table__data u-float--right">
                                             <a class="button--base button--inline"
                                                 data-ng-click="availableCancel()">Cancel</a>
-                                            <button class="button--primary button--inline"
+                                            <button class="button--positive button--inline"
                                                 data-ng-disabled="!createVolumeGroupCanSave()"
                                                 data-ng-click="availableConfirmCreateVolumeGroup()">Create volume group</button>
                                         </div>

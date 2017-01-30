@@ -11,8 +11,10 @@
 	    <ul>
 	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
 	    </ul>
-	    <input type="submit" value="+ Add user" class="button--primary button--inline u-float--right" />
-	    <a class="button--secondary button--inline" href="{% url 'settings' %}">Cancel</a>
+			<div class=" u-float--right">
+					<a class="button--base button--inline" href="{% url 'settings' %}">Cancel</a>
+					<button type="submit" class="button--positive button--inline" />Add user</button>
+			</div>
 	</form>
 </div>
 {% endblock %}

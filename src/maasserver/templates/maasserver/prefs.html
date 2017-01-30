@@ -57,7 +57,7 @@
                     </li>
                     {% empty %} No SSL key configured. {% endfor %}
                 </ul>
-                <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="button--primary button--inline u-float--right">+ Add SSL key</a>
+                <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="button--secondary button--inline u-float--right">Add SSL key</a>
             </div>
         </section>
         <section id="profile" class="eight-col u-border--bottom">
@@ -68,7 +68,7 @@
                         {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
                     <input type="hidden" name="profile_submit" value="1" />
-                    <input type="submit" class="button--primary button--inline u-float--right" value="Save" />
+                    <button type="submit" class="button--positive button--inline u-float--right">Save details</button>
                 </form>
             </div>
         </section>
@@ -80,7 +80,7 @@
                         {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                     </ul>
                     <input type="hidden" name="password_submit" value="1" />
-                    <input type="submit" class="button--primary button--inline u-float--right" value="Change password" />
+                    <button type="submit" class="button--positive button--inline u-float--right">Save password</button>
                 </form>
             </div>
         </section>

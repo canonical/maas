@@ -15,8 +15,8 @@
           <form method="post" class="form">
               {% csrf_token %}
               <input type="hidden" name="post" value="yes" />
-              <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">Cancel</a>
-              <input type="submit" value="Yes" class="button--primary u-width--half u-display--block u-float--right" />
+              <a href="{% url 'index' %}" class="button--base u-width--half u-display--block u-float--left">No</a>
+              <button type="submit" class="button--positive u-width--half u-display--block u-float--right">Yes</button>
           </form>
       </div>
 {% endblock %}

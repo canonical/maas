@@ -44,9 +44,9 @@ Physical zone: {{ zone.name }}
 <div class="three-col last-col">
     <h3>Actions</h3>
     {% if user.is_superuser %}
-    <a href="{% url 'zone-edit' zone.name %}" class="button--primary button--inline">Edit zone</a>
+    <a href="{% url 'zone-edit' zone.name %}" class="button--secondary button--inline">Edit zone</a>
     {% if not zone.is_default %}
-    <a href="{% url 'zone-del' zone.name %}" class="button--secondary button--inline">Delete zone</a>
+    <a href="{% url 'zone-del' zone.name %}" class="button--destructive button--inline">Delete zone</a>
     {% endif %}
     {% endif %}
 </div>

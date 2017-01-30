@@ -11,8 +11,10 @@
 	    <ul>
 	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
 	    </ul>
-	    <input type="submit" class="button--primary button--inline u-float--right" value="Add license key" />
-	    <a class="button--secondary button--inline" href="{% url 'settings' %}#license_keys">Cancel</a>
+			<div class="u-float--right">
+					<a class="button--secondary button--inline" href="{% url 'settings' %}#license_keys">Cancel</a>
+					<button type="submit" class="button--positive button--inline">Add license key</button>
+			</div>
 	</form>
 </div>
 {% endblock %}

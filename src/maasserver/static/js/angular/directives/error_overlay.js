@@ -19,7 +19,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                     '{$ getTitle() $}',
                 '</h1>',
                 '<div class="page-header__controls">',
-                    '<button class="button--primary button--inline"',
+                    '<button class="button--secondary button--inline"',
                         'data-ng-click="reload()"',
                         'data-ng-show="clientError">Reload</button>',
                 '</div>',

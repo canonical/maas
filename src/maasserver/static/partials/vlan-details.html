@@ -204,7 +204,7 @@
                     </p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="vlanDetails.actionGo()" data-ng-disabled="!vlanDetails.canPerformAction()">{$ vlanDetails.actionOption.title $}</button>
+                        <button class="button--inline" data-ng-class="vlanDetails.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'"  data-ng-click="vlanDetails.actionGo()" data-ng-disabled="!vlanDetails.canPerformAction()">{$ vlanDetails.actionOption.title $}</button>
                     </div>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none"
@@ -212,7 +212,7 @@
                     <p class="page-header__message page-header__message--error">{$ vlanDetails.actionError $}</p>
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline u-margin--right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
-                        <button class="button--primary button--inline" data-ng-click="vlanDetails.actionRetry()">Retry</button>
+                        <button class="button--secondary button--inline" data-ng-click="vlanDetails.actionRetry()">Retry</button>
                     </div>
                 </section>
             </div>

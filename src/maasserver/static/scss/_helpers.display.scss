@@ -9,7 +9,7 @@
 @mixin maas-display {
   .u-align {
 
-    @media only screen and (min-width : $breakpoint-medium) {
+    @media only screen and (min-width : $breakpoint-min-medium) {
       &--right {
         text-align: right !important;
       }
@@ -104,7 +104,7 @@
 
     &--mobile {
 
-      @media only screen and (min-width : $breakpoint-medium) {
+      @media only screen and (min-width : $breakpoint-min-medium) {
         position: absolute !important;
         visibility: hidden !important;
         overflow: hidden;
