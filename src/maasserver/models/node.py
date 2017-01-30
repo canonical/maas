@@ -2450,11 +2450,6 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = None
         self.save()
 
-        # Clear installation results
-        if self.current_installation_script_set is not None:
-            self.current_installation_script_set.delete()
-            self.current_installation_script_set = None
-
         # Clear the nodes acquired filesystems.
         self._clear_acquired_filesystems()
 

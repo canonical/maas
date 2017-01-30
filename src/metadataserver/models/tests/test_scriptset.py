@@ -6,6 +6,7 @@ __all__ = []
 import random
 
 from maasserver.enum import NODE_TYPE
+from maasserver.models import Config
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -59,6 +60,22 @@ class TestScriptSetManager(MAASServerTestCase):
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
 
+    def test_create_commissioning_script_set_cleans_up_past_limit(self):
+        script_set_limit = Config.objects.get_config(
+            'max_node_commissioning_results')
+        node = factory.make_Node()
+        for _ in range(script_set_limit * 2):
+            factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.COMMISSIONING)
+
+        ScriptSet.objects.create_commissioning_script_set(node)
+
+        self.assertEquals(
+            script_set_limit,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.COMMISSIONING).count())
+
     def test_create_testing_script_set(self):
         node = factory.make_Node()
         expected_scripts = [
@@ -73,6 +90,22 @@ class TestScriptSetManager(MAASServerTestCase):
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.TESTING, script_set.result_type)
 
+    def test_create_testing_script_set_cleans_up_past_limit(self):
+        script_set_limit = Config.objects.get_config(
+            'max_node_testing_results')
+        node = factory.make_Node()
+        for _ in range(script_set_limit * 2):
+            factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING)
+
+        ScriptSet.objects.create_testing_script_set(node)
+
+        self.assertEquals(
+            script_set_limit,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.TESTING).count())
+
     def test_create_installation_script_set(self):
         node = factory.make_Node()
 
@@ -81,6 +114,22 @@ class TestScriptSetManager(MAASServerTestCase):
             [CURTIN_INSTALL_LOG],
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.INSTALLATION, script_set.result_type)
+
+    def test_create_installation_script_set_cleans_up_past_limit(self):
+        script_set_limit = Config.objects.get_config(
+            'max_node_installation_results')
+        node = factory.make_Node()
+        for _ in range(script_set_limit * 2):
+            factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)
+
+        ScriptSet.objects.create_installation_script_set(node)
+
+        self.assertEquals(
+            script_set_limit,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.INSTALLATION).count())
 
 
 class TestScriptSet(MAASServerTestCase):

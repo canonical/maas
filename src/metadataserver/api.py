@@ -437,6 +437,18 @@ class StatusHandler(MetadataViewHandler):
         for script_result, args in results.items():
             script_result.store_result(**args)
 
+        # Update the last ping in any status which uses a script_set whenever a
+        # node in that status contacts us.
+        script_set_statuses = {
+            NODE_STATUS.COMMISSIONING: node.current_commissioning_script_set,
+            NODE_STATUS.TESTING: node.current_testing_script_set,
+            NODE_STATUS.DEPLOYING: node.current_installation_script_set,
+        }
+        script_set = script_set_statuses.get(node.status)
+        if script_set is not None:
+            script_set.last_ping = datetime.now()
+            script_set.save()
+
         # At the end of a top-level event, we change the node status.
         if _is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:

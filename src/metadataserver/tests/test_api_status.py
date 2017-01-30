@@ -663,3 +663,32 @@ class TestStatusAPI(MAASServerTestCase):
             if script_result.name == "00-maas-02-virtuality":
                 break
         self.assertEqual(content, script_result.stdout)
+
+    def test_status_updates_script_status_last_ping(self):
+        nodes = {
+            status: factory.make_Node(
+                status=status, with_empty_script_sets=True)
+            for status in (
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.TESTING,
+                NODE_STATUS.DEPLOYING)
+        }
+
+        for status, node in nodes.items():
+            client = make_node_client(node=node)
+            payload = {
+                'event_type': 'progress',
+                'origin': 'curtin',
+                'name': 'test',
+                'description': 'testing',
+            }
+            response = call_status(client, node, payload)
+            self.assertEqual(http.client.OK, response.status_code)
+            script_set_statuses = {
+                NODE_STATUS.COMMISSIONING: (
+                    node.current_commissioning_script_set),
+                NODE_STATUS.TESTING: node.current_testing_script_set,
+                NODE_STATUS.DEPLOYING: node.current_installation_script_set,
+            }
+            script_set = script_set_statuses.get(node.status)
+            self.assertIsNotNone(script_set.last_ping)

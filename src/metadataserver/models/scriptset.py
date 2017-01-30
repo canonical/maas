@@ -14,6 +14,7 @@ from django.db.models import (
     Manager,
     Model,
 )
+from maasserver.models import Config
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from metadataserver import DefaultMeta
@@ -29,6 +30,19 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 class ScriptSetManager(Manager):
 
+    def _clean_old(self, node, result_type):
+        script_sets = self.filter(
+            node=node, result_type=result_type).order_by('last_ping').reverse()
+        config_var = {
+            RESULT_TYPE.COMMISSIONING: 'max_node_commissioning_results',
+            RESULT_TYPE.TESTING: 'max_node_testing_results',
+            RESULT_TYPE.INSTALLATION: 'max_node_installation_results',
+        }
+        script_set_limit = Config.objects.get_config(config_var[result_type])
+        if script_sets.count() > script_set_limit:
+            for script_set in script_sets[script_set_limit:]:
+                script_set.delete()
+
     def create_commissioning_script_set(self, node):
         """Create a new commissioning ScriptSet with ScriptResults
 
@@ -40,6 +54,7 @@ class ScriptSetManager(Manager):
 
         script_set = self.create(
             node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        self._clean_old(node, RESULT_TYPE.COMMISSIONING)
 
         for script_name, data in NODE_INFO_SCRIPTS.items():
             if node.is_controller and not data['run_on_controller']:
@@ -73,6 +88,7 @@ class ScriptSetManager(Manager):
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
                 script=script, script_version=script.script)
 
+        self._clean_old(node, RESULT_TYPE.TESTING)
         return script_set
 
     def create_installation_script_set(self, node):
@@ -87,6 +103,8 @@ class ScriptSetManager(Manager):
         ScriptResult.objects.create(
             script_set=script_set, status=SCRIPT_STATUS.PENDING,
             script_name=CURTIN_INSTALL_LOG)
+
+        self._clean_old(node, RESULT_TYPE.INSTALLATION)
         return script_set
 
 

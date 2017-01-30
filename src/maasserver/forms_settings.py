@@ -485,6 +485,39 @@ CONFIG_ITEMS = {
             'required': False
         }
     },
+    'max_node_commissioning_results': {
+        'default': 10,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "The maximum number of commissioning results runs which are "
+                "stored."),
+            'min_value': 1,
+        },
+    },
+    'max_node_testing_results': {
+        'default': 10,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "The maximum number of testing results runs which are "
+                "stored."),
+            'min_value': 1,
+        },
+    },
+    'max_node_installation_results': {
+        'default': 1,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "The maximum number of installation result runs which are "
+                "stored."),
+            'min_value': 1,
+        },
+    },
 }
 
 

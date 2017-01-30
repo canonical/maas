@@ -1882,29 +1882,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.license_key, Equals(''))
         self.expectThat(OwnerData.objects.filter(node=node), HasLength(0))
 
-    def test_release_clears_installation_results(self):
-        agent_name = factory.make_name('agent-name')
-        owner = factory.make_User()
-        with post_commit_hooks:
-            node = factory.make_Node(
-                status=NODE_STATUS.ALLOCATED, owner=owner,
-                agent_name=agent_name, with_empty_script_sets=True)
-            self.patch(Node, '_set_status_expires')
-            self.patch(node, '_stop')
-            self.patch(node, '_set_status')
-            installation_result_ids = [
-                script_result.id for script_result in
-                node.current_installation_script_set]
-
-            node.release()
-
-        node = reload_object(node)
-        self.assertIsNone(node.current_installation_script_set)
-        for id in installation_result_ids:
-            self.assertRaises(
-                ScriptResult.DoesNotExist,
-                ScriptResult.objects.get, id=id)
-
     def test_release_deletes_dynamic_machine(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()

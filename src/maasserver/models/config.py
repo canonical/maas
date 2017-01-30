@@ -96,6 +96,9 @@ def get_default_config():
         'enable_analytics': True,
         # First admin journey.
         'completed_intro': False,
+        'max_node_commissioning_results': 10,
+        'max_node_testing_results': 10,
+        'max_node_installation_results': 1,
     }
 
 
