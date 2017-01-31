@@ -164,7 +164,7 @@ def power_driver_check(client, power_type):
         # The region hasn't been upgraded to support this method yet, so give
         # up. Returning an empty list indicates that the power driver is OK, so
         # the power attempt will continue and any errors will be caught later.
-        logger.warn(
+        logger.warning(
             "Unable to query cluster for power packages. Cluster does not"
             "support the PowerDriverCheck RPC method. Returning OK.")
         return []

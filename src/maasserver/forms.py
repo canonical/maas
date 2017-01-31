@@ -60,18 +60,12 @@ from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
-from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
     get_driver_choices,
     get_driver_parameters,
-    get_driver_parameters_from_json,
     get_driver_types,
 )
 from maasserver.clusterrpc.osystems import validate_license_key
-from maasserver.clusterrpc.pods import (
-    discover_pod,
-    get_best_discovered_result,
-)
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -83,10 +77,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_TYPE,
 )
-from maasserver.exceptions import (
-    NodeActionError,
-    PodProblem,
-)
+from maasserver.exceptions import NodeActionError
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
@@ -100,7 +91,6 @@ from maasserver.forms_settings import (
 from maasserver.models import (
     Bcache,
     BlockDevice,
-    BMCRoutableRackControllerRelationship,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -122,8 +112,6 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
-    Pod,
-    RackController,
     RAID,
     SSHKey,
     SSLKey,
@@ -166,7 +154,6 @@ from netaddr import (
     IPNetwork,
     valid_ipv6,
 )
-from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
@@ -888,123 +875,6 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
         WithPowerTypeMixin.set_values(self, controller)
         controller.save()
         return controller
-
-
-class PodForm(MAASModelForm):
-
-    class Meta:
-        model = Pod
-        fields = ['name']
-
-    name = forms.CharField(
-        label="Name", required=False, help_text=(
-            "The name of the pod"))
-
-    def __init__(self, data=None, instance=None, request=None, **kwargs):
-        self.is_new = instance is None
-        self.request = request
-        super(PodForm, self).__init__(
-            data=data, instance=instance, **kwargs)
-        if data is None:
-            data = {}
-        type_value = data.get('type', self.initial.get('type'))
-        self.drivers_orig = driver_parameters.get_all_power_types_from_racks()
-        self.drivers = {
-            driver['name']: driver
-            for driver in self.drivers_orig
-            if driver['driver_type'] == 'pod'
-        }
-        if len(self.drivers) == 0:
-            type_value = ''
-        elif type_value not in self.drivers:
-            type_value = (
-                '' if self.instance is None else self.instance.power_type)
-        choices = [
-            (name, driver['description'])
-            for name, driver in self.drivers.items()
-        ]
-        self.fields['type'] = forms.ChoiceField(
-            required=True, choices=choices, initial=type_value)
-        if not self.is_new:
-            if self.instance.power_type != '':
-                self.initial['type'] = self.instance.power_type
-
-    def _clean_fields(self):
-        """Override to dynamically add fields based on the value of `type`
-        field."""
-        # Process the built-in fields first.
-        super(PodForm, self)._clean_fields()
-        # If no errors then we re-process with the fields required by the
-        # selected type for the pod.
-        if len(self.errors) == 0:
-            driver_fields = get_driver_parameters_from_json(
-                self.drivers_orig, None, scope=SETTING_SCOPE.BMC)
-            self.param_fields = (
-                driver_fields[self.cleaned_data['type']].field_dict)
-            self.fields.update(self.param_fields)
-            super(PodForm, self)._clean_fields()
-
-    def clean(self):
-        cleaned_data = super(PodForm, self).clean()
-        if len(self.drivers) == 0:
-            set_form_error(
-                self, 'type',
-                "No rack controllers are connected, unable to validate.")
-        elif (not self.is_new and
-                self.instance.power_type != self.cleaned_data.get('type')):
-            set_form_error(
-                self, 'type',
-                "Cannot change the type of a pod. Delete and re-create the "
-                "pod with a different type.")
-        return cleaned_data
-
-    def save(self, *args, **kwargs):
-        """Persist the pod into the database."""
-        pod = super(PodForm, self).save(commit=False)
-        if not pod.name:
-            pod.set_random_name()
-
-        pod.power_type = self.cleaned_data['type']
-        # Set power_parameters to the generated param_fields.
-        pod.power_parameters = {
-            param_name: self.cleaned_data[param_name]
-            for param_name in self.param_fields.keys()
-            if param_name in self.cleaned_data
-        }
-        pod.save()
-
-        try:
-            discovered = discover_pod(
-                pod.power_type, pod.power_parameters,
-                pod_id=pod.id, name=pod.name)
-        except Exception as exc:
-            raise PodProblem(str(exc)) from exc
-
-        # Use the first discovered pod object. All other objects are
-        # ignored. The other rack controllers that also provided a result
-        # can route to the pod.
-        try:
-            discovered_pod = get_best_discovered_result(discovered)
-        except Exception as error:
-            raise PodProblem(str(error))
-        if discovered_pod is None:
-            raise PodProblem(
-                "No rack controllers connected to discover a pod.")
-        pod.sync(discovered_pod, self.request.user)
-
-        # Save which rack controllers can route and which cannot.
-        discovered_rack_ids = [rack_id for rack_id, _ in discovered[0].items()]
-        for rack_controller in RackController.objects.all():
-            routable = rack_controller.system_id in discovered_rack_ids
-            relation, created = (
-                BMCRoutableRackControllerRelationship.objects.get_or_create(
-                    bmc=pod.as_bmc(),
-                    rack_controller=rack_controller,
-                    defaults={'routable': routable}))
-            if not created and relation.routable != routable:
-                relation.routable = routable
-                relation.save()
-        return pod
 
 
 NO_ARCHITECTURES_AVAILABLE = mark_safe(

@@ -257,6 +257,40 @@ class TestMachinesAPI(APITestCase.ForUser):
             [machine1.system_id, machine2.system_id],
             extract_system_ids(parsed_result))
 
+    def test_GET_returns_pod_for_machine_in_pod(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Node()
+        machine.bmc = pod
+        machine.save()
+        response = self.client.get(reverse('machines_handler'))
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEquals({
+            'id': pod.id,
+            'name': pod.name,
+            'resource_uri': reverse('pod_handler', kwargs={'id': pod.id}),
+        }, parsed_result[0]['pod'])
+
+    def test_GET_doesnt_return_pod_for_machine_without_bmc(self):
+        factory.make_Node()
+        response = self.client.get(reverse('machines_handler'))
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertIsNone(parsed_result[0]['pod'])
+
+    def test_GET_doesnt_return_pod_for_machine_without_pod(self):
+        bmc = factory.make_BMC()
+        node = factory.make_Node()
+        node.bmc = bmc
+        node.save()
+        response = self.client.get(reverse('machines_handler'))
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertIsNone(parsed_result[0]['pod'])
+
     def test_GET_machines_issues_constant_number_of_queries(self):
         # XXX: GavinPanella 2014-10-03 bug=1377335
         self.skipTest("Unreliable; something is causing varying counts.")

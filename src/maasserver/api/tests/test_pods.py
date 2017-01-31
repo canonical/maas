@@ -9,7 +9,7 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
-from maasserver import forms
+from maasserver import forms_pods
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -21,7 +21,8 @@ from provisioningserver.drivers.pod import (
 )
 
 
-class TestPodsAPI(APITestCase.ForUser):
+class PodMixin:
+    """Mixin to fake pod discovery."""
 
     def make_pod_info(self):
         # Use virsh pod type as the required fields are specific to the
@@ -36,6 +37,33 @@ class TestPodsAPI(APITestCase.ForUser):
             'power_pass': pod_password,
             'ip_address': pod_ip_adddress,
         }
+
+    def fake_pod_discovery(self):
+        discovered_pod = DiscoveredPod(
+            architectures=['amd64/generic'],
+            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+            local_storage=random.randint(1024, 1024 * 1024),
+            cpu_speed=random.randint(2048, 4048),
+            hints=DiscoveredPodHints(
+                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
+                local_storage=random.randint(1024, 1024 * 1024),
+                cpu_speed=random.randint(2048, 4048)))
+        discovered_rack_1 = factory.make_RackController()
+        discovered_rack_2 = factory.make_RackController()
+        failed_rack = factory.make_RackController()
+        self.patch(forms_pods, "discover_pod").return_value = ({
+            discovered_rack_1.system_id: discovered_pod,
+            discovered_rack_2.system_id: discovered_pod,
+        }, {
+            failed_rack.system_id: factory.make_exception(),
+        })
+        return (
+            discovered_pod,
+            [discovered_rack_1, discovered_rack_2],
+            [failed_rack])
+
+
+class TestPodsAPI(APITestCase.ForUser, PodMixin):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -104,24 +132,7 @@ class TestPodsAPI(APITestCase.ForUser):
 
     def test_create_creates_pod(self):
         self.become_admin()
-        discovered_pod = DiscoveredPod(
-            architectures=['amd64/generic'],
-            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
-            local_storage=random.randint(1024, 1024 * 1024),
-            cpu_speed=random.randint(2048, 4048),
-            hints=DiscoveredPodHints(
-                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
-                local_storage=random.randint(1024, 1024 * 1024),
-                cpu_speed=random.randint(2048, 4048)))
-        discovered_rack_1 = factory.make_RackController()
-        discovered_rack_2 = factory.make_RackController()
-        failed_rack = factory.make_RackController()
-        self.patch(forms, "discover_pod").return_value = ({
-            discovered_rack_1.system_id: discovered_pod,
-            discovered_rack_2.system_id: discovered_pod,
-        }, {
-            failed_rack.system_id: factory.make_exception(),
-        })
+        discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         response = self.client.post(reverse('pods_handler'), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
@@ -131,24 +142,7 @@ class TestPodsAPI(APITestCase.ForUser):
     def test_create_duplicate_provides_nice_error(self):
         self.become_admin()
         pod_info = self.make_pod_info()
-        discovered_pod = DiscoveredPod(
-            architectures=['amd64/generic'],
-            cores=random.randint(2, 4), memory=random.randint(1024, 4096),
-            local_storage=random.randint(1024, 1024 * 1024),
-            cpu_speed=random.randint(2048, 4048),
-            hints=DiscoveredPodHints(
-                cores=random.randint(2, 4), memory=random.randint(1024, 4096),
-                local_storage=random.randint(1024, 1024 * 1024),
-                cpu_speed=random.randint(2048, 4048)))
-        discovered_rack_1 = factory.make_RackController()
-        discovered_rack_2 = factory.make_RackController()
-        failed_rack = factory.make_RackController()
-        self.patch(forms, "discover_pod").return_value = ({
-            discovered_rack_1.system_id: discovered_pod,
-            discovered_rack_2.system_id: discovered_pod,
-        }, {
-            failed_rack.system_id: factory.make_exception(),
-        })
+        discovered_pod, _, _ = self.fake_pod_discovery()
         response = self.client.post(reverse('pods_handler'), pod_info)
         self.assertEqual(http.client.OK, response.status_code)
         response = self.client.post(reverse('pods_handler'), pod_info)
@@ -157,7 +151,7 @@ class TestPodsAPI(APITestCase.ForUser):
     def test_create_proper_return_on_exception(self):
         self.become_admin()
         failed_rack = factory.make_RackController()
-        self.patch(forms, "discover_pod").return_value = ({}, {
+        self.patch(forms_pods, "discover_pod").return_value = ({}, {
             failed_rack.system_id: factory.make_exception(),
         })
 
@@ -171,7 +165,7 @@ def get_pod_uri(pod):
     return reverse('pod_handler', args=[pod.id])
 
 
-class TestPodAPI(APITestCase.ForUser):
+class TestPodAPI(APITestCase.ForUser, PodMixin):
 
     def test_handler_path(self):
         pod_id = random.randint(0, 10)
@@ -186,6 +180,72 @@ class TestPodAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         parsed_pod = json_load_bytes(response.content)
         self.assertEqual(pod.id, parsed_pod["id"])
+
+    def test_PUT_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.put(get_pod_uri(pod))
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_PUT_updates_discovers_syncs_and_returns_pod(self):
+        self.become_admin()
+        pod_info = self.make_pod_info()
+        pod = factory.make_Pod(pod_type=pod_info['type'])
+        new_name = factory.make_name('pod')
+        discovered_pod, _, _ = self.fake_pod_discovery()
+        response = self.client.put(get_pod_uri(pod), {
+            'name': new_name,
+            'power_address': pod_info['power_address'],
+            'power_pass': pod_info['power_pass'],
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_output = json_load_bytes(response.content)
+        self.assertEqual(new_name, parsed_output['name'])
+        self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
+
+    def test_refresh_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'refresh',
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_refresh_discovers_syncs_and_returns_pod(self):
+        self.become_admin()
+        pod = factory.make_Pod()
+        discovered_pod, _, _ = self.fake_pod_discovery()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'refresh',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_output = json_load_bytes(response.content)
+        self.assertEqual(discovered_pod.cores, parsed_output['total']['cores'])
+
+    def test_parameters_requires_admin(self):
+        pod = factory.make_Pod()
+        response = self.client.get(get_pod_uri(pod), {
+            'op': 'parameters',
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_parameters_returns_pod_parameters(self):
+        self.become_admin()
+        pod = factory.make_Pod()
+        pod.power_parameters = {
+            factory.make_name('key'): factory.make_name('value')
+        }
+        pod.save()
+        response = self.client.get(get_pod_uri(pod), {
+            'op': 'parameters',
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
+        self.assertEqual(pod.power_parameters, parsed_params)
 
     def test_DELETE_removes_pod(self):
         self.become_admin()

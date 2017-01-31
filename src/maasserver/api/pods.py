@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -13,7 +13,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms import PodForm
+from maasserver.forms_pods import PodForm
 from maasserver.models.bmc import Pod
 from piston3.utils import rc
 from provisioningserver.drivers.pod import Capabilities
@@ -38,7 +38,7 @@ class PodHandler(OperationsHandler):
     """
     api_doc_section_name = "Pod"
 
-    create = update = None
+    create = None
     model = Pod
     fields = DISPLAYED_POD_FIELDS
 
@@ -77,6 +77,25 @@ class PodHandler(OperationsHandler):
         return result
 
     @admin_method
+    def update(self, request, id):
+        """Update a specific Pod.
+
+        :param name: Name for the pod (optional).
+
+        Note: 'type' cannot be updated on a Pod. The Pod must be deleted and
+        re-added to change the type.
+
+        Returns 404 if the pod is not found.
+        Returns 403 if the user does not have permission to update the pod.
+        """
+        pod = get_object_or_404(Pod, id=id)
+        form = PodForm(data=request.data, instance=pod, request=request)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @admin_method
     def delete(self, request, id):
         """Delete a specific Pod.
 
@@ -89,8 +108,24 @@ class PodHandler(OperationsHandler):
         return rc.DELETED
 
     @admin_method
+    @operation(idempotent=False)
+    def refresh(self, request, id):
+        """Refresh a specific Pod.
+
+        Performs pod discovery and updates all discovered information and
+        discovered machines.
+
+        Returns 404 if the pod is not found.
+        Returns 403 if the user does not have permission to refresh the pod.
+        """
+        pod = get_object_or_404(Pod, id=id)
+        form = PodForm(data=request.data, instance=pod, request=request)
+        pod = form.discover_and_sync_pod()
+        return pod
+
+    @admin_method
     @operation(idempotent=True)
-    def parameters(self, request, system_id):
+    def parameters(self, request, id):
         """Obtain pod parameters.
 
         This method is reserved for admin users and returns a 403 if the
@@ -102,7 +137,7 @@ class PodHandler(OperationsHandler):
 
         Returns 404 if the pod is not found.
         """
-        pod = get_object_or_404(self.model, system_id=system_id)
+        pod = get_object_or_404(Pod, id=id)
         return pod.power_parameters
 
     @classmethod

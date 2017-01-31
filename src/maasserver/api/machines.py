@@ -12,6 +12,7 @@ import re
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import (
     HttpResponse,
@@ -46,6 +47,7 @@ from maasserver.api.utils import (
     get_optional_param,
 )
 from maasserver.enum import (
+    BMC_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
 )
@@ -125,6 +127,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'node_type',
     'node_type_name',
     'special_filesystems',
+    'pod',
 )
 
 # Limited set of machine fields exposed on the anonymous API.
@@ -184,6 +187,21 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     def boot_interface(handler, machine):
         """The network interface which is used to boot over the network."""
         return machine.get_boot_interface()
+
+    @classmethod
+    def pod(handler, machine):
+        """The pod this machine is part of."""
+        bmc = machine.bmc
+        if bmc is None:
+            return None
+        elif bmc.bmc_type == BMC_TYPE.POD:
+            return {
+                'id': bmc.id,
+                'name': bmc.name,
+                'resource_uri': reverse('pod_handler', kwargs={'id': bmc.id}),
+            }
+        else:
+            return None
 
     @admin_method
     def update(self, request, system_id):
