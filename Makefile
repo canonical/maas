@@ -566,13 +566,13 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/rackd/@deps: bin/twistd.rack
+services/rackd/@deps: bin/twistd.rack bin/maas-rack
 
 services/reloader/@deps:
 
-services/regiond/@deps: bin/maas-region
+services/regiond/@deps: bin/maas-region bin/maas-rack
 
-services/regiond2/@deps: bin/maas-region
+services/regiond2/@deps: bin/maas-region bin/maas-rack
 
 #
 # Package building

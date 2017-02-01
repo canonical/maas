@@ -23,6 +23,7 @@ from maasserver.models import (
     Fabric,
     Node,
     RackController,
+    User,
     VersionedTextFile,
 )
 from maasserver.storage_layouts import STORAGE_LAYOUTS
@@ -519,3 +520,17 @@ def populate_main():
             filename "test-boot";
             server-name "boot.from.me";
         """)), node=device)
+
+    # Add notifications for admins, users, and each individual user.
+    factory.make_Notification(
+        "Attention admins! Core critical! Meltdown imminent! Evacuate "
+        "habitat immediately!", admins=True)
+    factory.make_Notification(
+        "Dear users, rumours of a core meltdown are unfounded. Please "
+        "return to your home-pods and places of business.", users=True)
+    for user in User.objects.all():
+        context = {"name": user.username.capitalize()}
+        factory.make_Notification(
+            "Greetings, {name}! Get away from the habitat for the weekend and "
+            "visit the Mare Nubium with MAAS Tours. Use the code METAL to "
+            "claim a special gift!", user=user, context=context)
