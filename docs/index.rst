@@ -39,52 +39,8 @@ Introduction
 .. toctree::
    :maxdepth: 2
 
-   about
-   orientation
    releases
    changelog
-
-
-************************
-Setting up a MAAS server
-************************
-
-.. toctree::
-   :maxdepth: 2
-
-   install
-   configure
-   rack-configuration
-   ha
-   static-ips
-   ipv6
-   bootsources
-   nodes
-   hardware-enablement-kernels
-   sstreams-mirror
-   networking
-   kernel-options
-   installing-ubuntu
-   os-support
-   storage
-   networking
-   proxy
-   devices
-   dhcpsnippets
-   packagerepositories
-   power-driver-capabilities
-
-
-******************
-Deploying services
-******************
-
-.. toctree::
-   :maxdepth: 2
-
-   juju-quick-start
-   tags
-   physical-zones
 
 
 ***********************
@@ -98,17 +54,6 @@ API / CLI Documentation
    api_authentication
    maascli
    version
-
-
-***************
-Troubleshooting
-***************
-
-.. toctree::
-   :maxdepth: 2
-
-   getting-help
-   troubleshooting
 
 
 ******************
