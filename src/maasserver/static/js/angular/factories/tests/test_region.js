@@ -394,10 +394,14 @@ describe("RegionConnection", function() {
         });
 
         it("includes csrftoken if cookie defined", function() {
-            csrftoken = makeName('csrftoken');
+            var csrftoken = makeName('csrftoken');
             // No need to organize a cleanup: cookies are reset before each
             // test.
-            $cookies.csrftoken = csrftoken;
+            if(angular.isFunction($cookies.put)) {
+                $cookies.put('csrftoken', csrftoken);
+            } else {
+                $cookies.csrftoken = csrftoken;
+            }
             expect(RegionConnection._buildUrl()).toBe(
                 "ws://" + $window.location.hostname + ":" +
                 $window.location.port + $window.location.pathname + "/ws" +
