@@ -1,5 +1,3 @@
-<maas-notifications />
-
 <header class="page-header" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -610,7 +608,10 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
       </div>
     </div>
 </header>
-<div class="row u-padding--top-none">
+<div class="wrapper--inner">
+    <maas-notifications></maas-notifications>
+</div>
+<div class="u-padding--top-none">
     <div class="wrapper--inner">
     <aside class="three-col">
         <div class="accordion maas-accordion ng-hide" data-ng-show="currentpage === 'nodes'"
