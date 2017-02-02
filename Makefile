@@ -283,7 +283,9 @@ coverage.data:
 	@$(error Use `$(MAKE) test+coverage` to generate coverage data, \
 	    or invoke a test script using the `--with-coverage` flag)
 
-lint: lint-py lint-py-complexity lint-py-imports lint-js lint-doc lint-rst
+lint: \
+    lint-py lint-py-complexity lint-py-imports \
+    lint-js lint-junk lint-doc lint-rst
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -332,6 +334,11 @@ lint-js:
 	@find $(sources) -type f ! -path '*/angular/3rdparty/*' \
 	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
+
+# Sometimes junk gets added to MAAS, like .moved files.
+lint-junk:
+	@if bzr ls --recursive --versioned | egrep '[.]moved$$'; then \
+	    echo "^ Junk found. Please remove it from the tree." >&2 ; fi
 
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
@@ -456,6 +463,7 @@ define phony_targets
   lint-css
   lint-doc
   lint-js
+  lint-junk
   lint-py
   lint-py-complexity
   lint-py-imports
