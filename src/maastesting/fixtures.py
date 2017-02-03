@@ -32,6 +32,7 @@ import sys
 
 import fixtures
 from fixtures import EnvironmentVariable
+from maastesting import root
 from testtools.monkey import MonkeyPatcher
 from twisted.python.reflect import namedObject
 
@@ -409,15 +410,11 @@ class MAASRootFixture(fixtures.Fixture):
     """
 
     def _setUp(self):
-        super(MAASRootFixture, self)._setUp()
-        maasroot = os.environ.get("MAAS_ROOT")
-        if maasroot is None:
-            raise NotADirectoryError("MAAS_ROOT is not defined.")
-        elif os.path.isdir(maasroot):
+        skel = Path(root).joinpath("run-skel")
+        if skel.is_dir():
             self.path = self.useFixture(TempDirectory()).join("run")
             # Work only in `run`; reference the old $MAAS_ROOT.
             etc = Path(self.path).joinpath("etc")
-            src = Path(maasroot)
             # Create and populate $MAAS_ROOT/run/etc/{ntp,ntp.conf}. The
             # `.keep` file is not strictly necessary, but it's created for
             # consistency with the source tree's `run` directory.
@@ -425,16 +422,16 @@ class MAASRootFixture(fixtures.Fixture):
             ntp.mkdir(parents=True)
             ntp.joinpath(".keep").touch()
             ntp_conf = etc.joinpath("ntp.conf")
-            ntp_conf.write_bytes(src.joinpath("etc", "ntp.conf").read_bytes())
+            ntp_conf.write_bytes(skel.joinpath("etc", "ntp.conf").read_bytes())
             # Create and populate $MAAS_ROOT/run/etc/maas.
             maas = etc.joinpath("maas")
             maas.mkdir(parents=True)
             maas.joinpath("drivers.yaml").symlink_to(
-                src.joinpath("etc", "maas", "drivers.yaml").resolve())
+                skel.joinpath("etc", "maas", "drivers.yaml").resolve())
             maas.joinpath("templates").symlink_to(
-                src.joinpath("etc", "maas", "templates").resolve())
+                skel.joinpath("etc", "maas", "templates").resolve())
             # Update the environment.
             self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
         else:
             raise NotADirectoryError(
-                "MAAS_ROOT (%r) is not a directory." % maasroot)
+                "Skeleton MAAS_ROOT (%s) is not a directory." % skel)

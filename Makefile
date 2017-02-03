@@ -227,7 +227,10 @@ lxd:
 test+lxd: lxd $(strip $(test-scripts))
 	utilities/isolated-make-test
 
-test: $(strip $(test-scripts))
+test: bin/test.parallel
+	@bin/test.parallel
+
+test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) coverage.data .failed
 	$(foreach test,$^,$(test-template);)
@@ -263,8 +266,8 @@ smoke: lint bin/maas-region bin/test.rack
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@bin/test.rack --stop
 
-test+coverage: export NOSE_WITH_COVERAGE = 1
-test+coverage: test
+test-serial+coverage: export NOSE_WITH_COVERAGE = 1
+test-serial+coverage: test-serial
 
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
@@ -280,8 +283,8 @@ coverage/index.html: bin/coverage coverage.data
 	    --title "MAAS r$(revno)" --directory $(@D)
 
 coverage.data:
-	@$(error Use `$(MAKE) test+coverage` to generate coverage data, \
-	    or invoke a test script using the `--with-coverage` flag)
+	@$(error Use `$(MAKE) test-serial+coverage` to generate coverage \
+            data, or invoke a test script using the `--with-coverage` flag)
 
 lint: \
     lint-py lint-py-complexity lint-py-imports \
@@ -477,10 +480,11 @@ define phony_targets
   sudoers
   syncdb
   test
-  test+coverage
   test+lxd
   test-failed
   test-initial-data
+  test-serial
+  test-serial+coverage
 endef
 
 #

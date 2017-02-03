@@ -12,7 +12,10 @@ import sys
 from unittest.mock import call
 
 from fixtures import EnvironmentVariable
-from maastesting import root
+from maastesting import (
+    fixtures as fixtures_module,
+    root,
+)
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -256,34 +259,28 @@ class TestMAASRootFixture(MAASTestCase):
 
     def setUp(self):
         super(TestMAASRootFixture, self).setUp()
-        self.maasroot = os.path.join(root, "run-skel")
-        self.useFixture(EnvironmentVariable("MAAS_ROOT", self.maasroot))
+        self.skel = os.path.join(root, "run-skel")
+        self.useFixture(EnvironmentVariable("MAAS_ROOT", "/"))
 
     def test_creates_populates_and_removes_new_directory(self):
         fixture = MAASRootFixture()
         with fixture:
             self.assertThat(fixture.path, PathExists())
-            self.assertThat(fixture.path, Not(SamePath(self.maasroot)))
-            files_expected = set(listdirs(self.maasroot))
+            self.assertThat(fixture.path, Not(SamePath(self.skel)))
+            files_expected = set(listdirs(self.skel))
             files_observed = set(listdirs(fixture.path))
             self.assertThat(files_observed, Equals(files_expected))
         self.assertThat(fixture.path, Not(PathExists()))
 
     def test_updates_MAAS_ROOT_in_the_environment(self):
-        self.assertThat(os.environ["MAAS_ROOT"], SamePath(self.maasroot))
+        self.assertThat(os.environ["MAAS_ROOT"], Not(SamePath(self.skel)))
         with MAASRootFixture() as fixture:
             self.assertThat(os.environ["MAAS_ROOT"], SamePath(fixture.path))
-        self.assertThat(os.environ["MAAS_ROOT"], SamePath(self.maasroot))
-
-    def test_breaks_when_MAAS_ROOT_is_not_defined(self):
-        fixture = MAASRootFixture()
-        del os.environ["MAAS_ROOT"]
-        error = self.assertRaises(NotADirectoryError, fixture._setUp)
-        self.assertThat(str(error), Equals("MAAS_ROOT is not defined."))
+        self.assertThat(os.environ["MAAS_ROOT"], Not(SamePath(self.skel)))
 
     def test_breaks_when_MAAS_ROOT_is_not_a_directory(self):
+        self.patch(fixtures_module, "root", self.make_file())
         fixture = MAASRootFixture()
-        os.environ["MAAS_ROOT"] = self.make_file()
         error = self.assertRaises(NotADirectoryError, fixture._setUp)
         self.assertThat(str(error), DocTestMatches(
-            "MAAS_ROOT (...) is not a directory."))
+            "Skeleton MAAS_ROOT (...) is not a directory."))
