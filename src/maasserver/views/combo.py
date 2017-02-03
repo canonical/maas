@@ -91,6 +91,7 @@ MERGE_VIEWS = {
             "js/angular/services/browser.js",
             "js/angular/services/converter.js",
             "js/angular/services/json.js",
+            "js/angular/services/log.js",
             "js/angular/directives/accordion.js",
             "js/angular/directives/boot_images.js",
             "js/angular/directives/call_to_action.js",
