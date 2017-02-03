@@ -628,13 +628,13 @@ class VirshPodDriver(PodDriver):
         return discovered_pod
 
     @inlineCallbacks
-    def compose(self, system_id, context):
-        """Compose machine(s)."""
+    def compose(self, system_id, context, request):
+        """Compose machine."""
         raise NotImplementedError
 
     @inlineCallbacks
     def decompose(self, system_id, context):
-        """Decompose machine(s)."""
+        """Decompose machine."""
         raise NotImplementedError
 
 

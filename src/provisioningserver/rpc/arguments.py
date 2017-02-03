@@ -222,3 +222,54 @@ class AmpDiscoveredPod(StructureAsJSON):
         from provisioningserver.drivers.pod import DiscoveredPod
         data = super(AmpDiscoveredPod, self).fromString(inString)
         return DiscoveredPod.fromdict(data)
+
+
+class AmpDiscoveredPodHints(StructureAsJSON):
+    """Encode and decode `DiscoveredPodHints` over the wire."""
+
+    def toString(self, inObject):
+        # Circular imports.
+        from provisioningserver.drivers.pod import DiscoveredPodHints
+        if not isinstance(inObject, DiscoveredPodHints):
+            raise TypeError("%r is not of type DiscoveredPodHints." % inObject)
+        return super(AmpDiscoveredPodHints, self).toString(inObject.asdict())
+
+    def fromString(self, inString):
+        # Circular imports.
+        from provisioningserver.drivers.pod import DiscoveredPodHints
+        data = super(AmpDiscoveredPodHints, self).fromString(inString)
+        return DiscoveredPodHints.fromdict(data)
+
+
+class AmpDiscoveredMachine(StructureAsJSON):
+    """Encode and decode `DiscoveredMachine` over the wire."""
+
+    def toString(self, inObject):
+        # Circular imports.
+        from provisioningserver.drivers.pod import DiscoveredMachine
+        if not isinstance(inObject, DiscoveredMachine):
+            raise TypeError("%r is not of type DiscoveredMachine." % inObject)
+        return super(AmpDiscoveredMachine, self).toString(inObject.asdict())
+
+    def fromString(self, inString):
+        # Circular imports.
+        from provisioningserver.drivers.pod import DiscoveredMachine
+        data = super(AmpDiscoveredMachine, self).fromString(inString)
+        return DiscoveredMachine.fromdict(data)
+
+
+class AmpRequestedMachine(StructureAsJSON):
+    """Encode and decode `RequestedMachine` over the wire."""
+
+    def toString(self, inObject):
+        # Circular imports.
+        from provisioningserver.drivers.pod import RequestedMachine
+        if not isinstance(inObject, RequestedMachine):
+            raise TypeError("%r is not of type RequestedMachine." % inObject)
+        return super(AmpRequestedMachine, self).toString(inObject.asdict())
+
+    def fromString(self, inString):
+        # Circular imports.
+        from provisioningserver.drivers.pod import RequestedMachine
+        data = super(AmpRequestedMachine, self).fromString(inString)
+        return RequestedMachine.fromdict(data)

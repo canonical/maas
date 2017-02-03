@@ -61,8 +61,12 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.drivers.pod import (
+    DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    RequestedMachine,
+    RequestedMachineBlockDevice,
+    RequestedMachineInterface,
 )
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -2792,7 +2796,57 @@ class TestClusterProtocol_DiscoverPod(MAASTestCase):
             })
         self.assertThat(
             mock_discover_pod, MockCalledOnceWith(
-                pod_type, context, pod_id=id, name=name))
+                pod_type, context, pod_id=pod_id, name=name))
+
+
+class TestClusterProtocol_ComposeMachine(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.ComposeMachine.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_calls_discover_pod(self):
+        mock_compose_machine = self.patch_autospec(
+            pods, 'compose_machine')
+        mock_compose_machine.return_value = succeed({
+            "machine": DiscoveredMachine(
+                architecture='amd64/generic',
+                cores=random.randint(1, 8),
+                cpu_speed=random.randint(1000, 3000),
+                memory=random.randint(1024, 8192),
+                block_devices=[], interfaces=[]),
+            "hints": DiscoveredPodHints(
+                cores=random.randint(1, 8),
+                cpu_speed=random.randint(1000, 2000),
+                memory=random.randint(1024, 8192), local_storage=0),
+            })
+        pod_type = factory.make_name('pod_type')
+        context = {
+            "data": factory.make_name("data"),
+        }
+        request = RequestedMachine(
+            architecture='amd64/generic',
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 3000),
+            memory=random.randint(1024, 8192),
+            block_devices=[
+                RequestedMachineBlockDevice(size=random.randint(8, 16))],
+            interfaces=[
+                RequestedMachineInterface()])
+        pod_id = random.randint(1, 100)
+        name = factory.make_name('pod')
+        call_responder(Cluster(), cluster.ComposeMachine, {
+            'type': pod_type,
+            'context': context,
+            'request': request,
+            'pod_id': pod_id,
+            'name': name,
+            })
+        self.assertThat(
+            mock_compose_machine, MockCalledOnceWith(
+                pod_type, context, request, pod_id=pod_id, name=name))
 
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):

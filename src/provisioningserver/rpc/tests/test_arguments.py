@@ -12,8 +12,14 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import netaddr
 from provisioningserver.drivers.pod import (
+    DiscoveredMachine,
+    DiscoveredMachineBlockDevice,
+    DiscoveredMachineInterface,
     DiscoveredPod,
     DiscoveredPodHints,
+    RequestedMachine,
+    RequestedMachineBlockDevice,
+    RequestedMachineInterface,
 )
 from provisioningserver.rpc import arguments
 from testtools import ExpectedException
@@ -218,6 +224,83 @@ class TestDiscoveredPod(MAASTestCase):
 
     def test_round_trip(self):
         argument = arguments.AmpDiscoveredPod()
+        encoded = argument.toString(self.example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(self.example))
+
+
+class TestDiscoveredPodHints(MAASTestCase):
+
+    example = DiscoveredPodHints(
+        cores=random.randint(1, 8),
+        cpu_speed=random.randint(1000, 2000),
+        memory=random.randint(1024, 8192), local_storage=0)
+
+    def test_round_trip(self):
+        argument = arguments.AmpDiscoveredPodHints()
+        encoded = argument.toString(self.example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(self.example))
+
+
+class TestDiscoveredMachine(MAASTestCase):
+
+    example = DiscoveredMachine(
+        architecture='amd64/generic',
+        cores=random.randint(1, 8),
+        cpu_speed=random.randint(1000, 2000),
+        memory=random.randint(1024, 8192),
+        power_state=factory.make_name('unknown'),
+        power_parameters={
+            'power_id': factory.make_name('power_id'),
+        },
+        interfaces=[
+            DiscoveredMachineInterface(
+                mac_address=factory.make_mac_address())
+            for _ in range(3)
+        ],
+        block_devices=[
+            DiscoveredMachineBlockDevice(
+                model=factory.make_name("model"),
+                serial=factory.make_name("serial"),
+                size=random.randint(512, 1024),
+                id_path=factory.make_name("/dev/vda"))
+            for _ in range(3)
+        ],
+        tags=[
+            factory.make_name("tag")
+            for _ in range(3)
+        ])
+
+    def test_round_trip(self):
+        argument = arguments.AmpDiscoveredMachine()
+        encoded = argument.toString(self.example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(self.example))
+
+
+class TestRequestedMachine(MAASTestCase):
+
+    example = RequestedMachine(
+        architecture='amd64/generic',
+        cores=random.randint(1, 8),
+        cpu_speed=random.randint(1000, 2000),
+        memory=random.randint(1024, 8192),
+        interfaces=[
+            RequestedMachineInterface()
+            for _ in range(3)
+        ],
+        block_devices=[
+            RequestedMachineBlockDevice(
+                size=random.randint(512, 1024))
+            for _ in range(3)
+        ])
+
+    def test_round_trip(self):
+        argument = arguments.AmpRequestedMachine()
         encoded = argument.toString(self.example)
         self.assertThat(encoded, IsInstance(bytes))
         decoded = argument.fromString(encoded)

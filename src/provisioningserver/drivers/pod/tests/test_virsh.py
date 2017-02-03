@@ -945,7 +945,8 @@ class TestVirshPodDriver(MAASTestCase):
         driver = VirshPodDriver()
         self.assertRaises(
             NotImplementedError,
-            driver.compose, sentinel.system_id, sentinel.context)
+            driver.compose,
+            sentinel.system_id, sentinel.context, sentinel.request)
 
     def test_decompose_raises_not_implemented(self):
         driver = VirshPodDriver()

@@ -25,6 +25,9 @@ from provisioningserver.drivers.pod import (
     PodConnError,
     PodDriverBase,
     PodError,
+    RequestedMachine,
+    RequestedMachineBlockDevice,
+    RequestedMachineInterface,
 )
 from testtools.matchers import (
     Equals,
@@ -403,6 +406,132 @@ class TestDiscoveredClasses(MAASTestCase):
         ))
 
 
+class TestRequestClasses(MAASTestCase):
+
+    def test_block_device_size(self):
+        size = random.randint(512, 512 * 1024)
+        device = RequestedMachineBlockDevice(size=size)
+        self.assertEquals(size, device.size)
+
+    def test_machine(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        interfaces = [
+            RequestedMachineInterface()
+            for _ in range(3)
+        ]
+        block_devices = [
+            RequestedMachineBlockDevice(
+                size=random.randint(512, 1024))
+            for _ in range(3)
+        ]
+        machine = RequestedMachine(
+            architecture='amd64/generic',
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            interfaces=interfaces,
+            block_devices=block_devices)
+        self.assertEquals(cores, machine.cores)
+        self.assertEquals(cpu_speed, machine.cpu_speed)
+        self.assertEquals(memory, machine.memory)
+        self.assertEquals(interfaces, machine.interfaces)
+        self.assertEquals(block_devices, machine.block_devices)
+
+    def test_machine_without_cpu_speed(self):
+        cores = random.randint(1, 8)
+        memory = random.randint(4096, 8192)
+        interfaces = [
+            RequestedMachineInterface()
+            for _ in range(3)
+        ]
+        block_devices = [
+            RequestedMachineBlockDevice(
+                size=random.randint(512, 1024))
+            for _ in range(3)
+        ]
+        machine = RequestedMachine(
+            architecture='amd64/generic',
+            cores=cores, cpu_speed=None, memory=memory,
+            interfaces=interfaces,
+            block_devices=block_devices)
+        self.assertEquals(cores, machine.cores)
+        self.assertIsNone(machine.cpu_speed)
+        self.assertEquals(memory, machine.memory)
+        self.assertEquals(interfaces, machine.interfaces)
+        self.assertEquals(block_devices, machine.block_devices)
+
+    def test_machine_asdict(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        interfaces = [
+            RequestedMachineInterface()
+            for _ in range(3)
+        ]
+        block_devices = [
+            RequestedMachineBlockDevice(size=random.randint(512, 1024))
+            for _ in range(3)
+        ]
+        machine = RequestedMachine(
+            architecture='amd64/generic',
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            interfaces=interfaces, block_devices=block_devices)
+        self.assertThat(machine.asdict(), MatchesDict({
+            "architecture": Equals("amd64/generic"),
+            "cores": Equals(cores),
+            "cpu_speed": Equals(cpu_speed),
+            "memory": Equals(memory),
+            "interfaces": MatchesListwise([
+                MatchesDict({})
+                for interface in interfaces
+            ]),
+            "block_devices": MatchesListwise([
+                MatchesDict({
+                    "size": Equals(block_device.size),
+                })
+                for block_device in block_devices
+            ]),
+        }))
+
+    def test_machine_fromdict(self):
+        cores = random.randint(1, 8)
+        cpu_speed = random.randint(1000, 2000)
+        memory = random.randint(4096, 8192)
+        interfaces = [
+            dict()
+            for _ in range(3)
+        ]
+        block_devices = [
+            dict(size=random.randint(512, 1024))
+            for _ in range(3)
+        ]
+        machine_data = dict(
+            architecture='amd64/generic',
+            cores=cores, cpu_speed=cpu_speed, memory=memory,
+            interfaces=interfaces, block_devices=block_devices)
+        machine = RequestedMachine.fromdict(machine_data)
+        self.assertThat(machine, IsInstance(RequestedMachine))
+        self.assertThat(machine, MatchesStructure(
+            architecture=Equals('amd64/generic'),
+            cores=Equals(cores),
+            cpu_speed=Equals(cpu_speed),
+            memory=Equals(memory),
+            interfaces=MatchesListwise([
+                IsInstance(RequestedMachineInterface)
+                for interface in interfaces
+            ]),
+            block_devices=MatchesListwise([
+                MatchesAll(
+                    IsInstance(RequestedMachineBlockDevice),
+                    MatchesStructure(
+                        size=Equals(block_device['size']),
+                    ),
+                )
+                for block_device in block_devices
+            ]),
+        ))
+
+
 class FakePodDriverBase(PodDriverBase):
 
     name = ""
@@ -420,7 +549,7 @@ class FakePodDriverBase(PodDriverBase):
     def discover(self, system_id, context):
         raise NotImplementedError
 
-    def compose(self, system_id, context):
+    def compose(self, system_id, context, request):
         raise NotImplementedError
 
     def decompose(self, system_id, context):
@@ -504,7 +633,8 @@ class TestFakePodDriverBase(MAASTestCase):
         fake_driver = make_pod_driver_base()
         self.assertRaises(
             NotImplementedError,
-            fake_driver.compose, sentinel.system_id, sentinel.context)
+            fake_driver.compose,
+            sentinel.system_id, sentinel.context, sentinel.request)
 
     def test_decompose_raises_not_implemented(self):
         fake_driver = make_pod_driver_base()

@@ -600,7 +600,18 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DiscoverPod`.
         """
         return pods.discover_pod(
-            type, context, pod_id=id, name=name)
+            type, context, pod_id=pod_id, name=name)
+
+    @cluster.ComposeMachine.responder
+    def compose_machine(
+            self, type, context, request, pod_id, name):
+        """ComposeMachine()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ComposeMachine`.
+        """
+        return pods.compose_machine(
+            type, context, request, pod_id=pod_id, name=name)
 
     @cluster.ScanNetworks.responder
     def scan_all_networks(

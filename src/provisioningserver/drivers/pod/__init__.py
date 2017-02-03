@@ -158,8 +158,21 @@ class Capabilities:
     OVER_COMMIT = 'over_commit'
 
 
+class AttrHelperMixin:
+    """Mixin to add the `fromdict` and `asdict` to the classes."""
+
+    @classmethod
+    def fromdict(cls, data):
+        """Convert from a dictionary."""
+        return cls(**data)
+
+    def asdict(self):
+        """Convert to a dictionary."""
+        return attr.asdict(self)
+
+
 @attr.s
-class DiscoveredMachineInterface:
+class DiscoveredMachineInterface(AttrHelperMixin):
     """Discovered machine interface."""
     mac_address = attr.ib(convert=str)
     vid = attr.ib(convert=int, default=-1)
@@ -167,7 +180,7 @@ class DiscoveredMachineInterface:
 
 
 @attr.s
-class DiscoveredMachineBlockDevice:
+class DiscoveredMachineBlockDevice(AttrHelperMixin):
     """Discovered machine block device."""
     model = attr.ib(convert=convert_obj(str, optional=True))
     serial = attr.ib(convert=convert_obj(str, optional=True))
@@ -178,7 +191,7 @@ class DiscoveredMachineBlockDevice:
 
 
 @attr.s
-class DiscoveredMachine:
+class DiscoveredMachine(AttrHelperMixin):
     """Discovered machine."""
     architecture = attr.ib(convert=str)
     cores = attr.ib(convert=int)
@@ -193,7 +206,7 @@ class DiscoveredMachine:
 
 
 @attr.s
-class DiscoveredPodHints:
+class DiscoveredPodHints(AttrHelperMixin):
     """Discovered pod hints.
 
     Hints provide helpful information to a user trying to compose a machine.
@@ -207,7 +220,7 @@ class DiscoveredPodHints:
 
 
 @attr.s
-class DiscoveredPod:
+class DiscoveredPod(AttrHelperMixin):
     """Discovered pod information."""
     architectures = attr.ib(convert=convert_list(str))
     cores = attr.ib(convert=int)
@@ -220,6 +233,32 @@ class DiscoveredPod:
         convert=convert_list(str), default=[Capabilities.FIXED_LOCAL_STORAGE])
     machines = attr.ib(
         convert=convert_list(DiscoveredMachine), default=[])
+
+
+@attr.s
+class RequestedMachineBlockDevice(AttrHelperMixin):
+    """Requested machine block device information."""
+    size = attr.ib(convert=int)
+
+
+@attr.s
+class RequestedMachineInterface(AttrHelperMixin):
+    """Requested machine interface information."""
+    # Currently has no parameters.
+
+
+@attr.s
+class RequestedMachine(AttrHelperMixin):
+    """Requested machine information."""
+    architecture = attr.ib(convert=str)
+    cores = attr.ib(convert=int)
+    memory = attr.ib(convert=int)
+    block_devices = attr.ib(convert=convert_list(RequestedMachineBlockDevice))
+    interfaces = attr.ib(convert=convert_list(RequestedMachineInterface))
+
+    # Optional fields.
+    cpu_speed = attr.ib(
+        convert=convert_obj(int, optional=True), default=None)
 
     @classmethod
     def fromdict(cls, data):
@@ -245,11 +284,14 @@ class PodDriverBase(PowerDriverBase):
         """
 
     @abstractmethod
-    def compose(self, system_id, context):
+    def compose(self, system_id, context, request):
         """Compose a node from parameters in context.
 
         :param system_id: Pod system_id.
         :param context: Pod settings.
+        :param request: Requested machine.
+        :type request: `RequestedMachine`.
+        :returns: Tuple with (`DiscoveredMachine`, `DiscoveredPodHints`).
         """
 
     @abstractmethod
