@@ -142,14 +142,34 @@ def set_ipmi_network_source(source):
     bmc_set('Lan_Conf:IP_Address_Source', source)
 
 
+def _bmc_get_ipmi_addresses(address_type):
+    try:
+        return bmc_get(address_type)
+    except subprocess.CalledProcessError:
+        return ""
+
+
 def get_ipmi_ip_address():
-    output = bmc_get('Lan_Conf:IP_Address')
     show_re = re.compile(
         '((?:[0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-fA-F]*:[0-9a-fA-F:.]+)')
-    res = show_re.search(output)
-    if res is None:
-        return None
-    return res.group()
+    for address_type in [
+            'Lan_Conf:IP_Address',
+            'Lan6_Conf:IPv6_Static_Addresses',
+            'Lan6_Conf:IPv6_Dynamic_Addresses']:
+        output = _bmc_get_ipmi_addresses(address_type)
+        # Loop through the addreses by preference: IPv4, static IPv6, dynamic
+        # IPv6.  Return the first valid, non-link-local address we find.
+        # While we could conceivably allow link-local addresses, we would need
+        # to devine which of our interfaces is the correct link, and then we
+        # would need support for link-local addresses in freeipmi-tools.
+        res = show_re.findall(output)
+        for ip in res:
+            if ip.lower().startswith('fe80::') or ip == '0.0.0.0':
+                time.sleep(2)
+                continue
+            return ip
+    # No valid IP address was found.
+    return None
 
 
 def verify_ipmi_user_settings(user_number, user_settings):
@@ -281,15 +301,15 @@ def main():
 
     # get the IP address
     IPMI_IP_ADDRESS = get_ipmi_ip_address()
-    if IPMI_IP_ADDRESS == "0.0.0.0":
-        # if IPMI_IP_ADDRESS is 0.0.0.0, wait 60 seconds and retry.
+    if IPMI_IP_ADDRESS is None:
+        # if IPMI_IP_ADDRESS not set (or reserved), wait 60 seconds and retry.
         set_ipmi_network_source("Static")
         time.sleep(2)
         set_ipmi_network_source("Use_DHCP")
         time.sleep(60)
         IPMI_IP_ADDRESS = get_ipmi_ip_address()
 
-    if IPMI_IP_ADDRESS is None or IPMI_IP_ADDRESS == "0.0.0.0":
+    if IPMI_IP_ADDRESS is None:
         # Exit (to not set power params in MAAS) if no IPMI_IP_ADDRESS
         # has been detected
         exit(1)

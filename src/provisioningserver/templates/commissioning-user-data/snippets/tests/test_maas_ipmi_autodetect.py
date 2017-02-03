@@ -497,19 +497,74 @@ class TestGetIPMIIPAddress(MAASTestCase):
 
     scenarios = [
         ('none', dict(
-            output='  IP_Address    \n\n', expected=None)),
+            output4='  IP_Address    \n\n',
+            output_st='', output_dy='', expected=None)),
         ('bogus', dict(
-            output='  IP_Address    bogus\n\n', expected=None)),
+            output4='  IP_Address    bogus\n\n',
+            output_st='', output_dy='', expected=None)),
         ('ipv4', dict(
-            output='  IP_Address    192.168.1.1\n\n', expected='192.168.1.1')),
-        ('ipv6', dict(
-            output='  IP_Address    2001:db8::3\n\n', expected='2001:db8::3')),
+            output4='  IP_Address    192.168.1.1\n\n',
+            output_st='', output_dy='', expected='192.168.1.1')),
+        ('ipv4-ipv6', dict(
+            output4='  IP_Address    192.168.1.1\n\n',
+            output_st='  IPv6_Static_Addresses 2001:db8::3\n\n',
+            output_dy='', expected='192.168.1.1')),
+        ('static6', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='  IPv6_Static_Addresses 2001:db8::3\n\n',
+            output_dy='',
+            expected='2001:db8::3')),
+        ('static6 multiple', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='  IPv6_Static_Addresses fe80::3:7 2001:db8::3\n\n',
+            output_dy='',
+            expected='2001:db8::3')),
+        ('mixed6', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='  IPv6_Static_Addresses 2001:db8::9:5\n\n',
+            output_dy='  ## IPv6_Dynamic_Addresses 2001:db8::3\n\n',
+            expected='2001:db8::9:5')),
+        ('dynamic6', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='',
+            output_dy='  ## IPv6_Dynamic_Addresses 2001:db8::3\n\n',
+            expected='2001:db8::3')),
+        ('dynamic6 with link-local', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='',
+            output_dy='  ## IPv6_Dynamic_Addresses fe80::3:7 2001:db8::3\n\n',
+            expected='2001:db8::3')),
+        ('dynamic6 multiple', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='',
+            output_dy=(
+                '  ## IPv6_Dynamic_Addresses fe80::7 2001:db8::3 2001::5\n\n'
+            ),
+            expected='2001:db8::3')),
         ('link-local', dict(
-            output='  IP_Address    fe80::3:7\n\n', expected='fe80::3:7')),
+            output4='',
+            output_st='',
+            output_dy='  ## IPv6_Dynamic_IP_Addresses  fe80::7 fe80::3:9\n\n',
+            expected=None)),
+        ('0.0.0.0', dict(
+            output4='  IP_Address    0.0.0.0\n\n',
+            output_st='',
+            output_dy='',
+            expected=None)),
     ]
 
     def test_get_ipmi_ip_address(self):
-        run_command = self.patch(maas_ipmi_autodetect, 'run_command')
-        run_command.return_value = self.output
+        ret_values = {
+            'Lan_Conf:IP_Address': self.output4,
+            'Lan6_Conf:IPv6_Static_Addresses': self.output_st,
+            'Lan6_Conf:IPv6_Dynamic_Addresses': self.output_dy
+        }
+
+        def ret_val(arg):
+            return ret_values[arg]
+
+        self.patch(
+            maas_ipmi_autodetect,
+            '_bmc_get_ipmi_addresses').side_effect = ret_val
         actual = get_ipmi_ip_address()
         self.assertEqual(self.expected, actual)
