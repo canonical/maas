@@ -9,8 +9,8 @@
 
 
 angular.module('MAAS').directive('maasVersionReloader', [
-    '$window', 'GeneralManager', 'ManagerHelperService',
-    function($window, GeneralManager, ManagerHelperService) {
+    '$window', 'GeneralManager', 'ManagerHelperService', 'LogService',
+    function($window, GeneralManager, ManagerHelperService, LogService) {
         return {
             restrict: "A",
             controller: function($scope) {
@@ -25,12 +25,17 @@ angular.module('MAAS').directive('maasVersionReloader', [
                 ManagerHelperService.loadManager($scope, GeneralManager).then(
                     function() {
                         GeneralManager.enableAutoReload(true);
+                        LogService.info(
+                            'Version reloader: Monitoring MAAS "' +
+                            $scope.site + '"; version', $scope.version.text,
+                            "via", $window.location.href);
                         $scope.$watch("version.text",
                             function(newValue, oldValue) {
-                                console.log(
-                                    "Detected new MAAS version; " +
-                                    "forcing reload.");
                                 if(newValue !== oldValue) {
+                                    LogService.info(
+                                        "MAAS version changed from '" +
+                                        oldValue + "' to '" + newValue +
+                                        "'; forcing reload.");
                                     $scope.reloadPage();
                                 }
                             });
