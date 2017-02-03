@@ -47,6 +47,7 @@ def MatchesRenderedNotification(ntfn):
         "updated": Equals(dehydrate_datetime(ntfn.updated)),
         "created": Equals(dehydrate_datetime(ntfn.created)),
         "message": Equals(ntfn.render()),
+        "category": Equals(ntfn.category),
     })
 
 

@@ -7,6 +7,8 @@ __all__ = [
     'Notification',
 ]
 
+from functools import wraps
+
 from django.contrib.auth.models import User
 from django.db import connection
 from django.db.models import (
@@ -23,46 +25,73 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
+def _create(method, category):
+    """Return a wrapped `method` that passes `category` as first argument."""
+    @wraps(method)
+    def call_with_category(self, *args, **kwargs):
+        return method(self, category, *args, **kwargs)
+    return call_with_category
+
+
 class NotificationManager(Manager):
     """Manager for `Notification` class."""
 
-    def create_for_user(self, message, user, *, context=None, ident=None):
+    def _create_for_user(
+            self, category, message, user, *, context=None, ident=None):
         """Create a notification for a specific user."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            user, False, False, ident, message, context)
+            category, user, False, False, ident, message, context)
         notification.save()
 
         return notification
 
-    def create_for_users(self, message, *, context=None, ident=None):
+    create_error_for_user = _create(_create_for_user, "error")
+    create_warning_for_user = _create(_create_for_user, "warning")
+    create_success_for_user = _create(_create_for_user, "success")
+    create_info_for_user = _create(_create_for_user, "info")
+
+    def _create_for_users(
+            self, category, message, *, context=None, ident=None):
         """Create a notification for all users and admins."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            None, True, True, ident, message, context)
+            category, None, True, True, ident, message, context)
         notification.save()
 
         return notification
 
-    def create_for_admins(self, message, *, context=None, ident=None):
+    create_error_for_users = _create(_create_for_users, "error")
+    create_warning_for_users = _create(_create_for_users, "warning")
+    create_success_for_users = _create(_create_for_users, "success")
+    create_info_for_users = _create(_create_for_users, "info")
+
+    def _create_for_admins(
+            self, category, message, *, context=None, ident=None):
         """Create a notification for all admins, but not users."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            None, False, True, ident, message, context)
+            category, None, False, True, ident, message, context)
         notification.save()
 
         return notification
 
-    def _create(self, user, users, admins, ident, message, context):
+    create_error_for_admins = _create(_create_for_admins, "error")
+    create_warning_for_admins = _create(_create_for_admins, "warning")
+    create_success_for_admins = _create(_create_for_admins, "success")
+    create_info_for_admins = _create(_create_for_admins, "info")
+
+    def _create(self, category, user, users, admins, ident, message, context):
         return self.model(
-            ident=ident, user=user, users=users, admins=admins,
-            message=message, context={} if context is None else context)
+            category=category, ident=ident, message=message,
+            user=user, users=users, admins=admins, context=(
+                {} if context is None else context))
 
     def find_for_user(self, user):
         """Find notifications for the given user.
@@ -111,6 +140,11 @@ class Notification(CleanSave, TimestampedModel):
         format-style template; see `context`.
     :ivar context: A dict (that can be serialised to JSON) that's used with
         `message`.
+    :ivar category: The category of this notification. The "success" category
+        is used to reinforce a positive action or event, giving good news. The
+        meaning of the "warning" and "error" categories are fairly obvious.
+        The "info" category might be used to reaffirm a small action, like "10
+        partitions were created on machine foo".
     """
 
     class Meta(DefaultMeta):
@@ -129,6 +163,13 @@ class Notification(CleanSave, TimestampedModel):
 
     message = TextField(null=False, blank=True)
     context = JSONObjectField(null=False, blank=True, default=dict)
+    category = CharField(
+        null=False, blank=False, default="info", max_length=10,
+        choices=[
+            ("error", "Error"), ("warning", "Warning"),
+            ("success", "Success"), ("info", "Informational"),
+        ],
+    )
 
     def render(self):
         """Render this notification's message using its context."""
@@ -155,10 +196,10 @@ class Notification(CleanSave, TimestampedModel):
         self.render()  # Just check it works.
 
     def __repr__(self):
-        return "<Notification user=%s users=%r admins=%r %r>" % (
-            ("None" if self.user is None else repr(self.user.username)),
-            self.users, self.admins, self.render(),
-        )
+        username = "None" if self.user is None else repr(self.user.username)
+        return "<Notification %s user=%s users=%r admins=%r %r>" % (
+            self.category.upper(), username, self.users, self.admins,
+            self.render())
 
 
 class NotificationDismissal(Model):

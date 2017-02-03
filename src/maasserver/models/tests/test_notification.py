@@ -5,13 +5,13 @@
 
 __all__ = []
 
+import itertools
 import random
 
 from django.db.models.query import QuerySet
 from maasserver.models.notification import Notification
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -24,131 +24,78 @@ from testtools.matchers import (
 )
 
 
-class TestNotificationManager(MAASServerTestCase):
-    """Tests for the `NotificationManager`."""
+class TestNotificationManagerCreateMethods(MAASServerTestCase):
+    """Tests for the `NotificationManager`'s create methods."""
 
-    def test_create_new_notification_for_user(self):
-        user = factory.make_User()
+    create_methods = tuple(
+        (category, target, "create_%s_for_%s" % (category.lower(), target))
+        for category, target in itertools.product(
+            ("error", "warning", "success", "info"),
+            ("user", "users", "admins"),
+        )
+    )
+
+    scenarios = tuple(
+        (method_name, {
+            "category": category,
+            "method_name": method_name,
+            "target_name": target_name,
+            "targets_user": target_name == "user",
+            "targets_users": target_name == "users",
+            "targets_admins": target_name in {"users", "admins"},
+        })
+        for category, target_name, method_name in create_methods
+    )
+
+    def makeNotification(self, *, ident=None, context=None):
+        method = getattr(Notification.objects, self.method_name)
         message = factory.make_name("message")
-        notification = Notification.objects.create_for_user(message, user)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Is(None), user=Equals(user), users=Is(False),
-                admins=Is(False), message=Equals(message), context=Equals({}),
-            ))
 
-    def test_create_new_notification_for_user_with_ident(self):
-        user = factory.make_User()
+        if self.targets_user:
+            user = factory.make_User()
+            notification = method(message, user, context=context, ident=ident)
+        else:
+            user = None
+            notification = method(message, context=context, ident=ident)
+
+        self.assertThat(notification, MatchesStructure(
+            user=Is(None) if user is None else Equals(user),
+            message=Equals(message)))
+
+        return notification
+
+    def assertNotification(self, notification, *, ident):
+        self.assertThat(notification, MatchesStructure(
+            users=Is(self.targets_users), admins=Is(self.targets_admins),
+            user=Not(Is(None)) if self.targets_user else Is(None),
+            ident=Is(None) if ident is None else Equals(ident),
+            category=Equals(self.category)))
+
+    def test_create_new_notification_without_context(self):
+        notification = self.makeNotification()
+        self.assertNotification(notification, ident=None)
+        self.assertThat(notification.context, Equals({}))
+
+    def test_create_new_notification_with_context(self):
+        context = {factory.make_name("key"): factory.make_name("value")}
+        notification = self.makeNotification(context=context)
+        self.assertNotification(notification, ident=None)
+        self.assertThat(notification.context, Equals(context))
+
+    def test_create_new_notification_with_ident(self):
         ident = factory.make_name("ident")
-        message = factory.make_name("message")
-        notification = Notification.objects.create_for_user(
-            message, user, ident=ident)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Equals(ident), user=Equals(user), users=Is(False),
-                admins=Is(False), message=Equals(message), context=Equals({}),
-            ))
+        notification = self.makeNotification(ident=ident)
+        self.assertNotification(notification, ident=ident)
 
-    def test_create_new_notification_for_user_with_reused_ident(self):
-        # A new notification is created, and the ident is moved.
-        user = factory.make_User()
-        ident = factory.make_name("ident")
-        message = factory.make_name("message")
-        n1 = Notification.objects.create_for_user(message, user, ident=ident)
-        n2 = Notification.objects.create_for_user(message, user, ident=ident)
-        self.assertThat(n2, Not(Equals(n1)))
-        self.assertThat(
-            reload_object(n1), MatchesStructure(
-                ident=Is(None), user=Equals(user), users=Is(False),
-                admins=Is(False), message=Equals(message), context=Equals({}),
-            ))
-        self.assertThat(
-            reload_object(n2), MatchesStructure(
-                ident=Equals(ident), user=Equals(user), users=Is(False),
-                admins=Is(False), message=Equals(message), context=Equals({}),
-            ))
-        self.assertThat(
-            Notification.objects.filter(ident=ident),
-            HasLength(1))
-
-    def test_create_new_notification_for_users(self):
-        message = factory.make_name("message")
-        notification = Notification.objects.create_for_users(message)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Is(None), user=Is(None), users=Is(True),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-
-    def test_create_new_notification_for_users_with_ident(self):
-        message = factory.make_name("message")
-        ident = factory.make_name("ident")
-        notification = Notification.objects.create_for_users(
-            message, ident=ident)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Equals(ident), user=Is(None), users=Is(True),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-
-    def test_create_new_notification_for_users_with_reused_ident(self):
+    def test_create_new_notification_with_reused_ident(self):
         # A new notification is created, and the ident is moved.
         ident = factory.make_name("ident")
-        message = factory.make_name("message")
-        n1 = Notification.objects.create_for_users(message, ident=ident)
-        n2 = Notification.objects.create_for_users(message, ident=ident)
+        n1 = self.makeNotification(ident=ident)
+        n2 = self.makeNotification(ident=ident)
+        n1.refresh_from_db()  # Get current value of `ident`.
         self.assertThat(n2, Not(Equals(n1)))
-        self.assertThat(
-            reload_object(n1), MatchesStructure(
-                ident=Is(None), user=Is(None), users=Is(True),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-        self.assertThat(
-            reload_object(n2), MatchesStructure(
-                ident=Equals(ident), user=Is(None), users=Is(True),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-        self.assertThat(
-            Notification.objects.filter(ident=ident),
-            HasLength(1))
-
-    def test_create_new_notification_for_admins(self):
-        message = factory.make_name("message")
-        notification = Notification.objects.create_for_admins(message)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Is(None), user=Is(None), users=Is(False),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-
-    def test_create_new_notification_for_admins_with_ident(self):
-        message = factory.make_name("message")
-        ident = factory.make_name("ident")
-        notification = Notification.objects.create_for_admins(
-            message, ident=ident)
-        self.assertThat(
-            reload_object(notification), MatchesStructure(
-                ident=Equals(ident), user=Is(None), users=Is(False),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-
-    def test_create_new_notification_for_admins_with_reused_ident(self):
-        # A new notification is created, and the ident is moved.
-        ident = factory.make_name("ident")
-        message = factory.make_name("message")
-        n1 = Notification.objects.create_for_admins(message, ident=ident)
-        n2 = Notification.objects.create_for_admins(message, ident=ident)
-        self.assertThat(n2, Not(Equals(n1)))
-        self.assertThat(
-            reload_object(n1), MatchesStructure(
-                ident=Is(None), user=Is(None), users=Is(False),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
-        self.assertThat(
-            reload_object(n2), MatchesStructure(
-                ident=Equals(ident), user=Is(None), users=Is(False),
-                admins=Is(True), message=Equals(message), context=Equals({}),
-            ))
+        self.assertNotification(n1, ident=None)
+        self.assertNotification(n2, ident=ident)
         self.assertThat(
             Notification.objects.filter(ident=ident),
             HasLength(1))
@@ -160,9 +107,9 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
     def notify(self, user):
         message = factory.make_name("message")
         return (
-            Notification.objects.create_for_user(message, user),
-            Notification.objects.create_for_users(message),
-            Notification.objects.create_for_admins(message),
+            Notification.objects.create_error_for_user(message, user),
+            Notification.objects.create_error_for_users(message),
+            Notification.objects.create_error_for_admins(message),
         )
 
     def assertNotifications(self, user, notifications):
@@ -263,30 +210,34 @@ class TestNotification(MAASServerTestCase):
 class TestNotificationRepresentation(MAASServerTestCase):
     """Tests for the `Notification` representation."""
 
+    scenarios = tuple(
+        (category, dict(category=category))
+        for category in ("error", "warning", "success", "info")
+    )
+
     def test_for_user(self):
         notification = Notification(
-            user=factory.make_User("foobar"),
-            message="The cat in the {place}",
-            context=dict(place="bear trap"))
+            user=factory.make_User("foobar"), message="The cat in the {place}",
+            context=dict(place="bear trap"), category=self.category)
         self.assertThat(
             notification, AfterPreprocessing(repr, Equals(
-                "<Notification user='foobar' users=False admins=False "
-                "'The cat in the bear trap'>")))
+                "<Notification %s user='foobar' users=False admins=False "
+                "'The cat in the bear trap'>" % self.category.upper())))
 
     def test_for_users(self):
         notification = Notification(
             users=True, message="The cat in the {place}",
-            context=dict(place="blender"))
+            context=dict(place="blender"), category=self.category)
         self.assertThat(
             notification, AfterPreprocessing(repr, Equals(
-                "<Notification user=None users=True admins=False "
-                "'The cat in the blender'>")))
+                "<Notification %s user=None users=True admins=False "
+                "'The cat in the blender'>" % self.category.upper())))
 
     def test_for_admins(self):
         notification = Notification(
             admins=True, message="The cat in the {place}",
-            context=dict(place="lava pit"))
+            context=dict(place="lava pit"), category=self.category)
         self.assertThat(
             notification, AfterPreprocessing(repr, Equals(
-                "<Notification user=None users=False admins=True "
-                "'The cat in the lava pit'>")))
+                "<Notification %s user=None users=False admins=True "
+                "'The cat in the lava pit'>" % self.category.upper())))
