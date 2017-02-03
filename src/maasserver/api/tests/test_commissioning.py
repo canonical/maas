@@ -19,6 +19,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 from metadataserver.enum import (
     SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin
@@ -169,11 +170,16 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
 
     def test_list_returns_expected_fields(self):
         node = factory.make_Node(with_empty_script_sets=True)
+        for script_set in (
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            for script_result in script_set:
+                self.store_result(
+                    script_result, exit_status=0, stdout=factory.make_string())
+
         script_set = node.current_commissioning_script_set
         script_result = script_set.scriptresult_set.first()
-        self.store_result(
-            script_result, exit_status=0,
-            stdout=factory.make_name('stdout'))
 
         url = reverse('node_results_handler')
         response = self.client.get(url, {'system_id': [node.system_id]})
@@ -306,6 +312,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
                 self.store_result(script_result, exit_status=0)
                 script_results.append(script_result)
             for script_result in node.current_installation_script_set:
+                self.store_result(script_result, exit_status=0)
                 script_results.append(script_result)
 
         url = reverse('node_results_handler')
@@ -314,4 +321,27 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
             {script_result.id for script_result in script_results},
+            {parsed_result['id'] for parsed_result in parsed_results})
+
+    def test_list_only_displayed_completed_results(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        expected_results = []
+        for script_set in (
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            for status, _ in SCRIPT_STATUS_CHOICES:
+                script_result = factory.make_ScriptResult(
+                    script_set=script_set, status=status)
+                if status in (
+                        SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
+                        SCRIPT_STATUS.TIMEOUT):
+                    expected_results.append(script_result)
+
+        url = reverse('node_results_handler')
+        response = self.client.get(url)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            {script_result.id for script_result in expected_results},
             {parsed_result['id'] for parsed_result in parsed_results})

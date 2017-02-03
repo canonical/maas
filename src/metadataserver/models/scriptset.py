@@ -30,15 +30,24 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 class ScriptSetManager(Manager):
 
-    def _clean_old(self, node, result_type):
-        script_sets = self.filter(
-            node=node, result_type=result_type).order_by('last_ping').reverse()
+    def _clean_old(self, node, result_type, new_script_set):
+        # Gather the list of existing script results of the given type for this
+        # node.
+        script_sets = self.filter(node=node, result_type=result_type)
+        # Exclude the newly created script_set so we don't try to remove it.
+        # This can happen when multiple script_sets have last_ping = None.
+        script_sets = script_sets.exclude(id=new_script_set.id)
+        # Sort by last_ping in reverse order so we only remove older entrees.
+        script_sets = script_sets.order_by('last_ping').reverse()
         config_var = {
             RESULT_TYPE.COMMISSIONING: 'max_node_commissioning_results',
             RESULT_TYPE.TESTING: 'max_node_testing_results',
             RESULT_TYPE.INSTALLATION: 'max_node_installation_results',
         }
         script_set_limit = Config.objects.get_config(config_var[result_type])
+        # Remove one from the script_set_limit to account for the newly created
+        # script_set.
+        script_set_limit -= 1
         if script_sets.count() > script_set_limit:
             for script_set in script_sets[script_set_limit:]:
                 script_set.delete()
@@ -54,7 +63,7 @@ class ScriptSetManager(Manager):
 
         script_set = self.create(
             node=node, result_type=RESULT_TYPE.COMMISSIONING)
-        self._clean_old(node, RESULT_TYPE.COMMISSIONING)
+        self._clean_old(node, RESULT_TYPE.COMMISSIONING, script_set)
 
         for script_name, data in NODE_INFO_SCRIPTS.items():
             if node.is_controller and not data['run_on_controller']:
@@ -88,7 +97,7 @@ class ScriptSetManager(Manager):
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
                 script=script, script_version=script.script)
 
-        self._clean_old(node, RESULT_TYPE.TESTING)
+        self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set
 
     def create_installation_script_set(self, node):
@@ -104,7 +113,7 @@ class ScriptSetManager(Manager):
             script_set=script_set, status=SCRIPT_STATUS.PENDING,
             script_name=CURTIN_INSTALL_LOG)
 
-        self._clean_old(node, RESULT_TYPE.INSTALLATION)
+        self._clean_old(node, RESULT_TYPE.INSTALLATION, script_set)
         return script_set
 
 

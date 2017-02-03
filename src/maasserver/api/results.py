@@ -15,6 +15,7 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
+from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import ScriptResult
 
 
@@ -67,7 +68,10 @@ class NodeResultsHandler(OperationsHandler):
             if (result_type is not None and
                     script_set.result_type != result_type):
                 continue
-            for script_result in script_set:
+            for script_result in script_set.scriptresult_set.filter(
+                    status__in=(
+                        SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
+                        SCRIPT_STATUS.TIMEOUT)):
                 if names is not None and script_result.name not in names:
                     continue
                 results.append({

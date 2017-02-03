@@ -21,6 +21,28 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 class TestScriptSetManager(MAASServerTestCase):
     """Test the ScriptSet manager."""
 
+    def test_clean_old_ignores_new_script_set(self):
+        # Make sure the created script_set isn't cleaned up. This can happen
+        # when multiple script_sets last_ping are set to None.
+        script_set_limit = Config.objects.get_config(
+            'max_node_installation_results')
+        node = factory.make_Node()
+        for _ in range(script_set_limit * 2):
+            ScriptSet.objects.create(
+                node=node, result_type=RESULT_TYPE.INSTALLATION,
+                last_ping=None)
+
+        script_set = ScriptSet.objects.create_installation_script_set(node)
+        # If the new script_set was cleaned up this will fail.
+        node.current_installation_script_set = script_set
+        node.save()
+
+        self.assertEquals(
+            script_set_limit,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.INSTALLATION).count())
+
     def test_create_commissioning_script_set(self):
         custom_scripts = [
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
