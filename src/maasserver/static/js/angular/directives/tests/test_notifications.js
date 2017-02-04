@@ -15,6 +15,7 @@ describe("maasNotifications", function() {
             "id": 1,
             "ident": null,
             "message": "Attention admins!",
+            "category": "error",
             "user": null,
             "users": false,
             "admins": true,
@@ -25,6 +26,7 @@ describe("maasNotifications", function() {
             "id": 2,
             "ident": null,
             "message": "Dear users, ...",
+            "category": "warning",
             "user": null,
             "users": true,
             "admins": false,
@@ -35,6 +37,7 @@ describe("maasNotifications", function() {
             "id": 3,
             "ident": null,
             "message": "Greetings, Individual!",
+            "category": "info",
             "user": 1,
             "users": false,
             "admins": false,
@@ -58,7 +61,7 @@ describe("maasNotifications", function() {
         // Return the compiled directive.
         function compileDirective() {
             var directive;
-            var html = '<maas-notifications />';
+            var html = '<maas-notifications></maas-notifications>';
 
             // Compile the directive.
             inject(function($compile) {
@@ -91,6 +94,25 @@ describe("maasNotifications", function() {
             var directive = compileDirective();
             directive.find("div > p > a").click();
             expect(dismiss).toHaveBeenCalledWith(notification);
+        });
+
+        it("adjusts class according to category", function() {
+            theNotificationsManager._items = exampleNotifications;
+            var directive = compileDirective();
+            var classes = directive.find("div").map(
+                function() { return $(this).attr("class"); }).get();
+            expect(classes.length).toBe(3);
+            var p_classes = [];
+            angular.forEach(classes, function(cls) {
+                // Find classes that begin with 'p-'.
+                var matches = cls.match(/\bp-.+\b/);
+                p_classes = p_classes.concat(matches);
+            });
+            expect(p_classes).toEqual([
+                "p-notification--error",
+                "p-notification--warning",
+                "p-notification"
+            ]);
         });
 
     });

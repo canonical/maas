@@ -521,16 +521,22 @@ def populate_main():
             server-name "boot.from.me";
         """)), node=device)
 
-    # Add notifications for admins, users, and each individual user.
+    # Add notifications for admins, users, and each individual user, and for
+    # each notification category.
     factory.make_Notification(
         "Attention admins! Core critical! Meltdown imminent! Evacuate "
-        "habitat immediately!", admins=True)
+        "habitat immediately!", admins=True, category="error")
     factory.make_Notification(
         "Dear users, rumours of a core meltdown are unfounded. Please "
-        "return to your home-pods and places of business.", users=True)
+        "return to your home-pods and places of business.", users=True,
+        category="warning")
+    factory.make_Notification(
+        "FREE! For the next 2 hours get FREE blueberry and iodine pellets "
+        "at the nutri-dispensers.", users=True, category="success")
     for user in User.objects.all():
         context = {"name": user.username.capitalize()}
         factory.make_Notification(
             "Greetings, {name}! Get away from the habitat for the weekend and "
             "visit the Mare Nubium with MAAS Tours. Use the code METAL to "
-            "claim a special gift!", user=user, context=context)
+            "claim a special gift!", user=user, context=context,
+            category="info")

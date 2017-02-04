@@ -2048,7 +2048,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Notification(
             self, message=None, *, ident=None, user=None, users=False,
-            admins=False, context=None):
+            admins=False, context=None, category=None):
 
         if context is None:
             context_name = self.make_name("name")
@@ -2062,9 +2062,13 @@ class Factory(maastesting.factory.Factory):
                 context_name = random.choice(context_names)
                 message = self.make_name("message-{%s}" % context_name)
 
+        if category is None:
+            category = random.choice((
+                "error", "warning", "success", "info"))
+
         notification = Notification(
             ident=ident, user=user, users=users, admins=admins,
-            message=message, context=context)
+            message=message, context=context, category=category)
         notification.save()
 
         return notification

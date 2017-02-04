@@ -7,8 +7,7 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject notifications.html into the template cache.
     $templateCache.put('directive/templates/notifications.html', [
-      '<div class="p-notification--error" ',
-          'ng-repeat="n in notifications">',
+      '<div ng-repeat="n in notifications" ng-class="classes[n.category]">',
         '<p class="p-notification__response">',
           '<span class="p-notification__status"></span>',
           '<span>{$ n.message $}</span> — ',
@@ -33,6 +32,12 @@ angular.module('MAAS').directive('maasNotifications', [
                 $scope.notifications = NotificationsManager.getItems();
                 $scope.dismiss = angular.bind(
                     NotificationsManager, NotificationsManager.dismiss);
+                $scope.classes = {
+                    "error": "p-notification--error",
+                    "warning": "p-notification--warning",
+                    "success": "p-notification--success",
+                    "info": "p-notification"  // No suffix.
+                };
             }
         };
     }]);

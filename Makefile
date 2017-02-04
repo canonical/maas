@@ -29,10 +29,8 @@ templates := $(shell find etc/maas/templates -type f)
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
 scss_theme := include/nodejs/node_modules/cloud-vanilla-theme
-scss_inputs := \
-    src/maasserver/static/scss/build.scss \
-    $(wildcard src/maasserver/static/scss/*/*.scss) \
-    $(wildcard src/maasserver/static/scss/*/*/*.scss)
+scss_input := src/maasserver/static/scss/build.scss
+scss_deps := $(wildcard src/maasserver/static/scss/_*.scss)
 scss_output := src/maasserver/static/css/build.css
 
 # Prefix commands with this when they need access to the database.
@@ -390,9 +388,9 @@ $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 
 styles: clean-styles $(scss_output)
 
-$(scss_output): bin/sass $(scss_theme) $(scss_inputs)
+$(scss_output): bin/sass $(scss_theme) $(scss_input) $(scss_deps)
 	bin/sass --include-path=src/maasserver/static/scss \
-	    --output-style compressed $(scss_inputs) -o $(dir $@)
+	    --output-style compressed $(scss_input) -o $(dir $@)
 
 $(scss_theme): prefix = include/nodejs
 $(scss_theme):
