@@ -23,6 +23,7 @@ WINDOWS_CHOICES = {
     'win2012hv': 'Windows "Hyper-V Server 2012"',
     'win2012hvr2': 'Windows "Hyper-V Server 2012 R2"',
     'win2016': 'Windows "Server 2016"',
+    'win2016hv': 'Windows "Hyper-V Server 2016"',
     'win2016nano': 'Windows "Nano Server 2016"',
 }
 
