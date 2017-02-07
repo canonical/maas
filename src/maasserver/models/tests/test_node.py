@@ -2948,12 +2948,34 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.assertThat(release, MockNotCalled())
 
+    def test_update_power_state_sets_status_to_ready(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.READY)
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.status, Equals(NODE_STATUS.READY))
+
     def test_update_power_state_sets_status_to_broken(self):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.BROKEN)
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(node.status, Equals(NODE_STATUS.BROKEN))
+
+    def test_update_power_state_sets_status_to_deployed(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED)
+        node.update_power_state(POWER_STATE.ON)
+        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
+
+    def test_update_power_state_fails_exiting_rescue_mode_for_ready(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.READY)
+        node.update_power_state(POWER_STATE.ON)
+        self.assertThat(
+            node.status, Equals(NODE_STATUS.FAILED_EXITING_RESCUE_MODE))
 
     def test_update_power_state_fails_exiting_rescue_mode_for_broken(self):
         node = factory.make_Node(
@@ -2962,13 +2984,6 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.assertThat(
             node.status, Equals(NODE_STATUS.FAILED_EXITING_RESCUE_MODE))
-
-    def test_update_power_state_sets_status_to_deployed(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.EXITING_RESCUE_MODE,
-            previous_status=NODE_STATUS.DEPLOYED)
-        node.update_power_state(POWER_STATE.ON)
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
 
     def test_update_power_state_fails_exiting_rescue_mode_for_deployed(self):
         node = factory.make_Node(
@@ -3401,23 +3416,23 @@ class TestNode(MAASServerTestCase):
 
     def test_start_rescue_mode_raises_PermissionDenied_if_no_edit(self):
         user = factory.make_User()
-        node = factory.make_Node(
-            owner=user,
-            status=random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED)))
+        node = factory.make_Node(owner=user, status=random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]))
         self.assertRaises(
             PermissionDenied, node.start_rescue_mode, factory.make_User())
 
     def test_start_rescue_mode_errors_for_unconfigured_power_type(self):
         node = factory.make_Node(
-            status=random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED)),
+            status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.BROKEN,
+                NODE_STATUS.DEPLOYED]),
             power_type='')
-        admin = factory.make_admin()
         self.assertRaises(
-            UnknownPowerType, node.start_rescue_mode, admin)
+            UnknownPowerType, node.start_rescue_mode, factory.make_admin())
 
     def test_start_rescue_mode_logs_user_request(self):
-        node = factory.make_Node(
-            status=random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED)))
+        node = factory.make_Node(status=random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]))
         mock_register_event = self.patch(node, '_register_request_event')
         mock_node_power_cycle = self.patch(node, '_power_cycle')
         # Return a post-commit hook from Node.power_cycle().
@@ -3432,8 +3447,8 @@ class TestNode(MAASServerTestCase):
                 action='start rescue mode'))
 
     def test_start_rescue_mode_sets_status_owner_and_power_cycles_node(self):
-        node = factory.make_Node(
-            status=random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED)))
+        node = factory.make_Node(status=random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]))
         mock_node_power_cycle = self.patch(node, '_power_cycle')
         # Return a post-commit hook from Node.power_cycle().
         mock_node_power_cycle.side_effect = lambda: post_commit()
@@ -3454,7 +3469,8 @@ class TestNode(MAASServerTestCase):
         # power cycle the node, it will revert the node to its previous
         # status.
         admin = factory.make_admin()
-        status = random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        status = random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED])
         node = factory.make_Node(status=status)
         mock_node_power_cycle = self.patch(node, '_power_cycle')
         mock_node_power_cycle.side_effect = factory.make_exception()
@@ -3475,7 +3491,8 @@ class TestNode(MAASServerTestCase):
         # When start_rescue_mode encounters an error in its post-commit
         # hook, it will revert the node to its previous status.
         admin = factory.make_admin()
-        status = random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        status = random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED])
         node = factory.make_Node(status=status)
         # Patch out some things that we don't want to do right now.
         self.patch(node, '_power_cycle').return_value = None
@@ -3502,7 +3519,8 @@ class TestNode(MAASServerTestCase):
 
     def test_start_rescue_mode_logs_and_raises_errors(self):
         admin = factory.make_admin()
-        status = random.choice((NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED))
+        status = random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED])
         node = factory.make_Node(status=status)
         mock_maaslog = self.patch(node_module, 'maaslog')
         exception = NoConnectionsAvailable(factory.make_name())
@@ -3534,6 +3552,20 @@ class TestNode(MAASServerTestCase):
                 admin, EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE,
                 action='stop rescue mode'))
 
+    def test_stop_rescue_mode_stops_node_and_sets_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            previous_status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.BROKEN]))
+        admin = factory.make_admin()
+        mock_node_stop = self.patch(node, '_stop')
+        node.stop_rescue_mode(admin)
+
+        self.expectThat(mock_node_stop, MockCalledOnceWith(admin))
+        self.expectThat(
+            reload_object(node).status,
+            Equals(NODE_STATUS.EXITING_RESCUE_MODE))
+
     def test_stop_rescue_mode_power_cycles_node_and_sets_status(self):
         node = factory.make_Node(
             status=NODE_STATUS.RESCUE_MODE,
@@ -3551,7 +3583,8 @@ class TestNode(MAASServerTestCase):
         admin = factory.make_admin()
         node = factory.make_Node(
             status=NODE_STATUS.RESCUE_MODE,
-            previous_status=NODE_STATUS.BROKEN)
+            previous_status=random.choice([
+                NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]))
         mock_maaslog = self.patch(node_module, 'maaslog')
         exception_class = factory.make_exception_type()
         exception = exception_class(factory.make_name())

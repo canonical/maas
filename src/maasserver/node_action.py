@@ -478,6 +478,7 @@ class RescueMode(NodeAction):
     display = "Rescue mode"
     display_sentence = "rescue mode"
     actionable_statuses = (
+        NODE_STATUS.READY,
         NODE_STATUS.BROKEN,
         NODE_STATUS.DEPLOYED,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,

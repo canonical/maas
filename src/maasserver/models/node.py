@@ -2594,7 +2594,7 @@ class Node(CleanSave, TimestampedModel):
             self.status_expires = None
             self._finalize_release()
         if self.status == NODE_STATUS.EXITING_RESCUE_MODE:
-            if self.previous_status == NODE_STATUS.BROKEN:
+            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
                 if power_state == POWER_STATE.OFF:
                     self.status = self.previous_status
                     self.owner = None
@@ -3568,7 +3568,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            if self.previous_status == NODE_STATUS.BROKEN:
+            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
                 self._stop(user)
             elif self.previous_status == NODE_STATUS.DEPLOYED:
                 self._power_cycle()

@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from random import choice
+import random
 from unittest.mock import ANY
 
 from django.db import transaction
@@ -923,18 +923,27 @@ class TestRescueModeAction(MAASServerTestCase):
         node = factory.make_Node()
         self.assertFalse(RescueMode(node, user).is_permitted())
 
-    def test_rescue_mode_for_deployed_node(self):
+    def test_rescue_mode_action_for_ready(self):
         user = factory.make_admin()
-        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        node = factory.make_Node(owner=user, status=NODE_STATUS.READY)
         node_start_rescue_mode = self.patch_autospec(node, 'start_rescue_mode')
         action = RescueMode(node, user)
         self.assertTrue(action.is_permitted())
         action.execute()
         self.assertThat(node_start_rescue_mode, MockCalledOnceWith(user))
 
-    def test_rescue_mode_for_broken_node(self):
+    def test_rescue_mode_action_for_broken(self):
         user = factory.make_admin()
         node = factory.make_Node(owner=user, status=NODE_STATUS.BROKEN)
+        node_start_rescue_mode = self.patch_autospec(node, 'start_rescue_mode')
+        action = RescueMode(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertThat(node_start_rescue_mode, MockCalledOnceWith(user))
+
+    def test_rescue_mode_action_for_deployed(self):
+        user = factory.make_admin()
+        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
         node_start_rescue_mode = self.patch_autospec(node, 'start_rescue_mode')
         action = RescueMode(node, user)
         self.assertTrue(action.is_permitted())
@@ -949,18 +958,27 @@ class TestExitRescueModeAction(MAASServerTestCase):
         node = factory.make_Node()
         self.assertFalse(ExitRescueMode(node, user).is_permitted())
 
-    def test_exit_rescue_mode_for_deployed_node(self):
+    def test_exit_rescue_mode_action_for_ready(self):
         user = factory.make_admin()
-        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        node = factory.make_Node(owner=user, status=NODE_STATUS.READY)
         node_stop_rescue_mode = self.patch_autospec(node, 'stop_rescue_mode')
         action = ExitRescueMode(node, user)
         self.assertTrue(action.is_permitted())
         action.execute()
         self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
 
-    def test_exit_rescue_mode_broken_node(self):
+    def test_exit_rescue_mode_action_for_broken(self):
         user = factory.make_admin()
         node = factory.make_Node(owner=user, status=NODE_STATUS.BROKEN)
+        node_stop_rescue_mode = self.patch_autospec(node, 'stop_rescue_mode')
+        action = ExitRescueMode(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
+
+    def test_exit_rescue_mode_action_for_deployed(self):
+        user = factory.make_admin()
+        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
         node_stop_rescue_mode = self.patch_autospec(node, 'stop_rescue_mode')
         action = ExitRescueMode(node, user)
         self.assertTrue(action.is_permitted())
@@ -1048,13 +1066,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
             str(exception))
 
     def test_RescueMode_handles_rpc_errors_for_entering_rescue_mode(self):
-        action = self.make_action(
-            RescueMode, choice(
-                [
-                    NODE_STATUS.BROKEN,
-                    NODE_STATUS.DEPLOYED,
-                    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
-                ]))
+        action = self.make_action(RescueMode, random.choice([
+            NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED,
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE]))
         self.patch(action.node, 'start_rescue_mode').side_effect = (
             self.make_exception())
         exception = self.assertRaises(NodeActionError, action.execute)
@@ -1064,14 +1078,10 @@ class TestActionsErrorHandling(MAASServerTestCase):
             str(exception))
 
     def test_ExitRescueMode_handles_rpc_errors_for_exiting_rescue_mode(self):
-        action = self.make_action(
-            ExitRescueMode, choice(
-                [
-                    NODE_STATUS.RESCUE_MODE,
-                    NODE_STATUS.ENTERING_RESCUE_MODE,
-                    NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
-                    NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
-                ]))
+        action = self.make_action(ExitRescueMode, random.choice([
+            NODE_STATUS.RESCUE_MODE, NODE_STATUS.ENTERING_RESCUE_MODE,
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+            NODE_STATUS.FAILED_EXITING_RESCUE_MODE]))
         self.patch(action.node, 'stop_rescue_mode').side_effect = (
             self.make_exception())
         exception = self.assertRaises(NodeActionError, action.execute)
