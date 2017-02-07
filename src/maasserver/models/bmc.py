@@ -485,7 +485,7 @@ class Pod(BMC):
             nic.save()
         return nic
 
-    def _create_machine(
+    def create_machine(
             self, discovered_machine, commissioning_user,
             skip_commissioning=False):
         """Create's a `Machine` from `discovered_machines` for this pod."""
@@ -691,7 +691,7 @@ class Pod(BMC):
             existing_machine = self._find_existing_machine(
                 discovered_machine, mac_machine_map)
             if existing_machine is None:
-                new_machine = self._create_machine(
+                new_machine = self.create_machine(
                     discovered_machine, commissioning_user)
                 podlog.info(
                     "%s: discovered new machine: %s" % (

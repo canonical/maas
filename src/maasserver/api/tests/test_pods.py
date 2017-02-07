@@ -7,18 +7,22 @@ __all__ = []
 
 import http.client
 import random
+from unittest.mock import MagicMock
 
 from django.core.urlresolvers import reverse
 from maasserver import forms_pods
+from maasserver.models.node import Machine
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from provisioningserver.drivers.pod import (
     Capabilities,
+    DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
 )
+from twisted.internet.defer import succeed
 
 
 class PodMixin:
@@ -167,6 +171,31 @@ def get_pod_uri(pod):
 
 class TestPodAPI(APITestCase.ForUser, PodMixin):
 
+    def make_pod_with_hints(self):
+        architectures = [
+            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+            for _ in range(3)
+        ]
+        cpu_speed = random.randint(2000, 3000)
+        pod = factory.make_Pod(
+            architectures=architectures, cpu_speed=cpu_speed)
+        pod.capabilities = [Capabilities.COMPOSABLE]
+        pod.save()
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        return pod
+
+    def make_compose_machine_result(self, pod):
+        composed_machine = DiscoveredMachine(
+            architecture=pod.architectures[0],
+            cores=1, memory=1024, cpu_speed=300,
+            block_devices=[], interfaces=[])
+        pod_hints = DiscoveredPodHints(
+            cores=random.randint(0, 10), memory=random.randint(1024, 4096),
+            cpu_speed=random.randint(1000, 3000), local_storage=0)
+        return composed_machine, pod_hints
+
     def test_handler_path(self):
         pod_id = random.randint(0, 10)
         self.assertEqual(
@@ -246,6 +275,65 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
             http.client.OK, response.status_code, response.content)
         parsed_params = json_load_bytes(response.content)
         self.assertEqual(pod.power_parameters, parsed_params)
+
+    def test_compose_requires_admin(self):
+        pod = self.make_pod_with_hints()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'compose'
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_compose_not_allowed_on_none_composable_pod(self):
+        self.become_admin()
+        pod = self.make_pod_with_hints()
+        pod.capabilities = []
+        pod.save()
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'compose'
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEquals(
+            b"Pod does not support composability.", response.content)
+
+    def test_compose_composes_with_defaults(self):
+        self.become_admin()
+        pod = self.make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        self.patch(Machine, "start_commissioning")
+
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'compose'
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_machine = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            parsed_machine.keys(), ['resource_uri', 'system_id'])
+
+    def test_compose_raises_error_when_to_large_request(self):
+        self.become_admin()
+        pod = self.make_pod_with_hints()
+
+        response = self.client.post(get_pod_uri(pod), {
+            'op': 'compose',
+            'cores': pod.hints.cores + 1,
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_DELETE_removes_pod(self):
         self.become_admin()

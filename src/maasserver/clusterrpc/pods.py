@@ -7,8 +7,12 @@ __all__ = [
     "discover_pod",
     ]
 
+from maasserver.exceptions import PodProblem
 from maasserver.rpc import getAllClients
-from provisioningserver.rpc.cluster import DiscoverPod
+from provisioningserver.rpc.cluster import (
+    ComposeMachine,
+    DiscoverPod,
+)
 from provisioningserver.rpc.exceptions import (
     PodActionFail,
     UnknownPodType,
@@ -77,3 +81,40 @@ def get_best_discovered_result(discovered):
                     raise exc
     else:
         return None
+
+
+@asynchronous(timeout=FOREVER)
+def compose_machine(
+        client, pod_type, context, request, pod_id, name, timeout=120):
+    """Compose a machine.
+
+    :param client: The client to use to make the RPC call.
+    :param pod_type: Type of pod to discover.
+    :param context: Pod driver information to connect to pod.
+    :param request: Request machine.
+    :param pod_id: ID of the pod in the database.
+    :param name: Name of the pod in the database.
+
+    :returns: Returns a `DiscoveredMachine` for the newly composed machine or
+        raises an exception.
+    """
+    d = client(
+        ComposeMachine, type=pod_type,
+        context=context, request=request, pod_id=pod_id, name=name)
+    d.addCallback(lambda result: (result['machine'], result['hints']))
+
+    def wrap_failure(failure):
+        prefix = "Unable to composed machine because"
+        if failure.check(UnknownPodType):
+            raise PodProblem(
+                prefix + " '%s' is an unknown pod type." % pod_type)
+        elif failure.check(NotImplementedError):
+            raise PodProblem(
+                prefix +
+                " '%s' driver does not implement the 'compose' method." % (
+                    pod_type))
+        elif failure.check(PodActionFail):
+            raise PodProblem(prefix + ": " + str(failure.value))
+
+    d.addErrback(wrap_failure)
+    return d

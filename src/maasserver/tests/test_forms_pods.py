@@ -9,24 +9,44 @@ import random
 from unittest.mock import MagicMock
 
 from django.core.exceptions import ValidationError
+from django.core.validators import (
+    MaxValueValidator,
+    MinValueValidator,
+)
 from maasserver import forms_pods
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
-from maasserver.forms_pods import PodForm
+from maasserver.forms_pods import (
+    ComposeMachineForm,
+    PodForm,
+)
+from maasserver.models.node import Machine
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import (
+    MockCalledOnce,
+    MockNotCalled,
+)
 from provisioningserver.drivers.pod import (
+    DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    RequestedMachine,
+    RequestedMachineBlockDevice,
+    RequestedMachineInterface,
 )
 from testtools.matchers import (
     Equals,
     Is,
+    IsInstance,
     MatchesAll,
+    MatchesListwise,
+    MatchesSetwise,
     MatchesStructure,
     Not,
 )
+from twisted.internet.defer import succeed
 
 
 class TestPodForm(MAASServerTestCase):
@@ -232,3 +252,204 @@ class TestPodForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(str(exc), str(error))
+
+
+class TestComposeMachineForm(MAASServerTestCase):
+
+    def make_pod_with_hints(self):
+        architectures = [
+            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+            for _ in range(3)
+        ]
+        cpu_speed = random.randint(2000, 3000)
+        pod = factory.make_Pod(
+            architectures=architectures, cpu_speed=cpu_speed)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        return pod
+
+    def make_compose_machine_result(self, pod):
+        composed_machine = DiscoveredMachine(
+            architecture=pod.architectures[0],
+            cores=1, memory=1024, cpu_speed=300,
+            block_devices=[], interfaces=[])
+        pod_hints = DiscoveredPodHints(
+            cores=random.randint(0, 10), memory=random.randint(1024, 4096),
+            cpu_speed=random.randint(1000, 3000), local_storage=0)
+        return composed_machine, pod_hints
+
+    def test__requires_request_kwarg(self):
+        error = self.assertRaises(ValueError, ComposeMachineForm)
+        self.assertEqual("'request' kwargs is required.", str(error))
+
+    def test__requires_pod_kwarg(self):
+        request = MagicMock()
+        error = self.assertRaises(
+            ValueError, ComposeMachineForm, request=request)
+        self.assertEqual("'pod' kwargs is required.", str(error))
+
+    def test__sets_up_fields_based_on_pod(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+        form = ComposeMachineForm(request=request, pod=pod)
+        self.assertThat(form.fields['cores'], MatchesStructure(
+            required=Equals(False),
+            validators=MatchesSetwise(
+                MatchesAll(
+                    IsInstance(MaxValueValidator),
+                    MatchesStructure(limit_value=Equals(pod.hints.cores))),
+                MatchesAll(
+                    IsInstance(MinValueValidator),
+                    MatchesStructure(limit_value=Equals(1))))))
+        self.assertThat(form.fields['memory'], MatchesStructure(
+            required=Equals(False),
+            validators=MatchesSetwise(
+                MatchesAll(
+                    IsInstance(MaxValueValidator),
+                    MatchesStructure(limit_value=Equals(pod.hints.memory))),
+                MatchesAll(
+                    IsInstance(MinValueValidator),
+                    MatchesStructure(limit_value=Equals(1024))))))
+        self.assertThat(form.fields['architecture'], MatchesStructure(
+            required=Equals(False),
+            choices=MatchesSetwise(*[
+                Equals((architecture, architecture))
+                for architecture in pod.architectures
+            ])))
+        self.assertThat(form.fields['cpu_speed'], MatchesStructure(
+            required=Equals(False),
+            validators=MatchesSetwise(
+                MatchesAll(
+                    IsInstance(MaxValueValidator),
+                    MatchesStructure(limit_value=Equals(pod.cpu_speed))),
+                MatchesAll(
+                    IsInstance(MinValueValidator),
+                    MatchesStructure(limit_value=Equals(300))))))
+
+    def test__sets_up_fields_based_on_pod_no_max_cpu_speed(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+        pod.cpu_speed = 0
+        pod.save()
+        form = ComposeMachineForm(request=request, pod=pod)
+        self.assertThat(form.fields['cpu_speed'], MatchesStructure(
+            required=Equals(False),
+            validators=MatchesSetwise(
+                MatchesAll(
+                    IsInstance(MinValueValidator),
+                    MatchesStructure(limit_value=Equals(300))))))
+
+    def test__get_requested_machine_uses_all_initial_values(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                architecture=Equals(pod.architectures[0]),
+                cores=Equals(1),
+                memory=Equals(1024),
+                cpu_speed=Is(None),
+                block_devices=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineBlockDevice),
+                        MatchesStructure(size=Equals(8 * (1024 ** 3))))]),
+                interfaces=MatchesListwise([
+                    IsInstance(RequestedMachineInterface)]))))
+
+    def test__get_requested_machine_uses_passed_values(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+        architecture = random.choice(pod.architectures)
+        cores = random.randint(1, pod.hints.cores)
+        memory = random.randint(1024, pod.hints.memory)
+        cpu_speed = random.randint(300, pod.cpu_speed)
+        form = ComposeMachineForm(data={
+            'architecture': architecture,
+            'cores': cores,
+            'memory': memory,
+            'cpu_speed': cpu_speed,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                architecture=Equals(architecture),
+                cores=Equals(cores),
+                memory=Equals(memory),
+                cpu_speed=Equals(cpu_speed),
+                block_devices=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineBlockDevice),
+                        MatchesStructure(size=Equals(8 * (1024 ** 3))))]),
+                interfaces=MatchesListwise([
+                    IsInstance(RequestedMachineInterface)]))))
+
+    def test__save_raises_AttributeError(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        self.assertRaises(AttributeError, form.save)
+
+    def test__compose_with_commissioning(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        mock_commissioning = self.patch(Machine, "start_commissioning")
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        created_machine = form.compose()
+        self.assertThat(created_machine, MatchesAll(
+            IsInstance(Machine),
+            MatchesStructure(
+                cpu_count=Equals(1),
+                memory=Equals(1024),
+                cpu_speed=Equals(300))))
+        self.assertThat(mock_commissioning, MockCalledOnce())
+
+    def test__compose_without_commissioning(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        mock_commissioning = self.patch(Machine, "start_commissioning")
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        created_machine = form.compose(skip_commissioning=True)
+        self.assertThat(created_machine, MatchesAll(
+            IsInstance(Machine),
+            MatchesStructure(
+                cpu_count=Equals(1),
+                memory=Equals(1024),
+                cpu_speed=Equals(300))))
+        self.assertThat(mock_commissioning, MockNotCalled())

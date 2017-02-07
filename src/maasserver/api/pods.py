@@ -6,6 +6,7 @@ __all__ = [
     "PodsHandler",
     ]
 
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
@@ -13,7 +14,10 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_pods import PodForm
+from maasserver.forms_pods import (
+    ComposeMachineForm,
+    PodForm,
+)
 from maasserver.models.bmc import Pod
 from piston3.utils import rc
 from provisioningserver.drivers.pod import Capabilities
@@ -139,6 +143,36 @@ class PodHandler(OperationsHandler):
         """
         pod = get_object_or_404(Pod, id=id)
         return pod.power_parameters
+
+    @admin_method
+    @operation(idempotent=False)
+    def compose(self, request, id):
+        """Compose a machine from Pod.
+
+        All fields below are optional:
+
+        :param cores: Minimum number of CPU cores.
+        :param memory: Minimum amount of memory (MiB).
+        :param cpu_speed: Minimum amount of CPU speed (MHz).
+        :param architecture: Architecture for the machine. Must be an
+            architecture that the pod supports.
+
+        Returns 404 if the pod is not found.
+        Returns 403 if the user does not have permission to compose machine.
+        """
+        pod = get_object_or_404(Pod, id=id)
+        if Capabilities.COMPOSABLE not in pod.capabilities:
+            raise MAASAPIValidationError("Pod does not support composability.")
+        form = ComposeMachineForm(data=request.data, pod=pod, request=request)
+        if form.is_valid():
+            machine = form.compose()
+            return {
+                'system_id': machine.system_id,
+                'resource_uri': reverse(
+                    'machine_handler', kwargs={'system_id': machine.system_id})
+            }
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, pod=None):

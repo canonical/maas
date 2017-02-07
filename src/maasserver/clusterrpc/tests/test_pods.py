@@ -14,16 +14,23 @@ from unittest.mock import (
 from crochet import wait_for
 from maasserver.clusterrpc import pods as pods_module
 from maasserver.clusterrpc.pods import (
+    compose_machine,
     discover_pod,
     get_best_discovered_result,
 )
+from maasserver.exceptions import PodProblem
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
 )
+from provisioningserver.rpc.cluster import ComposeMachine
 from provisioningserver.rpc.exceptions import (
     PodActionFail,
     UnknownPodType,
@@ -190,3 +197,71 @@ class TestGetBestDiscoveredResult(MAASTestCase):
                 factory.make_name("system_id"): NotImplementedError(),
                 factory.make_name("system_id"): PodActionFail(),
             }))
+
+
+class TestComposeMachine(MAASServerTestCase):
+    """Tests for `compose_machine`."""
+
+    def test__calls_and_returns_correctly(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = succeed({
+            'machine': sentinel.machine,
+            'hints': sentinel.hints,
+        })
+
+        machine, hints = wait_for_reactor(compose_machine)(
+            client,
+            pod.power_type, pod.power_parameters, sentinel.request,
+            pod.id, pod.name)
+
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                ComposeMachine,
+                type=pod.power_type, context=pod.power_parameters,
+                request=sentinel.request, pod_id=pod.id, name=pod.name))
+        self.assertEqual(sentinel.machine, machine)
+        self.assertEqual(sentinel.hints, hints)
+
+    def test__raises_PodProblem_for_UnknownPodType(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = fail(UnknownPodType(pod.power_type))
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(compose_machine),
+            client,
+            pod.power_type, pod.power_parameters, sentinel.request,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to composed machine because '%s' is an "
+            "unknown pod type." % pod.power_type, str(error))
+
+    def test__raises_PodProblem_for_NotImplementedError(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = fail(NotImplementedError())
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(compose_machine),
+            client,
+            pod.power_type, pod.power_parameters, sentinel.request,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to composed machine because '%s' driver does not "
+            "implement the 'compose' method." % pod.power_type, str(error))
+
+    def test__raises_PodProblem_for_PodActionFail(self):
+        pod = factory.make_Pod()
+        error_msg = factory.make_name("error")
+        client = Mock()
+        client.return_value = fail(PodActionFail(error_msg))
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(compose_machine),
+            client,
+            pod.power_type, pod.power_parameters, sentinel.request,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to composed machine because: %s" % error_msg, str(error))
