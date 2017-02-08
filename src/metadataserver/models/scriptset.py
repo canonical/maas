@@ -13,7 +13,9 @@ from django.db.models import (
     IntegerField,
     Manager,
     Model,
+    Q,
 )
+from maasserver.exceptions import NoScriptsFound
 from maasserver.models import Config
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
@@ -52,11 +54,12 @@ class ScriptSetManager(Manager):
             for script_set in script_sets[script_set_limit:]:
                 script_set.delete()
 
-    def create_commissioning_script_set(self, node):
+    def create_commissioning_script_set(self, node, scripts=[]):
         """Create a new commissioning ScriptSet with ScriptResults
 
-        ScriptResults will be created for all builtin commissioning scripts
-        and custom commissioning scripts if the node is not a controller.
+        ScriptResults will be created for all builtin commissioning scripts.
+        Optionally a list of user scripts and tags can be given to create
+        ScriptResults for. If None all user scripts will be assumed.
         """
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
@@ -77,25 +80,48 @@ class ScriptSetManager(Manager):
         if node.is_controller:
             return script_set
 
-        for script in Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING):
+        if scripts == []:
+            qs = Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING)
+        else:
+            qs = Script.objects.filter(
+                Q(name__in=scripts) | Q(tags__overlap=scripts),
+                script_type=SCRIPT_TYPE.COMMISSIONING)
+        for script in qs:
             ScriptResult.objects.create(
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script, script_version=script.script)
+                script=script)
 
         return script_set
 
-    def create_testing_script_set(self, node):
-        """Create a new testing ScriptSet with ScriptResults."""
+    def create_testing_script_set(self, node, scripts=[]):
+        """Create a new testing ScriptSet with ScriptResults.
+
+        Optionally a list of user scripts and tags can be given to create
+        ScriptResults for. If None all Scripts tagged 'commissioning' will be
+        assumed."""
         # Avoid circular dependencies.
         from metadataserver.models import ScriptResult
 
+        if scripts == []:
+            scripts.append('commissioning')
+
+        qs = Script.objects.filter(
+            Q(name__in=scripts) | Q(tags__overlap=scripts),
+            script_type=SCRIPT_TYPE.TESTING)
+
+        # A ScriptSet should never be empty. If an empty script set is set as a
+        # node's current_testing_script_set the UI will show an empty table and
+        # the node-results API will not output any test results.
+        if not qs.exists():
+            raise NoScriptsFound()
+
         script_set = self.create(node=node, result_type=RESULT_TYPE.TESTING)
 
-        for script in Script.objects.filter(script_type=SCRIPT_TYPE.TESTING):
+        for script in qs:
             ScriptResult.objects.create(
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script, script_version=script.script)
+                script=script)
 
         self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set

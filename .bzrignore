@@ -35,6 +35,7 @@
 ./media/demo/*
 ./media/development
 ./parts
+./run
 ./services/*/supervise
 ./src/maasserver/static/js/enums.js
 ./TAGS

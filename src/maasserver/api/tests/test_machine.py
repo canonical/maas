@@ -65,12 +65,14 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
 )
 from metadataserver.nodeinituser import get_node_init_user
 from netaddr import IPNetwork
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     ContainsDict,
@@ -836,15 +838,55 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY, owner=factory.make_User(),
             power_state=POWER_STATE.OFF)
         self.become_admin()
+
+        commissioning_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+            for _ in range(10)
+        ]
+        commissioning_script_selected_by_tag = choice(
+            commissioning_scripts)
+        commissioning_script_selected_by_name = choice(
+            commissioning_scripts)
+        expected_commissioning_scripts = list(NODE_INFO_SCRIPTS)
+        expected_commissioning_scripts.append(
+            commissioning_script_selected_by_tag.name)
+        expected_commissioning_scripts.append(
+            commissioning_script_selected_by_name.name)
+
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(10)
+        ]
+        testing_script_selected_by_tag = choice(testing_scripts)
+        testing_script_selected_by_name = choice(testing_scripts)
+        expected_testing_scripts = [
+            testing_script_selected_by_tag.name,
+            testing_script_selected_by_name.name,
+        ]
+
         response = self.client.post(self.get_machine_uri(machine), {
             'op': 'commission',
             'enable_ssh': "true",
             'skip_networking': 1,
+            'commissioning_scripts': ','.join([
+                choice(commissioning_script_selected_by_tag.tags),
+                commissioning_script_selected_by_name.name]),
+            'testing_scripts': ','.join([
+                choice(testing_script_selected_by_tag.tags),
+                testing_script_selected_by_name.name]),
             })
         self.assertEqual(http.client.OK, response.status_code)
         machine = reload_object(machine)
+        commissioning_script_set = machine.current_commissioning_script_set
+        testing_script_set = machine.current_testing_script_set
         self.assertTrue(machine.enable_ssh)
         self.assertTrue(machine.skip_networking)
+        self.assertItemsEqual(
+            set(expected_commissioning_scripts),
+            [script_result.name for script_result in commissioning_script_set])
+        self.assertItemsEqual(
+            set(expected_testing_scripts),
+            [script_result.name for script_result in testing_script_set])
 
     def test_PUT_updates_machine(self):
         self.become_admin()

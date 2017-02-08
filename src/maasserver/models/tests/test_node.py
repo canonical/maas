@@ -156,6 +156,7 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DisableAndShutoffRackd,
@@ -2367,6 +2368,55 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
 
         self.assertIsNotNone(node.current_commissioning_script_set)
+        self.assertIsNone(node.current_testing_script_set)
+
+    def test_start_commissioning_adds_selected_scripts(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = (
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
+        commissioning_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+            for _ in range(10)
+        ]
+        commissioning_script_selected_by_tag = random.choice(
+            commissioning_scripts)
+        commissioning_script_selected_by_name = random.choice(
+            commissioning_scripts)
+        expected_commissioning_scripts = list(NODE_INFO_SCRIPTS)
+        expected_commissioning_scripts.append(
+            commissioning_script_selected_by_tag.name)
+        expected_commissioning_scripts.append(
+            commissioning_script_selected_by_name.name)
+
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(10)
+        ]
+        testing_script_selected_by_tag = random.choice(testing_scripts)
+        testing_script_selected_by_name = random.choice(testing_scripts)
+        expected_testing_scripts = [
+            testing_script_selected_by_tag.name,
+            testing_script_selected_by_name.name,
+        ]
+
+        with post_commit_hooks:
+            node.start_commissioning(
+                factory.make_admin(),
+                commissioning_scripts=expected_commissioning_scripts,
+                testing_scripts=expected_testing_scripts)
+
+        node = reload_object(node)
+        commissioning_script_set = node.current_commissioning_script_set
+        testing_script_set = node.current_testing_script_set
+
+        self.assertItemsEqual(
+            set(expected_commissioning_scripts),
+            [script_result.name for script_result in commissioning_script_set])
+        self.assertItemsEqual(
+            set(expected_testing_scripts),
+            [script_result.name for script_result in testing_script_set])
 
     def test_start_commissioning_clears_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)

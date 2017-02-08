@@ -311,6 +311,9 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             for script_result in node.current_commissioning_script_set:
                 self.store_result(script_result, exit_status=0)
                 script_results.append(script_result)
+            for script_result in node.current_testing_script_set:
+                self.store_result(script_result, exit_status=0)
+                script_results.append(script_result)
             for script_result in node.current_installation_script_set:
                 self.store_result(script_result, exit_status=0)
                 script_results.append(script_result)

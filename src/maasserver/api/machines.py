@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -413,6 +413,15 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :param skip_storage: Whether to skip re-configuring the storage
             on the machine after the commissioning has completed.
         :type skip_storage: bool ('0' for False, '1' for True)
+        :param commissioning_scripts: A comma seperated list of commissioning
+            script names and tags to be run. By default all custom
+            commissioning scripts are run. Builtin commissioning scripts always
+            run.
+        :type commissioning_scripts: string
+        :param testing_scripts: A comma seperated list of testing script names
+            and tags to be run. By default all tests tagged 'commissioning'
+            will be run. Set to 'none' to disable running tests.
+        :type testing_scripts: string
 
         A machine in the 'ready', 'declared' or 'failed test' state may
         initiate a commissioning cycle where it is checked out and tested

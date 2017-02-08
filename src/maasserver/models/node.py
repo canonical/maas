@@ -83,6 +83,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     NodeStateViolation,
+    NoScriptsFound,
     PowerProblem,
 )
 from maasserver.fields import (
@@ -1680,7 +1681,8 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def start_commissioning(
             self, user, enable_ssh=False, skip_networking=False,
-            skip_storage=False):
+            skip_storage=False, commissioning_scripts=[],
+            testing_scripts=[]):
         """Install OS and self-test a new node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
@@ -1711,8 +1713,18 @@ class Node(CleanSave, TimestampedModel):
         commissioning_user_data = generate_user_data(node=self)
 
         # Create a new ScriptSet for this commissioning run.
-        script_set = ScriptSet.objects.create_commissioning_script_set(self)
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            self, commissioning_scripts)
         self.current_commissioning_script_set = script_set
+
+        # Create a new ScriptSet for any tests to be run after commissioning.
+        try:
+            script_set = ScriptSet.objects.create_testing_script_set(
+                self, testing_scripts)
+            self.current_testing_script_set = script_set
+        except NoScriptsFound:
+            # Commissioning can run without running tests after.
+            pass
 
         # Clear the current storage configuration if networking is not being
         # skipped during commissioning.

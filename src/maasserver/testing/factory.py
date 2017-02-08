@@ -131,6 +131,7 @@ from metadataserver.enum import (
     RESULT_TYPE_CHOICES,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.fields import Bin
@@ -471,8 +472,11 @@ class Factory(maastesting.factory.Factory):
                 ScriptSet.objects.create_commissioning_script_set(node))
             node.current_commissioning_script_set = commissioning_script_set
 
+            # Create a testing script to create a ScriptResult for
+            script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
             testing_script_set = (
-                ScriptSet.objects.create_testing_script_set(node))
+                ScriptSet.objects.create_testing_script_set(
+                    node, scripts=[script.name]))
             node.current_testing_script_set = testing_script_set
 
             installation_script_set = (

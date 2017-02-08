@@ -1070,9 +1070,8 @@ class TestMAASScripts(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
 
-        script_result = factory.make_ScriptResult(
-            script_set=node.current_testing_script_set,
-            status=SCRIPT_STATUS.PENDING)
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
         script_result.script.delete()
 
         response = make_node_client(node=node).get(
@@ -1097,12 +1096,14 @@ class TestMAASScripts(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
 
-        already_run_script = factory.make_ScriptResult(
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        already_run_commissioning_script = factory.make_ScriptResult(
             script_set=node.current_commissioning_script_set,
-            status=SCRIPT_STATUS.PASSED)
-        factory.make_ScriptResult(
+            script=script, status=SCRIPT_STATUS.PASSED)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        already_run_testing_script = factory.make_ScriptResult(
             script_set=node.current_testing_script_set,
-            status=SCRIPT_STATUS.FAILED)
+            script=script, status=SCRIPT_STATUS.FAILED)
 
         response = make_node_client(node=node).get(
             reverse('maas-scripts', args=['latest']))
@@ -1113,13 +1114,16 @@ class TestMAASScripts(MAASServerTestCase):
         self.assertEquals('application/x-tar', response['Content-Type'])
         tar = tarfile.open(mode='r', fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
+        # We have two scripts which have been run but the tar always includes
+        # an index.json file so subtract one.
         self.assertEquals(
-            node.current_commissioning_script_set.scriptresult_set.count(),
+            node.current_commissioning_script_set.scriptresult_set.count() +
+            node.current_testing_script_set.scriptresult_set.count() - 1,
             len(tar.getmembers()))
 
         commissioning_meta_data = []
         for script_result in node.current_commissioning_script_set:
-            if script_result.id == already_run_script.id:
+            if script_result.id == already_run_commissioning_script.id:
                 continue
             path = os.path.join('commissioning', script_result.name)
             md_item = {
@@ -1131,10 +1135,26 @@ class TestMAASScripts(MAASServerTestCase):
                 content = NODE_INFO_SCRIPTS[script_result.name]['content']
             else:
                 content = script_result.script.script.data.encode()
-                md_item['script_result_id'] = script_result.script.script.id
+                md_item['script_version_id'] = script_result.script.script.id
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, content)
             commissioning_meta_data.append(md_item)
+
+        testing_meta_data = []
+        for script_result in node.current_testing_script_set:
+            if script_result.id == already_run_testing_script.id:
+                continue
+            path = os.path.join('testing', script_result.name)
+            md_item = {
+                'name': script_result.name,
+                'path': path,
+                'script_result_id': script_result.id,
+                'script_version_id': script_result.script.script.id,
+            }
+            content = script_result.script.script.data.encode()
+            self.extract_and_validate_file(
+                tar, path, start_time, end_time, content)
+            testing_meta_data.append(md_item)
 
         meta_data = json.loads(
             tar.extractfile('index.json').read().decode('utf-8'))
@@ -1142,6 +1162,9 @@ class TestMAASScripts(MAASServerTestCase):
             {'1.0': {
                 'commissioning_scripts': sorted(
                     commissioning_meta_data, key=itemgetter(
+                        'name', 'script_result_id')),
+                'testing_scripts': sorted(
+                    testing_meta_data, key=itemgetter(
                         'name', 'script_result_id')),
             }}, meta_data)
 

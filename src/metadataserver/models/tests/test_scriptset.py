@@ -6,6 +6,7 @@ __all__ = []
 import random
 
 from maasserver.enum import NODE_TYPE
+from maasserver.exceptions import NoScriptsFound
 from maasserver.models import Config
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
@@ -82,6 +83,40 @@ class TestScriptSetManager(MAASServerTestCase):
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
 
+    def test_create_commissioning_script_set_adds_all_user_scripts(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        node = factory.make_Node()
+        expected_scripts = list(NODE_INFO_SCRIPTS)
+        expected_scripts.append(script.name)
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(node)
+
+        self.assertItemsEqual(
+            expected_scripts,
+            [script_result.name for script_result in script_set])
+        self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+
+    def test_create_commissioning_script_set_adds_selected_scripts(self):
+        scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+            for _ in range(10)
+        ]
+        node = factory.make_Node()
+        script_selected_by_tag = random.choice(scripts)
+        script_selected_by_name = random.choice(scripts)
+        expected_scripts = list(NODE_INFO_SCRIPTS)
+        expected_scripts.append(script_selected_by_tag.name)
+        expected_scripts.append(script_selected_by_name.name)
+
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, scripts=[
+                random.choice(script_selected_by_tag.tags),
+                script_selected_by_name.name])
+        self.assertItemsEqual(
+            set(expected_scripts),
+            [script_result.name for script_result in script_set])
+        self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+
     def test_create_commissioning_script_set_cleans_up_past_limit(self):
         script_set_limit = Config.objects.get_config(
             'max_node_commissioning_results')
@@ -101,7 +136,8 @@ class TestScriptSetManager(MAASServerTestCase):
     def test_create_testing_script_set(self):
         node = factory.make_Node()
         expected_scripts = [
-            factory.make_Script(script_type=SCRIPT_TYPE.TESTING).name
+            factory.make_Script(
+                script_type=SCRIPT_TYPE.TESTING, tags=['commissioning']).name
             for _ in range(3)
         ]
 
@@ -112,6 +148,34 @@ class TestScriptSetManager(MAASServerTestCase):
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.TESTING, script_set.result_type)
 
+    def test_create_testing_script_set_adds_selected_scripts(self):
+        scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(10)
+        ]
+        script_selected_by_tag = random.choice(scripts)
+        script_selected_by_name = random.choice(scripts)
+        node = factory.make_Node()
+        expected_scripts = [
+            script_selected_by_tag.name, script_selected_by_name.name
+        ]
+
+        script_set = ScriptSet.objects.create_testing_script_set(
+            node, scripts=[
+                random.choice(script_selected_by_tag.tags),
+                script_selected_by_name.name])
+
+        self.assertItemsEqual(
+            set(expected_scripts),
+            [script_result.name for script_result in script_set])
+        self.assertEquals(RESULT_TYPE.TESTING, script_set.result_type)
+
+    def test_create_testing_script_raises_exception_when_none_found(self):
+        node = factory.make_Node()
+        self.assertRaises(
+            NoScriptsFound,
+            ScriptSet.objects.create_testing_script_set, node)
+
     def test_create_testing_script_set_cleans_up_past_limit(self):
         script_set_limit = Config.objects.get_config(
             'max_node_testing_results')
@@ -120,7 +184,9 @@ class TestScriptSetManager(MAASServerTestCase):
             factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.TESTING)
 
-        ScriptSet.objects.create_testing_script_set(node)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
 
         self.assertEquals(
             script_set_limit,

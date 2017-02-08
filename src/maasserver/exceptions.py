@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Exceptions."""
@@ -11,6 +11,7 @@ __all__ = [
     "MAASAPINotFound",
     "NodeStateViolation",
     "NodeGroupMisconfiguration",
+    "NoScriptsFound",
     "IteratorReusedError",
     "PowerProblem",
     "StaticIPAddressExhaustion",
@@ -209,3 +210,7 @@ class PodProblem(MAASAPIException):
     information.
     """
     api_error = int(http.client.SERVICE_UNAVAILABLE)
+
+
+class NoScriptsFound(MAASException):
+    """Raised when no Scripts are found based on user input."""
