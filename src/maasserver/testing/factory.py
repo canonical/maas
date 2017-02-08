@@ -371,9 +371,8 @@ class Factory(maastesting.factory.Factory):
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
             created=None, zone=None, networks=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
-            power_state_updated=undefined,
-            with_boot_disk=True, vlan=None, fabric=None,
-            bmc_connected_to=None, owner_data={}, dynamic=False,
+            power_state_updated=undefined, with_boot_disk=True, vlan=None,
+            fabric=None, bmc_connected_to=None, owner_data={}, dynamic=False,
             with_empty_script_sets=False, **kwargs):
         """Make a :class:`Node`.
 
@@ -408,8 +407,7 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, zone=zone,
-            power_state=power_state,
-            power_state_updated=power_state_updated,
+            power_state=power_state, power_state_updated=power_state_updated,
             domain=domain, dynamic=dynamic, **kwargs)
         node.power_type = power_type
         node.power_parameters = power_parameters

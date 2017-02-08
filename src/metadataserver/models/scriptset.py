@@ -116,7 +116,8 @@ class ScriptSetManager(Manager):
         if not qs.exists():
             raise NoScriptsFound()
 
-        script_set = self.create(node=node, result_type=RESULT_TYPE.TESTING)
+        script_set = self.create(
+            node=node, result_type=RESULT_TYPE.TESTING)
 
         for script in qs:
             ScriptResult.objects.create(

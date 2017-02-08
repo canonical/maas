@@ -338,7 +338,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
                     script_set=script_set, status=status)
                 if status in (
                         SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                        SCRIPT_STATUS.TIMEOUT):
+                        SCRIPT_STATUS.TIMEOUT, SCRIPT_STATUS.ABORTED):
                     expected_results.append(script_result)
 
         url = reverse('node_results_handler')

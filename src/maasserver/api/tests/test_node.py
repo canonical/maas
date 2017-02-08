@@ -6,6 +6,7 @@
 __all__ = []
 
 import http.client
+import random
 from unittest.mock import (
     ANY,
     Mock,
@@ -16,6 +17,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     POWER_STATE,
 )
 from maasserver.models import (
@@ -30,6 +32,7 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -37,6 +40,7 @@ from maastesting.matchers import (
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_TYPE,
 )
 from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
@@ -541,3 +545,98 @@ class TestPowerMixin(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(POWER_STATE.ON, parsed_result['state'])
+
+    def test_POST_test_tests_machine(self):
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
+        self.patch(node_module.Node, "_power_cycle").return_value = None
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
+        self.become_admin()
+        response = self.client.post(self.get_node_uri(node), {'op': 'test'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
+
+    def test_POST_test_tests_machine_with_options(self):
+        self.patch(node_module.Node, "_power_cycle").return_value = None
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
+        self.become_admin()
+
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(10)
+        ]
+        testing_script_selected_by_tag = random.choice(testing_scripts)
+        testing_script_selected_by_name = random.choice(testing_scripts)
+        expected_testing_scripts = [
+            testing_script_selected_by_tag.name,
+            testing_script_selected_by_name.name,
+        ]
+
+        response = self.client.post(self.get_node_uri(node), {
+            'op': 'test',
+            'enable_ssh': "true",
+            'testing_scripts': ','.join([
+                random.choice(testing_script_selected_by_tag.tags),
+                testing_script_selected_by_name.name]),
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        node = reload_object(node)
+        testing_script_set = node.current_testing_script_set
+        self.assertTrue(node.enable_ssh)
+        self.assertItemsEqual(
+            set(expected_testing_scripts),
+            [script_result.name for script_result in testing_script_set])
+
+    def test_POST_test_tests_machine_errors_on_no_scripts_found(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
+        self.become_admin()
+        response = self.client.post(self.get_node_uri(node), {'op': 'test'})
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(b'No testing scripts found!', response.content)
+
+    def test_POST_test_tests_machine_errors_on_bad_form_data(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.NEW, owner=factory.make_User())
+        self.become_admin()
+        response = self.client.post(self.get_node_uri(node), {'op': 'test'})
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_abort_fails_for_unsupported_operation(self):
+        status = factory.pick_choice(
+            NODE_STATUS_CHOICES, but_not=[
+                NODE_STATUS.DISK_ERASING,
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.TESTING,
+            ])
+        node = factory.make_Node(status=status)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'abort'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_abort_passes_comment(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.user)
+        node_method = self.patch(node_module.Node, 'abort_operation')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'abort', 'comment': comment})
+        self.assertThat(
+            node_method,
+            MockCalledOnceWith(self.user, comment))
+
+    def test_abort_handles_missing_comment(self):
+        self.become_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.user)
+        node_method = self.patch(node_module.Node, 'abort_operation')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'abort'})
+        self.assertThat(
+            node_method,
+            MockCalledOnceWith(self.user, None))

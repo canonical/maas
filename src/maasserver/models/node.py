@@ -152,6 +152,7 @@ from maasserver.utils.threads import (
     deferToDatabase,
 )
 from maasserver.worker_user import get_worker_user
+from metadataserver.enum import SCRIPT_STATUS
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -1678,6 +1679,21 @@ class Node(CleanSave, TimestampedModel):
         node.status_expires = None
         node.save(update_fields=['status_expires'])
 
+    @classmethod
+    @transactional
+    def _abort_all_tests(self, script_set_id):
+        # Avoid circular imports.
+        from metadataserver.models import ScriptSet
+        try:
+            script_set = ScriptSet.objects.get(id=script_set_id)
+        except ScriptSet.DoesNotExist:
+            return
+
+        for script in script_set.scriptresult_set.filter(
+                status__in={SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING}):
+            script.status = SCRIPT_STATUS.ABORTED
+            script.save(update_fields=['status'])
+
     @transactional
     def start_commissioning(
             self, user, enable_ssh=False, skip_networking=False,
@@ -1812,6 +1828,113 @@ class Node(CleanSave, TimestampedModel):
                 "must be started manually", hostname)
 
     @transactional
+    def start_testing(self, user, enable_ssh=False, testing_scripts=[]):
+        """Run tests on a node."""
+        # Avoid circular imports.
+        from metadataserver.models import (
+            NodeUserData,
+            ScriptSet,
+        )
+        from metadataserver.user_data.commissioning import generate_user_data
+
+        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't enter rescue mode on a node you don't own,
+            # unless you're an admin.
+            raise PermissionDenied()
+
+        # Only test if power type is configured.
+        if self.power_type == '':
+            raise UnknownPowerType(
+                "Unconfigured power type. "
+                "Please configure the power type and try again.")
+
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_START_TESTING,
+            action='start testing')
+
+        # Set the test options on the node.
+        self.enable_ssh = enable_ssh
+
+        # Generate the specific user data for testing this node.
+        testing_user_data = generate_user_data(node=self)
+        # Record the user data for the node. Note that we do this
+        # whether or not we can actually send power commands to the
+        # node; the user may choose to start it manually.
+        NodeUserData.objects.set_user_data(self, testing_user_data)
+
+        # Create a new ScriptSet for the tests to be run.
+        script_set = ScriptSet.objects.create_testing_script_set(
+            self, testing_scripts)
+        self.current_testing_script_set = script_set
+
+        # We need to mark the node as TESTING now to avoid a race when starting
+        # multiple nodes. We hang on to old_status just in case the power
+        # action fails.
+        old_status = self.status
+        self.status = NODE_STATUS.TESTING
+        # Testing can be run in statuses which define an owner, only set one
+        # if the node has no owner
+        if self.owner is None:
+            self.owner = user
+        self.save()
+
+        try:
+            cycling = self._power_cycle()
+        except Exception as error:
+            self.status = old_status
+            self.save()
+            maaslog.error(
+                "%s: Could not start testing for node: %s",
+                self.hostname, error)
+            # Let the exception bubble up, since the UI or API will have to
+            # deal with it.
+            raise
+        else:
+            # Don't permit naive mocking of cycling(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(cycling, Deferred) or cycling is None
+
+            if cycling is None:
+                cycling = post_commit()
+                # MAAS cannot start the node itself.
+                is_cycling = False
+            else:
+                # MAAS can direct the node to start.
+                is_cycling = True
+
+            cycling.addCallback(
+                callOut, self._start_testing_async, is_cycling, self.hostname)
+
+            # If there's an error, reset the node's status.
+            cycling.addErrback(
+                callOutToDatabase, Node._set_status, self.system_id,
+                status=old_status)
+
+            def eb_start(failure, hostname):
+                maaslog.error(
+                    "%s: Could not start testing for node: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return cycling.addErrback(eb_start, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _start_testing_async(cls, is_cycling, hostname):
+        """Start testing, the post-commit bits.
+
+        :param is_cycling: A boolean indicating if MAAS is able to start this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        """
+        if is_cycling:
+            maaslog.info("%s: Testing starting", hostname)
+        else:
+            maaslog.warning(
+                "%s: Could not start testing the node; it "
+                "must be started manually", hostname)
+
+    @transactional
     def abort_commissioning(self, user, comment=None):
         """Power off a commissioning node and set its status to NEW.
 
@@ -1849,6 +1972,12 @@ class Node(CleanSave, TimestampedModel):
 
             post_commit().addCallback(
                 callOutToDatabase, Node._clear_status_expires, self.system_id)
+            post_commit().addCallback(
+                callOutToDatabase, Node._abort_all_tests,
+                self.current_commissioning_script_set_id)
+            post_commit().addCallback(
+                callOutToDatabase, Node._abort_all_tests,
+                self.current_testing_script_set_id)
 
             if stopping is None:
                 stopping = post_commit()
@@ -1865,6 +1994,71 @@ class Node(CleanSave, TimestampedModel):
             def eb_abort(failure, hostname):
                 maaslog.error(
                     "%s: Error when aborting commissioning: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return stopping.addErrback(eb_abort, self.hostname)
+
+    @transactional
+    def abort_testing(self, user, comment=None):
+        """Power off a testing node and set its status to the previous status.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to stop the node. This is already registered as a
+            post-commit hook; it should not be added a second time.
+        """
+        if self.status != NODE_STATUS.TESTING:
+            raise NodeStateViolation(
+                "Cannot abort testing of a non-testing node: "
+                "node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+
+        self._register_request_event(
+            user, EVENT_TYPES.REQUEST_NODE_ABORT_TESTING,
+            action='abort testing', comment=comment)
+
+        try:
+            # Node.stop() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            stopping = self._stop(user)
+        except Exception as error:
+            maaslog.error(
+                "%s: Error when aborting testing: %s",
+                self.hostname, error)
+            raise
+        else:
+            # Don't permit naive mocking of stop(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(stopping, Deferred) or stopping is None
+
+            post_commit().addCallback(
+                callOutToDatabase, Node._abort_all_tests,
+                self.current_testing_script_set_id)
+
+            if stopping is None:
+                stopping = post_commit()
+                # MAAS cannot stop the node itself.
+                is_stopping = False
+            else:
+                # MAAS can direct the node to stop.
+                is_stopping = True
+
+            if self.previous_status == NODE_STATUS.COMMISSIONING:
+                # Commissioning automatically starts testings of short hardware
+                # scripts. Allow the user to abort testing and go into a ready
+                # state to be able to use the node right away.
+                status = NODE_STATUS.READY
+            else:
+                status = self.previous_status
+
+            stopping.addCallback(
+                callOut, self._abort_testing_async, is_stopping,
+                self.hostname, self.system_id, status)
+
+            def eb_abort(failure, hostname):
+                maaslog.error(
+                    "%s: Error when aborting testing: %s",
                     hostname, failure.getErrorMessage())
                 return failure  # Propagate.
 
@@ -1905,6 +2099,9 @@ class Node(CleanSave, TimestampedModel):
 
             post_commit().addCallback(
                 callOutToDatabase, Node._clear_status_expires, self.system_id)
+            post_commit().addCallback(
+                callOutToDatabase, Node._abort_all_tests,
+                self.current_installation_script_set_id)
 
             if stopping is None:
                 stopping = post_commit()
@@ -1939,11 +2136,32 @@ class Node(CleanSave, TimestampedModel):
         d = deferToDatabase(cls._set_status, system_id, status=NODE_STATUS.NEW)
         if is_stopping:
             return d.addCallback(
-                callOut, maaslog.info, "%s: Commissioning aborted", hostname)
+                callOut, maaslog.info,
+                "%s: Commissioning aborted, stopping machine", hostname)
         else:
             return d.addCallback(
                 callOut, maaslog.warning, "%s: Could not stop node to abort "
                 "commissioning; it must be stopped manually", hostname)
+
+    @classmethod
+    @asynchronous
+    def _abort_testing_async(cls, is_stopping, hostname, system_id, status):
+        """Abort testing, the post-commit bits.
+
+        :param is_stopping: A boolean indicating if MAAS is able to stop this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        :param system_id: The system ID for the node.
+        """
+        d = deferToDatabase(cls._set_status, system_id, status=status)
+        if is_stopping:
+            return d.addCallback(
+                callOut, maaslog.info,
+                "%s: Testing aborted, stopping node", hostname)
+        else:
+            return d.addCallback(
+                callOut, maaslog.warning, "%s: Could not stop node to abort "
+                "testing; it must be stopped manually", hostname)
 
     @classmethod
     @asynchronous
@@ -1959,7 +2177,8 @@ class Node(CleanSave, TimestampedModel):
             cls._set_status, system_id, status=NODE_STATUS.ALLOCATED)
         if is_stopping:
             return d.addCallback(
-                callOut, maaslog.info, "%s: Deployment aborted", hostname)
+                callOut, maaslog.info,
+                "%s: Deployment aborted, stopping machine", hostname)
         else:
             return d.addCallback(
                 callOut, maaslog.warning, "%s: Could not stop node to abort "
@@ -2387,17 +2606,17 @@ class Node(CleanSave, TimestampedModel):
         """
         if self.status == NODE_STATUS.DISK_ERASING:
             self.abort_disk_erasing(user, comment)
-            return
-        if self.status == NODE_STATUS.COMMISSIONING:
+        elif self.status == NODE_STATUS.COMMISSIONING:
             self.abort_commissioning(user, comment)
-            return
-        if self.status == NODE_STATUS.DEPLOYING:
+        elif self.status == NODE_STATUS.DEPLOYING:
             self.abort_deploying(user, comment)
-            return
-        raise NodeStateViolation(
-            "Cannot abort in current state: "
-            "node %s is in state %s."
-            % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+        elif self.status == NODE_STATUS.TESTING:
+            self.abort_testing(user, comment)
+        else:
+            raise NodeStateViolation(
+                "Cannot abort in current state: "
+                "node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
     def release(self, user=None, comment=None):
         self._register_request_event(

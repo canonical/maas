@@ -227,14 +227,51 @@ class Commission(NodeAction):
 
     def execute(
             self, enable_ssh=False, skip_networking=False,
-            skip_storage=False):
+            skip_storage=False, commissioning_scripts=[],
+            testing_scripts=[]):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(
                 self.user,
                 enable_ssh=enable_ssh,
                 skip_networking=skip_networking,
-                skip_storage=skip_storage)
+                skip_storage=skip_storage,
+                commissioning_scripts=commissioning_scripts,
+                testing_scripts=testing_scripts)
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
+            raise NodeActionError(exception)
+
+
+class Test(NodeAction):
+    """Start testing a node."""
+    name = "test"
+    display = "Test"
+    display_sentence = "tested"
+    actionable_statuses = (
+        NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.READY,
+        NODE_STATUS.RESERVED,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.RESCUE_MODE,
+        NODE_STATUS.FAILED_RELEASING,
+        NODE_STATUS.FAILED_DISK_ERASING,
+        NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+        NODE_STATUS.FAILED_TESTING,
+    )
+    permission = NODE_PERMISSION.VIEW
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+
+    def execute(self, enable_ssh=False, testing_scripts=[]):
+        try:
+            self.node.start_testing(
+                self.user, enable_ssh=enable_ssh,
+                testing_scripts=testing_scripts)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
@@ -247,7 +284,8 @@ class Abort(NodeAction):
     actionable_statuses = (
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.DISK_ERASING,
-        NODE_STATUS.DEPLOYING
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.TESTING,
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
@@ -411,6 +449,7 @@ class MarkBroken(NodeAction):
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.DEPLOYED,
         NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.TESTING,
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
     for_type = {NODE_TYPE.MACHINE}
@@ -518,6 +557,7 @@ class ExitRescueMode(NodeAction):
 
 ACTION_CLASSES = (
     Commission,
+    Test,
     Acquire,
     Deploy,
     PowerOn,

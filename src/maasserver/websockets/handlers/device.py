@@ -120,7 +120,7 @@ class DeviceHandler(NodeHandler):
             "address_ttl",
             "url",
             "last_image_sync",
-            "default_user"
+            "default_user",
             ]
         list_fields = [
             "id",

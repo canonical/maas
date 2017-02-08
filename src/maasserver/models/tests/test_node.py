@@ -99,6 +99,7 @@ from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     NODE_FAILURE_STATUS_TRANSITIONS,
+    NODE_TESTING_RESET_READY_TRANSITIONS,
     NODE_TRANSITIONS,
 )
 from maasserver.preseed import CURTIN_INSTALL_LOG
@@ -1727,6 +1728,16 @@ class TestNode(MAASServerTestCase):
         node.abort_operation(user)
         self.assertThat(abort_deploying, MockCalledOnceWith(user, None))
 
+    def test_abort_operation_aborts_testing(self):
+        agent_name = factory.make_name('agent-name')
+        user = factory.make_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING,
+            agent_name=agent_name)
+        abort_testing = self.patch_autospec(node, 'abort_testing')
+        node.abort_operation(user)
+        self.assertThat(abort_testing, MockCalledOnceWith(user, None))
+
     def test_abort_deployment_logs_user_request(self):
         agent_name = factory.make_name('agent-name')
         admin = factory.make_admin()
@@ -1743,6 +1754,20 @@ class TestNode(MAASServerTestCase):
             admin, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
             action='abort deploying', comment=None))
 
+    def test_abort_deployment_sets_script_result_to_aborted(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
+        admin = factory.make_admin()
+        self.patch(Node, "_stop").return_value = None
+        self.patch_autospec(Node, "_clear_status_expires")
+        self.patch(Node, "_set_status")
+        abort_all_tests = self.patch_autospec(Node, "_abort_all_tests")
+        with post_commit_hooks:
+            node.abort_deploying(admin)
+        self.assertThat(
+            abort_all_tests,
+            MockCalledOnceWith(node.current_installation_script_set_id))
+
     def test_abort_operation_raises_exception_for_unsupported_state(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
@@ -1750,6 +1775,79 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.READY, owner=owner,
             agent_name=agent_name)
         self.assertRaises(NodeStateViolation, node.abort_operation, owner)
+
+    def test_abort_testing_reverts_to_previous_state(self):
+        admin = factory.make_admin()
+        status = random.choice(list(NODE_TESTING_RESET_READY_TRANSITIONS))
+        node = factory.make_Node(
+            previous_status=status, status=NODE_STATUS.TESTING,
+            power_type="virsh")
+        mock_stop = self.patch(node, '_stop')
+        # Return a post-commit hook from Node.stop().
+        mock_stop.side_effect = lambda user: post_commit()
+        mock_set_status = self.patch(Node, "_set_status")
+
+        with post_commit_hooks:
+            node.abort_testing(admin)
+
+        # Allow abortion of auto testing into ready state.
+        if status == NODE_STATUS.COMMISSIONING:
+            status = NODE_STATUS.READY
+
+        self.assertThat(mock_stop, MockCalledOnceWith(admin))
+        self.assertThat(mock_set_status, MockCalledOnceWith(
+            node.system_id, status=status))
+
+    def test_abort_testing_logs_user_request(self):
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        admin = factory.make_admin()
+        self.patch(Node, "_set_status")
+        self.patch(Node, "_stop").return_value = None
+        register_event = self.patch(node, '_register_request_event')
+        with post_commit_hooks:
+            node.abort_testing(admin)
+        self.assertThat(register_event, MockCalledOnceWith(
+            admin, EVENT_TYPES.REQUEST_NODE_ABORT_TESTING,
+            action='abort testing', comment=None))
+
+    def test_abort_testing_logs_and_raises_errors_in_stopping(self):
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        maaslog = self.patch(node_module, 'maaslog')
+        exception_class = factory.make_exception_type()
+        exception = exception_class(factory.make_name())
+        self.patch(node, '_stop').side_effect = exception
+        self.assertRaises(
+            exception_class, node.abort_testing, admin)
+        self.assertEqual(NODE_STATUS.TESTING, node.status)
+        self.assertThat(
+            maaslog.error, MockCalledOnceWith(
+                "%s: Error when aborting testing: %s",
+                node.hostname, exception))
+
+    def test_abort_testing_errors_if_node_is_not_testing(self):
+        admin = factory.make_admin()
+        unaccepted_statuses = set(map_enum(NODE_STATUS).values())
+        unaccepted_statuses.remove(NODE_STATUS.TESTING)
+        for status in unaccepted_statuses:
+            node = factory.make_Node(
+                status=status, power_type='virsh')
+            self.assertRaises(
+                NodeStateViolation, node.abort_testing, admin)
+
+    def test_abort_testing_sets_script_result_to_aborted(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True)
+        admin = factory.make_admin()
+        self.patch(Node, "_stop").return_value = None
+        self.patch_autospec(Node, "_clear_status_expires")
+        self.patch(Node, "_set_status")
+        abort_all_tests = self.patch_autospec(Node, "_abort_all_tests")
+        with post_commit_hooks:
+            node.abort_testing(admin)
+        self.assertThat(
+            abort_all_tests,
+            MockCalledOnceWith(node.current_testing_script_set_id))
 
     def test_abort_disk_erasing_reverts_to_sane_state_on_error(self):
         # If abort_disk_erasing encounters an error when calling stop(), it
@@ -2356,6 +2454,7 @@ class TestNode(MAASServerTestCase):
             admin, ANY, NODE_STATUS.NEW, allow_power_cycle=True))
 
     def test_start_commissioning_adds_commissioning_script_set(self):
+        # Test for when there are no testing scripts
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, '_start')
         node_start.side_effect = (
@@ -2369,6 +2468,24 @@ class TestNode(MAASServerTestCase):
 
         self.assertIsNotNone(node.current_commissioning_script_set)
         self.assertIsNone(node.current_testing_script_set)
+
+    def test_start_commissioning_adds_default_script_sets(self):
+        # Test for when there are testing scripts
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = (
+            lambda user, user_data, old_status, allow_power_cycle: (
+                post_commit()))
+
+        with post_commit_hooks:
+            node.start_commissioning(factory.make_admin())
+
+        node = reload_object(node)
+
+        self.assertIsNotNone(node.current_commissioning_script_set)
+        self.assertIsNotNone(node.current_testing_script_set)
 
     def test_start_commissioning_adds_selected_scripts(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
@@ -2595,6 +2712,22 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             clear_status_expires, MockCalledOnceWith(node.system_id))
 
+    def test_abort_commissioning_sets_script_results_to_aborted(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        admin = factory.make_admin()
+        self.patch(Node, "_stop").return_value = None
+        self.patch_autospec(Node, "_clear_status_expires")
+        self.patch(Node, "_set_status")
+        abort_all_tests = self.patch_autospec(Node, "_abort_all_tests")
+        with post_commit_hooks:
+            node.abort_commissioning(admin)
+        self.assertThat(
+            abort_all_tests,
+            MockCallsMatch(
+                call(node.current_commissioning_script_set_id),
+                call(node.current_testing_script_set_id)))
+
     def test_abort_commissioning_logs_user_request(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         admin = factory.make_admin()
@@ -2687,6 +2820,150 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node._set_status, MockCalledOnceWith(
             node.system_id, status=NODE_STATUS.NEW))
         self.assertThat(node.owner, Is(None))
+
+    def test_start_testing_mode_raises_PermissionDenied_if_no_edit(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user, status=NODE_STATUS.DEPLOYED)
+        self.assertRaises(
+            PermissionDenied, node.start_testing, factory.make_User())
+
+    def test_start_testing_errors_for_unconfigured_power_type(self):
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYED, power_type='')
+        admin = factory.make_admin()
+        self.assertRaises(
+            UnknownPowerType, node.start_testing, admin)
+
+    def test_start_testing_logs_user_request(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYED, power_type='manual')
+        register_event = self.patch(node, '_register_request_event')
+        self.patch(node, '_power_cycle').return_value = None
+        admin = factory.make_admin()
+        node.start_testing(admin, testing_scripts=[script.name])
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        self.assertThat(register_event, MockCalledOnceWith(
+            admin, EVENT_TYPES.REQUEST_NODE_START_TESTING,
+            action='start testing'))
+
+    def test_start_testing_changes_status_and_starts_node(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYED, power_type='manual')
+        mock_node_power_cycle = self.patch(node, '_power_cycle')
+        mock_node_power_cycle.return_value = None
+        admin = factory.make_admin()
+        node.start_testing(admin, testing_scripts=[script.name])
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        self.assertEquals(NODE_STATUS.TESTING, node.status)
+        self.assertThat(mock_node_power_cycle, MockCalledOnce())
+
+    def test_start_testing_sets_options(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        rack = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DEPLOYED, power_type='virsh',
+            bmc_connected_to=rack)
+        self.patch(node, '_power_cycle').return_value = None
+        admin = factory.make_admin()
+        enable_ssh = factory.pick_bool()
+        node.start_testing(
+            admin, enable_ssh=enable_ssh, testing_scripts=[script.name])
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
+        self.assertEquals(enable_ssh, node.enable_ssh)
+
+    def test_start_testing_sets_user_data(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.patch(node, '_power_cycle').return_value = None
+        user_data = factory.make_string().encode('ascii')
+        generate_user_data = self.patch(
+            commissioning, 'generate_user_data')
+        generate_user_data.return_value = user_data
+        admin = factory.make_admin()
+        node.start_testing(admin, testing_scripts=[script.name])
+        post_commit_hooks.reset()  # Ignore these for now.
+        nud = NodeUserData.objects.get(node=node)
+        self.assertEquals(user_data, nud.data)
+
+    def test_start_testing_adds_default_testing_script_set(self):
+        factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, tags=['commissioning'])
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.patch(node, '_power_cycle').return_value = None
+
+        with post_commit_hooks:
+            node.start_testing(factory.make_admin())
+
+        node = reload_object(node)
+
+        self.assertIsNotNone(node.current_testing_script_set)
+
+    def test_start_testing_adds_selected_scripts(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.patch(node, '_power_cycle').return_value = None
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+            for _ in range(10)
+        ]
+        testing_script_selected_by_tag = random.choice(testing_scripts)
+        testing_script_selected_by_name = random.choice(testing_scripts)
+        expected_testing_scripts = [
+            testing_script_selected_by_tag.name,
+            testing_script_selected_by_name.name,
+        ]
+
+        with post_commit_hooks:
+            node.start_testing(
+                factory.make_admin(),
+                testing_scripts=expected_testing_scripts)
+
+        node = reload_object(node)
+        testing_script_set = node.current_testing_script_set
+
+        self.assertItemsEqual(
+            set(expected_testing_scripts),
+            [script_result.name for script_result in testing_script_set])
+
+    def test_start_testing_reverts_status_on_error(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        # When start_testing encounters an error when trying to power cycle the
+        # node, it will revert the node to its previous status.
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        mock_node_power_cycle = self.patch(node, '_power_cycle')
+        mock_node_power_cycle.side_effect = factory.make_exception()
+
+        try:
+            with transaction.atomic():
+                node.start_testing(admin, testing_scripts=[script.name])
+        except mock_node_power_cycle.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
+
+        self.expectThat(mock_node_power_cycle, MockCalledOnceWith())
+        self.expectThat(NODE_STATUS.DEPLOYED, Equals(node.status))
+
+    def test_start_testing_logs_and_raises_errors(self):
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        mock_maaslog = self.patch(node_module, 'maaslog')
+        exception = NoConnectionsAvailable(factory.make_name())
+        self.patch(node, '_power_cycle').side_effect = exception
+        self.assertRaises(
+            NoConnectionsAvailable,
+            node.start_testing, admin, testing_scripts=[script.name])
+        self.expectThat(NODE_STATUS.DEPLOYED, Equals(node.status))
+        self.expectThat(
+            mock_maaslog.error, MockCalledOnceWith(
+                "%s: Could not start testing for node: %s",
+                node.hostname, exception))
 
     def test_full_clean_logs_node_status_transition(self):
         node = factory.make_Node(

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Event catalog."""
@@ -87,6 +87,8 @@ class EVENT_TYPES:
     # Node user request events
     REQUEST_NODE_START_COMMISSIONING = "REQUEST_NODE_START_COMMISSIONING"
     REQUEST_NODE_ABORT_COMMISSIONING = "REQUEST_NODE_ABORT_COMMISSIONING"
+    REQUEST_NODE_START_TESTING = "REQUEST_NODE_START_TESTING"
+    REQUEST_NODE_ABORT_TESTING = "REQUEST_NODE_ABORT_TESTING"
     REQUEST_NODE_ABORT_DEPLOYMENT = "REQUEST_NODE_ABORT_DEPLOYMENT"
     REQUEST_NODE_ACQUIRE = "REQUEST_NODE_ACQUIRE"
     REQUEST_NODE_ERASE_DISK = "REQUEST_NODE_ERASE_DISK"
@@ -223,6 +225,14 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING: EventDetail(
         description="User aborting node commissioning",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_START_TESTING: EventDetail(
+        description="User starting node testing",
+        level=INFO,
+    ),
+    EVENT_TYPES.REQUEST_NODE_ABORT_TESTING: EventDetail(
+        description="User aborting node testing",
         level=INFO,
     ),
     EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT: EventDetail(

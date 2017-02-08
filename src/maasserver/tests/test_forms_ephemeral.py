@@ -5,15 +5,112 @@
 
 __all__ = []
 
+
 from maasserver.enum import (
     NODE_STATUS,
+    NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
 )
-from maasserver.forms_commission import CommissionForm
+from maasserver.forms_ephemeral import (
+    CommissionForm,
+    TestForm,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import SCRIPT_TYPE
+
+
+class TestTestForm(MAASServerTestCase):
+
+    def test__doesnt_require_anything(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test__not_allowed_in_bad_state(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={})
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEqual({
+            '__all__': [
+                "Test is not available because of the current state "
+                "of the node."],
+            }, form.errors)
+
+    def test__calls_start_testing_if_already_on(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, power_state=POWER_STATE.ON)
+        user = factory.make_admin()
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        form = TestForm(instance=node, user=user, data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(user, enable_ssh=False, testing_scripts=[]))
+
+    def test__calls_start_testing_with_options(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        enable_ssh = factory.pick_bool()
+        testing_scripts = [
+            factory.make_Script(script_type=SCRIPT_TYPE.TESTING).name
+            for _ in range(3)
+        ]
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        form = TestForm(instance=node, user=user, data={
+            "enable_ssh": enable_ssh,
+            'testing_scripts': ','.join(testing_scripts),
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        self.assertThat(
+            mock_start_testing,
+            MockCalledOnceWith(
+                user, enable_ssh=enable_ssh, testing_scripts=testing_scripts))
+
+    def test__validates_testing_scripts(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': factory.make_name('script'),
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__testing_scripts_cannt_be_none(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': 'none',
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__cannt_run_destructive_test_on_deployed_machine(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, destructive=True)
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            })
+        self.assertFalse(form.is_valid())
+
+    def test__cannt_run_destructive_test_on_non_machine(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, destructive=True)
+        node = factory.make_Node(
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]))
+        user = factory.make_admin()
+        form = TestForm(instance=node, user=user, data={
+            'testing_scripts': script.name,
+            })
+        self.assertFalse(form.is_valid())
 
 
 class TestCommissionForm(MAASServerTestCase):

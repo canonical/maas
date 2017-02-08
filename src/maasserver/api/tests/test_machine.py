@@ -1434,58 +1434,6 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
             response.content)
 
 
-class TestAbort(APITransactionTestCase.ForUser):
-    """Tests for /api/2.0/machines/<machine>/?op=abort"""
-
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_abort_changes_state(self):
-        machine = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=self.user)
-        machine_stop = self.patch(node_module.Machine, "_stop")
-        machine_stop.side_effect = lambda user: post_commit()
-
-        with SignalsDisabled("power"):
-            response = self.client.post(
-                self.get_machine_uri(machine), {'op': 'abort'})
-
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            NODE_STATUS.FAILED_DISK_ERASING, reload_object(machine).status)
-
-    def test_abort_fails_for_unsupported_operation(self):
-        machine = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_abort_passes_comment(self):
-        self.become_admin()
-        machine = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=self.user)
-        machine_method = self.patch(node_module.Machine, 'abort_operation')
-        comment = factory.make_name('comment')
-        self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'abort', 'comment': comment})
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(self.user, comment))
-
-    def test_abort_handles_missing_comment(self):
-        self.become_admin()
-        machine = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=self.user)
-        machine_method = self.patch(node_module.Machine, 'abort_operation')
-        self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort'})
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(self.user, None))
-
-
 class TestSetStorageLayout(APITestCase.ForUser):
 
     def get_machine_uri(self, machine):

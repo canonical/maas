@@ -38,10 +38,12 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
     NodeStateViolation,
+    NoScriptsFound,
     StaticIPAddressExhaustion,
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import BulkNodeActionForm
+from maasserver.forms_ephemeral import TestForm
 from maasserver.models import (
     Interface,
     Node,
@@ -519,6 +521,55 @@ class PowerMixin:
             return node
         else:
             return None
+
+    @operation(idempotent=False)
+    def test(self, request, system_id):
+        """Begin testing process for a node.
+
+        :param enable_ssh: Whether to enable SSH for the commissioning
+            environment using the user's SSH key(s).
+        :type enable_ssh: bool ('0' for False, '1' for True)
+        :param testing_scripts: A comma seperated list of testing script names
+            and tags to be run. By default all tests tagged 'commissioning'
+            will be run.
+        :type testing_scripts: string
+
+        A node in the 'ready', 'allocated', 'deployed', 'broken', or any failed
+        state may run tests. If testing is started and successfully passes from
+        a 'broken', or any failed state besides 'failed commissioning' the node
+        will be returned to a ready state. Otherwise the node will return to
+        the state it was when testing started.
+
+        Returns 404 if the node is not found.
+        """
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        form = TestForm(instance=node, user=request.user, data=request.data)
+        if form.is_valid():
+            try:
+                return form.save()
+            except NoScriptsFound:
+                raise MAASAPIValidationError('No testing scripts found!')
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def abort(self, request, system_id):
+        """Abort a node's current operation.
+
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the node could not be found.
+        Returns 403 if the user does not have permission to abort the
+        current operation.
+        """
+        comment = get_optional_param(request.POST, 'comment')
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        node.abort_operation(request.user, comment)
+        return node
 
 
 class PowersMixin:

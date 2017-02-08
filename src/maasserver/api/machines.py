@@ -62,7 +62,7 @@ from maasserver.forms import (
     get_machine_create_form,
     get_machine_edit_form,
 )
-from maasserver.forms_commission import CommissionForm
+from maasserver.forms_ephemeral import CommissionForm
 from maasserver.forms_filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
@@ -440,26 +440,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
-
-    @operation(idempotent=False)
-    def abort(self, request, system_id):
-        """Abort a machine's current operation.
-
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-
-        This currently only supports aborting of the 'Disk Erasing' operation.
-
-        Returns 404 if the machine could not be found.
-        Returns 403 if the user does not have permission to abort the
-        current operation.
-        """
-        comment = get_optional_param(request.POST, 'comment')
-        machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
-        machine.abort_operation(request.user, comment)
-        return machine
 
     @operation(idempotent=False)
     def set_storage_layout(self, request, system_id):

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node actions."""
@@ -47,9 +47,11 @@ from maasserver.node_action import (
     RescueMode,
     RPC_EXCEPTIONS,
     SetZone,
+    Test,
 )
 from maasserver.node_status import (
     MONITORED_STATUSES,
+    NODE_TESTING_RESET_READY_TRANSITIONS,
     NON_MONITORED_STATUSES,
 )
 from maasserver.testing.factory import factory
@@ -73,6 +75,7 @@ from maastesting.matchers import (
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_TYPE,
 )
 from netaddr import IPNetwork
 from provisioningserver.utils.shell import ExternalProcessError
@@ -318,6 +321,26 @@ class TestCommissionAction(MAASServerTestCase):
             MockCalledOnceWith(admin, ANY, ANY, allow_power_cycle=True))
 
 
+class TestTest(MAASServerTestCase):
+
+    def test__starts_testing(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        enable_ssh = factory.pick_bool()
+        self.patch(node, '_power_cycle').return_value = None
+        admin = factory.make_admin()
+        action = Test(node, admin)
+        with post_commit_hooks:
+            action.execute(
+                enable_ssh=enable_ssh, testing_scripts=[script.name])
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.TESTING, node.status)
+        self.assertEqual(enable_ssh, node.enable_ssh)
+        self.assertEqual(
+            script.name,
+            node.current_testing_script_set.scriptresult_set.first().name)
+
+
 class TestAbortAction(MAASTransactionServerTestCase):
 
     def test_Abort_aborts_disk_erasing(self):
@@ -386,6 +409,35 @@ class TestAbortAction(MAASTransactionServerTestCase):
         with transaction.atomic():
             node = reload_object(node)
             self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+
+    def test_Abort_aborts_testing(self):
+        """Makes sure a TESTING node is returned to previous status after an
+        abort.
+        """
+        status = random.choice(list(NODE_TESTING_RESET_READY_TRANSITIONS))
+        with transaction.atomic():
+            node = factory.make_Node(
+                interface=True, previous_status=status,
+                status=NODE_STATUS.TESTING, power_type='virsh')
+            admin = factory.make_admin()
+
+        node_stop = self.patch_autospec(node, '_stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
+
+        with post_commit_hooks:
+            with transaction.atomic():
+                Abort(node, admin).execute()
+
+        # Allow abortion of auto testing into ready state.
+        if status == NODE_STATUS.COMMISSIONING:
+            status = NODE_STATUS.READY
+
+        with transaction.atomic():
+            node = reload_object(node)
+            self.assertEqual(status, node.status)
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
