@@ -226,7 +226,7 @@ test+lxd: lxd $(strip $(test-scripts))
 	utilities/isolated-make-test
 
 test: bin/test.parallel
-	@bin/test.parallel
+	@bin/test.parallel --subprocess-per-core
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:

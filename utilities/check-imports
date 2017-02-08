@@ -152,6 +152,7 @@ TestingLibraries = Pattern(
     "dns|dns.**",
     "fixtures|fixtures.**",
     "hypothesis|hypothesis.**",
+    "junitxml|junitxml.**",
     "maastesting|maastesting.**",
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",

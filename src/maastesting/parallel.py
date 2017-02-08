@@ -15,6 +15,7 @@ import tempfile
 import threading
 import unittest
 
+import junitxml
 from maastesting.utils import content_from_file
 import subunit
 import testtools
@@ -166,22 +167,40 @@ def make_splitter(splits):
     return split
 
 
-def print_test(test, status, start_time, stop_time, tags, details):
-    testid = "<none>" if test is None else test.id()
-    duration = (stop_time - start_time).total_seconds()
-    message = "%s: %s (%0.2fs)" % (status.upper(), testid, abs(duration))
-    print(message, flush=True)
+def make_human_readable_result(stream):
+    """Make a result that emits messages intended for human consumption."""
+
+    def print_result(test, status, start_time, stop_time, tags, details):
+        testid = "<none>" if test is None else test.id()
+        duration = (stop_time - start_time).total_seconds()
+        message = "%s: %s (%0.2fs)" % (status.upper(), testid, abs(duration))
+        print(message, file=stream, flush=True)
+
+    return testtools.MultiTestResult(
+        testtools.TextTestResult(stream, failfast=False, tb_locals=False),
+        testtools.TestByTestResult(print_result))
 
 
-def test(suite):
-    parts = max(2, os.cpu_count() - 2)
-    split = make_splitter(parts)
+def make_subunit_result(stream):
+    """Make a result that emits a subunit stream."""
+    return subunit.TestProtocolClient(stream)
+
+
+def make_junit_result(stream):
+    """Make a result that emits JUnit-compatible XML results."""
+    return junitxml.JUnitXmlResult(stream)
+
+
+def test(suite, result, processes):
+    """Test `suite`, emitting results to `result`.
+
+    :param suite: The test suite to run.
+    :param result: The test result to which to report.
+    :param processes: The number of processes to split up tests amongst.
+    :return: A boolean signalling success or not.
+    """
+    split = make_splitter(processes)
     suite = testtools.ConcurrentTestSuite(suite, split)
-    result = testtools.MultiTestResult(
-        testtools.TestByTestResult(print_test),
-        testtools.TextTestResult(
-            sys.stdout, failfast=False, tb_locals=False),
-    )
 
     result.startTestRun()
     try:
@@ -189,14 +208,62 @@ def test(suite):
     finally:
         result.stopTestRun()
 
-    raise SystemExit(0 if result.wasSuccessful() else 2)
+    return result.wasSuccessful()
 
 
-argument_parser = argparse.ArgumentParser(description=__doc__)
+def make_argument_parser():
+    """Create an argument parser for the command-line."""
+    parser = argparse.ArgumentParser(description=__doc__, add_help=False)
+    parser.add_argument(
+        "-h", "--help", action="help", help=argparse.SUPPRESS)
+
+    core_count = os.cpu_count()
+
+    def parse_subprocesses(string):
+        try:
+            processes = int(string)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                "%r is not an integer" % string)
+        else:
+            if processes < 1:
+                raise argparse.ArgumentTypeError(
+                    "%d is not 1 or greater" % processes)
+            else:
+                return processes
+
+    args_subprocesses = parser.add_mutually_exclusive_group()
+    args_subprocesses.add_argument(
+        "--subprocesses", metavar="N", action="store", type=parse_subprocesses,
+        dest="subprocesses", default=max(2, core_count - 2), help=(
+            "The number of testing subprocesses to run concurrently. This "
+            "defaults to the number of CPU cores available minus 2, but not "
+            "less than 2. On this machine the default is %(default)s."))
+    args_subprocesses.add_argument(
+        "--subprocess-per-core", action="store_const", dest="subprocesses",
+        const=core_count, help=(
+            "Run one test process per core. On this machine that would mean "
+            "that up to %d testing subprocesses would run concurrently."
+            % core_count))
+
+    args_output = parser.add_argument_group("output")
+    args_output.add_argument(
+        "--emit-human", dest="result_factory", action="store_const",
+        const=make_human_readable_result, help="Emit human-readable results.")
+    args_output.add_argument(
+        "--emit-subunit", dest="result_factory", action="store_const",
+        const=make_subunit_result, help="Emit a subunit stream.")
+    args_output.add_argument(
+        "--emit-junit", dest="result_factory", action="store_const",
+        const=make_junit_result, help="Emit JUnit-compatible XML.")
+    args_output.set_defaults(
+        result_factory=make_human_readable_result)
+
+    return parser
 
 
-def main():
-    args = argument_parser.parse_args()  # noqa
+def main(args=None):
+    args = make_argument_parser().parse_args(args)
     lock = threading.Lock()
     suite = unittest.TestSuite((
         # Run the indivisible tests first. These will each consume a worker
@@ -211,7 +278,11 @@ def main():
         TestScriptDivisible(lock, "bin/test.region"),
         TestScriptDivisible(lock, "bin/test.testing"),
     ))
-    test(suite)
+    result = args.result_factory(sys.stdout)
+    if test(suite, result, args.subprocesses):
+        raise SystemExit(0)
+    else:
+        raise SystemExit(2)
 
 
 if __name__ == '__main__':

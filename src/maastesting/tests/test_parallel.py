@@ -5,15 +5,150 @@
 
 __all__ = []
 
-import types
+import os
+import random
+from unittest.mock import ANY
 
+import junitxml
+from maastesting import parallel
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.matchers import (
+    DocTestMatches,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import IsInstance
+import subunit
+from testtools import (
+    ExtendedToOriginalDecorator,
+    MultiTestResult,
+    TestByTestResult,
+    TextTestResult,
+)
+from testtools.matchers import (
+    Equals,
+    Is,
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+    MatchesStructure,
+)
 
 
-class TestSmoke(MAASTestCase):
-    """Trivial smoke test."""
+class TestSubprocessArguments(MAASTestCase):
+    """Tests for arguments that adjust subprocess behaviour."""
 
-    def test_imports_cleanly(self):
-        from maastesting import parallel
-        self.assertThat(parallel, IsInstance(types.ModuleType))
+    def setUp(self):
+        super(TestSubprocessArguments, self).setUp()
+        self.stdio = self.useFixture(CaptureStandardIO())
+        self.patch_autospec(parallel, "test")
+        parallel.test.return_value = True
+
+    def test__defaults(self):
+        sysexit = self.assertRaises(SystemExit, parallel.main, [])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(
+            ANY, ANY, max(os.cpu_count() - 2, 2)))
+
+    def test__subprocess_count_can_be_specified(self):
+        count = random.randrange(100, 1000)
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--subprocesses", str(count)])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, count))
+
+    def test__subprocess_count_of_less_than_1_is_rejected(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--subprocesses", "0"])
+        self.assertThat(sysexit.code, Equals(2))
+        self.assertThat(parallel.test, MockNotCalled())
+        self.assertThat(self.stdio.getError(), DocTestMatches(
+            "usage: ... argument --subprocesses: 0 is not 1 or greater"))
+
+    def test__subprocess_count_non_numeric_is_rejected(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--subprocesses", "foo"])
+        self.assertThat(sysexit.code, Equals(2))
+        self.assertThat(parallel.test, MockNotCalled())
+        self.assertThat(self.stdio.getError(), DocTestMatches(
+            "usage: ... argument --subprocesses: 'foo' is not an integer"))
+
+    def test__subprocess_per_core_can_be_specified(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--subprocess-per-core"])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(
+            ANY, ANY, os.cpu_count()))
+
+    def test__subprocess_count_and_per_core_cannot_both_be_specified(self):
+        sysexit = self.assertRaises(SystemExit, parallel.main, [
+            "--subprocesses", "3", "--subprocess-per-core"])
+        self.assertThat(sysexit.code, Equals(2))
+        self.assertThat(parallel.test, MockNotCalled())
+        self.assertThat(self.stdio.getError(), DocTestMatches(
+            "usage: ... argument --subprocess-per-core: not allowed with "
+            "argument --subprocesses"))
+
+
+class TestEmissionArguments(MAASTestCase):
+    """Tests for arguments that adjust result emission behaviour."""
+
+    def setUp(self):
+        super(TestEmissionArguments, self).setUp()
+        self.stdio = self.useFixture(CaptureStandardIO())
+        self.patch_autospec(parallel, "test")
+        parallel.test.return_value = True
+
+    def test__results_are_human_readable_by_default(self):
+        sysexit = self.assertRaises(SystemExit, parallel.main, [])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
+        _, result, _ = parallel.test.call_args[0]
+        self.assertThat(result, IsMultiResultOf(
+            IsInstance(TextTestResult), IsInstance(TestByTestResult)))
+
+    def test__results_can_be_explicitly_specified_as_human_readable(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--emit-human"])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
+        _, result, _ = parallel.test.call_args[0]
+        self.assertThat(result, IsMultiResultOf(
+            IsInstance(TextTestResult), IsInstance(TestByTestResult)))
+
+    def test__results_can_be_specified_as_subunit(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--emit-subunit"])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
+        _, result, _ = parallel.test.call_args[0]
+        self.assertThat(result, IsInstance(subunit.TestProtocolClient))
+        self.assertThat(result, MatchesStructure(
+            _stream=Is(self.stdio.stdout.buffer)))
+
+    def test__results_can_be_specified_as_junit(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, ["--emit-junit"])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
+        _, result, _ = parallel.test.call_args[0]
+        self.assertThat(result, IsInstance(junitxml.JUnitXmlResult))
+        self.assertThat(result, MatchesStructure(
+            _stream=Is(self.stdio.stdout)))
+
+
+def IsMultiResultOf(*results):
+    """Match a `MultiTestResult` wrapping the given results."""
+    return MatchesAll(
+        IsInstance(MultiTestResult),
+        MatchesStructure(
+            _results=MatchesListwise([
+                MatchesAll(
+                    IsInstance(ExtendedToOriginalDecorator),
+                    MatchesStructure(decorated=matcher),
+                    first_only=True)
+                for matcher in results
+            ]),
+        ),
+        first_only=True,
+    )
