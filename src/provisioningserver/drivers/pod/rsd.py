@@ -601,7 +601,7 @@ class RSDPodDriver(PodDriver):
         return json.dumps(data).encode('utf-8')
 
     @inlineCallbacks
-    def compose(self, system_id, context, request):
+    def compose(self, pod_id, context, request):
         """Compose machine."""
         url = self.get_url(context)
         headers = self.make_auth_headers(**context)
@@ -652,9 +652,22 @@ class RSDPodDriver(PodDriver):
         return discovered_machine, discovered_pod.hints
 
     @inlineCallbacks
-    def decompose(self, system_id, context):
+    def decompose(self, pod_id, context):
         """Decompose machine."""
-        raise NotImplementedError
+        url = self.get_url(context)
+        node_id = context.get('node_id').encode('utf-8')
+        headers = self.make_auth_headers(**context)
+        # Delete machine at node_id.
+        endpoint = b"redfish/v1/Nodes/%s" % node_id
+        yield self.redfish_request(
+            b"DELETE", join(url, endpoint), headers)
+
+        # Retrieve pod resources.
+        discovered_pod = yield self.get_pod_resources(url, headers)
+        # Retrive pod hints.
+        discovered_pod.hints = self.get_pod_hints(discovered_pod)
+
+        return discovered_pod.hints
 
     @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):

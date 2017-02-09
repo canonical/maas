@@ -14,7 +14,6 @@ import random
 from unittest.mock import (
     call,
     Mock,
-    sentinel,
 )
 
 from maastesting.factory import factory
@@ -1239,11 +1238,28 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(discovered_machine, expected_machine)
         self.assertEquals(discovered_pod_hints, discovered_pod.hints)
 
-    def test_decompose_raises_not_implemented(self):
+    @inlineCallbacks
+    def test__decompose(self):
         driver = RSDPodDriver()
-        self.assertRaises(
-            NotImplementedError,
-            driver.decompose, sentinel.system_id, sentinel.context)
+        context = self.make_context()
+        url = driver.get_url(context)
+        node_id = context.get('node_id').encode('utf-8')
+        headers = driver.make_auth_headers(**context)
+        endpoint = b"redfish/v1/Nodes/%s" % node_id
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
+        discovered_pod = self.make_discovered_pod()
+        mock_get_pod_resources.return_value = discovered_pod
+        mock_get_pod_hints = self.patch(driver, 'get_pod_hints')
+
+        yield driver.decompose(
+            factory.make_name('system_id'), context)
+        self.assertThat(mock_redfish_request, MockCalledOnceWith(
+            b"DELETE", join(url, endpoint), headers))
+        self.assertThat(mock_get_pod_resources, MockCalledOnceWith(
+            url, headers))
+        self.assertThat(mock_get_pod_hints, MockCalledOnceWith(
+            discovered_pod))
 
     @inlineCallbacks
     def test__set_pxe_boot(self):
