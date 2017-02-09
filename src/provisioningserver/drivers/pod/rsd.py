@@ -30,6 +30,7 @@ from provisioningserver.drivers.pod import (
     PodFatalError,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet import reactor
 from twisted.internet._sslverify import (
@@ -52,9 +53,8 @@ maaslog = get_maas_logger("drivers.pod.rsd")
 # RSD stores the architecture with a different
 # label then MAAS. This maps RSD architecture to
 # MAAS architecture.
-ARCH_FIX = {
-    'x86_64': "amd64/generic",
-    'x86': "amd64/generic",
+RSD_ARCH = {
+    'x86-64': "amd64/generic",
     }
 
 # RSD system power states.
@@ -76,10 +76,6 @@ RSD_RESOURCE_NOT_FOUND = (
     "Required RSD resource not available.  "
     "Unable to retrieve '%s' for endpoint: %s"
 )
-
-
-class RSDPodDriverError(Exception):
-    """RSD Pod Driver error."""
 
 
 class WebClientContextFactory(BrowserLikePolicyForHTTPS):
@@ -165,7 +161,7 @@ class RSDPodDriver(PodDriver):
                         message = "\n".join([
                             message.get('Message') for message in messages
                         ])
-                        raise RSDPodDriverError(message)
+                        raise PodActionError(message)
                     else:
                         return response
 
@@ -226,7 +222,7 @@ class RSDPodDriver(PodDriver):
             cpu_speeds.append(processor_data.get('MaxSpeedMHz'))
             # Only choose first processor architecture found.
             if arch == "":
-                arch = processor_data.get('ProcessorArchitecture')
+                arch = processor_data.get('InstructionSet')
         return cores, cpu_speeds, arch
 
     @inlineCallbacks
@@ -286,9 +282,9 @@ class RSDPodDriver(PodDriver):
             # Set architecture to first processor
             # architecture type found.
             if not discovered_machine.architecture:
-                arch = processor_data.get('ProcessorArchitecture')
+                arch = processor_data.get('InstructionSet')
                 discovered_machine.architecture = (
-                    ARCH_FIX.get(arch, arch))
+                    RSD_ARCH.get(arch, arch))
 
     @inlineCallbacks
     def scan_machine_local_storage(
@@ -381,7 +377,8 @@ class RSDPodDriver(PodDriver):
         """Get the POD resources."""
         discovered_pod = DiscoveredPod(
             architectures=[], cores=0, cpu_speed=0, memory=0,
-            local_storage=0, capabilities=[Capabilities.FIXED_LOCAL_STORAGE],
+            local_storage=0, capabilities=[
+                Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
             hints=DiscoveredPodHints(cores=0, cpu_speed=0, memory=0,
                                      local_storage=0, local_disks=0))
         # Save list of all cpu_speeds that we will use later
@@ -414,7 +411,7 @@ class RSDPodDriver(PodDriver):
                 continue
             else:
                 discovered_pod.architectures.append(
-                    ARCH_FIX.get(arch, arch))
+                    RSD_ARCH.get(arch, arch))
                 discovered_pod.memory += sum(memories)
                 discovered_pod.cores += sum(cores)
                 discovered_pod.cpu_speeds.extend(cpu_speeds)
@@ -501,6 +498,8 @@ class RSDPodDriver(PodDriver):
         discovered_pod_hints.memory = (discovered_pod.memory - used_memory)
         discovered_pod_hints.local_storage = (
             discovered_pod.local_storage - used_storage)
+        discovered_pod_hints.local_disks = (
+            discovered_pod.local_disks - used_disks)
         return discovered_pod_hints
 
     @inlineCallbacks
@@ -526,14 +525,135 @@ class RSDPodDriver(PodDriver):
         del discovered_pod.cpu_speeds
         return discovered_pod
 
+    def convert_request_to_json_payload(self, processors, cores, request):
+        """Convert the RequestedMachine object to JSON."""
+        # The below fields are for RSD allocation.
+        # Most of these fields are nullable and could be used at
+        # some future point by MAAS if set to None.
+        # For complete list of fields, please see RSD documentation.
+        processor = {
+            "Model": None,
+            "TotalCores": None,
+            "AchievableSpeedMHz": None,
+            "InstructionSet": None,
+        }
+        memory = {
+            "CapacityMiB": None,
+            # XXX: newell 2017-02-09 bug=1663074:
+            # DimmDeviceType should be working but is currently
+            # causing allocation errors in the RSD API.
+            # "DimmDeviceType": None,
+            "SpeedMHz": None,
+            "DataWidthBits": None,
+        }
+        local_drive = {
+            "CapacityGiB": None,
+            "Type": None,
+            "MinRPM": None,
+            "SerialNumber": None,
+            "Interface": None,
+        }
+        interface = {
+            "SpeedMbps": None,
+            "PrimaryVLAN": None,
+        }
+        data = {
+            "Processors": [],
+            "Memory": [],
+            "LocalDrives": [],
+            "EthernetInterfaces": [],
+        }
+        request = request.asdict()
+
+        # Processors.
+        for _ in range(processors):
+            proc = processor.copy()
+            proc['TotalCores'] = cores
+            arch = request.get('architecture')
+            for key, val in RSD_ARCH.items():
+                if val == arch:
+                    proc['InstructionSet'] = key
+            # cpu_speed is only optional field in request.
+            cpu_speed = request.get('cpu_speed')
+            if cpu_speed is not None:
+                proc['AchievableSpeedMHz'] = cpu_speed
+            data['Processors'].append(proc)
+
+        # Block Devices.
+        block_devices = request.get('block_devices')
+        for block_device in block_devices:
+            drive = local_drive.copy()
+            # Convert from bytes to GiB.
+            drive['CapacityGiB'] = block_device['size'] / 1073741824
+            data['LocalDrives'].append(drive)
+
+        # Interfaces.
+        interfaces = request.get('interfaces')
+        for iface in interfaces:
+            nic = interface.copy()
+            data['EthernetInterfaces'].append(nic)
+
+        # Memory.
+        mem = memory.copy()
+        mem['CapacityMiB'] = request.get('memory')
+        data['Memory'].append(mem)
+
+        return json.dumps(data).encode('utf-8')
+
     @inlineCallbacks
-    def compose(self, system_id, context):
-        """Compose machine(s)."""
-        raise NotImplementedError
+    def compose(self, system_id, context, request):
+        """Compose machine."""
+        url = self.get_url(context)
+        headers = self.make_auth_headers(**context)
+        endpoint = b"redfish/v1/Nodes/Actions/Allocate"
+        # Get current list of composed machines in pod.
+        machines = yield self.get_pod_machines(
+            url, headers)
+        # Create allocate payload.
+        requested_cores = request.cores
+        if requested_cores % 2 != 0:
+            # Make cores an even number.
+            requested_cores += 1
+        # Divide by 2 since RSD TotalCores
+        # is actually half of what MAAS reports.
+        requested_cores //= 2
+
+        # Find the correct procesors and cores combination from RSD POD.
+        processors = 1
+        cores = requested_cores
+        while (requested_cores != processors):
+            payload = self.convert_request_to_json_payload(
+                processors, cores, request)
+            try:
+                yield self.redfish_request(
+                    b"POST", join(url, endpoint), headers,
+                    FileBodyProducer(BytesIO(payload)))
+                # Break out of loop if allocation was successful.
+                break
+            except:
+                # Continue loop if allocation didn't work.
+                processors *= 2
+                cores //= 2
+                continue
+
+        new_machines = yield self.get_pod_machines(url, headers)
+        if new_machines == machines:
+            # Allocation did not succeed.
+            raise PodInvalidResources(
+                "Unable to allocate machine with requested resources.")
+
+        # Sieve the new machine.
+        discovered_machine = [m for m in new_machines if m not in machines][0]
+        # Retrieve pod resources.
+        discovered_pod = yield self.get_pod_resources(url, headers)
+        # Retrive pod hints.
+        discovered_pod.hints = self.get_pod_hints(discovered_pod)
+
+        return discovered_machine, discovered_pod.hints
 
     @inlineCallbacks
     def decompose(self, system_id, context):
-        """Decompose machine(s)."""
+        """Decompose machine."""
         raise NotImplementedError
 
     @inlineCallbacks

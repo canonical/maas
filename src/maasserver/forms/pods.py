@@ -271,7 +271,7 @@ class ComposeMachineForm(forms.Form):
             name=self.pod.name).wait(timeout)
 
         created_machine = self.pod.create_machine(
-            discovered_machine, None,
+            discovered_machine, self.request.user,
             skip_commissioning=skip_commissioning)
         self.pod.sync_hints(pod_hints)
         return created_machine

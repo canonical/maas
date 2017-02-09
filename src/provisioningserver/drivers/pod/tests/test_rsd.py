@@ -36,6 +36,9 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodHints,
     PodActionError,
     PodFatalError,
+    RequestedMachine,
+    RequestedMachineBlockDevice,
+    RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod.rsd import (
     RSD_NODE_POWER_STATE,
@@ -46,6 +49,7 @@ import provisioningserver.drivers.pod.rsd as rsd_module
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
+    MatchesDict,
     MatchesListwise,
     MatchesStructure,
 )
@@ -546,6 +550,76 @@ class TestRSDPodDriver(MAASTestCase):
             'node_id': factory.make_name('node_id'),
             }
 
+    def make_discovered_pod(
+            self, cores=None, cpu_speed=None, memory=None,
+            storage=None, disks=None):
+        if cores is not None:
+            pod_cores = cores
+        else:
+            pod_cores = 8 * 4
+        if cpu_speed is not None:
+            pod_cpu_speed = cpu_speed
+        else:
+            pod_cpu_speed = 2000
+        if memory is not None:
+            pod_memory = memory
+        else:
+            pod_memory = 8192 * 4
+        if storage is not None:
+            pod_local_storage = storage
+        else:
+            pod_local_storage = 1024 * 3 * 4
+        if disks is not None:
+            pod_local_disks = disks
+        else:
+            pod_local_disks = 3 * 3 * 4
+        pod_hints = DiscoveredPodHints(
+            cores=0, cpu_speed=0, memory=0,
+            local_storage=0, local_disks=0)
+        pod_machines = []
+        pod_cpu_speeds = [pod_cpu_speed]
+        for _ in range(3):
+            machine_cores = random.randint(2, 64)
+            machine_cpu_speed = random.randint(1000, 2000)
+            machine_memory = random.randint(4096, 8192)
+            power_state = factory.make_name('unknown')
+            power_parameters = {
+                'power_id': factory.make_name('power_id'),
+            }
+            interfaces = [
+                DiscoveredMachineInterface(
+                    mac_address=factory.make_mac_address())
+                for _ in range(3)
+            ]
+            block_devices = [
+                DiscoveredMachineBlockDevice(
+                    model=factory.make_name("model"),
+                    serial=factory.make_name("serial"),
+                    size=random.randint(2048, 4096))
+                for _ in range(3)
+            ]
+            tags = [
+                factory.make_name("tag")
+                for _ in range(3)
+            ]
+            machine = DiscoveredMachine(
+                architecture='amd64/generic',
+                cores=machine_cores, cpu_speed=machine_cpu_speed,
+                memory=machine_memory, power_state=power_state,
+                power_parameters=power_parameters, interfaces=interfaces,
+                block_devices=block_devices, tags=tags)
+            machine.cpu_speeds = [machine_cpu_speed]
+            pod_machines.append(machine)
+            pod_cpu_speeds.append(machine_cpu_speed)
+        discovered_pod = DiscoveredPod(
+            architectures=[],
+            cores=pod_cores, cpu_speed=pod_cpu_speed, memory=pod_memory,
+            local_storage=pod_local_storage, hints=pod_hints,
+            machines=pod_machines, local_disks=pod_local_disks)
+        # Add cpu_speeds to the DiscoveredPod.
+        discovered_pod.cpu_speeds = pod_cpu_speeds
+        return discovered_pod
+
     def test_missing_packages(self):
         # there's nothing to check for, just confirm it returns []
         driver = RSDPodDriver()
@@ -712,7 +786,7 @@ class TestRSDPodDriver(MAASTestCase):
             url, headers, system)
         self.assertEquals([28, 28], cores)
         self.assertEquals([2300, 2300], cpu_speeds)
-        self.assertEquals("x86", arch)
+        self.assertEquals("x86-64", arch)
 
     @inlineCallbacks
     def test__get_pod_storage_resources(self):
@@ -918,7 +992,9 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(2300, pod.cpu_speed)
         self.assertEquals(7812, pod.memory)
         self.assertEquals(119999999999.99997, pod.local_storage)
-        self.assertEquals([Capabilities.FIXED_LOCAL_STORAGE], pod.capabilities)
+        self.assertEquals(
+            [Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
+            pod.capabilities)
 
     @inlineCallbacks
     def test_get_pod_resources_skips_invalid_systems(self):
@@ -994,70 +1070,23 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test_get_pod_hints(self):
         driver = RSDPodDriver()
-        # Total Pod will have more than three times the
-        # max amount of what the composed machines could possibly have.
-        # This will ensure we have some `unallocated` resources.
-        cores = 8**2
-        pod_cpu_speed = 2000
-        memory = 8192**2
-        local_storage = 8192**2
-        hints = DiscoveredPodHints(
-            cores=0, cpu_speed=0, memory=0, local_storage=0)
-        machines = []
-        cpu_speeds = [pod_cpu_speed]
-        for _ in range(3):
-            cores = random.randint(1, 8)
-            cpu_speed = random.randint(1000, 2000)
-            memory = random.randint(4096, 8192)
-            power_state = factory.make_name('unknown')
-            power_parameters = {
-                'power_id': factory.make_name('power_id'),
-            }
-            interfaces = [
-                DiscoveredMachineInterface(
-                    mac_address=factory.make_mac_address())
-                for _ in range(3)
-            ]
-            block_devices = [
-                DiscoveredMachineBlockDevice(
-                    model=factory.make_name("model"),
-                    serial=factory.make_name("serial"),
-                    size=random.randint(512, 1024))
-                for _ in range(3)
-            ]
-            tags = [
-                factory.make_name("tag")
-                for _ in range(3)
-            ]
-            machine = DiscoveredMachine(
-                architecture='amd64/generic',
-                cores=cores, cpu_speed=cpu_speed, memory=memory,
-                power_state=power_state, power_parameters=power_parameters,
-                interfaces=interfaces, block_devices=block_devices,
-                tags=tags)
-            machine.cpu_speeds = [cpu_speed]
-            machines.append(machine)
-            cpu_speeds.append(cpu_speed)
-        discovered_pod = DiscoveredPod(
-            architectures=[],
-            cores=cores, cpu_speed=pod_cpu_speed, memory=memory,
-            local_storage=local_storage, hints=hints, machines=machines)
-        # Add cpu_speeds to the DiscoveredPod.
-        discovered_pod.cpu_speeds = cpu_speeds
-
+        discovered_pod = self.make_discovered_pod()
         # Calculate expected hints.
-        composed_cores = composed_memory = composed_storage = 0
+        used_cores = used_memory = used_storage = used_disks = 0
         for machine in discovered_pod.machines:
-            composed_cores += machine.cores
-            composed_memory += machine.memory
+            used_cores += machine.cores
+            used_memory += machine.memory
             for blk_dev in machine.block_devices:
-                composed_storage += blk_dev.size
+                used_storage += blk_dev.size
+                used_disks += 1
 
-        expected_cpu_speed = pod_cpu_speed
-        expected_cores = discovered_pod.cores - composed_cores
-        expected_memory = discovered_pod.memory - composed_memory
+        expected_cpu_speed = discovered_pod.cpu_speed
+        expected_cores = discovered_pod.cores - used_cores
+        expected_memory = discovered_pod.memory - used_memory
         expected_local_storage = (
-            discovered_pod.local_storage - composed_storage)
+            discovered_pod.local_storage - used_storage)
+        expected_local_disks = (
+            discovered_pod.local_disks - used_disks)
 
         discovered_pod_hints = driver.get_pod_hints(discovered_pod)
         self.assertEquals(
@@ -1066,6 +1095,8 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(expected_memory, discovered_pod_hints.memory)
         self.assertEquals(
             expected_local_storage, discovered_pod_hints.local_storage)
+        self.assertEquals(
+            expected_local_disks, discovered_pod_hints.local_disks)
 
     @inlineCallbacks
     def test_discover(self):
@@ -1086,11 +1117,127 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertThat(mock_get_pod_hints, MockCalledOnceWith(
             mock_get_pod_resources.return_value))
 
-    def test_compose_raises_not_implemented(self):
+    def test__convert_request_to_json_payload(self):
         driver = RSDPodDriver()
-        self.assertRaises(
-            NotImplementedError,
-            driver.compose, sentinel.system_id, sentinel.context)
+        request = RequestedMachine(
+            architecture="amd64/generic", cores=32,
+            memory=8192, cpu_speed=2000,
+            block_devices=[
+                RequestedMachineBlockDevice(size=4 * 1073741824)
+                for _ in range(3)],
+            interfaces=[
+                RequestedMachineInterface()
+                for _ in range(2)])
+        processors = 2
+        cores = request.cores / 2
+        payload = driver.convert_request_to_json_payload(
+            processors, cores, request)
+        self.assertThat(
+            json.loads(payload.decode('utf-8')),
+            MatchesDict({
+                "Processors": MatchesListwise([
+                    MatchesDict({
+                        "Model": Equals(None),
+                        "TotalCores": Equals(16),
+                        "AchievableSpeedMHz": Equals(2000),
+                        "InstructionSet": Equals("x86-64"),
+                    }),
+                    MatchesDict({
+                        "Model": Equals(None),
+                        "TotalCores": Equals(16),
+                        "AchievableSpeedMHz": Equals(2000),
+                        "InstructionSet": Equals("x86-64"),
+                    })]),
+                "Memory": MatchesListwise([
+                    MatchesDict({
+                        "SpeedMHz": Equals(None),
+                        "CapacityMiB": Equals(8192),
+                        "DataWidthBits": Equals(None)
+                    })]),
+                "EthernetInterfaces": MatchesListwise([
+                    MatchesDict({
+                        "SpeedMbps": Equals(None),
+                        "PrimaryVLAN": Equals(None)
+                    }),
+                    MatchesDict({
+                        "SpeedMbps": Equals(None),
+                        "PrimaryVLAN": Equals(None)
+                    })]),
+                "LocalDrives": MatchesListwise([
+                    MatchesDict({
+                        "SerialNumber": Equals(None),
+                        "Type": Equals(None),
+                        "CapacityGiB": Equals(4),
+                        "MinRPM": Equals(None),
+                        "Interface": Equals(None)
+                    }),
+                    MatchesDict({
+                        "SerialNumber": Equals(None),
+                        "Type": Equals(None),
+                        "CapacityGiB": Equals(4),
+                        "MinRPM": Equals(None),
+                        "Interface": Equals(None)
+                    }),
+                    MatchesDict({
+                        "SerialNumber": Equals(None),
+                        "Type": Equals(None),
+                        "CapacityGiB": Equals(4),
+                        "MinRPM": Equals(None),
+                        "Interface": Equals(None)
+                    })
+                ])
+            }))
+
+    @inlineCallbacks
+    def test__compose(self):
+        # This test will start with a requested 64 cores.
+        # RSD API will not succeed until we are at 8 processors
+        # with 8 cores each as seen here:
+        # 64 cores / 1 -> 1 CPU with 64 cores
+        # 64 cores / 2 -> 2 CPU's with 32 cores
+        # 64 cores / 4 -> 4 CPU's with 16 cores each
+        # 64 cores / 8 -> 8 CPU's with 8 cores each
+        driver = RSDPodDriver()
+        context = self.make_context()
+        request = RequestedMachine(
+            architecture="amd64/generic", cores=64,
+            memory=random.randint(4096, 8192),
+            cpu_speed=random.randint(1000, 2000),
+            block_devices=[
+                RequestedMachineBlockDevice(
+                    size=random.randint(2048, 4096))
+                for _ in range(3)],
+            interfaces=[
+                RequestedMachineInterface()
+                for _ in range(2)])
+
+        discovered_pod = self.make_discovered_pod()
+        new_machines = discovered_pod.machines.copy()
+        machines = new_machines.copy()
+        expected_machine = machines.pop(0)
+        mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
+        mock_get_pod_machines.side_effect = [
+            machines, new_machines]
+        mock_convert_request_to_json_payload = self.patch(
+            driver, 'convert_request_to_json_payload')
+        payload = json.dumps(
+            {
+                'Test': "Testing Compose"
+            }).encode('utf-8')
+        mock_convert_request_to_json_payload.side_effect = [payload] * 4
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.side_effect = [Exception('Error')] * 3 + [None]
+        mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
+        mock_get_pod_resources.return_value = discovered_pod
+
+        discovered_machine, discovered_pod_hints = yield driver.compose(
+            factory.make_name('system_id'), context, request)
+        self.assertThat(
+            mock_convert_request_to_json_payload, MockCallsMatch(
+                call(1, 32, request), call(2, 16, request),
+                call(4, 8, request), call(8, 4, request)))
+        self.assertEquals(discovered_machine, expected_machine)
+        self.assertEquals(discovered_pod_hints, discovered_pod.hints)
 
     def test_decompose_raises_not_implemented(self):
         driver = RSDPodDriver()
