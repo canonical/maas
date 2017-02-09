@@ -1,4 +1,4 @@
-<header class="page-header" sticky media-query="min-width: 769px">
+<header class="page-header" sticky media-query="min-width: 769px" window-width>
     <div class="wrapper--inner">
         <h1 class="page-header__title">Device discovery</h1>
         <p class="page-header__status">{$ discoveredDevices.length $} items discovered <span class="u-text--loading" data-ng-if="!loaded"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
@@ -22,7 +22,7 @@
         </div>
         <div class="twelve-col">
             <div class="table" >
-                <header class="table__head u-display--desktop" sticky sticky-class="table__head--sticky" offset="116" media-query="min-width: 768px">
+                <header class="table__head" data-ng-if="windowWidth >= 769" sticky sticky-class="table__head--sticky" offset="116" media-query="min-width: 768px">
                     <div class="table__row">
                         <div class="table__header table-col--37">Name</div>
                         <div class="table__header table-col--15">Mac address</div>
@@ -59,7 +59,7 @@
                             </div>
                             <div class="table__data table-col--15" aria-label="MAC">
                                 {$ discovery.mac_address $}<br/>
-                                <small class="u-text--subtle u-display--desktop">{$ discovery.mac_organization || 'Unknown' $}</small>
+                                <small class="u-text--subtle" data-ng-if="windowWidth >= 769">{$ discovery.mac_organization || 'Unknown' $}</small>
                             </div>
                             <div class="table__data table-col--13 u-text--truncate" aria-label="IP Address">
                                 {$ discovery.ip $}
@@ -72,9 +72,9 @@
                             </div>
                             <div class="table__data table--mobile-controls  table-col--3">
                                 <div class="table__controls u-align--right">
-                                    <i class="icon icon--open tooltip u-display--desktop" aria-label="Open"
+                                    <i class="icon icon--open tooltip" data-ng-if="windowWidth >= 769" aria-label="Open"
                                         data-ng-click="toggleSelected(discovery.first_seen)">Open</i>
-                                    <a class="button--secondary u-display--mobile"
+                                    <a class="button--secondary" data-ng-if="windowWidth <= 768"
                                         data-ng-click="toggleSelected(discovery.first_seen)">Add device</a>
                                 </div>
                             </div>
@@ -82,17 +82,17 @@
                         <maas-obj-form data-ng-if="discovery.first_seen === selectedDevice"
                             obj="convertTo" manager="proxyManager" pre-process="preProcess"
                             after-save="afterSave" table-form="true" save-on-blur="false">
-                            <div class="table__data table-col--20">
+                            <div class="table__data table-col--20" data-ng-if="windowWidth >= 769">
                                 <maas-obj-field class="u-margin--bottom-none" type="text" key="hostname"
                                     disable-label="true" placeholder="Hostname (optional)"></maas-obj-field>
                             </div>
                             <div class="table__data table-col--77"></div>
                             <div class="table__data table-col--3">
-                                <i class="icon icon--close tooltip u-display--desktop" aria-label="Close"
+                                <i class="icon icon--close tooltip" data-ng-if="windowWidth >= 769" aria-label="Close"
                                     data-ng-click="toggleSelected(discovery.first_seen)">Close</i>
                             </div>
                             <div class="table__dropdown">
-                                <div class="table__dropdown-title">
+                                <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                     <h2 data-ng-click="toggleSelected(selectedDevice)" class="u-float--left">Adding {$ getDiscoveryName(discovery) $}</h2>
                                     <i data-ng-click="toggleSelected(selectedDevice)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                 </div>
@@ -125,7 +125,7 @@
                                 <div class="table__row is-active u-padding--top-small">
                                     <div class="table__data table-col--100">
                                         <fieldset class="form__fieldset six-col">
-                                            <div class="form__group u-display--mobile">
+                                            <div class="form__group" data-ng-if="windowWidth <= 768">
                                               <label for="Name" class="form__group-label two-col">Name</label>
                                               <div class="form__group-input three-col">
                                                 <maas-obj-field type="text" key="hostname"
@@ -166,7 +166,7 @@
                                         <maas-obj-errors></maas-obj-errors>
                                     </div>
                                     <div class="table__data u-float--right">
-                                        <a class="button--base button--inline u-display--desktop" data-ng-click="toggleSelected(selectedDevice)">Cancel</a>
+                                        <a class="button--base button--inline" data-ng-click="toggleSelected(selectedDevice)">Cancel</a>
                                         <button class="button--secondary button--inline"
                                             data-ng-click="convertTo.goTo = true"
                                             data-ng-if="!convertTo.$maasForm.getValue('parent')"

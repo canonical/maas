@@ -5,11 +5,11 @@
  */
 
 angular.module('MAAS').controller('DashboardController', [
-    '$scope', '$rootScope', '$routeParams', '$location',
+    '$scope', '$window', '$rootScope', '$routeParams', '$location',
     'DiscoveriesManager', 'DomainsManager', 'MachinesManager',
     'DevicesManager', 'SubnetsManager', 'VLANsManager', 'ConfigsManager',
     'ManagerHelperService',
-    function($scope, $rootScope, $routeParams, $location,
+    function($scope, $window, $rootScope, $routeParams, $location,
              DiscoveriesManager, DomainsManager, MachinesManager,
              DevicesManager, SubnetsManager, VLANsManager, ConfigsManager,
              ManagerHelperService) {

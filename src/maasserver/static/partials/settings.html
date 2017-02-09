@@ -19,7 +19,7 @@
         </p>
     </div>
 </header>
-<div data-ng-show="!loading && currentpage === 'dhcp'">
+<div data-ng-show="!loading && currentpage === 'dhcp'" width-width>
     <section class="row u-padding--top-none">
         <div class="wrapper--inner">
             <div>
@@ -69,13 +69,13 @@
                                     </div>
                                     <div class="table__data table--mobile-controls table-col--20">
                                         <div class="table__controls">
-                                            <div class="u-display--desktop">
+                                            <div data-ng-if="windowWidth >= 769">
                                                 <a class="icon icon--edit tooltip" aria-label="Edit"
                                                     data-ng-click="snippetEnterEdit(snippet)">Edit</a>
                                                 <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                     data-ng-click="snippetEnterRemove(snippet)">Remove</a>
                                             </div>
-                                            <div class="u-display--mobile">
+                                            <div data-ng-if="windowWidth <= 786">
                                                 <a class="button--secondary" aria-label="Edit"
                                                     data-ng-click="snippetEnterEdit(snippet)">Edit</a>
                                                 <a class="button--secondary" aria-label="Remove"
@@ -121,7 +121,7 @@
                                         </div>
                                         <div class="table__row form is-active">
                                             <div class="table__data table-col--100 u-padding--top-none">
-                                                <div class="u-display--mobile">
+                                                <div data-ng-if="windowWidth <= 786">
                                                     <maas-obj-field type="text" key="name" placeholder="Name"
                                                         label="Name" input-class="table__input u-margin--none"></maas-obj-field>
                                                     <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -177,7 +177,7 @@
                                             <i data-ng-click="snippetAddCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                         </div>
                                         <div class="table__row form is-active">
-                                            <div class="u-display--desktop">
+                                            <div data-ng-if="windowWidth >= 769">
                                                 <div class="table__data table-col--20">
                                                     <maas-obj-field type="text" key="name" placeholder="Name"
                                                         disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
@@ -210,7 +210,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="table__data u-display--mobile">
+                                            <div class="table__data" data-ng-if="widthWidth <= 768">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
                                                     label="Name" input-class="table__input"></maas-obj-field>
                                                 <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -312,7 +312,7 @@
         </div>
     </section>
 </div>
-<div data-ng-show="!loading && currentpage === 'repositories'">
+<div data-ng-show="!loading && currentpage === 'repositories'" window-width>
     <section class="row u-padding--top-none">
         <div class="wrapper--inner">
             <div>
@@ -375,14 +375,14 @@
                                     </div>
                                     <div class="table__data table--mobile-controls table-col--15">
                                         <div class="table__controls">
-                                            <div class="u-display--desktop">
+                                            <div data-ng-if="windowWidth >= 769">
                                                 <a class="icon icon--edit tooltip" aria-label="Edit"
                                                     data-ng-click="repositoryEnterEdit(repository)">Edit</a>
                                                 <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                     data-ng-if="!isMirror(repository)"
                                                     data-ng-click="repositoryEnterRemove(repository)">Remove</a>
                                             </div>
-                                            <div class="u-display--mobile">
+                                            <div data-ng-if="windowWidth <= 786">
                                                 <a class="button--secondary" aria-label="Edit"
                                                     data-ng-click="repositoryEnterEdit(repository)">Edit</a>
                                                 <a class="button--secondary" aria-label="Remove"
@@ -404,14 +404,18 @@
                                                 Ubuntu extra architectures
                                             </span>
                                         </span>
-                                        <maas-obj-field type="text" key="name" placeholder="Name"
-                                            disable-label="true" input-class="table__input u-margin--none"
-                                            data-ng-if="!isMirror(repository)"></maas-obj-field>
+                                        <div data-ng-if="windowWidth > 768">
+                                            <maas-obj-field type="text" key="name" placeholder="Name"
+                                                disable-label="true" input-class="table__input" class="u-margin--none"
+                                                data-ng-if="!isMirror(repository)"></maas-obj-field>
+                                        </div>
                                     </div>
                                     <div class="table__data table-col--55">
-                                        <maas-obj-field type="text" key="url" placeholder="URL"
-                                            disable-label="true" input-class="table__input u-margin--none"
-                                            data-ng-if="editRepository === repository"></maas-obj-field>
+                                        <div data-ng-if="windowWidth > 768">
+                                            <maas-obj-field type="text" key="url" placeholder="URL"
+                                                disable-label="true" input-class="table__input" class="u-margin--none"
+                                                data-ng-if="editRepository === repository"></maas-obj-field>
+                                        </div>
                                     </div>
                                     <div class="table__data table-col--10"></div>
                                     <div class="table__data table-col--15">
@@ -440,12 +444,12 @@
                                         <div class="table__row is-active">
                                             <div class="table__data table-col--100 form form--stack">
                                                 <div class="form__fieldset six-col">
-                                                    <div class="form__group u-display--mobile" data-ng-if="!isMirror(repository)">
+                                                    <div class="form__group" data-ng-if="widthWidth <= 768" data-ng-if="!isMirror(repository)">
                                                         <maas-obj-field type="text" key="name" placeholder="Name"
                                                             label="Name" input-class="table__input u-margin--none"
                                                             data-ng-if="!isMirror(repository)"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group u-display--mobile" data-ng-if="editRepository === repository">
+                                                    <div class="form__group" data-ng-if="widthWidth <= 768" data-ng-if="editRepository === repository">
                                                         <maas-obj-field type="text" key="url" placeholder="URL"
                                                             label="URL" input-class="table__input u-margin--none"
                                                             data-ng-if="editRepository === repository"></maas-obj-field>
@@ -526,7 +530,7 @@
                                         <div class="table__row is-active">
                                             <div class="table__data table-col--100 form form--stack">
                                                 <div class="six-col">
-                                                    <div class="u-display--mobile">
+                                                    <div data-ng-if="windowWidth <= 786">
                                                         <maas-obj-field type="text" key="name" placeholder="Name" label="Name" input-class="table__input u-margin--none"></maas-obj-field>
                                                         <maas-obj-field type="text" key="url" placeholder="URL" label="URL" input-class="table__input u-margin--none"></maas-obj-field>
                                                         <dl>

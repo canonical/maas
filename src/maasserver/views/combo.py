@@ -114,6 +114,7 @@ MERGE_VIEWS = {
             "js/angular/directives/placeholder.js",
             "js/angular/directives/version_reloader.js",
             "js/angular/directives/ipranges.js",
+            "js/angular/directives/window_width.js",
             "js/angular/directives/notifications.js",
             "js/angular/filters/nodes.js",
             "js/angular/filters/by_fabric.js",

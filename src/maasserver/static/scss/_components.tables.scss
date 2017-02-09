@@ -976,7 +976,7 @@
       border-color: $color;
 
       @media only screen and (max-width: $breakpoint-medium) {
-        background-color: lighten($color, 40%);
+        background-color: lighten($color, 50%);
       }
 
       .table__header,
@@ -984,7 +984,7 @@
       th,
       td {
         border-color: $color;
-        background-color: lighten($color, 40%);
+        background-color: lighten($color, 50%);
       }
     }
   }
