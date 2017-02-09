@@ -3911,7 +3911,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.RESCUE_MODE,
             previous_status=random.choice([
-                NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]))
+                NODE_STATUS.READY, NODE_STATUS.BROKEN]))
         mock_maaslog = self.patch(node_module, 'maaslog')
         exception_class = factory.make_exception_type()
         exception = exception_class(factory.make_name())

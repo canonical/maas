@@ -671,6 +671,29 @@ class ComposeMachine(amp.Command):
     }
 
 
+class DecomposeMachine(amp.Command):
+    """Decompose a machine in a pod.
+
+    :since: 2.2
+    """
+    arguments = [
+        (b"pod_id", amp.Integer()),
+        (b"name", amp.Unicode()),
+        (b"type", amp.Unicode()),
+        # We can't define a tighter schema here because this is a highly
+        # variable bag of arguments from a variety of sources.
+        (b"context", StructureAsJSON()),
+    ]
+    errors = {
+        exceptions.UnknownPodType: (
+            b"UnknownPodType"),
+        NotImplementedError: (
+            b"NotImplementedError"),
+        exceptions.PodActionFail: (
+            b"PodActionFail"),
+    }
+
+
 class ScanNetworks(amp.Command):
     """Requests an immediate scan of attached networks.
 

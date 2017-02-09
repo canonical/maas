@@ -292,3 +292,82 @@ class TestComposeMachine(MAASTestCase):
             yield pods.compose_machine(
                 fake_driver.name, {}, fake_request,
                 pod_id=pod_id, name=pod_name)
+
+
+class TestDecomposeMachine(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_unknown_pod_raises_UnknownPodType(self):
+        unknown_type = factory.make_name("unknown")
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        with ExpectedException(exceptions.UnknownPodType):
+            yield pods.decompose_machine(
+                unknown_type, {}, pod_id=pod_id, name=pod_name)
+
+    @inlineCallbacks
+    def test_handles_driver_not_returning_Deferred(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.decompose.return_value = None
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+                exceptions.PodActionFail,
+                re.escape(
+                    "bad pod driver '%s'; 'decompose' did not "
+                    "return Deferred." % fake_driver.name)):
+            yield pods.decompose_machine(
+                fake_driver.name, {},
+                pod_id=pod_id, name=pod_name)
+
+    @inlineCallbacks
+    def test_works_when_driver_resolves_to_None(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.decompose.return_value = succeed(None)
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
+        result = yield pods.decompose_machine(
+            fake_driver.name, {},
+            pod_id=pod_id, name=pod_name)
+        self.assertEquals({}, result)
+
+    @inlineCallbacks
+    def test_handles_driver_raising_NotImplementedError(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.decompose.return_value = fail(NotImplementedError())
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(NotImplementedError):
+            yield pods.decompose_machine(
+                fake_driver.name, {},
+                pod_id=pod_id, name=pod_name)
+
+    @inlineCallbacks
+    def test_handles_driver_raising_any_Exception(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_exception_type = factory.make_exception_type()
+        fake_exception_msg = factory.make_name("error")
+        fake_exception = fake_exception_type(fake_exception_msg)
+        fake_driver.decompose.return_value = fail(fake_exception)
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+                exceptions.PodActionFail,
+                re.escape("Failed talking to pod: " + fake_exception_msg)):
+            yield pods.decompose_machine(
+                fake_driver.name, {},
+                pod_id=pod_id, name=pod_name)

@@ -2807,7 +2807,7 @@ class TestClusterProtocol_ComposeMachine(MAASTestCase):
             cluster.ComposeMachine.commandName)
         self.assertIsNotNone(responder)
 
-    def test_calls_discover_pod(self):
+    def test_calls_compose_machine(self):
         mock_compose_machine = self.patch_autospec(
             pods, 'compose_machine')
         mock_compose_machine.return_value = succeed({
@@ -2847,6 +2847,35 @@ class TestClusterProtocol_ComposeMachine(MAASTestCase):
         self.assertThat(
             mock_compose_machine, MockCalledOnceWith(
                 pod_type, context, request, pod_id=pod_id, name=name))
+
+
+class TestClusterProtocol_DecomposeMachine(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DecomposeMachine.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_calls_decompose_machine(self):
+        mock_decompose_machine = self.patch_autospec(
+            pods, 'decompose_machine')
+        mock_decompose_machine.return_value = succeed({})
+        pod_type = factory.make_name('pod_type')
+        context = {
+            "data": factory.make_name("data"),
+        }
+        pod_id = random.randint(1, 100)
+        name = factory.make_name('pod')
+        call_responder(Cluster(), cluster.DecomposeMachine, {
+            'type': pod_type,
+            'context': context,
+            'pod_id': pod_id,
+            'name': name,
+            })
+        self.assertThat(
+            mock_decompose_machine, MockCalledOnceWith(
+                pod_type, context, pod_id=pod_id, name=name))
 
 
 class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):

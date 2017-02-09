@@ -613,6 +613,17 @@ class Cluster(RPCProtocol):
         return pods.compose_machine(
             type, context, request, pod_id=pod_id, name=name)
 
+    @cluster.DecomposeMachine.responder
+    def decompose_machine(
+            self, type, context, pod_id, name):
+        """DecomposeMachine()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DecomposeMachine`.
+        """
+        return pods.decompose_machine(
+            type, context, pod_id=pod_id, name=name)
+
     @cluster.ScanNetworks.responder
     def scan_all_networks(
             self, scan_all=False, force_ping=False, slow=False, threads=None,

@@ -133,3 +133,31 @@ def compose_machine(pod_type, context, request, pod_id, name):
     d.addCallback(convert)
     d.addErrback(catch_all)
     return d
+
+
+@asynchronous
+def decompose_machine(pod_type, context, pod_id, name):
+    """Decompose a machine. The machine to delete is contained in the `context`
+    just like power actions."""
+    pod_driver = PodDriverRegistry.get_item(pod_type)
+    if pod_driver is None:
+        raise UnknownPodType(pod_type)
+    d = pod_driver.decompose(pod_id, context)
+    if not isinstance(d, Deferred):
+        raise PodActionFail(
+            "bad pod driver '%s'; 'decompose' did not return Deferred." % (
+                pod_type))
+
+    def catch_all(failure):
+        """Convert all failures into `PodActionFail` unless already a
+        `PodActionFail` or `NotImplementedError`."""
+        # Log locally to help debugging.
+        log.err(failure, "Failed to decompose machine.")
+        if failure.check(NotImplementedError, PodActionFail):
+            return failure
+        else:
+            raise PodActionFail(get_error_message(failure.value))
+
+    d.addCallback(lambda _: {})
+    d.addErrback(catch_all)
+    return d
