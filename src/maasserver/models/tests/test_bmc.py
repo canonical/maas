@@ -115,6 +115,30 @@ class TestBMC(MAASServerTestCase):
         self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
         self.assertEqual(subnet, bmc.ip_address.subnet)
 
+    def test_bmc_save_accepts_naked_ipv6_address(self):
+        subnet = factory.make_Subnet(cidr=factory.make_ipv6_network())
+        sticky_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+        power_parameters = {
+            'power_address': '%s' % sticky_ip.ip,
+        }
+        bmc = factory.make_BMC(
+            power_type="ipmi", power_parameters=power_parameters)
+        self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
+        self.assertEqual(subnet, bmc.ip_address.subnet)
+
+    def test_bmc_save_accepts_bracketed_ipv6_address(self):
+        subnet = factory.make_Subnet(cidr=factory.make_ipv6_network())
+        sticky_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+        power_parameters = {
+            'power_address': '[%s]' % sticky_ip.ip,
+        }
+        bmc = factory.make_BMC(
+            power_type="ipmi", power_parameters=power_parameters)
+        self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
+        self.assertEqual(subnet, bmc.ip_address.subnet)
+
     def test_bmc_changing_power_parameters_changes_ip(self):
         ip = factory.make_ipv4_address()
         power_parameters = {

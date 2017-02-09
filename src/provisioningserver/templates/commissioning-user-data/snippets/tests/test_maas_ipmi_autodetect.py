@@ -513,34 +513,34 @@ class TestGetIPMIIPAddress(MAASTestCase):
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='  IPv6_Static_Addresses 2001:db8::3\n\n',
             output_dy='',
-            expected='2001:db8::3')),
+            expected='[2001:db8::3]')),
         ('static6 multiple', dict(
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='  IPv6_Static_Addresses fe80::3:7 2001:db8::3\n\n',
             output_dy='',
-            expected='2001:db8::3')),
+            expected='[2001:db8::3]')),
         ('mixed6', dict(
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='  IPv6_Static_Addresses 2001:db8::9:5\n\n',
             output_dy='  ## IPv6_Dynamic_Addresses 2001:db8::3\n\n',
-            expected='2001:db8::9:5')),
+            expected='[2001:db8::9:5]')),
         ('dynamic6', dict(
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='',
             output_dy='  ## IPv6_Dynamic_Addresses 2001:db8::3\n\n',
-            expected='2001:db8::3')),
+            expected='[2001:db8::3]')),
         ('dynamic6 with link-local', dict(
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='',
             output_dy='  ## IPv6_Dynamic_Addresses fe80::3:7 2001:db8::3\n\n',
-            expected='2001:db8::3')),
+            expected='[2001:db8::3]')),
         ('dynamic6 multiple', dict(
             output4='  IP_Address    0.0.0.0\n\n',
             output_st='',
             output_dy=(
                 '  ## IPv6_Dynamic_Addresses fe80::7 2001:db8::3 2001::5\n\n'
             ),
-            expected='2001:db8::3')),
+            expected='[2001:db8::3]')),
         ('link-local', dict(
             output4='',
             output_st='',

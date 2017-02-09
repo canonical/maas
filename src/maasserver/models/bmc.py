@@ -205,7 +205,10 @@ class BMC(CleanSave, TimestampedModel):
         parameters has changed. """
         new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
         current_ip = None if self.ip_address is None else self.ip_address.ip
-        # Set the ip_address field.
+        # Set the ip_address field.  If we have a bracketed address, assume
+        # it's IPv6, and strip the brackets.
+        if new_ip and new_ip.startswith('[') and new_ip.endswith(']'):
+            new_ip = new_ip[1:-1]
         if new_ip != current_ip:
             if new_ip is None:
                 self.ip_address = None

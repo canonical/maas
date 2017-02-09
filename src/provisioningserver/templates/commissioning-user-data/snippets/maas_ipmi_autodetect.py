@@ -167,6 +167,8 @@ def get_ipmi_ip_address():
             if ip.lower().startswith('fe80::') or ip == '0.0.0.0':
                 time.sleep(2)
                 continue
+            if address_type.startswith('Lan6_'):
+                return '[%s]' % ip
             return ip
     # No valid IP address was found.
     return None
