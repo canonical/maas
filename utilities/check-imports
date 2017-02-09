@@ -4,7 +4,11 @@ import argparse
 import ast
 from collections import Iterable
 from glob import iglob
-from itertools import chain
+from itertools import (
+    chain,
+    islice,
+)
+import multiprocessing
 from pathlib import Path
 import re
 import sys
@@ -432,6 +436,7 @@ checks = [
 
 
 def extract(node):
+    """Extract all imports from the given AST node."""
     for node in ast.walk(node):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -446,16 +451,49 @@ def extract(node):
             pass  # Not an import.
 
 
+def _batch(objects, size):
+    """Generate batches of `size` elements from `objects`.
+
+    Each batch is a list of `size` elements exactly, except for the last which
+    may contain fewer than `size` elements.
+    """
+    objects = iter(objects)
+    batch = lambda: list(islice(objects, size))
+    return iter(batch, [])
+
+
+def _expand(checks):
+    """Generate `(rule, batch-of-filenames)` for the given checks.
+
+    It batches filenames to reduce the serialise/unserialise overhead when
+    calling out to a pooled process.
+    """
+    for filenames, rule in checks:
+        rule.compile()  # Compile or it's slow.
+        for filenames in _batch(filenames, 100):
+            yield rule, filenames
+
+
+def _scan1(rule, filename):
+    """Scan one file and check against the given rule."""
+    with tokenize.open(filename) as fd:
+        module = ast.parse(fd.read())
+    imports = set(extract(module))
+    allowed = set(filter(rule.check, imports))
+    denied = imports.difference(allowed)
+    return filename, allowed, denied
+
+
+def _scan(rule, filenames):
+    """Scan the files and check against the given rule."""
+    return [_scan1(rule, filename) for filename in filenames]
+
+
 def scan(checks):
-    for files, rule in checks:
-        rule.compile()
-        for filename in sorted(files):
-            with tokenize.open(filename) as fd:
-                module = ast.parse(fd.read())
-            imports = set(extract(module))
-            allowed = set(filter(rule.check, imports))
-            denied = imports.difference(allowed)
-            yield filename, allowed, denied
+    """Scan many files and check against the given rules."""
+    with multiprocessing.Pool() as pool:
+        for results in pool.starmap(_scan, _expand(checks)):
+            yield from results
 
 
 if sys.stdout.isatty():
