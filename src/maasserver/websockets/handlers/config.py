@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
-from maasserver.forms_settings import (
+from maasserver.forms.settings import (
     CONFIG_ITEMS,
     get_config_field,
     get_config_form,

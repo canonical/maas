@@ -9,7 +9,7 @@ from maasserver.api.support import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_fabric import FabricForm
+from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
 from piston3.utils import rc
 

@@ -9,7 +9,7 @@ from maasserver.api.support import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_staticroute import StaticRouteForm
+from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
 from piston3.utils import rc
 

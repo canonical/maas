@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_staticroute import StaticRouteForm
+from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 

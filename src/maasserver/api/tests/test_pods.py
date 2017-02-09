@@ -10,7 +10,7 @@ import random
 from unittest.mock import MagicMock
 
 from django.core.urlresolvers import reverse
-from maasserver import forms_pods
+from maasserver.forms import pods
 from maasserver.models.node import Machine
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -55,7 +55,7 @@ class PodMixin:
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(forms_pods, "discover_pod").return_value = ({
+        self.patch(pods, "discover_pod").return_value = ({
             discovered_rack_1.system_id: discovered_pod,
             discovered_rack_2.system_id: discovered_pod,
         }, {
@@ -155,7 +155,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
     def test_create_proper_return_on_exception(self):
         self.become_admin()
         failed_rack = factory.make_RackController()
-        self.patch(forms_pods, "discover_pod").return_value = ({}, {
+        self.patch(pods, "discover_pod").return_value = ({}, {
             failed_rack.system_id: factory.make_exception(),
         })
 
@@ -303,12 +303,12 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
 
         # Mock the RPC client.
         client = MagicMock()
-        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
-        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints))
 

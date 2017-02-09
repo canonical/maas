@@ -12,7 +12,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.forms_interface_link import (
+from maasserver.forms.interface_link import (
     InterfaceLinkForm,
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,

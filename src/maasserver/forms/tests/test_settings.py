@@ -5,9 +5,8 @@
 
 __all__ = []
 
-
 from django import forms
-from maasserver.forms_settings import (
+from maasserver.forms.settings import (
     CONFIG_ITEMS,
     get_config_doc,
     get_config_field,

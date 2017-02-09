@@ -12,7 +12,7 @@ from maasserver.api.support import (
 from maasserver.dns.config import dns_force_reload
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_domain import DomainForm
+from maasserver.forms.domain import DomainForm
 from maasserver.models import Domain
 from maasserver.models.dnspublication import zone_serial
 from maasserver.sequence import INT_MAX

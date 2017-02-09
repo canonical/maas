@@ -7,7 +7,7 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
-from maasserver.forms_packagerepository import PackageRepositoryForm
+from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

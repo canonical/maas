@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from django.core.exceptions import PermissionDenied
-from maasserver.forms_staticroute import StaticRouteForm
+from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (

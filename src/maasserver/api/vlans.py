@@ -8,7 +8,7 @@ from django.http import Http404
 from maasserver.api.support import OperationsHandler
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_vlan import VLANForm
+from maasserver.forms.vlan import VLANForm
 from maasserver.models import (
     Fabric,
     Space,

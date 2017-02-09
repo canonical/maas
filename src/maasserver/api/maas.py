@@ -19,7 +19,7 @@ from maasserver.api.support import (
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import UbuntuForm
-from maasserver.forms_settings import (
+from maasserver.forms.settings import (
     get_config_doc,
     get_config_form,
     validate_config_name,

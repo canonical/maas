@@ -7,7 +7,7 @@ __all__ = [
     "PackageRepositoryHandler",
     ]
 
-from maasserver.forms_packagerepository import PackageRepositoryForm
+from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerPermissionError

@@ -12,7 +12,7 @@ from maasserver.api.support import (
 from maasserver.api.utils import get_optional_param
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_subnet import SubnetForm
+from maasserver.forms.subnet import SubnetForm
 from maasserver.models import (
     Space,
     Subnet,

@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_domain import DomainForm
+from maasserver.forms.domain import DomainForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object

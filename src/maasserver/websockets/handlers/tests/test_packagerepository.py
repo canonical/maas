@@ -5,7 +5,7 @@
 
 __all__ = []
 
-import maasserver.forms_packagerepository as forms_packagerepository_module
+import maasserver.forms.packagerepository as forms_packagerepository_module
 from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

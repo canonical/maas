@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_settings import (
+from maasserver.forms.settings import (
     CONFIG_ITEMS,
     get_config_field,
 )

@@ -12,7 +12,7 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
 )
-from maasserver.forms_ephemeral import (
+from maasserver.forms.ephemeral import (
     CommissionForm,
     TestForm,
 )

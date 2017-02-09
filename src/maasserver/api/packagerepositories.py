@@ -11,7 +11,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_packagerepository import PackageRepositoryForm
+from maasserver.forms.packagerepository import PackageRepositoryForm
 from maasserver.models import PackageRepository
 from piston3.utils import rc
 

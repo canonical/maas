@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_vlan import VLANForm
+from maasserver.forms.vlan import VLANForm
 from maasserver.models.fabric import Fabric
 from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory

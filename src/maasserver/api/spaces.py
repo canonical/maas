@@ -13,7 +13,7 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
 )
-from maasserver.forms_space import SpaceForm
+from maasserver.forms.space import SpaceForm
 from maasserver.models import (
     Space,
     Subnet,

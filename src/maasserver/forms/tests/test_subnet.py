@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_subnet import SubnetForm
+from maasserver.forms.subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

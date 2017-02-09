@@ -14,7 +14,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_pods import (
+from maasserver.forms.pods import (
     ComposeMachineForm,
     PodForm,
 )

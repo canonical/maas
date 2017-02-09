@@ -7,7 +7,7 @@ __all__ = []
 
 import random
 
-from maasserver.forms_dnsresource import DNSResourceForm
+from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object

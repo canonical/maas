@@ -9,7 +9,7 @@ from maasserver.exceptions import (
     MAASAPIForbidden,
     MAASAPIValidationError,
 )
-from maasserver.forms_iprange import IPRangeForm
+from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
 from piston3.utils import rc
 

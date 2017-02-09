@@ -8,8 +8,8 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
-from maasserver import forms_dhcpsnippet
-from maasserver.forms_dhcpsnippet import DHCPSnippetForm
+from maasserver.forms import dhcpsnippet
+from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import (
     DHCPSnippet,
     VersionedTextFile,
@@ -23,7 +23,7 @@ class TestDHCPSnippetForm(MAASServerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
+        self.patch(dhcpsnippet, 'validate_dhcp_config').return_value = (
             {})
 
     def test__create_dhcp_snippet_requies_name(self):
@@ -270,7 +270,7 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             'line': factory.make_name('line'),
             'position': factory.make_name('position'),
         }
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
+        self.patch(dhcpsnippet, 'validate_dhcp_config').return_value = (
             [dhcpd_error])
         form = DHCPSnippetForm(data={
             'name': factory.make_name('name'),

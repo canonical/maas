@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
-from maasserver.forms_subnet import SubnetForm
+from maasserver.forms.subnet import SubnetForm
 from maasserver.models import (
     Discovery,
     RackController,

@@ -12,8 +12,8 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
 )
-from maasserver.forms_dnsdata import DNSDataForm
-from maasserver.forms_dnsresource import DNSResourceForm
+from maasserver.forms.dnsdata import DNSDataForm
+from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.models import (
     DNSData,
     DNSResource,

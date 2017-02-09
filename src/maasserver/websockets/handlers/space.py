@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
-from maasserver.forms_space import SpaceForm
+from maasserver.forms.space import SpaceForm
 from maasserver.models.space import Space
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

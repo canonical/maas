@@ -8,7 +8,7 @@ __all__ = []
 from unittest.mock import Mock
 
 from maasserver.enum import IPRANGE_TYPE
-from maasserver.forms_iprange import IPRangeForm
+from maasserver.forms.iprange import IPRangeForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object

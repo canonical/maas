@@ -23,7 +23,7 @@ from maasserver.forms import (
     AddPartitionForm,
     FormatPartitionForm,
 )
-from maasserver.forms_filesystem import MountFilesystemForm
+from maasserver.forms.filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
     Partition,

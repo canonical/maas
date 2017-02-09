@@ -10,7 +10,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
-from maasserver.forms_filesystem import (
+from maasserver.forms.filesystem import (
     MountFilesystemForm,
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,

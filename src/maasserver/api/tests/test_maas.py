@@ -11,7 +11,7 @@ from operator import itemgetter
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.forms_settings import CONFIG_ITEMS_KEYS
+from maasserver.forms.settings import CONFIG_ITEMS_KEYS
 from maasserver.models import PackageRepository
 from maasserver.models.config import (
     Config,

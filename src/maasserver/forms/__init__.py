@@ -82,7 +82,7 @@ from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
 )
-from maasserver.forms_settings import (
+from maasserver.forms.settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
     INVALID_SETTING_MSG_TEMPLATE,
@@ -1409,7 +1409,7 @@ class DeployForm(ConfigForm):
     def _get_default_distro_series_field_for_ui(self):
         """This create the field with os/release. This is needed by the UI
         to filter the releases based on the OS selection. The API uses the
-        field defined in forms_settings.py"""
+        field defined in settings.py"""
         usable_oses = list_all_usable_osystems()
         release_choices = list_release_choices(
             list_all_usable_releases(usable_oses), include_default=False)

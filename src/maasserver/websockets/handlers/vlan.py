@@ -11,8 +11,8 @@ from maasserver.enum import (
     IPRANGE_TYPE,
     NODE_PERMISSION,
 )
-from maasserver.forms_iprange import IPRangeForm
-from maasserver.forms_vlan import VLANForm
+from maasserver.forms.iprange import IPRangeForm
+from maasserver.forms.vlan import VLANForm
 from maasserver.models import (
     Fabric,
     IPRange,

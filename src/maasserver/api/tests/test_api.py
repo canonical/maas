@@ -26,7 +26,7 @@ from maasserver.exceptions import (
     ClusterUnavailable,
     MAASAPIBadRequest,
 )
-from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
+from maasserver.forms.settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     Config,
     KeySource,

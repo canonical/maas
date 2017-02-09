@@ -12,7 +12,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.forms_interface import (
+from maasserver.forms.interface import (
     AcquiredBridgeInterfaceForm,
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,

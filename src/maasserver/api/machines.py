@@ -62,8 +62,8 @@ from maasserver.forms import (
     get_machine_create_form,
     get_machine_edit_form,
 )
-from maasserver.forms_ephemeral import CommissionForm
-from maasserver.forms_filesystem import (
+from maasserver.forms.ephemeral import CommissionForm
+from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
 )

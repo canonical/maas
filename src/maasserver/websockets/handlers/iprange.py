@@ -7,7 +7,7 @@ __all__ = [
     "IPRangeHandler",
     ]
 
-from maasserver.forms_iprange import IPRangeForm
+from maasserver.forms.iprange import IPRangeForm
 from maasserver.models import IPRange
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

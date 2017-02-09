@@ -36,12 +36,12 @@ from maasserver.forms import (
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
-from maasserver.forms_filesystem import (
+from maasserver.forms.filesystem import (
     MountFilesystemForm,
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
 )
-from maasserver.forms_interface import (
+from maasserver.forms.interface import (
     AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
     BridgeInterfaceForm,
@@ -50,7 +50,7 @@ from maasserver.forms_interface import (
     PhysicalInterfaceForm,
     VLANInterfaceForm,
 )
-from maasserver.forms_interface_link import InterfaceLinkForm
+from maasserver.forms.interface_link import InterfaceLinkForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config

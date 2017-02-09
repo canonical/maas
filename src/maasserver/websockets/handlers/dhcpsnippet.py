@@ -9,7 +9,7 @@ __all__ = [
 
 from email.utils import format_datetime
 
-from maasserver.forms_dhcpsnippet import DHCPSnippetForm
+from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (

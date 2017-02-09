@@ -26,7 +26,7 @@ from maasserver.forms import (
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
-from maasserver.forms_filesystem import MountFilesystemForm
+from maasserver.forms.filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
     Machine,

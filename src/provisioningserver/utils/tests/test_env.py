@@ -96,6 +96,7 @@ class TestMAASID(MAASTestCase):
         super(TestMAASID, self).setUp()
         self.maas_id_path = get_path('/var/lib/maas/maas_id')
         self.addCleanup(env.set_maas_id, None)
+        env.set_maas_id(None)
 
     def test_get_returns_None_if_maas_id_file_does_not_exist(self):
         self.assertThat(self.maas_id_path, Not(FileExists()))

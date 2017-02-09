@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from maasserver.forms_space import SpaceForm
+from maasserver.forms.space import SpaceForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object

@@ -8,7 +8,7 @@ __all__ = []
 from email.utils import format_datetime
 import random
 
-import maasserver.forms_dhcpsnippet as forms_dhcpsnippet_module
+import maasserver.forms.dhcpsnippet as forms_dhcpsnippet_module
 from maasserver.models import (
     DHCPSnippet,
     VersionedTextFile,

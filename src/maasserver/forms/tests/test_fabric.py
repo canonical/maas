@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from maasserver.forms_fabric import FabricForm
+from maasserver.forms.fabric import FabricForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object

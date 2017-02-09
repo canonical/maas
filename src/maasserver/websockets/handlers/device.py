@@ -17,7 +17,7 @@ from maasserver.forms import (
     DeviceForm,
     DeviceWithMACsForm,
 )
-from maasserver.forms_interface import PhysicalInterfaceForm
+from maasserver.forms.interface import PhysicalInterfaceForm
 from maasserver.models.node import Device
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet

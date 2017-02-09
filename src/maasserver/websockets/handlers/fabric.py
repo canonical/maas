@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
-from maasserver.forms_fabric import FabricForm
+from maasserver.forms.fabric import FabricForm
 from maasserver.models.fabric import Fabric
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,

@@ -25,7 +25,7 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
     NodeStateViolation,
 )
-from maasserver.forms_interface import (
+from maasserver.forms.interface import (
     AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
     BridgeInterfaceForm,
@@ -35,7 +35,7 @@ from maasserver.forms_interface import (
     PhysicalInterfaceForm,
     VLANInterfaceForm,
 )
-from maasserver.forms_interface_link import (
+from maasserver.forms.interface_link import (
     InterfaceLinkForm,
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,

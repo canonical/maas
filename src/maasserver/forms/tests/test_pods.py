@@ -13,10 +13,10 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
-from maasserver import forms_pods
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
-from maasserver.forms_pods import (
+from maasserver.forms import pods
+from maasserver.forms.pods import (
     ComposeMachineForm,
     PodForm,
 )
@@ -78,7 +78,7 @@ class TestPodForm(MAASServerTestCase):
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(forms_pods, "discover_pod").return_value = ({
+        self.patch(pods, "discover_pod").return_value = ({
             discovered_rack_1.system_id: discovered_pod,
             discovered_rack_2.system_id: discovered_pod,
         }, {
@@ -235,7 +235,7 @@ class TestPodForm(MAASServerTestCase):
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
     def test_raises_unable_to_discover_because_no_racks(self):
-        self.patch(forms_pods, "discover_pod").return_value = ({}, {})
+        self.patch(pods, "discover_pod").return_value = ({}, {})
         form = PodForm(data=self.make_pod_info())
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
@@ -245,7 +245,7 @@ class TestPodForm(MAASServerTestCase):
     def test_raises_exception_from_rack_controller(self):
         failed_rack = factory.make_RackController()
         exc = factory.make_exception()
-        self.patch(forms_pods, "discover_pod").return_value = ({}, {
+        self.patch(pods, "discover_pod").return_value = ({}, {
             failed_rack.system_id: exc,
         })
         form = PodForm(data=self.make_pod_info())
@@ -402,12 +402,12 @@ class TestComposeMachineForm(MAASServerTestCase):
 
         # Mock the RPC client.
         client = MagicMock()
-        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
-        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints))
 
@@ -431,12 +431,12 @@ class TestComposeMachineForm(MAASServerTestCase):
 
         # Mock the RPC client.
         client = MagicMock()
-        mock_getClient = self.patch(forms_pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
-        mock_compose_machine = self.patch(forms_pods, "compose_machine")
+        mock_compose_machine = self.patch(pods, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints))
 

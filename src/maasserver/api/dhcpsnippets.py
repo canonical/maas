@@ -14,7 +14,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms_dhcpsnippet import DHCPSnippetForm
+from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet
 from piston3.utils import rc
 

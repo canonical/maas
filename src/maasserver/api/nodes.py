@@ -43,7 +43,7 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import BulkNodeActionForm
-from maasserver.forms_ephemeral import TestForm
+from maasserver.forms.ephemeral import TestForm
 from maasserver.models import (
     Interface,
     Node,
