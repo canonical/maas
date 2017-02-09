@@ -65,6 +65,7 @@ from maasserver.clusterrpc.power import (
 )
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
+    BMC_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
@@ -2193,8 +2194,9 @@ class Node(CleanSave, TimestampedModel):
         self.interface_set.all().delete()
 
         # Delete my BMC if no other Nodes are using it.
-        if self.bmc is not None and self.bmc.node_set.count() == 1 and (
-                self.bmc.node_set.first() == self):
+        if (self.bmc is not None and
+                self.bmc.bmc_type == BMC_TYPE.BMC and
+                self.bmc.node_set.count() == 1):
             # Delete my orphaned BMC.
             maaslog.info(
                 "%s: Deleting my BMC '%s'", self.hostname, self.bmc)

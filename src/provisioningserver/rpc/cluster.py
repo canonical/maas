@@ -684,6 +684,9 @@ class DecomposeMachine(amp.Command):
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
+    response = [
+        (b"hints", AmpDiscoveredPodHints()),
+    ]
     errors = {
         exceptions.UnknownPodType: (
             b"UnknownPodType"),

@@ -15,6 +15,7 @@ from crochet import wait_for
 from maasserver.clusterrpc import pods as pods_module
 from maasserver.clusterrpc.pods import (
     compose_machine,
+    decompose_machine,
     discover_pod,
     get_best_discovered_result,
 )
@@ -30,7 +31,10 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
 )
-from provisioningserver.rpc.cluster import ComposeMachine
+from provisioningserver.rpc.cluster import (
+    ComposeMachine,
+    DecomposeMachine,
+)
 from provisioningserver.rpc.exceptions import (
     PodActionFail,
     UnknownPodType,
@@ -265,3 +269,100 @@ class TestComposeMachine(MAASServerTestCase):
             pod.id, pod.name)
         self.assertEqual(
             "Unable to composed machine because: %s" % error_msg, str(error))
+
+    def test__raises_same_exception(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        exception_type = factory.make_exception_type()
+        exception_msg = factory.make_name('error')
+        client.return_value = fail(exception_type(exception_msg))
+
+        error = self.assertRaises(
+            exception_type, wait_for_reactor(compose_machine),
+            client,
+            pod.power_type, pod.power_parameters, sentinel.request,
+            pod.id, pod.name)
+        self.assertEqual(exception_msg, str(error))
+
+
+class TestDecomposeMachine(MAASServerTestCase):
+    """Tests for `decompose_machine`."""
+
+    def test__calls_and_returns_correctly(self):
+        hints = DiscoveredPodHints(
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(1024, 8192), local_storage=0)
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = succeed({
+            'hints': hints,
+        })
+
+        result = wait_for_reactor(decompose_machine)(
+            client,
+            pod.power_type, pod.power_parameters, pod.id, pod.name)
+
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                DecomposeMachine,
+                type=pod.power_type, context=pod.power_parameters,
+                pod_id=pod.id, name=pod.name))
+        self.assertEqual(hints, result)
+
+    def test__raises_PodProblem_for_UnknownPodType(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = fail(UnknownPodType(pod.power_type))
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(decompose_machine),
+            client,
+            pod.power_type, pod.power_parameters,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to decomposed machine because '%s' is an "
+            "unknown pod type." % pod.power_type, str(error))
+
+    def test__raises_PodProblem_for_NotImplementedError(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        client.return_value = fail(NotImplementedError())
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(decompose_machine),
+            client,
+            pod.power_type, pod.power_parameters,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to decomposed machine because '%s' driver does not "
+            "implement the 'decompose' method." % pod.power_type, str(error))
+
+    def test__raises_PodProblem_for_PodActionFail(self):
+        pod = factory.make_Pod()
+        error_msg = factory.make_name("error")
+        client = Mock()
+        client.return_value = fail(PodActionFail(error_msg))
+
+        error = self.assertRaises(
+            PodProblem, wait_for_reactor(decompose_machine),
+            client,
+            pod.power_type, pod.power_parameters,
+            pod.id, pod.name)
+        self.assertEqual(
+            "Unable to decomposed machine because: %s" % error_msg, str(error))
+
+    def test__raises_same_exception(self):
+        pod = factory.make_Pod()
+        client = Mock()
+        exception_type = factory.make_exception_type()
+        exception_msg = factory.make_name('error')
+        client.return_value = fail(exception_type(exception_msg))
+
+        error = self.assertRaises(
+            exception_type, wait_for_reactor(decompose_machine),
+            client,
+            pod.power_type, pod.power_parameters,
+            pod.id, pod.name)
+        self.assertEqual(exception_msg, str(error))

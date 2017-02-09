@@ -148,6 +148,17 @@ def decompose_machine(pod_type, context, pod_id, name):
             "bad pod driver '%s'; 'decompose' did not return Deferred." % (
                 pod_type))
 
+    def convert(result):
+        """Convert the result to send over RPC."""
+        if result is None or not isinstance(result, DiscoveredPodHints):
+            raise PodActionFail(
+                "bad pod driver '%s'; 'decompose' returned invalid result." % (
+                    pod_type))
+        else:
+            return {
+                "hints": result
+            }
+
     def catch_all(failure):
         """Convert all failures into `PodActionFail` unless already a
         `PodActionFail` or `NotImplementedError`."""
@@ -158,6 +169,6 @@ def decompose_machine(pod_type, context, pod_id, name):
         else:
             raise PodActionFail(get_error_message(failure.value))
 
-    d.addCallback(lambda _: {})
+    d.addCallback(convert)
     d.addErrback(catch_all)
     return d

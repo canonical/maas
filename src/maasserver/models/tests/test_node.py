@@ -1110,6 +1110,14 @@ class TestNode(MAASServerTestCase):
         nodes[1].delete()
         self.assertIsNone(reload_object(bmc))
 
+    def test_delete_node_doesnt_delete_pod(self):
+        node = factory.make_Node()
+        pod = factory.make_Pod()
+        node.bmc = pod
+        node.save()
+        node.delete()
+        self.assertIsNotNone(reload_object(pod))
+
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
         interface = node.add_physical_interface('AA:BB:CC:DD:EE:FF')

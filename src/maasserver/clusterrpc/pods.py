@@ -11,6 +11,7 @@ from maasserver.exceptions import PodProblem
 from maasserver.rpc import getAllClients
 from provisioningserver.rpc.cluster import (
     ComposeMachine,
+    DecomposeMachine,
     DiscoverPod,
 )
 from provisioningserver.rpc.exceptions import (
@@ -85,7 +86,7 @@ def get_best_discovered_result(discovered):
 
 @asynchronous(timeout=FOREVER)
 def compose_machine(
-        client, pod_type, context, request, pod_id, name, timeout=120):
+        client, pod_type, context, request, pod_id, name):
     """Compose a machine.
 
     :param client: The client to use to make the RPC call.
@@ -115,6 +116,46 @@ def compose_machine(
                     pod_type))
         elif failure.check(PodActionFail):
             raise PodProblem(prefix + ": " + str(failure.value))
+        else:
+            return failure
 
+    d.addErrback(wrap_failure)
+    return d
+
+
+@asynchronous(timeout=FOREVER)
+def decompose_machine(
+        client, pod_type, context, pod_id, name):
+    """Decompose a machine.
+
+    :param client: The client to use to make the RPC call.
+    :param pod_type: Type of pod to discover.
+    :param context: Pod driver information with its machine context to
+        connect to pod and decompose the machine.
+    :param pod_id: ID of the pod in the database.
+    :param name: Name of the pod in the database.
+
+    :returns: Returns a `DiscoveredPodHints` to update the database.
+    """
+    d = client(
+        DecomposeMachine,
+        type=pod_type, context=context, pod_id=pod_id, name=name)
+
+    def wrap_failure(failure):
+        prefix = "Unable to decomposed machine because"
+        if failure.check(UnknownPodType):
+            raise PodProblem(
+                prefix + " '%s' is an unknown pod type." % pod_type)
+        elif failure.check(NotImplementedError):
+            raise PodProblem(
+                prefix +
+                " '%s' driver does not implement the 'decompose' method." % (
+                    pod_type))
+        elif failure.check(PodActionFail):
+            raise PodProblem(prefix + ": " + str(failure.value))
+        else:
+            return failure
+
+    d.addCallback(lambda result: result['hints'])
     d.addErrback(wrap_failure)
     return d

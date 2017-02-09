@@ -326,7 +326,7 @@ class TestDecomposeMachine(MAASTestCase):
                 pod_id=pod_id, name=pod_name)
 
     @inlineCallbacks
-    def test_works_when_driver_resolves_to_None(self):
+    def test_handles_driver_returning_None(self):
         fake_driver = MagicMock()
         fake_driver.name = factory.make_name("pod")
         fake_driver.decompose.return_value = succeed(None)
@@ -334,10 +334,52 @@ class TestDecomposeMachine(MAASTestCase):
         pod_name = factory.make_name("pod")
         self.patch(
             PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+                exceptions.PodActionFail,
+                re.escape(
+                    "bad pod driver '%s'; 'decompose' "
+                    "returned invalid result." % fake_driver.name)):
+            yield pods.decompose_machine(
+                fake_driver.name, {},
+                pod_id=pod_id, name=pod_name)
+
+    @inlineCallbacks
+    def test_handles_driver_not_returning_hints(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.decompose.return_value = succeed(object())
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(
+                exceptions.PodActionFail,
+                re.escape(
+                    "bad pod driver '%s'; 'decompose' "
+                    "returned invalid result." % fake_driver.name)):
+            yield pods.decompose_machine(
+                fake_driver.name, {},
+                pod_id=pod_id, name=pod_name)
+
+    @inlineCallbacks
+    def test_works_when_driver_returns_hints(self):
+        hints = DiscoveredPodHints(
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(1024, 8192), local_storage=0)
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.decompose.return_value = succeed(hints)
+        pod_id = random.randint(1, 10)
+        pod_name = factory.make_name("pod")
+        self.patch(
+            PodDriverRegistry, "get_item").return_value = fake_driver
         result = yield pods.decompose_machine(
             fake_driver.name, {},
             pod_id=pod_id, name=pod_name)
-        self.assertEquals({}, result)
+        self.assertEqual({
+            'hints': hints,
+        }, result)
 
     @inlineCallbacks
     def test_handles_driver_raising_NotImplementedError(self):
