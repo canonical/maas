@@ -115,6 +115,19 @@ describe("maasNotifications", function() {
             ]);
         });
 
+        it("sanitizes messages", function() {
+            var harmfulNotification = angular.copy(exampleNotifications[0]);
+            harmfulNotification.message =
+                "Hello <script>alert('Gotcha');</script><em>World</em>!";
+            theNotificationsManager._items = [harmfulNotification];
+            var directive = compileDirective();
+            var messages = directive.find("div > p");
+            expect(messages.html()).not.toContain("<script>");
+            expect(messages.html()).not.toContain("Gotcha");
+            expect(messages.html()).toContain("<em>World</em>");
+            expect(messages.text()).toContain("Hello World!");
+        });
+
     });
 
 });

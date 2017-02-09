@@ -6,22 +6,17 @@
 __all__ = []
 
 import http.client
-from random import randint
 from urllib.parse import (
     parse_qs,
     urlparse,
 )
-from xmlrpc.client import Fault
 
 from django.conf import settings
 from django.conf.urls import patterns
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.http import Http404
 from django.test.client import RequestFactory
-from django.utils.html import escape
 from lxml.html import fromstring
-from maasserver.components import register_persistent_error
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -29,7 +24,6 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
 )
-from testtools.matchers import ContainsAll
 
 
 class Test404500(MAASServerTestCase):
@@ -313,33 +307,3 @@ class PaginatedListViewTests(MAASServerTestCase):
                 "page": ["4"],
             },
             parse_qs(urlparse(context["last_page_link"]).query))
-
-
-class PermanentErrorDisplayTest(MAASServerTestCase):
-
-    def test_permanent_error_displayed(self):
-        self.client_log_in()
-        fault_codes = [
-            randint(1, 100),
-            randint(101, 200),
-            ]
-        errors = []
-        for fault in fault_codes:
-            # Create component with make_string to be sure to display all
-            # the errors.
-            component = factory.make_name('component')
-            error_message = factory.make_name('error')
-            errors.append(Fault(fault, error_message))
-            register_persistent_error(component, error_message)
-        links = [
-            reverse('index'),
-            reverse('prefs'),
-        ]
-        for link in links:
-            response = self.client.get(link)
-            self.assertThat(
-                response.content,
-                ContainsAll([
-                    escape(error.faultString).encode(settings.DEFAULT_CHARSET)
-                    for error in errors
-                ]))

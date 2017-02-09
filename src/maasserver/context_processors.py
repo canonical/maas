@@ -9,7 +9,6 @@ __all__ = [
     ]
 
 from django.conf import settings
-from maasserver.components import get_persistent_errors
 from maasserver.config import RegionConfiguration
 from maasserver.models import Config
 from maasserver.utils.version import (
@@ -32,7 +31,6 @@ def global_options(request):
     if hasattr(request.user, 'userprofile'):
         user_completed_intro = request.user.userprofile.completed_intro
     return {
-        'persistent_errors': get_persistent_errors(),
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
             'enable_analytics': Config.objects.get_config('enable_analytics'),

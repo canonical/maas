@@ -10,6 +10,7 @@ __all__ = [
     "get_os_info_from_boot_sources",
 ]
 
+import html
 import os
 
 from maasserver.components import (
@@ -208,7 +209,8 @@ def cache_boot_sources():
     component = COMPONENT.REGION_IMAGE_IMPORT
     if len(errors) > 0:
         yield deferToDatabase(
-            register_persistent_error, component, "\n".join(errors))
+            register_persistent_error, component,
+            "<br>".join(map(html.escape, errors)))
     else:
         yield deferToDatabase(
             discard_persistent_error, component)

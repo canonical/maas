@@ -9,7 +9,7 @@
  */
 
 angular.module('MAAS',
-    ['ngRoute', 'ngCookies', 'ngTagsInput', 'sticky']).config(
+    ['ngRoute', 'ngCookies', 'ngSanitize', 'ngTagsInput', 'sticky']).config(
     function($interpolateProvider, $routeProvider, $httpProvider) {
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');

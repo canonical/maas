@@ -1,21 +1,25 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MAAS components management."""
+"""MAAS components notifications.
+
+This is a legacy compatibility shim, to use the new notifications feature to
+display the old components messages. In time this will go away, but it's
+simple enough that there's no rush until it doesn't actually do what we want
+it to do.
+"""
 
 __all__ = [
     "discard_persistent_error",
     "get_persistent_error",
     "get_persistent_errors",
     "register_persistent_error",
-    ]
+]
 
-from django.utils.safestring import mark_safe
-from maasserver.models import ComponentError
-from maasserver.utils.orm import (
-    get_one,
-    transactional,
-)
+from maasserver.enum import COMPONENT
+from maasserver.models import Notification
+from maasserver.utils.orm import transactional
+from provisioningserver.utils.enum import map_enum
 
 
 @transactional
@@ -24,7 +28,7 @@ def discard_persistent_error(component):
 
     :param component: An enum value of :class:`COMPONENT`.
     """
-    ComponentError.objects.filter(component=component).delete()
+    Notification.objects.filter(ident=component).delete()
 
 
 @transactional
@@ -34,25 +38,31 @@ def register_persistent_error(component, error_message):
     :param component: An enum value of :class:`COMPONENT`.
     :param error_message: Human-readable error text.
     """
-    component_error, created = ComponentError.objects.get_or_create(
-        component=component, defaults={'error': error_message})
-    # If we didn't create a new object, we may need to update it if the error
-    # message is different.
-    if not created and component_error.error != error_message:
-        component_error.error = error_message
-        component_error.save()
+    try:
+        notification = Notification.objects.get(ident=component)
+    except Notification.DoesNotExist:
+        notification = Notification.objects.create_error_for_admins(
+            error_message, ident=component)
+    else:
+        if notification.message != error_message:
+            notification.message = error_message
+            notification.save()
 
 
 def get_persistent_error(component):
     """Return persistent error for `component`, or None."""
-    err = get_one(ComponentError.objects.filter(component=component))
-    if err is None:
+    try:
+        notification = Notification.objects.get(ident=component)
+    except Notification.DoesNotExist:
         return None
     else:
-        return err.error
+        return notification.render()
 
 
 def get_persistent_errors():
     """Return list of current persistent error messages."""
+    components = map_enum(COMPONENT).values()
     return sorted(
-        mark_safe(err.error) for err in ComponentError.objects.all())
+        notification.render() for notification in
+        Notification.objects.filter(ident__in=components)
+    )

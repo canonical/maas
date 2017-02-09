@@ -23,6 +23,7 @@ from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from markupsafe import Markup
 
 
 def _create(method, category):
@@ -172,8 +173,14 @@ class Notification(CleanSave, TimestampedModel):
     )
 
     def render(self):
-        """Render this notification's message using its context."""
-        return self.message.format(**self.context)
+        """Render this notification's message using its context.
+
+        The message can contain HTML markup. Values from the context are
+        escaped.
+        """
+        markup = Markup(self.message)
+        markup = markup.format(**self.context)
+        return str(markup)
 
     def is_relevant_to(self, user):
         """Is this notification relevant to the given user?"""

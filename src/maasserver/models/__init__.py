@@ -17,7 +17,6 @@ __all__ = [
     'BootSourceSelection',
     'BridgeInterface',
     'CacheSet',
-    'ComponentError',
     'Config',
     'Controller',
     'Device',
@@ -108,7 +107,6 @@ from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
-from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.discovery import Discovery

@@ -245,6 +245,7 @@ RegionControllerRule = Rule(
     Allow("lxml|lxml.**"),
     Allow("maascli.utils.parse_docstring"),
     Allow("maasserver|maasserver.**"),
+    Allow("markupsafe|markupsafe.**"),
     Allow("metadataserver|metadataserver.**"),
     Allow("netaddr|netaddr.**"),
     Allow("oauth|oauth.**"),

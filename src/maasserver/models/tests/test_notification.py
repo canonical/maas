@@ -167,6 +167,13 @@ class TestNotification(MAASServerTestCase):
                 "There are " + str(thing_b) + " of " +
                 thing_a + " in my suitcase."))
 
+    def test_render_allows_markup_in_message_but_escapes_context(self):
+        message = "<foo>{bar}</foo>"
+        context = {"bar": "<BAR>"}
+        notification = Notification(message=message, context=context)
+        self.assertThat(
+            notification.render(), Equals("<foo>&lt;BAR&gt;</foo>"))
+
     def test_save_checks_that_rendering_works(self):
         message = "Dude, where's my {thing}?"
         notification = Notification(message=message)

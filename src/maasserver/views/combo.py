@@ -39,6 +39,7 @@ MERGE_VIEWS = {
             "angular.min.js",
             "angular-route.min.js",
             "angular-cookies.min.js",
+            "angular-sanitize.min.js",
         ]
     },
     "ng-tags-input.js": {

@@ -10,7 +10,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
       '<div ng-repeat="n in notifications" ng-class="classes[n.category]">',
         '<p class="p-notification__response">',
           '<span class="p-notification__status"></span>',
-          '<span>{$ n.message $}</span> — ',
+          '<span ng-bind-html="n.message"></span> — ',
           '<a ng-click="dismiss(n)">Dismiss</a>',
           '<br><small>(id: {$ n.id $}, ',
           'ident: {$ n.ident || "-" $}, user: {$ n.user || "-" $}, ',

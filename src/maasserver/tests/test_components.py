@@ -10,12 +10,11 @@ import random
 
 from maasserver.components import (
     discard_persistent_error,
-    get_persistent_error,
     get_persistent_errors,
     register_persistent_error,
 )
 from maasserver.enum import COMPONENT
-from maasserver.models.component_error import ComponentError
+from maasserver.models import Notification
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.utils.enum import map_enum
@@ -26,9 +25,6 @@ def get_random_component():
 
 
 class PersistentErrorsUtilitiesTest(MAASServerTestCase):
-
-    def setUp(self):
-        super(PersistentErrorsUtilitiesTest, self).setUp()
 
     def test_register_persistent_error_registers_error(self):
         error_message = factory.make_string()
@@ -70,15 +66,6 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
             components.append(component)
         self.assertItemsEqual(errors, get_persistent_errors())
 
-    def test_get_persistent_error_returns_None_if_no_error(self):
-        self.assertIsNone(get_persistent_error(factory.make_name('component')))
-
-    def test_get_persistent_error_returns_component_error(self):
-        component = factory.make_name('component')
-        error = factory.make_name('error')
-        register_persistent_error(component, error)
-        self.assertEqual(error, get_persistent_error(component))
-
     def test_register_persistent_error_reuses_component_errors(self):
         """When registering a persistent error that already has an error
         recorded for that component, reuse the error instead of deleting and
@@ -87,10 +74,12 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         error1 = factory.make_name('error')
         error2 = factory.make_name('error')
         register_persistent_error(component, error1)
-        error = ComponentError.objects.get(component=component)
-        self.assertEqual(error.error, error1)  # Should be our error
-        error_id = error.id
+        notification = Notification.objects.get(ident=component)
+        self.assertEqual(notification.render(), error1)
+        notification_id = notification.id
         register_persistent_error(component, error2)
-        error = ComponentError.objects.get(component=component)
-        self.assertEqual(error.error, error2)  # Should update the message
-        self.assertEqual(error.id, error_id)  # Should reuse the same id
+        notification = Notification.objects.get(ident=component)
+        # The message is updated.
+        self.assertEqual(notification.render(), error2)
+        # The same notification row is used.
+        self.assertEqual(notification.id, notification_id)
