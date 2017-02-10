@@ -169,6 +169,8 @@ class TestClusterProtocol_Identify(MAASTestCase):
 
 class TestClusterProtocol_Authenticate(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test_authenticate_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.Authenticate.commandName)
@@ -863,6 +865,8 @@ class TestClusterClientServiceIntervals(MAASTestCase):
             "expected": ClusterClientService.INTERVAL_HIGH,
         }),
     )
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def make_inert_client_service(self):
         service = ClusterClientService(Clock())
@@ -2382,6 +2386,8 @@ class TestClusterProtocol_ScanNetworks(MAASTestCase):
 
 class TestClusterProtocol_AddChassis(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
@@ -2760,6 +2766,8 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
 
 class TestClusterProtocol_DiscoverPod(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
@@ -2851,23 +2859,29 @@ class TestClusterProtocol_ComposeMachine(MAASTestCase):
 
 class TestClusterProtocol_DecomposeMachine(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.DecomposeMachine.commandName)
         self.assertIsNotNone(responder)
 
+    @inlineCallbacks
     def test_calls_decompose_machine(self):
         mock_decompose_machine = self.patch_autospec(
             pods, 'decompose_machine')
-        mock_decompose_machine.return_value = succeed({})
+        mock_decompose_machine.return_value = succeed({
+            "hints": DiscoveredPodHints(
+                cores=1, cpu_speed=2, memory=3, local_storage=4),
+        })
         pod_type = factory.make_name('pod_type')
         context = {
             "data": factory.make_name("data"),
         }
         pod_id = random.randint(1, 100)
         name = factory.make_name('pod')
-        call_responder(Cluster(), cluster.DecomposeMachine, {
+        yield call_responder(Cluster(), cluster.DecomposeMachine, {
             'type': pod_type,
             'context': context,
             'pod_id': pod_id,
