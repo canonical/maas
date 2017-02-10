@@ -1,4 +1,4 @@
-<header class="page-header u-margin--bottom" sticky>
+<header class="page-header u-margin--bottom" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <h1 class="page-header__title">Settings</h1>
         <ul class="tabs">
@@ -121,7 +121,7 @@
                                         </div>
                                         <div class="table__row form is-active">
                                             <div class="table__data table-col--100 u-padding--top-none">
-                                                <div data-ng-if="windowWidth <= 786">
+                                                <div data-ng-if="windowWidth <= 768">
                                                     <maas-obj-field type="text" key="name" placeholder="Name"
                                                         label="Name" input-class="table__input u-margin--none"></maas-obj-field>
                                                     <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -179,15 +179,19 @@
                                         <div class="table__row form is-active">
                                             <div data-ng-if="windowWidth >= 769">
                                                 <div class="table__data table-col--20">
+                                                    <label for="name" class="u-display--mobile">Name</label>
                                                     <maas-obj-field type="text" key="name" placeholder="Name"
-                                                        disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
+                                                        disable-label="true" input-class="table__input u-margin--none" class="u-margin--bottom-none"></maas-obj-field>
                                                 </div>
                                                 <div class="table__data table-col--15">
-                                                    <maas-obj-field type="options" key="type" placeholder="Select type"
+                                                    <label for="Select type" class="u-display--mobile">Select type</label>
+                                                    <maas-obj-field type="options" key="type" class="u-margin--bottom-none" placeholder="Select type"
                                                         disable-label="true" input-class="table__input u-margin--none"
                                                         options="type for type in snippetTypes"></maas-obj-field>
                                                 </div>
                                                 <div class="table__data table-col--35">
+                                                    <label for="subnet" class="u-display--mobile" data-ng-if="newSnippet.$maasForm.getValue('type') === 'Subnet'">Choose subnet</label>
+                                                    <label for="node" class="u-display--mobile" data-ng-if="newSnippet.$maasForm.getValue('type') === 'Node'">Choose node</label>
                                                     <maas-obj-field type="options" key="subnet" placeholder="Choose subnet"
                                                         disable-label="true" input-class="table__input u-margin--none"
                                                         options="subnet.id as getSubnetName(subnet) for subnet in subnets"
@@ -199,18 +203,23 @@
                                                     </maas-obj-field>
                                                 </div>
                                                 <div class="table__data table-col--10">
-                                                    <div class="onoffswitch">
-                                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
-                                                            data-ng-model="newSnippet.data.enabled"
-                                                            data-ng-disabled="newSnippet.saving" checked>
-                                                        <label class="onoffswitch-label" for="newEnabled">
-                                                            <span class="onoffswitch-inner"></span>
-                                                            <span class="onoffswitch-switch"></span>
-                                                        </label>
+                                                    <div class="form__group">
+                                                        <label for="enable" class="form__group-label u-display--mobile">Enable</label>
+                                                        <div class="form__group-input">
+                                                            <div class="onoffswitch">
+                                                                <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
+                                                                    data-ng-model="newSnippet.data.enabled"
+                                                                    data-ng-disabled="newSnippet.saving" checked>
+                                                                <label class="onoffswitch-label" for="newEnabled">
+                                                                    <span class="onoffswitch-inner"></span>
+                                                                    <span class="onoffswitch-switch"></span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="table__data" data-ng-if="widthWidth <= 768">
+                                            <div class="table__data" data-ng-if="windowWidth <= 768">
                                                 <maas-obj-field type="text" key="name" placeholder="Name"
                                                     label="Name" input-class="table__input"></maas-obj-field>
                                                 <maas-obj-field type="options" key="type" placeholder="Select type"
@@ -444,12 +453,12 @@
                                         <div class="table__row is-active">
                                             <div class="table__data table-col--100 form form--stack">
                                                 <div class="form__fieldset six-col">
-                                                    <div class="form__group" data-ng-if="widthWidth <= 768" data-ng-if="!isMirror(repository)">
+                                                    <div class="form__group" data-ng-if="windowWidth <= 768" data-ng-if="!isMirror(repository)">
                                                         <maas-obj-field type="text" key="name" placeholder="Name"
                                                             label="Name" input-class="table__input u-margin--none"
                                                             data-ng-if="!isMirror(repository)"></maas-obj-field>
                                                     </div>
-                                                    <div class="form__group" data-ng-if="widthWidth <= 768" data-ng-if="editRepository === repository">
+                                                    <div class="form__group" data-ng-if="windowWidth <= 768" data-ng-if="editRepository === repository">
                                                         <maas-obj-field type="text" key="url" placeholder="URL"
                                                             label="URL" input-class="table__input u-margin--none"
                                                             data-ng-if="editRepository === repository"></maas-obj-field>

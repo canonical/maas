@@ -81,6 +81,12 @@
 
     &--inline {
       display: inline !important;
+
+      @media only screen and (max-width : $breakpoint-medium) {
+        &-mobile {
+          display: inline !important;
+        }
+      }
     }
 
     &--inline-block {
