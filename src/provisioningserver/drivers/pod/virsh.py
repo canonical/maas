@@ -8,7 +8,10 @@ __all__ = [
     'VirshPodDriver',
     ]
 
+import string
 from tempfile import NamedTemporaryFile
+from textwrap import dedent
+import uuid
 
 from lxml import etree
 import pexpect
@@ -28,6 +31,7 @@ from provisioningserver.drivers.pod import (
     PodDriver,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
@@ -53,6 +57,47 @@ XPATH_BOOT = "/domain/os/boot"
 XPATH_OS = "/domain/os"
 
 
+DOM_TEMPLATE = dedent("""\
+    <domain type='{type}'>
+      <name>{name}</name>
+      <uuid>{uuid}</uuid>
+      <memory unit='MiB'>{memory}</memory>
+      <vcpu>{cores}</vcpu>
+      <os>
+        <type arch="{arch}">hvm</type>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+      </features>
+      <clock offset="utc"/>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>{emulator}</emulator>
+        <controller type='pci' index='0' model='pci-root'/>
+        <controller type='virtio-serial' index='0'>
+          <address type='pci' domain='0x0000'
+            bus='0x00' slot='0x05' function='0x0'/>
+        </controller>
+        <serial type='pty'>
+          <target port='0'/>
+        </serial>
+        <console type='pty'>
+          <target type='serial' port='0'/>
+        </console>
+        <input type='mouse' bus='ps2'/>
+        <input type='keyboard' bus='ps2'/>
+      </devices>
+    </domain>
+    """)
+
+
 # Virsh stores the architecture with a different
 # label then MAAS. This maps virsh architecture to
 # MAAS architecture.
@@ -62,6 +107,10 @@ ARCH_FIX = {
     'ppc64le': 'ppc64el/generic',
     'i686': 'i386/generic',
     }
+ARCH_FIX_REVERSE = {
+    value: key
+    for key, value in ARCH_FIX.items()
+}
 
 
 REQUIRED_PACKAGES = [["virsh", "libvirt-bin"],
@@ -299,16 +348,6 @@ class VirshSSH(pexpect.spawn):
         # Memory in MiB.
         return int(KiB / 1024)
 
-    def get_pod_available_memory(self):
-        """Gets the available memory of the pod."""
-        output = self.run(['nodememstats']).strip()
-        if output is None:
-            maaslog.error("Failed to get available pod memory")
-            return None
-        KiB = int(self.get_key_value(output, "free"))
-        # Memory in MiB.
-        return int(KiB / 1024)
-
     def get_machine_memory(self, machine):
         """Gets the VM memory."""
         output = self.run(['dominfo', machine]).strip()
@@ -319,19 +358,27 @@ class VirshSSH(pexpect.spawn):
         # Memory in MiB.
         return int(KiB / 1024)
 
-    def get_pod_local_storage(self):
-        """Gets the total local storage for the pod."""
-        pools = self.list_pools()
-        local_storage = 0
-        for pool in pools:
+    def get_pod_pool_size_map(self, key):
+        """Return the mapping for a size calulation based on key."""
+        pools = {}
+        for pool in self.list_pools():
             output = self.run(['pool-info', pool]).strip()
             if output is None:
-                maaslog.error("Failed to get pod local storage")
-                return None
-            local_storage += float(self.get_key_value(
-                output, "Capacity"))
-        # Local storage in bytes. GiB to bytes.
-        return int(local_storage * 2**30)
+                # Skip if cannot get more information.
+                continue
+            capacity = float(
+                self.get_key_value(output, key))
+            # Convert GiB to bytes.
+            pools[pool] = int(capacity * 2**30)
+        return pools
+
+    def get_pod_local_storage(self):
+        """Gets the total local storage for the pod."""
+        pools = self.get_pod_pool_size_map("Capacity")
+        if len(pools) == 0:
+            maaslog.error("Failed to get pod local storage")
+            return None
+        return sum(pools.values())
 
     def get_pod_available_local_storage(self):
         """Gets the available local storage for the pod."""
@@ -363,7 +410,8 @@ class VirshSSH(pexpect.spawn):
         if output is None:
             maaslog.error("Failed to get pod architecture")
             return None
-        return self.get_key_value(output, "CPU model")
+        arch = self.get_key_value(output, "CPU model")
+        return ARCH_FIX.get(arch, arch)
 
     def get_machine_arch(self, machine):
         """Gets the VM architecture."""
@@ -388,6 +436,7 @@ class VirshSSH(pexpect.spawn):
                 cores=0, cpu_speed=0, memory=0, local_storage=0))
         discovered_pod.architectures = [self.get_pod_arch()]
         discovered_pod.capabilities = [
+            Capabilities.COMPOSABLE,
             Capabilities.DYNAMIC_LOCAL_STORAGE,
             Capabilities.OVER_COMMIT,
         ]
@@ -401,7 +450,12 @@ class VirshSSH(pexpect.spawn):
         """Gets the discovered pod hints."""
         discovered_pod_hints = DiscoveredPodHints(
             cores=0, cpu_speed=0, memory=0, local_storage=0)
-        discovered_pod_hints.memory = self.get_pod_available_memory()
+        # You can always create a domain up to the size of total cores,
+        # memory, and cpu_speed even if that amount is already in use.
+        # Not a good idea, but possible.
+        discovered_pod_hints.cores = self.get_pod_cpu_count()
+        discovered_pod_hints.cpu_speed = self.get_pod_cpu_speed()
+        discovered_pod_hints.memory = self.get_pod_memory()
         discovered_pod_hints.local_storage = (
             self.get_pod_available_local_storage())
         return discovered_pod_hints
@@ -498,6 +552,179 @@ class VirshSSH(pexpect.spawn):
             return False
         return True
 
+    def get_usable_pool(self, size):
+        """Return the pool that as enough space for `size`."""
+        pools = self.get_pod_pool_size_map("Available")
+        for pool, available in pools.items():
+            if size <= available:
+                return pool
+        return None
+
+    def create_local_volume(self, size):
+        """Create a local volume with `size`."""
+        usable_pool = self.get_usable_pool(size)
+        if usable_pool is None:
+            return None
+        volume = str(uuid.uuid4())
+        self.run([
+            'vol-create-as', usable_pool, volume, str(size),
+            '--allocation', '0', '--format', 'raw'])
+        return usable_pool, volume
+
+    def delete_local_volume(self, pool, volume):
+        """Delete a local volume from `pool` with `volume`."""
+        self.run(['vol-delete', volume, '--pool', pool])
+
+    def get_volume_path(self, pool, volume):
+        """Return the path to the file from `pool` and `volume`."""
+        output = self.run(['vol-path', volume, '--pool', pool])
+        return output.strip()
+
+    def attach_local_volume(self, domain, pool, volume, device):
+        """Attach `volume` in `pool` to `domain` as `device`."""
+        vol_path = self.get_volume_path(pool, volume)
+        self.run([
+            'attach-disk', domain, vol_path, device,
+            '--targetbus', 'virtio', '--sourcetype', 'file', '--config'])
+
+    def get_network_list(self):
+        """Return the list of available networks."""
+        output = self.run(['net-list', '--name'])
+        return output.strip().splitlines()
+
+    def get_best_network(self):
+        """Return the best possible network."""
+        networks = self.get_network_list()
+        if 'maas' in networks:
+            return 'maas'
+        elif 'default' in networks:
+            return 'default'
+        elif len(networks) > 0:
+            return networks[0]
+        else:
+            return None
+
+    def attach_interface(self, domain, network):
+        """Attach new network interface on `domain` to `network`."""
+        self.run([
+            'attach-interface', domain, 'network', network,
+            '--model', 'virtio', '--config'])
+
+    def get_domain_capabilites(self):
+        """Return the domain capabilities.
+
+        Determines the type and emulator of the domain to use.
+        """
+        try:
+            # Test for KVM support first.
+            xml = self.run(['domcapabilities', '--virttype', 'kvm'])
+            emulator_type = 'kvm'
+        except Exception:
+            # Fallback to qemu support. Fail if qemu not supported.
+            xml = self.run(['domcapabilities', '--virttype', 'qemu'])
+            emulator_type = 'qemu'
+        doc = etree.XML(xml)
+        evaluator = etree.XPathEvaluator(doc)
+        emulator = evaluator('/domainCapabilities/path')[0].text
+        return {
+            'type': emulator_type,
+            'emulator': emulator,
+        }
+
+    def cleanup_disks(self, pool_vols):
+        """Delete all volumes."""
+        for pool, volume in pool_vols:
+            try:
+                self.delete_local_volume(pool, volume)
+            except Exception:
+                # Ignore any exception trying to cleanup.
+                pass
+
+    def get_block_name_from_idx(self, idx):
+        """Calculate a block name based on the `idx`.
+
+        Drive#  Name
+        0	    vda
+        25	    vdz
+        26	    vdaa
+        27	    vdab
+        51	    vdaz
+        52	    vdba
+        53	    vdbb
+        701	    vdzz
+        702	    vdaaa
+        703	    vdaab
+        18277   vdzzz
+        """
+        name = ""
+        while idx >= 0:
+            name = string.ascii_lowercase[idx % 26] + name
+            idx = (idx // 26) - 1
+        return "vd" + name
+
+    def create_domain(self, request):
+        """Create a domain based on the `request`.
+
+        For now this just uses `get_best_network` to connect the interfaces
+        of the domain to the network.
+        """
+        # Create all the block devices first. If cannot complete successfully
+        # then fail early.
+        created_disks = []
+        for idx, disk in enumerate(request.block_devices):
+            try:
+                disk_info = self.create_local_volume(disk.size)
+            except Exception:
+                self.cleanup_disks(created_disks)
+                raise
+            else:
+                if disk_info is None:
+                    raise PodInvalidResources(
+                        "not enough space for disk %d." % idx)
+                else:
+                    created_disks.append(disk_info)
+
+        # Construct the domain XML.
+        domain_name = str(uuid.uuid4())
+        domain_params = self.get_domain_capabilites()
+        domain_params['name'] = domain_params['uuid'] = domain_name
+        domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
+        domain_params['cores'] = str(request.cores)
+        domain_params['memory'] = str(request.memory)
+        domain_xml = DOM_TEMPLATE.format(**domain_params)
+
+        # Define the domain in virsh.
+        with NamedTemporaryFile() as f:
+            f.write(domain_xml.encode('utf-8'))
+            f.write(b'\n')
+            f.flush()
+            self.run(['define', f.name])
+
+        # Attach the created disks in order.
+        for idx, (pool, volume) in enumerate(created_disks):
+            block_name = self.get_block_name_from_idx(idx)
+            self.attach_local_volume(domain_name, pool, volume, block_name)
+
+        # Attach new interfaces to the best possible network.
+        best_network = self.get_best_network()
+        for _ in request.interfaces:
+            self.attach_interface(domain_name, best_network)
+
+        # Setup the domain to PXE boot.
+        self.configure_pxe_boot(domain_name)
+
+        # Return the result as a discovered machine.
+        return self.get_discovered_machine(domain_name)
+
+    def delete_domain(self, domain):
+        """Delete `domain` and its volumes."""
+        # Ensure that its destroyed first.
+        self.run(['destroy', domain])
+        # Undefine the domains and remove all storage and snapshots.
+        self.run([
+            'undefine', domain,
+            '--remove-all-storage', '--delete-snapshots', '--managed-save'])
+
 
 class VirshPodDriver(PodDriver):
 
@@ -505,9 +732,9 @@ class VirshPodDriver(PodDriver):
     description = "Virsh (virtual systems)"
     settings = [
         make_setting_field(
-            'power_address', "Virsh pod address", required=True),
+            'power_address', "Virsh address", required=True),
         make_setting_field(
-            'power_pass', "Virsh pod password (optional)",
+            'power_pass', "Virsh password (optional)",
             required=False, field_type='password'),
         make_setting_field(
             'power_id', "Virsh VM ID", scope=SETTING_SCOPE.NODE,
@@ -594,11 +821,8 @@ class VirshPodDriver(PodDriver):
         return self.power_state_virsh(**context)
 
     @inlineCallbacks
-    def discover(self, system_id, context):
-        """Discover all resources.
-
-        Rertuns a defer to a DiscoveredPod object.
-        """
+    def get_virsh_connection(self, context):
+        """Connect and return the virsh connection."""
         power_address = context.get('power_address')
         power_pass = context.get('power_pass')
         # Login to Virsh console.
@@ -606,20 +830,28 @@ class VirshPodDriver(PodDriver):
         logged_in = yield deferToThread(conn.login, power_address, power_pass)
         if not logged_in:
             raise VirshError('Failed to login to virsh console.')
+        return conn
+
+    @inlineCallbacks
+    def discover(self, system_id, context):
+        """Discover all resources.
+
+        Rertuns a defer to a DiscoveredPod object.
+        """
+        conn = yield self.get_virsh_connection(context)
 
         # Discover pod resources.
-        discovered_pod = yield conn.get_pod_resources()
+        discovered_pod = yield deferToThread(conn.get_pod_resources)
 
         # Discovered pod hints.
-        discovered_pod.hints = yield conn.get_pod_hints()
-        discovered_pod.hints.cores = discovered_pod.cores
-        discovered_pod.hints.cpu_speed = discovered_pod.cpu_speed
+        discovered_pod.hints = yield deferToThread(conn.get_pod_hints)
 
         # Discover VMs.
         machines = []
         virtual_machines = yield deferToThread(conn.list_machines)
         for vm in virtual_machines:
-            discovered_machine = yield conn.get_discovered_machine(vm)
+            discovered_machine = yield deferToThread(
+                conn.get_discovered_machine, vm)
             discovered_machine.cpu_speed = discovered_pod.cpu_speed
             machines.append(discovered_machine)
         discovered_pod.machines = machines
@@ -630,12 +862,18 @@ class VirshPodDriver(PodDriver):
     @inlineCallbacks
     def compose(self, system_id, context, request):
         """Compose machine."""
-        raise NotImplementedError
+        conn = yield self.get_virsh_connection(context)
+        created_machine = yield deferToThread(conn.create_domain, request)
+        hints = yield deferToThread(conn.get_pod_hints)
+        return created_machine, hints
 
     @inlineCallbacks
     def decompose(self, system_id, context):
         """Decompose machine."""
-        raise NotImplementedError
+        conn = yield self.get_virsh_connection(context)
+        yield deferToThread(conn.delete_domain, context['power_id'])
+        hints = yield deferToThread(conn.get_pod_hints)
+        return hints
 
 
 @synchronous
