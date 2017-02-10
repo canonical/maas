@@ -151,7 +151,7 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertItemsEqual(
             ['release', 'mark-broken', 'on', 'deploy', 'mark-fixed',
              'commission', 'abort', 'acquire', 'off', 'rescue-mode',
-             'exit-rescue-mode', 'test'],
+             'exit-rescue-mode'],
             [action['name'] for action in handler.machine_actions({})])
 
     def test_device_actions_for_admin(self):
@@ -178,7 +178,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         self.assertItemsEqual(
-            ['delete', 'import-images', 'off', 'on', 'set-zone', 'test'],
+            ['delete', 'import-images', 'off', 'on', 'set-zone'],
             [action['name'] for action in handler.rack_controller_actions({})])
 
     def test_rack_controller_actions_for_non_admin(self):

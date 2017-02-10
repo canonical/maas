@@ -557,7 +557,6 @@ class ExitRescueMode(NodeAction):
 
 ACTION_CLASSES = (
     Commission,
-    Test,
     Acquire,
     Deploy,
     PowerOn,

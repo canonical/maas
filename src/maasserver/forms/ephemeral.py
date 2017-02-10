@@ -15,7 +15,11 @@ from django.forms import (
 )
 from django.http import QueryDict
 from maasserver.enum import NODE_STATUS
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import (
+    ACTION_CLASSES,
+    compile_node_actions,
+    Test,
+)
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
@@ -55,7 +59,12 @@ class TestForm(Form):
         self._display = 'Test'
 
     def _get_node_action(self):
-        actions = compile_node_actions(self.instance, self.user)
+        # XXX ltrager 2017-02-10 - Testing isn't in the action classes to
+        # prevent testing from showing in the UI while we do the testing UI.
+        # Once its added back we no longer need to pass action_classes.
+        action_classes = ACTION_CLASSES + (Test,)
+        actions = compile_node_actions(
+            self.instance, self.user, classes=action_classes)
         return actions.get(self._name)
 
     def clean(self):
