@@ -527,6 +527,90 @@ SAMPLE_JSON_MEMORY = {
 }
 
 
+def make_context():
+    return {
+        'power_address': factory.make_ip_address(),
+        'power_user': factory.make_name('power_user'),
+        'power_pass': factory.make_name('power_pass'),
+        'node_id': factory.make_name('node_id'),
+    }
+
+
+def make_requested_machine(cores=None, memory=None, cpu_speed=None):
+    if cores is None:
+        cores = random.randint(2, 4)
+    if memory is None:
+        memory = random.randint(1024, 4096)
+    if cpu_speed is None:
+        cpu_speed = random.randint(2000, 3000)
+    block_devices = [
+        RequestedMachineBlockDevice(
+            size=random.randint(1024 ** 3, 4 * 1024 ** 3))
+        for _ in range(3)
+    ]
+    interfaces = [
+        RequestedMachineInterface()
+        for _ in range(3)
+    ]
+    return RequestedMachine(
+        architecture="amd64/generic",
+        cores=cores, memory=memory, cpu_speed=cpu_speed,
+        block_devices=block_devices, interfaces=interfaces)
+
+
+def make_discovered_machine():
+    block_devices = [
+        DiscoveredMachineBlockDevice(
+            model=factory.make_name("model"),
+            serial=factory.make_name("serial"),
+            size=random.randint(1024 ** 3, 4 * 1024 ** 3))
+        for _ in range(3)
+    ]
+    interfaces = [
+        DiscoveredMachineInterface(
+            mac_address=factory.make_mac_address())
+        for _ in range(3)
+    ]
+    return DiscoveredMachine(
+        architecture="amd64/generic", cores=random.randint(2, 4),
+        cpu_speed=random.randint(2000, 3000),
+        memory=random.randint(1024, 4096),
+        interfaces=interfaces, block_devices=block_devices,
+        power_state=factory.make_name('unknown'), power_parameters={
+            'node_id': factory.make_name('node_id')})
+
+
+def make_discovered_pod(
+        cores=None, cpu_speed=None, memory=None, storage=None, disks=None):
+    if cores is None:
+        cores = 8 * 4
+    if cpu_speed is None:
+        cpu_speed = 2000
+    if memory is None:
+        memory = 8192 * 4
+    if storage is None:
+        storage = 1024 * 3 * 4
+    if disks is None:
+        disks = 3 * 3 * 4
+    machines = []
+    cpu_speeds = [cpu_speed]
+    for _ in range(3):
+        machine = make_discovered_machine()
+        machine.cpu_speeds = [machine.cpu_speed]
+        machines.append(machine)
+        cpu_speeds.append(machine.cpu_speed)
+    discovered_pod = DiscoveredPod(
+        architectures=[],
+        cores=cores, cpu_speed=cpu_speed, memory=memory,
+        local_storage=storage, hints=DiscoveredPodHints(
+            cores=0, cpu_speed=0, memory=0,
+            local_storage=0, local_disks=0),
+        machines=machines, local_disks=disks)
+    # Add cpu_speeds to the DiscoveredPod.
+    discovered_pod.cpu_speeds = cpu_speeds
+    return discovered_pod
+
+
 class TestWebClientContextFactory(MAASTestCase):
 
     def test_creatorForNetloc_returns_tls_options(self):
@@ -541,84 +625,6 @@ class TestRSDPodDriver(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def make_context(self):
-        return {
-            'power_address': factory.make_ip_address(),
-            'power_user': factory.make_name('power_user'),
-            'power_pass': factory.make_name('power_pass'),
-            'node_id': factory.make_name('node_id'),
-            }
-
-    def make_discovered_pod(
-            self, cores=None, cpu_speed=None, memory=None,
-            storage=None, disks=None):
-        if cores is not None:
-            pod_cores = cores
-        else:
-            pod_cores = 8 * 4
-        if cpu_speed is not None:
-            pod_cpu_speed = cpu_speed
-        else:
-            pod_cpu_speed = 2000
-        if memory is not None:
-            pod_memory = memory
-        else:
-            pod_memory = 8192 * 4
-        if storage is not None:
-            pod_local_storage = storage
-        else:
-            pod_local_storage = 1024 * 3 * 4
-        if disks is not None:
-            pod_local_disks = disks
-        else:
-            pod_local_disks = 3 * 3 * 4
-        pod_hints = DiscoveredPodHints(
-            cores=0, cpu_speed=0, memory=0,
-            local_storage=0, local_disks=0)
-        pod_machines = []
-        pod_cpu_speeds = [pod_cpu_speed]
-        for _ in range(3):
-            machine_cores = random.randint(2, 64)
-            machine_cpu_speed = random.randint(1000, 2000)
-            machine_memory = random.randint(4096, 8192)
-            power_state = factory.make_name('unknown')
-            power_parameters = {
-                'power_id': factory.make_name('power_id'),
-            }
-            interfaces = [
-                DiscoveredMachineInterface(
-                    mac_address=factory.make_mac_address())
-                for _ in range(3)
-            ]
-            block_devices = [
-                DiscoveredMachineBlockDevice(
-                    model=factory.make_name("model"),
-                    serial=factory.make_name("serial"),
-                    size=random.randint(2048, 4096))
-                for _ in range(3)
-            ]
-            tags = [
-                factory.make_name("tag")
-                for _ in range(3)
-            ]
-            machine = DiscoveredMachine(
-                architecture='amd64/generic',
-                cores=machine_cores, cpu_speed=machine_cpu_speed,
-                memory=machine_memory, power_state=power_state,
-                power_parameters=power_parameters, interfaces=interfaces,
-                block_devices=block_devices, tags=tags)
-            machine.cpu_speeds = [machine_cpu_speed]
-            pod_machines.append(machine)
-            pod_cpu_speeds.append(machine_cpu_speed)
-        discovered_pod = DiscoveredPod(
-            architectures=[],
-            cores=pod_cores, cpu_speed=pod_cpu_speed, memory=pod_memory,
-            local_storage=pod_local_storage, hints=pod_hints,
-            machines=pod_machines, local_disks=pod_local_disks)
-        # Add cpu_speeds to the DiscoveredPod.
-        discovered_pod.cpu_speeds = pod_cpu_speeds
-        return discovered_pod
-
     def test_missing_packages(self):
         # there's nothing to check for, just confirm it returns []
         driver = RSDPodDriver()
@@ -627,7 +633,7 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test_get_url_with_ip(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         ip = context.get('power_address').encode('utf-8')
         expected_url = b"https://%s" % ip
         url = driver.get_url(context)
@@ -635,7 +641,7 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test_get_url_with_https(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         context['power_address'] = join(
             "https://", context['power_address'])
         expected_url = context.get('power_address').encode('utf-8')
@@ -644,7 +650,7 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test_get_url_with_http(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         context['power_address'] = join(
             "http://", context['power_address'])
         expected_url = context.get('power_address').encode('utf-8')
@@ -668,7 +674,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_redfish_request_renders_response(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         uri = join(url, b"redfish/v1/Systems")
         headers = driver.make_auth_headers(**context)
@@ -686,7 +692,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_redfish_request_continues_partial_download_error(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         uri = join(url, b"redfish/v1/Systems")
         headers = driver.make_auth_headers(**context)
@@ -706,7 +712,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_redfish_request_raises_failures(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         uri = join(url, b"redfish/v1/Systems")
         headers = driver.make_auth_headers(**context)
@@ -727,7 +733,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__list_resources(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         endpoint = factory.make_name('endpoint')
         headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
@@ -744,7 +750,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_pod_memory_resources(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -766,7 +772,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_pod_processor_resources(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -790,7 +796,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_pod_storage_resources(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -816,7 +822,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__scan_machine_memories(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -838,7 +844,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__scan_machine_processors(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -863,7 +869,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__scan_machine_local_storage(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -898,7 +904,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__scan_machine_interfaces(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
@@ -953,7 +959,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_pod_resources(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         mock_list_resources = self.patch(driver, 'list_resources')
@@ -998,7 +1004,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_get_pod_resources_skips_invalid_systems(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         mock_list_resources = self.patch(driver, 'list_resources')
@@ -1027,7 +1033,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_pod_machines(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
         mock_list_resources = self.patch(driver, 'list_resources')
@@ -1069,7 +1075,7 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test_get_pod_hints(self):
         driver = RSDPodDriver()
-        discovered_pod = self.make_discovered_pod()
+        discovered_pod = make_discovered_pod()
         # Calculate expected hints.
         used_cores = used_memory = used_storage = used_disks = 0
         for machine in discovered_pod.machines:
@@ -1100,7 +1106,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_discover(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         headers = driver.make_auth_headers(**context)
         url = driver.get_url(context)
         mock_get_pod_resources = self.patch(
@@ -1118,15 +1124,7 @@ class TestRSDPodDriver(MAASTestCase):
 
     def test__convert_request_to_json_payload(self):
         driver = RSDPodDriver()
-        request = RequestedMachine(
-            architecture="amd64/generic", cores=32,
-            memory=8192, cpu_speed=2000,
-            block_devices=[
-                RequestedMachineBlockDevice(size=4 * 1073741824)
-                for _ in range(3)],
-            interfaces=[
-                RequestedMachineInterface()
-                for _ in range(2)])
+        request = make_requested_machine()
         processors = 2
         cores = request.cores / 2
         payload = driver.convert_request_to_json_payload(
@@ -1137,23 +1135,27 @@ class TestRSDPodDriver(MAASTestCase):
                 "Processors": MatchesListwise([
                     MatchesDict({
                         "Model": Equals(None),
-                        "TotalCores": Equals(16),
-                        "AchievableSpeedMHz": Equals(2000),
+                        "TotalCores": Equals(cores),
+                        "AchievableSpeedMHz": Equals(request.cpu_speed),
                         "InstructionSet": Equals("x86-64"),
                     }),
                     MatchesDict({
                         "Model": Equals(None),
-                        "TotalCores": Equals(16),
-                        "AchievableSpeedMHz": Equals(2000),
+                        "TotalCores": Equals(cores),
+                        "AchievableSpeedMHz": Equals(request.cpu_speed),
                         "InstructionSet": Equals("x86-64"),
                     })]),
                 "Memory": MatchesListwise([
                     MatchesDict({
                         "SpeedMHz": Equals(None),
-                        "CapacityMiB": Equals(8192),
+                        "CapacityMiB": Equals(request.memory),
                         "DataWidthBits": Equals(None)
                     })]),
                 "EthernetInterfaces": MatchesListwise([
+                    MatchesDict({
+                        "SpeedMbps": Equals(None),
+                        "PrimaryVLAN": Equals(None)
+                    }),
                     MatchesDict({
                         "SpeedMbps": Equals(None),
                         "PrimaryVLAN": Equals(None)
@@ -1166,21 +1168,24 @@ class TestRSDPodDriver(MAASTestCase):
                     MatchesDict({
                         "SerialNumber": Equals(None),
                         "Type": Equals(None),
-                        "CapacityGiB": Equals(4),
+                        "CapacityGiB": Equals(
+                            request.block_devices[0].size / 1073741824),
                         "MinRPM": Equals(None),
                         "Interface": Equals(None)
                     }),
                     MatchesDict({
                         "SerialNumber": Equals(None),
                         "Type": Equals(None),
-                        "CapacityGiB": Equals(4),
+                        "CapacityGiB": Equals(
+                            request.block_devices[1].size / 1073741824),
                         "MinRPM": Equals(None),
                         "Interface": Equals(None)
                     }),
                     MatchesDict({
                         "SerialNumber": Equals(None),
                         "Type": Equals(None),
-                        "CapacityGiB": Equals(4),
+                        "CapacityGiB": Equals(
+                            request.block_devices[2].size / 1073741824),
                         "MinRPM": Equals(None),
                         "Interface": Equals(None)
                     })
@@ -1197,23 +1202,14 @@ class TestRSDPodDriver(MAASTestCase):
         # 64 cores / 4 -> 4 CPU's with 16 cores each
         # 64 cores / 8 -> 8 CPU's with 8 cores each
         driver = RSDPodDriver()
-        context = self.make_context()
-        request = RequestedMachine(
-            architecture="amd64/generic", cores=64,
-            memory=random.randint(4096, 8192),
-            cpu_speed=random.randint(1000, 2000),
-            block_devices=[
-                RequestedMachineBlockDevice(
-                    size=random.randint(2048, 4096))
-                for _ in range(3)],
-            interfaces=[
-                RequestedMachineInterface()
-                for _ in range(2)])
-
-        discovered_pod = self.make_discovered_pod()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        request = make_requested_machine(cores=64)
+        discovered_pod = make_discovered_pod()
         new_machines = discovered_pod.machines.copy()
         machines = new_machines.copy()
-        expected_machine = machines.pop(0)
+        new_machine = machines.pop(0)
         mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
         mock_get_pod_machines.side_effect = [
             machines, new_machines]
@@ -1226,6 +1222,8 @@ class TestRSDPodDriver(MAASTestCase):
         mock_convert_request_to_json_payload.side_effect = [payload] * 4
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [Exception('Error')] * 3 + [None]
+        mock_assemble_node = self.patch(driver, 'assemble_node')
+        mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
         mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
         mock_get_pod_resources.return_value = discovered_pod
 
@@ -1235,20 +1233,26 @@ class TestRSDPodDriver(MAASTestCase):
             mock_convert_request_to_json_payload, MockCallsMatch(
                 call(1, 32, request), call(2, 16, request),
                 call(4, 8, request), call(8, 4, request)))
-        self.assertEquals(discovered_machine, expected_machine)
-        self.assertEquals(discovered_pod_hints, discovered_pod.hints)
+        self.assertThat(mock_assemble_node, MockCalledOnceWith(
+            url, new_machine.power_parameters.get(
+                'node_id').encode('utf-8'), headers))
+        self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(
+            url, new_machine.power_parameters.get(
+                'node_id').encode('utf-8'), headers))
+        self.assertEquals(new_machine, discovered_machine)
+        self.assertEquals(discovered_pod.hints, discovered_pod_hints)
 
     @inlineCallbacks
     def test__decompose(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/%s" % node_id
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
-        discovered_pod = self.make_discovered_pod()
+        discovered_pod = make_discovered_pod()
         mock_get_pod_resources.return_value = discovered_pod
         mock_get_pod_hints = self.patch(driver, 'get_pod_hints')
 
@@ -1264,7 +1268,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__set_pxe_boot(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1290,7 +1294,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test__get_composed_node_state(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1307,7 +1311,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_assemble_node_does_not_assemble_if_already_assembled(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1323,7 +1327,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_assemble_node_assembles_if_not_assembled(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1347,7 +1351,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_assemble_node_raises_error_if_original_power_state_failed(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1365,7 +1369,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_assemble_node_raises_error_if_assembling_fails(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1390,7 +1394,7 @@ class TestRSDPodDriver(MAASTestCase):
     @inlineCallbacks
     def test_power_issues_power_reset(self):
         driver = RSDPodDriver()
-        context = self.make_context()
+        context = make_context()
         power_change = factory.make_name('power_change')
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
@@ -1415,7 +1419,7 @@ class TestRSDPodDriver(MAASTestCase):
     def test__power_on(self):
         driver = RSDPodDriver()
         system_id = factory.make_name('system_id')
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1437,7 +1441,7 @@ class TestRSDPodDriver(MAASTestCase):
     def test__power_off(self):
         driver = RSDPodDriver()
         system_id = factory.make_name('system_id')
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1455,7 +1459,7 @@ class TestRSDPodDriver(MAASTestCase):
         driver = RSDPodDriver()
         power_change = "PoweredOn"
         system_id = factory.make_name('system_id')
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1478,7 +1482,7 @@ class TestRSDPodDriver(MAASTestCase):
         driver = RSDPodDriver()
         power_change = "PoweredOff"
         system_id = factory.make_name('system_id')
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
@@ -1500,7 +1504,7 @@ class TestRSDPodDriver(MAASTestCase):
     def test_power_query_raises_error_unknown_power_state(self):
         driver = RSDPodDriver()
         system_id = factory.make_name('system_id')
-        context = self.make_context()
+        context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)

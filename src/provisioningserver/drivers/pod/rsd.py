@@ -621,7 +621,7 @@ class RSDPodDriver(PodDriver):
         # Find the correct procesors and cores combination from RSD POD.
         processors = 1
         cores = requested_cores
-        while (requested_cores != processors):
+        while True:
             payload = self.convert_request_to_json_payload(
                 processors, cores, request)
             try:
@@ -634,6 +634,9 @@ class RSDPodDriver(PodDriver):
                 # Continue loop if allocation didn't work.
                 processors *= 2
                 cores //= 2
+                # Loop termination condition.
+                if processors == requested_cores:
+                    break
                 continue
 
         new_machines = yield self.get_pod_machines(url, headers)
@@ -644,6 +647,13 @@ class RSDPodDriver(PodDriver):
 
         # Sieve the new machine.
         discovered_machine = [m for m in new_machines if m not in machines][0]
+        node_id = discovered_machine.power_parameters.get(
+            'node_id').encode('utf-8')
+        # Assemble the node.
+        yield self.assemble_node(url, node_id, headers)
+        # Set to PXE boot.
+        yield self.set_pxe_boot(url, node_id, headers)
+
         # Retrieve pod resources.
         discovered_pod = yield self.get_pod_resources(url, headers)
         # Retrive pod hints.
