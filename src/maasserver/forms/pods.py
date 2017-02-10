@@ -7,6 +7,7 @@ __all__ = [
     "PodForm",
     ]
 
+import crochet
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.fields import (
@@ -244,7 +245,7 @@ class ComposeMachineForm(forms.Form):
         """Prevent from usage."""
         raise AttributeError("Use `compose` instead of `save`.")
 
-    def compose(self, timeout=30, skip_commissioning=False):
+    def compose(self, timeout=120, skip_commissioning=False):
         """Compose the machine.
 
         Internal operation of this form is asynchronously. It will block the
@@ -262,13 +263,18 @@ class ComposeMachineForm(forms.Form):
                 pod_id=pod_id, name=name)
             return d
 
-        discovered_machine, pod_hints = wrap_compose_machine(
-            self.pod.get_client_identifiers(),
-            self.pod.power_type,
-            self.pod.power_parameters,
-            self.get_requested_machine(),
-            pod_id=self.pod.id,
-            name=self.pod.name).wait(timeout)
+        try:
+            discovered_machine, pod_hints = wrap_compose_machine(
+                self.pod.get_client_identifiers(),
+                self.pod.power_type,
+                self.pod.power_parameters,
+                self.get_requested_machine(),
+                pod_id=self.pod.id,
+                name=self.pod.name).wait(timeout)
+        except crochet.TimeoutError:
+            raise PodProblem(
+                "Unable to composed machine because '%s' driver timed out "
+                "after %d seconds." % (self.pod.power_type, timeout))
 
         created_machine = self.pod.create_machine(
             discovered_machine, self.request.user,

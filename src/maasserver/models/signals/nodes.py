@@ -7,6 +7,7 @@ __all__ = [
     "signals",
 ]
 
+import crochet
 from django.db.models.signals import (
     post_init,
     post_save,
@@ -19,6 +20,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
+from maasserver.exceptions import PodProblem
 from maasserver.models import (
     Controller,
     Device,
@@ -141,13 +143,19 @@ def decompose_machine_on_delete(sender, instance, **kwargs):
         # a thread that will block waiting on the result. This sucks because
         # it causes the thread to block, but it will not cause a deadlock
         # as the work is performed in the reactor and not in another thread.
-        hints = wrap_decompose_machine(
-            pod.get_client_identifiers(),
-            pod.power_type,
-            instance.power_parameters,
-            pod_id=pod.id,
-            name=pod.name).wait(30)
-        pod.sync_hints(hints)
+        try:
+            hints = wrap_decompose_machine(
+                pod.get_client_identifiers(),
+                pod.power_type,
+                instance.power_parameters,
+                pod_id=pod.id,
+                name=pod.name).wait(60)
+        except crochet.TimeoutError:
+            raise PodProblem(
+                "Unable to decomposed machine because '%s' driver timed out "
+                "after 60 seconds." % pod.power_type)
+        else:
+            pod.sync_hints(hints)
 
 for klass in NODE_CLASSES:
     signals.watch(

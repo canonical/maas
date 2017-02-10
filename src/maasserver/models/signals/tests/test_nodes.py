@@ -8,6 +8,7 @@ __all__ = []
 import random
 from unittest.mock import Mock
 
+import crochet
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
@@ -240,6 +241,21 @@ class TestDecomposeMachine(MAASServerTestCase):
             memory=hints.memory,
             local_storage=hints.local_storage,
         ))
+
+    def test_decompose_machine_handles_timeout(self):
+        pod = self.make_composable_pod()
+        client = self.fake_rpc_client()
+        client.side_effect = crochet.TimeoutError()
+        machine = factory.make_Node()
+        machine.bmc = pod
+        machine.instance_power_parameters = {
+            'power_id': factory.make_name('power_id'),
+        }
+        machine.save()
+        error = self.assertRaises(PodProblem, machine.delete)
+        self.assertEquals(
+            "Unable to decomposed machine because '%s' driver timed out "
+            "after 60 seconds." % pod.power_type, str(error))
 
     def test_errors_raised_up(self):
         pod = self.make_composable_pod()

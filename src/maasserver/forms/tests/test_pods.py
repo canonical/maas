@@ -8,6 +8,7 @@ __all__ = []
 import random
 from unittest.mock import MagicMock
 
+import crochet
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MaxValueValidator,
@@ -453,3 +454,20 @@ class TestComposeMachineForm(MAASServerTestCase):
                 memory=Equals(1024),
                 cpu_speed=Equals(300))))
         self.assertThat(mock_commissioning, MockNotCalled())
+
+    def test__compose_handles_timeout_error(self):
+        request = MagicMock()
+        pod = self.make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        client.side_effect = crochet.TimeoutError()
+        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        form = ComposeMachineForm(data={}, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        error = self.assertRaises(PodProblem, form.compose)
+        self.assertEquals(
+            "Unable to composed machine because '%s' driver timed out "
+            "after 120 seconds." % pod.power_type, str(error))
