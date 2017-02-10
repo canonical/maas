@@ -12,6 +12,8 @@ __all__ = [
     'UnknownInterface',
     ]
 
+from collections import OrderedDict
+
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
@@ -20,6 +22,7 @@ from django.core.exceptions import (
 from django.db.models import (
     BooleanField,
     CharField,
+    Count,
     ForeignKey,
     Manager,
     ManyToManyField,
@@ -196,12 +199,83 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         return super(InterfaceQueriesMixin, self).get_matching_object_map(
             specifiers, 'node__id')
 
+    @staticmethod
+    def _resolve_interfaces_for_root(
+            root, resolved: set, unresolved: OrderedDict):
+        """Yields interfaces whose parents are known to the caller.
+
+        :param resolved: A list of interface IDs that have already been yielded
+            to the caller. Used to determined if a visited interface's parent
+            set is a subset of the set of interfaces known to the caller.
+        :param unresolved: An ordered dictionary of (child_interface.id,
+            child_interface) representing interfaces that can not yet become
+            known to the caller (because not all of its parents are known yet.)
+        """
+        yield root
+        resolved.add(root.id)
+        more_possible_matches = True
+        while more_possible_matches:
+            more_possible_matches = False
+            # Keep track of the set of newly resolved interfaces, since we
+            # can't modify the OrderedDict of unresolved interfaces while
+            # iterating it.
+            newly_resolved = set()
+            for iface in unresolved.values():
+                if iface.parent_set.issubset(resolved):
+                    yield iface
+                    # Go ahead and add this immediately to the list of resolved
+                    # interfaces, in case later in the iteration the fact that
+                    # we could resolve `iface` means we can resolve another.
+                    resolved.add(iface.id)
+                    newly_resolved.add(iface.id)
+                    # ... but we still need to loop around again, in case the
+                    # newly-resolved interface means that another interface
+                    # we already visited can be resolved.
+                    more_possible_matches = True
+            for resolved_id in newly_resolved:
+                del unresolved[resolved_id]
+
+    def all_interfaces_parents_first(self, node):
+        """Yields a node's interfaces in a very specific, parents-first order.
+
+        First, each "root" interface is visited. (That is, an interface which
+        itself has no parents.)
+
+        Next, if that interface has any subordinate interfaces, each
+        subordinate interface will be visited (ordered by name). If any
+        subordinate interface has children of its own, the subordinate's child
+        will be visited when possible (after each of its parents has been
+        visited).
+        """
+        query = self.filter(node=node)
+        query = query.annotate(
+            parent_count=Count('parent_relationships'))
+        query = query.prefetch_related('parent_relationships')
+        query = query.order_by("name")
+        root_interfaces = []
+        child_interfaces = OrderedDict()
+        for iface in query:
+            if iface.parent_count == 0:
+                root_interfaces.append(iface)
+            else:
+                # Cache each interface's set of immediate parents, for later
+                # comparison to the set of resolved interfaces.
+                iface.parent_set = set(
+                    iface.parent_id
+                    for iface in iface.parent_relationships.all()
+                )
+                child_interfaces[iface.id] = iface
+        resolved = set()
+        for iface in root_interfaces:
+            yield from self._resolve_interfaces_for_root(
+                iface, resolved, child_interfaces)
+
 
 class InterfaceQuerySet(InterfaceQueriesMixin, QuerySet):
     """Custom QuerySet which mixes in some additional queries specific to
-    subnets. This needs to be a mixin because an identical method is needed on
-    both the Manager and all QuerySets which result from calling the manager.
-    """
+    interfaces. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager."""
 
 
 class InterfaceManager(Manager, InterfaceQueriesMixin):
@@ -229,7 +303,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         return list(self.filter(node=node, name__in=interface_names))
 
     def get_interface_dict_for_node(
-            self, node, names=None, fetch_fabric_vlan=False):
+            self, node, names=None, fetch_fabric_vlan=False, by_id=False):
         """Returns a list of Inteface objects on the specified node whose
         names match the specified list of interface names.
 
@@ -242,7 +316,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         if fetch_fabric_vlan:
             query = query.select_related('vlan__fabric')
         return {
-            interface.name: interface
+            interface.id if by_id else interface.name: interface
             for interface in query
         }
 
@@ -488,8 +562,8 @@ class Interface(CleanSave, TimestampedModel):
         return None
 
     def __str__(self):
-        return "name=%s, type=%s, mac=%s" % (
-            self.name, self.type, self.mac_address)
+        return "name=%s, type=%s, mac=%s, id=%s" % (
+            self.name, self.type, self.mac_address, self.id)
 
     def get_node(self):
         return self.node
@@ -1537,7 +1611,7 @@ def build_vlan_interface_name(parent, vlan):
         return "unknown.%d" % vlan.vid
 
 
-class VLANInterface(Interface):
+class VLANInterface(ChildInterface):
 
     class Meta(Interface.Meta):
         proxy = True

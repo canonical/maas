@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from collections import Iterable
 import datetime
 import random
 from unittest.mock import call
@@ -720,6 +721,67 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             "tag:%s" % random.choice(tags))
         self.assertItemsEqual(nodes, [node.id])
         self.assertEqual(map, {node.id: [interface.id]})
+
+
+class TestAllInterfacesParentsFirst(MAASServerTestCase):
+
+    def test__all_interfaces_parents_first(self):
+        node1 = factory.make_Node()
+        eth0 = factory.make_Interface(node=node1, name='eth0')
+        eth0_vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, parents=[eth0], node=node1)
+        eth1 = factory.make_Interface(
+            node=node1, name='eth1', enabled=False)
+        eth2 = factory.make_Interface(node=node1, name='eth2')
+        eth3 = factory.make_Interface(node=node1, name='eth3')
+        eth4 = factory.make_Interface(node=node1, name='eth4')
+        eth5 = factory.make_Interface(node=node1, name='eth5')
+        bond0 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND, parents=[eth2, eth3], name='bond0',
+            node=node1)
+        br0 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, parents=[eth4, eth5], name='br0',
+            node=node1)
+        br1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, parents=[], name='br1', node=node1)
+        br2 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE, parents=[bond0], name='br2',
+            node=node1)
+        # Make sure we only got one Node's interfaces by creating a few
+        # dummy interfaces.
+        node2 = factory.make_Node()
+        n2_eth0 = factory.make_Interface(node=node2, name='eth0')
+        n2_eth1 = factory.make_Interface(node=node2, name='eth1')
+        ifaces = Interface.objects.all_interfaces_parents_first(node1)
+        self.expectThat(isinstance(ifaces, Iterable), Is(True))
+        iface_list = list(ifaces)
+        # Expect alphabetical interface order, interleaved with a parents-first
+        # search for each child interface. That is, child interfaces will
+        # always be listed after /all/ of their parents.
+        self.expectThat(iface_list, Equals([
+            br1, eth0, eth0_vlan, eth1, eth2, eth3, bond0, br2, eth4, eth5, br0
+        ]))
+        # Might as well test that the other host looks okay, too.
+        n2_ifaces = list(Interface.objects.all_interfaces_parents_first(node2))
+        self.expectThat(n2_ifaces, Equals([
+            n2_eth0, n2_eth1
+        ]))
+
+    def test__all_interfaces_parents_ignores_orphan_interfaces(self):
+        # Previous versions of MAAS had a bug which resulted in an "orphan"
+        # interface (an interface missing a pointer to its node). Because
+        # we don't want this method to cause excessive querying, we expect
+        # those to NOT show up.
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(node=node, name='eth0')
+        eth0_vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, parents=[eth0], node=node)
+        # Use the QuerySet update() to avoid calling the post-save handler,
+        # which would otherwise automatically work around this.
+        Interface.objects.filter(id=eth0_vlan.id).update(node=None)
+        iface_list = list(
+            Interface.objects.all_interfaces_parents_first(node))
+        self.expectThat(iface_list, Equals([eth0]))
 
 
 class InterfaceTest(MAASServerTestCase):
