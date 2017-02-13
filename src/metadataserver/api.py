@@ -714,12 +714,6 @@ class VersionIndexHandler(MetadataViewHandler):
                 node.status == NODE_STATUS.TESTING):
             node.status = target_status
 
-            # When moving to a terminal state, remove the owner.
-            if target_status not in [
-                    NODE_STATUS.DEPLOYED, NODE_STATUS.RESCUE_MODE,
-                    NODE_STATUS.TESTING]:
-                node.owner = None
-
         node.error = get_optional_param(request.POST, 'error', '', String)
 
         # Done.

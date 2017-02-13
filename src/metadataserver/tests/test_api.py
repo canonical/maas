@@ -1390,16 +1390,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signaling_commissioning_success_clears_owner_on_machine(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
-        node.owner = factory.make_User()
-        node.save()
-        client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertIsNone(reload_object(node).owner)
-
     def test_signaling_commissioning_failure_makes_node_failed_Tests(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
@@ -1447,16 +1437,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(client, status='FAILED', error=error_text)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
-
-    def test_signaling_commissioning_failure_clears_owner(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
-        node.owner = factory.make_User()
-        node.save()
-        client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertIsNone(reload_object(node).owner)
 
     def test_signaling_no_error_clears_existing_error(self):
         node = factory.make_Node(
