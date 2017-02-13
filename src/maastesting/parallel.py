@@ -9,9 +9,11 @@ import copy
 import io
 import os
 import queue
+import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
 import unittest
 
@@ -21,11 +23,11 @@ import subunit
 import testtools
 
 
-class TestScript(metaclass=abc.ABCMeta):
+class TestScriptBase(metaclass=abc.ABCMeta):
     """A test-like object that wraps one of the `bin/test.*` scripts."""
 
     def __init__(self, lock, script):
-        super(TestScript, self).__init__()
+        super(TestScriptBase, self).__init__()
         self.lock = lock
         assert isinstance(script, str)
         self.script = script
@@ -40,6 +42,13 @@ class TestScript(metaclass=abc.ABCMeta):
 
         The implementation is free to choose, but it should return an iterable
         of between 1 and `parts` tests.
+        """
+
+    @abc.abstractmethod
+    def select(self, selectors):
+        """Return a new script, narrowed to the given selectors.
+
+        If none of the selectors are relevant to this script, return `None`.
         """
 
     def extendCommand(self, command):
@@ -89,12 +98,13 @@ class TestScript(metaclass=abc.ABCMeta):
 
     __call__ = run
 
-    def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.script)
+    def __repr__(self, details=()):
+        details = " ".join((self.script, *details))
+        return "<%s %s>" % (self.__class__.__name__, details)
 
 
-class TestScriptDivisible(TestScript):
-    """A variant of `TestScript` that can be split."""
+class TestScriptDivisible(TestScriptBase):
+    """A variant of `TestScriptBase` that can be split."""
 
     _bucket = 1, 1
 
@@ -108,25 +118,91 @@ class TestScriptDivisible(TestScript):
             yield new
 
     def extendCommand(self, command):
-        return command + (
-            "--with-select-bucket",
-            "--select-bucket", "%d/%d" % self._bucket,
-        )
+        return super().extendCommand(
+            (*command, "--with-select-bucket", "--select-bucket",
+             "%d/%d" % self._bucket))
 
-    def __repr__(self):
-        bucket, buckets = self._bucket
-        return "<%s %s bucket=%d/%d>" % (
-            self.__class__.__name__, self.script, bucket, buckets)
+    def __repr__(self, details=()):
+        details = (*details, "bucket=%d/%d" % self._bucket)
+        return super().__repr__(details)
 
 
-class TestScriptIndivisible(TestScript):
-    """A variant of `TestScript` that cannot be split."""
+class TestScriptIndivisible(TestScriptBase):
+    """A variant of `TestScriptBase` that cannot be split."""
 
     def id(self):
         return self.script
 
     def split(self, buckets):
         yield self
+
+
+class TestScriptSelectable(TestScriptBase):
+    """A variant of `TestScriptBase` that can be matched / selected."""
+
+    def __init__(self, lock, script, *patterns):
+        super().__init__(lock, script)
+        self.patterns = patterns
+        self.selectors = ()
+
+    def select(self, selectors):
+        """Compare `selectors` against this test's patterns.
+
+        If they match, return a copy of self narrowed down according to those
+        selectors, otherwise return `None`. If there are no selectors, return
+        self unmodified.
+        """
+        if len(selectors) == 0:
+            return self
+        else:
+            pattern = re.compile("(?:%s)" % "|".join(self.patterns))
+            matched = tuple(
+                selector for selector in selectors
+                if pattern.match(selector) is not None)
+            if len(matched) == 0:
+                return None
+            else:
+                self = copy.copy(self)
+                self.selectors = matched
+                return self
+
+    def extendCommand(self, command):
+        return super().extendCommand(
+            (*command, "--", *self.selectors))
+
+    def __repr__(self, details=()):
+        if len(self.selectors) != 0:
+            details = (*details, "--", *self.selectors)
+        return super().__repr__(details)
+
+
+class TestScriptUnselectable(TestScriptBase):
+    """A variant of `TestScriptBase` that cannot be matched / selected."""
+
+    def select(self, selectors):
+        """This script is only selected when there are no selectors."""
+        if len(selectors) == 0:
+            return self
+        else:
+            self._warnAboutSelectors()
+            return None
+
+    def _warnAboutSelectors(self):
+        """Print out a warning about using selectors with this script."""
+        warning = textwrap.dedent("""\
+            WARNING: {script.script} will _never_ be selected when using
+            selectors at the command-line. Run {script.script} directly.
+        """.format(script=self))
+        for line in textwrap.wrap(warning, 72):
+            print(line, file=sys.stderr)
+
+
+class TestScript(TestScriptDivisible, TestScriptSelectable):
+    """A test script that can be split and can make use of selectors."""
+
+
+class TestScriptMonolithic(TestScriptIndivisible, TestScriptUnselectable):
+    """A test script that cannot be split and does not grok selectors."""
 
 
 class TestProcessor:
@@ -149,7 +225,7 @@ class TestProcessor:
 
 
 def make_splitter(splits):
-    """Make a function that will split `TestScript` instances.
+    """Make a function that will split `TestScriptBase` instances.
 
     :param splits: The number of parts in which to split tests.
     """
@@ -211,9 +287,13 @@ def test(suite, result, processes):
     return result.wasSuccessful()
 
 
-def make_argument_parser():
+def make_argument_parser(scripts):
     """Create an argument parser for the command-line."""
-    parser = argparse.ArgumentParser(description=__doc__, add_help=False)
+    description = __doc__ + " " + (
+        "This delegates the actual work to several test programs: %s."
+        % ", ".join(script.script for script in scripts))
+    parser = argparse.ArgumentParser(
+        description=description, add_help=False)
     parser.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS)
 
@@ -259,25 +339,55 @@ def make_argument_parser():
     args_output.set_defaults(
         result_factory=make_human_readable_result)
 
+    unselectable = (
+        script.script for script in scripts
+        if isinstance(script, TestScriptUnselectable)
+    )
+    parser.add_argument(
+        "selectors", nargs="*", metavar="SELECTOR", help="Selectors to narrow "
+        "the tests to run. Note that when selectors are used, unselectable "
+        "scripts (%s) will *never* be selected." % ", ".join(unselectable))
+
     return parser
 
 
 def main(args=None):
-    args = make_argument_parser().parse_args(args)
     lock = threading.Lock()
-    suite = unittest.TestSuite((
-        # Run the indivisible tests first. These will each consume a worker
+    scripts = (
+        # Run the monolithic tests first. These will each consume a worker
         # thread (spawned by ConcurrentTestSuite) for a prolonged duration.
         # Putting divisible tests afterwards evens out the spread of work.
-        TestScriptIndivisible(lock, "bin/test.js"),
-        TestScriptIndivisible(lock, "bin/test.region.legacy"),
+        TestScriptMonolithic(lock, "bin/test.js"),
+        TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.
-        TestScriptDivisible(lock, "bin/test.cli"),
-        TestScriptDivisible(lock, "bin/test.rack"),
-        TestScriptDivisible(lock, "bin/test.region"),
-        TestScriptDivisible(lock, "bin/test.testing"),
-    ))
+        TestScript(
+            lock, "bin/test.cli",
+            r"^src/maascli\b",
+            r"^maascli\b",
+        ),
+        TestScript(
+            lock, "bin/test.rack",
+            r"^src/provisioningserver\b",
+            r"^provisioningserver\b",
+        ),
+        TestScript(
+            lock, "bin/test.region",
+            r"^src/(maas|metadata)server\b",
+            r"^(maas|metadata)server\b"
+        ),
+        TestScript(
+            lock, "bin/test.testing",
+            r"^src/maastesting\b",
+            r"^maastesting\b",
+        ),
+    )
+    # Parse arguments.
+    args = make_argument_parser(scripts).parse_args(args)
+    # Narrow scripts down to the given selectors.
+    scripts = (script.select(args.selectors) for script in scripts)
+    scripts = (script for script in scripts if script is not None)
+    suite = unittest.TestSuite(scripts)
     result = args.result_factory(sys.stdout)
     if test(suite, result, args.subprocesses):
         raise SystemExit(0)

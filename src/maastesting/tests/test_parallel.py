@@ -26,13 +26,101 @@ from testtools import (
     TextTestResult,
 )
 from testtools.matchers import (
+    AfterPreprocessing,
     Equals,
     Is,
     IsInstance,
     MatchesAll,
     MatchesListwise,
+    MatchesSetwise,
     MatchesStructure,
 )
+
+
+class TestSelectorArguments(MAASTestCase):
+    """Tests for arguments that select scripts."""
+
+    def setUp(self):
+        super(TestSelectorArguments, self).setUp()
+        self.stdio = self.useFixture(CaptureStandardIO())
+        self.patch_autospec(parallel, "test")
+        parallel.test.return_value = True
+
+    def assertScriptsMatch(self, *matchers):
+        self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
+        suite, results, processes = parallel.test.call_args[0]
+        self.assertThat(suite, AfterPreprocessing(
+            list, MatchesSetwise(*matchers)))
+
+    def test__all_scripts_are_selected_when_no_selectors(self):
+        sysexit = self.assertRaises(SystemExit, parallel.main, [])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertScriptsMatch(
+            MatchesUnselectableScript("js"),
+            MatchesUnselectableScript("region.legacy"),
+            MatchesSelectableScript("cli"),
+            MatchesSelectableScript("rack"),
+            MatchesSelectableScript("region"),
+            MatchesSelectableScript("testing"),
+        )
+
+    def test__scripts_can_be_selected_by_path(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, [
+                "src/maascli/001",
+                "src/provisioningserver/002",
+                "src/maasserver/003",
+                "src/metadataserver/004",
+                "src/maastesting/005",
+            ])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertScriptsMatch(
+            MatchesSelectableScript(
+                "cli", "src/maascli/001"),
+            MatchesSelectableScript(
+                "rack", "src/provisioningserver/002"),
+            MatchesSelectableScript(
+                "region", "src/maasserver/003", "src/metadataserver/004"),
+            MatchesSelectableScript(
+                "testing", "src/maastesting/005"),
+        )
+
+    def test__scripts_can_be_selected_by_module(self):
+        sysexit = self.assertRaises(
+            SystemExit, parallel.main, [
+                "maascli.001",
+                "provisioningserver.002",
+                "maasserver.003",
+                "metadataserver.004",
+                "maastesting.005",
+            ])
+        self.assertThat(sysexit.code, Equals(0))
+        self.assertScriptsMatch(
+            MatchesSelectableScript(
+                "cli", "maascli.001"),
+            MatchesSelectableScript(
+                "rack", "provisioningserver.002"),
+            MatchesSelectableScript(
+                "region", "maasserver.003", "metadataserver.004"),
+            MatchesSelectableScript(
+                "testing", "maastesting.005"),
+        )
+
+
+def MatchesUnselectableScript(what, *selectors):
+    return MatchesAll(
+        IsInstance(parallel.TestScriptUnselectable),
+        MatchesStructure.byEquality(script="bin/test.%s" % what),
+        first_only=True)
+
+
+def MatchesSelectableScript(what, *selectors):
+    return MatchesAll(
+        IsInstance(parallel.TestScriptSelectable),
+        MatchesStructure.byEquality(
+            script="bin/test.%s" % what,
+            selectors=selectors),
+        first_only=True)
 
 
 class TestSubprocessArguments(MAASTestCase):
