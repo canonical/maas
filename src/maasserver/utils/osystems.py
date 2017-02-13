@@ -462,7 +462,7 @@ def validate_hwe_kernel(
                release_a_newer_than_b(i, distro_series)):
                 return i
         raise ValidationError(
-            '%s has no kernels availible which meet min_hwe_kernel(%s).' %
+            '%s has no kernels available which meet min_hwe_kernel(%s).' %
             (distro_series, min_hwe_kernel))
     for kernel in BootResource.objects.get_usable_hwe_kernels(
             os_release, arch, 'generic'):

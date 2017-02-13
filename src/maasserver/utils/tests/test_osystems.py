@@ -561,7 +561,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 None, 'hwe-v', 'amd64/generic', 'ubuntu', 'trusty')
         except ValidationError as e:
             self.assertEqual(
-                'trusty has no kernels availible which meet' +
+                'trusty has no kernels available which meet' +
                 ' min_hwe_kernel(hwe-v).', e.message)
             exception_raised = True
         self.assertEqual(True, exception_raised)
