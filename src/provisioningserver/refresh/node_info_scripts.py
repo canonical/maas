@@ -130,11 +130,16 @@ def dhcp_explore():
         return False
 
     def has_ipv6_address(iface):
+        no_ipv6_found = True
         output = check_output(('ip', '-6', 'addr', 'list', 'dev', iface))
         for line in output.splitlines():
-            if line.find(b' inet6 ') >= 0 and line.find(b' inet6 fe80:') == -1:
-                return True
-        return False
+            if line.find(b' inet6 ') >= 0:
+                if line.find(b' inet6 fe80:') == -1:
+                    return True
+                no_ipv6_found = False
+        # Bug 1640147: If there is no IPv6 address, then we consider this to be
+        # a configured ipv6 interface, since ipv6 won't work there.
+        return no_ipv6_found
 
     all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
     configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
