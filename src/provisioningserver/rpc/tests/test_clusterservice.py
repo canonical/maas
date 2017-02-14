@@ -801,6 +801,55 @@ class TestClusterClientService(MAASTestCase):
             exceptions.NoConnectionsAvailable,
             service.getClient)
 
+    @inlineCallbacks
+    def test_getClientNow_returns_current_connection(self):
+        service = ClusterClientService(Clock())
+        service.connections = {
+            sentinel.eventloop01: DummyConnection(),
+            sentinel.eventloop02: DummyConnection(),
+            sentinel.eventloop03: DummyConnection(),
+        }
+        client = yield service.getClientNow()
+        self.assertIn(
+            client, {
+                common.Client(conn)
+                for conn in service.connections.values()
+            })
+
+    @inlineCallbacks
+    def test_getClientNow_calls__tryUpdate_when_there_are_no_connections(self):
+        service = ClusterClientService(Clock())
+        service.connections = {}
+
+        def addConnections():
+            service.connections = {
+                sentinel.eventloop01: DummyConnection(),
+                sentinel.eventloop02: DummyConnection(),
+                sentinel.eventloop03: DummyConnection(),
+            }
+            return succeed(None)
+
+        self.patch(service, "_tryUpdate").side_effect = addConnections
+        client = yield service.getClientNow()
+        self.assertIn(
+            client, {
+                common.Client(conn)
+                for conn in service.connections.values()
+            })
+
+    def test_getClientNow_raises_exception_when_no_clients(self):
+        service = ClusterClientService(Clock())
+        service.connections = {}
+
+        self.patch(service, "_tryUpdate").return_value = succeed(None)
+        d = service.getClientNow()
+        d.addCallback(
+            lambda _: self.fail("Errback should have been called."))
+        d.addErrback(
+            lambda failure: self.assertIsInstance(
+                failure.value, exceptions.NoConnectionsAvailable))
+        return d
+
     def test_getAllClients(self):
         service = ClusterClientService(Clock())
         uuid1 = factory.make_UUID()

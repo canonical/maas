@@ -66,7 +66,7 @@ class RackNetworkTimeProtocolService(TimerService):
         subsequently obtained configuration objects, allowing this service to
         determine whether a change needs to be applied to the NTP server.
         """
-        client = self._rpc_service.getClient()
+        client = yield self._rpc_service.getClientNow()
         time_configuation = yield client(
             GetTimeConfiguration, system_id=client.localIdent)
         controller_type = yield client(

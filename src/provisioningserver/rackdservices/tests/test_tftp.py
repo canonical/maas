@@ -286,7 +286,7 @@ class TestTFTPBackend(MAASTestCase):
         client.localIdent = factory.make_name("system_id")
         client.return_value = fail(BootConfigNoResponse())
         client_service = Mock()
-        client_service.getClient.return_value = client
+        client_service.getClientNow.return_value = succeed(client)
         backend = TFTPBackend(
             self.make_dir(), client_service)
 
@@ -301,7 +301,7 @@ class TestTFTPBackend(MAASTestCase):
         client.localIdent = factory.make_name("system_id")
         client.return_value = fail(exception_type(exception_message))
         client_service = Mock()
-        client_service.getClient.return_value = client
+        client_service.getClientNow.return_value = succeed(client)
         backend = TFTPBackend(
             self.make_dir(), client_service)
 
@@ -405,7 +405,7 @@ class TestTFTPBackend(MAASTestCase):
         client.localIdent = factory.make_name("system_id")
         client.return_value = succeed(fake_params)
         client_service = Mock()
-        client_service.getClient.return_value = client
+        client_service.getClientNow.return_value = succeed(client)
 
         # get_boot_method_reader() takes a dict() of parameters and returns an
         # `IReader` of a PXE configuration, rendered by
@@ -446,7 +446,7 @@ class TestTFTPBackend(MAASTestCase):
         client.localIdent = factory.make_name("system_id")
         client.return_value = succeed(fake_params)
         client_service = Mock()
-        client_service.getClient.return_value = client
+        client_service.getClientNow.return_value = succeed(client)
 
         # get_boot_method_reader() takes a dict() of parameters and returns an
         # `IReader` of a PXE configuration, rendered by
@@ -517,9 +517,11 @@ class TestTFTPBackend(MAASTestCase):
         params_all = params_okay.copy()
         params_all.update(params_other)
 
-        client_service = Mock()
-        client = client_service.getClient.return_value
+        client = Mock()
         client.localIdent = params_okay["system_id"]
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+
         backend = TFTPBackend(self.make_dir(), client_service)
         backend.fetcher = Mock()
 

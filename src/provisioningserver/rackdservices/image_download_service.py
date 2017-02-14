@@ -92,7 +92,7 @@ class ImageDownloadService(TimerService, object):
         # the RPC service.
         for elapsed, remaining, wait in retries(15, 5, self.clock):
             try:
-                client = self.client_service.getClient()
+                client = yield self.client_service.getClientNow()
                 break
             except NoConnectionsAvailable:
                 yield pause(wait, self.clock)

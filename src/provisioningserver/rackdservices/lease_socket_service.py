@@ -106,7 +106,7 @@ class LeaseSocketService(Service, DatagramProtocol):
         client = None
         for elapsed, remaining, wait in retries(30, 10, clock):
             try:
-                client = self.client_service.getClient()
+                client = yield self.client_service.getClientNow()
                 break
             except NoConnectionsAvailable:
                 yield pause(wait, self.clock)

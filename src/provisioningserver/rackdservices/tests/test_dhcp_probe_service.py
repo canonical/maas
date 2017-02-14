@@ -103,7 +103,8 @@ class TestDHCPProbeService(MAASTestCase):
             region.ReportForeignDHCPServer.commandName]
 
         rpc_service = Mock()
-        rpc_service.getClient.return_value = getRegionClient()
+        rpc_service.getClientNow.return_value = defer.succeed(
+            getRegionClient())
         service = DHCPProbeService(
             rpc_service, clock)
         yield service.startService()
@@ -160,7 +161,7 @@ class TestDHCPProbeService(MAASTestCase):
         service = DHCPProbeService(
             sentinel.service, clock)
         try_get_client = self.patch(service, '_tryGetClient')
-        try_get_client.getClient = Mock()
+        try_get_client.getClientNow = Mock()
         probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
         yield service.startService()
         yield service.stopService()
@@ -182,7 +183,7 @@ class TestDHCPProbeService(MAASTestCase):
         service = DHCPProbeService(
             sentinel.service, clock)
         try_get_client = self.patch(service, '_tryGetClient')
-        try_get_client.getClient = Mock()
+        try_get_client.getClientNow = Mock()
         probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
         yield service.startService()
         yield service.stopService()
@@ -204,7 +205,7 @@ class TestDHCPProbeService(MAASTestCase):
         service = DHCPProbeService(
             sentinel.service, clock)
         try_get_client = self.patch(service, '_tryGetClient')
-        try_get_client.getClient = Mock()
+        try_get_client.getClientNow = Mock()
         probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
         yield service.startService()
         yield service.stopService()
@@ -226,7 +227,7 @@ class TestDHCPProbeService(MAASTestCase):
         service = DHCPProbeService(
             sentinel.service, clock)
         try_get_client = self.patch(service, '_tryGetClient')
-        try_get_client.getClient = Mock()
+        try_get_client.getClientNow = Mock()
         probe_interface = self.patch(dhcp_probe_service, 'probe_interface')
         yield service.startService()
         yield service.stopService()
@@ -257,7 +258,7 @@ class TestDHCPProbeService(MAASTestCase):
         probe_interface.return_value = [foreign_dhcp_ip]
         client = getRegionClient()
         rpc_service = Mock()
-        rpc_service.getClient.return_value = client
+        rpc_service.getClientNow.return_value = defer.succeed(client)
 
         service = DHCPProbeService(
             rpc_service, clock)
@@ -297,7 +298,7 @@ class TestDHCPProbeService(MAASTestCase):
 
         client = getRegionClient()
         rpc_service = Mock()
-        rpc_service.getClient.return_value = client
+        rpc_service.getClientNow.return_value = defer.succeed(client)
         service = DHCPProbeService(
             rpc_service, clock)
         yield service.startService()
