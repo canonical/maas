@@ -216,6 +216,7 @@ eth2       1500 0         0      0      0 0             0      0
 eth1       1500 0         0      0      0 0             0      0
 eth0       1500 0   1366127      0      0 0        831110      0
 eth4       1500 0         0      0      0 0             0      0
+eth5       1500 0         0      0      0 0             0      0
 eth6       1500 0         0      0      0 0             0      0
 lo        65536 0     38075      0      0 0         38075      0
 virbr0     1500 0         0      0      0 0             0      0
@@ -227,6 +228,7 @@ ifconfig_config = b"""\
 Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
 eth0       1500 0   1366127      0      0 0        831110      0
 eth4       1500 0   1366127      0      0 0        831110      0
+eth5       1500 0   1366127      0      0 0        831110      0
 eth6       1500 0   1366127      0      0 0        831110      0
 lo        65536 0     38115      0      0 0         38115      0
 virbr0     1500 0         0      0      0 0             0      0
@@ -250,6 +252,12 @@ ip_eth4 = b"""\
     inet 192.168.4.1/24 brd 192.168.4.255 scope global eth4
        valid_lft forever preferred_lft forever
     inet6 fe80::0201:02ff:fe03:0404/64 scope link
+       valid_lft forever preferred_lft forever
+"""
+ip_eth5 = b"""\
+6: eth5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP ...
+    link/ether 00:01:02:03:04:06 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.5.1/24 brd 192.168.4.255 scope global eth4
        valid_lft forever preferred_lft forever
 """
 ip_eth6 = b"""\
@@ -292,8 +300,8 @@ class TestDHCPExplore(MAASTestCase):
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             ifconfig_all, ifconfig_config,
-            ip_eth0, ip_eth4, ip_eth6, ip_lo, ip_virbr0, ip_wlan0,
-            ip_eth0, ip_eth4, ip_eth6, ip_lo, ip_virbr0, ip_wlan0
+            ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0,
+            ip_eth0, ip_eth4, ip_eth5, ip_eth6, ip_lo, ip_virbr0, ip_wlan0
             ]
         mock_call = self.patch(subprocess, "call")
         mock_popen = self.patch(subprocess, "Popen")
