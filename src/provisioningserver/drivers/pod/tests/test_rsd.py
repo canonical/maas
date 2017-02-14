@@ -964,7 +964,11 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         mock_list_resources = self.patch(driver, 'list_resources')
         mock_list_resources.side_effect = [
-            [b"redfish/v1/Systems/1"],
+            [b"redfish/v1/Systems/1", b"redfish/v1/Systems/2"],
+            [b"redfish/v1/Systems/1/Memory/1"],
+            [b"redfish/v1/Systems/1/Processors/1"],
+            [b"redfish/v1/Systems/1/Adapters/3"],
+            [b"redfish/v1/Systems/1/Adapters/3/Devices/2"],
             [b"redfish/v1/Systems/1/Memory/1"],
             [b"redfish/v1/Systems/1/Processors/1"],
             [b"redfish/v1/Systems/1/Adapters/3"],
@@ -975,28 +979,17 @@ class TestRSDPodDriver(MAASTestCase):
             SAMPLE_JSON_MEMORY,
             SAMPLE_JSON_PROCESSOR,
             SAMPLE_JSON_DEVICE,
+            SAMPLE_JSON_MEMORY,
+            SAMPLE_JSON_PROCESSOR,
+            SAMPLE_JSON_DEVICE,
             ]
 
         pod = yield driver.get_pod_resources(url, headers)
-        self.assertThat(mock_list_resources, MockCallsMatch(
-            call(join(url, b"redfish/v1/Systems"), headers),
-            call(join(url, b"redfish/v1/Systems/1", b"Memory"), headers),
-            call(join(url, b"redfish/v1/Systems/1", b"Processors"), headers),
-            call(join(url, b"redfish/v1/Systems/1", b"Adapters"), headers),
-            call(join(
-                url, b"redfish/v1/Systems/1/Adapters/3", b"Devices"),
-                headers)))
-        self.assertThat(mock_redfish_request, MockCallsMatch(
-            call(b"GET", join(url, b"redfish/v1/Systems/1/Memory/1"), headers),
-            call(b"GET", join(
-                url, b"redfish/v1/Systems/1/Processors/1"), headers),
-            call(b"GET", join(
-                url, b"redfish/v1/Systems/1/Adapters/3/Devices/2"), headers)))
         self.assertEquals(["amd64/generic"], pod.architectures)
-        self.assertEquals(28, pod.cores)
+        self.assertEquals(28 * 2, pod.cores)
         self.assertEquals(2300, pod.cpu_speed)
-        self.assertEquals(7812, pod.memory)
-        self.assertEquals(119999999999.99997, pod.local_storage)
+        self.assertEquals(7812 * 2, pod.memory)
+        self.assertEquals(119999999999.99997 * 2, pod.local_storage)
         self.assertEquals(
             [Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
             pod.capabilities)

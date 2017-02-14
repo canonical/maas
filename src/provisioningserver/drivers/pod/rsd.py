@@ -410,8 +410,9 @@ class RSDPodDriver(PodDriver):
                     system.decode('utf-8').rsplit('/')[-1])
                 continue
             else:
-                discovered_pod.architectures.append(
-                    RSD_ARCH.get(arch, arch))
+                arch = RSD_ARCH.get(arch, arch)
+                if arch not in discovered_pod.architectures:
+                    discovered_pod.architectures.append(arch)
                 discovered_pod.memory += sum(memories)
                 discovered_pod.cores += sum(cores)
                 discovered_pod.cpu_speeds.extend(cpu_speeds)
