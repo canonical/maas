@@ -449,7 +449,24 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor_module, "getProcessOutputAndValue")
         mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
         yield service_monitor._execSystemDServiceAction(service_name, action)
-        cmd = "sudo", "--non-interactive", "systemctl", action, service_name
+        cmd = ["sudo", "--non-interactive", "systemctl", action, service_name]
+        self.assertThat(
+            mock_getProcessOutputAndValue, MockCalledOnceWith(
+                # The environment contains LC_ALL and LANG too.
+                cmd[0], cmd[1:], env=select_c_utf8_bytes_locale()))
+
+    @inlineCallbacks
+    def test___execSystemDServiceAction_calls_systemctl_with_options(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_getProcessOutputAndValue = self.patch(
+            service_monitor_module, "getProcessOutputAndValue")
+        mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
+        yield service_monitor._execSystemDServiceAction(
+            service_name, "kill", extra_opts=['-s', 'SIGKILL'])
+        cmd = [
+            "sudo", "--non-interactive", "systemctl",
+            "kill", "-s", "SIGKILL", service_name]
         self.assertThat(
             mock_getProcessOutputAndValue, MockCalledOnceWith(
                 # The environment contains LC_ALL and LANG too.

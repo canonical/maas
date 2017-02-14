@@ -1,0 +1,127 @@
+#!bin/py
+# -*- mode: python -*-
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""
+Utility that continuously kills regiond processes so only 1 is ever running
+and its short lived.
+
+This utility runs agains the installed running MAAS from packaging, but you
+run it from a local MAAS branch on the installed region controller.
+
+How to use:
+    bzr branch lp:maas
+    cd maas
+    make
+    utilities/regiond-storm
+"""
+
+import argparse
+import random
+import sys
+
+from provisioningserver.utils.service_monitor import (
+    AlwaysOnService,
+    ServiceMonitor,
+    SERVICE_STATE,
+)
+from twisted.internet import (
+    reactor,
+    task,
+)
+from twisted.internet.defer import inlineCallbacks
+
+
+class RegiondWorkerMaster(AlwaysOnService):
+
+    is_master = True
+    name = "regiond-worker@1"
+    service_name = "maas-regiond-worker@1"
+    snap_service_name = "regiond1"
+
+
+class RegiondWorker2(AlwaysOnService):
+
+    is_master = False
+    name = "regiond-worker@2"
+    service_name = "maas-regiond-worker@2"
+    snap_service_name = "regiond2"
+
+
+class RegiondWorker3(AlwaysOnService):
+
+    is_master = False
+    name = "regiond-worker@3"
+    service_name = "maas-regiond-worker@3"
+    snap_service_name = "regiond3"
+
+
+class RegiondWorker4(AlwaysOnService):
+
+    is_master = False
+    name = "regiond-worker@4"
+    service_name = "maas-regiond-worker@4"
+    snap_service_name = "regiond4"
+
+
+def run(args):
+    # Create the monitor.
+    monitor = ServiceMonitor(
+        RegiondWorkerMaster(),
+        RegiondWorker2(),
+        RegiondWorker3(),
+        RegiondWorker4())
+
+    @inlineCallbacks
+    def doWork():
+        running_workers = []
+        for service in monitor._services.values():
+            state = yield monitor.getServiceState(service.name, now=True)
+            if state.active_state == SERVICE_STATE.UNKNOWN:
+                print("Error: maas-regiond service could not be found.")
+                reactor.callLater(0, reactor.stop)
+                break
+            elif state.active_state == SERVICE_STATE.ON:
+                running_workers.append(service)
+
+        # Remove master from running workers if needed.
+        running_count = 1
+        if args.skip_master:
+            running_count = 0
+            running_workers = [
+                worker
+                for worker in running_workers
+                if not worker.is_master
+            ]
+
+        while len(running_workers) > running_count:
+            random.shuffle(running_workers)
+            worker = running_workers.pop()
+            # Workers will auto restart.
+            yield monitor._execSystemDServiceAction(
+                worker.service_name, 'kill', ['-s', 'SIGKILL'])
+            msg = "killed %s" % worker.name
+            if worker.is_master:
+                msg += " (master)"
+            print(msg)
+        print("waiting 30 seconds for respawn...")
+
+
+    looping = task.LoopingCall(doWork)
+    looping.start(30.0)
+    reactor.run()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-master", action="store_true", help=(
+            "Never kill the master process."))
+
+    args = parser.parse_args()
+    run(args)
+
+
+if __name__ == '__main__':
+    main()

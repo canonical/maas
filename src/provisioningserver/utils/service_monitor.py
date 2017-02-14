@@ -365,13 +365,16 @@ class ServiceMonitor:
         yield self._performServiceAction(service, "reload")
 
     @asynchronous
-    def _execSystemDServiceAction(self, service_name, action):
+    def _execSystemDServiceAction(self, service_name, action, extra_opts=None):
         """Perform the action with the systemctl command.
 
         :return: tuple (exit code, std-output, std-error)
         """
         env = select_c_utf8_bytes_locale()
-        cmd = "sudo", "--non-interactive", "systemctl", action, service_name
+        cmd = ["sudo", "--non-interactive", "systemctl", action]
+        if extra_opts is not None:
+            cmd.extend(extra_opts)
+        cmd.append(service_name)
 
         def decode(result):
             out, err, code = result
