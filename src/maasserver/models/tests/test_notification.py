@@ -8,6 +8,7 @@ __all__ = []
 import itertools
 import random
 
+from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from maasserver.models.notification import Notification
 from maasserver.testing.factory import factory
@@ -177,41 +178,55 @@ class TestNotification(MAASServerTestCase):
     def test_save_checks_that_rendering_works(self):
         message = "Dude, where's my {thing}?"
         notification = Notification(message=message)
-        error = self.assertRaises(KeyError, notification.save)
-        self.assertThat(str(error), Equals(repr("thing")))
+        error = self.assertRaises(ValidationError, notification.save)
+        self.assertThat(error.message_dict, Equals({
+            "__all__": ["Notification cannot be rendered."],
+        }))
         self.assertThat(notification.id, Is(None))
         self.assertThat(Notification.objects.all(), HasLength(0))
 
     def test_is_relevant_to_user(self):
+        make_Notification = factory.make_Notification
+
         user = factory.make_User()
         user2 = factory.make_User()
         admin = factory.make_admin()
 
         Yes, No = Is(True), Is(False)
 
-        notification_to_user = Notification(user=user)
-        self.assertThat(notification_to_user.is_relevant_to(None), No)
-        self.assertThat(notification_to_user.is_relevant_to(user), Yes)
-        self.assertThat(notification_to_user.is_relevant_to(user2), No)
-        self.assertThat(notification_to_user.is_relevant_to(admin), No)
+        def assertRelevance(notification, user, yes_or_no):
+            # Ensure that is_relevant_to and find_for_user agree, i.e. if
+            # is_relevant_to returns True, the notification is in the set
+            # returned by find_for_user. Likewise, if is_relevant_to returns
+            # False, the notification is not in the find_for_user set.
+            self.assertThat(notification.is_relevant_to(user), yes_or_no)
+            self.assertThat(
+                Notification.objects.find_for_user(user).filter(
+                    id=notification.id).exists(), yes_or_no)
 
-        notification_to_users = Notification(users=True)
-        self.assertThat(notification_to_users.is_relevant_to(None), No)
-        self.assertThat(notification_to_users.is_relevant_to(user), Yes)
-        self.assertThat(notification_to_users.is_relevant_to(user2), Yes)
-        self.assertThat(notification_to_users.is_relevant_to(admin), No)
+        notification_to_user = make_Notification(user=user)
+        assertRelevance(notification_to_user, None, No)
+        assertRelevance(notification_to_user, user, Yes)
+        assertRelevance(notification_to_user, user2, No)
+        assertRelevance(notification_to_user, admin, No)
 
-        notification_to_admins = Notification(admins=True)
-        self.assertThat(notification_to_admins.is_relevant_to(None), No)
-        self.assertThat(notification_to_admins.is_relevant_to(user), No)
-        self.assertThat(notification_to_admins.is_relevant_to(user2), No)
-        self.assertThat(notification_to_admins.is_relevant_to(admin), Yes)
+        notification_to_users = make_Notification(users=True)
+        assertRelevance(notification_to_users, None, No)
+        assertRelevance(notification_to_users, user, Yes)
+        assertRelevance(notification_to_users, user2, Yes)
+        assertRelevance(notification_to_users, admin, No)
 
-        notification_to_all = Notification(users=True, admins=True)
-        self.assertThat(notification_to_all.is_relevant_to(None), No)
-        self.assertThat(notification_to_all.is_relevant_to(user), Yes)
-        self.assertThat(notification_to_all.is_relevant_to(user2), Yes)
-        self.assertThat(notification_to_all.is_relevant_to(admin), Yes)
+        notification_to_admins = make_Notification(admins=True)
+        assertRelevance(notification_to_admins, None, No)
+        assertRelevance(notification_to_admins, user, No)
+        assertRelevance(notification_to_admins, user2, No)
+        assertRelevance(notification_to_admins, admin, Yes)
+
+        notification_to_all = make_Notification(users=True, admins=True)
+        assertRelevance(notification_to_all, None, No)
+        assertRelevance(notification_to_all, user, Yes)
+        assertRelevance(notification_to_all, user2, Yes)
+        assertRelevance(notification_to_all, admin, Yes)
 
 
 class TestNotificationRepresentation(MAASServerTestCase):

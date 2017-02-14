@@ -10,6 +10,7 @@ __all__ = [
 from functools import wraps
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.models import (
     BooleanField,
@@ -100,10 +101,12 @@ class NotificationManager(Manager):
         :return: A `QuerySet` of `Notification` instances that haven't been
             dismissed by `user`.
         """
-        if user.is_superuser:
-            where = "notification.users OR notification.admins"
+        if user is None:
+            return Notification.objects.none()
+        elif user.is_superuser:
+            query = self._sql_find_ids_for_admins
         else:
-            where = "notification.users"
+            query = self._sql_find_ids_for_users
         # We want to return a QuerySet because things like the WebSocket
         # handler code wants to use order_by. This seems reasonable. However,
         # we can't do outer joins with Django so we have to use self.raw().
@@ -112,18 +115,20 @@ class NotificationManager(Manager):
         # raw query. Nope, we have to actually fetch those IDs then issue
         # another query to get a QuerySet for a set of Notification rows.
         with connection.cursor() as cursor:
-            find_ids = self._sql_find_ids_for_user % where
-            cursor.execute(find_ids, [user.id, user.id])
+            cursor.execute(query, [user.id, user.id])
             ids = [nid for (nid, ) in cursor.fetchall()]
         return self.filter(id__in=ids)
 
-    _sql_find_ids_for_user = """\
+    _sql_find_ids_for_xxx = """\
     SELECT notification.id FROM maasserver_notification AS notification
     LEFT OUTER JOIN maasserver_notificationdismissal AS dismissal ON
       (dismissal.notification_id = notification.id AND dismissal.user_id = %%s)
     WHERE (notification.user_id = %%s OR %s) AND dismissal.id IS NULL
     ORDER BY notification.updated, notification.id
     """
+
+    _sql_find_ids_for_users = _sql_find_ids_for_xxx % "notification.users"
+    _sql_find_ids_for_admins = _sql_find_ids_for_xxx % "notification.admins"
 
 
 class Notification(CleanSave, TimestampedModel):
@@ -156,16 +161,16 @@ class Notification(CleanSave, TimestampedModel):
     # The ident column *is* unique, but uniqueness will be ensured using a
     # partial index in PostgreSQL. These cannot be expressed using Django. See
     # migrations for the SQL used to create this index.
-    ident = CharField(max_length=40, null=True, blank=True)
+    ident = CharField(max_length=40, null=True, blank=True, default=None)
 
-    user = ForeignKey(User, null=True, blank=True)
-    users = BooleanField(default=False)
-    admins = BooleanField(default=False)
+    user = ForeignKey(User, null=True, blank=True, default=None)
+    users = BooleanField(null=False, blank=True, default=False)
+    admins = BooleanField(null=False, blank=True, default=False)
 
-    message = TextField(null=False, blank=True)
+    message = TextField(null=False, blank=False)
     context = JSONObjectField(null=False, blank=True, default=dict)
     category = CharField(
-        null=False, blank=False, default="info", max_length=10,
+        null=False, blank=True, default="info", max_length=10,
         choices=[
             ("error", "Error"), ("warning", "Warning"),
             ("success", "Success"), ("info", "Informational"),
@@ -200,7 +205,25 @@ class Notification(CleanSave, TimestampedModel):
 
     def clean(self):
         super(Notification, self).clean()
-        self.render()  # Just check it works.
+        # Elementary cleaning that Django can't seem to do for us, mainly
+        # because setting blank=False causes any number of problems.
+        if self.ident == "":
+            self.ident = None
+        if self.category == "":
+            self.category = "info"
+        # The context must be a a dict (well, mapping, but we check for dict
+        # because it will be converted to JSON later and a dict-like object
+        # won't do). This could be done as a validator but, meh, I'm sick of
+        # jumping through Django-hoops like a circus animal.
+        if not isinstance(self.context, dict):
+            raise ValidationError(
+                {"context": "Context is not a mapping."})
+        # Finally, check that the notification can be rendered. No point in
+        # doing any of this if we cannot relate the message.
+        try:
+            self.render()
+        except Exception as error:
+            raise ValidationError("Notification cannot be rendered.")
 
     def __repr__(self):
         username = "None" if self.user is None else repr(self.user.username)

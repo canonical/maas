@@ -98,14 +98,13 @@ class TestNotificationHandler(MAASServerTestCase):
         notifications = [
             factory.make_Notification(user=admin),  # Will match.
             factory.make_Notification(user=admin2),
-            factory.make_Notification(users=True),  # Will match.
+            factory.make_Notification(users=True),
             factory.make_Notification(users=False),
             factory.make_Notification(admins=True),  # Will match.
             factory.make_Notification(admins=False),
         ]
         expected = [
             MatchesRenderedNotification(notifications[0]),
-            MatchesRenderedNotification(notifications[2]),
             MatchesRenderedNotification(notifications[4]),
         ]
         self.assertThat(
