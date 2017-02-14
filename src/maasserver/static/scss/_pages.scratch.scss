@@ -1,5 +1,17 @@
 @mixin maas-pages {
 
+  body {
+    height: calc(100% - 202px);
+  }
+
+  .table .table__head {
+    width: auto !important;
+  }
+
+  .button-group .button-group__item .button-group__item-link {
+    text-transform: none;
+  }
+
   .u-text--truncate {
     white-space: nowrap;
     overflow: hidden;
@@ -26,7 +38,7 @@
     padding: 15px 20px 15px 45px;
     background-repeat: no-repeat;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-    background: $white url('#{$asset-path}images/icons/error.svg') no-repeat;
+    background: $white url('#{$asset-path}images/d730daea-error.svg') no-repeat;
     background-size: 16px 16px;
     background-position: 15px center;
     margin-bottom: 20px;
@@ -61,7 +73,7 @@
     display: inline-block;
     vertical-align: middle;
     text-indent: 999em;
-    background: url('#{$asset-path}images/icons/loading.png') no-repeat;
+    background: url('#{$asset-path}images/8b7b3046-loading.png') no-repeat;
     background-size: 100% 100%;
   }
 

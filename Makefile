@@ -28,7 +28,7 @@ templates := $(shell find etc/maas/templates -type f)
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
-scss_theme := include/nodejs/node_modules/cloud-vanilla-theme
+scss_theme := include/nodejs/node_modules/maas-gui-vanilla-theme
 scss_input := src/maasserver/static/scss/build.scss
 scss_deps := $(wildcard src/maasserver/static/scss/_*.scss)
 scss_output := src/maasserver/static/css/build.css
@@ -394,7 +394,7 @@ $(scss_output): bin/sass $(scss_theme) $(scss_input) $(scss_deps)
 
 $(scss_theme): prefix = include/nodejs
 $(scss_theme):
-	$(npm_install) --prefix $(prefix) cloud-vanilla-theme@0.0.22
+	$(npm_install) --prefix $(prefix) maas-gui-vanilla-theme@1.2.0
 
 clean-styles:
 	$(RM) $(scss_output)
