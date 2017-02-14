@@ -1427,6 +1427,34 @@ class TestRegionAdvertising(MAASServerTestCase):
         self.assertIsNone(reload_object(old_region_process))
         self.assertIsNone(reload_object(old_other_region_process))
 
+    def test_update_removes_dead_sibling_processes(self):
+        advertising = RegionAdvertising.promote()
+
+        region = RegionController.objects.get(system_id=advertising.region_id)
+        [my_process] = region.processes.all()
+
+        running_pid = randint(1, 10)
+        running_sibling = RegionControllerProcess.objects.create(
+            region=region, pid=running_pid)
+        dead_pid = randint(11, 20)
+        dead_sibling = RegionControllerProcess.objects.create(
+            region=region, pid=dead_pid)
+
+        def is_running(pid):
+            if pid == running_pid:
+                return True
+            elif pid == dead_pid:
+                return False
+            else:
+                raise ValueError("Unknown PID.")
+
+        self.patch(regionservice, "is_pid_running").side_effect = is_running
+
+        advertising.update(self.make_addresses())
+
+        self.assertIsNotNone(reload_object(running_sibling))
+        self.assertIsNone(reload_object(dead_sibling))
+
     def test_update_updates_updated_time_on_region_and_process(self):
         current_time = now()
         self.patch(timestampedmodel, "now").return_value = current_time
@@ -1497,6 +1525,7 @@ class TestRegionAdvertising(MAASServerTestCase):
 
         region = RegionController.objects.get(system_id=advertising.region_id)
         [process] = region.processes.all()
+        self.patch(regionservice, "is_pid_running").return_value = True
 
         # Make 3 more processes.
         for _ in range(3):

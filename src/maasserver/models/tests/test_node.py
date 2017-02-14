@@ -8848,13 +8848,15 @@ class TestRackController(MAASTransactionServerTestCase):
         RegionRackRPCConnection.objects.create(
             endpoint=connected_endpoint, rack_controller=rack_controller)
         rack_controller.update_rackd_status()
+        percentage = (
+            (len(regions_without_processes) * 4) + 1) / (
+            (len(regions_without_processes) + len(regions_with_processes)) * 4)
         self.assertThat(
             Service.objects.get(node=rack_controller, name="rackd"),
             MatchesStructure.byEquality(
                 status=SERVICE_STATUS.DEGRADED, status_info=(
-                    "Missing connections to %d region controller(s)." % (
-                        len(regions_with_processes) +
-                        len(regions_without_processes)))))
+                    "{:.0%} connected to region controllers.".format(
+                        percentage))))
 
     fake_images = [
         {

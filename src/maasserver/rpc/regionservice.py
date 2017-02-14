@@ -83,6 +83,7 @@ from provisioningserver.utils.network import (
     get_all_interface_addresses,
     resolves_to_loopback_address,
 )
+from provisioningserver.utils.ps import is_pid_running
 from provisioningserver.utils.twisted import (
     asynchronous,
     call,
@@ -1322,6 +1323,18 @@ class RegionAdvertising:
         remove_before_time = now() - timedelta(seconds=90)
         RegionControllerProcess.objects.filter(
             updated__lte=remove_before_time).delete()
+
+        # Remove any processes that cannot be identified as still running
+        # on this region controller. This helps remove the need to wait
+        # 90 seconds to reap the old processes (only on region controllers
+        # where another regiond process is still running).
+        sibling_processes = (
+            RegionControllerProcess.objects
+            .filter(region=region_obj)
+            .exclude(id=self.process_id))
+        for sibling_process in sibling_processes:
+            if not is_pid_running(sibling_process.pid):
+                sibling_process.delete()
 
         # Update all endpoints for this process.
         previous_endpoint_ids = set(

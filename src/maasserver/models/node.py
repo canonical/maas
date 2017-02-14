@@ -4657,15 +4657,13 @@ class RackController(Controller):
                 Service.objects.update_service_for(
                     self, "rackd", SERVICE_STATUS.RUNNING)
             else:
-                # Not connected to all regions.
-                missing_regions = set(
-                    process.region
-                    for process in missing_processes
-                )
+                # Calculate precentage of connection.
+                percentage = ((dead_regions * 4) + len(missing_processes)) / (
+                    RegionController.objects.count() * 4)
                 Service.objects.update_service_for(
                     self, "rackd", SERVICE_STATUS.DEGRADED,
-                    "Missing connections to %d region controller(s)." % (
-                        dead_regions + len(missing_regions)))
+                    "{:.0%} connected to region controllers.".format(
+                        percentage))
 
     def get_image_sync_status(self, boot_images=None):
         """Return the status of the boot image import process."""
