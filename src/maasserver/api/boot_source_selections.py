@@ -49,6 +49,7 @@ class BootSourceSelectionHandler(OperationsHandler):
     def update(self, request, boot_source_id, id):
         """Update a specific boot source selection.
 
+        :param os: The OS (e.g. ubuntu, centos) for which to import resources.
         :param release: The release for which to import resources.
         :param arches: The list of architectures for which to import resources.
         :param subarches: The list of subarchitectures for which to import
@@ -113,6 +114,7 @@ class BootSourceSelectionsHandler(OperationsHandler):
     def create(self, request, boot_source_id):
         """Create a new boot source selection.
 
+        :param os: The OS (e.g. ubuntu, centos) for which to import resources.
         :param release: The release for which to import resources.
         :param arches: The architecture list for which to import resources.
         :param subarches: The subarchitecture list for which to import
