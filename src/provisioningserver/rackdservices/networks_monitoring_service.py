@@ -30,36 +30,46 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
 
     def getDiscoveryState(self):
         """Get the discovery state from the region."""
-        client = self.clientService.getClient()
         if self._recorded is None:
             # Wait until the rack has refreshed.
             return {}
         else:
-            d = client(
-                GetDiscoveryState, system_id=client.localIdent)
-            d.addCallback(lambda args: args['interfaces'])
+            def getState(client):
+                d = client(
+                    GetDiscoveryState, system_id=client.localIdent)
+                d.addCallback(lambda args: args['interfaces'])
+                return d
+
+            d = self.clientService.getClientNow()
+            d.addCallback(getState)
             return d
 
     def recordInterfaces(self, interfaces):
         """Record the interfaces information to the region."""
-        client = self.clientService.getClient()
-        # On first run perform a refresh
-        if self._recorded is None:
-            return client(RequestRackRefresh, system_id=client.localIdent)
-        else:
-            return client(
-                UpdateInterfaces, system_id=client.localIdent,
-                interfaces=interfaces)
+        def record(client):
+            # On first run perform a refresh
+            if self._recorded is None:
+                return client(RequestRackRefresh, system_id=client.localIdent)
+            else:
+                return client(
+                    UpdateInterfaces, system_id=client.localIdent,
+                    interfaces=interfaces)
+
+        d = self.clientService.getClientNow()
+        d.addCallback(record)
+        return d
 
     def reportNeighbours(self, neighbours):
         """Report neighbour information to the region."""
-        client = self.clientService.getClient()
-        return client(
+        d = self.clientService.getClientNow()
+        d.addCallback(lambda client: client(
             ReportNeighbours, system_id=client.localIdent,
-            neighbours=neighbours)
+            neighbours=neighbours))
+        return d
 
     def reportMDNSEntries(self, mdns):
         """Report mDNS entries to the region."""
-        client = self.clientService.getClient()
-        return client(
-            ReportMDNSEntries, system_id=client.localIdent, mdns=mdns)
+        d = self.clientService.getClientNow()
+        d.addCleanup(lambda client: client(
+            ReportMDNSEntries, system_id=client.localIdent, mdns=mdns))
+        return d

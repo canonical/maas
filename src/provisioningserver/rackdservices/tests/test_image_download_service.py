@@ -145,7 +145,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
                 http=urlparse(http_proxy),
                 https=urlparse(https_proxy))),
             ]
-        rpc_client.getClient.return_value = client_call
+        rpc_client.getClientNow.return_value = defer.succeed(client_call)
 
         # We could patch out 'import_boot_images' instead here but I
         # don't do that for 2 reasons:
@@ -165,7 +165,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
     def test_no_download_if_no_rpc_connections(self):
         rpc_client = Mock()
         failure = NoConnectionsAvailable()
-        rpc_client.getClient.side_effect = failure
+        rpc_client.getClientNow.return_value = defer.fail(failure)
 
         deferToThread = self.patch(boot_images, 'deferToThread')
         service = ImageDownloadService(

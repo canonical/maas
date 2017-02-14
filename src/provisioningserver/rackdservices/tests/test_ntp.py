@@ -70,7 +70,7 @@ def prepareRegion(
 class StubClusterClientService:
     """A stub `ClusterClientService` service that's never connected."""
 
-    def getClient(self):
+    def getClientNow(self):
         raise exceptions.NoConnectionsAvailable()
 
 

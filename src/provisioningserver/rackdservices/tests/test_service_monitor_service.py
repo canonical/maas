@@ -129,7 +129,7 @@ class TestServiceMonitorService(MAASTestCase):
 
         client = getRegionClient()
         rpc_service = Mock()
-        rpc_service.getClient.return_value = client
+        rpc_service.getClientNow.return_value = succeed(client)
         monitor_service = sms.ServiceMonitorService(
             rpc_service, Clock())
         yield monitor_service.startService()

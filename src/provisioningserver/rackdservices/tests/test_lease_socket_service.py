@@ -203,7 +203,7 @@ class TestLeaseSocketService(MAASTestCase):
 
         client = getRegionClient()
         rpc_service = MagicMock()
-        rpc_service.getClient.return_value = client
+        rpc_service.getClientNow.return_value = defer.succeed(client)
         service = LeaseSocketService(
             rpc_service, reactor)
 

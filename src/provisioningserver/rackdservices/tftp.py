@@ -235,11 +235,16 @@ class TFTPBackend(FilesystemSynchronousBackend):
             name: params[name] for name in arguments
             if name in params
         }
-        client = self.client_service.getClient()
-        params["system_id"] = client.localIdent
-        d = self.fetcher(client, GetBootConfig, **params)
-        d.addCallback(self.get_boot_image, client)
-        d.addCallback(lambda data: KernelParameters(**data))
+
+        def fetch(client, params):
+            params["system_id"] = client.localIdent
+            d = self.fetcher(client, GetBootConfig, **params)
+            d.addCallback(self.get_boot_image, client)
+            d.addCallback(lambda data: KernelParameters(**data))
+            return d
+
+        d = self.client_service.getClientNow()
+        d.addCallback(fetch, params)
         return d
 
     @deferred

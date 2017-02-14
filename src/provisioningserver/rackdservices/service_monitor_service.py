@@ -82,7 +82,7 @@ class ServiceMonitorService(TimerService, object):
         client = None
         for elapsed, remaining, wait in retries(30, 10, self.clock):
             try:
-                client = self.client_service.getClient()
+                client = yield self.client_service.getClientNow()
                 break
             except NoConnectionsAvailable:
                 yield pause(wait, self.clock)

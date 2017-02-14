@@ -96,6 +96,7 @@ from provisioningserver.utils.shell import (
 )
 from provisioningserver.utils.twisted import (
     callOut,
+    deferred,
     DeferredValue,
     makeDeferredWithProcessProtocol,
 )
@@ -962,6 +963,26 @@ class ClusterClientService(TimerService, object):
             raise exceptions.NoConnectionsAvailable()
         else:
             return common.Client(random.choice(conns))
+
+    @deferred
+    def getClientNow(self):
+        """Returns a `Defer` that resolves to a :class:`common.Client`
+        connected to a region.
+
+        If a connection already exists to the region then this method
+        will just return that current connection. If no connections exists
+        this method will try its best to make a connection before returning
+        the client.
+
+        :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when
+            there no connections can be made to a region controller.
+        """
+        try:
+            return self.getClient()
+        except exceptions.NoConnectionsAvailable:
+            d = self._tryUpdate()
+            d.addCallback(lambda _: self.getClient())
+            return d
 
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
