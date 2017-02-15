@@ -59,12 +59,13 @@ class TestSnippets(MAASTestCase):
         contents = factory.make_string()
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, 'snippet.py', contents=contents)
-        self.assertEqual(
-            {'snippet_py': contents},
-            get_snippet_context(snippets_dir=snippets_dir))
+        snippets = get_snippet_context(snippets_dir=snippets_dir)
+        self.assertItemsEqual(
+            ['base_user_data_sh', 'snippet_py'], snippets.keys())
+        self.assertEqual(contents, snippets['snippet_py'])
 
-    def test_get_snippet_context_empty_if_no_snippets(self):
+    def test_get_snippet_always_contains_base_user_data(self):
         snippets_dir = self.make_dir()
-        context = {}
-        self.assertEqual(
-            context, get_snippet_context(snippets_dir=snippets_dir))
+        self.assertItemsEqual(
+            ['base_user_data_sh'],
+            get_snippet_context(snippets_dir=snippets_dir).keys())

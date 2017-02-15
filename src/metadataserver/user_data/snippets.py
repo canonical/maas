@@ -38,6 +38,8 @@ def get_snippet_context(snippets_dir=None, encoding='utf-8'):
         strip_name(name): read_snippet(snippets_dir, name, encoding=encoding)
         for name in list_snippets(snippets_dir)
         }
+    snippets['base_user_data_sh'] = read_snippet(
+        get_userdata_template_dir(), 'base_user_data.sh', encoding=encoding)
     return snippets
 
 

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+main() {
+    echo "Powering node off."
+
+    # Cloud-init will handle powering off the node. Nothing to do.
+}
+
+main
+exit

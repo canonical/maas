@@ -1,0 +1,26 @@
+{{base_user_data_sh}}
+
+# This script is passed to cloud-init from MAAS during testing. This script
+# contains multiple files inside it. When executed these files are extracted and
+# run. This script validates hardware by downloading and running test scripts
+# from the MAAS metadata server.
+
+main() {
+    prep_maas_api_helper
+
+    maas-run-remote-scripts "--config=${CRED_CFG}" "${TEMP_D}"
+}
+
+### begin writing files ###
+
+add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
+{{maas_api_helper_py}}
+END_MAAS_API_HELPER
+
+add_bin "maas-run-remote-scripts" <<"END_MAAS_RUN_REMOTE_SCRIPTS"
+{{maas_run_remote_scripts_py}}
+END_MAAS_RUN_REMOTE_SCRIPTS
+
+
+main
+exit

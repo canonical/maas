@@ -1,0 +1,30 @@
+{{base_user_data_sh}}
+
+# This script carries inside it multiple files.  When executed, it creates
+# the files into a temporary directory, then uses them to erase the disk and
+# report back to MAAS.
+
+main() {
+    prep_maas_api_helper
+
+    set -e -u
+    maas-wipe {{if secure_erase}}--secure-erase{{endif}} {{if quick_erase}}--quick-erase{{endif}}
+    signal OK "Disks erased."
+}
+
+### begin writing files ###
+
+add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
+{{maas_api_helper_py}}
+END_MAAS_API_HELPER
+
+add_bin "maas-signal" <<"END_MAAS_SIGNAL"
+{{maas_signal_py}}
+END_MAAS_SIGNAL
+
+add_bin "maas-wipe" <<"END_MAAS_WIPE"
+{{maas_wipe_py}}
+END_MAAS_WIPE
+
+main
+exit

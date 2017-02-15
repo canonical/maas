@@ -73,10 +73,10 @@ def generate_user_data(node, userdata_template_file, extra_context=None):
 def generate_user_data_for_status(node, status=None, extra_content=None):
     """Produce a user_data script based on the node's status."""
     templates = {
-        NODE_STATUS.COMMISSIONING: 'user_data.template',
-        NODE_STATUS.TESTING: 'user_data_testing.template',
-        NODE_STATUS.DISK_ERASING: 'user_data_disk_erasing.template',
-        NODE_STATUS.RESCUE_MODE: 'user_data_rescue_mode.template',
+        NODE_STATUS.COMMISSIONING: 'commissioning.template',
+        NODE_STATUS.TESTING: 'testing.template',
+        NODE_STATUS.DISK_ERASING: 'disk_erasing.template',
+        NODE_STATUS.RESCUE_MODE: 'rescue_mode.template',
     }
     if status is None:
         status = node.status
@@ -88,5 +88,5 @@ def generate_user_data_for_status(node, status=None, extra_content=None):
 def generate_user_data_for_poweroff(node):
     """Produce the poweroff user_data script."""
     userdata_template_file = os.path.join(
-        get_userdata_template_dir(), 'user_data_poweroff.template')
+        get_userdata_template_dir(), 'poweroff.template')
     return generate_user_data(node, userdata_template_file)
