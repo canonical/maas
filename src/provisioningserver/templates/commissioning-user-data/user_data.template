@@ -103,7 +103,8 @@ main() {
    # Install tools and load modules.
    aptget update
    aptget install \
-      python3-yaml python3-oauthlib freeipmi-tools openipmi ipmitool
+      python3-yaml python3-oauthlib freeipmi-tools openipmi ipmitool \
+      sshpass
    load_modules
 
    # The main function, actually execute stuff that is written below.
@@ -130,6 +131,9 @@ main() {
       pargs="--dhcp-if-static"
    fi
    power_type=$(maas-ipmi-autodetect-tool)
+   if [ -z $power_type ]; then
+       power_type=$(maas-wedge-autodetect --check) || power_type=""
+   fi
    case "$power_type" in
       ipmi)
          power_settings=$(maas-ipmi-autodetect \
@@ -137,6 +141,9 @@ main() {
          ;;
       moonshot)
          power_settings=$(maas-moonshot-autodetect)
+         ;;
+      wedge)
+         power_settings=$(maas-wedge-autodetect --get-credentials) || power_settings=""
          ;;
    esac
    if [ ! -z "$power_settings" ]; then
@@ -181,6 +188,10 @@ END_MAAS_IPMI_AUTODETECT
 add_bin "maas-moonshot-autodetect" <<"END_MAAS_MOONSHOT_AUTODETECT"
 {{maas_moonshot_autodetect_py}}
 END_MAAS_MOONSHOT_AUTODETECT
+
+add_bin "maas-wedge-autodetect" <<"END_MAAS_WEDGE_AUTODETECT"
+{{maas_wedge_autodetect_sh}}
+END_MAAS_WEDGE_AUTODETECT
 
 add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
 {{maas_api_helper_py}}

@@ -12,7 +12,7 @@ from maas_api_helper import (
 
 
 VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING")
-POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot")
+POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot", "wedge")
 
 
 def fail(msg):
