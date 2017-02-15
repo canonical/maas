@@ -71,7 +71,15 @@ class TestIsPIDRunning(MAASTestCase):
             "result": True,
             "exception": None,
         }),
-        ("dead", {
+        ("lookup-error", {
+            "result": False,
+            "exception": ProcessLookupError(),
+        }),
+        ("permission-error", {
+            "result": True,
+            "exception": PermissionError(),
+        }),
+        ("os-error", {
             "result": False,
             "exception": OSError(),
         })
