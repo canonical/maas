@@ -14,6 +14,7 @@ from django.db.models import (
     CharField,
     DurationField,
     IntegerField,
+    Manager,
     OneToOneField,
     TextField,
 )
@@ -27,11 +28,35 @@ from metadataserver.enum import (
 )
 
 
+class ScriptManager(Manager):
+
+    def create(self, *, script=None, timeout=None, **kwargs):
+        """Create a Script.
+
+        This is a modified version of Django's create method for use with
+        Scripts. If 'script' is a string a VersionedTextFile will be
+        automatically created for it. If timeout is an int a timedelta will be
+        automatically created.
+        """
+        if script is not None and not isinstance(script, VersionedTextFile):
+            script = VersionedTextFile.objects.create(data=script)
+
+        if timeout is not None:
+            if isinstance(timeout, datetime.timedelta):
+                kwargs['timeout'] = timeout
+            else:
+                kwargs['timeout'] = datetime.timedelta(seconds=timeout)
+
+        return super().create(script=script, **kwargs)
+
+
 class Script(CleanSave, TimestampedModel):
 
     # Force model into the metadataserver namespace.
     class Meta(DefaultMeta):
         pass
+
+    objects = ScriptManager()
 
     name = CharField(max_length=255, unique=True)
 

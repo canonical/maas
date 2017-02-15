@@ -124,21 +124,6 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             MockCalledOnceWith(
                 None, None, 'OK', 'All scripts successfully ran'))
 
-    def test_run_scripts_from_metadata_signals_failure(self):
-        scripts_dir = self.useFixture(TempDirectory()).path
-        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
-        mock_run_scripts.return_value = 1
-        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
-        self.make_index_json(scripts_dir)
-
-        # Don't need to give the url, creds, or out_dir as we're not running
-        # the scripts and sending the results.
-        run_scripts_from_metadata(None, None, scripts_dir, None)
-
-        self.assertThat(
-            mock_signal,
-            MockAnyCall(None, None, 'FAILED', '2 scripts failed to run'))
-
     def test_run_scripts(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         mock_signal = self.patch(maas_run_remote_scripts, 'signal')
@@ -170,3 +155,23 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         }
         args['error'] = 'Finished %s [1/1]: 1' % scripts[0]['name']
         self.assertThat(mock_signal, MockAnyCall(**args))
+
+    def test_run_scripts_signals_failure(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        self.patch(maas_run_remote_scripts, 'run')
+        scripts = self.make_scripts()
+        self.make_script_output(scripts, scripts_dir)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                None, None, 'FAILED', '1 scripts failed to run'))

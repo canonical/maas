@@ -99,6 +99,12 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         signal_wrapper(**args, error='Finished %s [%d/%d]: %d' % (
             script['name'], i, len(scripts), proc.returncode))
 
+    # Signal failure after running commissioning or testing scripts so MAAS
+    # transisitions the node into FAILED_COMMISSIONING or FAILED_TESTING.
+    if fail_count != 0:
+        signal_wrapper(
+            url, creds, 'FAILED', '%d scripts failed to run' % fail_count)
+
     return fail_count
 
 
@@ -115,15 +121,15 @@ def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
 
     testing_scripts = scripts.get('testing_scripts')
     if testing_scripts is not None:
+        # If the node status was COMMISSIONING transition the node into TESTING
+        # status. If the node is already in TESTING status this is ignored.
         signal_wrapper(url, creds, 'TESTING')
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, testing_scripts)
 
+    # Only signal OK when we're done with everything and nothing has failed.
     if fail_count == 0:
         signal_wrapper(url, creds, 'OK', 'All scripts successfully ran')
-    else:
-        signal_wrapper(
-            url, creds, 'FAILED', '%d scripts failed to run' % fail_count)
 
 
 class HeartBeat(Thread):

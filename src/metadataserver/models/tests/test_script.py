@@ -3,11 +3,56 @@
 
 __all__ = []
 
+from datetime import timedelta
 import random
 
+from maasserver.models import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from metadataserver.models import Script
+
+
+class TestScriptManager(MAASServerTestCase):
+    """Test the ScriptManager."""
+
+    def test_create_accepts_str_for_script(self):
+        name = factory.make_name('name')
+        script_str = factory.make_string()
+
+        script = Script.objects.create(name=name, script=script_str)
+
+        self.assertEquals(script_str, script.script.data)
+
+    def test_create_accepts_ver_txt_file_for_script(self):
+        name = factory.make_name('name')
+        script_str = factory.make_string()
+        ver_txt_file = VersionedTextFile.objects.create(data=script_str)
+
+        script = Script.objects.create(name=name, script=ver_txt_file)
+
+        self.assertEquals(script_str, script.script.data)
+        self.assertEquals(ver_txt_file, script.script)
+
+    def test_create_accepts_int_for_timeout(self):
+        name = factory.make_name('name')
+        script_str = factory.make_string()
+        timeout = random.randint(0, 1000)
+
+        script = Script.objects.create(
+            name=name, script=script_str, timeout=timeout)
+
+        self.assertEquals(timedelta(seconds=timeout), script.timeout)
+
+    def test_create_accepts_timedelta_for_timeout(self):
+        name = factory.make_name('name')
+        script_str = factory.make_string()
+        timeout = timedelta(random.randint(0, 1000))
+
+        script = Script.objects.create(
+            name=name, script=script_str, timeout=timeout)
+
+        self.assertEquals(timeout, script.timeout)
 
 
 class TestScript(MAASServerTestCase):

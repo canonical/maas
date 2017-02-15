@@ -6,6 +6,7 @@
 __all__ = []
 
 from functools import partial
+from itertools import chain
 import logging
 from operator import itemgetter
 import random
@@ -140,6 +141,17 @@ class TestMachineHandler(MAASServerTestCase):
         ]
         disks = sorted(disks, key=itemgetter("name"))
         subnets = handler.get_all_subnets(node)
+        if node.current_testing_script_set is not None:
+            commissioning_results = chain(
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+            )
+        else:
+            if node.current_commissioning_script_set is not None:
+                commissioning_results = iter(
+                    node.current_commissioning_script_set)
+            else:
+                commissioning_results = None
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
@@ -152,7 +164,7 @@ class TestMachineHandler(MAASServerTestCase):
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
             "commissioning_results": handler.dehydrate_script_set(
-                node.current_commissioning_script_set),
+                commissioning_results),
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),

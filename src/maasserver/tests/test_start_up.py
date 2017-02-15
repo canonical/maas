@@ -100,6 +100,7 @@ class TestInnerStartUp(MAASServerTestCase):
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "is_master_process")
         self.patch_autospec(start_up, 'dns_kms_setting_changed')
+        self.patch_autospec(start_up, 'load_builtin_scripts')
         self.patch_autospec(start_up, 'post_commit_do')
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
@@ -116,6 +117,18 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up()
         self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
+
+    def test__calls_load_builtin_scripts_if_master(self):
+        start_up.is_master_process.return_value = True
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        self.assertThat(start_up.load_builtin_scripts, MockCalledOnceWith())
+
+    def test__does_not_call_load_builtin_scripts_if_not_master(self):
+        start_up.is_master_process.return_value = False
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
 
     def test__refreshes_if_master(self):
         start_up.is_master_process.return_value = True

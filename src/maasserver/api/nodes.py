@@ -526,8 +526,8 @@ class PowerMixin:
     def test(self, request, system_id):
         """Begin testing process for a node.
 
-        :param enable_ssh: Whether to enable SSH for the commissioning
-            environment using the user's SSH key(s).
+        :param enable_ssh: Whether to enable SSH for the testing environment
+            using the user's SSH key(s).
         :type enable_ssh: bool ('0' for False, '1' for True)
         :param testing_scripts: A comma seperated list of testing script names
             and tags to be run. By default all tests tagged 'commissioning'

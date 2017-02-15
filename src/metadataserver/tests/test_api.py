@@ -1700,6 +1700,18 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
 
+    def test_signal_sets_default_storage_layout_if_TESTING(self):
+        self.patch_autospec(Node, "set_default_storage_layout")
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(client, status='TESTING', script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockCalledOnceWith(node))
+
     def test_signal_does_not_set_default_storage_layout_if_rack(self):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_RackController(with_empty_script_sets=True)
@@ -1742,6 +1754,20 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(client, status='OK', script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockCalledOnceWith(node))
+
+    def test_signal_calls_sets_initial_network_config_if_TESTING(self):
+        self.useFixture(SignalsDisabled("power"))
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        client = make_node_client(node)
+        response = call_signal(client, status='TESTING', script_result=0)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockCalledOnceWith(node))

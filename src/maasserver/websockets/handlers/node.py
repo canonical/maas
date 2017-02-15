@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The node handler for the WebSocket connection."""
@@ -183,8 +183,17 @@ class NodeHandler(TimestampedModelHandler):
 
             # Machine output
             data = self.dehydrate_summary_output(obj, data)
-            data["commissioning_results"] = self.dehydrate_script_set(
-                obj.current_commissioning_script_set)
+            # XXX ltrager 2017-01-27 - Show the testing results in the
+            # commissioning table until we get the testing UI done.
+            if obj.current_testing_script_set is not None:
+                data["commissioning_results"] = self.dehydrate_script_set(
+                    chain(
+                        obj.current_commissioning_script_set,
+                        obj.current_testing_script_set,
+                    ))
+            else:
+                data["commissioning_results"] = self.dehydrate_script_set(
+                    obj.current_commissioning_script_set)
             data["installation_results"] = self.dehydrate_script_set(
                 obj.current_installation_script_set)
 

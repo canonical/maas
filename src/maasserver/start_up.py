@@ -27,6 +27,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
@@ -117,6 +118,8 @@ def inner_start_up():
     if is_master_process():
         # Freshen the kms SRV records.
         dns_kms_setting_changed()
+        # Add or update all builtin scripts
+        load_builtin_scripts()
         # Refresh soon after this transaction is in.
         post_commit_do(reactor.callLater, 0, refreshRegion, region)
 
