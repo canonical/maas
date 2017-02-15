@@ -289,7 +289,7 @@ class TestComposePreseed(MAASServerTestCase):
             'delay': 'now',
             'mode': 'reboot',
             'timeout': 1800,
-            'condition': 'test ! -e /tmp/block-poweroff',
+            'condition': 'test ! -e /tmp/block-reboot',
         }, preseed['power_state'])
 
     def test_compose_preseed_powersoff_for_all_other_statuses(self):
@@ -363,7 +363,7 @@ class TestComposePreseed(MAASServerTestCase):
                 'delay': 'now',
                 'mode': 'reboot',
                 'timeout': 1800,
-                'condition': 'test ! -e /tmp/block-poweroff',
+                'condition': 'test ! -e /tmp/block-reboot',
             }, preseed['power_state'])
         self.assertEqual(
             absolute_reverse('curtin-metadata'),

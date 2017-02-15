@@ -311,15 +311,15 @@ def _compose_cloud_init_preseed(
                 'delay': 'now',
                 'mode': 'reboot',
                 'timeout': reboot_timeout,
+                'condition': 'test ! -e /tmp/block-reboot',
             }
         else:
             cloud_config['power_state'] = {
                 'delay': 'now',
                 'mode': 'poweroff',
                 'timeout': poweroff_timeout,
+                'condition': 'test ! -e /tmp/block-poweroff',
             }
-        cloud_config['power_state']['condition'] = (
-            'test ! -e /tmp/block-poweroff')
 
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
