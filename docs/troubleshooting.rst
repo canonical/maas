@@ -151,6 +151,11 @@ to power off. To stop that from happening, you can just create a file in /tmp::
 
  touch /tmp/block-poweroff
 
+After a deployment, the user-data from maas intructs the system to reboot. To
+stop that from happening, you can just create a file in /tmp::
+
+ touch /tmp/block-reboot
+
 MAAS credentials
 ----------------
 

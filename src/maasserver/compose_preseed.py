@@ -309,6 +309,7 @@ def _compose_cloud_init_preseed(
             'delay': 'now',
             'mode': 'reboot',
             'timeout': reboot_timeout,
+            'condition': 'test ! -e /tmp/block-reboot'
         }
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 

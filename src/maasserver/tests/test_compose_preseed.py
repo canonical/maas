@@ -316,6 +316,7 @@ class TestComposePreseed(MAASServerTestCase):
                 'delay': Equals('now'),
                 'mode': Equals('reboot'),
                 'timeout': Equals(1800),
+                'condition': Equals('test ! -e /tmp/block-reboot'),
             }))
         self.assertEqual(
             absolute_reverse('curtin-metadata'),
