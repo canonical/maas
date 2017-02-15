@@ -85,6 +85,7 @@ Developing MAAS
    development/tagging
    development/preseeds
    development/metadata
+   development/notifications
    development/rpc
    development/transactions
    development/notes/index
