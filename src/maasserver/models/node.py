@@ -3708,6 +3708,7 @@ class Node(CleanSave, TimestampedModel):
 
         rescue_mode_user_data = generate_user_data_for_status(
             node=self, status=NODE_STATUS.RESCUE_MODE)
+
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.

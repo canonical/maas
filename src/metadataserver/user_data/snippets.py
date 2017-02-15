@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level routines for access to snippets.
@@ -17,17 +17,14 @@ __all__ = [
 
 import os
 
-from provisioningserver.utils import locate_template
 from provisioningserver.utils.fs import read_text_file
-
-
-USERDATA_BASE_DIR = 'commissioning-user-data'
 
 
 def get_userdata_template_dir():
     """Return the absolute location of the userdata
     template directory."""
-    return locate_template(USERDATA_BASE_DIR)
+    return os.path.join(
+        os.path.dirname(__file__), 'templates')
 
 
 def get_snippet_context(snippets_dir=None, encoding='utf-8'):

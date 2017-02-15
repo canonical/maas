@@ -149,7 +149,8 @@ class Rule:
 
 # Common module patterns.
 StandardLibraries = Pattern(
-    map("{0}|{0}.**".format, python_standard_libs))
+    map("{0}|{0}.**".format, python_standard_libs),
+)
 TestingLibraries = Pattern(
     "distro_info.UbuntuDistroInfo",
     "django_nose|django_nose.**",
@@ -183,16 +184,13 @@ RackControllerUtilsInit = files(
     "src/provisioningserver/utils/__init__.py")
 RackControllerUtilsFS = files(
     "src/provisioningserver/utils/fs.py")
-RackControllerCommissioningSnippets = files(
-    "src/provisioningserver/templates/commissioning-user-data/"
-    "snippets/**/*.py")
 RackControllerLogging = files(
     "src/provisioningserver/logger/*.py")
 RackController = (
     files("src/provisioningserver/**/*.py") -
     files("src/provisioningserver/twisted/**/*.py") -
     RackControllerConfig - RackControllerUtilsInit - RackControllerLogging -
-    RackControllerUtilsFS - RackControllerCommissioningSnippets)
+    RackControllerUtilsFS)
 RackControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.maas_client.*"),
@@ -228,9 +226,12 @@ RegionMigrationsSouth = files(
 RegionMigrationsBuiltin = files(
     "src/maasserver/migrations/builtin/**/*.py",
     "src/metadataserver/migrations/builtin/**/*.py")
+RegionUserDataSnippets = files(
+    "src/metadataserver/user_data/templates/"
+    "snippets/**/*.py")
 RegionController = (
     files("src/maasserver/**/*.py", "src/metadataserver/**/*.py") -
-    RegionMigrationsSouth - RegionMigrationsBuiltin)
+    RegionMigrationsSouth - RegionMigrationsBuiltin - RegionUserDataSnippets)
 RegionControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.multipart.*"),
@@ -265,6 +266,7 @@ RegionControllerRule = Rule(
     Allow("twisted.**"),
     Allow("yaml"),
     Allow("zope.interface|zope.interface.**"),
+    Allow("oauthlib.oauth1"),
     Allow(StandardLibraries),
 )
 
@@ -345,24 +347,9 @@ checks = [
         ),
     ),
     (
-        RackControllerCommissioningSnippets - Tests,
-        RackControllerRule | Rule(
-            Allow("maas_api_helper.**"),
-            Allow("snippets.**"),
-        ),
-    ),
-    (
         RackController & Tests,
         RackControllerRule | Rule(
             Allow("apiclient.testing.credentials.make_api_credentials"),
-            Allow(StandardLibraries),
-            Allow(TestingLibraries),
-        ),
-    ),
-    (
-        RackControllerCommissioningSnippets & Tests,
-        RackControllerRule | Rule(
-            Allow("snippets.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
@@ -380,6 +367,13 @@ checks = [
     (
         RegionController - Tests,
         RegionControllerRule,
+    ),
+    (
+        RegionUserDataSnippets - Tests,
+        RegionControllerRule | Rule(
+            Allow("maas_api_helper.**"),
+            Allow("snippets.**"),
+        ),
     ),
     (
         RegionMigrationsSouth,
@@ -415,6 +409,14 @@ checks = [
     (
         RegionController & Tests,
         RegionControllerRule | Rule(
+            Allow(TestingLibraries),
+        ),
+    ),
+    (
+        RegionUserDataSnippets & Tests,
+        RegionControllerRule | Rule(
+            Allow("snippets.**"),
+            Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
     ),
