@@ -45,6 +45,7 @@ from provisioningserver.drivers.pod.rsd import (
     WebClientContextFactory,
 )
 import provisioningserver.drivers.pod.rsd as rsd_module
+from provisioningserver.rpc.exceptions import PodInvalidResources
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -1234,6 +1235,30 @@ class TestRSDPodDriver(MAASTestCase):
                 'node_id').encode('utf-8'), headers))
         self.assertEquals(new_machine, discovered_machine)
         self.assertEquals(discovered_pod.hints, discovered_pod_hints)
+
+    @inlineCallbacks
+    def test_compose_raises_error_for_no_allocation(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        request = make_requested_machine(cores=1)
+        discovered_pod = make_discovered_pod()
+        new_machines = discovered_pod.machines.copy()
+        machines = new_machines.copy()
+        mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
+        mock_get_pod_machines.side_effect = [
+            machines, new_machines]
+        mock_convert_request_to_json_payload = self.patch(
+            driver, 'convert_request_to_json_payload')
+        payload = json.dumps(
+            {
+                'Test': "Testing Compose"
+            }).encode('utf-8')
+        mock_convert_request_to_json_payload.side_effect = [payload] * 4
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.side_effect = [Exception('Error')]
+        with ExpectedException(PodInvalidResources):
+            yield driver.compose(
+                factory.make_name('system_id'), context, request)
 
     @inlineCallbacks
     def test__decompose(self):

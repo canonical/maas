@@ -636,7 +636,7 @@ class RSDPodDriver(PodDriver):
                 processors *= 2
                 cores //= 2
                 # Loop termination condition.
-                if processors == requested_cores:
+                if cores == 0:
                     break
                 continue
 
