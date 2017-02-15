@@ -147,7 +147,7 @@ bin/test.e2e: \
 # bin/maas-region is needed for South migration tests. bin/flake8 is
 # needed for checking lint and bin/sass is needed for checking css.
 bin/test.testing: \
-  bin/maas-region bin/flake8 bin/sass bin/buildout \
+  bin/maas-region bin/flake8 bin/sass $(scss_theme) bin/buildout \
   buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -698,6 +698,28 @@ endef
 phony := $(sort $(strip $(phony)))
 
 .PHONY: $(phony) FORCE
+
+#
+# Secondary stuff.
+#
+# These are intermediate files that we want to keep around in the event
+# that they get built. By declaring them here we're also telling Make
+# that their absense is okay if a rule target is newer than the rule's
+# other prerequisites; i.e. don't build them.
+#
+# For example, converting foo.scss to foo.css might require bin/sass. If
+# foo.css is newer than foo.scss we know that we don't need to perform
+# that conversion, and hence don't need bin/sass. We declare bin/sass as
+# secondary so that Make knows this too.
+#
+
+define secondary
+  bin/py bin/buildout
+  bin/sass $(scss_theme)
+  bin/sphinx bin/sphinx-build
+endef
+
+.SECONDARY: $(sort $(strip $(secondary)))
 
 #
 # Functions.
