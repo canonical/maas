@@ -5,7 +5,7 @@
         </div>
     </header>
 </div>
-<div class="ng-hide" data-ng-show="loaded">
+<div class="ng-hide" data-ng-show="loaded" window-width>
     <header class="page-header" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
           <h1 class="page-header__title">{$ subnet.cidr $}</h1>
@@ -111,7 +111,7 @@
             </maas-obj-form>
         </div>
     </section>
-    <section class="row">
+    <section class="row" window-width>
         <div class="wrapper--inner">
             <div class="twelve-col">
                 <h2>Static Routes</h2>
@@ -141,18 +141,18 @@
                                 <div class="table__data table-col--11" aria-label="Metric">{$ staticRoute.metric $}</div>
                                 <div class="table__data table-col--9 table--mobile-controls">
                                     <div class="table__controls" data-ng-if="isSuperUser()">
-                                      <a class="icon icon--edit u-display--desktop tooltip u-margin--right" aria-label="Edit row"
+                                      <a class="icon icon--edit tooltip u-margin--right" aria-label="Edit row" data-ng-if="windowWidth >= 769"
                                           data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
-                                      <a class="icon icon--delete u-display--desktop tooltip" aria-label="Remove"
+                                      <a class="icon icon--delete tooltip" aria-label="Remove" data-ng-if="windowWidth >= 769"
                                           data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
-                                      <a class="button--secondary u-display--mobile" aria-label="Edit row"
+                                      <a class="button--secondary" data-ng-if="windowWidth <= 768" aria-label="Edit row"
                                           data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
-                                      <a class="button--secondary u-display--mobile" aria-label="Remove"
+                                      <a class="button--secondary" data-ng-if="windowWidth <= 768" aria-label="Remove"
                                           data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
                                     </div>
                                 </div>
                                 <div class="table__dropdown" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">
-                                    <div class="table__dropdown-title">
+                                    <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                         <h2 data-ng-click="staticRouteCancelDelete()" class="u-float--left">Remove {$ staticRoute.gateway_ip $}</h2>
                                         <i data-ng-click="staticRouteCancelDelete()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                     </div>
@@ -167,7 +167,7 @@
                                     </div>
                                 </div>
                                 <div class="table__dropdown" data-ng-if="isStaticRouteInEditMode(staticRoute)">
-                                    <div class="table__dropdown-title">
+                                    <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                         <h2 data-ng-click="staticRouteToggleEditMode(staticRoute)" class="u-float--left">Editing {$ staticRoute.gateway_ip $}</h2>
                                         <i data-ng-click="staticRouteToggleEditMode(staticRoute)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                     </div>
@@ -206,19 +206,19 @@
                         <div class="table__row is-active" data-ng-if="newStaticRoute">
                             <maas-obj-form obj="newStaticRoute" manager="staticRoutesManager" manager-method="createItem"
                                 table-form="true" save-on-blur="false" after-save="cancelAddStaticRoute">
-                                <div class="table__data table-col--30">
+                                <div class="table__data table-col--30" data-ng-if="windowWidth >= 769">
                                     <maas-obj-field type="text" key="gateway_ip" placeholder="Gateway IP" disable-label="true" input-class="table__input u-margin--none"></maas-obj-field>
                                 </div>
                                 <div class="table__data table-col--70"></div>
                                 <div class="table__dropdown">
-                                    <div class="table__dropdown-title">
+                                    <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                         <h2 data-ng-click="cancelAddStaticRoute()" class="u-float--left">Adding static route</h2>
                                         <i data-ng-click="cancelAddStaticRoute()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
                                     </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
                                             <div class="form__fieldset six-col">
-                                                <div class="form__group u-display--mobile">
+                                                <div class="form__group" data-ng-if="windowWidth <= 768">
                                                     <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" label-width="two" input-width="three" placeholder="Gateway IP"></maas-obj-field>
                                                 </div>
                                                 <div class="form__group">
