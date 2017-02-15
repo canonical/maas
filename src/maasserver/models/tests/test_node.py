@@ -147,10 +147,6 @@ from metadataserver.models import (
     NodeUserData,
     ScriptResult,
 )
-from metadataserver.user_data import (
-    commissioning,
-    disk_erasing,
-)
 from netaddr import IPAddress
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
@@ -1644,7 +1640,8 @@ class TestNode(MAASServerTestCase):
         self.disable_node_query()
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        generate_user_data = self.patch(disk_erasing, 'generate_user_data')
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
         node_start = self.patch(node, '_start')
         node_start.side_effect = factory.make_exception()
 
@@ -1658,8 +1655,8 @@ class TestNode(MAASServerTestCase):
 
         self.assertThat(
             node_start, MockCalledOnceWith(
-                admin, generate_user_data.return_value, NODE_STATUS.ALLOCATED,
-                allow_power_cycle=True))
+                admin, generate_user_data_for_status.return_value,
+                NODE_STATUS.ALLOCATED, allow_power_cycle=True))
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_sets_status_on_post_commit_error(self):
@@ -2414,9 +2411,9 @@ class TestNode(MAASServerTestCase):
             lambda user, user_data, old_status, allow_power_cycle: (
                 post_commit()))
         user_data = factory.make_string().encode('ascii')
-        generate_user_data = self.patch(
-            commissioning, 'generate_user_data')
-        generate_user_data.return_value = user_data
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
+        generate_user_data_for_status.return_value = user_data
         admin = factory.make_admin()
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
@@ -2430,9 +2427,9 @@ class TestNode(MAASServerTestCase):
             lambda user, user_data, old_status, allow_power_cycle: (
                 post_commit()))
         user_data = factory.make_string().encode('ascii')
-        generate_user_data = self.patch(
-            commissioning, 'generate_user_data')
-        generate_user_data.return_value = user_data
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
+        generate_user_data_for_status.return_value = user_data
         admin = factory.make_admin()
         Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
         node.start_commissioning(admin)
@@ -2619,7 +2616,8 @@ class TestNode(MAASServerTestCase):
         # status.
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        generate_user_data = self.patch(commissioning, 'generate_user_data')
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
         node_start = self.patch(node, '_start')
         node_start.side_effect = factory.make_exception()
 
@@ -2634,8 +2632,8 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             node_start,
             MockCalledOnceWith(
-                admin, generate_user_data.return_value, NODE_STATUS.NEW,
-                allow_power_cycle=True))
+                admin, generate_user_data_for_status.return_value,
+                NODE_STATUS.NEW, allow_power_cycle=True))
         self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
@@ -2889,9 +2887,9 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         self.patch(node, '_power_cycle').return_value = None
         user_data = factory.make_string().encode('ascii')
-        generate_user_data = self.patch(
-            commissioning, 'generate_user_data')
-        generate_user_data.return_value = user_data
+        generate_user_data_for_status = self.patch(
+            node_module, 'generate_user_data_for_status')
+        generate_user_data_for_status.return_value = user_data
         admin = factory.make_admin()
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.

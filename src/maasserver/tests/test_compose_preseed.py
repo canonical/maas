@@ -11,6 +11,8 @@ from maasserver.compose_preseed import (
 )
 from maasserver.enum import (
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
+    POWER_STATE,
     PRESEED_TYPE,
 )
 from maasserver.models import PackageRepository
@@ -226,23 +228,6 @@ class TestComposePreseed(MAASServerTestCase):
             absolute_reverse('metadata-status', args=[node.system_id]),
             preseed['reporting']['maas']['endpoint'])
 
-    def test_compose_preseed_for_commissioning_includes_poweroff(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
-        nic = node.get_boot_interface()
-        nic.vlan.dhcp_on = True
-        nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
-        preseed = yaml.safe_load(
-            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
-        self.assertEquals({
-            'delay': 'now',
-            'mode': 'poweroff',
-            'timeout': 3600,
-            'condition': 'test ! -e /tmp/block-poweroff',
-        }, preseed['power_state'])
-
     def test_compose_preseed_for_rescue_mode_does_not_include_poweroff(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
@@ -253,24 +238,86 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
-        self.assertTrue('power_state' not in preseed)
+        self.assertNotIn('power_state', preseed)
 
-    def test_compose_preseed_for_disk_erasing_includes_poweroff(self):
+    def test_compose_preseed_for_enable_ssh_does_not_include_poweroff(self):
+        rack_controller = factory.make_RackController()
+        for status in {NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING}:
+            node = factory.make_Node(
+                interface=True, status=status, enable_ssh=True)
+            nic = node.get_boot_interface()
+            nic.vlan.dhcp_on = True
+            nic.vlan.primary_rack = rack_controller
+            nic.vlan.save()
+            preseed = yaml.safe_load(
+                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            self.assertNotIn('power_state', preseed)
+
+    def test_compose_preseed_for_enable_ssh_ignored_unsupported_states(self):
+        rack_controller = factory.make_RackController()
+        for status, status_name in NODE_STATUS_CHOICES:
+            if status in {
+                    NODE_STATUS.COMMISSIONING,
+                    NODE_STATUS.TESTING,
+                    NODE_STATUS.ENTERING_RESCUE_MODE}:
+                continue
+            node = factory.make_Node(
+                interface=True, status=status, enable_ssh=True)
+            nic = node.get_boot_interface()
+            nic.vlan.dhcp_on = True
+            nic.vlan.primary_rack = rack_controller
+            nic.vlan.save()
+            preseed = yaml.safe_load(
+                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            self.assertIn('power_state', preseed, status_name)
+
+    def test_compose_pressed_for_testing_reboots_when_powered_on(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.DISK_ERASING)
+            interface=True, status=NODE_STATUS.TESTING,
+            with_empty_script_sets=True)
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
+        script_set = node.current_testing_script_set
+        script_set.power_state_before_transition = POWER_STATE.ON
+        script_set.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
-        self.assertEquals({
+        self.assertDictEqual({
             'delay': 'now',
-            'mode': 'poweroff',
-            'timeout': 604800,
+            'mode': 'reboot',
+            'timeout': 1800,
             'condition': 'test ! -e /tmp/block-poweroff',
         }, preseed['power_state'])
+
+    def test_compose_preseed_powersoff_for_all_other_statuses(self):
+        rack_controller = factory.make_RackController()
+        for status, status_name in NODE_STATUS_CHOICES:
+            if status in {
+                    NODE_STATUS.DEPLOYING,
+                    NODE_STATUS.ENTERING_RESCUE_MODE}:
+                continue
+            elif status == NODE_STATUS.DISK_ERASING:
+                timeout = 604800
+            else:
+                timeout = 3600
+            node = factory.make_Node(
+                interface=True, status=status, power_state=POWER_STATE.OFF,
+                with_empty_script_sets=True)
+            nic = node.get_boot_interface()
+            nic.vlan.dhcp_on = True
+            nic.vlan.primary_rack = rack_controller
+            nic.vlan.save()
+            preseed = yaml.safe_load(
+                compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+            self.assertDictEqual({
+                'delay': 'now',
+                'mode': 'poweroff',
+                'timeout': timeout,
+                'condition': 'test ! -e /tmp/block-poweroff',
+            }, preseed['power_state'], status_name)
 
     def test_compose_preseed_for_commissioning_includes_auth_tokens(self):
         rack_controller = factory.make_RackController()
@@ -295,7 +342,7 @@ class TestComposePreseed(MAASServerTestCase):
     def test_compose_preseed_with_curtin_installer(self):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.READY)
+            interface=True, status=NODE_STATUS.DEPLOYING)
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
@@ -311,12 +358,13 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
-        self.assertThat(
-            preseed['power_state'], MatchesDict({
-                'delay': Equals('now'),
-                'mode': Equals('reboot'),
-                'timeout': Equals(1800),
-            }))
+        self.assertDictEqual(
+            {
+                'delay': 'now',
+                'mode': 'reboot',
+                'timeout': 1800,
+                'condition': 'test ! -e /tmp/block-poweroff',
+            }, preseed['power_state'])
         self.assertEqual(
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])

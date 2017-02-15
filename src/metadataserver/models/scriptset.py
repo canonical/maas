@@ -8,12 +8,17 @@ __all__ = [
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import (
     CASCADE,
+    CharField,
     DateTimeField,
     ForeignKey,
     IntegerField,
     Manager,
     Model,
     Q,
+)
+from maasserver.enum import (
+    POWER_STATE,
+    POWER_STATE_CHOICES,
 )
 from maasserver.exceptions import NoScriptsFound
 from maasserver.models import Config
@@ -65,7 +70,8 @@ class ScriptSetManager(Manager):
         from metadataserver.models import ScriptResult
 
         script_set = self.create(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+            node=node, result_type=RESULT_TYPE.COMMISSIONING,
+            power_state_before_transition=node.power_state)
         self._clean_old(node, RESULT_TYPE.COMMISSIONING, script_set)
 
         for script_name, data in NODE_INFO_SCRIPTS.items():
@@ -117,7 +123,8 @@ class ScriptSetManager(Manager):
             raise NoScriptsFound()
 
         script_set = self.create(
-            node=node, result_type=RESULT_TYPE.TESTING)
+            node=node, result_type=RESULT_TYPE.TESTING,
+            power_state_before_transition=node.power_state)
 
         for script in qs:
             ScriptResult.objects.create(
@@ -133,7 +140,9 @@ class ScriptSetManager(Manager):
         from metadataserver.models import ScriptResult
 
         script_set = self.create(
-            node=node, result_type=RESULT_TYPE.INSTALLATION)
+            node=node, result_type=RESULT_TYPE.INSTALLATION,
+            power_state_before_transition=node.power_state)
+
         # Curtin uploads the installation log using the full path we specify in
         # the preseed.
         ScriptResult.objects.create(
@@ -158,6 +167,11 @@ class ScriptSet(CleanSave, Model):
     result_type = IntegerField(
         choices=RESULT_TYPE_CHOICES, editable=False,
         default=RESULT_TYPE.COMMISSIONING)
+
+    power_state_before_transition = CharField(
+        max_length=10, null=False, blank=False,
+        choices=POWER_STATE_CHOICES, default=POWER_STATE.UNKNOWN,
+        editable=False)
 
     def __str__(self):
         return "%s/%s" % (

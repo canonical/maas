@@ -91,15 +91,7 @@ fail() {
    exit 1
 }
 
-write_block_poweroff() {
-   touch /tmp/block-poweroff
-}
-
 main() {
-   {{if node.enable_ssh}}
-   write_block_poweroff
-   {{endif}}
-
    # Install tools and load modules.
    aptget update
    aptget install \

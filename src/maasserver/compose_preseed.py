@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level composition code for preseeds."""
@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.enum import (
     NODE_STATUS,
+    POWER_STATE,
     PRESEED_TYPE,
 )
 from maasserver.models import PackageRepository
@@ -240,27 +241,25 @@ def compose_cloud_init_preseed(node, token, base_url=''):
 def compose_commissioning_preseed(node, token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
     metadata_url = absolute_reverse('metadata', base_url=base_url)
-    poweroff = node.status != NODE_STATUS.ENTERING_RESCUE_MODE
-    poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
+    else:
+        poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
     return _compose_cloud_init_preseed(
         node, token, metadata_url, base_url=base_url,
-        poweroff=poweroff, poweroff_timeout=int(poweroff_timeout),
-        poweroff_condition="test ! -e /tmp/block-poweroff")
+        poweroff_timeout=int(poweroff_timeout))
 
 
 def compose_curtin_preseed(node, token, base_url=''):
     """Compose the preseed value for a node being installed with curtin."""
     metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url, reboot=True)
+        node, token, metadata_url, base_url=base_url)
 
 
 def _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url, poweroff=False,
-        poweroff_timeout=3600, poweroff_condition=None,
-        reboot=False, reboot_timeout=1800):
+        node, token, metadata_url, base_url, poweroff_timeout=3600,
+        reboot_timeout=1800):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -296,20 +295,32 @@ def _compose_cloud_init_preseed(
         cloud_config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
     cloud_config.update(get_archive_config(node=node, preserve_sources=False))
-    if poweroff:
-        cloud_config['power_state'] = {
-            'delay': 'now',
-            'mode': 'poweroff',
-            'timeout': poweroff_timeout,
-        }
-        if poweroff_condition is not None:
-            cloud_config['power_state']['condition'] = poweroff_condition
-    if reboot:
-        cloud_config['power_state'] = {
-            'delay': 'now',
-            'mode': 'reboot',
-            'timeout': reboot_timeout,
-        }
+
+    enable_ssh = (node.status in {
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.TESTING,
+        } and node.enable_ssh)
+    if node.status != NODE_STATUS.ENTERING_RESCUE_MODE and not enable_ssh:
+        testing_reboot = False
+        if node.status == NODE_STATUS.TESTING:
+            script_set = node.current_testing_script_set
+            if script_set.power_state_before_transition == POWER_STATE.ON:
+                testing_reboot = True
+        if node.status == NODE_STATUS.DEPLOYING or testing_reboot:
+            cloud_config['power_state'] = {
+                'delay': 'now',
+                'mode': 'reboot',
+                'timeout': reboot_timeout,
+            }
+        else:
+            cloud_config['power_state'] = {
+                'delay': 'now',
+                'mode': 'poweroff',
+                'timeout': poweroff_timeout,
+            }
+        cloud_config['power_state']['condition'] = (
+            'test ! -e /tmp/block-poweroff')
+
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 

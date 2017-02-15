@@ -154,6 +154,7 @@ from maasserver.utils.threads import (
 )
 from maasserver.worker_user import get_worker_user
 from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.user_data import generate_user_data_for_status
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -1709,7 +1710,6 @@ class Node(CleanSave, TimestampedModel):
         """
         # Avoid circular imports.
         from metadataserver.models import ScriptSet
-        from metadataserver.user_data.commissioning import generate_user_data
 
         # Only commission if power type is configured.
         if self.power_type == '':
@@ -1727,7 +1727,8 @@ class Node(CleanSave, TimestampedModel):
         self.skip_storage = skip_storage
 
         # Generate the specific user data for commissioning this node.
-        commissioning_user_data = generate_user_data(node=self)
+        commissioning_user_data = generate_user_data_for_status(
+            node=self, status=NODE_STATUS.COMMISSIONING)
 
         # Create a new ScriptSet for this commissioning run.
         script_set = ScriptSet.objects.create_commissioning_script_set(
@@ -1836,7 +1837,6 @@ class Node(CleanSave, TimestampedModel):
             NodeUserData,
             ScriptSet,
         )
-        from metadataserver.user_data.commissioning import generate_user_data
 
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't enter rescue mode on a node you don't own,
@@ -1857,7 +1857,8 @@ class Node(CleanSave, TimestampedModel):
         self.enable_ssh = enable_ssh
 
         # Generate the specific user data for testing this node.
-        testing_user_data = generate_user_data(node=self)
+        testing_user_data = generate_user_data_for_status(
+            node=self, status=NODE_STATUS.TESTING)
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.
@@ -2438,9 +2439,6 @@ class Node(CleanSave, TimestampedModel):
             registered as a post-commit hook; it should not be added a second
             time.
         """
-        # Avoid circular imports.
-        from metadataserver.user_data.disk_erasing import generate_user_data
-
         # Generate the user data based on the global options and the passed
         # configuration.
         use_secure_erase = Config.objects.get_config(
@@ -2451,10 +2449,12 @@ class Node(CleanSave, TimestampedModel):
             use_secure_erase = secure_erase
         if quick_erase is not None:
             use_quick_erase = quick_erase
-        disk_erase_user_data = generate_user_data(
-            node=self,
-            secure_erase=use_secure_erase,
-            quick_erase=use_quick_erase)
+        disk_erase_user_data = generate_user_data_for_status(
+            node=self, status=NODE_STATUS.DISK_ERASING,
+            extra_content={
+                'secure_erase': use_secure_erase,
+                'quick_erase': use_quick_erase,
+            })
 
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
@@ -3691,7 +3691,6 @@ class Node(CleanSave, TimestampedModel):
         """Start rescue mode."""
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
-        from metadataserver.user_data.rescue_mode import generate_user_data
 
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't enter rescue mode on a node you don't own,
@@ -3707,7 +3706,8 @@ class Node(CleanSave, TimestampedModel):
             user, EVENT_TYPES.REQUEST_NODE_START_RESCUE_MODE,
             action='start rescue mode')
 
-        rescue_mode_user_data = generate_user_data(node=self)
+        rescue_mode_user_data = generate_user_data_for_status(
+            node=self, status=NODE_STATUS.RESCUE_MODE)
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.

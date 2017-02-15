@@ -60,6 +60,8 @@ class TestScriptSetManager(MAASServerTestCase):
             expected_scripts,
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_commissioning_script_set_for_controller(self):
         for _ in range(3):
@@ -82,6 +84,8 @@ class TestScriptSetManager(MAASServerTestCase):
             expected_scripts,
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_commissioning_script_set_adds_all_user_scripts(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
@@ -95,6 +99,8 @@ class TestScriptSetManager(MAASServerTestCase):
             expected_scripts,
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_commissioning_script_set_adds_selected_scripts(self):
         scripts = [
@@ -116,6 +122,8 @@ class TestScriptSetManager(MAASServerTestCase):
             set(expected_scripts),
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.COMMISSIONING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_commissioning_script_set_cleans_up_past_limit(self):
         script_set_limit = Config.objects.get_config(
@@ -147,6 +155,8 @@ class TestScriptSetManager(MAASServerTestCase):
             expected_scripts,
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.TESTING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_testing_script_set_adds_selected_scripts(self):
         scripts = [
@@ -169,6 +179,8 @@ class TestScriptSetManager(MAASServerTestCase):
             set(expected_scripts),
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.TESTING, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_testing_script_raises_exception_when_none_found(self):
         node = factory.make_Node()
@@ -202,6 +214,8 @@ class TestScriptSetManager(MAASServerTestCase):
             [CURTIN_INSTALL_LOG],
             [script_result.name for script_result in script_set])
         self.assertEquals(RESULT_TYPE.INSTALLATION, script_set.result_type)
+        self.assertEquals(
+            node.power_state, script_set.power_state_before_transition)
 
     def test_create_installation_script_set_cleans_up_past_limit(self):
         script_set_limit = Config.objects.get_config(

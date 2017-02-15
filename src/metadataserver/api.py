@@ -87,7 +87,7 @@ from metadataserver.models import (
     ScriptResult,
 )
 from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
-from metadataserver.user_data import poweroff
+from metadataserver.user_data import generate_user_data_for_poweroff
 from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc
 from provisioningserver.events import (
@@ -840,7 +840,7 @@ class UserDataHandler(MetadataViewHandler):
             # If this node is supposed to be powered off, serve the
             # 'poweroff' userdata.
             if node.get_boot_purpose() == 'poweroff':
-                user_data = poweroff.generate_user_data(node=node)
+                user_data = generate_user_data_for_poweroff(node=node)
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
             return HttpResponse(
