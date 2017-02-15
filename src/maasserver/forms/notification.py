@@ -7,8 +7,6 @@ __all__ = [
     "NotificationForm",
 ]
 
-import json
-
 from maasserver.forms import MAASModelForm
 from maasserver.models.notification import Notification
 
@@ -30,7 +28,12 @@ class NotificationForm(MAASModelForm):
 
     def clean_context(self):
         data = self.cleaned_data.get("context")
-        if data is None or len(data) == 0 or data.isspace():
-            return {}  # Default to an empty dict when in doubt.
+        if data is None:
+            return {}
+        elif isinstance(data, str):
+            if len(data) == 0 or data.isspace():
+                return {}
+            else:
+                return data
         else:
-            return json.loads(data)
+            return data

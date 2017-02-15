@@ -9,6 +9,7 @@ import json
 from random import randint
 import re
 
+from django import forms
 from django.core import serializers
 from django.core.exceptions import ValidationError
 from django.db import (
@@ -21,6 +22,7 @@ from maasserver.fields import (
     EditableBinaryField,
     HostListFormField,
     IPListFormField,
+    JSONObjectField,
     LargeObjectField,
     LargeObjectFile,
     MAC,
@@ -57,7 +59,11 @@ from maastesting.testcase import MAASTestCase
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    Is,
+)
 
 
 class TestMAC(MAASServerTestCase):
@@ -298,6 +304,11 @@ class TestJSONObjectField(MAASLegacyServerTestCase):
     def test_field_another_lookup_fails(self):
         # Others lookups are not allowed.
         self.assertRaises(TypeError, JSONFieldModel.objects.get, value__gte=3)
+
+    def test_form_field_is_a_plain_field(self):
+        self.assertThat(
+            JSONObjectField().formfield(),
+            AfterPreprocessing(type, Is(forms.Field)))
 
 
 class TestXMLField(MAASLegacyServerTestCase):

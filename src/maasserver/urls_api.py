@@ -108,6 +108,10 @@ from maasserver.api.nodes import (
     NodesHandler,
 )
 from maasserver.api.not_found import not_found_handler
+from maasserver.api.notification import (
+    NotificationHandler,
+    NotificationsHandler,
+)
 from maasserver.api.packagerepositories import (
     PackageRepositoriesHandler,
     PackageRepositoryHandler,
@@ -293,6 +297,10 @@ staticroute_handler = RestrictedResource(
     StaticRouteHandler, authentication=api_auth)
 staticroutes_handler = RestrictedResource(
     StaticRoutesHandler, authentication=api_auth)
+notification_handler = RestrictedResource(
+    NotificationHandler, authentication=api_auth)
+notifications_handler = RestrictedResource(
+    NotificationsHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -312,6 +320,7 @@ license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth)
+
 
 # API URLs accessible to anonymous users.
 urlpatterns = patterns(
@@ -501,6 +510,12 @@ urlpatterns += patterns(
     url(
         r'^dhcp-snippets/(?P<id>[^/]+)/$',
         dhcp_snippet_handler, name='dhcp_snippet_handler'),
+    url(
+        r'^notifications/$',
+        notifications_handler, name='notifications_handler'),
+    url(
+        r'^notifications/(?P<id>[^/]+)/$',
+        notification_handler, name='notification_handler'),
 )
 
 

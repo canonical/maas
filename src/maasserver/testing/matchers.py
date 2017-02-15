@@ -7,6 +7,8 @@ __all__ = [
     'HasStatusCode',
 ]
 
+from http import HTTPStatus
+
 from testtools.content import (
     Content,
     UTF8_TEXT,
@@ -16,6 +18,16 @@ from testtools.matchers import (
     MatchesSetwise,
     Mismatch,
 )
+
+
+def describe_http_status(code):
+    """Return a string describing the given HTTP status code."""
+    try:
+        code = HTTPStatus(code)
+    except ValueError:
+        return "HTTP {code}".format(code=code)
+    else:
+        return "HTTP {code.value:d} {code.name}".format(code=code)
 
 
 class HasStatusCode(Matcher):
@@ -40,8 +52,10 @@ class HasStatusCode(Matcher):
                 response_dump = response_dump.decode(response.charset)
                 response_dump = response_dump.encode("utf-8", "replace")
 
-            description = "Expected HTTP %s, got %s" % (
-                self.status_code, response.status_code)
+            description = "Expected %s, got %s" % (
+                describe_http_status(self.status_code),
+                describe_http_status(response.status_code),
+            )
             details = {
                 "Unexpected HTTP response": Content(
                     UTF8_TEXT, lambda: [response_dump]),

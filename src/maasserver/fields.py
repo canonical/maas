@@ -308,6 +308,19 @@ class JSONObjectField(Field, metaclass=SubfieldBase):
         return super(JSONObjectField, self).get_prep_lookup(
             lookup_type, value)
 
+    def formfield(self, form_class=None, **kwargs):
+        """Return a plain `forms.Field` here to avoid "helpful" conversions.
+
+        Django's base model field defaults to returning a `CharField`, which
+        means that anything that's not character data gets smooshed to text by
+        `CharField.to_pytnon` in forms (via the woefully named `smart_text`).
+        This is not helpful.
+        """
+        if form_class is None:
+            form_class = forms.Field
+        return super().formfield(
+            form_class=form_class, **kwargs)
+
 
 class XMLField(Field):
     """A field for storing xml natively.

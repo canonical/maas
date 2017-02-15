@@ -34,6 +34,24 @@ class TestNotificationForm(MAASServerTestCase):
             admins=False, category="info", context={},
         ))
 
+    def test__notification_can_be_created_with_empty_fields(self):
+        notification_message = factory.make_name("message")
+        form = NotificationForm({
+            "ident": "",
+            "user": "",
+            "users": "",
+            "admins": "",
+            "message": notification_message,
+            "context": "",
+            "category": "",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        notification = form.save()
+        self.assertThat(notification, MatchesStructure.byEquality(
+            ident=None, message=notification_message, user=None, users=False,
+            admins=False, category="info", context={},
+        ))
+
     def test__notification_can_be_created_with_all_fields(self):
         user = factory.make_User()
         data = {
