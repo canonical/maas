@@ -16,6 +16,7 @@ from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.ps import (
     get_running_pids_with_command,
     is_pid_in_container,
+    is_pid_running,
     running_in_container,
 )
 from provisioningserver.utils.shell import ExternalProcessError
@@ -61,6 +62,33 @@ IN_LXC_CONTAINER = dedent("""\
     3:name=systemd:/lxc/maas/init.scope
     2:cpuset:/lxc/maas
     """)
+
+
+class TestIsPIDRunning(MAASTestCase):
+
+    scenarios = (
+        ("running", {
+            "result": True,
+            "exception": None,
+        }),
+        ("lookup-error", {
+            "result": False,
+            "exception": ProcessLookupError(),
+        }),
+        ("permission-error", {
+            "result": True,
+            "exception": PermissionError(),
+        }),
+        ("os-error", {
+            "result": False,
+            "exception": OSError(),
+        })
+    )
+
+    def test__result(self):
+        self.patch(ps_module.os, "kill").side_effect = self.exception
+        self.assertEquals(
+            self.result, is_pid_running(random.randint(100, 200)))
 
 
 class TestIsPIDInContainer(MAASTestCase):

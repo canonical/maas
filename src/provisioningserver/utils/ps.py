@@ -17,6 +17,20 @@ from provisioningserver.utils.shell import (
 )
 
 
+def is_pid_running(pid):
+    """Return True if the `pid` is running."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    else:
+        return True
+
+
 def is_pid_in_container(pid, proc_path="/proc"):
     """Return True if the `pid` is running in a container.
 
