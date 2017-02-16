@@ -89,7 +89,7 @@ class AssertNetworkConfigMixin:
         self.assertThat(output_network, MatchesListwise(expected_equals))
 
     def collect_interface_config(self, node, filter="physical"):
-        interfaces = node.interface_set.filter(enabled=True).order_by('id')
+        interfaces = node.interface_set.filter(enabled=True).order_by('name')
         if filter:
             interfaces = interfaces.filter(type=filter)
 
@@ -151,7 +151,7 @@ class AssertNetworkConfigMixin:
                 ret += self.IFACE_CONFIG % fmt_dict
             elif iface.type == "bridge":
                 ret += self.BRIDGE_CONFIG % fmt_dict
-                for parent in iface.parents.order_by('id'):
+                for parent in iface.parents.order_by('name'):
                     ret += "  - %s\n" % parent.name
                 ret += "  params:\n"
                 if iface.params:
@@ -161,7 +161,7 @@ class AssertNetworkConfigMixin:
                                 key, get_param_value(value))
             elif iface.type == "bond":
                 ret += self.BOND_CONFIG % fmt_dict
-                for parent in iface.parents.order_by('id'):
+                for parent in iface.parents.order_by('name'):
                     ret += "  - %s\n" % parent.name
                 ret += "  params:\n"
                 if iface.params:
@@ -218,7 +218,7 @@ class AssertNetworkConfigMixin:
 
     def collectRoutesConfig(self, node):
         routes = set()
-        interfaces = node.interface_set.filter(enabled=True).order_by('id')
+        interfaces = node.interface_set.filter(enabled=True).order_by('name')
         for iface in interfaces:
             addresses = iface.ip_addresses.exclude(
                 alloc_type__in=[
