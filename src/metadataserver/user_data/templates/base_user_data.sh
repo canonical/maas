@@ -9,7 +9,6 @@
 export TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
 export BIN_D="${TEMP_D}/bin"
 export PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-trap cleanup EXIT
 
 mkdir -p "$BIN_D"
 

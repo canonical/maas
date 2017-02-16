@@ -58,7 +58,7 @@ BUILTIN_SCRIPTS = [
     BuiltinScript(
         name='smartctl-validate',
         description='Validate SMART health for all drives in parellel.',
-        tags=['commissioning', 'storage'],
+        tags=['storage'],
         timeout=60 * 5,
         filename='smartctl.py',
         ),
