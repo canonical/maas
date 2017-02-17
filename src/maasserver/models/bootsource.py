@@ -29,7 +29,7 @@ class BootSource(CleanSave, TimestampedModel):
         blank=False, unique=True, help_text="The URL of the BootSource.")
 
     keyring_filename = FilePathField(
-        blank=True,
+        blank=True, max_length=4096,
         help_text="The path to the keyring file for this BootSource.")
 
     keyring_data = EditableBinaryField(
