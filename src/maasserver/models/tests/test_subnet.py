@@ -628,6 +628,37 @@ class SubnetTest(MAASServerTestCase):
             subnet.delete()
 
 
+class TestGetBestSubnetForIP(MAASServerTestCase):
+
+    def test__returns_most_specific_ipv4_subnet(self):
+        factory.make_Subnet(cidr="10.0.0.0/8")
+        expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
+        factory.make_Subnet(cidr="10.1.0.0/16")
+        subnet = Subnet.objects.get_best_subnet_for_ip("10.1.1.1")
+        self.expectThat(subnet, Equals(expected_subnet))
+
+    def test__returns_most_specific_ipv6_subnet(self):
+        factory.make_Subnet(cidr="2001::/16")
+        expected_subnet = factory.make_Subnet(cidr="2001:db8:1:2::/64")
+        factory.make_Subnet(cidr="2001:db8::/32")
+        subnet = Subnet.objects.get_best_subnet_for_ip("2001:db8:1:2::1")
+        self.expectThat(subnet, Equals(expected_subnet))
+
+    def test__returns_most_specific_ipv4_subnet___ipv4_mapped_ipv6_addr(self):
+        factory.make_Subnet(cidr="10.0.0.0/8")
+        expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
+        factory.make_Subnet(cidr="10.1.0.0/16")
+        subnet = Subnet.objects.get_best_subnet_for_ip("::ffff:10.1.1.1")
+        self.expectThat(subnet, Equals(expected_subnet))
+
+    def test__returns_none_if_no_subnet_found(self):
+        factory.make_Subnet(cidr="10.0.0.0/8")
+        factory.make_Subnet(cidr="10.1.1.0/24")
+        factory.make_Subnet(cidr="10.1.0.0/16")
+        subnet = Subnet.objects.get_best_subnet_for_ip("::")
+        self.expectThat(subnet, Is(None))
+
+
 class SubnetLabelTest(MAASServerTestCase):
 
     def test__returns_cidr_for_null_name(self):
