@@ -57,6 +57,7 @@ from maasserver.models.interface import PhysicalInterface
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     events as events_module,
+    leases as leases_module,
     regionservice,
 )
 from maasserver.rpc.regionservice import (
@@ -84,6 +85,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -424,9 +426,11 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__stores_leases(self):
+    def test__stores_leases_and_updates_dns(self):
+        dns_update = self.patch(leases_module, 'dns_update_all_zones')
         interface, ngi, nodegroup = yield deferToDatabase(
             self.make_interface_on_managed_cluster_interface)
+
         mapping = {
             "ip": ngi.ip_range_low,
             "mac": interface.mac_address.get_raw(),
@@ -436,6 +440,7 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
             b"uuid": nodegroup.uuid, b"mappings": [mapping]})
 
         self.assertThat(response, Equals({}))
+        self.assertThat(dns_update, MockCalledOnce())
 
         [(ip, mac)] = yield deferToDatabase(
             self.get_leases_for, nodegroup=nodegroup)

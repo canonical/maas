@@ -16,6 +16,7 @@ __all__ = [
     "update_leases",
 ]
 
+from maasserver.dns.config import dns_update_all_zones
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.orm import transactional
@@ -49,4 +50,5 @@ def update_leases(uuid, mappings):
     else:
         leases = convert_mappings_to_leases(mappings)
         StaticIPAddress.objects.update_leases(nodegroup, leases)
+        dns_update_all_zones()
         return {}

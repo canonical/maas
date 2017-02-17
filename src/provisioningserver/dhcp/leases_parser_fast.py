@@ -23,7 +23,10 @@ __all__ = [
     'parse_leases',
     ]
 
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    OrderedDict,
+)
 from datetime import datetime
 from itertools import chain
 import re
@@ -31,6 +34,7 @@ import re
 from provisioningserver.dhcp.leases_parser import (
     get_host_ip,
     get_host_mac,
+    get_lease_mac,
     has_expired,
     is_host,
     is_lease,
@@ -43,7 +47,7 @@ re_entry = re.compile(
     ^\s*              # Ignore leading whitespace on each line.
     (host|lease)      # Look only for host or lease stanzas.
     \s+               # Mandatory whitespace.
-    ([0-9a-fA-F.:]+)  # Capture the IP/MAC address for this stanza.
+    ([0-9a-fA-F.:-]+) # Capture the IP/MAC address for this stanza.
     \s*{              # Optional whitespace then an opening brace.
     ''',
     re.MULTILINE | re.DOTALL | re.VERBOSE)
@@ -71,15 +75,29 @@ def extract_leases(leases_contents):
 
 
 def parse_leases(leases_contents):
-    results = []
+    leases = OrderedDict()
+    hosts = []
     now = datetime.utcnow()
     for entry in extract_leases(leases_contents):
         if is_lease(entry):
-            if not has_expired(entry, now):
-                results.append((entry.host, entry.hardware.mac))
+            mac = get_lease_mac(entry)
+            if not has_expired(entry, now) and mac is not None:
+                leases[entry.host] = entry.hardware.mac
+            else:
+                # Expired or released lease.
+                if entry.host in leases:
+                    del leases[entry.host]
         elif is_host(entry):
             mac = get_host_mac(entry)
             ip = get_host_ip(entry)
             if ip and mac:
-                results.append((ip, mac))
+                # A host entry came later than a lease entry for the same IP
+                # address. Letting them both stay will confuse MAAS by allowing
+                # an ephemeral lease to exist at the same time as a static
+                # host map.
+                if ip in leases:
+                    del leases[ip]
+                hosts.append((ip, mac))
+    results = leases.items()
+    results.extend(hosts)
     return results

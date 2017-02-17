@@ -38,7 +38,9 @@ from pyparsing import (
 )
 
 
-ip = Regex("[:0-9a-fA-F][:.0-9a-fA-F]{2,38}")
+LEASE_TIME_FORMAT = '%w %Y/%m/%d %H:%M:%S'
+
+ip = Regex("[:0-9a-fA-F][-:.0-9a-fA-F]{2,38}")
 mac = Regex("[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}")
 hardware_type = Regex('[A-Za-z0-9_-]+')
 args = Regex('[^"{;]+') | QuotedString('"')
@@ -125,11 +127,20 @@ def get_expiry_date(lease):
         expiry, or None if the lease has no expiry date.
     """
     assert is_lease(lease)
-    ends = getattr(lease, 'ends', None)
-    if ends is None or len(ends) == 0 or ends.lower() == 'never':
+    end_time = getattr(lease, 'ends', '')
+    if end_time is None or len(end_time) == 0:
+        binding_state = getattr(lease, 'binding state', '')
+        binding_state = binding_state.lower()
+        if binding_state == 'free':
+            # For a 'free' lease, the release time is the 'starts' time.
+            start_time = getattr(lease, 'starts', '')
+            if start_time is None or len(start_time) == 0:
+                return None
+            return datetime.strptime(start_time, LEASE_TIME_FORMAT)
+    elif end_time.lower() == 'never':
         return None
     else:
-        return datetime.strptime(ends, '%w %Y/%m/%d %H:%M:%S')
+        return datetime.strptime(end_time, LEASE_TIME_FORMAT)
 
 
 def has_expired(lease, now):
@@ -153,13 +164,17 @@ def has_expired(lease, now):
 def gather_leases(hosts_and_leases):
     """Find current leases among `hosts_and_leases`."""
     now = datetime.utcnow()
-    # If multiple leases for the same address are valid at the same
-    # time, for whatever reason, the list will contain all of them.
-    return [
-        (lease.host, lease.hardware.mac)
-        for lease in filter(is_lease, hosts_and_leases)
-        if not has_expired(lease, now)
-    ]
+    # Ensure we have the most recent MAC leased to each IP address.
+    leases = OrderedDict()
+    for lease in filter(is_lease, hosts_and_leases):
+        lease_mac = get_lease_mac(lease)
+        lease_ip = lease.host
+        if not has_expired(lease, now) and lease_mac is not None:
+            leases[lease_ip] = lease_mac
+        else:
+            if lease_ip in leases:
+                del leases[lease_ip]
+    return [(ip, mac) for ip, mac in leases.items()]
 
 
 def get_host_mac(host):
@@ -173,6 +188,12 @@ def get_host_mac(host):
             return None
         else:
             return host
+    # In this case, it's stored the same way a lease MAC is stored.
+    return get_lease_mac(host)
+
+
+def get_lease_mac(host):
+    """Get the MAC address from a lease declaration."""
     hardware = getattr(host, 'hardware', None)
     if hardware in (None, '', b''):
         return None
