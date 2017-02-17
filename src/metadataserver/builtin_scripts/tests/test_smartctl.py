@@ -9,6 +9,8 @@ import random
 from subprocess import (
     CalledProcessError,
     DEVNULL,
+    PIPE,
+    Popen,
     TimeoutExpired,
 )
 from unittest.mock import call
@@ -32,15 +34,24 @@ class TestSmartCTL(MAASTestCase):
             b'/dev/sda -d scsi # /dev/sda, SCSI device\n'
             b'/dev/sdb -d scsi # /dev/sdb, SCSI device',
         ]
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(
+            ['echo', 'SMART support is: Available'], stdout=PIPE)
 
-        self.assertEquals(['/dev/sdb'], smartctl.list_supported_drives())
+        self.assertItemsEqual(
+            [['/dev/sdb', '-d', 'scsi']], smartctl.list_supported_drives())
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
                     ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan'], timeout=smartctl.TIMEOUT)))
+                    ['sudo', 'smartctl', '--scan-open'],
+                    timeout=smartctl.TIMEOUT)))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(
+                ['sudo', 'smartctl', '-i', '/dev/sdb', '-d', 'scsi'],
+                stdout=PIPE, stderr=DEVNULL))
 
     def test_list_supported_drives_ignores_iscsiadm_timeout(self):
         mock_check_output = self.patch(smartctl, 'check_output')
@@ -48,15 +59,24 @@ class TestSmartCTL(MAASTestCase):
             TimeoutExpired('iscsiadm', 60),
             b'/dev/sda -d scsi # /dev/sda, SCSI device',
         ]
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(
+            ['echo', 'SMART support is: Available'], stdout=PIPE)
 
-        self.assertEquals(['/dev/sda'], smartctl.list_supported_drives())
+        self.assertItemsEqual(
+            [['/dev/sda', '-d', 'scsi']], smartctl.list_supported_drives())
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
                     ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan'], timeout=smartctl.TIMEOUT)))
+                    ['sudo', 'smartctl', '--scan-open'],
+                    timeout=smartctl.TIMEOUT)))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(
+                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
+                stdout=PIPE, stderr=DEVNULL))
 
     def test_list_supported_drives_ignores_iscsiadm_errors(self):
         mock_check_output = self.patch(smartctl, 'check_output')
@@ -64,20 +84,53 @@ class TestSmartCTL(MAASTestCase):
             CalledProcessError(1, 'iscsiadm'),
             b'/dev/sda -d scsi # /dev/sda, SCSI device',
         ]
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(
+            ['echo', 'SMART support is: Available'], stdout=PIPE)
 
-        self.assertEquals(['/dev/sda'], smartctl.list_supported_drives())
+        self.assertItemsEqual(
+            [['/dev/sda', '-d', 'scsi']], smartctl.list_supported_drives())
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
                     ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan'], timeout=smartctl.TIMEOUT)))
+                    ['sudo', 'smartctl', '--scan-open'],
+                    timeout=smartctl.TIMEOUT)))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(
+                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
+                stdout=PIPE, stderr=DEVNULL))
+
+    def test_list_supported_drives_ignores_drives_without_smart(self):
+        mock_check_output = self.patch(smartctl, 'check_output')
+        mock_check_output.side_effect = [
+            CalledProcessError(1, 'iscsiadm'),
+            b'/dev/sda -d scsi # /dev/sda, SCSI device',
+        ]
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(
+            ['echo', 'SMART support is: Unavailable'], stdout=PIPE)
+
+        self.assertItemsEqual([], smartctl.list_supported_drives())
+        self.assertThat(
+            mock_check_output, MockCallsMatch(
+                call(
+                    ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
+                    timeout=smartctl.TIMEOUT, stderr=DEVNULL),
+                call(
+                    ['sudo', 'smartctl', '--scan-open'],
+                    timeout=smartctl.TIMEOUT)))
+        self.assertThat(
+            mock_popen, MockCalledOnceWith(
+                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
+                stdout=PIPE, stderr=DEVNULL))
 
     def test_run_smartctl_selftest(self):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.return_value = (
@@ -97,7 +150,7 @@ class TestSmartCTL(MAASTestCase):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
         self.patch(smartctl, 'sleep')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = [
@@ -131,7 +184,7 @@ class TestSmartCTL(MAASTestCase):
     def test_run_smartctl_selftest_sets_failure_on_timeout_of_test_start(self):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_call.side_effect = TimeoutExpired('smartctl', 60)
         mock_check_output = self.patch(smartctl, 'check_output')
@@ -148,7 +201,7 @@ class TestSmartCTL(MAASTestCase):
     def test_run_smartctl_selftest_sets_failure_on_exec_fail_test_start(self):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_call.side_effect = CalledProcessError(1, 'smartctl')
         mock_check_output = self.patch(smartctl, 'check_output')
@@ -165,7 +218,7 @@ class TestSmartCTL(MAASTestCase):
     def test_run_smartctl_selftest_sets_failure_on_timeout_status_check(self):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = TimeoutExpired('smartctl', 60)
@@ -184,7 +237,7 @@ class TestSmartCTL(MAASTestCase):
     def test_run_smartctl_selftest_sets_failure_on_exc_fail_status_check(self):
         drive = factory.make_name('drive')
         test = factory.make_name('test')
-        run_smartctl = smartctl.RunSmartCtl(drive, test)
+        run_smartctl = smartctl.RunSmartCtl([drive], test)
         mock_check_call = self.patch(smartctl, 'check_call')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = CalledProcessError(1, 'smartctl')
@@ -202,7 +255,7 @@ class TestSmartCTL(MAASTestCase):
 
     def test_was_successful(self):
         run_smartctl = smartctl.RunSmartCtl(
-            factory.make_name('drive'), factory.make_name('test'))
+            [factory.make_name('drive')], factory.make_name('test'))
         run_smartctl.returncode = random.choice([0, 4])
         self.assertTrue(run_smartctl.was_successful)
         run_smartctl.returncode = random.randint(5, 256)

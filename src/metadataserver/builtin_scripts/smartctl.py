@@ -41,9 +41,9 @@ TIMEOUT = 60
 
 class RunSmartCtl(Thread):
 
-    def __init__(self, drive, test=None):
-        super().__init__(name=drive)
-        self.drive = drive
+    def __init__(self, smartctl_args, test=None):
+        super().__init__(name=smartctl_args[0])
+        self.smartctl_args = smartctl_args
         self.test = test
         self.running_test_failed = False
         self.output = b''
@@ -53,8 +53,9 @@ class RunSmartCtl(Thread):
         try:
             # Start testing.
             check_call(
-                ['sudo', 'smartctl', '-s', 'on', '-t', self.test, self.drive],
-                timeout=TIMEOUT, stdout=DEVNULL, stderr=DEVNULL)
+                ['sudo', 'smartctl', '-s', 'on', '-t', self.test] +
+                self.smartctl_args, timeout=TIMEOUT, stdout=DEVNULL,
+                stderr=DEVNULL)
         except (TimeoutExpired, CalledProcessError):
             self.running_test_failed = True
         else:
@@ -64,7 +65,7 @@ class RunSmartCtl(Thread):
             while True:
                 try:
                     stdout = check_output(
-                        ['sudo', 'smartctl', '-c', self.drive],
+                        ['sudo', 'smartctl', '-c'] + self.smartctl_args,
                         timeout=TIMEOUT)
                 except (TimeoutExpired, CalledProcessError):
                     self.running_test_failed = True
@@ -83,8 +84,8 @@ class RunSmartCtl(Thread):
         # Run smartctl and capture its output. Once all threads have completed
         # we'll output the results serially so output is properly grouped.
         with Popen(
-                ['sudo', 'smartctl', '--xall', self.drive], stdout=PIPE,
-                stderr=STDOUT) as proc:
+                ['sudo', 'smartctl', '--xall'] + self.smartctl_args,
+                stdout=PIPE, stderr=STDOUT) as proc:
             try:
                 self.output, _ = proc.communicate(timeout=TIMEOUT)
             except TimeoutExpired:
@@ -121,15 +122,29 @@ def list_supported_drives():
             'Attached scsi disk (?P<disk>\w+)', output.decode('utf-8'))
 
     drives = []
-    output = check_output(['sudo', 'smartctl', '--scan'], timeout=TIMEOUT)
+    smart_support_regex = re.compile('SMART support is:\s+Available')
+    output = check_output(['sudo', 'smartctl', '--scan-open'], timeout=TIMEOUT)
     for line in output.decode('utf-8').splitlines():
         try:
-            line_without_comment = line.split('#')[0]
-            drive = line_without_comment.split()[0]
+            # Each line contains the drive and the device type along with any
+            # options needed to run smartctl against the drive.
+            drive_with_device_type = line.split('#')[0].split()
         except IndexError:
             continue
+        drive = drive_with_device_type[0]
         if drive != '' and drive.split('/')[-1] not in iscsi_drives:
-            drives.append(drive)
+            # Check that SMART is actually supported on the drive.
+            with Popen(['sudo', 'smartctl', '-i'] + drive_with_device_type,
+                       stdout=PIPE, stderr=DEVNULL) as proc:
+                try:
+                    output, _ = proc.communicate(timeout=TIMEOUT)
+                except TimeoutExpired:
+                    sys.stderr.write(
+                        "Unable to determine if %s supports SMART" % drive)
+                else:
+                    m = smart_support_regex.search(output.decode('utf-8'))
+                    if m is not None:
+                        drives.append(drive_with_device_type)
     return drives
 
 
@@ -143,16 +158,17 @@ def run_smartctl(test=None):
     :return: The number of drives which SMART indicates are failing.
     """
     threads = []
-    for drive in list_supported_drives():
-        thread = RunSmartCtl(drive, test)
+    for smartctl_args in list_supported_drives():
+        thread = RunSmartCtl(smartctl_args, test)
         thread.start()
         threads.append(thread)
 
     smartctl_failures = 0
     for thread in threads:
         thread.join()
-        dashes = '-' * int((80.0 - (2 + len(thread.drive))) / 2)
-        print('%s %s %s' % (dashes, thread.drive, dashes))
+        drive = thread.smartctl_args[0]
+        dashes = '-' * int((80.0 - (2 + len(drive))) / 2)
+        print('%s %s %s' % (dashes, drive, dashes))
         print()
 
         if thread.running_test_failed:
@@ -161,7 +177,9 @@ def run_smartctl(test=None):
             print()
         if thread.timedout:
             smartctl_failures += 1
-            print('Running `smartctl --xall %s` timed out!' % thread.drive)
+            print(
+                'Running `smartctl --xall %s` timed out!' %
+                ' '.join(thread.drive_with_device_type))
             print()
         elif not thread.was_successful:
             # smartctl returns 0 when there are no errors. It returns 4 if
@@ -170,7 +188,8 @@ def run_smartctl(test=None):
             smartctl_failures += 1
             print(
                 'Error, `smartctl --xall %s` returned %d!' % (
-                    thread.drive, thread.returncode))
+                    ' '.join(thread.drive_with_device_type),
+                    thread.returncode))
             print('See the smartctl man page for return code meaning')
             print()
         print(thread.output.decode('utf-8'))
