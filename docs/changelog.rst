@@ -8,6 +8,8 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
+LP: #1655049    Prevent IndexError in get_vendor_for_mac()
+
 LP: #1654432    Unable to deploy ga kernel on node-details page
 
 LP: #1654450    MAAS shouldn't show newer kernels when edge kernels are added
@@ -17,6 +19,27 @@ LP: #1654412	Unable to set edge kernel as the min_hwe_kernel and deploy with the
 LP: #1656425    Ephemeral environments using the wrong kernel
 
 LP: #1655721    MAAS shouldn't update TGT config when there are no boot sources
+
+LP: #1659511    Fix incorrect clearing of boot resource cache if an IOError occurs.
+
+LP: #1659607    Usability fixes for interfaces API link-subnet operation
+
+LP: #1640147    Do not attempt IPv6 discovery on interfaces where IPv6 is disabled
+
+LP: #1626654    Make connection attempts from rack to region controllers more reliable
+
+LP: #1626654    Fix reports of bad connections when dead regiond workers remain in the database
+
+LP: #1645912    Fix IPMI autodetection to wrap IPv6 addresses in brackers when used inside URLs
+
+LP: #1665459    Fix anonymous auto-enlistment to properly detect rack-facing region IP address
+
+
+Other notable changes
+---------------------
+
+It is now possible to prevent deploying machines from rebooting.
+
 
 2.1.3
 =====

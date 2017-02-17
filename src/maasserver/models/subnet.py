@@ -159,6 +159,9 @@ class SubnetQueriesMixin(MAASQueriesMixin):
     def get_best_subnet_for_ip(self, ip):
         """Find the most-specific managed Subnet the specified IP address
         belongs to."""
+        ip = IPAddress(ip)
+        if ip.is_ipv4_mapped():
+            ip = ip.ipv4()
         subnets = self.raw(
             self.find_best_subnet_for_ip_query,
             params=[str(ip)])
