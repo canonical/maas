@@ -85,8 +85,6 @@ install-dependencies:
 
 .gitignore: .bzrignore
 	sed 's:^[.]/:/:' $^ > $@
-	echo '/src/**/*.pyc' >> $@
-	echo '/etc/**/*.pyc' >> $@
 
 configure-buildout:
 	utilities/configure-buildout

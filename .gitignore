@@ -2,8 +2,10 @@
 *.egg
 *.egg-info
 *.log
+/.bzr
 /.db.lock
 /.failed
+/.git
 /.hypothesis
 /.idea
 /.idea/libraries
@@ -41,5 +43,4 @@
 /tags
 /xunit.*.xml
 dropin.cache
-/src/**/*.pyc
-/etc/**/*.pyc
+__pycache__

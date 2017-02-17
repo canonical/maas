@@ -2,8 +2,10 @@
 *.egg
 *.egg-info
 *.log
+./.bzr
 ./.db.lock
 ./.failed
+./.git
 ./.hypothesis
 ./.idea
 ./.idea/libraries
@@ -35,10 +37,10 @@
 ./media/demo/*
 ./media/development
 ./parts
-./run
 ./services/*/supervise
 ./src/maasserver/static/js/enums.js
 ./TAGS
 ./tags
 ./xunit.*.xml
 dropin.cache
+__pycache__
