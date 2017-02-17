@@ -134,6 +134,7 @@ from maasserver.rpc import (
     getClientFor,
     getClientFromIdentifiers,
 )
+from maasserver.server_address import get_maas_facing_server_addresses
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     StorageLayoutError,
@@ -3356,6 +3357,28 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
             allow_power_cycle = True
+        # Bug#1630361: Make sure that there is a maas_facing_server_address in
+        # the same address family as our configured interfaces.
+        # Every node in a real system has a rack controller, but many tests do
+        # not.  To keep this unit-testable, only check for address family
+        # compatibility when there is a rack controller.  If we don't have a
+        # rack controller, the deploy will be rejected in any case.
+        if self.get_boot_primary_rack_controller() is not None:
+            subnets = Subnet.objects.filter(
+                staticipaddress__interface__node=self,
+                staticipaddress__alloc_type__in=[
+                    IPADDRESS_TYPE.AUTO,
+                    IPADDRESS_TYPE.STICKY,
+                    IPADDRESS_TYPE.USER_RESERVED])
+            cidrs = subnets.values_list("cidr", flat=True)
+            my_address_families = {IPNetwork(cidr).version for cidr in cidrs}
+            rack_address_families = set(
+                addr.version for addr in get_maas_facing_server_addresses(
+                    self.get_boot_primary_rack_controller()))
+            if my_address_families & rack_address_families == set():
+                raise ValidationError(
+                    {"network":
+                     ["Node has no address family in common with the server"]})
         self._register_request_event(
             user, event, action='start', comment=comment)
         return self._start(

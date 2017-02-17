@@ -27,6 +27,7 @@ from fixtures import LoggerFixture
 from maasserver import (
     bootresources,
     preseed as preseed_module,
+    server_address,
 )
 from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.driver_parameters import get_driver_types
@@ -147,7 +148,10 @@ from metadataserver.models import (
     NodeUserData,
     ScriptResult,
 )
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -5347,10 +5351,15 @@ class TestNode_Start(MAASTransactionServerTestCase):
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh",
             power_state=POWER_STATE.OFF):
+        network = factory.make_ip4_or_6_network()
+        cidr = str(network.cidr)
+        # Make sure that the maas_server address is of the same addr family.
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        gethost.return_value = str(IPAddress(network.first + 1))
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, with_boot_disk=True,
             bmc_connected_to=bmc_connected_to, power_type=power_type,
-            power_state=power_state)
+            power_state=power_state, cidr=cidr)
         node.acquire(user)
         return node
 
@@ -5363,6 +5372,66 @@ class TestNode_Start(MAASTransactionServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
         self.assertRaises(PermissionDenied, node.start, factory.make_User())
+
+    def test__raises_ValidationError_if_no_common_family(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        subnet = node.get_boot_interface().ip_addresses.first().subnet
+        # Force an address family mismatch.  See Bug#1630361.
+        if IPNetwork(subnet.cidr).version == 6:
+            gethost.return_value = "192.168.1.1"
+        else:
+            gethost.return_value = "2001:db8::3"
+        with ExpectedException(ValidationError):
+            node.start(admin)
+
+    def test__checks_all_interfaces_for_common_family(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        subnet = node.get_boot_interface().ip_addresses.first().subnet
+        # Force an address family mismatch.  See Bug#1630361.
+        if IPNetwork(subnet.cidr).version == 6:
+            gethost.return_value = "192.168.1.1"
+            subnet2 = factory.make_Subnet(cidr='192.168.0.0/24')
+        else:
+            gethost.return_value = "2001:db8::3"
+            subnet2 = factory.make_Subnet(cidr='2001:db8:1::/64')
+        factory.make_StaticIPAddress(
+            interface=factory.make_Interface(node=node), subnet=subnet2)
+        # At this point, we have the boot interface and rack in different
+        # address families, and a second interface on the node that is in the
+        # same address family (but different subnet) than the rack controller.
+        # Node.start should let this start.
+        register_event = self.patch(node, '_register_request_event')
+        node.start(admin)
+        self.assertThat(
+            register_event, MockCalledOnceWith(
+                admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT,
+                action='start', comment=None))
+
+    def test__start_ignores_address_compatibility_when_no_rack(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
+        get_rack = self.patch(node, "get_boot_primary_rack_controller")
+        get_rack.return_value = None
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        subnet = node.get_boot_interface().ip_addresses.first().subnet
+        # Force an address family mismatch.  See Bug#1630361.
+        if IPNetwork(subnet.cidr).version == 6:
+            gethost.return_value = "192.168.1.1"
+        else:
+            gethost.return_value = "2001:db8::3"
+        register_event = self.patch(node, '_register_request_event')
+        node.start(admin)
+        self.assertThat(
+            register_event, MockCalledOnceWith(
+                admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT,
+                action='start', comment=None))
 
     def test__start_logs_user_request(self):
         admin = factory.make_admin()
