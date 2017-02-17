@@ -52,10 +52,7 @@ from subprocess import (
 import sys
 import tempfile
 import threading
-from time import (
-    sleep,
-    time,
-)
+from time import sleep
 
 from provisioningserver.utils import sudo
 from provisioningserver.utils.shell import ExternalProcessError
@@ -207,69 +204,26 @@ def atomic_symlink(source, name):
         raise
 
 
-def pick_new_mtime(old_mtime=None, starting_age=1000):
-    """Choose a new modification time for a file that needs it updated.
-
-    This function is used to manage the modification time of files
-    for which we need to see an increment in the modification time
-    each time the file is modified.  This is the case for DNS zone
-    files which only get properly reloaded if BIND sees that the
-    modification time is > to the time it has in its database.
-
-    Modification time can have a resolution as low as one second in
-    some relevant environments (we have observed this with ext3).
-    To produce mtime changes regardless, we set a file's modification
-    time in the past when it is first written, and
-    increment it by 1 second on each subsequent write.
-
-    However we also want to be careful not to set the modification time
-    in the future, mostly because BIND does not deal with that very
-    well.
-
-    :param old_mtime: File's previous modification time, as a number
-        with a unity of one second, or None if it did not previously
-        exist.
-    :param starting_age: If the file did not exist previously, set its
-        modification time this many seconds in the past.
-    """
-    now = time()
-    if old_mtime is None:
-        # File is new.  Set modification time in the past to have room for
-        # sub-second modifications.
-        return now - starting_age
-    elif old_mtime + 1 <= now:
-        # There is room to increment the file's mtime by one second
-        # without ending up in the future.
-        return old_mtime + 1
-    else:
-        # We can't increase the file's modification time.  Give up and
-        # return the previous modification time.
-        return old_mtime
-
-
 def incremental_write(content, filename, mode=0o600):
-    """Write the given `content` into the file `filename` and
-    increment the modification time by 1 sec.
+    """Write the given `content` into the file `filename`.  In the past, this
+    would potentially change modification time to arbitrary values.
 
     :param mode: Access permissions for the file.
     """
-    old_mtime = get_mtime(filename)
+    # We used to change modification time on the files, in an attempt to out
+    # smart BIND into loading zones on file systems where time was not granular
+    # enough.  BIND got smarter about how it loads zones and remembers when it
+    # last loaded the zone: either the then-current time, or the mtime of the
+    # file, whichever is later.  When BIND then gets a reload request, it
+    # compares the current time to the loadtime for the domain, and skips it if
+    # the file is not new.  If we set mtime in the past, then zones don't load.
+    # If we set it in the future, then we WILL sometimes hit the race condition
+    # where BIND looks at the time after we atomic_write, but before we manage
+    # to set the time into the future.  N.B.: /etc on filesystems with 1-second
+    # granularity are no longer supported by MAAS.  The good news is that since
+    # 2.6, linux has supported nanosecond-granular time.  As of bind9
+    # 1:9.10.3.dfsg.P2-5, BIND even uses it.
     atomic_write(content, filename, mode=mode)
-    new_mtime = pick_new_mtime(old_mtime)
-    os.utime(filename, (new_mtime, new_mtime))
-
-
-def get_mtime(filename):
-    """Return a file's modification time, or None if it does not exist."""
-    try:
-        return os.stat(filename).st_mtime
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File does not exist.  Be helpful, return None.
-            return None
-        else:
-            # Other failure.  The caller will want to know.
-            raise
 
 
 def sudo_write_file(filename, contents, encoding='utf-8', mode=0o644):
