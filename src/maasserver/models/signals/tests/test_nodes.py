@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import crochet
 from maasserver.enum import (
+    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
@@ -214,6 +215,14 @@ class TestDecomposeMachine(MAASServerTestCase):
         machine.delete()
         self.assertThat(client, MockNotCalled())
 
+    def test_does_nothing_if_pre_existing_machine(self):
+        client = self.fake_rpc_client()
+        machine = factory.make_Node()
+        machine.bmc = self.make_composable_pod()
+        machine.save()
+        machine.delete()
+        self.assertThat(client, MockNotCalled())
+
     def test_performs_decompose_machine(self):
         hints = DiscoveredPodHints(
             cores=random.randint(1, 8),
@@ -224,7 +233,8 @@ class TestDecomposeMachine(MAASServerTestCase):
         client.return_value = succeed({
             'hints': hints,
         })
-        machine = factory.make_Node()
+        machine = factory.make_Node(
+            creation_type=NODE_CREATION_TYPE.MANUAL)
         machine.bmc = pod
         machine.instance_power_parameters = {
             'power_id': factory.make_name('power_id'),
@@ -246,7 +256,8 @@ class TestDecomposeMachine(MAASServerTestCase):
         pod = self.make_composable_pod()
         client = self.fake_rpc_client()
         client.side_effect = crochet.TimeoutError()
-        machine = factory.make_Node()
+        machine = factory.make_Node(
+            creation_type=NODE_CREATION_TYPE.MANUAL)
         machine.bmc = pod
         machine.instance_power_parameters = {
             'power_id': factory.make_name('power_id'),
@@ -261,7 +272,8 @@ class TestDecomposeMachine(MAASServerTestCase):
         pod = self.make_composable_pod()
         client = self.fake_rpc_client()
         client.return_value = fail(PodActionFail())
-        machine = factory.make_Node()
+        machine = factory.make_Node(
+            creation_type=NODE_CREATION_TYPE.MANUAL)
         machine.bmc = pod
         machine.instance_power_parameters = {
             'power_id': factory.make_name('power_id'),

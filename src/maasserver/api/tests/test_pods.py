@@ -10,12 +10,15 @@ import random
 from unittest.mock import MagicMock
 
 from django.core.urlresolvers import reverse
+from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.forms import pods
+from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachine,
@@ -335,13 +338,25 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
 
-    def test_DELETE_removes_pod(self):
+    def test_DELETE_calls_async_delete(self):
         self.become_admin()
         pod = factory.make_Pod()
+        for _ in range(3):
+            factory.make_Machine(
+                bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING)
+        for _ in range(3):
+            factory.make_Machine(
+                bmc=pod, creation_type=NODE_CREATION_TYPE.MANUAL)
+        for _ in range(3):
+            factory.make_Machine(
+                bmc=pod, creation_type=NODE_CREATION_TYPE.DYNAMIC)
+        mock_eventual = MagicMock()
+        mock_async_delete = self.patch(Pod, "async_delete")
+        mock_async_delete.return_value = mock_eventual
         response = self.client.delete(get_pod_uri(pod))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
-        self.assertIsNone(reload_object(pod))
+        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 7))
 
     def test_DELETE_rejects_deletion_if_not_permitted(self):
         pod = factory.make_Pod()

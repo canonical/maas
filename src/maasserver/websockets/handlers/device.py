@@ -79,7 +79,7 @@ class DeviceHandler(NodeHandler):
             'create_interface',
             'action']
         exclude = [
-            "dynamic",
+            "creation_type",
             "type",
             "boot_interface",
             "boot_cluster_ip",

@@ -17,6 +17,7 @@ from django.db.models.signals import (
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.enum import (
     BMC_TYPE,
+    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_TYPE,
 )
@@ -126,7 +127,8 @@ def decompose_machine_on_delete(sender, instance, **kwargs):
     if (instance.node_type == NODE_TYPE.MACHINE and
             bmc is not None and
             bmc.bmc_type == BMC_TYPE.POD and
-            Capabilities.COMPOSABLE in bmc.capabilities):
+            Capabilities.COMPOSABLE in bmc.capabilities and
+            instance.creation_type != NODE_CREATION_TYPE.PRE_EXISTING):
         pod = bmc.as_pod()
 
         @asynchronous

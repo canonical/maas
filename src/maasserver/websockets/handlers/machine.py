@@ -128,7 +128,7 @@ class MachineHandler(NodeHandler):
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
-            "dynamic",
+            "creation_type",
             "status_expires",
             "previous_status",
             "parent",

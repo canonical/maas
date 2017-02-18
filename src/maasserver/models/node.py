@@ -72,6 +72,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
+    NODE_CREATION_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -938,10 +939,10 @@ class Node(CleanSave, TimestampedModel):
 
     license_key = CharField(max_length=30, null=True, blank=True)
 
-    # Only used by Machine. Set to True when the machine was composed
-    # dynamically from a pod during allocation. When the machine is
-    # released it will be deleted.
-    dynamic = BooleanField(default=False)
+    # Only used by Machine. Set to the creation type based on how the machine
+    # ended up in the Pod.
+    creation_type = IntegerField(
+        null=False, blank=False, default=NODE_CREATION_TYPE.PRE_EXISTING)
 
     tags = ManyToManyField(Tag)
 
@@ -2704,7 +2705,7 @@ class Node(CleanSave, TimestampedModel):
         final power-down. This method should be the absolute last method
         called.
         """
-        if self.dynamic:
+        if self.creation_type == NODE_CREATION_TYPE.DYNAMIC:
             self.delete()
         else:
             self.release_interface_config()

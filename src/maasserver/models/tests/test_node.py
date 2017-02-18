@@ -43,6 +43,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_CREATION_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -1995,7 +1996,8 @@ class TestNode(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
-            dynamic=True, power_state=POWER_STATE.OFF)
+            creation_type=NODE_CREATION_TYPE.DYNAMIC,
+            power_state=POWER_STATE.OFF)
         with post_commit_hooks:
             node.release()
         self.assertIsNone(reload_object(node))

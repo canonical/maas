@@ -6,18 +6,25 @@
 __all__ = []
 
 import random
-from unittest.mock import Mock
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
+from crochet import wait_for
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_CREATION_TYPE,
     POWER_STATE,
 )
+from maasserver.exceptions import PodProblem
 from maasserver.models import bmc as bmc_module
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    Pod,
 )
 from maasserver.models.fabric import Fabric
 from maasserver.models.node import Machine
@@ -25,8 +32,12 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import MatchesSetwiseWithAll
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import reload_object
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -35,12 +46,21 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
 )
+from provisioningserver.rpc.cluster import DecomposeMachine
 from testtools.matchers import (
     Equals,
     HasLength,
     MatchesSetwise,
     MatchesStructure,
 )
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+    succeed,
+)
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestBMC(MAASServerTestCase):
@@ -665,6 +685,7 @@ class TestPod(MAASServerTestCase):
                     memory=Equals(machine.memory),
                     power_state=Equals(machine.power_state),
                     instance_power_parameters=Equals(machine.power_parameters),
+                    creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
                     tags=MatchesSetwiseWithAll(*[
                         MatchesStructure(name=Equals(tag))
                         for tag in machine.tags
@@ -919,3 +940,89 @@ class TestPod(MAASServerTestCase):
                     Equals(tag)
                     for tag in dnew_interface.tags
                 ])))
+
+
+class TestPodDelete(MAASTransactionServerTestCase):
+
+    def test_delete_is_not_allowed(self):
+        pod = factory.make_Pod()
+        self.assertRaises(AttributeError, pod.delete)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_async_simply_deletes_empty_pod(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        yield pod.async_delete()
+        pod = yield deferToDatabase(reload_object, pod)
+        self.assertIsNone(pod)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_decomposes_and_deletes_machines_and_pod(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        decomposable_machine = yield deferToDatabase(
+            factory.make_Machine, bmc=pod,
+            creation_type=NODE_CREATION_TYPE.MANUAL)
+        delete_machine = yield deferToDatabase(
+            factory.make_Machine, bmc=pod)
+        client = Mock()
+        client.return_value = succeed({'hints': None})
+        self.patch(
+            bmc_module, "getClientFromIdentifiers").return_value = client
+        yield pod.async_delete()
+        self.assertThat(
+            client, MockCalledOnceWith(
+                DecomposeMachine, type=pod.power_type, context={},
+                pod_id=pod.id, name=pod.name))
+        decomposable_machine = yield deferToDatabase(
+            reload_object, decomposable_machine)
+        delete_machine = yield deferToDatabase(reload_object, delete_machine)
+        pod = yield deferToDatabase(reload_object, pod)
+        self.assertIsNone(decomposable_machine)
+        self.assertIsNone(delete_machine)
+        self.assertIsNone(pod)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_decomposes_handles_failure_after_one_successful(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        decomposable_machine_one = yield deferToDatabase(
+            factory.make_Machine, bmc=pod,
+            creation_type=NODE_CREATION_TYPE.MANUAL)
+        decomposable_machine_two = yield deferToDatabase(
+            factory.make_Machine, bmc=pod,
+            creation_type=NODE_CREATION_TYPE.MANUAL)
+        delete_machine = yield deferToDatabase(
+            factory.make_Machine, bmc=pod)
+        client = Mock()
+        client.side_effect = [
+            succeed({'hints': sentinel.hints}),
+            fail(PodProblem()),
+        ]
+        mock_sync_hints = self.patch(Pod, 'sync_hints')
+        self.patch(
+            bmc_module, "getClientFromIdentifiers").return_value = client
+
+        # Ensure that the exeception is raised.
+        try:
+            yield pod.async_delete()
+        except PodProblem as exc:
+            pass
+        else:
+            self.fail("PodProblem exception was not raised.")
+
+        # Ensure that the pod hints where updated.
+        self.assertThat(mock_sync_hints, MockCalledOnceWith(sentinel.hints))
+
+        # Only the first machine should have been deleted, the others should
+        # all remain.
+        decomposable_machine_one = yield deferToDatabase(
+            reload_object, decomposable_machine_one)
+        decomposable_machine_two = yield deferToDatabase(
+            reload_object, decomposable_machine_two)
+        delete_machine = yield deferToDatabase(reload_object, delete_machine)
+        pod = yield deferToDatabase(reload_object, pod)
+        self.assertIsNone(decomposable_machine_one)
+        self.assertIsNotNone(decomposable_machine_two)
+        self.assertIsNotNone(delete_machine)
+        self.assertIsNotNone(pod)

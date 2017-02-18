@@ -23,7 +23,10 @@ from maasserver.clusterrpc.pods import (
     discover_pod,
     get_best_discovered_result,
 )
-from maasserver.enum import BMC_TYPE
+from maasserver.enum import (
+    BMC_TYPE,
+    NODE_CREATION_TYPE,
+)
 from maasserver.exceptions import PodProblem
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
@@ -278,6 +281,7 @@ class ComposeMachineForm(forms.Form):
 
         created_machine = self.pod.create_machine(
             discovered_machine, self.request.user,
-            skip_commissioning=skip_commissioning)
+            skip_commissioning=skip_commissioning,
+            creation_type=NODE_CREATION_TYPE.MANUAL)
         self.pod.sync_hints(pod_hints)
         return created_machine
