@@ -7,16 +7,40 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject notifications.html into the template cache.
     $templateCache.put('directive/templates/notifications.html', [
-      '<div ng-repeat="n in notifications" ng-class="classes[n.category]">',
-        '<p class="p-notification__response">',
-          '<span class="p-notification__status"></span>',
-          '<span ng-bind-html="n.message"></span> — ',
-          '<a ng-click="dismiss(n)">Dismiss</a>',
-          '<br><small>(id: {$ n.id $}, ',
-          'ident: {$ n.ident || "-" $}, user: {$ n.user || "-" $}, ',
-          'users: {$ n.users $}, admins: {$ n.admins $}, ',
-          'created: {$ n.created $}, updated: {$ n.updated $})</small>',
-        '</p>',
+      '<div ng-repeat="category in categories"',
+        ' ng-init="notifications = categoryNotifications[category]">',
+        // 1 notification.
+        '<div ng-if="notifications.length == 1"',
+        ' ng-class="categoryClasses[category]">',
+          '<p ng-repeat="notification in notifications"',
+          ' class="p-notification__response">',
+            '<span ng-bind-html="notification.message"></span> ',
+            '<a ng-click="dismiss(notification)">Dismiss</a>',
+          '</p>',
+        '</div>',
+        // 2 or more notifications.
+        '<div ng-if="notifications.length >= 2"',
+        ' ng-class="categoryClasses[category]"',
+        ' ng-init="shown = false"',
+        ' class="p-notification--group">',
+          '<p class="p-notification__response" ng-click="shown = !shown">',
+            '<span class="p-notification__status"',
+            ' data-count="{$ notifications.length $}"',
+            ' ng-bind="categoryTitles[category]"></span>',
+            '<i class="icon icon--open"></i>',
+          '</p>',
+          '<ul class="p-notification__list" ng-class="{\'is-open\': shown}">',
+            '<li ng-repeat="notification in notifications"',
+            ' class="p-notification__item">',
+              '<p class="p-notification__msg">',
+                '<span ng-bind-html="notification.message"></span> ',
+                '<a ng-click="dismiss(notification)">Dismiss</a>',
+              '</p>',
+              '<time class="p-notification__date" ',
+              ' ng-bind="notification.updated"></time>',
+            '</li>',
+          '</ul>',
+        '</div>',
       '</div>'
     ].join(''));
 }]);
@@ -32,12 +56,47 @@ angular.module('MAAS').directive('maasNotifications', [
                 $scope.notifications = NotificationsManager.getItems();
                 $scope.dismiss = angular.bind(
                     NotificationsManager, NotificationsManager.dismiss);
-                $scope.classes = {
-                    "error": "p-notification--error",
-                    "warning": "p-notification--warning",
-                    "success": "p-notification--success",
-                    "info": "p-notification"  // No suffix.
+
+                $scope.categories = [
+                    "error",
+                    "warning",
+                    "success",
+                    "info"
+                ];
+                $scope.categoryTitles = {
+                    error: "Errors",
+                    warning: "Warnings",
+                    success: "Successes",
+                    info: "Other messages"
                 };
+                $scope.categoryClasses = {
+                    error: "p-notification--error",
+                    warning: "p-notification--warning",
+                    success: "p-notification--success",
+                    info: "p-notification"  // No suffix.
+                };
+                $scope.categoryNotifications = {
+                    error: [],
+                    warning: [],
+                    success: [],
+                    info: []
+                };
+
+                $scope.$watchCollection(
+                    "notifications", function() {
+                        var cns = $scope.categoryNotifications;
+                        angular.forEach(
+                            $scope.categories, function(category) {
+                                cns[category].length = 0;
+                            }
+                        );
+                        angular.forEach(
+                            $scope.notifications, function(notification) {
+                                cns[notification.category].push(notification);
+                            }
+                        );
+                    }
+                );
             }
         };
     }]);
