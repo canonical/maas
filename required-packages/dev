@@ -17,6 +17,9 @@ libnss-wrapper
 make
 nodejs-legacy
 npm
+psmisc
+python3-django-nose
+python3-dnspython
 python-bson
 python-crochet
 python-django
@@ -32,7 +35,5 @@ python-simplejson
 python-tempita
 python-twisted
 python-yaml
-python3-django-nose
-python3-dnspython
 socat
 xvfb
