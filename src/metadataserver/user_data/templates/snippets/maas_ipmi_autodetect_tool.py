@@ -21,6 +21,14 @@ def detect_ipmi():
         if len(found):
             return (True, "UNKNOWN: %s" % " ".join(found))
         return (False, "")
+
+    # We've detected IPMI, but it doesn't necessarily mean we can access
+    # the BMC. Let's test if we can.
+    cmd = 'bmc-config --checkout --key-pair=Lan_Conf:IP_Address_Source'
+    (status, output) = subprocess.getstatusoutput(cmd)
+    if status != 0:
+        return (False, "")
+
     return (True, res.group(2))
 
 

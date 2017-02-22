@@ -23,6 +23,7 @@ Usage: ${0##*/} [ options ]
    options:
       -c | --check            check if this is a wedge
       -g | --get-credentials  obtain the credentials for the wedge
+      -h | --help             display usage
 
    Example:
     - ${0##*/} --check
@@ -32,7 +33,7 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; }
 
-short_opts="hs:c:g:"
+short_opts="hcg"
 long_opts="help,check,get-credentials,"
 getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@") &&
@@ -47,12 +48,87 @@ fi
 # Obtain the 'net' device connected to the BMC.
 DEV="$(ip -o a show to "${SWLLA}" | awk '// { print $2 }')" || Error "Unable to detect the 'wedge' net device connected to the BMC."
 
+# Get dmidecode information to find out if this is a switch
+SM="$(dmidecode -s system-manufacturer)"
+SPN="$(dmidecode -s system-product-name)"
+BPN="$(dmidecode -s baseboard-product-name)"
+
+detect_known_switch(){
+    # This is based of https://github.com/lool/sonic-snap/blob/master/common/id-switch
+    # try System Information > Manufacturer first
+    case "$SM" in
+        "Intel")
+            case "$SPN" in
+                "EPGSVR")
+                    manufacturer=accton
+                    ;;
+                *)
+                    Error "Unable to detect switch"
+                    ;;
+            esac
+            ;;
+        "Joytech")
+            case "$SPN" in
+                "Wedge-AC-F 20-001329")
+                    manufacturer=accton
+                    ;;
+                *)
+                    Error "Unable to detect switch"
+                    ;;
+            esac
+            ;;
+        "To be filled by O.E.M.")
+            case "$BPN" in
+                "PCOM-B632VG-ECC-FB-ACCTON-D")
+                    manufacturer=accton
+                    ;;
+                *)
+                    Error "Unable to detect switch"
+                    ;;
+            esac
+            ;;
+        *)
+            Error "Unable to detect switch"
+            ;;
+    esac
+    # next look at System Information > Product Name
+    case "$manufacturer-$SPN" in
+        "accton-EPGSVR")
+            model=wedge40
+            ;;
+        "accton-Wedge-AC-F 20-001329")
+            model=wedge40
+            ;;
+        "accton-To be filled by O.E.M.")
+            case "$BPN" in
+                "PCOM-B632VG-ECC-FB-ACCTON-D")
+                    model=wedge100
+                    ;;
+                *)
+                    Error "Unable to detect switch model"
+                    ;;
+            esac
+            ;;
+        *)
+            Error "Unable to detect switch model"
+            ;;
+    esac
+    echo "$model"
+}
+
 wedge_autodetect(){
-    # Verify that this is an openBMC.
-    if ! curl -s 'http://['"${BMCLLA}"%"${DEV}"']:8080/api' | grep -qs 'Wedge RESTful API Entry'; then
-        Error "Unable to detect a 'wedge' BMC."
+    # First detect this is a known switch
+    model=$(detect_known_switch) || Error "Unable to detect switch model"
+    # Second, lets verify if this is a known endpoint
+    # First try to hit the API. This would work on Wedge 100.
+    if curl -s 'http://['"${BMCLLA}"%"${DEV}"']:8080/api' | grep -qs 'Wedge RESTful API Entry'; then
+        echo "wedge"
+    # If the above failed, try to hit the SSH. This would work on Wedge 40
+    elif [ ! -z "$(sshpass -p "${SSHPASS}" ssh -o StrictHostKeyChecking=no "${SSHUSER}"@"${BMCLLA}"%"${DEV}" 'ip -o -4 addr show | awk "{ if(NR>1)print \$4 "} | cut -d/ -f1')" ]; then
+        echo "wedge"
+    else
+        Error "Unable to detect the BMC for a "$model" switch"
     fi
-    echo "wedge"
 }
 
 wedge_discover(){
