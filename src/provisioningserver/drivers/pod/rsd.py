@@ -607,8 +607,8 @@ class RSDPodDriver(PodDriver):
         url = self.get_url(context)
         headers = self.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/Actions/Allocate"
-        # Get current list of composed machines in pod.
-        machines = yield self.get_pod_machines(
+        # Get previous list of composed machines in pod.
+        previous_machines = yield self.get_pod_machines(
             url, headers)
         # Create allocate payload.
         requested_cores = request.cores
@@ -640,14 +640,20 @@ class RSDPodDriver(PodDriver):
                     break
                 continue
 
-        new_machines = yield self.get_pod_machines(url, headers)
-        if new_machines == machines:
+        # Sieve the new machine.
+        discovered_machine = None
+        current_machines = yield self.get_pod_machines(url, headers)
+        previous_node_ids = [
+            pm.power_parameters.get('node_id') for pm in previous_machines]
+        for cm in current_machines:
+            if cm.power_parameters.get('node_id') not in previous_node_ids:
+                discovered_machine = cm
+
+        if discovered_machine is None:
             # Allocation did not succeed.
             raise PodInvalidResources(
                 "Unable to allocate machine with requested resources.")
 
-        # Sieve the new machine.
-        discovered_machine = [m for m in new_machines if m not in machines][0]
         node_id = discovered_machine.power_parameters.get(
             'node_id').encode('utf-8')
         # Assemble the node.
