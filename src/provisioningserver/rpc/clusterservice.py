@@ -95,6 +95,7 @@ from provisioningserver.utils.shell import (
     select_c_utf8_bytes_locale,
 )
 from provisioningserver.utils.twisted import (
+    call,
     callOut,
     deferred,
     DeferredValue,
@@ -946,6 +947,13 @@ class ClusterClientService(TimerService, object):
         else:
             twisted.web.client.URI = PatchedURI
 
+        # When _doUpdate is called we capture it into _updateInProgress so
+        # that concurrent calls can piggyback rather than initiating extra
+        # calls. We start with an already-fired DeferredValue: _tryUpdate
+        # checks if it is set to decide whether or not to call _doUpdate.
+        self._updateInProgress = DeferredValue()
+        self._updateInProgress.set(None)
+
     def startService(self):
         self.time_started = self.clock.seconds()
         super(ClusterClientService, self).startService()
@@ -980,9 +988,7 @@ class ClusterClientService(TimerService, object):
         try:
             return self.getClient()
         except exceptions.NoConnectionsAvailable:
-            d = self._tryUpdate()
-            d.addCallback(lambda _: self.getClient())
-            return d
+            return self._tryUpdate().addCallback(call, self.getClient)
 
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
@@ -991,15 +997,19 @@ class ClusterClientService(TimerService, object):
     def _tryUpdate(self):
         """Attempt to refresh outgoing connections.
 
-        This simply wraps self.update in a deferred to log errors and keep us
-        from dying if an exception is raised in update.
+        This ensures that calls to `_doUpdate` are deferred, with errors
+        logged but not propagated. It also ensures that `_doUpdate` is never
+        called concurrently.
         """
-        d = maybeDeferred(self.update)
-        d.addErrback(log.err, "Cluster client update failed.")
-        return d
+        if self._updateInProgress.isSet:
+            d = maybeDeferred(self._doUpdate).addErrback(
+                log.err, "Cluster client update failed.")
+            self._updateInProgress = DeferredValue()
+            self._updateInProgress.capture(d)
+        return self._updateInProgress.get()
 
     @inlineCallbacks
-    def update(self):
+    def _doUpdate(self):
         """Refresh outgoing connections.
 
         This obtains a list of endpoints from the region then connects
