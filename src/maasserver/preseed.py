@@ -335,7 +335,7 @@ def get_curtin_merged_config(node):
     yaml_config = get_curtin_yaml_config(node)
     config = {}
     for cfg in yaml_config:
-        merge_config(config, yaml.load(cfg))
+        merge_config(config, yaml.safe_load(cfg))
     return config
 
 
@@ -437,7 +437,7 @@ def get_curtin_config(node):
         if var not in context:
             deprecated_context_variables.remove(var)
     context.update(get_node_deprecated_preseed_context())
-    config = yaml.load(template.substitute(**context))
+    config = yaml.safe_load(template.substitute(**context))
     # Remove deprecated config from the curtin preseed.
     if 'power_state' in config:
         del config['power_state']
@@ -462,7 +462,7 @@ def get_curtin_config(node):
     # must have this statement.
     if node.distro_series == "precise":
         config['power_state'] = {'mode': 'reboot'}
-    return yaml.dump(config)
+    return yaml.safe_dump(config)
 
 
 def get_curtin_context(node, rack_controller=None):

@@ -42,5 +42,5 @@ def get_snap_version():
         return None
     meta_path = os.path.join(snap_path, 'meta', 'snap.yaml')
     with open(meta_path, 'r') as fp:
-        snap_meta = yaml.load(fp)
+        snap_meta = yaml.safe_load(fp)
     return snap_meta['version']

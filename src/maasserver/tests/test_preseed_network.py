@@ -32,18 +32,23 @@ import yaml
 
 class AssertNetworkConfigMixin:
 
+    # MAC addresses are quoted because unquoted all-numeric MAC addresses —
+    # e.g. 12:34:56:78:90:12 — are interpreted as *integers* by PyYAML. This
+    # edge-case took some time to figure out, and begs the question: why is
+    # this YAML being constructed by hacking text strings anyway?
+
     IFACE_CONFIG = dedent("""\
         - id: %(name)s
           name: %(name)s
           type: physical
-          mac_address: %(mac)s
+          mac_address: '%(mac)s'
         """)
 
     BOND_CONFIG = dedent("""\
         - id: %(name)s
           name: %(name)s
           type: bond
-          mac_address: %(mac)s
+          mac_address: '%(mac)s'
           bond_interfaces:
         """)
 
@@ -51,7 +56,7 @@ class AssertNetworkConfigMixin:
         - id: %(name)s
           name: %(name)s
           type: bridge
-          mac_address: %(mac)s
+          mac_address: '%(mac)s'
           bridge_interfaces:
         """)
 
@@ -73,7 +78,7 @@ class AssertNetworkConfigMixin:
 
     def assertNetworkConfig(self, expected, output):
         output = output[0]
-        output = yaml.load(output)
+        output = yaml.safe_load(output)
         self.assertThat(output, ContainsDict({
             "network_commands": MatchesDict({
                 "builtin": Equals(["curtin", "net-meta", "custom"]),
@@ -83,7 +88,7 @@ class AssertNetworkConfigMixin:
                 "config": IsInstance(list),
             }),
         }))
-        expected_network = yaml.load(expected)
+        expected_network = yaml.safe_load(expected)
         output_network = output["network"]["config"]
         expected_equals = list(map(Equals, expected_network))
         self.assertThat(output_network, MatchesListwise(expected_equals))
@@ -408,7 +413,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase,
             interface=iface,
             subnet=subnet)
         config = compose_curtin_network_config(node)
-        config_yaml = yaml.load(config[0])
+        config_yaml = yaml.safe_load(config[0])
         self.assertThat(
             config_yaml['network']['config'][0]['subnets'][0]['type'],
             Equals('dhcp' + str(IPNetwork(subnet.cidr).version))

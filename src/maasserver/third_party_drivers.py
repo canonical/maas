@@ -57,7 +57,7 @@ you can generate the key binary string like this:
 
 >>>> import yaml
 >>>> key_text = open('my_key.gpg').read()
->>>> print yaml.dump(key_text)
+>>>> print yaml.safe_dump(key_text)
 
 NOTE: If you start off with an ascii armored key, you can convert it into
 a binary key by importing it into a gpg keyring, then exporting it into
@@ -67,7 +67,7 @@ You can inspect a key from drivers.yaml by dumping it back into a file
 and using gpg to manipulate it:
 
 >>> import yaml
->>> drivers_config = yaml.load(open('etc/maas/drivers.yaml').read())
+>>> drivers_config = yaml.safe_load(open('etc/maas/drivers.yaml').read())
 >>> drivers_list = drivers_config['drivers']
 >>> first_driver = drivers_list[0]
 >>> open('some_key.gpg', 'w').write(first_driver['key_binary'])

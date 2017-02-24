@@ -46,7 +46,7 @@ class AssertStorageConfigMixin:
         self.assertThat(observed, IsInstance(list))
         self.assertThat(observed, HasLength(1))
         observed = observed[0]
-        observed = yaml.load(observed)
+        observed = yaml.safe_load(observed)
         self.assertThat(observed, ContainsDict({
             "partitioning_commands": MatchesDict({
                 "builtin": Equals(["curtin", "block-meta", "custom"]),
@@ -57,7 +57,7 @@ class AssertStorageConfigMixin:
             }),
         }))
         storage_observed = observed["storage"]["config"]
-        storage_expected = yaml.load(expected)["config"]
+        storage_expected = yaml.safe_load(expected)["config"]
         if storage_observed != storage_expected:
             storage_observed_dump = yaml.safe_dump(
                 storage_observed, default_flow_style=False)

@@ -750,7 +750,7 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
         self.assertEqual({
             "verbosity": 3,
             "showtrace": True,
-            }, yaml.load(preseed[0]))
+            }, yaml.safe_load(preseed[0]))
 
 
 class TestGetCurtinMergedConfig(MAASServerTestCase):
@@ -1171,7 +1171,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         self.configure_get_boot_images_for_node(node, 'xinstall')
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(node)
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         archive = PackageRepository.objects.get_default_archive(
             node.split_arch()[0])
         self.assertEqual(
@@ -1191,7 +1191,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(node)
         ppa = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(ppa)
         self.assertThat(
@@ -1220,7 +1220,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(node)
         ppas = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0])
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         # Assert that get_additional_repositories returns 2 PPAs.
         self.assertItemsEqual(ppas, [ppa_first, ppa_second])
         # Clean up PPA name
@@ -1257,7 +1257,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(repository)
         self.assertThat(
@@ -1283,7 +1283,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(repository)
         components = ''
@@ -1314,7 +1314,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         userdata = compose_curtin_archive_config(node)
         repository = PackageRepository.objects.get_additional_repositories(
             node.split_arch()[0]).first()
-        preseed = yaml.load(userdata[0])
+        preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(repository)
         components = ''
@@ -1634,7 +1634,7 @@ class TestPreseedMethods(
         self.assertTrue(preseed.startswith(b'#cloud-config'))
 
     def test_get_enlist_userdata_contains_apt_config(self):
-        preseed = yaml.load(get_enlist_userdata())
+        preseed = yaml.safe_load(get_enlist_userdata())
         apt_proxy = 'http://localhost:8000/'
         self.assertAptConfig(preseed, apt_proxy)
         self.assertSystemInfo(preseed)

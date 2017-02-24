@@ -47,7 +47,7 @@ def extract_bootstrap_node_system_id(content):
     node cannot be found, it returns None.
     """
     try:
-        state = yaml.load(content)
+        state = yaml.safe_load(content)
     except yaml.YAMLError:
         return None
     try:
