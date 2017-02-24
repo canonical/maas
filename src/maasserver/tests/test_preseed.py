@@ -77,6 +77,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils import absolute_reverse
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.matchers import (
@@ -848,6 +849,54 @@ class TestGetCurtinUserData(
         user_data = get_curtin_userdata(node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_supports_storage, MockCalledOnceWith())
+
+
+class TestRenderCurtinUserdataWithThirdPartyDrivers(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
+    """Ensures curtin configs for all third-party drivers can be rendered."""
+
+    # Try rendering each driver in drivers.yaml.
+    scenarios = [
+        (driver['comment'], {'driver': driver})
+        for driver in DriversConfig.load_from_cache()['drivers']
+    ]
+
+    def test_render_curtin_preseed_with_third_party_driver(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        Config.objects.set_config(
+            'enable_third_party_drivers', True)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        get_third_party_driver = self.patch(
+            preseed_module, "get_third_party_driver")
+        get_third_party_driver.return_value = self.driver
+        curtin_config_text = get_curtin_config(node)
+        config = yaml.safe_load(curtin_config_text)
+        self.assertThat(
+            config['early_commands'], Contains('driver_00_get_key'))
+        self.assertThat(
+            config['early_commands'], Contains('driver_01_add_key'))
+        self.assertThat(
+            config['early_commands'], Contains('driver_02_add'))
+        self.assertThat(
+            config['early_commands'], Contains('driver_03_update_install'))
+        self.assertThat(
+            config['early_commands'], Contains('driver_04_load'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_00_key_get'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_02_key_add'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_03_add'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_04_update_install'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_05_install'))
+        self.assertThat(
+            config['late_commands'], Contains('driver_06_depmod'))
+        self.assertThat(
+            config['late_commands'],
+            Contains('driver_07_update_initramfs'))
 
 
 class TestGetCurtinUserDataOS(
