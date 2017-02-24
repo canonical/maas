@@ -728,6 +728,7 @@ ALL_HANDLERS = (
     "machine",
     "notification",
     "packagerepository",
+    "pod",
     "service",
     "space",
     "sshkey",
