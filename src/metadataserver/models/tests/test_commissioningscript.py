@@ -32,6 +32,7 @@ from metadataserver.models import CommissioningScript
 from metadataserver.models.commissioningscript import (
     extract_router_mac_addresses,
     parse_cpuinfo,
+    set_switch_tags,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -159,6 +160,51 @@ class TestSetVirtualTag(MAASServerTestCase):
         self.assertIn(
             "No virtual type reported in VIRTUALITY_SCRIPT output for node "
             "%s" % node.system_id, logger.output)
+
+
+class TestSetSwitchTags(MAASServerTestCase):
+
+    def getSwitchTag(self):
+        switch_tag, _ = Tag.objects.get_or_create(name='switch')
+        return switch_tag
+
+    def assertTagsEqual(self, node, tags):
+        self.assertItemsEqual(
+            tags, [tag.name for tag in node.tags.all()])
+
+    def test_sets_switch_tags(self):
+        node = factory.make_Node()
+        self.assertTagsEqual(node, [])
+        set_switch_tags(node, b"accton-wedge100", 0)
+        self.assertTagsEqual(node, ["switch", "accton-wedge100"])
+
+    def test_removes_switch_tag(self):
+        node = factory.make_Node()
+        node.tags.add(self.getSwitchTag())
+        self.assertTagsEqual(node, ["switch"])
+        set_switch_tags(node, b"none", 0)
+        self.assertTagsEqual(node, [])
+
+    def test_output_not_containing_switch_does_not_set_tag(self):
+        logger = self.useFixture(FakeLogger())
+        node = factory.make_Node()
+        self.assertTagsEqual(node, [])
+        set_switch_tags(node, b"", 0)
+        self.assertTagsEqual(node, [])
+        self.assertIn(
+            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
+            "for node %s" % node.system_id, logger.output)
+
+    def test_output_not_containing_switch_does_not_remove_tag(self):
+        logger = self.useFixture(FakeLogger())
+        node = factory.make_Node()
+        node.tags.add(self.getSwitchTag())
+        self.assertTagsEqual(node, ["switch"])
+        set_switch_tags(node, b"", 0)
+        self.assertTagsEqual(node, ["switch"])
+        self.assertIn(
+            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
+            "for node %s" % node.system_id, logger.output)
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):

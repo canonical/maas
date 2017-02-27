@@ -108,6 +108,89 @@ SRIOV_SCRIPT = dedent("""\
     done
     """)
 
+SWITCH_DISCOVERY_SCRIPT = dedent("""\
+    #!/bin/sh
+    # This is based on:
+    #    https://github.com/lool/sonic-snap/blob/master/common/id-switch
+    #
+    # We suppress the exit code here in case 'dmidecode' fails so that
+    # the calling machinery does not think there was a failure.
+    SM="$(dmidecode -s system-manufacturer)" || echo "none"; exit 0;
+    SPN="$(dmidecode -s system-product-name)" || echo "none"; exit 0;
+    BPN="$(dmidecode -s baseboard-product-name)" || echo "none"; exit 0;
+    # try System Information > Manufacturer first
+    case "$SM" in
+        "Intel")
+            case "$SPN" in
+                "EPGSVR")
+                    manufacturer=accton
+                    ;;
+                *)
+                    echo "none"
+                    exit 0
+                    ;;
+            esac
+            ;;
+        "Joytech")
+            case "$SPN" in
+                "Wedge-AC-F 20-001329")
+                    manufacturer=accton
+                    ;;
+                *)
+                    echo "none"
+                    exit 0
+                    ;;
+            esac
+            ;;
+        "Mellanox Technologies Ltd.")
+            manufacturer=mellanox
+            ;;
+        "To be filled by O.E.M.")
+            case "$BPN" in
+                "PCOM-B632VG-ECC-FB-ACCTON-D")
+                    manufacturer=accton
+                    ;;
+                *)
+                    echo "none"
+                    exit 0
+                    ;;
+            esac
+            ;;
+        *)
+            echo "none"
+            exit 0
+            ;;
+    esac
+    # next look at System Information > Product Name
+    case "$manufacturer-$SPN" in
+        "mellanox-\"MSN2100-CB2FO\"")
+            model=sn2100
+            ;;
+        "accton-EPGSVR")
+            model=wedge40
+            ;;
+        "accton-Wedge-AC-F 20-001329")
+            model=wedge40
+            ;;
+        "accton-To be filled by O.E.M.")
+            case "$BPN" in
+                "PCOM-B632VG-ECC-FB-ACCTON-D")
+                    model=wedge100
+                    ;;
+                *)
+                    echo "none"
+                    exit 0
+                    ;;
+            esac
+            ;;
+        *)
+            echo "none"
+            exit 0
+            ;;
+
+    echo "$manufacturer-$model"
+    """)
+
 
 # Run `dhclient` on all the unconfigured interfaces.
 # This is done to create records in the leases file for the
@@ -405,6 +488,11 @@ NODE_INFO_SCRIPTS = OrderedDict([
     }),
     ('00-maas-02-virtuality', {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'run_on_controller': True,
+    }),
+    ('00-maas-02-switch-discovery', {
+        'content': SWITCH_DISCOVERY_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': True,
     }),

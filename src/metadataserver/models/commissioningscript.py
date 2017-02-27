@@ -149,6 +149,34 @@ def update_node_network_interface_tags(node, output, exit_status):
                 iface.save()
 
 
+def set_switch_tags(node, output, exit_status):
+    """Process the results of `SWITCH_DISCOVERY_SCRIPT`.
+
+    This adds or removes the *switch* tag from the node, depending on
+    whether a virtualization type is listed.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+    """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+    decoded_output = output.decode('ascii').strip()
+    switch_tag, _ = Tag.objects.get_or_create(name='switch')
+    if 'none' in decoded_output:
+        node.tags.remove(switch_tag)
+    elif decoded_output == '':
+        logger.warning(
+            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
+            "for node %s", node.system_id)
+    else:
+        node.tags.add(switch_tag)
+        # Since we have discovered this to be a switch, we add a tag
+        # based on the returned output, which is the switch model.
+        model_tag, _ = Tag.objects.get_or_create(name=decoded_output)
+        node.tags.add(model_tag)
+
+
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
@@ -371,6 +399,7 @@ def update_node_physical_block_devices(node, output, exit_status):
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
 NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
+NODE_INFO_SCRIPTS['00-maas-02-switch-discovery']['hook'] = set_switch_tags
 NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
     update_node_physical_block_devices)
 NODE_INFO_SCRIPTS['99-maas-03-network-interfaces']['hook'] = (
