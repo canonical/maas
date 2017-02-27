@@ -131,6 +131,7 @@ from twisted.internet import (
     reactor,
 )
 from twisted.internet.defer import (
+    Deferred,
     fail,
     inlineCallbacks,
     succeed,
@@ -482,7 +483,7 @@ class TestClusterClientService(MAASTestCase):
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
 
-    def test_update_connect_503_error_is_logged_tersely(self):
+    def test__doUpdate_connect_503_error_is_logged_tersely(self):
         getPage = self.patch(clusterservice, "getPage")
         getPage.return_value = fail(web.error.Error("503"))
 
@@ -505,13 +506,13 @@ class TestClusterClientService(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        update = self.patch(service, "update")
-        update.side_effect = error.ConnectionRefusedError()
+        _doUpdate = self.patch(service, "_doUpdate")
+        _doUpdate.side_effect = error.ConnectionRefusedError()
 
         # Starting the service causes the first update to be performed, which
         # will fail because of above.
         service.startService()
-        self.assertThat(update, MockCalledOnceWith())
+        self.assertThat(_doUpdate, MockCalledOnceWith())
 
         dump = logger.dump()
         self.assertIn('Connection was refused by other side.', dump)
@@ -570,7 +571,7 @@ class TestClusterClientService(MAASTestCase):
         },
     }).encode("ascii")
 
-    def test_update_calls__update_connections(self):
+    def test__doUpdate_calls__update_connections(self):
         maas_url = "http://localhost/%s/" % factory.make_name("path")
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
         self.patch_autospec(socket, 'getaddrinfo').return_value = (
@@ -849,6 +850,29 @@ class TestClusterClientService(MAASTestCase):
             lambda failure: self.assertIsInstance(
                 failure.value, exceptions.NoConnectionsAvailable))
         return d
+
+    def test__tryUpdate_prevents_concurrent_calls_to__doUpdate(self):
+        service = ClusterClientService(Clock())
+
+        d_doUpdate_1, d_doUpdate_2 = Deferred(), Deferred()
+        _doUpdate = self.patch(service, "_doUpdate")
+        _doUpdate.side_effect = [d_doUpdate_1, d_doUpdate_2]
+
+        # Try updating a couple of times concurrently.
+        d_tryUpdate_1 = service._tryUpdate()
+        d_tryUpdate_2 = service._tryUpdate()
+        # _doUpdate completes and returns `done`.
+        d_doUpdate_1.callback(sentinel.done1)
+        # Both _tryUpdate calls yield the same result.
+        self.assertThat(extract_result(d_tryUpdate_1), Is(sentinel.done1))
+        self.assertThat(extract_result(d_tryUpdate_2), Is(sentinel.done1))
+        # _doUpdate was called only once.
+        self.assertThat(_doUpdate, MockCalledOnceWith())
+
+        # The mechanism has reset and is ready to go again.
+        d_tryUpdate_3 = service._tryUpdate()
+        d_doUpdate_2.callback(sentinel.done2)
+        self.assertThat(extract_result(d_tryUpdate_3), Is(sentinel.done2))
 
     def test_getAllClients(self):
         service = ClusterClientService(Clock())
