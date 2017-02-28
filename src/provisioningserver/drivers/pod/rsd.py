@@ -676,8 +676,18 @@ class RSDPodDriver(PodDriver):
         headers = self.make_auth_headers(**context)
         # Delete machine at node_id.
         endpoint = b"redfish/v1/Nodes/%s" % node_id
-        yield self.redfish_request(
-            b"DELETE", join(url, endpoint), headers)
+        try:
+            yield self.redfish_request(
+                b"DELETE", join(url, endpoint), headers)
+        except PartialDownloadError as error:
+            # XXX newell 2017-02-27 bug=1667754:
+            # Catch the 404 error when trying to decompose the
+            # resource that has already been decomposed.
+            # This is a work around and will need to be handled
+            # differently on the region so we don't try to
+            # decompose a machine multiple times.
+            if int(error.status) != HTTPStatus.NOT_FOUND:
+                raise
 
         # Retrieve pod resources.
         discovered_pod = yield self.get_pod_resources(url, headers)
