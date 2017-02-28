@@ -65,10 +65,10 @@ class NovaPowerDriver(PowerDriver):
         """Control power of nova instances."""
         if not self.try_novaapi_import():
             raise PowerToolError("Missing the python3-novaclient package.")
-        nova = self.nova_api.client.Client(2, os_username,
-                                           os_password,
-                                           os_tenantname,
-                                           os_authurl)
+        nova = self.nova_api.Client(2, os_username,
+                                    os_password,
+                                    os_tenantname,
+                                    os_authurl)
 
         try:
             urllib.request.urlopen(os_authurl)
@@ -81,20 +81,24 @@ class NovaPowerDriver(PowerDriver):
         try:
             pwr_stateStr = "OS-EXT-STS:power_state"
             tsk_stateStr = "OS-EXT-STS:task_state"
+            vm_stateStr = "OS-EXT-STS:vm_state"
             power_state = getattr(nova.servers.get(nova_id), pwr_stateStr)
             task_state = getattr(nova.servers.get(nova_id), tsk_stateStr)
+            vm_state = getattr(nova.servers.get(nova_id), vm_stateStr)
         except self.nova_api.exceptions.NotFound:
             raise PowerError('%s: Instance id not found' % nova_id)
 
         if power_state == NovaPowerState.NOSTATE:
             raise PowerFatalError('%s: Failed to get power state' % nova_id)
         if power_state == NovaPowerState.RUNNING:
-            if power_change == 'off' and task_state != 'powering-off':
+            if (power_change == 'off' and task_state != 'powering-off' and
+               vm_state != 'stopped'):
                 nova.servers.get(nova_id).stop()
             elif power_change == 'query':
                 return 'on'
         if power_state == NovaPowerState.SHUTDOWN:
-            if power_change == 'on' and task_state != 'powering-off':
+            if (power_change == 'on' and task_state != 'powering-on' and
+               vm_state != 'active'):
                 nova.servers.get(nova_id).start()
             elif power_change == 'query':
                 return 'off'
@@ -107,7 +111,7 @@ class NovaPowerDriver(PowerDriver):
         invalidate_caches()
         try:
             if self.nova_api is None:
-                self.nova_api = import_module('novaclient')
+                self.nova_api = import_module('novaclient.client')
         except ImportError:
             return False
         else:
