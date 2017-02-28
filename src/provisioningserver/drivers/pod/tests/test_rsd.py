@@ -728,8 +728,8 @@ class TestRSDPodDriver(MAASTestCase):
 
         with ExpectedException(PartialDownloadError):
             yield driver.redfish_request(b"GET", uri, headers)
-            self.assertThat(mock_readBody, MockCalledOnceWith(
-                "Response"))
+        self.assertThat(mock_readBody, MockCalledOnceWith(
+            "Response"))
 
     @inlineCallbacks
     def test__list_resources(self):
@@ -1327,8 +1327,8 @@ class TestRSDPodDriver(MAASTestCase):
         with ExpectedException(PartialDownloadError):
             yield driver.decompose(
                 factory.make_name('system_id'), context)
-            self.assertThat(mock_redfish_request, MockCalledOnceWith(
-                b"DELETE", join(url, endpoint), headers))
+        self.assertThat(mock_redfish_request, MockCalledOnceWith(
+            b"DELETE", join(url, endpoint), headers))
 
     @inlineCallbacks
     def test__set_pxe_boot(self):
@@ -1427,9 +1427,9 @@ class TestRSDPodDriver(MAASTestCase):
 
         with ExpectedException(PodFatalError):
             yield driver.assemble_node(url, node_id, headers)
-            self.assertThat(mock_get_composed_node_state, MockCalledOnceWith(
-                url, node_id, headers))
-            self.assertThat(mock_redfish_request, MockNotCalled())
+        self.assertThat(mock_get_composed_node_state, MockCalledOnceWith(
+            url, node_id, headers))
+        self.assertThat(mock_redfish_request, MockNotCalled())
 
     @inlineCallbacks
     def test_assemble_node_raises_error_if_assembling_fails(self):
@@ -1449,12 +1449,12 @@ class TestRSDPodDriver(MAASTestCase):
 
         with ExpectedException(PodFatalError):
             yield driver.assemble_node(url, node_id, headers)
-            self.assertThat(mock_get_composed_node_state, MockCallsMatch(
-                call(url, node_id, headers),
-                call(url, node_id, headers),
-                call(url, node_id, headers)))
-            self.assertThat(mock_redfish_request, MockCalledOnceWith(
-                b"POST", uri, headers))
+        self.assertThat(mock_get_composed_node_state, MockCallsMatch(
+            call(url, node_id, headers),
+            call(url, node_id, headers),
+            call(url, node_id, headers)))
+        self.assertThat(mock_redfish_request, MockCalledOnceWith(
+            b"POST", uri, headers))
 
     @inlineCallbacks
     def test_power_issues_power_reset(self):
@@ -1580,9 +1580,9 @@ class TestRSDPodDriver(MAASTestCase):
 
         with ExpectedException(PodActionError):
             yield driver.power_query(system_id, context)
-            self.assertThat(
-                mock_assemble_node,
-                MockCalledOnceWith(url, node_id, headers))
-            self.assertThat(
-                mock_get_composed_node_state,
-                MockCalledOnceWith(url, node_id, headers))
+        self.assertThat(
+            mock_assemble_node,
+            MockCalledOnceWith(url, node_id, headers))
+        self.assertThat(
+            mock_get_composed_node_state,
+            MockCalledOnceWith(url, node_id, headers))
