@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The MAAS Web Application."""
@@ -7,6 +7,8 @@ __all__ = [
     "WebApplicationService",
 ]
 
+import copy
+from functools import partial
 from http.client import SERVICE_UNAVAILABLE
 import re
 
@@ -19,6 +21,7 @@ from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
     WebSocketsResource,
 )
+from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -30,8 +33,10 @@ from twisted.internet import (
     reactor,
 )
 from twisted.python import failure
+from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import (
     ErrorPage,
+    NoResource,
     Resource,
 )
 from twisted.web.server import (
@@ -81,6 +86,49 @@ class CleanPathRequest(Request, object):
             command, path, version)
 
 
+class OverlaySite(Site):
+    """A site that is over another site.
+
+    If this site cannot resolve a valid resource to handle the request, then
+    the underlay site gets passed the request to process.
+    """
+
+    underlay = None
+
+    def getResourceFor(self, request):
+        """Override to support an underlay site.
+
+        If this site cannot return a valid resource to request is passed to
+        the underlay site to resolve the request.
+        """
+        def call_underlay(request):
+            # Reset the paths and forward to the underlay site.
+            request.prepath = []
+            request.postpath = postpath
+            return self.underlay.getResourceFor(request)
+
+        def wrap_render(orig_render, request):
+            # Wrap the render call of the resource, catching any
+            # UnsupportedMethod exceptions and forwarding those onto
+            # the underlay site.
+            try:
+                return orig_render(request)
+            except UnsupportedMethod:
+                if self.underlay is not None:
+                    resource = call_underlay(request)
+                    return resource.render(request)
+                else:
+                    raise
+
+        postpath = copy.copy(request.postpath)
+        result = super(OverlaySite, self).getResourceFor(request)
+        if isinstance(result, NoResource) and self.underlay is not None:
+            return call_underlay(request)
+        else:
+            result.render = partial(wrap_render, result.render)
+            return result
+
+
 class ResourceOverlay(Resource, object):
     """A resource that can fall-back to a basis resource.
 
@@ -126,13 +174,14 @@ class WebApplicationService(StreamServerEndpointService):
         the web application.
     """
 
-    def __init__(self, endpoint, listener):
-        self.site = Site(StartPage())
+    def __init__(self, endpoint, listener, status_worker):
+        self.site = OverlaySite(StartPage())
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.websocket = WebSocketFactory(listener)
         self.threadpool = ThreadPoolLimiter(
             reactor.threadpoolForDatabase, concurrency.webapp)
+        self.status_worker = status_worker
 
     def prepareApplication(self):
         """Return the WSGI application.
@@ -157,16 +206,33 @@ class WebApplicationService(StreamServerEndpointService):
         with RegionConfiguration.open() as config:
             static_root = File(config.static_root)
 
-        root = Resource()
-        webapp = ResourceOverlay(
-            WSGIResource(reactor, self.threadpool, application))
-        root.putChild(b"", Redirect(b"MAAS/"))
-        root.putChild(b"MAAS", webapp)
-        webapp.putChild(
+        # Setup resources to process paths that twisted handles.
+        metadata = Resource()
+        metadata.putChild(b'status', StatusHandlerResource(self.status_worker))
+
+        maas = Resource()
+        maas.putChild(b'metadata', metadata)
+        maas.putChild(b'static', static_root)
+        maas.putChild(
             b'ws',
             WebSocketsResource(lookupProtocolForFactory(self.websocket)))
-        webapp.putChild(b'static', static_root)
+
+        root = Resource()
+        root.putChild(b'', Redirect(b"MAAS/"))
+        root.putChild(b'MAAS', maas)
+
+        # Setup the resources to process paths that django handles.
+        underlay_maas = ResourceOverlay(
+            WSGIResource(reactor, self.threadpool, application))
+        underlay_root = Resource()
+        underlay_root.putChild(b'MAAS', underlay_maas)
+        underlay_site = Site(underlay_root)
+        underlay_site.requestFactory = CleanPathRequest
+
+        # Setup the main resource as the twisted handler and the underlay
+        # resource as the django handler.
         self.site.resource = root
+        self.site.underlay = underlay_site
 
     def installFailed(self, failure):
         """Display a page explaining why the web app could not start."""

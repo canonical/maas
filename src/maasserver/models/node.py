@@ -1037,7 +1037,7 @@ class Node(CleanSave, TimestampedModel):
 
     def __str__(self):
         if self.hostname:
-            return "%s (%s)" % (self.system_id, self.fqdn)
+            return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
 

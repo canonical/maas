@@ -17,6 +17,7 @@ from maasserver import (
     webapp,
 )
 from maasserver.testing.listener import FakePostgresListenerService
+from maasserver.webapp import OverlaySite
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -27,10 +28,15 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesStructure,
+    Not,
 )
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
-from twisted.web.resource import Resource
+from twisted.web.error import UnsupportedMethod
+from twisted.web.resource import (
+    NoResource,
+    Resource,
+)
 from twisted.web.server import Site
 from twisted.web.test.requesthelper import (
     DummyChannel,
@@ -76,6 +82,70 @@ class TestCleanPathRequest(MAASTestCase):
                 sentinel.command, single_path, sentinel.version))
 
 
+class TestOverlaySite(MAASTestCase):
+
+    def test__init__(self):
+        root = Resource()
+        site = OverlaySite(root)
+        self.assertThat(site, IsInstance(Site))
+
+    def test_getResourceFor_returns_no_resource_wo_underlay(self):
+        root = Resource()
+        site = OverlaySite(root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertThat(resource, IsInstance(NoResource))
+
+    def test_getResourceFor_wraps_render_wo_underlay(self):
+        root = Resource()
+        maas = Resource()
+        mock_render = self.patch(maas, 'render')
+        root.putChild(b'MAAS', maas)
+        site = OverlaySite(root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertThat(resource, Is(maas))
+        self.assertThat(resource.render, Not(Is(mock_render)))
+        resource.render(request)
+        self.assertThat(mock_render, MockCalledOnceWith(request))
+
+    def test_getResourceFor_wraps_render_wo_underlay_raises_no_method(self):
+        root = Resource()
+        maas = Resource()
+        root.putChild(b'MAAS', maas)
+        site = OverlaySite(root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertThat(resource, Is(maas))
+        self.assertRaises(UnsupportedMethod, resource.render, request)
+
+    def test_getResourceFor_returns_resource_from_underlay(self):
+        underlay_root = Resource()
+        underlay_maas = Resource()
+        underlay_root.putChild(b'MAAS', underlay_maas)
+        overlay_root = Resource()
+        site = OverlaySite(overlay_root)
+        site.underlay = Site(underlay_root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertThat(resource, Is(underlay_maas))
+
+    def test_getResourceFor_calls_render_on_underlay_when_no_method(self):
+        underlay_root = Resource()
+        underlay_maas = Resource()
+        mock_underlay_maas_render = self.patch(underlay_maas, 'render')
+        underlay_root.putChild(b'MAAS', underlay_maas)
+        overlay_root = Resource()
+        overlay_maas = Resource()
+        overlay_root.putChild(b'MAAS', overlay_maas)
+        site = OverlaySite(overlay_root)
+        site.underlay = Site(underlay_root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        resource.render(request)
+        self.assertThat(mock_underlay_maas_render, MockCalledOnceWith(request))
+
+
 class TestResourceOverlay(MAASTestCase):
 
     def make_resourceoverlay(self):
@@ -100,7 +170,7 @@ class TestWebApplicationService(MAASTestCase):
         listener = FakePostgresListenerService()
         service_endpoint = self.make_endpoint()
         service = webapp.WebApplicationService(
-            service_endpoint, listener)
+            service_endpoint, listener, sentinel.status_worker)
         # Patch the getServiceNamed so the WebSocketFactory does not
         # error trying to register for events from the RPC service. In this
         # test the RPC service is not started.
@@ -197,11 +267,24 @@ class TestWebApplicationService(MAASTestCase):
 
         service.startService()
 
+        # Overlay
+        site = service.site
+        self.assertThat(site, IsInstance(OverlaySite))
         resource = service.site.resource
         self.assertThat(resource, IsInstance(Resource))
         overlay_resource = resource.getChildWithDefault(b"MAAS", request=None)
-        self.assertThat(overlay_resource, IsInstance(webapp.ResourceOverlay))
-        self.assertThat(overlay_resource.basis, MatchesStructure(
+        self.assertThat(overlay_resource, IsInstance(Resource))
+
+        # Underlay
+        site = service.site.underlay
+        self.assertThat(site, IsInstance(Site))
+        underlay_resource = site.resource
+        self.assertThat(underlay_resource, IsInstance(Resource))
+        underlay_maas_resource = underlay_resource.getChildWithDefault(
+            b"MAAS", request=None)
+        self.assertThat(
+            underlay_maas_resource, IsInstance(webapp.ResourceOverlay))
+        self.assertThat(underlay_maas_resource.basis, MatchesStructure(
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),
             _application=IsInstance(WSGIHandler)))
 

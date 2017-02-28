@@ -191,6 +191,7 @@ def curtin_maas_reporter(node, events_support=True):
                     'consumer_key': token.consumer.key,
                     'token_key': token.key,
                     'token_secret': token.secret,
+                    'level': 'INFO',
                 },
             },
             'install': {

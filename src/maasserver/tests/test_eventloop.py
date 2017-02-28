@@ -32,6 +32,7 @@ from maasserver.utils.orm import (
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from metadataserver import api_twisted
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -254,7 +255,7 @@ class TestFactories(MAASTestCase):
 
     def test_make_WebApplicationService(self):
         service = eventloop.make_WebApplicationService(
-            FakePostgresListenerService())
+            FakePostgresListenerService(), sentinel.status_worker)
         self.assertThat(service, IsInstance(webapp.WebApplicationService))
         # The endpoint is set to port 5243 on localhost.
         self.assertThat(service.endpoint, MatchesStructure.byEquality(
@@ -271,7 +272,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["web"]["factory"])
         # Has a dependency of postgres-listener.
         self.assertEquals(
-            ["postgres-listener"],
+            ["postgres-listener", "status-worker"],
             eventloop.loop.factories["web"]["requires"])
         self.assertFalse(
             eventloop.loop.factories["web"]["only_on_master"])
@@ -307,6 +308,22 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["service-monitor"]["requires"])
         self.assertTrue(
             eventloop.loop.factories["service-monitor"]["only_on_master"])
+
+    def test_make_StatusWorkerService(self):
+        service = eventloop.make_StatusWorkerService(
+            sentinel.dbtasks)
+        self.assertThat(service, IsInstance(
+            api_twisted.StatusWorkerService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_StatusWorkerService,
+            eventloop.loop.factories["status-worker"]["factory"])
+        # Has a dependency of database-tasks.
+        self.assertEquals(
+            ["database-tasks"],
+            eventloop.loop.factories["status-worker"]["requires"])
+        self.assertFalse(
+            eventloop.loop.factories["status-worker"]["only_on_master"])
 
 
 class TestDisablingDatabaseConnections(MAASServerTestCase):

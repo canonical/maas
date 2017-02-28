@@ -108,6 +108,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "rpc-advertise",
             "service-monitor",
             "status-monitor",
+            "status-worker",
             "web",
         ]
         self.assertItemsEqual(expected_services, service.namedServices.keys())

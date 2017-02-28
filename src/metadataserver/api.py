@@ -176,7 +176,7 @@ def check_version(version):
 
 
 def add_event_to_node_event_log(
-        node, origin, action, description, result=None):
+        node, origin, action, description, result=None, created=None):
     """Add an entry to the node's event log."""
     if node.status == NODE_STATUS.COMMISSIONING:
         if result in ['SUCCESS', None]:
@@ -205,7 +205,7 @@ def add_event_to_node_event_log(
         node.system_id, type_name, type_level=event_details.level,
         type_description=event_details.description,
         event_action=action,
-        event_description="'%s' %s" % (origin, description))
+        event_description="'%s' %s" % (origin, description), created=created)
 
 
 def process_file(

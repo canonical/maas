@@ -32,7 +32,8 @@ class EventManager(Manager):
 
     def register_event_and_event_type(
             self, system_id, type_name, type_description='',
-            type_level=logging.INFO, event_action='', event_description=''):
+            type_level=logging.INFO, event_action='', event_description='',
+            created=None):
         """Register EventType if it does not exist, then register the Event."""
         node = Node.objects.get(system_id=system_id)
         try:
@@ -42,9 +43,9 @@ class EventManager(Manager):
             # We didn't find it so register it.
             event_type = EventType.objects.register(
                 type_name, type_description, type_level)
-        Event.objects.create(
+        return Event.objects.create(
             node=node, type=event_type, action=event_action,
-            description=event_description)
+            description=event_description, created=created)
 
     def create_node_event(
             self, system_id, event_type, event_action='',

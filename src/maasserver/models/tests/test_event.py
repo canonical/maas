@@ -33,6 +33,16 @@ class EventTest(MAASServerTestCase):
             system_id=node.system_id, type_name=event_type.name)
         self.assertIsNotNone(Event.objects.get(node=node))
 
+    def test_register_event_and_event_type_registers_event_with_datetime(self):
+        # EvenType exists
+        node = factory.make_Node()
+        event_type = factory.make_EventType()
+        created = factory.make_date()
+        event = Event.objects.register_event_and_event_type(
+            system_id=node.system_id, type_name=event_type.name,
+            created=created)
+        self.assertEqual(created, event.created)
+
     def test_register_event_and_event_type_registers_event_for_new_type(self):
         # EventType does not exist
         node = factory.make_Node()

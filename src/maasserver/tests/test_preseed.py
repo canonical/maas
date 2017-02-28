@@ -646,6 +646,9 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         self.assertEqual(
             token.secret,
             reporter['reporting']['maas']['token_secret'])
+        self.assertEqual(
+            'INFO',
+            reporter['reporting']['maas']['level'])
 
     def test__curtin_maas_reporter_without_events_support(self):
         node = factory.make_Node_with_Interface_on_Subnet()

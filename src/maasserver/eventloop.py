@@ -120,6 +120,11 @@ def make_RackControllerService(postgresListener, advertisingService):
     return RackControllerService(postgresListener, advertisingService)
 
 
+def make_StatusWorkerService(dbtasks):
+    from metadataserver.api_twisted import StatusWorkerService
+    return StatusWorkerService(dbtasks)
+
+
 def make_ServiceMonitorService(advertisingService):
     from maasserver.regiondservices import service_monitor_service
     return service_monitor_service.ServiceMonitorService(advertisingService)
@@ -151,7 +156,7 @@ def make_NetworkTimeProtocolService():
     return ntp.RegionNetworkTimeProtocolService(reactor)
 
 
-def make_WebApplicationService(postgresListener):
+def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
     # Make a socket with SO_REUSEPORT set so that we can run multiple web
@@ -169,7 +174,8 @@ def make_WebApplicationService(postgresListener):
     site_endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
     site_endpoint.port = site_port  # Make it easy to get the port number.
     site_endpoint.socket = s  # Prevent garbage collection.
-    site_service = WebApplicationService(site_endpoint, postgresListener)
+    site_service = WebApplicationService(
+        site_endpoint, postgresListener, statusWorker)
     return site_service
 
 
@@ -245,12 +251,17 @@ class RegionEventLoop:
         "web": {
             "only_on_master": False,
             "factory": make_WebApplicationService,
-            "requires": ["postgres-listener"],
+            "requires": ["postgres-listener", "status-worker"],
         },
         "service-monitor": {
             "only_on_master": True,
             "factory": make_ServiceMonitorService,
             "requires": ["rpc-advertise"],
+        },
+        "status-worker": {
+            "only_on_master": False,
+            "factory": make_StatusWorkerService,
+            "requires": ["database-tasks"],
         },
         "networks-monitor": {
             "only_on_master": False,
