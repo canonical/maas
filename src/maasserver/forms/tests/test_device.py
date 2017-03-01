@@ -40,6 +40,7 @@ class TestDeviceForm(MAASServerTestCase):
                 'parent',
                 'disable_ipv4',
                 'swap_size',
+                'zone',
             ], list(form.fields))
 
     def test_changes_device_parent(self):

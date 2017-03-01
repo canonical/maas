@@ -16,6 +16,7 @@ from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     NODE_STATUS,
+    NODE_TYPE,
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
@@ -99,36 +100,13 @@ class NodeHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
-        data["status"] = obj.display_status()
-        data["status_code"] = obj.status
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
-        data["memory"] = obj.display_memory()
         data["node_type_display"] = obj.get_node_type_display()
 
         data["extra_macs"] = [
             "%s" % mac_address
             for mac_address in obj.get_extra_macs()
         ]
-        boot_interface = obj.get_boot_interface()
-        if boot_interface is not None:
-            data["pxe_mac"] = "%s" % boot_interface.mac_address
-            data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
-        else:
-            data["pxe_mac"] = data["pxe_mac_vendor"] = ""
-
-        blockdevices = self.get_blockdevices_for(obj)
-        physical_blockdevices = [
-            blockdevice for blockdevice in blockdevices
-            if isinstance(blockdevice, PhysicalBlockDevice)
-            ]
-        data["physical_disk_count"] = len(physical_blockdevices)
-        data["storage"] = "%3.1f" % (
-            sum([
-                blockdevice.size
-                for blockdevice in physical_blockdevices
-                ]) / (1000 ** 3))
-        data["storage_tags"] = self.get_all_storage_tags(blockdevices)
-
         subnets = self.get_all_subnets(obj)
         data["subnets"] = [subnet.cidr for subnet in subnets]
         data["fabrics"] = self.get_all_fabric_names(obj, subnets)
@@ -138,73 +116,100 @@ class NodeHandler(TimestampedModelHandler):
             tag.name
             for tag in obj.tags.all()
         ]
-        data["osystem"] = obj.get_osystem(
-            default=self.default_osystem)
-        data["distro_series"] = obj.get_distro_series(
-            default=self.default_distro_series)
-        data["dhcp_on"] = self.get_providing_dhcp(obj)
-        if not for_list:
-            data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
-
-            data["power_type"] = obj.power_type
-            data["power_parameters"] = self.dehydrate_power_parameters(
-                obj.power_parameters)
-            data["power_bmc_node_count"] = obj.bmc.node_set.count() if (
-                obj.bmc is not None) else 0
-
-            # Network
-            data["interfaces"] = [
-                self.dehydrate_interface(interface, obj)
-                for interface in obj.interface_set.all().order_by('name')
-            ]
-            data["on_network"] = obj.on_network()
-
-            # Storage
-            data["disks"] = sorted(chain(
-                (self.dehydrate_blockdevice(blockdevice, obj)
-                 for blockdevice in blockdevices),
-                (self.dehydrate_volume_group(volume_group) for volume_group
-                 in VolumeGroup.objects.filter_by_node(obj)),
-                (self.dehydrate_cache_set(cache_set) for cache_set
-                 in CacheSet.objects.get_cache_sets_for_node(obj)),
-            ), key=itemgetter("name"))
-            data["supported_filesystems"] = [
-                {'key': key, 'ui': ui}
-                for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES
-            ]
-            data["storage_layout_issues"] = obj.storage_layout_issues()
-            data["special_filesystems"] = [
-                self.dehydrate_filesystem(filesystem)
-                for filesystem in obj.special_filesystems.order_by("id")
-            ]
-
-            # Events
-            data["events"] = self.dehydrate_events(obj)
-
-            # Machine output
-            data = self.dehydrate_summary_output(obj, data)
-            # XXX ltrager 2017-01-27 - Show the testing results in the
-            # commissioning table until we get the testing UI done.
-            if obj.current_testing_script_set is not None:
-                data["commissioning_results"] = self.dehydrate_script_set(
-                    chain(
-                        obj.current_commissioning_script_set,
-                        obj.current_testing_script_set,
-                    ))
+        if obj.node_type != NODE_TYPE.DEVICE:
+            data["memory"] = obj.display_memory()
+            data["status"] = obj.display_status()
+            data["status_code"] = obj.status
+            boot_interface = obj.get_boot_interface()
+            if boot_interface is not None:
+                data["pxe_mac"] = "%s" % boot_interface.mac_address
+                data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
             else:
-                data["commissioning_results"] = self.dehydrate_script_set(
-                    obj.current_commissioning_script_set)
-            data["installation_results"] = self.dehydrate_script_set(
-                obj.current_installation_script_set)
+                data["pxe_mac"] = data["pxe_mac_vendor"] = ""
 
-            # Third party drivers
-            if Config.objects.get_config('enable_third_party_drivers'):
-                driver = get_third_party_driver(obj)
-                if "module" in driver and "comment" in driver:
-                    data["third_party_driver"] = {
-                        "module": driver["module"],
-                        "comment": driver["comment"],
-                    }
+            blockdevices = self.get_blockdevices_for(obj)
+            physical_blockdevices = [
+                blockdevice for blockdevice in blockdevices
+                if isinstance(blockdevice, PhysicalBlockDevice)
+                ]
+            data["physical_disk_count"] = len(physical_blockdevices)
+            data["storage"] = "%3.1f" % (
+                sum(
+                    blockdevice.size
+                    for blockdevice in physical_blockdevices
+                    ) / (1000 ** 3))
+            data["storage_tags"] = self.get_all_storage_tags(blockdevices)
+
+            data["osystem"] = obj.get_osystem(
+                default=self.default_osystem)
+            data["distro_series"] = obj.get_distro_series(
+                default=self.default_distro_series)
+            data["dhcp_on"] = self.get_providing_dhcp(obj)
+        if not for_list:
+            data["on_network"] = obj.on_network()
+            if obj.node_type != NODE_TYPE.DEVICE:
+                # XXX lamont 2017-02-15 Much of this should be split out into
+                # individual methods, rather than having this huge block of
+                # dense code here.
+                # Network
+                data["interfaces"] = [
+                    self.dehydrate_interface(interface, obj)
+                    for interface in obj.interface_set.all().order_by('name')
+                ]
+
+                data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
+
+                data["power_type"] = obj.power_type
+                data["power_parameters"] = self.dehydrate_power_parameters(
+                    obj.power_parameters)
+                data["power_bmc_node_count"] = obj.bmc.node_set.count() if (
+                    obj.bmc is not None) else 0
+
+                # Storage
+                data["disks"] = sorted(chain(
+                    (self.dehydrate_blockdevice(blockdevice, obj)
+                     for blockdevice in blockdevices),
+                    (self.dehydrate_volume_group(volume_group) for volume_group
+                     in VolumeGroup.objects.filter_by_node(obj)),
+                    (self.dehydrate_cache_set(cache_set) for cache_set
+                     in CacheSet.objects.get_cache_sets_for_node(obj)),
+                ), key=itemgetter("name"))
+                data["supported_filesystems"] = [
+                    {'key': key, 'ui': ui}
+                    for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES
+                ]
+                data["storage_layout_issues"] = obj.storage_layout_issues()
+                data["special_filesystems"] = [
+                    self.dehydrate_filesystem(filesystem)
+                    for filesystem in obj.special_filesystems.order_by("id")
+                ]
+
+                # Events
+                data["events"] = self.dehydrate_events(obj)
+
+                # Machine output
+                data = self.dehydrate_summary_output(obj, data)
+                # XXX ltrager 2017-01-27 - Show the testing results in the
+                # commissioning table until we get the testing UI done.
+                if obj.current_testing_script_set is not None:
+                    data["commissioning_results"] = self.dehydrate_script_set(
+                        chain(
+                            obj.current_commissioning_script_set,
+                            obj.current_testing_script_set,
+                        ))
+                else:
+                    data["commissioning_results"] = self.dehydrate_script_set(
+                        obj.current_commissioning_script_set)
+                data["installation_results"] = self.dehydrate_script_set(
+                    obj.current_installation_script_set)
+                # Third party drivers
+                if Config.objects.get_config('enable_third_party_drivers'):
+                    driver = get_third_party_driver(obj)
+                    if "module" in driver and "comment" in driver:
+                        data["third_party_driver"] = {
+                            "module": driver["module"],
+                            "comment": driver["comment"],
+                        }
 
         return data
 
@@ -506,8 +511,8 @@ class NodeHandler(TimestampedModelHandler):
     def get_all_space_names(self, subnets):
         space_names = set()
         for subnet in subnets:
-            if subnet.space is not None:
-                space_names.add(subnet.space.name)
+            if subnet.vlan.space is not None:
+                space_names.add(subnet.vlan.space.name)
         return list(space_names)
 
     def get_blockdevices_for(self, obj):

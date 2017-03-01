@@ -16,6 +16,7 @@ from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
+    DEVICE_IP_ASSIGNMENT_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_TYPE,
@@ -55,6 +56,16 @@ class InterfaceForm(MAASModelForm):
     # IPv6 parameters.
     accept_ra = forms.NullBooleanField(required=False)
     autoconf = forms.NullBooleanField(required=False)
+
+    # Device parameters
+    ip_assignment = forms.MultipleChoiceField(
+        choices=(
+            ('static', DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
+            ('dynamic', DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC),
+            ('external', DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL)),
+        required=False)
+    ip_address = forms.GenericIPAddressField(
+        unpack_ipv4=True, required=False)
 
     @staticmethod
     def get_interface_form(type):
@@ -148,9 +159,18 @@ class InterfaceForm(MAASModelForm):
                 msg = "Parents are related to different nodes."
                 set_form_error(self, 'name', msg)
 
+    def clean_device(self, cleaned_data):
+        ip_assignment = cleaned_data.get('ip_assignment')
+        if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
+            # Dynamic means that there is no IP address stored.
+            cleaned_data['ip_address'] = None
+        return cleaned_data
+
     def clean(self):
         cleaned_data = super(InterfaceForm, self).clean()
         self.clean_parents_all_same_node(cleaned_data.get('parents'))
+        if self.node.node_type == NODE_TYPE.DEVICE:
+            cleaned_data = self.clean_device(cleaned_data)
         return cleaned_data
 
     def _set_param(self, interface, key):

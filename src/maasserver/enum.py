@@ -7,6 +7,7 @@ __all__ = [
     'CACHE_MODE_TYPE',
     'CACHE_MODE_TYPE_CHOICES',
     'COMPONENT',
+    'DEVICE_IP_ASSIGNMENT_TYPE',
     'FILESYSTEM_GROUP_TYPE',
     'FILESYSTEM_GROUP_TYPE_CHOICES',
     'FILESYSTEM_TYPE',
@@ -204,6 +205,20 @@ class NODE_PERMISSION:
     VIEW = 'view_node'
     EDIT = 'edit_node'
     ADMIN = 'admin_node'
+
+
+class DEVICE_IP_ASSIGNMENT_TYPE:
+    """The vocabulary of a `Device`'s possible IP assignment type. This value
+    is calculated by looking at the overall model for a `Device`. This is not
+    set directly on the model."""
+    #: Device is outside of MAAS control.
+    EXTERNAL = "external"
+
+    #: Device receives ip address from the appropriate dynamic range.
+    DYNAMIC = "dynamic"
+
+    #: Device has ip address assigned from some appropriate subnet.
+    STATIC = "static"
 
 
 class PRESEED_TYPE:

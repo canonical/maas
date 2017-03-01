@@ -803,11 +803,17 @@ class DeviceForm(NodeForm):
         required=False, initial=None,
         queryset=Node.objects.all(), to_field_name='system_id')
 
+    zone = forms.ModelChoiceField(
+        label="Physical zone", required=False,
+        initial=Zone.objects.get_default_zone,
+        queryset=Zone.objects.all(), to_field_name='name')
+
     class Meta:
         model = Device
 
         fields = NodeForm.Meta.fields + (
             'parent',
+            'zone',
         )
 
     def __init__(self, request=None, *args, **kwargs):
@@ -816,6 +822,8 @@ class DeviceForm(NodeForm):
 
         instance = kwargs.get('instance')
         self.set_up_initial_device(instance)
+        if instance is not None:
+            self.initial['zone'] = instance.zone.name
 
     def set_up_initial_device(self, instance):
         """Initialize the 'parent' field if a device instance was given.
@@ -839,6 +847,9 @@ class DeviceForm(NodeForm):
                     device.parent.domain):
                 device.domain = device.parent.domain
 
+        zone = self.cleaned_data.get('zone')
+        if zone:
+            device.zone = zone
         device.save()
         return device
 
