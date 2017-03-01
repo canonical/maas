@@ -377,7 +377,7 @@ class RSDPodDriver(PodDriver):
         """Get the POD resources."""
         discovered_pod = DiscoveredPod(
             architectures=[], cores=0, cpu_speed=0, memory=0,
-            local_storage=0, capabilities=[
+            local_storage=0, local_disks=0, capabilities=[
                 Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
             hints=DiscoveredPodHints(cores=0, cpu_speed=0, memory=0,
                                      local_storage=0, local_disks=0))

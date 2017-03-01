@@ -991,6 +991,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(2300, pod.cpu_speed)
         self.assertEquals(7812 * 2, pod.memory)
         self.assertEquals(119999999999.99997 * 2, pod.local_storage)
+        self.assertEquals(2, pod.local_disks)
         self.assertEquals(
             [Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
             pod.capabilities)
