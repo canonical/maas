@@ -50,6 +50,66 @@ class StatusHandlerResource(Resource):
         self.worker = status_worker
 
     def render_POST(self, request):
+        """Receive and process a status message from a node, usually cloud-init
+
+        A node can call this to report progress of its booting or deployment.
+
+        Calling this from a node that is not Allocated, Commissioning, Ready,
+        or Failed Tests will update the substatus_message node attribute.
+        Signaling completion more than once is not an error; all but the first
+        successful call are ignored.
+
+        This method accepts a single JSON-encoded object payload, described as
+        follows.
+
+        {
+            "event_type": "finish",
+            "origin": "curtin",
+            "description": "Finished XYZ",
+            "name": "cmd-install",
+            "result": "SUCCESS",
+            "files": [
+                {
+                    "name": "logs.tgz",
+                    "encoding": "base64",
+                    "content": "QXVnIDI1IDA3OjE3OjAxIG1hYXMtZGV2...
+                },
+                {
+                    "name": "results.log",
+                    "compression": "bzip2"
+                    "encoding": "base64",
+                    "content": "AAAAAAAAAAAAAAAAAAAAAAA...
+                }
+            ]
+        }
+
+        `event_type` can be "start", "progress" or "finish".
+
+        `origin` tells us the program that originated the call.
+
+        `description` is a human-readable, operator-friendly string that
+        conveys what is being done to the node and that can be presented on the
+        web UI.
+
+        `name` is the name of the activity that's being executed. It's
+        meaningful to the calling program and is a slash-separated path. We are
+        mainly concerned with top-level events (no slashes), which are used to
+        change the status of the node.
+
+        `result` can be "SUCCESS" or "FAILURE" indicating whether the activity
+        was successful or not.
+
+        `files`, when present, contains one or more files. The attribute `path`
+        tells us the name of the file, `compression` tells the compression we
+        used before applying the `encoding` and content is the encoded data
+        from the file. If the file being sent is the result of the execution of
+        a script, the `result` key will hold its value. If `result` is not
+        sent, it is interpreted as zero.
+
+        `script_result_id`, when present, MAAS will search for an existing
+        ScriptResult with the given id to store files present.
+
+        """
         # Extract the authorization from request. This only does a basic
         # check that its provided. The status worker will do the authorization,
         # the negative to this is that the calling client will no know. To

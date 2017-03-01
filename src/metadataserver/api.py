@@ -15,7 +15,6 @@ __all__ = [
     ]
 
 import base64
-import bz2
 from datetime import datetime
 from functools import partial
 import http.client
@@ -352,131 +351,12 @@ class StatusHandler(MetadataViewHandler):
         ScriptResult with the given id to store files present.
 
         """
-
-        def _retrieve_content(compression, encoding, content):
-            """Extract the content of the sent file."""
-            # Select the appropriate decompressor.
-            if compression is None:
-                decompress = lambda s: s
-            elif compression == 'bzip2':
-                decompress = bz2.decompress
-            else:
-                raise MAASAPIBadRequest(
-                    'Invalid compression: %s' % sent_file['compression'])
-
-            # Select the appropriate decoder.
-            if encoding == 'base64':
-                decode = base64.decodebytes
-            else:
-                raise MAASAPIBadRequest(
-                    'Invalid encoding: %s' % sent_file['encoding'])
-
-            content = sent_file['content'].encode("ascii")
-            return decompress(decode(content))
-
-        def _is_top_level(activity_name):
-            """Top-level events do not have slashes in theit names."""
-            return '/' not in activity_name
-
-        node = get_queried_node(request)
-        payload = request.read()
-
-        try:
-            payload = payload.decode("ascii")
-        except UnicodeDecodeError as error:
-            message = "Status payload must be ASCII-only: %s" % error
-            logger.error(message)
-            raise MAASAPIBadRequest(message)
-
-        try:
-            message = json.loads(payload)
-        except ValueError:
-            message = "Status payload is not valid JSON:\n%s\n\n" % payload
-            logger.error(message)
-            raise MAASAPIBadRequest(message)
-
-        # Mandatory attributes.
-        try:
-            event_type = message['event_type']
-            origin = message['origin']
-            activity_name = message['name']
-            description = message['description']
-        except KeyError:
-            message = 'Missing parameter in status message %s' % payload
-            logger.error(message)
-            raise MAASAPIBadRequest(message)
-
-        # Optional attributes.
-        result = get_optional_param(message, 'result', None, String)
-
-        # Add this event to the node event log.
-        add_event_to_node_event_log(
-            node, origin, activity_name, description, result)
-
-        # Group files together with the ScriptResult they belong.
-        results = {}
-        for sent_file in message.get('files', []):
-            # Set the result type according to the node's status.
-            if node.status == NODE_STATUS.TESTING:
-                script_set = node.current_testing_script_set
-            elif (node.status == NODE_STATUS.COMMISSIONING or
-                    node.node_type != NODE_TYPE.MACHINE):
-                script_set = node.current_commissioning_script_set
-            elif node.status == NODE_STATUS.DEPLOYING:
-                script_set = node.current_installation_script_set
-            else:
-                raise MAASAPIBadRequest(
-                    "Invalid status for saving files: %d" % node.status)
-
-            script_name = get_mandatory_param(sent_file, 'path', String)
-            content = _retrieve_content(
-                compression=get_optional_param(
-                    sent_file, 'compression', None, String),
-                encoding=get_mandatory_param(sent_file, 'encoding', String),
-                content=get_mandatory_param(sent_file, 'content', String))
-            process_file(results, script_set, script_name, content, sent_file)
-
-        # Commit results to the database.
-        for script_result, args in results.items():
-            script_result.store_result(**args)
-
-        # Update the last ping in any status which uses a script_set whenever a
-        # node in that status contacts us.
-        script_set_statuses = {
-            NODE_STATUS.COMMISSIONING: node.current_commissioning_script_set,
-            NODE_STATUS.TESTING: node.current_testing_script_set,
-            NODE_STATUS.DEPLOYING: node.current_installation_script_set,
-        }
-        script_set = script_set_statuses.get(node.status)
-        if script_set is not None:
-            script_set.last_ping = datetime.now()
-            script_set.save()
-
-        # At the end of a top-level event, we change the node status.
-        if _is_top_level(activity_name) and event_type == 'finish':
-            if node.status == NODE_STATUS.COMMISSIONING:
-                if result in ['FAIL', 'FAILURE']:
-                    node.status = NODE_STATUS.FAILED_COMMISSIONING
-
-            elif node.status == NODE_STATUS.DEPLOYING:
-                if result in ['FAIL', 'FAILURE']:
-                    node.mark_failed(
-                        comment="Installation failed (refer to the "
-                                "installation log for more information).")
-            elif node.status == NODE_STATUS.DISK_ERASING:
-                if result in ['FAIL', 'FAILURE']:
-                    node.mark_failed(comment="Failed to erase disks.")
-
-            # Deallocate the node if we enter any terminal state.
-            if node.node_type == NODE_TYPE.MACHINE and node.status in [
-                    NODE_STATUS.READY,
-                    NODE_STATUS.FAILED_COMMISSIONING]:
-                node.status_expires = None
-                node.owner = None
-                node.error = 'failed: %s' % description
-
-        node.save()
-        return rc.ALL_OK
+        # This no longer does anything. This only remains for API
+        # documentation, all operations are now performed by the
+        # `api_twisted.StatusHandlerResource.render_POST`.
+        raise AttributeError(
+            'api_twisted.StatusHandlerResource.render_POST should '
+            'be used instead.')
 
 
 class VersionIndexHandler(MetadataViewHandler):
