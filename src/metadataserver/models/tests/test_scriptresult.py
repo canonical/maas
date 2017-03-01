@@ -53,6 +53,12 @@ class TestScriptResult(MAASServerTestCase):
         self.assertRaises(
             AssertionError, script_result.store_result, random.randint(0, 255))
 
+    def test_store_result_only_allows_when_output_is_blank(self):
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.RUNNING, output=factory.make_bytes())
+        self.assertRaises(
+            AssertionError, script_result.store_result, random.randint(0, 255))
+
     def test_store_result_only_allows_when_stdout_is_blank(self):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING, stdout=factory.make_bytes())
@@ -79,16 +85,18 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED)
         exit_status = random.randint(0, 255)
+        output = factory.make_bytes()
         stdout = factory.make_bytes()
         stderr = factory.make_bytes()
         result = factory.make_string()
 
         script_result.store_result(
             random.randint(0, 255), factory.make_bytes(), factory.make_bytes(),
-            factory.make_string())
-        script_result.store_result(exit_status, stdout, stderr, result)
+            factory.make_bytes(), factory.make_string())
+        script_result.store_result(exit_status, output, stdout, stderr, result)
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(output, script_result.output)
         self.assertEquals(stdout, script_result.stdout)
         self.assertEquals(stderr, script_result.stderr)
         self.assertEquals(result, script_result.result)
@@ -98,6 +106,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(0)
         self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
         self.assertEquals(0, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEquals('', script_result.result)
@@ -110,6 +119,22 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status)
         self.assertEquals(SCRIPT_STATUS.FAILED, script_result.status)
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
+        self.assertEquals(b'', script_result.stdout)
+        self.assertEquals(b'', script_result.stderr)
+        self.assertEquals('', script_result.result)
+        self.assertEquals(
+            script_result.script.script, script_result.script_version)
+
+    def test_store_result_stores_output(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        exit_status = random.randint(0, 255)
+        output = factory.make_bytes()
+
+        script_result.store_result(exit_status, output=output)
+
+        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(output, script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEquals('', script_result.result)
@@ -124,6 +149,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status, stdout=stdout)
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(stdout, script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEquals('', script_result.result)
@@ -138,6 +164,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status, stderr=stderr)
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(stderr, script_result.stderr)
         self.assertEquals('', script_result.result)
@@ -152,6 +179,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status, result=json.dumps(result))
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEqual(result, script_result.result)
@@ -171,6 +199,7 @@ class TestScriptResult(MAASServerTestCase):
             exit_status, script_version_id=old_version.id)
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEquals('', script_result.result)
@@ -185,6 +214,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result.store_result(exit_status)
 
         self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEquals(b'', script_result.output)
         self.assertEquals(b'', script_result.stdout)
         self.assertEquals(b'', script_result.stderr)
         self.assertEquals('', script_result.result)

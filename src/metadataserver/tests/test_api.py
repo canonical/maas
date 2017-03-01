@@ -235,6 +235,50 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual(
             EVENT_TYPES.REQUEST_CONTROLLER_REFRESH, event.type.name)
 
+    def test_process_file_creates_new_entry_for_output(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, script_result.name, output,
+            request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'output': output,
+            },
+            results[script_result])
+
+    def test_process_file_creates_adds_field_for_output(self):
+        results = {}
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
+        stdout = factory.make_string()
+        stderr = factory.make_string()
+        request = {'exit_status': random.randint(0, 255)}
+
+        process_file(
+            results, script_result.script_set, '%s.out' % script_result.name,
+            stdout, request)
+        process_file(
+            results, script_result.script_set, '%s.err' % script_result.name,
+            stderr, request)
+        process_file(
+            results, script_result.script_set, script_result.name, output,
+            request)
+
+        self.assertDictEqual(
+            {
+                'exit_status': request['exit_status'],
+                'output': output,
+                'stdout': stdout,
+                'stderr': stderr,
+            },
+            results[script_result])
+
     def test_process_file_creates_new_entry_for_stdout(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -242,8 +286,8 @@ class TestHelpers(MAASServerTestCase):
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
-            results, script_result.script_set, script_result.name, stdout,
-            request)
+            results, script_result.script_set, '%s.out' % script_result.name,
+            stdout, request)
 
         self.assertDictEqual(
             {
@@ -255,20 +299,25 @@ class TestHelpers(MAASServerTestCase):
     def test_process_file_creates_adds_field_for_stdout(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
         stdout = factory.make_string()
         stderr = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
+            results, script_result.script_set, script_result.name, output,
+            request)
+        process_file(
             results, script_result.script_set, '%s.err' % script_result.name,
             stderr, request)
         process_file(
-            results, script_result.script_set, script_result.name, stdout,
-            request)
+            results, script_result.script_set, '%s.out' % script_result.name,
+            stdout, request)
 
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
+                'output': output,
                 'stdout': stdout,
                 'stderr': stderr,
             },
@@ -294,13 +343,17 @@ class TestHelpers(MAASServerTestCase):
     def test_process_file_creates_adds_field_for_stderr(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        output = factory.make_string()
         stdout = factory.make_string()
         stderr = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
         process_file(
-            results, script_result.script_set, script_result.name, stdout,
+            results, script_result.script_set, script_result.name, output,
             request)
+        process_file(
+            results, script_result.script_set, '%s.out' % script_result.name,
+            stdout, request)
         process_file(
             results, script_result.script_set, '%s.err' % script_result.name,
             stderr, request)
@@ -308,6 +361,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
+                'output': output,
                 'stdout': stdout,
                 'stderr': stderr,
             },
@@ -316,7 +370,7 @@ class TestHelpers(MAASServerTestCase):
     def test_process_file_finds_script_result_by_id(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
-        stdout = factory.make_string()
+        output = factory.make_string()
         request = {
             'exit_status': random.randint(0, 255),
             'script_result_id': script_result.id,
@@ -324,19 +378,19 @@ class TestHelpers(MAASServerTestCase):
 
         process_file(
             results, script_result.script_set,
-            factory.make_name('script_name'), stdout, request)
+            factory.make_name('script_name'), output, request)
 
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
-                'stdout': stdout,
+                'output': output,
             },
             results[script_result])
 
     def test_process_file_adds_script_version_id(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
-        stdout = factory.make_string()
+        output = factory.make_string()
         request = {
             'exit_status': random.randint(0, 255),
             'script_result_id': script_result.id,
@@ -345,12 +399,12 @@ class TestHelpers(MAASServerTestCase):
 
         process_file(
             results, script_result.script_set,
-            factory.make_name('script_name'), stdout, request)
+            factory.make_name('script_name'), output, request)
 
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
-                'stdout': stdout,
+                'output': output,
                 'script_version_id': script_result.script.script_id,
             },
             results[script_result])
@@ -359,10 +413,10 @@ class TestHelpers(MAASServerTestCase):
         results = {}
         script_name = factory.make_name('script_name')
         script_set = factory.make_ScriptSet()
-        stdout = factory.make_string()
+        output = factory.make_string()
         request = {'exit_status': random.randint(0, 255)}
 
-        process_file(results, script_set, script_name, stdout, request)
+        process_file(results, script_set, script_name, output, request)
         script_result, value = list(results.items())[0]
 
         self.assertEquals(script_name, script_result.name)
@@ -370,7 +424,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
-                'stdout': stdout,
+                'output': output,
             },
             value)
 
@@ -380,13 +434,13 @@ class TestHelpers(MAASServerTestCase):
         script = factory.make_Script()
         script.script = script.script.update(factory.make_string())
         script_set = factory.make_ScriptSet()
-        stdout = factory.make_string()
+        output = factory.make_string()
         request = {
             'exit_status': random.randint(0, 255),
             'script_version_id': script.script.id,
         }
 
-        process_file(results, script_set, script_name, stdout, request)
+        process_file(results, script_set, script_name, output, request)
 
         script_result, value = list(results.items())[0]
 
@@ -394,7 +448,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'exit_status': request['exit_status'],
-                'stdout': stdout,
+                'output': output,
                 'script_version_id': script.script.id,
             },
             value)
@@ -1308,7 +1362,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             http.client.OK, response.status_code, response.content)
         script_result = reload_object(script_result)
         self.assertEqual(exit_status, script_result.exit_status)
-        self.assertEqual(output, script_result.stdout.decode('utf-8'))
+        self.assertEqual(output, script_result.output.decode('utf-8'))
 
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_Node(
@@ -1487,7 +1541,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             files={script_result.name: text})
         script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(text, script_result.stdout)
+        self.assertEqual(text, script_result.output)
 
     def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
@@ -1504,7 +1558,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             files={script_result.name: unicode_text.encode('utf-8')})
         script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(unicode_text.encode("utf-8"), script_result.stdout)
+        self.assertEqual(unicode_text.encode("utf-8"), script_result.output)
 
     def test_signal_stores_multiple_files(self):
         node = factory.make_Node(
@@ -1528,7 +1582,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             contents,
             {
-                script_result.name: reload_object(script_result).stdout
+                script_result.name: reload_object(script_result).output
                 for script_result in script_results
             })
 
@@ -1551,7 +1605,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             files={script_result.name: contents.encode('utf-8')})
         script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(size_limit, len(script_result.stdout))
+        self.assertEqual(size_limit, len(script_result.output))
 
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_Node(
@@ -1560,7 +1614,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         content = 'qemu'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality': content})
+            files={'00-maas-02-virtuality.out': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
@@ -1575,7 +1629,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality': content})
+            files={'00-maas-02-virtuality.out': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
@@ -1588,7 +1642,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         content = 'none'.encode('utf-8')
         response = call_signal(
             client, script_result=0,
-            files={'00-maas-02-virtuality': content})
+            files={'00-maas-02-virtuality.out': content})
         self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(0, len(node.tags.all()))

@@ -784,6 +784,22 @@ class TestMachineHandler(MAASServerTestCase):
                 'created': dehydrate_datetime(script_result.updated),
             }], handler.dehydrate_script_set(script_result.script_set))
 
+    def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED, stdout=''.encode(),
+            stderr=''.encode(), output=factory.make_string().encode())
+        self.assertDictEqual(
+            {
+                'id': script_result.id,
+                'result': script_result.exit_status,
+                'name': script_result.name,
+                'data': script_result.output,
+                'line_count': len(script_result.output.splitlines()),
+                'created': dehydrate_datetime(script_result.updated),
+            }, handler.dehydrate_script_set(script_result.script_set)[0])
+
     def test_dehydrate_events_only_includes_lastest_50(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)

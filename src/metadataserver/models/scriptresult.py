@@ -62,6 +62,8 @@ class ScriptResult(CleanSave, TimestampedModel):
     script_name = CharField(
         max_length=255, unique=False, editable=False, null=True)
 
+    output = BinaryField(max_length=1024 * 1024, blank=True, default=b'')
+
     stdout = BinaryField(max_length=1024 * 1024, blank=True, default=b'')
 
     stderr = BinaryField(max_length=1024 * 1024, blank=True, default=b'')
@@ -82,8 +84,8 @@ class ScriptResult(CleanSave, TimestampedModel):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
 
     def store_result(
-            self, exit_status, stdout=None, stderr=None, result=None,
-            script_version_id=None):
+            self, exit_status, output=None, stdout=None, stderr=None,
+            result=None, script_version_id=None):
         # Don't allow ScriptResults to be overwritten unless the node is a
         # controller. Controllers are allowed to overwrite their results to
         # prevent new ScriptSets being created everytime a controller starts.
@@ -94,6 +96,7 @@ class ScriptResult(CleanSave, TimestampedModel):
             # inform MAAS the Script was being run, it just uploaded results.
             assert self.status in (
                 SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING)
+            assert self.output == b''
             assert self.stdout == b''
             assert self.stderr == b''
             assert self.result == ''
@@ -104,6 +107,8 @@ class ScriptResult(CleanSave, TimestampedModel):
             self.status = SCRIPT_STATUS.PASSED
         else:
             self.status = SCRIPT_STATUS.FAILED
+        if output is not None:
+            self.output = Bin(output)
         if stdout is not None:
             self.stdout = Bin(stdout)
         if stderr is not None:

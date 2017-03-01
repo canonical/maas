@@ -495,7 +495,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         script_set = node.current_commissioning_script_set
         script_result = script_set.find_script_result(
             script_name=LSHW_OUTPUT_NAME)
-        script_result.store_result(exit_status=0, stdout=fake_lshw)
+        script_result.store_result(exit_status=0, output=fake_lshw)
         return node
 
     @wait_for_reactor

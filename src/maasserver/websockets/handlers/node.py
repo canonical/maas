@@ -423,12 +423,23 @@ class NodeHandler(TimestampedModelHandler):
         # updated when the UI has an understanding of script_sets and
         # script_results.
         for script_result in script_set:
+            # MAAS stores stdout, stderr, and the combined output. The
+            # metadata API determine which field uploaded data should go
+            # into based on the extention of the uploaded file. .out goes
+            # to stdout, .err goes to stderr, otherwise its assumed the
+            # data is combined. Curtin uploads the installation log as
+            # install.log so its stored as a combined result. This ensures
+            # a result is always returned.
+            if script_result.stdout != b'':
+                data = script_result.stdout
+            else:
+                data = script_result.output
             ret.append({
                 'id': script_result.id,
                 'result': script_result.exit_status,
                 'name': script_result.name,
-                'data': script_result.stdout,
-                'line_count': len(script_result.stdout.splitlines()),
+                'data': data,
+                'line_count': len(data.splitlines()),
                 'created': dehydrate_datetime(script_result.updated),
             })
             if script_result.stderr != b'':

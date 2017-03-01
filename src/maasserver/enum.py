@@ -126,8 +126,8 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.FAILED_ENTERING_RESCUE_MODE, "Failed to enter rescue mode"),
     (NODE_STATUS.EXITING_RESCUE_MODE, "Exiting rescue mode"),
     (NODE_STATUS.FAILED_EXITING_RESCUE_MODE, "Failed to exit rescue mode"),
-    (NODE_STATUS.TESTING, "Testing node"),
-    (NODE_STATUS.FAILED_TESTING, "Tests failed on node"),
+    (NODE_STATUS.TESTING, "Testing"),
+    (NODE_STATUS.FAILED_TESTING, "Failed testing"),
 )
 
 

@@ -675,8 +675,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_ScriptResult(
             self, script_set=None, script=None, script_version=None,
-            status=None, exit_status=None, script_name=None, stdout=None,
-            stderr=None, result=None):
+            status=None, exit_status=None, script_name=None, output=None,
+            stdout=None, stderr=None, result=None):
         if script_set is None:
             script_set = self.make_ScriptSet()
         if script is None and script_name is None:
@@ -685,6 +685,8 @@ class Factory(maastesting.factory.Factory):
             status = self.pick_choice(SCRIPT_STATUS_CHOICES)
         if status in (SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING):
             # Pending and running script results shouldn't have results stored.
+            if output is None:
+                output = b''
             if stdout is None:
                 stdout = b''
             if stderr is None:
@@ -694,6 +696,8 @@ class Factory(maastesting.factory.Factory):
         else:
             if exit_status is None:
                 exit_status = random.randint(0, 255)
+            if output is None:
+                output = self.make_string().encode('utf-8')
             if stdout is None:
                 stdout = self.make_string().encode('utf-8')
             if stderr is None:
@@ -706,7 +710,8 @@ class Factory(maastesting.factory.Factory):
             script_set=script_set, script=script,
             script_version=script_version, status=status,
             exit_status=exit_status, script_name=script_name,
-            stdout=Bin(stdout), stderr=Bin(stderr), result=result)
+            output=Bin(output), stdout=Bin(stdout), stderr=Bin(stderr),
+            result=result)
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

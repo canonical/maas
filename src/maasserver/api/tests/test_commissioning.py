@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from base64 import b64encode
+from base64 import (
+    b64decode,
+    b64encode,
+)
 import http.client
 from itertools import chain
 import random
@@ -153,9 +156,11 @@ class CommissioningScriptAPITest(APITestCase.ForUser):
 class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
 
     def store_result(
-            self, script_result, stdout=None, stderr=None,
+            self, script_result, output=None, stdout=None, stderr=None,
             **kwargs):
         # Create a test store_result which doesn't run the script hooks.
+        if output is not None:
+            script_result.output = Bin(output.encode('utf-8'))
         if stdout is not None:
             script_result.stdout = Bin(stdout.encode('utf-8'))
         if stderr is not None:
@@ -195,7 +200,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             len(parsed_results))
         self.assertItemsEqual([
             'created', 'updated', 'id', 'name', 'script_result', 'result_type',
-            'node', 'data'], parsed_result.keys())
+            'node', 'data', 'resource_uri'], parsed_result.keys())
         self.assertEquals(script_result.id, parsed_result['id'])
         self.assertEquals(script_result.name, parsed_result['name'])
         self.assertEquals(
@@ -205,7 +210,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             {'system_id': script_set.node.system_id},
             parsed_result['node'])
         self.assertEquals(
-            script_result.stdout.decode('utf-8'), parsed_result['data'])
+            script_result.stdout, b64decode(parsed_result['data']))
 
     def test_list_returns_with_multiple_empty_data(self):
         node = factory.make_Node(with_empty_script_sets=True)
@@ -246,6 +251,29 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         self.assertItemsEqual(
             [
                 script_result.stdout.decode('utf-8')
+                for script_result in chain(
+                    node.current_commissioning_script_set,
+                    node.current_testing_script_set,
+                    node.current_installation_script_set)
+            ],
+            [parsed_result['data'] for parsed_result in parsed_results])
+
+    def test_list_returns_output_if_stdout_empty(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        for script_result in chain(
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            self.store_result(
+                script_result, exit_status=0, output=factory.make_string())
+
+        url = reverse('node_results_handler')
+        response = self.client.get(url, {'system_id': [node.system_id]})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+        self.assertItemsEqual(
+            [
+                b64encode(script_result.output).decode()
                 for script_result in chain(
                     node.current_commissioning_script_set,
                     node.current_testing_script_set,

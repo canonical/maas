@@ -215,15 +215,18 @@ def process_file(
     script_result_id = get_optional_param(
         request, 'script_result_id', None, Int)
 
-    # The .err indicates this should be stored in the STDERR column of the
-    # ScriptResult. When finding or creating a ScriptResult don't include the
-    # .err in the name. If given, we look up by script_result_id along with
-    # the name to allow .err in the name.
-    if script_name.endswith('.err'):
+    # The .out or .err indicates this should be stored in the stdout or stderr
+    # column of ScriptResult. If neither are given put it in the combined
+    # output column. If given, we look up by script_result_id along with the
+    # name to allow .out or .err in the name.
+    if script_name.endswith('.out'):
+        script_name = script_name[0:-4]
+        key = 'stdout'
+    elif script_name.endswith('.err'):
         script_name = script_name[0:-4]
         key = 'stderr'
     else:
-        key = 'stdout'
+        key = 'output'
 
     try:
         script_result = script_set.scriptresult_set.get(id=script_result_id)

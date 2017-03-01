@@ -532,7 +532,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             ]
         }
         self.processMessage(node, payload)
-        self.assertEqual(contents, reload_object(script_result).stdout)
+        self.assertEqual(contents, reload_object(script_result).output)
 
     def test_status_with_file_invalid_statuses_fails(self):
         """Adding files should fail for every status that's neither
@@ -613,7 +613,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             self.assertEqual(
                 target_status, reload_object(node).status)
             # Check the node result.
-            self.assertEqual(contents, reload_object(script_result).stdout)
+            self.assertEqual(contents, reload_object(script_result).output)
 
     def test_status_with_results_succeeds(self):
         """Adding a script result should succeed"""
@@ -645,7 +645,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         }
         self.processMessage(node, payload)
         script_result = reload_object(script_result)
-        self.assertEqual(contents, script_result.stdout)
+        self.assertEqual(contents, script_result.output)
         self.assertEqual(-42, script_result.exit_status)
 
     def test_status_with_results_no_exit_status_defaults_to_zero(self):
@@ -692,7 +692,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             'timestamp': datetime.utcnow(),
             'files': [
                 {
-                    "path": "00-maas-02-virtuality",
+                    "path": "00-maas-02-virtuality.out",
                     "encoding": "base64",
                     "content": encode_as_base64(content),
                 }
@@ -722,7 +722,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             'timestamp': datetime.utcnow(),
             'files': [
                 {
-                    "path": "00-maas-02-virtuality",
+                    "path": "00-maas-02-virtuality.out",
                     "encoding": "base64",
                     "content": encode_as_base64(content),
                 }

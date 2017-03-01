@@ -7,6 +7,9 @@ __all__ = [
     'NodeResultsHandler',
     ]
 
+from base64 import b64encode
+
+from django.core.urlresolvers import reverse
 from formencode.validators import Int
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import (
@@ -27,7 +30,7 @@ class NodeResultsHandler(OperationsHandler):
     model = ScriptResult
     fields = (
         'name', 'script_result', 'result_type', 'updated', 'created',
-        'node', 'data')
+        'node', 'data', 'resource_uri')
 
     def read(self, request):
         """List NodeResult visible to the user, optionally filtered.
@@ -63,6 +66,8 @@ class NodeResultsHandler(OperationsHandler):
             # Convert to a set; it's used for membership testing.
             names = set(names)
 
+        resource_uri = reverse('commissioning_scripts_handler')
+
         results = []
         for script_set in script_sets:
             if (result_type is not None and
@@ -74,6 +79,17 @@ class NodeResultsHandler(OperationsHandler):
                         SCRIPT_STATUS.TIMEOUT, SCRIPT_STATUS.ABORTED)):
                 if names is not None and script_result.name not in names:
                     continue
+                # MAAS stores stdout, stderr, and the combined output. The
+                # metadata API determine which field uploaded data should go
+                # into based on the extention of the uploaded file. .out goes
+                # to stdout, .err goes to stderr, otherwise its assumed the
+                # data is combined. Curtin uploads the installation log as
+                # install.log so its stored as a combined result. This ensures
+                # a result is always returned.
+                if script_result.stdout != b'':
+                    data = b64encode(script_result.stdout)
+                else:
+                    data = b64encode(script_result.output)
                 results.append({
                     'created': script_result.created,
                     'updated': script_result.updated,
@@ -82,7 +98,8 @@ class NodeResultsHandler(OperationsHandler):
                     'script_result': script_result.exit_status,
                     'result_type': script_set.result_type,
                     'node': {'system_id': script_set.node.system_id},
-                    'data': script_result.stdout.decode('utf-8'),
+                    'data': data,
+                    'resource_uri': resource_uri,
                 })
                 if script_result.stderr != b'':
                     results.append({
@@ -93,7 +110,8 @@ class NodeResultsHandler(OperationsHandler):
                         'script_result': script_result.exit_status,
                         'result_type': script_set.result_type,
                         'node': {'system_id': script_set.node.system_id},
-                        'data': script_result.stderr.decode('utf-8'),
+                        'data': b64encode(script_result.stderr),
+                        'resource_uri': resource_uri,
                     })
 
         return results
