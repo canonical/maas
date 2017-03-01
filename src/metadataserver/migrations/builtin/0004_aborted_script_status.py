@@ -17,6 +17,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='scriptresult',
             name='status',
-            field=models.IntegerField(choices=[(0, 'Script pending'), (1, 'Script running'), (2, 'Script passed'), (3, 'Script failed'), (4, 'Script timed out'), (5, 'Script aborted')], default=0),
+            field=models.IntegerField(choices=[(0, 'Pending'), (1, 'Running'), (2, 'Passed'), (3, 'Failed'), (4, 'Timed out'), (5, 'Aborted')], default=0),
         ),
     ]

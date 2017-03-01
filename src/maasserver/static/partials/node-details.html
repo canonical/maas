@@ -2223,7 +2223,7 @@
             </form>
         </div>
     </div>
-    <div class="row" id="events" data-ng-hide="isController">
+    <div class="row" id="events">
         <div class="wrapper--inner">
             <div class="eight-col">
                 <h2 class="title">Latest {$ type_name $} events</h2>
@@ -2262,7 +2262,36 @@
             </div>
         </div>
     </div>
-    <div class="row" id="output" data-ng-show="!isController && machine_output.viewable">
+    <div class="row" id="testing_output" data-ng-show='node.testing_results.length > 0'>
+        <div class="wrapper--inner">
+            <div class="twelve-col">
+                <h2 class="title">Test Results</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="table-col--1 u-padding--left-none u-padding--right-none"></th>
+                        <th class="table-col--35">Filename</th>
+                        <th class="table-col--35">Tags</th>
+                        <th class="table-col--30">Time</th>
+                        <th class="table-col--30">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-ng-repeat="output in node.testing_results">
+                        <td class="table-col--1 u-padding--right-none u-padding--left-none">
+                            <span class="icon" data-ng-class="{ 'icon--warning': output.status < 2, 'icon--success': output.status === 2, 'icon--error': output.status > 2 }"></span>
+                        </td>
+                        <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                        <td class="table-col--30" aria-label="Tags">{$ output.tags $}</td>
+                        <td class="table-col--30" aria-label="Time">{$ output.updated $}</td>
+                        <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row" id="output" data-ng-show="machine_output.viewable">
         <div class="wrapper--inner">
             <div class="eight-col">
                 <h2 class="u-display--inline-block">{$ type_name_title $} output</h2>
@@ -2289,35 +2318,33 @@
                     data-ng-change="machineOutputViewChanged()">
                 </div>
             </div>
-            <div class="twelve-col" data-ng-show="machine_output.selectedView.name === 'summary'">
+            <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'summary'">
                 <pre class="code-block code-block--numbering" data-maas-code-lines="getSummaryData()">
                 </pre>
             </div>
-            <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'output'">
+            <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'commissioning'">
                 <table>
                     <thead>
                         <tr>
                             <th class="table-col--1 u-padding--left-none u-padding--right-none"></th>
                             <th class="table-col--35">Filename</th>
                             <th class="table-col--30">Time</th>
-                            <th class="table-col--30">Output</th>
+                            <th class="table-col--30">Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            data-ng-repeat="output in node.commissioning_results">
+                        <tr data-ng-repeat="output in node.commissioning_results">
                             <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                                <span class="icon"
-                                    data-ng-class="{ 'icon--success': output.result === 0, 'icon--error': output.result !== 0 }"></span>
+                                <span class="icon" data-ng-class="{ 'icon--warning': output.status < 2, 'icon--success': output.status === 2, 'icon--error': output.status > 2 }"></span>
                             </td>
-                            <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
-                            <td class="table-col--30" aria-label="Time">{$ output.created $}</td>
-                            <td class="table-col--30" aria-label="Output">{$ output.line_count $} lines</td>
+                            <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <td class="table-col--30" aria-label="Time">{$ output.updated $}</td>
+                            <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'install'">
+            <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'installation'">
                 <pre class="code-block code-block--numbering" data-maas-code-lines="getInstallationData()">
                 </pre>
             </div>

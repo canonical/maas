@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Details Controller
@@ -244,7 +244,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // If the viewName is empty, then a default one was not selected.
             // We want the installation output to be the default if possible.
             if(!angular.isString(viewName)) {
-                viewName = "install";
+                viewName = "installation";
             }
 
             // Setup the views that are viewable.
@@ -259,14 +259,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(angular.isArray($scope.node.commissioning_results) &&
                 $scope.node.commissioning_results.length > 0) {
                 $scope.machine_output.views.push({
-                    name: "output",
-                    title: "Commissioning Output"
+                    name: "commissioning",
+                    title: "Commissioning Results"
                 });
             }
             if(angular.isArray($scope.node.installation_results) &&
                 $scope.node.installation_results.length > 0) {
                 $scope.machine_output.views.push({
-                    name: "install",
+                    name: "installation",
                     title: "Installation Output"
                 });
             }
@@ -956,7 +956,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             } else {
                 // Prepend a newline before the data, because the code
                 // tag requires that the content start on a newline.
-                return "\n" + results[0].data;
+                return "\n" + results[0].output;
             }
         };
 

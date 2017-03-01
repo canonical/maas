@@ -83,6 +83,7 @@ describe("NodeDetailsController", function() {
             summary_xml: null,
             summary_yaml: null,
             commissioning_results: [],
+            testing_results: [],
             installation_results: [],
             events: [],
             interfaces: [],
@@ -481,22 +482,22 @@ describe("NodeDetailsController", function() {
             }]);
         });
 
-    it("machine output output view available if commissioning_results",
+    it("machine output commissioning view available if commissioning_results",
         function() {
             node.commissioning_results.push({});
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.views).toEqual([{
-                name: "output",
-                title: "Commissioning Output"
+                name: "commissioning",
+                title: "Commissioning Results"
             }]);
         });
 
-    it("machine output install view available if installation_results",
+    it("machine output installation view available if installation_results",
         function() {
             node.installation_results.push({});
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.views).toEqual([{
-                name: "install",
+                name: "installation",
                 title: "Installation Output"
             }]);
         });
@@ -506,8 +507,8 @@ describe("NodeDetailsController", function() {
             node.commissioning_results.push({});
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.selectedView).toEqual({
-                name: "output",
-                title: "Commissioning Output"
+                name: "commissioning",
+                title: "Commissioning Results"
             });
         });
 
@@ -524,18 +525,19 @@ describe("NodeDetailsController", function() {
             // Output view should still be selected as it was initially
             // selected.
             expect($scope.machine_output.selectedView).toEqual({
-                name: "output",
-                title: "Commissioning Output"
+                name: "commissioning",
+                title: "Commissioning Results"
             });
         });
 
     it("machine output install view is always selected first if possible",
         function() {
             node.commissioning_results.push({});
+            node.testing_results.push({});
             node.installation_results.push({});
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.machine_output.selectedView).toEqual({
-                name: "install",
+                name: "installation",
                 title: "Installation Output"
             });
         });
@@ -2147,10 +2149,10 @@ describe("NodeDetailsController", function() {
             $scope.node = makeNode();
             var install_result = {};
             $scope.node.installation_results.push({
-                data: install_result
+                output: install_result
             });
             $scope.node.installation_results.push({
-                data: {}
+                output: {}
             });
             expect($scope.getInstallationData()).toBe("\n" + install_result);
         });

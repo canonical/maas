@@ -35,11 +35,11 @@ describe("NodeResultController", function() {
         spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
     }));
 
-    // Make a fake commissioning result.
-    function makeCommissioningResult() {
+    // Make a fake result.
+    function makeResult() {
         return {
             name: makeName("name"),
-            data: makeName("data")
+            output: makeName("data")
         };
     }
 
@@ -49,9 +49,14 @@ describe("NodeResultController", function() {
             system_id: makeName("system_id"),
             fqdn: makeName("fqdn"),
             commissioning_results: [
-                makeCommissioningResult(),
-                makeCommissioningResult(),
-                makeCommissioningResult()
+                makeResult(),
+                makeResult(),
+                makeResult()
+            ],
+            testing_results: [
+                makeResult(),
+                makeResult(),
+                makeResult()
             ]
         };
         MachinesManager._items.push(node);
@@ -201,13 +206,13 @@ describe("NodeResultController", function() {
             var controller = makeController();
             $scope.node = node;
             expect($scope.getResultData()).toBe(
-                "\n" + node.commissioning_results[0].data);
+                "\n" + node.commissioning_results[0].output);
         });
 
         it("returns 'Empty file` for empty data from result", function() {
             var controller = makeController();
             $scope.node = node;
-            node.commissioning_results[0].data = "";
+            node.commissioning_results[0].output = "";
             expect($scope.getResultData()).toBe(
                 "\nEmpty file");
         });

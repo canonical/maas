@@ -2683,6 +2683,7 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ''
         self.license_key = ''
         self.hwe_kernel = None
+        self.current_installation_script_set = None
         self.save()
 
         # Clear the nodes acquired filesystems.
@@ -2809,12 +2810,9 @@ class Node(CleanSave, TimestampedModel):
         self.error_description = ''
         self.osystem = ''
         self.distro_series = ''
-        self.hwe_kernel = ''
+        self.hwe_kernel = None
+        self.current_installation_script_set = None
         self.save()
-
-        # Clear installation results
-        if self.current_installation_script_set is not None:
-            self.current_installation_script_set.delete()
 
     @transactional
     def update_power_state(self, power_state):

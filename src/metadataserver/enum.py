@@ -66,10 +66,10 @@ class SCRIPT_STATUS:
 
 
 SCRIPT_STATUS_CHOICES = (
-    (SCRIPT_STATUS.PENDING, "Script pending"),
-    (SCRIPT_STATUS.RUNNING, "Script running"),
-    (SCRIPT_STATUS.PASSED, "Script passed"),
-    (SCRIPT_STATUS.FAILED, "Script failed"),
-    (SCRIPT_STATUS.TIMEOUT, "Script timed out"),
-    (SCRIPT_STATUS.ABORTED, "Script aborted"),
+    (SCRIPT_STATUS.PENDING, "Pending"),
+    (SCRIPT_STATUS.RUNNING, "Running"),
+    (SCRIPT_STATUS.PASSED, "Passed"),
+    (SCRIPT_STATUS.FAILED, "Failed"),
+    (SCRIPT_STATUS.TIMEOUT, "Timed out"),
+    (SCRIPT_STATUS.ABORTED, "Aborted"),
 )

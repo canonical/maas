@@ -80,6 +80,10 @@ class ScriptResult(CleanSave, TimestampedModel):
         else:
             return "Unknown"
 
+    @property
+    def status_name(self):
+        return SCRIPT_STATUS_CHOICES[self.status][1]
+
     def __str__(self):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
 

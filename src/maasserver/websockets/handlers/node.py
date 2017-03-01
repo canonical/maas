@@ -189,19 +189,13 @@ class NodeHandler(TimestampedModelHandler):
 
                 # Machine output
                 data = self.dehydrate_summary_output(obj, data)
-                # XXX ltrager 2017-01-27 - Show the testing results in the
-                # commissioning table until we get the testing UI done.
-                if obj.current_testing_script_set is not None:
-                    data["commissioning_results"] = self.dehydrate_script_set(
-                        chain(
-                            obj.current_commissioning_script_set,
-                            obj.current_testing_script_set,
-                        ))
-                else:
-                    data["commissioning_results"] = self.dehydrate_script_set(
-                        obj.current_commissioning_script_set)
+                data["commissioning_results"] = self.dehydrate_script_set(
+                    obj.current_commissioning_script_set)
+                data["testing_results"] = self.dehydrate_script_set(
+                    obj.current_testing_script_set)
                 data["installation_results"] = self.dehydrate_script_set(
                     obj.current_installation_script_set)
+
                 # Third party drivers
                 if Config.objects.get_config('enable_third_party_drivers'):
                     driver = get_third_party_driver(obj)
@@ -419,15 +413,15 @@ class NodeHandler(TimestampedModelHandler):
         return data
 
     def dehydrate_script_set(self, script_set):
-        """Dehydrate ScriptResults in the format NodeResults were returned."""
+        """Dehydrate ScriptResults."""
         if script_set is None:
             return []
         ret = []
-        # XXX ltrager 2016-12-22 - This method currently returns a dictionary
-        # identical to what was return with NodeResults. This method will be
-        # updated when the UI has an understanding of script_sets and
-        # script_results.
         for script_result in script_set:
+            if script_result.script is not None:
+                tags = ', '.join(script_result.script.tags)
+            else:
+                tags = ''
             # MAAS stores stdout, stderr, and the combined output. The
             # metadata API determine which field uploaded data should go
             # into based on the extention of the uploaded file. .out goes
@@ -436,25 +430,27 @@ class NodeHandler(TimestampedModelHandler):
             # install.log so its stored as a combined result. This ensures
             # a result is always returned.
             if script_result.stdout != b'':
-                data = script_result.stdout
+                output = script_result.stdout
             else:
-                data = script_result.output
+                output = script_result.output
             ret.append({
                 'id': script_result.id,
-                'result': script_result.exit_status,
                 'name': script_result.name,
-                'data': data,
-                'line_count': len(data.splitlines()),
-                'created': dehydrate_datetime(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'tags': tags,
+                'output': output,
+                'updated': dehydrate_datetime(script_result.updated),
             })
             if script_result.stderr != b'':
                 ret.append({
                     'id': script_result.id,
-                    'result': script_result.exit_status,
                     'name': '%s.err' % script_result.name,
-                    'data': script_result.stderr,
-                    'line_count': len(script_result.stderr.splitlines()),
-                    'created': dehydrate_datetime(script_result.updated),
+                    'status': script_result.status,
+                    'status_name': script_result.status_name,
+                    'tags': tags,
+                    'output': script_result.stderr,
+                    'updated': dehydrate_datetime(script_result.updated),
                 })
         return sorted(ret, key=lambda i: i['name'])
 

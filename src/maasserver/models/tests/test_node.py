@@ -2294,6 +2294,14 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
 
+    def test_releases_clears_current_installation_script_set(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+        self.patch(node, '_stop')
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(node.current_installation_script_set)
+
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.
@@ -3209,18 +3217,11 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(
             NodeStateViolation, node.mark_fixed, factory.make_User())
 
-    def test_mark_fixed_clears_installation_results(self):
+    def test_mark_fixed_clears_current_installation_results(self):
         node = factory.make_Node(
             status=NODE_STATUS.BROKEN, with_empty_script_sets=True)
-        installation_result_ids = [
-            script_result.id
-            for script_result in node.current_installation_script_set]
         node.mark_fixed(factory.make_User())
         self.assertIsNone(reload_object(node).current_installation_script_set)
-        for id in installation_result_ids:
-            self.assertRaises(
-                ScriptResult.DoesNotExist,
-                ScriptResult.objects.get, id=id)
 
     def test_update_power_state(self):
         node = factory.make_Node()

@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('status', models.IntegerField(default=0, choices=[(0, 'Script pending'), (1, 'Script running'), (2, 'Script passed'), (3, 'Script failed'), (4, 'Script timed out')])),
+                ('status', models.IntegerField(default=0, choices=[(0, 'Pending'), (1, 'Running'), (2, 'Passed'), (3, 'Failed'), (4, 'Timed out')])),
                 ('exit_status', models.IntegerField(blank=True, null=True)),
                 ('script_name', models.CharField(max_length=255, null=True, editable=False)),
                 ('stdout', metadataserver.fields.BinaryField(default=b'', max_length=1048576, blank=True)),

@@ -6,7 +6,6 @@
 __all__ = []
 
 from functools import partial
-from itertools import chain
 import logging
 from operator import itemgetter
 import random
@@ -141,17 +140,6 @@ class TestMachineHandler(MAASServerTestCase):
         ]
         disks = sorted(disks, key=itemgetter("name"))
         subnets = handler.get_all_subnets(node)
-        if node.current_testing_script_set is not None:
-            commissioning_results = chain(
-                node.current_commissioning_script_set,
-                node.current_testing_script_set,
-            )
-        else:
-            if node.current_commissioning_script_set is not None:
-                commissioning_results = iter(
-                    node.current_commissioning_script_set)
-            else:
-                commissioning_results = None
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
@@ -164,7 +152,9 @@ class TestMachineHandler(MAASServerTestCase):
             "current_installation_script_set": (
                 node.current_installation_script_set_id),
             "commissioning_results": handler.dehydrate_script_set(
-                commissioning_results),
+                node.current_commissioning_script_set),
+            "testing_results": handler.dehydrate_script_set(
+                node.current_testing_script_set),
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
@@ -769,19 +759,21 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual([
             {
                 'id': script_result.id,
-                'result': script_result.exit_status,
                 'name': script_result.name,
-                'data': script_result.stdout,
-                'line_count': len(script_result.stdout.splitlines()),
-                'created': dehydrate_datetime(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'tags': ', '.join(script_result.script.tags),
+                'output': script_result.stdout,
+                'updated': dehydrate_datetime(script_result.updated),
             },
             {
                 'id': script_result.id,
-                'result': script_result.exit_status,
-                'name': "%s.err" % script_result.name,
-                'data': script_result.stderr,
-                'line_count': len(script_result.stderr.splitlines()),
-                'created': dehydrate_datetime(script_result.updated),
+                'name': '%s.err' % script_result.name,
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'tags': ', '.join(script_result.script.tags),
+                'output': script_result.stderr,
+                'updated': dehydrate_datetime(script_result.updated),
             }], handler.dehydrate_script_set(script_result.script_set))
 
     def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
@@ -793,11 +785,12 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertDictEqual(
             {
                 'id': script_result.id,
-                'result': script_result.exit_status,
                 'name': script_result.name,
-                'data': script_result.output,
-                'line_count': len(script_result.output.splitlines()),
-                'created': dehydrate_datetime(script_result.updated),
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'tags': ', '.join(script_result.script.tags),
+                'output': script_result.output,
+                'updated': dehydrate_datetime(script_result.updated),
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
     def test_dehydrate_events_only_includes_lastest_50(self):

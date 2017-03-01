@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Commissioning Script Controller
@@ -37,16 +37,28 @@ angular.module('MAAS').controller('NodeResultController', [
                 return "";
             }
 
-            var i;
+            var i, output, result;
             for(i = 0; i < $scope.node.commissioning_results.length; i++) {
-                var result = $scope.node.commissioning_results[i];
+                result = $scope.node.commissioning_results[i];
                 if(result.name === $scope.filename) {
                     // <code> tags require the content to start on a newline.
-                    var data = result.data.trim();
-                    if(data.length === 0) {
+                    output = result.output.trim();
+                    if(output.length === 0) {
                         return "\nEmpty file";
                     } else {
-                        return "\n" + result.data;
+                        return "\n" + result.output;
+                    }
+                }
+            }
+            for(i = 0; i < $scope.node.testing_results.length; i++) {
+                result = $scope.node.testing_results[i];
+                if(result.name === $scope.filename) {
+                    // <code> tags require the content to start on a newline.
+                    output = result.output.trim();
+                    if(output.length === 0) {
+                        return "\nEmpty file";
+                    } else {
+                        return "\n" + result.output;
                     }
                 }
             }

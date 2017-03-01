@@ -32,6 +32,7 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.fields import Bin
 from metadataserver.models import ScriptSet
@@ -249,6 +250,10 @@ def populate_main():
     factory.make_StaticRoute(source=subnet_4, destination=subnet_2)
     factory.make_StaticRoute(source=subnet_4, destination=subnet_3)
 
+    # Load builtin scripts in the database so we can generate fake results
+    # below.
+    load_builtin_scripts()
+
     hostname = gethostname()
     region_rack = get_one(Node.objects.filter(
         node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER, hostname=hostname))
@@ -420,11 +425,12 @@ def populate_main():
         for _ in range(random.randint(25, 100)):
             factory.make_Event(node=machine)
 
-        # Add in commissioning results.
+        # Add in commissioning and testing results.
         if status != NODE_STATUS.NEW:
-            script_set = ScriptSet.objects.create_commissioning_script_set(
-                machine)
-            machine.current_commissioning_script_set = script_set
+            css = ScriptSet.objects.create_commissioning_script_set(machine)
+            machine.current_commissioning_script_set = css
+            tss = ScriptSet.objects.create_testing_script_set(machine)
+            machine.current_testing_script_set = tss
             machine.save()
 
         # Only add in results in states where commissiong should be completed.
@@ -436,6 +442,25 @@ def populate_main():
                 exit_status = 0
                 script_status = SCRIPT_STATUS.PASSED
             for script_result in machine.current_commissioning_script_set:
+                # Can't use script_result.store_result as it will try to
+                # process the result and fail on the fake data.
+                script_result.status = script_status
+                script_result.exit_status = exit_status
+                script_result.stdout = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.stderr = Bin(
+                    factory.make_string().encode('utf-8'))
+                script_result.save()
+
+        # Only add in results in states where testing should be completed.
+        if status not in [NODE_STATUS.NEW, NODE_STATUS.TESTING]:
+            if status == NODE_STATUS.FAILED_TESTING:
+                exit_status = random.randint(1, 255)
+                script_status = SCRIPT_STATUS.FAILED
+            else:
+                exit_status = 0
+                script_status = SCRIPT_STATUS.PASSED
+            for script_result in machine.current_testing_script_set:
                 # Can't use script_result.store_result as it will try to
                 # process the result and fail on the fake data.
                 script_result.status = script_status
