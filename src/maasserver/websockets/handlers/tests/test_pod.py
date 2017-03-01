@@ -5,10 +5,12 @@
 
 __all__ = []
 
+from maasserver.forms.pods import PodForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.pod import PodHandler
+from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import Capabilities
 from testtools.matchers import Equals
 
@@ -47,9 +49,19 @@ class TestPodHandler(MAASServerTestCase):
         return data
 
     def test_get(self):
-        user = factory.make_User()
-        handler = PodHandler(user, {})
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {})
         pod = factory.make_Pod()
         expected_data = self.dehydrate_pod(pod)
         result = handler.get({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
+
+    def test_refresh_refreshes(self):
+        user = factory.make_User()
+        handler = PodHandler(user, {})
+        pod = factory.make_Pod()
+        mock_discover_and_sync_pod = self.patch(
+            PodForm, 'discover_and_sync_pod')
+        handler.refresh({"id": pod.id})
+        self.assertThat(
+            mock_discover_and_sync_pod, MockCalledOnceWith())

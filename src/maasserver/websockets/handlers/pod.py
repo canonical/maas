@@ -7,7 +7,9 @@ __all__ = [
     "PodHandler",
 ]
 
+from maasserver.forms.pods import PodForm
 from maasserver.models.bmc import Pod
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -19,6 +21,8 @@ class PodHandler(TimestampedModelHandler):
     class Meta:
         queryset = Pod.objects.all()
         pk = 'id'
+        form = PodForm
+        form_requires_request = True
         allowed_methods = [
             'list',
             'get',
@@ -32,11 +36,13 @@ class PodHandler(TimestampedModelHandler):
             'local_disks',
             'local_storage',
             'memory',
-            'power_parameters',
+            'power_parameters'
         ]
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
+        if not reload_object(self.user).is_superuser:
+            data['power_parameters'] = obj.power_parameters
         data["total"] = self.dehydrate_total(obj)
         data["used"] = self.dehydrate_used(obj)
         data["available"] = self.dehydrate_available(obj)
@@ -71,3 +77,13 @@ class PodHandler(TimestampedModelHandler):
         for key, value in self.dehydrate_total(obj).items():
             result[key] = value - used[key]
         return result
+
+    def refresh(self, params):
+        """Refresh a specific Pod.
+
+        Performs pod discovery and updates all discovered information and
+        discovered machines.
+        """
+        pod = self.get_object(params)
+        form = PodForm(instance=pod, data=params)
+        form.discover_and_sync_pod()
