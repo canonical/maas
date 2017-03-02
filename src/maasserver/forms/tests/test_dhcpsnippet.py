@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP snippets forms."""
@@ -7,7 +7,6 @@ __all__ = []
 
 import random
 
-from django.core.exceptions import ValidationError
 from maasserver.forms import dhcpsnippet
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import (
@@ -27,14 +26,14 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             {})
 
     def test__create_dhcp_snippet_requies_name(self):
-        self.assertRaises(
-            ValidationError,
-            DHCPSnippetForm, data={'value': factory.make_string()})
+        form = DHCPSnippetForm(data={'value': factory.make_string()})
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual([], VersionedTextFile.objects.all())
 
     def test__create_dhcp_snippet_requires_value(self):
-        self.assertRaises(
-            ValidationError,
-            DHCPSnippetForm, data={'name': factory.make_name('name')})
+        form = DHCPSnippetForm(data={'name': factory.make_name('name')})
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual([], VersionedTextFile.objects.all())
 
     def test__creates_dhcp_snippet(self):
         name = factory.make_name('name')

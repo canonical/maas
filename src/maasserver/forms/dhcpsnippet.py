@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP snippets form."""
@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 from django import forms
-from django.core.exceptions import ValidationError
 from maasserver.dhcp import validate_dhcp_config
 from maasserver.fields import (
     NodeChoiceField,
@@ -68,17 +67,15 @@ class DHCPSnippetForm(MAASModelForm):
             'global_snippet',
             )
 
-    def __init__(self, data=None, instance=None, request=None, **kwargs):
-        super().__init__(data=data, instance=instance, **kwargs)
-        if self.instance.id is None:
-            if data.get('name') is None:
-                raise ValidationError("DHCP snippet requires a name.")
-            elif data.get('value') is None:
-                raise ValidationError("DHCP snippet requires a value.")
+    def __init__(self, instance=None, request=None, **kwargs):
+        super().__init__(instance=instance, **kwargs)
+        if instance is None:
+            for field in ['name', 'value']:
+                self.fields[field].required = True
             self.initial['enabled'] = True
         else:
             self.fields['value'].initial = self.instance.value
-        if self.instance.node is not None:
+        if instance is not None and instance.node is not None:
             self.initial['node'] = self.instance.node.system_id
 
     def clean(self):
@@ -116,7 +113,6 @@ class DHCPSnippetForm(MAASModelForm):
                 set_form_error(self, 'value', first_error['error'])
 
         # If the DHCPSnippet isn't valid cleanup the value
-        if (not valid and
-                self.initial.get('value') != self.cleaned_data['value'].id):
+        if not valid and self.initial.get('value') != self.instance.value_id:
             self.instance.value.delete()
         return valid

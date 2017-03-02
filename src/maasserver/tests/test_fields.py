@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom model fields."""
@@ -693,15 +693,25 @@ class TestVersionedTextFileField(MAASServerTestCase):
         self.assertEquals(data, versioned_text_file.data)
         self.assertIsNone(versioned_text_file.previous_version)
 
-    def test_ignores_self_instance(self):
-        data = VersionedTextFile.objects.create(data=factory.make_string())
-        versioned_text_file_field = VersionedTextFileField(initial=data)
-        self.assertEquals(data, versioned_text_file_field.clean(data))
+    def test_create_requires_value(self):
+        versioned_text_file_field = VersionedTextFileField()
+        self.assertRaises(
+            ValidationError, versioned_text_file_field.clean, None)
 
-    def test_ignores_self_id(self):
+    def test_create_new_accepts_dict_with_comment(self):
+        data = factory.make_string()
+        comment = factory.make_name('comment')
+        versioned_text_file_field = VersionedTextFileField()
+        versioned_text_file = versioned_text_file_field.clean(
+            {'data': data, 'comment': comment})
+        self.assertEquals(data, versioned_text_file.data)
+        self.assertEquals(comment, versioned_text_file.comment)
+        self.assertIsNone(versioned_text_file.previous_version)
+
+    def test_update_does_nothing_on_none(self):
         data = VersionedTextFile.objects.create(data=factory.make_string())
         versioned_text_file_field = VersionedTextFileField(initial=data)
-        self.assertEquals(data, versioned_text_file_field.clean(data.id))
+        self.assertEquals(data, versioned_text_file_field.clean(None))
 
     def test_creates_new_link(self):
         old_ver = VersionedTextFile.objects.create(data=factory.make_string())
@@ -709,6 +719,17 @@ class TestVersionedTextFileField(MAASServerTestCase):
         data = factory.make_string()
         new_ver = versioned_text_file_field.clean(data)
         self.assertEquals(data, new_ver.data)
+        self.assertEquals(old_ver, new_ver.previous_version)
+
+    def test_creates_new_link_accepts_dict(self):
+        old_ver = VersionedTextFile.objects.create(data=factory.make_string())
+        versioned_text_file_field = VersionedTextFileField(initial=old_ver)
+        data = factory.make_string()
+        comment = factory.make_name('comment')
+        new_ver = versioned_text_file_field.clean(
+            {'new_data': data, 'comment': comment})
+        self.assertEquals(data, new_ver.data)
+        self.assertEquals(comment, new_ver.comment)
         self.assertEquals(old_ver, new_ver.previous_version)
 
 

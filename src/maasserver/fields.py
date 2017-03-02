@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom model and form fields."""
@@ -17,6 +17,7 @@ __all__ = [
     "NodeChoiceField",
     "register_mac_type",
     "VerboseRegexValidator",
+    "VersionedTextFileField",
     ]
 
 from copy import deepcopy
@@ -745,19 +746,22 @@ class VersionedTextFileField(forms.ModelChoiceField):
 
     def clean(self, value):
         if self.initial is None:
+            if value is None:
+                raise ValidationError("Must be given a value")
             # Create a new VersionedTextFile if one doesn't exist
-            return VersionedTextFile.objects.create(data=value)
-        elif ((isinstance(value, VersionedTextFile) and
-               self.initial == value) or self.initial.id == value):
-            # DHCPSnippetForm has to create a VersionedTextFile object before
-            # it creates a new DHCPSnippet as a requirement. The value is set
-            # to the newly created VersionedTextFile so we can safely ignore
-            # it.
+            if isinstance(value, dict):
+                return VersionedTextFile.objects.create(**value)
+            else:
+                return VersionedTextFile.objects.create(data=value)
+        elif value is None:
             return self.initial
         else:
             # Create and return a new VersionedTextFile linked to the previous
             # VersionedTextFile
-            return self.initial.update(value)
+            if isinstance(value, dict):
+                return self.initial.update(**value)
+            else:
+                return self.initial.update(value)
 
 
 @deconstructible
