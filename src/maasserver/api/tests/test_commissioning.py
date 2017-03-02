@@ -19,14 +19,14 @@ from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.utils import sample_binary_data
 from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
+from metadataserver.models import Script
+from piston3.utils import rc
 
 
 class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
@@ -36,12 +36,10 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         return reverse('commissioning_scripts_handler')
 
     def test_GET_lists_commissioning_scripts(self):
-        # Use lower-case names.  The database and the test may use
-        # different collation orders with different ideas about case
-        # sensitivity.
-        names = {factory.make_name('script').lower() for counter in range(5)}
-        for name in names:
-            factory.make_CommissioningScript(name=name)
+        names = {
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING).name
+            for _ in range(5)
+        }
 
         response = self.client.get(self.get_url())
 
@@ -53,7 +51,7 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         # This uses Piston's built-in POST code, so there are no tests for
         # corner cases (like "script already exists") here.
         name = factory.make_name('script')
-        content = factory.make_bytes()
+        content = factory.make_string()
 
         # Every uploaded file also has a name.  But this is completely
         # unrelated to the name we give to the commissioning script.
@@ -61,17 +59,18 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
             self.get_url(),
             {
                 'name': name,
-                'content': factory.make_file_upload(content=content),
+                'content': factory.make_file_upload(content=content.encode()),
             })
         self.assertThat(response, HasStatusCode(http.client.OK))
 
         returned_script = json_load_bytes(response.content)
-        self.assertEqual(
-            (name, b64encode(content).decode("ascii")),
-            (returned_script['name'], returned_script['content']))
+        self.assertEquals(name, returned_script['name'])
+        self.assertEquals(
+            content.encode(), b64decode(returned_script['content']))
 
-        stored_script = CommissioningScript.objects.get(name=name)
-        self.assertEqual(content, stored_script.content)
+        stored_script = Script.objects.get(name=name)
+        self.assertEqual(content, stored_script.script.data)
+        self.assertEqual(SCRIPT_TYPE.COMMISSIONING, stored_script.script_type)
 
 
 class CommissioningScriptsAPITest(APITestCase.ForUser):
@@ -97,35 +96,30 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         return reverse('commissioning_script_handler', args=[script_name])
 
     def test_GET_returns_script_contents(self):
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.get(self.get_url(script.name))
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEqual(script.content, response.content)
-
-    def test_GET_preserves_binary_data(self):
-        script = factory.make_CommissioningScript(content=sample_binary_data)
-        response = self.client.get(self.get_url(script.name))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEqual(sample_binary_data, response.content)
+        self.assertEqual(script.script.data, response.content.decode('utf-8'))
 
     def test_PUT_updates_contents(self):
         old_content = b'old:%s' % factory.make_string().encode('ascii')
-        script = factory.make_CommissioningScript(content=old_content)
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING, script=old_content)
         new_content = b'new:%s' % factory.make_string().encode('ascii')
 
         response = self.client.put(
             self.get_url(script.name),
             {'content': factory.make_file_upload(content=new_content)})
         self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(rc.ALL_OK.content, response.content)
 
-        self.assertEqual(new_content, reload_object(script).content)
+        self.assertEqual(
+            new_content.decode('utf-8'), reload_object(script).script.data)
 
     def test_DELETE_deletes_script(self):
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         self.client.delete(self.get_url(script.name))
-        self.assertItemsEqual(
-            [],
-            CommissioningScript.objects.filter(name=script.name))
+        self.assertItemsEqual([], Script.objects.filter(name=script.name))
 
 
 class CommissioningScriptAPITest(APITestCase.ForUser):

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CommissioningScript`."""
@@ -8,12 +8,18 @@ __all__ = [
     'CommissioningScriptsHandler',
     ]
 
+from base64 import b64encode
+
+from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_mandatory_param
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms.script import ScriptForm
+from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
+from metadataserver.models import Script
 from piston3.utils import rc
 
 
@@ -34,9 +40,10 @@ class CommissioningScriptsHandler(OperationsHandler):
 
     def read(self, request):
         """List commissioning scripts."""
-        return [
+        return sorted([
             script.name
-            for script in CommissioningScript.objects.all().order_by('name')]
+            for script in Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING)])
 
     def create(self, request):
         """Create a new commissioning script.
@@ -70,9 +77,20 @@ class CommissioningScriptsHandler(OperationsHandler):
             this is not a normal parameter, but a file upload.  Its filename
             is ignored; MAAS will know it by the name you pass to the request.
         """
-        name = get_mandatory_param(request.data, 'name')
         content = Bin(get_content_parameter(request))
-        return CommissioningScript.objects.create(name=name, content=content)
+        request.data['script'] = content
+        request.data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        form = ScriptForm(data=request.data)
+        if form.is_valid():
+            script = form.save()
+            return {
+                'name': script.name,
+                'content': b64encode(script.script.data.encode()),
+                'resource_uri': reverse(
+                    'commissioning_script_handler', args=[script.name]),
+            }
+        else:
+            return MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls):
@@ -86,29 +104,33 @@ class CommissioningScriptHandler(OperationsHandler):
     """
     api_doc_section_name = "Commissioning script"
 
-    model = CommissioningScript
-    fields = ('name', 'content')
-
     # Relies on Piston's built-in DELETE implementation.  There is no POST.
     create = None
 
     def read(self, request, name):
         """Read a commissioning script."""
-        script = get_object_or_404(CommissioningScript, name=name)
-        return HttpResponse(script.content, content_type='application/binary')
+        script = get_object_or_404(Script, name=name)
+        return HttpResponse(
+            script.script.data, content_type='application/binary')
 
     def delete(self, request, name):
         """Delete a commissioning script."""
-        script = get_object_or_404(CommissioningScript, name=name)
+        script = get_object_or_404(Script, name=name)
         script.delete()
         return rc.DELETED
 
     def update(self, request, name):
         """Update a commissioning script."""
+        script = get_object_or_404(Script, name=name)
         content = Bin(get_content_parameter(request))
-        script = get_object_or_404(CommissioningScript, name=name)
-        script.content = content
-        script.save()
+        request.data['script'] = content
+        request.data['script_type'] = SCRIPT_TYPE.COMMISSIONING
+        form = ScriptForm(instance=script, data=request.data)
+        if form.is_valid():
+            form.save()
+            return rc.ALL_OK
+        else:
+            return MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, script=None):

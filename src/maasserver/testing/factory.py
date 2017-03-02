@@ -655,7 +655,7 @@ class Factory(maastesting.factory.Factory):
         if script_type is None:
             script_type = self.pick_choice(SCRIPT_TYPE_CHOICES)
         if timeout is None:
-            timeout = timedelta(random.randint(0, 600))
+            timeout = timedelta(seconds=random.randint(0, 600))
         if script is None:
             script = VersionedTextFile.objects.create(data=self.make_string())
         return Script.objects.create(
