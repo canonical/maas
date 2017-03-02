@@ -276,11 +276,17 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
 
     def _path_to_idpath(path):
         """Searches dev_disk_byid for a device symlinked to /dev/[path]"""
+        shortest_link = None
         if os.path.exists(dev_disk_byid):
             for link in os.listdir(dev_disk_byid):
                 if os.path.exists(path) and os.path.samefile(
                         os.path.join(dev_disk_byid, link), path):
-                    return os.path.join(dev_disk_byid, link)
+                    if shortest_link is None:
+                        shortest_link = link
+                    elif len(link) < len(shortest_link):
+                        shortest_link = link
+            if shortest_link:
+                return os.path.join(dev_disk_byid, shortest_link)
         return None
 
     # Grab the block devices from lsblk. Excludes RAM devices

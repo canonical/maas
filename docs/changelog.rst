@@ -34,6 +34,8 @@ LP: #1645912    Fix IPMI autodetection to wrap IPv6 addresses in brackers when u
 
 LP: #1665459    Fix anonymous auto-enlistment to properly detect rack-facing region IP address
 
+LP: #1665143    Select the shortest by-id path when discovering block devices to address issues when discovering nvme devices.
+
 
 Other notable changes
 ---------------------
