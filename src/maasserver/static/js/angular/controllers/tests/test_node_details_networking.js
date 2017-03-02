@@ -322,12 +322,13 @@ describe("NodeNetworkingController", function() {
 
     // Load the required dependencies for the NodeNetworkingController.
     var FabricsManager, VLANsManager, SubnetsManager, UsersManager;
-    var MachinesManager, GeneralManager, ManagerHelperService;
+    var MachinesManager, DevicesManager, GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         FabricsManager = $injector.get("FabricsManager");
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         MachinesManager = $injector.get("MachinesManager");
+        DevicesManager = $injector.get("DevicesManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
@@ -360,6 +361,7 @@ describe("NodeNetworkingController", function() {
             VLANsManager: VLANsManager,
             SubnetsManager: SubnetsManager,
             MachinesManager: MachinesManager,
+            DevicesManager: DevicesManager,
             GeneralManager: GeneralManager,
             ManagerHelperService: ManagerHelperService
         });
@@ -475,6 +477,34 @@ describe("NodeNetworkingController", function() {
 
         expect(watches).toEqual(["node.interfaces", "subnets"]);
         expect(watchCollections).toEqual([]);
+    });
+
+    it("edit device subnet correctly when subnet is set", function() {
+        var controller = makeController();
+        $parentScope.isDevice = true;
+        $scope.subnets = [{ id: 0, vlan: 0 }, { id: 1, vlan: 0}];
+        var nic = {
+            id: 1,
+            name: "eth0",
+            ip_assignment: 'static',
+            subnet: $scope.subnets[1]
+            };
+        $scope.edit(nic);
+        expect($scope.editInterface.defaultSubnet.id).toEqual(1);
+    });
+
+    it("edit device subnet correctly when subnet is not set", function() {
+        var controller = makeController();
+        $parentScope.isDevice = true;
+        $scope.subnets = [{ id: 0, vlan: 0 }, { id: 1, vlan: 0}];
+        var nic = {
+            id: 1,
+            name: "eth0",
+            ip_assignment: 'static',
+            subnet: null
+            };
+        $scope.edit(nic);
+        expect($scope.editInterface.defaultSubnet.id).toEqual(0);
     });
 
     describe("updateInterfaces", function() {

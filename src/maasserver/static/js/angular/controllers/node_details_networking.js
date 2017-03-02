@@ -121,11 +121,13 @@ angular.module('MAAS').filter('filterLinkModes', function() {
 
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
-    'MachinesManager', 'ControllersManager', 'GeneralManager', 'UsersManager',
+    'MachinesManager', 'ControllersManager', 'DevicesManager',
+    'GeneralManager', 'UsersManager',
     'ManagerHelperService', 'ValidationService', 'JSONService',
     function(
         $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
-        MachinesManager, ControllersManager, GeneralManager, UsersManager,
+        MachinesManager, ControllersManager, DevicesManager,
+        GeneralManager, UsersManager,
         ManagerHelperService, ValidationService, JSONService) {
 
         // Different interface types.
@@ -807,6 +809,11 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     ip_address: nic.ip_address,
                     ip_assignment: nic.ip_assignment
                 };
+                if(nic.subnet !== undefined && nic.subnet !== null) {
+                    $scope.editInterface.defaultSubnet = nic.subnet;
+                } else {
+                    $scope.editInterface.defaultSubnet = $scope.subnets[0];
+                }
             } else {
                 $scope.editInterface = {
                     id: nic.id,
@@ -847,6 +854,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // Set to 'Unconfigured' so the link mode should be set to
                 // 'link_up'.
                 nic.mode = LINK_MODE.LINK_UP;
+            }
+            if ($scope.$parent.isDevice) {
+                nic.ip_address = null;
             }
             $scope.modeChanged(nic);
         };

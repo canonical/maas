@@ -802,7 +802,7 @@
                                                       <div class="form__group" data-ng-if="newInterface.mode == 'static'">
                                                           <label for="ip-address" class="two-col">IP address</label>
                                                           <input name="ip-address" type="text" class="three-col"
-                                                              placeholder="IP address (optional)"
+                                                              placeholder="IP address"
                                                               ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                       </div>
@@ -854,7 +854,7 @@
                                                           <label for="subnet" class="two-col">Subnet</label>
                                                           <select name="subnet" class="three-col"
                                                               ng-model="editInterface.subnet"
-                                                              data-ng-change="subnetChanged(newInterface)"
+                                                              data-ng-change="subnetChanged(editInterface)"
                                                               data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.vlan">
                                                               <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
                                                           </select>
@@ -871,7 +871,7 @@
                                                           <label for="ip-address" class="two-col">IP address</label>
                                                           <div class="form__group-input three-col last-col">
                                                               <input name="ip-address" type="text"
-                                                                  placeholder="IP address (optional)"
+                                                                  placeholder="IP address"
                                                                   ng-model="editInterface.ip_address"
                                                                   data-ng-class="{ 'has-error': isIPAddressInvalid(editInterface) }">
                                                               <ul class="errors u-margin--bottom-none form__group--errors" data-ng-if="getInterfaceError(editInterface)">
@@ -891,9 +891,9 @@
                                                       <div class="form__group" data-ng-if="editInterface.ip_assignment === 'static'">
                                                           <label for="subnet" class="two-col">Subnet</label>
                                                           <select name="subnet" class="three-col"
-                                                              ng-init="editInterface.subnet = subnets[0]"
+                                                              ng-init="editInterface.subnet = editInterface.defaultSubnet"
                                                               ng-model="editInterface.subnet"
-                                                              data-ng-change="subnetChanged(newInterface)"
+                                                              data-ng-change="subnetChanged(editInterface)"
                                                               data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets">
                                                           </select>
                                                       </div>
@@ -1225,8 +1225,8 @@
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input name="mac" type="text" class="three-col"
                                                           placeholder="00:00:00:00:00:00"
-                                                          data-ng-model="newInterface.mac_address"
-                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, true) }">
+                                                          data-ng-model="newInterface.macAddress"
+                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.macAddress, true) }">
                                                   </div>
                                               </fieldset>
                                               <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
