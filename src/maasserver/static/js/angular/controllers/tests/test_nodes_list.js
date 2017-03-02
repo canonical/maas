@@ -200,7 +200,7 @@ describe("NodesListController", function() {
                 'Deploying Ubuntu Xenial');
         });
 
-        it("returns status with release title when deployed", function() {
+        it("returns release title when deployed", function() {
             var controller = makeController();
             var node = {
                 status: "Deployed",
@@ -213,10 +213,10 @@ describe("NodesListController", function() {
                 ]
             };
             expect($scope.getStatusText(node)).toBe(
-                'Deployed Ubuntu Xenial');
+                'Ubuntu Xenial');
         });
 
-        it("returns status with release title without codename", function() {
+        it("returns release title without codename when deployed", function() {
             var controller = makeController();
             var node = {
                 status: "Deployed",
@@ -229,7 +229,7 @@ describe("NodesListController", function() {
                 ]
             };
             expect($scope.getStatusText(node)).toBe(
-                'Deployed Ubuntu 16.04 LTS');
+                'Ubuntu 16.04 LTS');
         });
     });
 

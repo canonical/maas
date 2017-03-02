@@ -619,7 +619,12 @@ angular.module('MAAS').controller('NodesListController', [
                 if(node.osystem === "ubuntu") {
                     releaseTitle = releaseTitle.split('"')[0].trim();
                 }
-                return node.status + ' ' + releaseTitle;
+                if(node.status === "Deployed") {
+                    return releaseTitle;
+                }
+                if(node.status === "Deploying") {
+                    return node.status + ' ' + releaseTitle;
+                }
             }
         };
 
