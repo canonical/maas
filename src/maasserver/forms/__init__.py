@@ -148,8 +148,9 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
 )
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
+from metadataserver.models import Script
 from netaddr import (
     IPNetwork,
     valid_ipv6,
@@ -1579,16 +1580,16 @@ class CommissioningScriptForm(Form):
         if pipes.quote(name) != name:
             raise forms.ValidationError(
                 "Name contains disallowed characters, e.g. space or quotes.")
-        if CommissioningScript.objects.filter(name=name).exists():
+        if Script.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 "A script with that name already exists.")
         return content
 
     def save(self, *args, **kwargs):
         content = self.cleaned_data['content']
-        CommissioningScript.objects.create(
-            name=content.name,
-            content=Bin(content.read()))
+        Script.objects.create(
+            name=content.name, script=Bin(content.read()),
+            script_type=SCRIPT_TYPE.COMMISSIONING)
 
 
 class UnconstrainedMultipleChoiceField(MultipleChoiceField):

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Commissioning Scripts Settings views."""
@@ -17,7 +17,7 @@ from django.views.generic import (
     DeleteView,
 )
 from maasserver.forms import CommissioningScriptForm
-from metadataserver.models import CommissioningScript
+from metadataserver.models import Script
 
 # The anchor of the commissioning scripts slot on the settings page.
 COMMISSIONING_SCRIPTS_ANCHOR = 'commissioning_scripts'
@@ -31,7 +31,7 @@ class CommissioningScriptDelete(DeleteView):
 
     def get_object(self):
         id = self.kwargs.get('id', None)
-        return get_object_or_404(CommissioningScript, id=id)
+        return get_object_or_404(Script, id=id)
 
     def get_next_url(self):
         return reverse('settings') + '#' + COMMISSIONING_SCRIPTS_ANCHOR

@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Settings views."""
@@ -54,7 +54,8 @@ from maasserver.utils.osystems import (
     get_release_from_osystem,
 )
 from maasserver.views import process_form
-from metadataserver.models import CommissioningScript
+from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.models import Script
 
 
 class AccountsView(DetailView):
@@ -260,7 +261,8 @@ def settings(request):
         return response
 
     # Commissioning scripts.
-    commissioning_scripts = CommissioningScript.objects.all()
+    commissioning_scripts = Script.objects.filter(
+        script_type=SCRIPT_TYPE.COMMISSIONING)
 
     # License keys w/ titles for osystem and distro_series
     osystems = list(gen_all_known_operating_systems())

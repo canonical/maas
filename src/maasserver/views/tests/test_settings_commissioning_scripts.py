@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver clusters views."""
@@ -19,11 +19,9 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.settings_commissioning_scripts import (
     COMMISSIONING_SCRIPTS_ANCHOR,
 )
-from metadataserver.models import CommissioningScript
-from testtools.matchers import (
-    ContainsAll,
-    MatchesStructure,
-)
+from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.models import Script
+from testtools.matchers import ContainsAll
 
 
 class CommissioningScriptListingTest(MAASServerTestCase):
@@ -31,18 +29,18 @@ class CommissioningScriptListingTest(MAASServerTestCase):
     def test_settings_contains_names_and_content_of_scripts(self):
         self.client_log_in(as_admin=True)
         scripts = {
-            factory.make_CommissioningScript(),
-            factory.make_CommissioningScript(),
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
             }
         response = self.client.get(reverse('settings'))
         names = [script.name for script in scripts]
-        contents = [script.content for script in scripts]
+        contents = [script.script.data for script in scripts]
         self.assertThat(response.content, ContainsAll([
             name.encode(settings.DEFAULT_CHARSET)
             for name in names
         ]))
         self.assertThat(response.content, ContainsAll([
-            content
+            content.encode()
             for content in contents
         ]))
 
@@ -55,8 +53,8 @@ class CommissioningScriptListingTest(MAASServerTestCase):
     def test_settings_contains_links_to_delete_scripts(self):
         self.client_log_in(as_admin=True)
         scripts = {
-            factory.make_CommissioningScript(),
-            factory.make_CommissioningScript(),
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
+            factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING),
             }
         links = get_content_links(self.client.get(reverse('settings')))
         script_delete_links = [
@@ -79,14 +77,14 @@ class CommissioningScriptDeleteTest(MAASServerTestCase):
 
     def test_can_delete_commissioning_script(self):
         self.client_log_in(as_admin=True)
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script()
         delete_link = reverse('commissioning-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
             (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
-            CommissioningScript.objects.filter(id=script.id).exists())
+            Script.objects.filter(id=script.id).exists())
 
 
 class CommissioningScriptUploadTest(MAASServerTestCase):
@@ -103,7 +101,6 @@ class CommissioningScriptUploadTest(MAASServerTestCase):
         self.assertEqual(
             (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
-        new_script = CommissioningScript.objects.get(name=name)
-        self.assertThat(
-            new_script,
-            MatchesStructure.byEquality(name=name, content=content))
+        new_script = Script.objects.get(name=name)
+        self.assertEquals(name, new_script.name)
+        self.assertEquals(content, new_script.script.data.encode())

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for commissioning forms."""
@@ -16,8 +16,7 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
-from metadataserver.models import CommissioningScript
-from testtools.matchers import MatchesStructure
+from metadataserver.models import Script
 
 
 class TestCommissioningFormForm(MAASServerTestCase):
@@ -72,15 +71,14 @@ class TestCommissioningScriptForm(MAASServerTestCase):
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
-        new_script = CommissioningScript.objects.get(name=name)
-        self.assertThat(
-            new_script,
-            MatchesStructure.byEquality(name=name, content=content))
+        new_script = Script.objects.get(name=name)
+        self.assertEquals(name, new_script.name)
+        self.assertEquals(content.decode(), new_script.script.data)
 
     def test_raises_if_duplicated_name(self):
         content = factory.make_string().encode('ascii')
         name = factory.make_name('filename')
-        factory.make_CommissioningScript(name=name)
+        factory.make_Script(name=name)
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertEqual(
