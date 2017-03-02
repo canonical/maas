@@ -1303,9 +1303,9 @@
             </div>
         </div>
     </div>
-    <div class="row" id="storage" data-ng-if="!isController && !isDevice">
+    <div class="row" id="storage">
         <div class="wrapper--inner" ng-controller="NodeStorageController">
-            <form>
+            <form data-ng-if="!isController && !isDevice">
                 <div class="twelve-col">
                     <h2 class="title">Storage</h2>
                 </div>
