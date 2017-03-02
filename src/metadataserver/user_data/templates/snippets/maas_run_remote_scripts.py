@@ -142,20 +142,37 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         stderr_name = '%s.err' % script['name']
         stderr_path = os.path.join(out_dir, stderr_name)
 
-        proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
-        capture_script_output(proc, combined_path, stdout_path, stderr_path)
-
-        if proc.returncode != 0:
+        try:
+            proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+        except OSError as e:
             fail_count += 1
-        args['exit_status'] = proc.returncode
-        args['files'] = {
-            script['name']: open(combined_path, 'rb').read(),
-            stdout_name: open(stdout_path, 'rb').read(),
-            stderr_name: open(stderr_path, 'rb').read(),
-        }
+            if isinstance(e.errno, int) and e.errno != 0:
+                args['exit_status'] = e.errno
+            else:
+                # 2 is the return code bash gives when it can't execute.
+                args['exit_status'] = 2
+            result = str(e).encode()
+            if result == b'':
+                result = b'Unable to execute script'
+            args['files'] = {
+                script['name']: result,
+                stderr_name: result,
+            }
+        else:
+            capture_script_output(
+                proc, combined_path, stdout_path, stderr_path)
+
+            if proc.returncode != 0:
+                fail_count += 1
+            args['exit_status'] = proc.returncode
+            args['files'] = {
+                script['name']: open(combined_path, 'rb').read(),
+                stdout_name: open(stdout_path, 'rb').read(),
+                stderr_name: open(stderr_path, 'rb').read(),
+            }
 
         signal_wrapper(**args, error='Finished %s [%d/%d]: %d' % (
-            script['name'], i, len(scripts), proc.returncode))
+            script['name'], i, len(scripts), args['exit_status']))
 
     # Signal failure after running commissioning or testing scripts so MAAS
     # transisitions the node into FAILED_COMMISSIONING or FAILED_TESTING.

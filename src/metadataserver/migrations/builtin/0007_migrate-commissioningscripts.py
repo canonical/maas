@@ -35,7 +35,4 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(commissioningscript_to_script),
-        migrations.DeleteModel(
-            name='CommissioningScript',
-        ),
     ]

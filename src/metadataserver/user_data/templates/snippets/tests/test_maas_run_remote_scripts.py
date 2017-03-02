@@ -198,6 +198,111 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             MockAnyCall(
                 None, None, 'FAILED', '1 scripts failed to run'))
 
+    def test_run_scripts_signals_failure_on_unexecutable_script(self):
+        # Regression test for LP:1669246
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        mock_popen.side_effect = OSError(8, 'Exec format error')
+        self.patch(maas_run_remote_scripts, 'capture_script_output')
+        scripts = self.make_scripts()
+        script = scripts[0]
+        self.make_script_output(scripts, scripts_dir)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                creds=None, url=None, status='WORKING', exit_status=8,
+                error='Finished %s [1/1]: 8' % script['name'],
+                script_result_id=script['script_result_id'],
+                script_version_id=script['script_version_id'],
+                files={
+                    script['name']: b'[Errno 8] Exec format error',
+                    '%s.err' % script['name']: b'[Errno 8] Exec format error',
+                }))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                None, None, 'FAILED', '1 scripts failed to run'))
+
+    def test_run_scripts_signals_failure_on_unexecutable_script_no_errno(self):
+        # Regression test for LP:1669246
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        mock_popen.side_effect = OSError()
+        self.patch(maas_run_remote_scripts, 'capture_script_output')
+        scripts = self.make_scripts()
+        script = scripts[0]
+        self.make_script_output(scripts, scripts_dir)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                creds=None, url=None, status='WORKING', exit_status=2,
+                error='Finished %s [1/1]: 2' % script['name'],
+                script_result_id=script['script_result_id'],
+                script_version_id=script['script_version_id'],
+                files={
+                    script['name']: b'Unable to execute script',
+                    '%s.err' % script['name']: b'Unable to execute script',
+                }))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                None, None, 'FAILED', '1 scripts failed to run'))
+
+    def test_run_scripts_signals_failure_on_unexecutable_script_baderrno(self):
+        # Regression test for LP:1669246
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        mock_popen = self.patch(maas_run_remote_scripts, 'Popen')
+        mock_popen.side_effect = OSError(0, 'Exec format error')
+        self.patch(maas_run_remote_scripts, 'capture_script_output')
+        scripts = self.make_scripts()
+        script = scripts[0]
+        self.make_script_output(scripts, scripts_dir)
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        # Returns one due to mock_run.returncode returning a MagicMock which is
+        # detected as a failed script run.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                creds=None, url=None, status='WORKING', exit_status=2,
+                error='Finished %s [1/1]: 2' % script['name'],
+                script_result_id=script['script_result_id'],
+                script_version_id=script['script_version_id'],
+                files={
+                    script['name']: b'[Errno 0] Exec format error',
+                    '%s.err' % script['name']: b'[Errno 0] Exec format error',
+                }))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                None, None, 'FAILED', '1 scripts failed to run'))
+
 
 class TestCaptureScriptOutput(MAASTestCase):
 
