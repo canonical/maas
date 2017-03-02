@@ -183,31 +183,31 @@ class Command(BaseCommand):
     @classmethod
     def _south_was_performed(cls, database):
         """Return True if the database had south migrations performed."""
-        cursor = connections[database].cursor()
-        cursor.execute(dedent("""\
-            SELECT c.relname
-            FROM pg_catalog.pg_class c
-            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-            WHERE n.nspname = 'public'
-            AND c.relname = 'south_migrationhistory'
-            AND c.relkind = 'r'
-            """))
-        output = cursor.fetchone()
-        if output is None:
-            return False
-        else:
-            return output[0] == 'south_migrationhistory'
+        with connections[database].cursor() as cursor:
+            cursor.execute(dedent("""\
+                SELECT c.relname
+                FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                AND c.relname = 'south_migrationhistory'
+                AND c.relkind = 'r'
+                """))
+            output = cursor.fetchone()
+            if output is None:
+                return False
+            else:
+                return output[0] == 'south_migrationhistory'
 
     @classmethod
     def _get_last_db_south_migration(cls, database, app):
         """Return the name of the last south migration in the database for
         the application."""
-        cursor = connections[database].cursor()
-        cursor.execute(
-            "SELECT migration FROM south_migrationhistory "
-            "WHERE app_name = %s ORDER BY id DESC LIMIT 1", [app])
-        output = cursor.fetchone()
-        return output[0]
+        with connections[database].cursor() as cursor:
+            cursor.execute(
+                "SELECT migration FROM south_migrationhistory "
+                "WHERE app_name = %s ORDER BY id DESC LIMIT 1", [app])
+            output = cursor.fetchone()
+            return output[0]
 
     @classmethod
     def _get_all_app_south_migrations(cls, app):
@@ -246,23 +246,24 @@ class Command(BaseCommand):
     @classmethod
     def _find_tables(cls, database, startwith):
         """Return list of tables that start with `startwith`."""
-        cursor = connections[database].cursor()
-        cursor.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_name LIKE %s",
-            [startwith + "%"])
-        return [
-            row[0]
-            for row in cursor.fetchall()
-        ]
+        with connections[database].cursor() as cursor:
+            cursor.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name LIKE %s",
+                [startwith + "%"])
+            return [
+                row[0]
+                for row in cursor.fetchall()
+            ]
 
     @classmethod
     def _rename_piston_to_piston3(cls, database, tables):
         """Rename piston to piston3."""
-        cursor = connections[database].cursor()
-        for table in tables:
-            cursor.execute(
-                "ALTER TABLE piston_%s RENAME TO piston3_%s" % (table, table))
+        with connections[database].cursor() as cursor:
+            for table in tables:
+                cursor.execute(
+                    "ALTER TABLE piston_%s RENAME TO piston3_%s" % (
+                        table, table))
 
     @classmethod
     def _perform_south_migrations(cls, script_path, database):
@@ -304,6 +305,33 @@ class Command(BaseCommand):
         """
         from maasserver import triggers
         triggers.register_all_triggers()
+
+    @classmethod
+    def _get_all_triggers(cls, database):
+        """Return list of all triggers in the database."""
+        with connections[database].cursor() as cursor:
+            cursor.execute(dedent("""\
+                SELECT tgname::text, pg_class.relname
+                FROM pg_trigger, pg_class
+                WHERE pg_trigger.tgrelid = pg_class.oid AND (
+                    pg_class.relname LIKE 'maasserver_%' OR
+                    pg_class.relname LIKE 'metadataserver_%') AND
+                    NOT pg_trigger.tgisinternal
+                ORDER BY tgname::text;
+                """))
+            return [
+                (row[0], row[1])
+                for row in cursor.fetchall()
+            ]
+
+    @classmethod
+    def _perform_trigger_removal(cls, database):
+        """Remove all of the triggers that MAAS has created previously."""
+        triggers = cls._get_all_triggers(database)
+        with connections[database].cursor() as cursor:
+            for trigger_name, table in triggers:
+                cursor.execute(
+                    "DROP TRIGGER IF EXISTS %s ON %s;" % (trigger_name, table))
 
     @classmethod
     def _drop_all_views(cls, database):
@@ -353,6 +381,12 @@ class Command(BaseCommand):
                     shutil.rmtree(tempdir)
                 if rc != 0:
                     sys.exit(rc)
+
+            # Remove all of the trigger that MAAS uses before performing the
+            # migrations. This ensures that no triggers are ran during the
+            # migrations and that only the updated triggers are installed in
+            # the database.
+            self._perform_trigger_removal(database)
 
             # Run the django builtin migrations.
             rc = self._perform_django_migrations(database)

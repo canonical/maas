@@ -39,6 +39,35 @@ def get_plpgsql_function_names(conn):
         return cursor.fetchall()
 
 
+def create_trigger_to_delete(conn, namespace):
+    with closing(conn.cursor()) as cursor:
+        cursor.execute(
+            "CREATE TABLE %s__test_table(id integer NOT NULL);" % (
+                namespace))
+        cursor.execute(
+            "CREATE FUNCTION test_table_procedure() "
+            "RETURNS trigger AS $$ "
+            "BEGIN RETURN NEW; END; "
+            "$$ LANGUAGE plpgsql;")
+        cursor.execute(
+            "CREATE TRIGGER test_table_trigger BEFORE INSERT "
+            "ON %s__test_table FOR EACH ROW "
+            "EXECUTE PROCEDURE test_table_procedure();" % namespace)
+    return "%s__test_table" % namespace
+
+
+def get_all_triggers(conn):
+    with closing(conn.cursor()) as cursor:
+        cursor.execute(
+            "SELECT tgname::text "
+            "FROM pg_trigger, pg_class "
+            "WHERE NOT pg_trigger.tgisinternal;")
+        return [
+            row[0]
+            for row in cursor.fetchall()
+        ]
+
+
 class TestDBUpgrade(MAASTestCase):
 
     dbname = "test_maas_dbupgrade"
@@ -94,3 +123,21 @@ class TestDBUpgrade(MAASTestCase):
         with closing(self.cluster.connect(self.dbname)) as conn:
             function_names = get_plpgsql_function_names(conn)
             self.assertThat(function_names, Not(HasLength(0)))
+
+    def test_dbupgrade_removes_maasserver_triggers(self):
+        self.cluster.createdb(self.dbname)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            trigger_name = create_trigger_to_delete(conn, "maasserver")
+        self.execute_dbupgrade(always_south=False)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            triggers = get_all_triggers(conn)
+            self.assertNotIn(trigger_name, triggers)
+
+    def test_dbupgrade_removes_metadataserver_triggers(self):
+        self.cluster.createdb(self.dbname)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            trigger_name = create_trigger_to_delete(conn, "metadataserver")
+        self.execute_dbupgrade(always_south=False)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            triggers = get_all_triggers(conn)
+            self.assertNotIn(trigger_name, triggers)
