@@ -1,7 +1,7 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test custom commissioning scripts."""
+"""Test hooks."""
 
 __all__ = []
 
@@ -9,7 +9,6 @@ import doctest
 import json
 import os.path
 import random
-from random import randint
 from textwrap import dedent
 
 from fixtures import FakeLogger
@@ -26,10 +25,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.utils import sample_binary_data
-from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
-from metadataserver.models.commissioningscript import (
+from metadataserver.builtin_scripts.hooks import (
     extract_router_mac_addresses,
     parse_cpuinfo,
     set_switch_tags,
@@ -48,26 +44,6 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
-
-
-def make_script_name(base_name=None, number=None):
-    """Make up a name for a commissioning script."""
-    if base_name is None:
-        base_name = 'script'
-    if number is None:
-        number = randint(0, 99)
-    return factory.make_name(
-        '%0.2d-%s' % (number, factory.make_name(base_name)))
-
-
-class TestCommissioningScript(MAASServerTestCase):
-
-    def test_scripts_may_be_binary(self):
-        name = make_script_name()
-        CommissioningScript.objects.create(
-            name=name, content=Bin(sample_binary_data))
-        stored_script = CommissioningScript.objects.get(name=name)
-        self.assertEqual(sample_binary_data, stored_script.content)
 
 
 lldp_output_template = """

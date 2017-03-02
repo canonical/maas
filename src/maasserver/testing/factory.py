@@ -136,7 +136,6 @@ from metadataserver.enum import (
 )
 from metadataserver.fields import Bin
 from metadataserver.models import (
-    CommissioningScript,
     Script,
     ScriptResult,
     ScriptSet,
@@ -1417,15 +1416,6 @@ class Factory(maastesting.factory.Factory):
             del items[missing_param]
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
-
-    def make_CommissioningScript(self, name=None, content=None):
-        if name is None:
-            name = self.make_name('script')
-        if content is None:
-            content = b'content:' + self.make_string().encode(
-                settings.DEFAULT_CHARSET)
-        return CommissioningScript.objects.create(
-            name=name, content=Bin(content))
 
     def make_Zone(self, name=None, description=None, nodes=None,
                   sortable_name=False):

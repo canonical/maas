@@ -1,12 +1,11 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Custom commissioning scripts, and their database backing."""
+"""Builtin script hooks, run upon receipt of ScriptResult"""
 
 
 __all__ = [
     'NODE_INFO_SCRIPTS',
-    'CommissioningScript',
     ]
 
 import json
@@ -14,18 +13,12 @@ import logging
 import math
 import re
 
-from django.db.models import (
-    CharField,
-    Model,
-)
 from lxml import etree
 from maasserver.models import Fabric
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
-from metadataserver import DefaultMeta
-from metadataserver.fields import BinaryField
 from provisioningserver.refresh.node_info_scripts import (
     LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
@@ -406,17 +399,3 @@ NODE_INFO_SCRIPTS['99-maas-03-network-interfaces']['hook'] = (
     update_node_network_information)
 NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)
-
-
-class CommissioningScript(Model):
-    """User-provided commissioning script.
-
-    Actually a commissioning "script" could be a binary, e.g. because a
-    hardware vendor supplied an update in the form of a binary executable.
-    """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
-    name = CharField(max_length=255, null=False, editable=True, unique=True)
-    content = BinaryField(null=False)

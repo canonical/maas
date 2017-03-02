@@ -73,6 +73,7 @@ from maasserver.preseed import (
 from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one
 from metadataserver import logger
+from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_TYPE,
@@ -85,7 +86,6 @@ from metadataserver.models import (
     Script,
     ScriptResult,
 )
-from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.user_data import generate_user_data_for_poweroff
 from metadataserver.vendor_data import get_vendor_data
 from piston3.utils import rc

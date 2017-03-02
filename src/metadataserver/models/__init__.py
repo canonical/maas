@@ -5,7 +5,6 @@
 """
 
 __all__ = [
-    'CommissioningScript',
     'NodeKey',
     'NodeUserData',
     'Script',
@@ -13,7 +12,6 @@ __all__ = [
     'ScriptSet',
 ]
 
-from metadataserver.models.commissioningscript import CommissioningScript
 from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.nodeuserdata import NodeUserData
 from metadataserver.models.script import Script

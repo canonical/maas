@@ -7,7 +7,7 @@ This combines the snippets of code in the `snippets` directory into
 the main commissioning script.
 
 Its contents are not customizable.  To inject custom code, use the
-:class:`CommissioningScript` model.
+:class:`Script` model.
 """
 
 __all__ = [

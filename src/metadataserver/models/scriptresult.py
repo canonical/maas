@@ -21,6 +21,7 @@ from metadataserver import (
     DefaultMeta,
     logger,
 )
+from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -30,7 +31,6 @@ from metadataserver.fields import (
     Bin,
     BinaryField,
 )
-from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.models.script import Script
 from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.events import EVENT_TYPES

@@ -131,18 +131,18 @@ class CommissioningScriptAPITest(APITestCase.ForUser):
         # It's not inconceivable that commissioning scripts contain
         # credentials of some sort.  There is no need for regular users
         # (consumers of the MAAS) to see these.
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.get(self.get_url(script.name))
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_PUT_is_forbidden(self):
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.put(
             self.get_url(script.name), {'content': factory.make_string()})
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
     def test_DELETE_is_forbidden(self):
-        script = factory.make_CommissioningScript()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.put(self.get_url(script.name))
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
