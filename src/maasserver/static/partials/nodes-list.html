@@ -902,7 +902,9 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-checked="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                         <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                     </td>
-                    <td class="table-col--24" aria-label="FQDN">{$ device.fqdn $}</td>
+                    <td class="table-col--24" aria-label="FQDN">
+                        <a href="#/node/device/{$ device.system_id $}">{$ device.fqdn $}</a>
+                    </td>
                     <td class="table-col--25" aria-label="MAC">
                         {$ device.primary_mac $}
                         <span class="extra-macs" data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>

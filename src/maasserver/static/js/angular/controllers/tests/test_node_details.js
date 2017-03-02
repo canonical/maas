@@ -42,6 +42,7 @@ describe("NodeDetailsController", function() {
     var webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
+        DevicesManager = $injector.get("DevicesManager");
         ControllersManager = $injector.get("ControllersManager");
         ZonesManager = $injector.get("ZonesManager");
         GeneralManager = $injector.get("GeneralManager");
@@ -137,6 +138,7 @@ describe("NodeDetailsController", function() {
             $routeParams: $routeParams,
             $location: $location,
             MachinesManager: MachinesManager,
+            DevicesManager: DevicesManager,
             ControllersManager: ControllersManager,
             ZonesManager: ZonesManager,
             GeneralManager: GeneralManager,
@@ -261,9 +263,9 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             $scope, [
-                MachinesManager, ControllersManager, ZonesManager,
-                GeneralManager, UsersManager, TagsManager, DomainsManager,
-                ServicesManager]);
+                MachinesManager, DevicesManager, ControllersManager,
+                ZonesManager, GeneralManager, UsersManager, TagsManager,
+                DomainsManager, ServicesManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {

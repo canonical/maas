@@ -46,7 +46,7 @@ describe("DevicesManager", function() {
         expect(DevicesManager._pk).toBe("system_id");
         expect(DevicesManager._handler).toBe("device");
         expect(Object.keys(DevicesManager._metadataAttributes)).toEqual(
-            ["owner", "tags", "zone"]);
+            ["owner", "subnets", "tags", "zone"]);
     });
 
     describe("createInferface", function() {

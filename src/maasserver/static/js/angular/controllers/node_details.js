@@ -6,13 +6,21 @@
 
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location', '$interval',
+    'DevicesManager',
     'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
     'UsersManager', 'TagsManager', 'DomainsManager', 'ManagerHelperService',
     'ServicesManager', 'ErrorService', 'ValidationService', function(
-        $scope, $rootScope, $routeParams, $location, $interval,
+        $scope, $rootScope, $routeParams, $location, $interval, DevicesManager,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
         ServicesManager, ErrorService, ValidationService) {
+
+        // Mapping of device.ip_assignment to viewable text.
+        var DEVICE_IP_ASSIGNMENT = {
+            external: "External",
+            dynamic: "Dynamic",
+            "static": "Static"
+        };
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -82,6 +90,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
             type: null,
             bmc_node_count: 0,
             parameters: {}
+        };
+
+        // Get the display text for device ip assignment type.
+        $scope.getDeviceIPAssignment = function(ipAssignment) {
+            return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
         // Events section.
@@ -674,9 +687,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.hasInvalidArchitecture = function() {
             if(angular.isObject($scope.node)) {
                 return (
-                    $scope.node.architecture === "" ||
-                    $scope.summary.architecture.options.indexOf(
-                        $scope.node.architecture) === -1);
+                    !$scope.isDevice && (
+                        $scope.node.architecture === "" ||
+                        $scope.summary.architecture.options.indexOf(
+                            $scope.node.architecture) === -1));
             } else {
                 return false;
             }
@@ -685,9 +699,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Return true if the current architecture selection is invalid.
         $scope.invalidArchitecture = function() {
             return (
-                $scope.summary.architecture.selected === "" ||
-                $scope.summary.architecture.options.indexOf(
-                    $scope.summary.architecture.selected) === -1);
+                !$scope.isDevice && (
+                    $scope.summary.architecture.selected === "" ||
+                    $scope.summary.architecture.options.indexOf(
+                        $scope.summary.architecture.selected) === -1));
         };
 
         // Return true if at least a rack controller is connected to the
@@ -1029,6 +1044,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
             MachinesManager,
+            DevicesManager,
             ControllersManager,
             ZonesManager,
             GeneralManager,
@@ -1040,11 +1056,19 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if('controller' === $routeParams.type) {
                 $scope.nodesManager = ControllersManager;
                 $scope.isController = true;
+                $scope.isDevice = false;
                 $scope.type_name = 'controller';
                 $scope.type_name_title = 'Controller';
+            }else if('device' === $routeParams.type) {
+                $scope.nodesManager = DevicesManager;
+                $scope.isController = false;
+                $scope.isDevice = true;
+                $scope.type_name = 'device';
+                $scope.type_name_title = 'Device';
             }else{
                 $scope.nodesManager = MachinesManager;
                 $scope.isController = false;
+                $scope.isDevice = false;
                 $scope.type_name = 'machine';
                 $scope.type_name_title = 'Machine';
             }
@@ -1062,6 +1086,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     }, function(error) {
                         ErrorService.raiseError(error);
                     });
+                activeNode = $scope.nodesManager.getActiveItem();
+            }
+            if($scope.isDevice) {
+                $scope.ip_assignment = activeNode.ip_assignment;
             }
 
             // Poll for architectures, hwe_kernels, and osinfo the whole

@@ -171,6 +171,28 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             EDIT: "edit"
         };
 
+        var IP_ASSIGNMENT = {
+            DYNAMIC: "dynamic",
+            EXTERNAL: "external",
+            STATIC: "static"
+        };
+
+        // Device ip assignment options.
+        $scope.ipAssignments = [
+            {
+                name: IP_ASSIGNMENT.EXTERNAL,
+                text: "External"
+            },
+            {
+                name: IP_ASSIGNMENT.DYNAMIC,
+                text: "Dynamic"
+            },
+            {
+                name: IP_ASSIGNMENT.STATIC,
+                text: "Static"
+            }
+        ];
+
         // Set the initial values for this scope.
         $scope.loaded = false;
         $scope.nodeHasLoaded = false;
@@ -542,6 +564,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // If the user is not the superuser, pretend it's not Ready.
                 return false;
             }
+            if ($scope.$parent.isDevice) {
+                // Devices are never Ready, for our purposes, for now.
+                return true;
+            }
             if ($scope.$parent.isController) {
                 // Controllers are always Ready, for our purposes.
                 return true;
@@ -563,8 +589,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // If the user is not the superuser, pretend it's not Ready.
                 return false;
             }
-            if ($scope.$parent.isController) {
-                // Controllers never in limited mode.
+            if ($scope.$parent.isController || $scope.$parent.isDevice) {
+                // Controllers and Devices are never in limited mode.
                 return false;
             }
             return (
@@ -581,9 +607,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // If the user is not a superuser, disable the networking panel.
                 return true;
             }
-            if ($scope.$parent.isController) {
+            if ($scope.$parent.isController || $scope.$parent.isDevice) {
                 // Never disable the full networking panel when its a
-                // controller.
+                // Controller or Device.
                 return false;
             }
             if (angular.isObject($scope.node) &&
@@ -772,18 +798,29 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.edit = function(nic) {
             $scope.selectedInterfaces = [$scope.getUniqueKey(nic)];
             $scope.selectedMode = SELECTION_MODE.EDIT;
-            $scope.editInterface = {
-                id: nic.id,
-                name: nic.name,
-                mac_address: nic.mac_address,
-                tags: angular.copy(nic.tags),
-                fabric: nic.fabric,
-                vlan: nic.vlan,
-                subnet: nic.subnet,
-                mode: nic.mode,
-                ip_address: nic.ip_address,
-                link_id: nic.link_id
-            };
+            if($scope.$parent.isDevice) {
+                $scope.editInterface = {
+                    id: nic.id,
+                    name: nic.name,
+                    mac_address: nic.mac_address,
+                    subnet: nic.subnet,
+                    ip_address: nic.ip_address,
+                    ip_assignment: nic.ip_assignment
+                };
+            } else {
+                $scope.editInterface = {
+                    id: nic.id,
+                    name: nic.name,
+                    mac_address: nic.mac_address,
+                    tags: angular.copy(nic.tags),
+                    fabric: nic.fabric,
+                    vlan: nic.vlan,
+                    subnet: nic.subnet,
+                    mode: nic.mode,
+                    ip_address: nic.ip_address,
+                    link_id: nic.link_id
+                };
+            }
         };
 
         // Called when the fabric is changed.
@@ -837,13 +874,24 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Save the following interface on the node.
         $scope.saveInterface = function(nic) {
-            var params = {
-                "name": nic.name,
-                "mac_address": nic.mac_address,
-                "tags": nic.tags.map(
-                    function(tag) { return tag.text; })
-            };
-            if(nic.vlan !== null) {
+            var params;
+            if($scope.$parent.isDevice) {
+                params = {
+                    "name": nic.name,
+                    "mac_address": nic.mac_address,
+                    "ip_assignment": nic.ip_assignment,
+                    "ip_address": nic.ip_address,
+                    "subnet": nic.subnet.id
+                };
+            } else {
+                params = {
+                    "name": nic.name,
+                    "mac_address": nic.mac_address,
+                    "tags": nic.tags.map(
+                        function(tag) { return tag.text; })
+                };
+            }
+            if(nic.vlan !== undefined && nic.vlan !== null) {
                 params.vlan = nic.vlan.id;
             } else {
                 params.vlan = null;
@@ -866,6 +914,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             var params = {
                 "mode": nic.mode
             };
+            if($scope.$parent.isDevice) {
+                params.ip_assignment = nic.ip_assignment;
+            }
             if(angular.isObject(nic.subnet)) {
                 params.subnet = nic.subnet.id;
             }
@@ -903,11 +954,17 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             // Make a copy so a change after clicking save is not saved.
             var nic = angular.copy($scope.editInterface);
-            $scope.saveInterface(nic).then(function() {
-                $scope.saveInterfaceLink(nic).then(function() {
+            if($scope.$parent.isDevice) {
+                $scope.saveInterface(nic).then(function() {
                     $scope.editCancel();
                 });
-            });
+            } else {
+                $scope.saveInterface(nic).then(function() {
+                    $scope.saveInterfaceLink(nic).then(function() {
+                        $scope.editCancel();
+                    });
+                });
+            }
         };
 
         // Return true if the interface delete confirm is being shown.
@@ -1110,9 +1167,18 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Perform the add action over the websocket.
         $scope.addInterface = function(type) {
-            if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
+            var nic;
+            if($scope.$parent.isDevice) {
+                nic = {
+                    id: $scope.newInterface.parent.id,
+                    ip_assignment: $scope.newInterface.ip_assignment,
+                    subnet: $scope.newInterface.subnet,
+                    ip_address: $scope.newInterface.ip_address
+                };
+                $scope.saveInterfaceLink(nic);
+            } else if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
                 // Add a link to the current interface.
-                var nic = {
+                nic = {
                     id: $scope.newInterface.parent.id,
                     mode: $scope.newInterface.mode,
                     subnet: $scope.newInterface.subnet,
@@ -1416,17 +1482,29 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.showCreatePhysical = function() {
             if($scope.selectedMode === SELECTION_MODE.NONE) {
                 $scope.selectedMode = SELECTION_MODE.CREATE_PHYSICAL;
-                $scope.newInterface = {
-                    name: getNextName("eth"),
-                    macAddress: "",
-                    macError: false,
-                    tags: [],
-                    errorMsg: null,
-                    fabric: $scope.fabrics[0],
-                    vlan: getDefaultVLAN($scope.fabrics[0]),
-                    subnet: null,
-                    mode: LINK_MODE.LINK_UP
-                };
+                if($scope.$parent.isDevice) {
+                    $scope.newInterface = {
+                        name: getNextName("eth"),
+                        macAddress: "",
+                        macError: false,
+                        tags: [],
+                        errorMsg: null,
+                        subnet: null,
+                        ip_assignment: IP_ASSIGNMENT.DYNAMIC
+                    };
+                } else {
+                    $scope.newInterface = {
+                        name: getNextName("eth"),
+                        macAddress: "",
+                        macError: false,
+                        tags: [],
+                        errorMsg: null,
+                        fabric: $scope.fabrics[0],
+                        vlan: getDefaultVLAN($scope.fabrics[0]),
+                        subnet: null,
+                        mode: LINK_MODE.LINK_UP
+                    };
+                }
             }
         };
 
@@ -1444,14 +1522,24 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                return;
             }
 
-            var params = {
-                name: $scope.newInterface.name,
-                tags: $scope.newInterface.tags.map(
-                    function(tag) { return tag.text; }),
-                mac_address: $scope.newInterface.macAddress,
-                vlan: $scope.newInterface.vlan.id,
-                mode: $scope.newInterface.mode
-            };
+            var params;
+            if($scope.$parent.isDevice) {
+                params = {
+                    name: $scope.newInterface.name,
+                    mac_address: $scope.newInterface.macAddress,
+                    ip_assignment: $scope.newInterface.ip_assignment,
+                    ip_address: $scope.newInterface.ip_address
+                };
+            } else {
+                params = {
+                    name: $scope.newInterface.name,
+                    tags: $scope.newInterface.tags.map(
+                        function(tag) { return tag.text; }),
+                    mac_address: $scope.newInterface.macAddress,
+                    vlan: $scope.newInterface.vlan.id,
+                    mode: $scope.newInterface.mode
+                };
+            }
             if(angular.isObject($scope.newInterface.subnet)) {
                 params.subnet = $scope.newInterface.subnet.id;
             }

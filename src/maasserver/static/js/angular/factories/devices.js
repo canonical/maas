@@ -11,16 +11,17 @@
 
 angular.module('MAAS').factory(
     'DevicesManager',
-    ['$q', '$rootScope', 'RegionConnection', 'Manager', function(
-            $q, $rootScope, RegionConnection, Manager) {
+    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', function(
+            $q, $rootScope, RegionConnection, NodesManager) {
 
         function DevicesManager() {
-            Manager.call(this);
+            NodesManager.call(this);
 
             this._pk = "system_id";
             this._handler = "device";
             this._metadataAttributes = {
                 "owner": null,
+                "subnets": null,
                 "tags": null,
                 "zone": function(device) {
                     return device.zone.name;
@@ -34,7 +35,7 @@ angular.module('MAAS').factory(
             });
         }
 
-        DevicesManager.prototype = new Manager();
+        DevicesManager.prototype = new NodesManager();
 
         // Create a device.
         DevicesManager.prototype.create = function(node) {
