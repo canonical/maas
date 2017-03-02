@@ -9,6 +9,10 @@ LP: #1636251    [1.9] resolv.conf search path doesn't match the domain for the h
 
 LP: #1603590    [1.9] MAAS does not allow link-local address for default gateway on ipv6 subnet.
 
+LP: #1657491    [1.9] Fix lease parser to properly remove released leases and update DNS zones when parsing finishes
+
+LP: #1553176    Fix issues when handling zonefile timestamps to match fixes from BIND.
+
 1.9.4
 =====
 
