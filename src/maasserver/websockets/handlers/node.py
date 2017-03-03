@@ -40,6 +40,7 @@ from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from metadataserver.enum import RESULT_TYPE
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -418,21 +419,31 @@ class NodeHandler(TimestampedModelHandler):
             return []
         ret = []
         for script_result in script_set:
-            if script_result.script is not None:
-                tags = ', '.join(script_result.script.tags)
-            else:
-                tags = ''
             # MAAS stores stdout, stderr, and the combined output. The
             # metadata API determine which field uploaded data should go
             # into based on the extention of the uploaded file. .out goes
             # to stdout, .err goes to stderr, otherwise its assumed the
             # data is combined. Curtin uploads the installation log as
             # install.log so its stored as a combined result. This ensures
-            # a result is always returned.
-            if script_result.stdout != b'':
-                output = script_result.stdout
-            else:
+            # a result is always returned. Always return the combined result
+            # for testing.
+            if (script_result.stdout == b'' or
+                    script_set.result_type == RESULT_TYPE.TESTING):
                 output = script_result.output
+            else:
+                output = script_result.stdout
+
+            # MAAS creates an empty script result when commissioning starts for
+            # tracking. Don't show the result in the UI until we actually have
+            # something to display.
+            if (script_set.result_type == RESULT_TYPE.INSTALLATION and
+                    output == b''):
+                continue
+
+            if script_result.script is not None:
+                tags = ', '.join(script_result.script.tags)
+            else:
+                tags = ''
             ret.append({
                 'id': script_result.id,
                 'name': script_result.name,
@@ -442,7 +453,8 @@ class NodeHandler(TimestampedModelHandler):
                 'output': output,
                 'updated': dehydrate_datetime(script_result.updated),
             })
-            if script_result.stderr != b'':
+            if (script_result.stderr != b'' and
+                    script_set.result_type != RESULT_TYPE.TESTING):
                 ret.append({
                     'id': script_result.id,
                     'name': '%s.err' % script_result.name,

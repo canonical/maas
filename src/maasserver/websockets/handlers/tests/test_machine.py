@@ -90,7 +90,10 @@ from maasserver.websockets.handlers.machine import (
 )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+)
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
@@ -755,7 +758,10 @@ class TestMachineHandler(MAASServerTestCase):
     def test_dehydrate_script_set(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})
-        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PASSED)
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED, script_set=script_set)
         self.assertEqual([
             {
                 'id': script_result.id,
@@ -774,14 +780,17 @@ class TestMachineHandler(MAASServerTestCase):
                 'tags': ', '.join(script_result.script.tags),
                 'output': script_result.stderr,
                 'updated': dehydrate_datetime(script_result.updated),
-            }], handler.dehydrate_script_set(script_result.script_set))
+            }], handler.dehydrate_script_set(script_set))
 
     def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.COMMISSIONING)
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, stdout=''.encode(),
-            stderr=''.encode(), output=factory.make_string().encode())
+            stderr=''.encode(), output=factory.make_string().encode(),
+            script_set=script_set)
         self.assertDictEqual(
             {
                 'id': script_result.id,
@@ -792,6 +801,34 @@ class TestMachineHandler(MAASServerTestCase):
                 'output': script_result.output,
                 'updated': dehydrate_datetime(script_result.updated),
             }, handler.dehydrate_script_set(script_result.script_set)[0])
+
+    def test_dehydrate_script_set_returns_combined_for_testing(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        script_set = factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING)
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED, script_set=script_set)
+        self.assertDictEqual(
+            {
+                'id': script_result.id,
+                'name': script_result.name,
+                'status': script_result.status,
+                'status_name': script_result.status_name,
+                'tags': ', '.join(script_result.script.tags),
+                'output': script_result.output,
+                'updated': dehydrate_datetime(script_result.updated),
+            }, handler.dehydrate_script_set(script_result.script_set)[0])
+
+    def test_dehydrate_script_set_returns_nothing_for_empty_installation(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        script_set = factory.make_ScriptSet(
+            result_type=RESULT_TYPE.INSTALLATION)
+        script_result = factory.make_ScriptResult(
+            stdout=b'', stderr=b'', output=b'',
+            status=SCRIPT_STATUS.PASSED, script_set=script_set)
+        self.assertItemsEqual(
+            [], handler.dehydrate_script_set(script_result.script_set))
 
     def test_dehydrate_events_only_includes_lastest_50(self):
         owner = factory.make_User()
