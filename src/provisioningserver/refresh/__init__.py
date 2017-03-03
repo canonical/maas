@@ -5,11 +5,15 @@
 import os
 import socket
 import stat
-import subprocess
+from subprocess import (
+    PIPE,
+    Popen,
+)
 import tempfile
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
+    capture_script_output,
     MD_VERSION,
     signal,
     SignalException,
@@ -123,7 +127,10 @@ def runscripts(scripts, url, creds, tmpdir):
     total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
-    for script_name, builtin_script in scripts.items():
+    out_dir = os.path.join(tmpdir, 'out')
+    os.makedirs(out_dir)
+    for script_name in sorted(scripts.keys()):
+        builtin_script = scripts[script_name]
         signal_wrapper(
             url, creds, 'WORKING', 'Starting %s [%d/%d]' %
             (script_name, current_script, total_scripts))
@@ -135,17 +142,48 @@ def runscripts(scripts, url, creds, tmpdir):
         st = os.stat(script_path)
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
-        # Execute script and store stdout/stderr
-        proc = subprocess.Popen(
-            script_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate()
+        # If we pipe the output of the subprocess and the subprocess also
+        # creates a subprocess we end up dead locking. Spawn a shell process
+        # and capture the output to the filesystem to avoid that and help with
+        # debugging.
+        combined_path = os.path.join(out_dir, script_name)
+        stdout_name = '%s.out' % script_name
+        stdout_path = os.path.join(out_dir, stdout_name)
+        stderr_name = '%s.err' % script_name
+        stderr_path = os.path.join(out_dir, stderr_name)
+
+        try:
+            proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+        except OSError as e:
+            if isinstance(e.errno, int) and e.errno != 0:
+                exit_status = e.errno
+            else:
+                # 2 is the return code bash gives when it can't execute.
+                exit_status = 2
+            result = str(e).encode()
+            if result == b'':
+                result = b'Unable to execute script'
+            files = {
+                script_name: result,
+                stderr_name: result,
+            }
+        else:
+            capture_script_output(
+                proc, combined_path, stdout_path, stderr_path)
+
+            exit_status = proc.returncode
+            files = {
+                script_name: open(combined_path, 'rb').read(),
+                stdout_name: open(stdout_path, 'rb').read(),
+                stderr_name: open(stderr_path, 'rb').read(),
+            }
+
         signal_wrapper(
             url, creds,
             "WORKING", "Finished %s [%d/%d]: %d" %
-            (script_name, current_script, total_scripts, proc.returncode),
-            files={script_name: stdout, "%s.err" % script_name: stderr},
-            exit_status=proc.returncode)
-        if proc.returncode != 0:
+            (script_name, current_script, total_scripts, exit_status),
+            files=files, exit_status=exit_status)
+        if exit_status != 0:
             failed_scripts.append(script_name)
         current_script += 1
     return failed_scripts

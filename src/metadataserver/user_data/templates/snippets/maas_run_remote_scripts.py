@@ -4,7 +4,6 @@ import copy
 from io import BytesIO
 import json
 import os
-import selectors
 from subprocess import (
     PIPE,
     Popen,
@@ -17,11 +16,6 @@ from threading import (
 )
 import time
 
-# See fcntl(2), re. F_SETPIPE_SZ. By requesting this many bytes from a pipe on
-# each read we can be sure that we are always draining its buffer completely.
-with open("/proc/sys/fs/pipe-max-size") as _pms:
-    PIPE_MAX_SIZE = int(_pms.read())
-
 
 try:
     from maas_api_helper import (
@@ -30,6 +24,7 @@ try:
         read_config,
         signal,
         SignalException,
+        capture_script_output,
     )
 except ImportError:
     # For running unit tests.
@@ -39,6 +34,7 @@ except ImportError:
         read_config,
         signal,
         SignalException,
+        capture_script_output,
     )
 
 
@@ -64,51 +60,6 @@ def download_and_extract_tar(url, creds, scripts_dir):
 
     with tarfile.open(mode='r|*', fileobj=binary) as tar:
         tar.extractall(scripts_dir)
-
-
-def capture_script_output(proc, combined_path, stdout_path, stderr_path):
-    """Capture stdout and stderr from `proc`.
-
-    Standard output is written to a file named by `stdout_path`, and standard
-    error is written to a file named by `stderr_path`. Both are also written
-    to a file named by `combined_path`.
-
-    If the given subprocess forks additional processes, and these write to the
-    same stdout and stderr, their output will be captured only as long as
-    `proc` is running.
-
-    :return: The exit code of `proc`.
-    """
-    with open(stdout_path, 'wb') as out, open(stderr_path, 'wb') as err:
-        with open(combined_path, 'wb') as combined:
-            with selectors.DefaultSelector() as selector:
-                selector.register(proc.stdout, selectors.EVENT_READ, out)
-                selector.register(proc.stderr, selectors.EVENT_READ, err)
-                while selector.get_map() and proc.poll() is None:
-                    # Select with a short timeout so that we don't tight loop.
-                    _select_script_output(selector, combined, 0.1)
-                else:
-                    # Process has finished or has closed stdout and stderr.
-                    # Process anything still sitting in the latter's buffers.
-                    _select_script_output(selector, combined, 0.0)
-
-    # Always wait for the process to finish.
-    return proc.wait()
-
-
-def _select_script_output(selector, combined, timeout):
-    """Helper for `capture_script_output`."""
-    for key, event in selector.select(timeout):
-        if event & selectors.EVENT_READ:
-            # Read from the _raw_ file. Ordinarily Python blocks until a
-            # read(n) returns n bytes or the stream reaches end-of-file,
-            # but here we only want to get what's there without blocking.
-            chunk = key.fileobj.raw.read(PIPE_MAX_SIZE)
-            if len(chunk) == 0:  # EOF
-                selector.unregister(key.fileobj)
-            else:
-                key.data.write(chunk)
-                combined.write(chunk)
 
 
 def run_scripts(url, creds, scripts_dir, out_dir, scripts):

@@ -236,7 +236,101 @@ class TestRefresh(MAASTestCase):
             exit_status=0,
             files={
                 script_name: b'test script\n',
+                '%s.out' % script_name: b'test script\n',
                 '%s.err' % script_name: b'',
+            },
+        ))
+
+    def test_refresh_signals_failure_on_unexecutable_script(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_failure(script_name)
+        mock_popen = self.patch(refresh, 'Popen')
+        mock_popen.side_effect = OSError(8, 'Exec format error')
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Finished %s [1/1]: 8' % script_name,
+            exit_status=8,
+            files={
+                script_name: b'[Errno 8] Exec format error',
+                '%s.err' % script_name: b'[Errno 8] Exec format error',
+            },
+        ))
+
+    def test_refresh_signals_failure_on_unexecutable_script_no_errno(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_failure(script_name)
+        mock_popen = self.patch(refresh, 'Popen')
+        mock_popen.side_effect = OSError()
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Finished %s [1/1]: 2' % script_name,
+            exit_status=2,
+            files={
+                script_name: b'Unable to execute script',
+                '%s.err' % script_name: b'Unable to execute script',
+            },
+        ))
+
+    def test_refresh_signals_failure_on_unexecutable_script_baderrno(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = factory.make_name('script_name')
+        self.patch_scripts_failure(script_name)
+        mock_popen = self.patch(refresh, 'Popen')
+        mock_popen.side_effect = OSError(0, 'Exec format error')
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'WORKING',
+            'Finished %s [1/1]: 2' % script_name,
+            exit_status=2,
+            files={
+                script_name: b'[Errno 0] Exec format error',
+                '%s.err' % script_name: b'[Errno 0] Exec format error',
             },
         ))
 

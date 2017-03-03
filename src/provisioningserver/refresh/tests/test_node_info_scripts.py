@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from functools import partial
 from inspect import getsource
 from io import StringIO
 import json
@@ -18,11 +17,13 @@ from subprocess import (
     check_output,
     STDOUT,
 )
+import sys
 from textwrap import dedent
 import time
 from unittest.mock import call
 
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -115,6 +116,8 @@ def isolate_function(function, namespace=None):
     source = dedent(getsource(function))
     modcode = compile(source, "isolated.py", "exec")
     namespace = {} if namespace is None else namespace
+    if '__file__' not in namespace:
+        namespace['__file__'] = __file__
     exec(modcode, namespace)
     return namespace[function.__name__]
 
@@ -373,9 +376,18 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         return output.encode("ascii")
 
     def call_gather_physical_block_devices(
-            self, dev_disk_byid='/dev/disk/by-id/'):
+            self, dev_disk_byid='/dev/disk/by-id/', file_path=None):
         output = StringIO()
-        namespace = {"print": partial(print, file=output)}
+
+        def neutered_print(*args, **kwargs):
+            file = kwargs.pop('file', None)
+            if file is not None and file == sys.stderr:
+                return
+            return print(*args, **kwargs, file=output)
+
+        namespace = {"print": neutered_print}
+        if file_path is not None:
+            namespace['__file__'] = file_path
         gather_physical_block_devices = isolate_function(
             node_info_module.gather_physical_block_devices, namespace)
         gather_physical_block_devices(dev_disk_byid=dev_disk_byid)
@@ -884,6 +896,17 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             for block_info in self.call_gather_physical_block_devices()
             ]
         self.assertEqual(names, device_names)
+
+    def test__quietly_exits_in_container(self):
+        script_dir = self.useFixture(TempDirectory()).path
+        script_path = os.path.join(script_dir, '00-maas-07-block-devices')
+        virtuality_result_path = os.path.join(script_dir, 'out')
+        os.makedirs(virtuality_result_path)
+        virtuality_result_path = os.path.join(
+            virtuality_result_path, '00-maas-02-virtuality')
+        open(virtuality_result_path, 'w').write('lxc\n')
+        self.assertItemsEqual(
+            [], self.call_gather_physical_block_devices(file_path=script_path))
 
 
 class TestVirtualityScript(MAASTestCase):

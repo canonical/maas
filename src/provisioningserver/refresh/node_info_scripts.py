@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin node info scripts."""
@@ -353,6 +353,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     import json
     import os
     import shlex
+    import sys
     from subprocess import check_output
 
     # XXX: Set LC_* and LANG environment variables to C.UTF-8 explicitly.
@@ -365,6 +366,30 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
                         os.path.join(dev_disk_byid, link), path):
                     return os.path.join(dev_disk_byid, link)
         return None
+
+    running_dir = os.path.dirname(__file__)
+    # Results are stored differently when being run as part of node
+    # commissioning vs controller refresh.
+    virtuality_result_paths = [
+        os.path.join(running_dir, '..', '..', 'out', '00-maas-02-virtuality'),
+        os.path.join(running_dir, 'out', '00-maas-02-virtuality'),
+    ]
+    # This script doesn't work in containers as they don't have any block
+    # device. If the virtuality script detected its in one don't report
+    # anything.
+    for virtuality_result_path in virtuality_result_paths:
+        if not os.path.exists(virtuality_result_path):
+            continue
+        virtuality_result = open(virtuality_result_path, 'r').read().strip()
+        # Names from man SYSTEMD-DETECT-VIRT(1)
+        if virtuality_result in {
+                'openvz', 'lxc', 'lxc-libvirt', 'systemd-nspawn', 'docker',
+                'rkt'}:
+            print(
+                'Unable to detect block devices while running in container!',
+                file=sys.stderr)
+            print('[]')
+            return
 
     # Grab the block devices from lsblk. Excludes RAM devices
     # (default for lsblk), floppy disks, and loopback devices.
