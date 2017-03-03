@@ -69,15 +69,4 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(noderesult_to_scriptresult),
-        migrations.AlterUniqueTogether(
-            name='noderesult',
-            unique_together=set([]),
-        ),
-        migrations.RemoveField(
-            model_name='noderesult',
-            name='node',
-        ),
-        migrations.DeleteModel(
-            name='NodeResult',
-        ),
     ]
