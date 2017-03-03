@@ -315,7 +315,8 @@ class Command(BaseCommand):
                 FROM pg_trigger, pg_class
                 WHERE pg_trigger.tgrelid = pg_class.oid AND (
                     pg_class.relname LIKE 'maasserver_%' OR
-                    pg_class.relname LIKE 'metadataserver_%') AND
+                    pg_class.relname LIKE 'metadataserver_%' OR
+                    pg_class.relname LIKE 'auth_%') AND
                     NOT pg_trigger.tgisinternal
                 ORDER BY tgname::text;
                 """))
@@ -325,7 +326,7 @@ class Command(BaseCommand):
             ]
 
     @classmethod
-    def _perform_trigger_removal(cls, database):
+    def _drop_all_triggers(cls, database):
         """Remove all of the triggers that MAAS has created previously."""
         triggers = cls._get_all_triggers(database)
         with connections[database].cursor() as cursor:
@@ -366,6 +367,12 @@ class Command(BaseCommand):
             # end of this process.
             self._drop_all_views(database)
 
+            # Remove all of the trigger that MAAS uses before performing the
+            # migrations. This ensures that no triggers are ran during the
+            # migrations and that only the updated triggers are installed in
+            # the database.
+            self._drop_all_triggers(database)
+
             # Run south migrations only if forced or needed.
             if always_south or self._south_needs_to_be_performed(database):
                 # Extract django16 and south for the subprocess.
@@ -381,12 +388,6 @@ class Command(BaseCommand):
                     shutil.rmtree(tempdir)
                 if rc != 0:
                     sys.exit(rc)
-
-            # Remove all of the trigger that MAAS uses before performing the
-            # migrations. This ensures that no triggers are ran during the
-            # migrations and that only the updated triggers are installed in
-            # the database.
-            self._perform_trigger_removal(database)
 
             # Run the django builtin migrations.
             rc = self._perform_django_migrations(database)

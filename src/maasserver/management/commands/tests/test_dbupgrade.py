@@ -141,3 +141,12 @@ class TestDBUpgrade(MAASTestCase):
         with closing(self.cluster.connect(self.dbname)) as conn:
             triggers = get_all_triggers(conn)
             self.assertNotIn(trigger_name, triggers)
+
+    def test_dbupgrade_removes_auth_triggers(self):
+        self.cluster.createdb(self.dbname)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            trigger_name = create_trigger_to_delete(conn, "auth")
+        self.execute_dbupgrade(always_south=False)
+        with closing(self.cluster.connect(self.dbname)) as conn:
+            triggers = get_all_triggers(conn)
+            self.assertNotIn(trigger_name, triggers)
