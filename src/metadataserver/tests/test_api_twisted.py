@@ -51,7 +51,11 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesSetwise,
 )
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
+from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 
@@ -122,15 +126,6 @@ class TestStatusHandlerResource(MAASTestCase):
             output)
         self.assertEquals(400, request.responseCode)
 
-    def test__render_POST_ignores_debug_messages(self):
-        resource = StatusHandlerResource(sentinel.status_worker)
-        request = self.make_request(content=json.dumps({
-            'level': 'DEBUG',
-        }).encode('ascii'))
-        output = resource.render_POST(request)
-        self.assertEquals(b'', output)
-        self.assertEquals(204, request.responseCode)
-
     def test__render_POST_validates_required_keys(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=json.dumps({}).encode('ascii'))
@@ -143,9 +138,12 @@ class TestStatusHandlerResource(MAASTestCase):
     def test__render_POST_queue_messages(self):
         status_worker = Mock()
         status_worker.queueMessage = Mock()
+        status_worker.queueMessage.return_value = succeed(None)
         resource = StatusHandlerResource(status_worker)
         message = {
-            'event_type': factory.make_name('type'),
+            'event_type': (
+                factory.make_name('type') + '/' +
+                factory.make_name('sub_type')),
             'origin': factory.make_name('origin'),
             'name': factory.make_name('name'),
             'description': factory.make_name('description'),
@@ -154,7 +152,7 @@ class TestStatusHandlerResource(MAASTestCase):
         request = self.make_request(
             content=json.dumps(message).encode('ascii'), token=token)
         output = resource.render_POST(request)
-        self.assertEquals(b'', output)
+        self.assertEquals(NOT_DONE_YET, output)
         self.assertEquals(204, request.responseCode)
         self.assertThat(
             status_worker.queueMessage, MockCalledOnceWith(token, message))
@@ -239,6 +237,43 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         self.assertThat(
             mock_processMessage,
             MockCalledOnceWith(sentinel.node, sentinel.message))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_queueMessages_processes_top_level_message_instantly(self):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        mock_processMessage = self.patch(worker, "_processMessage")
+        message = self.make_message()
+        message['event_type'] = 'finish'
+        nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
+        node, token = nodes_with_tokens[0]
+        yield worker.queueMessage(token.key, message)
+        self.assertThat(
+            mock_processMessage,
+            MockCalledOnceWith(node, message))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_queueMessages_processes_files_message_instantly(self):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        mock_processMessage = self.patch(worker, "_processMessage")
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
+        message = self.make_message()
+        message['files'] = [
+            {
+                "path": "sample.txt",
+                "encoding": "uuencode",
+                "compression": "bzip2",
+                "content": encoded_content
+            }
+        ]
+        nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
+        node, token = nodes_with_tokens[0]
+        yield worker.queueMessage(token.key, message)
+        self.assertThat(
+            mock_processMessage,
+            MockCalledOnceWith(node, message))
 
 
 def encode_as_base64(content):
@@ -540,15 +575,12 @@ class TestStatusWorkerService(MAASServerTestCase):
         for node_status in [
                 NODE_STATUS.DEFAULT,
                 NODE_STATUS.NEW,
-                NODE_STATUS.FAILED_COMMISSIONING,
                 NODE_STATUS.MISSING,
                 NODE_STATUS.READY,
                 NODE_STATUS.RESERVED,
-                NODE_STATUS.DEPLOYED,
                 NODE_STATUS.RETIRED,
                 NODE_STATUS.BROKEN,
                 NODE_STATUS.ALLOCATED,
-                NODE_STATUS.FAILED_DEPLOYMENT,
                 NODE_STATUS.RELEASING,
                 NODE_STATUS.FAILED_RELEASING,
                 NODE_STATUS.DISK_ERASING,

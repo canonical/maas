@@ -125,7 +125,16 @@ class OverlaySite(Site):
         if isinstance(result, NoResource) and self.underlay is not None:
             return call_underlay(request)
         else:
-            result.render = partial(wrap_render, result.render)
+            if hasattr(result.render, '__overlay_wrapped__'):
+                # Render method for the resulting resource has already been
+                # wrapped, so don't wrap it again.
+                return result
+            else:
+                # First time this resource has been returned. Wrap the render
+                # method so if the resource doesn't support that method
+                # it will be passed to the underlay.
+                result.render = partial(wrap_render, result.render)
+                result.render.__overlay_wrapped__ = True
             return result
 
 

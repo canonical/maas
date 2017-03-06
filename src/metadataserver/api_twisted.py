@@ -27,9 +27,11 @@ from metadataserver.api import (
 )
 from metadataserver.models import NodeKey
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.twisted import deferred
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.web.resource import Resource
+from twisted.web.server import NOT_DONE_YET
 
 
 log = LegacyLogger()
@@ -144,13 +146,6 @@ class StatusHandlerResource(Resource):
             logger.error(error_msg)
             return error_msg.encode('ascii')
 
-        # Filter the level early so less messages need to be processed.
-        level = message.get('level', None)
-        if level is not None and level == "DEBUG":
-            # Ignore all debug messages.
-            request.setResponseCode(204)
-            return b""
-
         # Ensure the other required keys exist.
         missing_keys = [
             key
@@ -166,9 +161,15 @@ class StatusHandlerResource(Resource):
             return error_msg.encode('ascii')
 
         # Queue the message with its authorization in the status worker.
-        self.worker.queueMessage(authorization, message)
-        request.setResponseCode(204)
-        return b""
+        d = self.worker.queueMessage(authorization, message)
+
+        # Finish the request after defer finishes.
+        def _finish(result, request):
+            request.setResponseCode(204)
+            request.finish()
+
+        d.addCallback(_finish, request)
+        return NOT_DONE_YET
 
 
 class StatusWorkerService(TimerService, object):
@@ -250,12 +251,17 @@ class StatusWorkerService(TimerService, object):
         results = {}
         for sent_file in message.get('files', []):
             # Set the result type according to the node's status.
-            if node.status == NODE_STATUS.TESTING:
+            if node.status in (
+                    NODE_STATUS.TESTING, NODE_STATUS.FAILED_TESTING):
                 script_set = node.current_testing_script_set
-            elif (node.status == NODE_STATUS.COMMISSIONING or
+            elif (node.status in (
+                    NODE_STATUS.COMMISSIONING,
+                    NODE_STATUS.FAILED_COMMISSIONING) or
                     node.node_type != NODE_TYPE.MACHINE):
                 script_set = node.current_commissioning_script_set
-            elif node.status == NODE_STATUS.DEPLOYING:
+            elif node.status in (
+                    NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED,
+                    NODE_STATUS.FAILED_DEPLOYMENT):
                 script_set = node.current_installation_script_set
             else:
                 raise ValueError(
@@ -336,6 +342,12 @@ class StatusWorkerService(TimerService, object):
         """Top-level events do not have slashes in their names."""
         return '/' not in activity_name
 
+    @transactional
+    def _processMessageNow(self, authorization, message):
+        node = NodeKey.objects.get_node_for_key(authorization)
+        return self._processMessage(node, message)
+
+    @deferred
     def queueMessage(self, authorization, message):
         """Queue message for processing."""
         # Ensure a timestamp exists in the message and convert it to a
@@ -347,4 +359,17 @@ class StatusWorkerService(TimerService, object):
                 message['timestamp'])
         else:
             message['timestamp'] = datetime.utcnow()
-        self.queue[authorization].append(message)
+
+        # Determine if this messsage needs to be processed immediately.
+        is_final_event = (
+            self._is_top_level(message['name']) and
+            message['event_type'] == 'finish')
+        has_files = len(message.get('files', [])) > 0
+        if is_final_event or has_files:
+            d = deferToDatabase(
+                self._processMessageNow, authorization, message)
+            d.addErrback(
+                log.err, "Failed to process status message instantly.")
+            return d
+        else:
+            self.queue[authorization].append(message)

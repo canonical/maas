@@ -145,6 +145,31 @@ class TestOverlaySite(MAASTestCase):
         resource.render(request)
         self.assertThat(mock_underlay_maas_render, MockCalledOnceWith(request))
 
+    def test_getResourceFor_doesnt_wrapper_render_if_already_wrapped(self):
+        underlay_root = Resource()
+        overlay_root = Resource()
+        overlay_maas = Resource()
+        mock_render = self.patch(overlay_maas, 'render')
+        mock_render.__overlay_wrapped__ = True
+        overlay_root.putChild(b'MAAS', overlay_maas)
+        site = OverlaySite(overlay_root)
+        site.underlay = Site(underlay_root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertIs(mock_render, resource.render)
+
+    def test_getResourceFor_does_wrapper_render_not_wrapped(self):
+        underlay_root = Resource()
+        overlay_root = Resource()
+        overlay_maas = Resource()
+        original_render = overlay_maas.render
+        overlay_root.putChild(b'MAAS', overlay_maas)
+        site = OverlaySite(overlay_root)
+        site.underlay = Site(underlay_root)
+        request = DummyRequest([b'MAAS'])
+        resource = site.getResourceFor(request)
+        self.assertIsNot(original_render, resource.render)
+
 
 class TestResourceOverlay(MAASTestCase):
 
