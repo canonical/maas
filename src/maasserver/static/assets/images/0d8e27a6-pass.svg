@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 42 (36781) - http://www.bohemiancoding.com/sketch -->
+    <title>pass</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="smoke-testing-status" transform="translate(-62.000000, -65.000000)">
+            <g id="pass" transform="translate(50.000000, 50.000000)">
+                <g transform="translate(12.000000, 15.000000)">
+                    <rect id="rect6708" x="0" y="9.99999989e-06" width="16" height="16"></rect>
+                    <circle id="circle6710" stroke="#0E8420" stroke-width="1.5" cx="8" cy="8.00001" r="7.2500086"></circle>
+                    <polygon id="path6712" fill="#0E8420" fill-rule="nonzero" points="11.80029 4.92345 11.73439 4.98115 6.99964 9.12837 4.22407 6.74743 3.38501 7.69631 7.00033 11.50002 12.5 5.71278 11.80029 4.92349"></polygon>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

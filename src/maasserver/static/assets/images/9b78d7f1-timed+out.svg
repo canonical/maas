@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" height="16px" width="16px" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 16 16"><!-- Generator: Sketch 42 (36781) - http://www.bohemiancoding.com/sketch -->
+ <title>timed out</title>
+ <desc>Created with Sketch.</desc>
+ <g id="Page-1" fill-rule="evenodd" fill="none">
+  <g id="smoke-testing-status" transform="translate(-62 -206)">
+   <g id="timed-out" transform="translate(50 191)">
+    <g transform="translate(12 15)">
+     <rect id="rect4970" y="0.00002" x="0" height="16" width="16"/>
+     <circle id="circle4972" stroke-width="1.5" cy="8" stroke="#E95420" cx="8" r="7.25"/>
+     <polyline id="path839" stroke="#E95420" stroke-width="2" points="11.8 11.8 7.9999 8 7.9999 3"/>
+    </g>
+   </g>
+  </g>
+ </g>
+</svg>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 42 (36781) - http://www.bohemiancoding.com/sketch -->
+    <title>pending</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="smoke-testing-status" transform="translate(-62.000000, -112.000000)">
+            <g id="pending" transform="translate(50.000000, 97.000000)">
+                <g transform="translate(12.000000, 15.000000)">
+                    <rect id="rect4970" x="0" y="1.99999999e-05" width="16" height="16"></rect>
+                    <circle id="circle4972" stroke="#F99B11" stroke-width="1.5" cx="8" cy="8.00002" r="7.2500086"></circle>
+                    <rect id="rect4980" fill="#F99B11" fill-rule="nonzero" x="7" y="7.00002" width="2" height="2"></rect>
+                    <rect id="rect4982" fill="#F99B11" fill-rule="nonzero" x="10" y="7.00002" width="2" height="2"></rect>
+                    <rect id="rect4984" fill="#F99B11" fill-rule="nonzero" x="4" y="7.00002" width="2" height="2"></rect>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

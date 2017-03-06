@@ -392,7 +392,7 @@ $(scss_output): bin/sass $(scss_theme) $(scss_input) $(scss_deps)
 
 $(scss_theme): prefix = include/nodejs
 $(scss_theme):
-	$(npm_install) --prefix $(prefix) maas-gui-vanilla-theme@1.2.0
+	$(npm_install) --prefix $(prefix) maas-gui-vanilla-theme@1.2.6
 
 clean-styles:
 	$(RM) $(scss_output)

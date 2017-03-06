@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 42 (36781) - http://www.bohemiancoding.com/sketch -->
+    <title>running</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="smoke-testing-status" transform="translate(-62.000000, -159.000000)">
+            <g id="running" transform="translate(50.000000, 144.000000)">
+                <g transform="translate(12.000000, 15.000000)">
+                    <rect id="rect6425" x="9.99999997e-06" y="9.99999989e-06" width="16" height="16"></rect>
+                    <circle id="circle6427" stroke="#0E8420" stroke-width="1.5" fill="#0E8420" fill-rule="nonzero" cx="8.00001" cy="8.00001" r="7.2500086"></circle>
+                    <polygon id="path6429" fill="#FFFFFF" fill-rule="nonzero" points="6.00002 12.00001 6.00002 4.00001 12.00002 8.00001"></polygon>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
