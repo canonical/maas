@@ -26,9 +26,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.builtin_scripts.hooks import (
+    add_switch_vendor_model_tags,
+    detect_switch_vendor_model,
+    determine_hardware_matches,
     extract_router_mac_addresses,
+    filter_modaliases,
+    get_dmi_data,
     parse_cpuinfo,
-    set_switch_tags,
+    retag_node_for_hardware_by_modalias,
+    set_tags_by_modalias,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -138,49 +144,329 @@ class TestSetVirtualTag(MAASServerTestCase):
             "%s" % node.system_id, logger.output)
 
 
-class TestSetSwitchTags(MAASServerTestCase):
+class TestDetectSwitchVendorModelDMIScenarios(MAASServerTestCase):
 
-    def getSwitchTag(self):
-        switch_tag, _ = Tag.objects.get_or_create(name='switch')
-        return switch_tag
+    scenarios = (
+        ('accton_wedge40_1', {
+            'modaliases': [
+                "dmi:svnIntel:pnEPGSVR"
+            ],
+            'dmi_data': frozenset({
+                'svnIntel',
+                'pnEPGSVR',
+            }),
+            'result': ('accton', 'wedge40')
+        }),
+        ('accton_wedge40_2', {
+            'modaliases': [
+                "dmi:svnJoytech:pnWedge-AC-F20-001329"
+            ],
+            'dmi_data': frozenset({
+                'svnJoytech',
+                'pnWedge-AC-F20-001329',
+            }),
+            'result': ('accton', 'wedge40')
+        }),
+        ('accton_wedge100', {
+            'modaliases': [
+                "dmi:svnTobefilledbyO.E.M.:pnTobefilledbyO.E.M.:"
+                "rnPCOM-B632VG-ECC-FB-ACCTON-D"
+            ],
+            'dmi_data': frozenset({
+                'svnTobefilledbyO.E.M.',
+                'pnTobefilledbyO.E.M.',
+                'rnPCOM-B632VG-ECC-FB-ACCTON-D',
+            }),
+            'result': ('accton', 'wedge100')
+        }),
+        ('mellanox_sn2100', {
+            'modaliases': [
+                'dmi:svnMellanoxTechnologiesLtd.:pn"MSN2100-CB2FO"'
+            ],
+            'dmi_data': frozenset({
+                'svnMellanoxTechnologiesLtd.',
+                'pn"MSN2100-CB2FO"',
+            }),
+            'result': ('mellanox', 'sn2100')
+        }),
+    )
 
-    def assertTagsEqual(self, node, tags):
-        self.assertItemsEqual(
-            tags, [tag.name for tag in node.tags.all()])
+    def test__detect_switch_vendor_model(self):
+        detected = detect_switch_vendor_model(self.dmi_data)
+        self.assertThat(detected, Equals(self.result))
 
-    def test_sets_switch_tags(self):
+    def test__get_dmi_data(self):
+        dmi_data = get_dmi_data(self.modaliases)
+        self.assertThat(dmi_data, Equals(self.dmi_data))
+
+
+class TestDetectSwitchVendorModel(MAASServerTestCase):
+
+    def test__detect_switch_vendor_model_returns_none_by_default(self):
+        detected = detect_switch_vendor_model(set())
+        self.assertThat(detected, Equals((None, None)))
+
+
+class TestFilterModaliases(MAASServerTestCase):
+
+    scenarios = (
+        ('wildcard_multiple_match', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+                "beverage:typeTea:variantProperBritish",
+            ],
+            'candidates': [
+                'beverage:typeCoffee:*',
+            ],
+            'result': [
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+            ]
+        }),
+        ('multiple_wildcard_match', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+                "beverage:typeTea:variantProperBritish",
+            ],
+            'candidates': [
+                'os:vendorCanonical:*',
+                'os:*:productUbuntu:*',
+                'beverage:*ProperBritish'
+            ],
+            'result': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "beverage:typeTea:variantProperBritish",
+            ]
+        }),
+        ('exact_match', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+                "beverage:typeTea:variantProperBritish",
+            ],
+            'candidates': [
+                'os:vendorCanonical:productUbuntu:version14.04',
+            ],
+            'result': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+            ]
+        }),
+    )
+
+    def test__filter_modaliases(self):
+        matches = filter_modaliases(
+            self.modaliases, self.candidates)
+        self.assertThat(matches, Equals(self.result))
+
+
+class TestDetectHardware(MAASServerTestCase):
+
+    scenarios = (
+        ('caffeine_fueled_ubuntu_classic', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+                "beverage:typeTea:variantProperBritish",
+            ],
+            'expected_match_indexes': [0, 1, 2],
+            'expected_ruled_out_indexes': [3],
+        }),
+        ('caffeine_fueled_ubuntu_core', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntuCore:version16.04",
+                "beverage:typeCoffee:variantEspresso",
+                "beverage:typeCoffee:variantCappuccino",
+                "beverage:typeTea:variantProperBritish",
+            ],
+            'expected_match_indexes': [0, 1, 3],
+            'expected_ruled_out_indexes': [2],
+        }),
+        ('ubuntu_classic', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntu:version14.04",
+            ],
+            'expected_match_indexes': [1, 2],
+            'expected_ruled_out_indexes': [0, 3],
+        }),
+        ('ubuntu_core', {
+            'modaliases': [
+                "os:vendorCanonical:productUbuntuCore:version16.04",
+            ],
+            'expected_match_indexes': [1, 3],
+            'expected_ruled_out_indexes': [0, 2],
+        }),
+        ('none_of_the_above', {
+            'modaliases': [
+                "xos:vendorCanonical:productUbuntuCore:version16.04",
+                "xbeverage:typeCoffee:variantEspresso",
+                "xbeverage:typeCoffee:variantCappuccino",
+                "xbeverage:typeTea:variantProperBritish",
+            ],
+            'expected_match_indexes': [],
+            'expected_ruled_out_indexes': [0, 1, 2, 3],
+        }),
+
+    )
+
+    hardware_database = [
+        {
+            'modaliases': [
+                'beverage:typeCoffee:*',
+                'beverage:typeTea:*',
+            ],
+            'tag': 'caffeine-fueled-sprint',
+            'comment': "Caffeine-fueled sprint."
+        },
+        {
+            'modaliases': [
+                'os:vendorCanonical:productUbuntu*',
+            ],
+            'tag': 'ubuntu',
+            'comment': "Ubuntu"
+        },
+        {
+            'modaliases': [
+                'os:vendorCanonical:productUbuntu:*',
+            ],
+            'tag': 'ubuntu-classic',
+            'comment': "Ubuntu Classic"
+        },
+        {
+            'modaliases': [
+                'os:vendorCanonical:productUbuntuCore:*',
+            ],
+            'tag': 'ubuntu-core',
+            'comment': "Ubuntu Core"
+        },
+    ]
+
+    def test__determine_hardware_matches(self):
+        discovered, ruled_out = determine_hardware_matches(
+            self.modaliases, self.hardware_database)
+        expected_matches = [
+            self.hardware_database[index].copy()
+            for index in self.expected_match_indexes
+        ]
+        # Note: determine_hardware_matches() adds the matches as informational.
+        for item in discovered:
+            self.expectThat(item['matches'], Equals(filter_modaliases(
+                self.modaliases, item['modaliases'])))
+            # Delete this so we can compare the matches to what was expected.
+            del item['matches']
+        expected_ruled_out = [
+            self.hardware_database[index]
+            for index in self.expected_ruled_out_indexes
+        ]
+        self.assertThat(discovered, Equals(expected_matches))
+        self.assertThat(ruled_out, Equals(expected_ruled_out))
+
+    def test__retag_node_for_hardware_by_modalias__precreate_parent(self):
         node = factory.make_Node()
-        self.assertTagsEqual(node, [])
-        set_switch_tags(node, b"accton-wedge100", 0)
-        self.assertTagsEqual(node, ["switch", "accton-wedge100"])
+        parent_tag = factory.make_Tag()
+        parent_tag_name = parent_tag.name
+        # Need to pre-create these so the code can remove them.
+        expected_removed = set([
+            factory.make_Tag(name=self.hardware_database[index]['tag'])
+            for index in self.expected_ruled_out_indexes])
+        for tag in expected_removed:
+            node.tags.add(tag)
+        added, removed = retag_node_for_hardware_by_modalias(
+            node, self.modaliases, parent_tag_name, self.hardware_database)
+        expected_added = set([
+            Tag.objects.get(name=self.hardware_database[index]['tag'])
+            for index in self.expected_match_indexes])
+        if len(expected_added) > 0:
+            expected_added.add(parent_tag)
+        else:
+            expected_removed.add(parent_tag)
+        self.assertThat(added, Equals(expected_added))
+        self.assertThat(removed, Equals(expected_removed))
+        # Run again to confirm that we added the same tags.
+        added, removed = retag_node_for_hardware_by_modalias(
+            node, self.modaliases, parent_tag_name, self.hardware_database)
+        self.assertThat(added, Equals(expected_added))
 
-    def test_removes_switch_tag(self):
+    def test__retag_node_for_hardware_by_modalias__adds_parent_tag(self):
         node = factory.make_Node()
-        node.tags.add(self.getSwitchTag())
-        self.assertTagsEqual(node, ["switch"])
-        set_switch_tags(node, b"none", 0)
-        self.assertTagsEqual(node, [])
+        parent_tag_name = "parent-tag-name"
+        added, _ = retag_node_for_hardware_by_modalias(
+            node, self.modaliases, parent_tag_name, self.hardware_database)
+        # Test that the parent tag was created if the hardware matched.
+        if len(added) > 0:
+            self.assertIsNotNone(Tag.objects.get(name=parent_tag_name))
 
-    def test_output_not_containing_switch_does_not_set_tag(self):
-        logger = self.useFixture(FakeLogger())
-        node = factory.make_Node()
-        self.assertTagsEqual(node, [])
-        set_switch_tags(node, b"", 0)
-        self.assertTagsEqual(node, [])
-        self.assertIn(
-            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
-            "for node %s" % node.system_id, logger.output)
 
-    def test_output_not_containing_switch_does_not_remove_tag(self):
-        logger = self.useFixture(FakeLogger())
+class TestAddSwitchVendorModelTags(MAASServerTestCase):
+
+    def test_sets_wedge40_kernel_opts(self):
         node = factory.make_Node()
-        node.tags.add(self.getSwitchTag())
-        self.assertTagsEqual(node, ["switch"])
-        set_switch_tags(node, b"", 0)
-        self.assertTagsEqual(node, ["switch"])
-        self.assertIn(
-            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
-            "for node %s" % node.system_id, logger.output)
+        add_switch_vendor_model_tags(node, 'accton', 'wedge40')
+        tags = set(node.tags.all().values_list('name', flat=True))
+        self.assertThat(tags, Equals({'accton', 'wedge40'}))
+        tag = Tag.objects.get(name="wedge40")
+        self.assertThat(tag.kernel_opts, Equals(
+            "console=tty0 console=ttyS1,57600n8"))
+
+    def test_sets_wedge100_kernel_opts(self):
+        node = factory.make_Node()
+        add_switch_vendor_model_tags(node, 'accton', 'wedge100')
+        tags = set(node.tags.all().values_list('name', flat=True))
+        self.assertThat(tags, Equals({'accton', 'wedge100'}))
+        tag = Tag.objects.get(name="wedge100")
+        self.assertThat(tag.kernel_opts, Equals(
+            "console=tty0 console=ttyS4,57600n8"))
+
+
+class TestSetTagsByModalias(MAASServerTestCase):
+
+    scenarios = (
+        ('switch_trident2', {
+            'modaliases':
+                b'pci:xxx\n'
+                b'pci:v000014E4d0000B850sv0sd1bc2sc3i4\n'
+                b'dmi:svnJoytech:pnWedge-AC-F20-001329\n'
+                b'pci:yyy\n',
+            'expected_tags': {
+                'accton',
+                'switch',
+                'bcm-trident2-asic',
+                'wedge40',
+            },
+        }),
+        ('switch_tomahawk', {
+            'modaliases':
+                b'pci:xxx\n'
+                b'pci:v000014E4d0000B960sv0sd1bc2sc3i4\n'
+                b"dmi:svnTobefilledbyO.E.M.:pnTobefilledbyO.E.M.:"
+                b"rnPCOM-B632VG-ECC-FB-ACCTON-D\n"
+                b'pci:yyy\n',
+            'expected_tags': {
+                'accton',
+                'switch',
+                'bcm-tomahawk-asic',
+                'wedge100',
+            },
+        }),
+        ('no_matcj', {
+            'modaliases':
+                b'pci:xxx\n'
+                b'pci:yyy\n',
+            'expected_tags': set(),
+        }),
+    )
+
+    def test__tags_node_appropriately(self):
+        node = factory.make_Node()
+        set_tags_by_modalias(node, self.modaliases, 0)
+        tags = set(node.tags.all().values_list('name', flat=True))
+        self.assertThat(tags, Equals(self.expected_tags))
 
 
 class TestUpdateHardwareDetails(MAASServerTestCase):

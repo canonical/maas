@@ -3,11 +3,11 @@
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
 
-
 __all__ = [
     'NODE_INFO_SCRIPTS',
     ]
 
+import fnmatch
 import json
 import logging
 import math
@@ -19,7 +19,9 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
+from maasserver.utils.orm import get_one
 from provisioningserver.refresh.node_info_scripts import (
+    LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
@@ -38,6 +40,34 @@ _xpath_memory_bytes = """\
             /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
     div 1024 div 1024
 """
+
+SWITCH_TAG_NAME = "switch"
+SWITCH_HARDWARE = [
+    # Seen on Facebook Wedge 40 switch:
+    #     pci:v000014E4d0000B850sv000014E4sd0000B850bc02sc00i00
+    #     (Broadcom Trident II ASIC)
+    {
+        'modaliases': [
+            'pci:v000014E4d0000B850sv*sd*bc*sc*i*',
+        ],
+        'tag': 'bcm-trident2-asic',
+        'comment':
+            'Broadcom High-Capacity StrataXGS "Trident II" '
+            'Ethernet Switch ASIC'
+    },
+    # Seen on Facebook Wedge 100 switch:
+    #     pci:v000014E4d0000B960sv000014E4sd0000B960bc02sc00i00
+    #     (Broadcom Tomahawk ASIC)
+    {
+        'modaliases': [
+            'pci:v000014E4d0000B960sv*sd*bc*sc*i*',
+        ],
+        'tag': 'bcm-tomahawk-asic',
+        'comment':
+            'Broadcom High-Density 25/100 StrataXGS "Tomahawk" '
+            'Ethernet Switch ASIC'
+    },
+]
 
 
 def _create_default_physical_interface(node, ifname, mac):
@@ -71,9 +101,12 @@ def update_node_network_information(node, output, exit_status):
     anything.
 
     """
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error(
+            "%s: node network information script failed with status: %s." % (
+                node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
 
     # Skip network configuration if set by the user.
     if node.skip_networking:
@@ -130,9 +163,11 @@ def update_node_network_interface_tags(node, output, exit_status):
     anything.
 
     """
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error("%s: SR-IOV detection script failed with status: %s." % (
+            node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
 
     decoded_output = output.decode("ascii")
     for iface in PhysicalInterface.objects.filter(node=node):
@@ -140,34 +175,6 @@ def update_node_network_interface_tags(node, output, exit_status):
             if 'sriov' not in str(iface.tags):
                 iface.tags.append("sriov")
                 iface.save()
-
-
-def set_switch_tags(node, output, exit_status):
-    """Process the results of `SWITCH_DISCOVERY_SCRIPT`.
-
-    This adds or removes the *switch* tag from the node, depending on
-    whether a virtualization type is listed.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    assert isinstance(output, bytes)
-    if exit_status != 0:
-        return
-    decoded_output = output.decode('ascii').strip()
-    switch_tag, _ = Tag.objects.get_or_create(name='switch')
-    if 'none' in decoded_output:
-        node.tags.remove(switch_tag)
-    elif decoded_output == '':
-        logger.warning(
-            "No switch type reported in SWITCH_DISCOVERY_SCRIPT output "
-            "for node %s", node.system_id)
-    else:
-        node.tags.add(switch_tag)
-        # Since we have discovered this to be a switch, we add a tag
-        # based on the returned output, which is the switch model.
-        model_tag, _ = Tag.objects.get_or_create(name=decoded_output)
-        node.tags.add(model_tag)
 
 
 def update_hardware_details(node, output, exit_status):
@@ -180,9 +187,12 @@ def update_hardware_details(node, output, exit_status):
     If `exit_status` is non-zero, this function returns without doing
     anything.
     """
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error(
+            "%s: lshw script failed with status: %s." % (
+                node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
     try:
         doc = etree.XML(output)
     except etree.XMLSyntaxError:
@@ -199,9 +209,12 @@ def update_hardware_details(node, output, exit_status):
 
 def parse_cpuinfo(node, output, exit_status):
     """Parse the output of /proc/cpuinfo."""
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error(
+            "%s: cpuinfo script failed with status: %s." % (
+                node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
     output = output.decode('ascii')
     cpu_count = len(
         re.findall(
@@ -220,9 +233,12 @@ def set_virtual_tag(node, output, exit_status):
     If `exit_status` is non-zero, this function returns without doing
     anything.
     """
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error(
+            "%s: virtual machine detection script failed with status: %s." % (
+                node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
     decoded_output = output.decode('ascii').strip()
     tag, _ = Tag.objects.get_or_create(name='virtual')
     if 'none' in decoded_output:
@@ -294,9 +310,12 @@ def update_node_physical_block_devices(node, output, exit_status):
     If `exit_status` is non-zero, this function returns without doing
     anything.
     """
-    assert isinstance(output, bytes)
     if exit_status != 0:
+        logger.error(
+            "%s: physical block device detection script failed with status: "
+            "%s." % (node.hostname, exit_status))
         return
+    assert isinstance(output, bytes)
 
     # Skip storage configuration if set by the user.
     if node.skip_storage:
@@ -388,14 +407,242 @@ def update_node_physical_block_devices(node, output, exit_status):
             id__in=delete_block_device_ids).delete()
 
 
+def set_tags_by_modalias(node, output: bytes, exit_status):
+    """Tags the node based on discovered hardware, determined by modaliases.
+
+    :param node: The node whose tags to set.
+    :param output: Output from the LIST_MODALIASES_SCRIPT
+        (one modalias per line).
+    :param exit_status: The exit status of the commissioning script.
+    """
+    if exit_status != 0:
+        logger.error("%s: modalias discovery script failed with status: %s" % (
+            node.hostname, exit_status))
+        return
+    assert isinstance(output, bytes)
+    modaliases = output.decode('utf-8').splitlines()
+    switch_tags_added, _ = retag_node_for_hardware_by_modalias(
+        node, modaliases, SWITCH_TAG_NAME, SWITCH_HARDWARE)
+    if len(switch_tags_added) > 0:
+        dmi_data = get_dmi_data(modaliases)
+        vendor, model = detect_switch_vendor_model(dmi_data)
+        add_switch_vendor_model_tags(node, vendor, model)
+
+
+def add_switch_vendor_model_tags(node, vendor, model):
+    if vendor is not None:
+        vendor_tag, _ = Tag.objects.get_or_create(name=vendor)
+        node.tags.add(vendor_tag)
+        logger.info(
+            "%s: Added vendor tag '%s' for detected switch hardware." % (
+                node.hostname, vendor))
+    if model is not None:
+        kernel_opts = None
+        if model == "wedge40":
+            kernel_opts = "console=tty0 console=ttyS1,57600n8"
+        elif model == "wedge100":
+            kernel_opts = "console=tty0 console=ttyS4,57600n8"
+        model_tag, _ = Tag.objects.get_or_create(
+            name=model, defaults={
+                'kernel_opts': kernel_opts
+            })
+        node.tags.add(model_tag)
+        logger.info(
+            "%s: Added model tag '%s' for detected switch hardware." % (
+                node.hostname, model))
+
+
+def detect_switch_vendor_model(dmi_data):
+    # This is based on:
+    #    https://github.com/lool/sonic-snap/blob/master/common/id-switch
+    vendor = None
+    if "svnIntel" in dmi_data and "pnEPGSVR" in dmi_data:
+        # XXX this seems like a suspicious assumption.
+        vendor = "accton"
+    elif "svnJoytech" in dmi_data and "pnWedge-AC-F20-001329" in dmi_data:
+        vendor = "accton"
+    elif "svnMellanoxTechnologiesLtd." in dmi_data:
+        vendor = "mellanox"
+    elif "svnTobefilledbyO.E.M." in dmi_data:
+        if "rnPCOM-B632VG-ECC-FB-ACCTON-D" in dmi_data:
+            vendor = "accton"
+    # Now that we know the manufacturer, see if we can identify the model.
+    model = None
+    if vendor == "mellanox":
+        if 'pn"MSN2100-CB2FO"' in dmi_data:
+            model = "sn2100"
+    elif vendor == "accton":
+        if 'pnEPGSVR' in dmi_data:
+            model = "wedge40"
+        elif 'pnWedge-AC-F20-001329' in dmi_data:
+            model = "wedge40"
+        elif 'pnTobefilledbyO.E.M.' in dmi_data:
+            if 'rnPCOM-B632VG-ECC-FB-ACCTON-D' in dmi_data:
+                model = "wedge100"
+    return vendor, model
+
+
+def get_dmi_data(modaliases):
+    """Given the list of modaliases, returns the set of DMI data.
+
+    An empty set will be returned if no DMI data could be found.
+
+    The DMI data will be stripped of whitespace and have a prefix indicating
+    what value they represent. Prefixes can be found in
+    drivers/firmware/dmi-id.c in the Linux source:
+
+        { "bvn", DMI_BIOS_VENDOR },
+        { "bvr", DMI_BIOS_VERSION },
+        { "bd",  DMI_BIOS_DATE },
+        { "svn", DMI_SYS_VENDOR },
+        { "pn",  DMI_PRODUCT_NAME },
+        { "pvr", DMI_PRODUCT_VERSION },
+        { "rvn", DMI_BOARD_VENDOR },
+        { "rn",  DMI_BOARD_NAME },
+        { "rvr", DMI_BOARD_VERSION },
+        { "cvn", DMI_CHASSIS_VENDOR },
+        { "ct",  DMI_CHASSIS_TYPE },
+        { "cvr", DMI_CHASSIS_VERSION },
+
+    The following is an example of what the set might look like:
+
+        {'bd09/18/2014',
+         'bvnAmericanMegatrendsInc.',
+         'bvrMF1_2A04',
+         'ct0',
+         'cvnIntel',
+         'cvrTobefilledbyO.E.M.',
+         'pnEPGSVR',
+         'pvrTobefilledbyO.E.M.',
+         'rnTobefilledbyO.E.M.',
+         'rvnTobefilledbyO.E.M.',
+         'rvrTobefilledbyO.E.M.',
+         'svnIntel'}
+
+    :return: set
+    """
+    for modalias in modaliases:
+        if modalias.startswith("dmi:"):
+            return frozenset(
+                [data for data in modalias.split(':')[1:] if len(data) > 0])
+    return frozenset()
+
+
+def filter_modaliases(modaliases_discovered, candidates):
+    """Determines which candidate modaliases match what was discovered.
+
+    :param modaliases_discovered: The list of modaliases found on the node.
+    :param candidates: The candidate modaliases to match against. This
+        parameter must be iterable. Wildcards are accepted.
+    :return: The list of modaliases on the node matching the candidate(s).
+    """
+    matches = []
+    for candidate in candidates:
+        new_matches = fnmatch.filter(
+            modaliases_discovered, candidate)
+        matches.extend(new_matches)
+    return matches
+
+
+def determine_hardware_matches(modaliases, hardware_descriptors):
+    """Determines which hardware descriptors match the given modaliases.
+
+    :param modaliases: List of modaliases found on the node.
+    :param hardware_descriptors: Dictionary of information about each hardware
+        component that can be discovered. This method requires a 'modaliases'
+        entry to be present (with a list of modalias globs that might match
+        the hardware on the node).
+    :returns: A tuple whose first element contains the list of discovered
+        hardware descriptors (with an added 'matches' element to specify which
+        modaliases matched), and whose second element the list of any hardware
+        that has been ruled out (so that the caller may remove those tags).
+    """
+    discovered_hardware = []
+    ruled_out_hardware = []
+    for candidate in hardware_descriptors:
+        matches = filter_modaliases(modaliases, candidate['modaliases'])
+        if len(matches) > 0:
+            candidate = candidate.copy()
+            candidate['matches'] = matches
+            discovered_hardware.append(candidate)
+        else:
+            ruled_out_hardware.append(candidate)
+    return discovered_hardware, ruled_out_hardware
+
+
+def retag_node_for_hardware_by_modalias(
+        node, modaliases, parent_tag_name, hardware_descriptors):
+    """Adds or removes tags on a node based on its modaliases.
+
+    Returns the Tag model objects added and removed, respectively.
+
+    :param node: The node whose tags to modify.
+    :param modaliases: The modaliases discovered on the node.
+    :param parent_tag_name: The tag name for the hardware type given in the
+        `hardware_descriptors` list. For example, if switch ASICs are being
+        discovered, the string "switch" might be appropriate. Then, if switch
+        hardware is found, the node will be tagged with the matching
+        descriptors' tag(s), *and* with the more general "switch" tag.
+    :param hardware_descriptors: A list of hardware descriptor dictionaries.
+
+    :returns: tuple of (tags_added, tags_removed)
+    """
+    # Don't unconditionally create the tag. Check for it with a filter first.
+    parent_tag = get_one(Tag.objects.filter(name=parent_tag_name))
+    tags_added = set()
+    tags_removed = set()
+    discovered_hardware, ruled_out_hardware = determine_hardware_matches(
+        modaliases, hardware_descriptors)
+    if len(discovered_hardware) > 0:
+        if parent_tag is None:
+            # Create the tag "just in time" if we found matching hardware, and
+            # we hadn't created the tag yet.
+            parent_tag = Tag(name=parent_tag_name)
+            parent_tag.save()
+        node.tags.add(parent_tag)
+        tags_added.add(parent_tag)
+        logger.info(
+            "%s: Added tag '%s' for detected hardware type." % (
+                node.hostname, parent_tag_name))
+        for descriptor in discovered_hardware:
+            tag = descriptor['tag']
+            comment = descriptor['comment']
+            matches = descriptor['matches']
+            hw_tag, _ = Tag.objects.get_or_create(name=tag, defaults={
+                'comment': comment
+            })
+            node.tags.add(hw_tag)
+            tags_added.add(hw_tag)
+            logger.info(
+                "%s: Added tag '%s' for detected hardware: %s "
+                "(Matched: %s)." % (node.hostname, tag, comment, matches))
+    else:
+        if parent_tag is not None:
+            node.tags.remove(parent_tag)
+            tags_removed.add(parent_tag)
+            logger.info(
+                "%s: Removed tag '%s'; machine does not match hardware "
+                "description." % (node.hostname, parent_tag_name))
+    for descriptor in ruled_out_hardware:
+        tag_name = descriptor['tag']
+        existing_tag = get_one(node.tags.filter(name=tag_name))
+        if existing_tag is not None:
+            node.tags.remove(existing_tag)
+            tags_removed.add(existing_tag)
+            logger.info(
+                "%s: Removed tag '%s'; hardware is missing." % (
+                    node.hostname, tag_name))
+    return tags_added, tags_removed
+
+
 # Register the post processing hooks.
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
 NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
-NODE_INFO_SCRIPTS['00-maas-02-switch-discovery']['hook'] = set_switch_tags
 NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
     update_node_physical_block_devices)
 NODE_INFO_SCRIPTS['99-maas-03-network-interfaces']['hook'] = (
     update_node_network_information)
 NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)
+NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME]['hook'] = set_tags_by_modalias
