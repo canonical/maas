@@ -16,7 +16,10 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
 )
 from maasserver.models.staticroute import StaticRoute
-from maasserver.preseed_network import compose_curtin_network_config
+from maasserver.preseed_network import (
+    compose_curtin_network_config,
+    NodeNetworkConfiguration,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
@@ -461,3 +464,168 @@ class TestNetworkLayoutWithRoutes(
         net_config += self.collectDNSConfig(node)
         config = compose_curtin_network_config(node)
         self.assertNetworkConfig(net_config, config)
+
+
+class TestNetplan(MAASServerTestCase):
+
+    def _render_netplan_dict(self, node):
+        return NodeNetworkConfiguration(node, version=2).config
+
+    def test__single_ethernet_interface(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__multiple_ethernet_interfaces(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+            },
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__bond(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1])
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bonds': {
+                    'bond0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__bridge(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node, name='br0', parents=[eth0, eth1])
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bridges': {
+                    'br0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__bridged_bond(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1])
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node, name='br0', parents=[bond0])
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bonds': {
+                    'bond0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500
+                    },
+                },
+                'bridges': {
+                    'br0': {
+                        'interfaces': ['bond0'],
+                        'mtu': 1500
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))

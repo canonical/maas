@@ -17,7 +17,7 @@ from maasserver.enum import (
 )
 from maasserver.models import Interface
 from maasserver.models.staticroute import StaticRoute
-from netaddr import IPAddress
+from netaddr import IPNetwork
 import yaml
 
 
@@ -45,21 +45,29 @@ def _get_param_value(value):
         return value
 
 
-def _generate_route_operation(route):
+def _generate_route_operation(route, version=1):
     """Generate route operation place in `network_config`."""
-    route_operation = {
-        "id": route.id,
-        "type": "route",
-        "destination": route.destination.cidr,
-        "gateway": route.gateway_ip,
-        "metric": route.metric,
-    }
-    return route_operation
+    if version == 1:
+        route_operation = {
+            "id": route.id,
+            "type": "route",
+            "destination": route.destination.cidr,
+            "gateway": route.gateway_ip,
+            "metric": route.metric,
+        }
+        return route_operation
+    elif version == 2:
+        route_operation = {
+            "to": route.destination.cidr,
+            "via": route.gateway_ip,
+            "metric": route.metric,
+        }
+        return route_operation
 
 
 class InterfaceConfiguration:
 
-    def __init__(self, iface, node_config):
+    def __init__(self, iface, node_config, version=1):
         """
 
         :param iface: The interface whose configuration to generate.
@@ -73,32 +81,45 @@ class InterfaceConfiguration:
         self.gateways = node_config.gateways
         self.matching_routes = set()
         self.addr_family_present = defaultdict(bool)
+        self.version = version
         self.config = None
+        self.name = self.iface.get_name()
 
         if self.type == INTERFACE_TYPE.PHYSICAL:
-            self.config = self._generate_physical_operation()
+            self.config = self._generate_physical_operation(version=version)
         elif self.type == INTERFACE_TYPE.VLAN:
-            self.config = self._generate_vlan_operation()
+            self.config = self._generate_vlan_operation(version=version)
         elif self.type == INTERFACE_TYPE.BOND:
-            self.config = self._generate_bond_operation()
+            self.config = self._generate_bond_operation(version=version)
         elif self.type == INTERFACE_TYPE.BRIDGE:
-            self.config = self._generate_bridge_operation()
+            self.config = self._generate_bridge_operation(version=version)
         else:
             raise ValueError("Unknown interface type: %s" % self.type)
 
-    def _generate_physical_operation(self):
+    def _generate_physical_operation(self, version=1):
         """Generate physical interface operation for `interface` and place in
         `network_config`."""
-        addrs = self._generate_addresses()
+        addrs = self._generate_addresses(version=version)
         physical_operation = self._get_initial_params()
-        physical_operation.update({
-            "id": self.iface.get_name(),
-            "type": "physical",
-            "name": self.iface .get_name(),
-            "mac_address": str(self.iface .mac_address),
-        })
-        if addrs:
-            physical_operation["subnets"] = addrs
+        if version == 1:
+            physical_operation.update({
+                "id": self.name,
+                "type": "physical",
+                "name": self.name,
+                "mac_address": str(self.iface.mac_address),
+            })
+            if addrs:
+                physical_operation["subnets"] = addrs
+        elif version == 2:
+            physical_operation.update({
+                "match": {
+                    "macaddress": str(self.iface.mac_address),
+                },
+                # Unclear what we want, so just let it be the default.
+                # "wakeonlan": True,
+                "set-name": self.name,
+            })
+            physical_operation.update(addrs)
         return physical_operation
 
     def _get_dhcp_type(self):
@@ -141,7 +162,7 @@ class InterfaceConfiguration:
                         return subnet.gateway_ip
         return None
 
-    def _set_default_gateway(self, subnet, subnet_operation):
+    def _set_default_gateway(self, subnet, config, version=1):
         """Set the default gateway on the `subnet_operation` if it should
         be set."""
         family = subnet.get_ipnetwork().version
@@ -152,11 +173,16 @@ class InterfaceConfiguration:
             return
         gateway = self._get_default_gateway(subnet)
         if gateway is not None:
+            if version == 1:
+                config["gateway"] = str(gateway)
             if family == IPADDRESS_FAMILY.IPv4:
                 node_config.gateway_ipv4_set = True
+                if version == 2:
+                    config["gateway4"] = str(gateway)
             elif family == IPADDRESS_FAMILY.IPv6:
                 node_config.gateway_ipv6_set = True
-            subnet_operation["gateway"] = str(gateway)
+                if version == 2:
+                    config["gateway6"] = str(gateway)
 
     def _get_matching_routes(self, source):
         """Return all route objects matching `source`."""
@@ -166,9 +192,12 @@ class InterfaceConfiguration:
             if route.source == source
         }
 
-    def _generate_addresses(self):
+    def _generate_addresses(self, version=1):
         """Generate the various addresses needed for this interface."""
-        addrs = []
+        v1_config = []
+        v2_cidrs = []
+        v2_config = {}
+        v2_nameservers = {}
         addresses = list(
             self.iface.ip_addresses.exclude(
                 alloc_type__in=[
@@ -177,83 +206,162 @@ class InterfaceConfiguration:
                 ]).order_by('id'))
         dhcp_type = self._get_dhcp_type()
         if _is_link_up(addresses) and not dhcp_type:
-            addrs.append({"type": "manual"})
+            if version == 1:
+                v1_config.append({"type": "manual"})
         else:
             for address in addresses:
                 subnet = address.subnet
                 if subnet is not None:
                     subnet_len = subnet.cidr.split('/')[1]
-                    subnet_operation = {
+                    cidr = "%s/%s" % (str(address.ip), subnet_len)
+                    v1_subnet_operation = {
                         "type": "static",
-                        "address": "%s/%s" % (str(address.ip), subnet_len)
+                        "address": cidr
                     }
+                    if address.ip is not None:
+                        # If the address is None, that means we're generating a
+                        # preseed for a Node that is not (or is no longer) in
+                        # the READY state; so it might have auto-assigned IP
+                        # addresses which have not yet been determined. It
+                        # would be nice if there was a way to express this, if
+                        # only for debugging purposes. For now, just ignore
+                        # such addresses.
+                        v1_subnet_operation['address'] = cidr
+                        v2_cidrs.append(cidr)
+                        if "addresses" not in v2_config:
+                            v2_config["addresses"] = v2_cidrs
+                    v1_config.append(v1_subnet_operation)
                     self.addr_family_present[
-                        IPAddress(address.ip).version] = True
+                        IPNetwork(subnet.cidr).version] = True
+                    # The default gateway is set on the subnet operation for
+                    # the v1 YAML, but it's per-interface for the v2 YAML.
                     self._set_default_gateway(
-                        subnet, subnet_operation)
+                        subnet,
+                        v1_subnet_operation if version == 1 else v2_config)
                     if subnet.dns_servers is not None:
-                        subnet_operation["dns_nameservers"] = (
+                        v1_subnet_operation["dns_nameservers"] = (
                             subnet.dns_servers)
-                    addrs.append(subnet_operation)
+                        if "nameservers" not in v2_config:
+                            v2_config["nameservers"] = v2_nameservers
+                            # XXX should also support search paths.
+                            if "addresses" not in v2_nameservers:
+                                v2_nameservers["addresses"] = []
+                        v2_nameservers["addresses"].extend(
+                            [server for server in subnet.dns_servers])
                     self.matching_routes.update(
                         self._get_matching_routes(subnet))
             if dhcp_type:
-                addrs.append(
+                v1_config.append(
                     {"type": dhcp_type}
                 )
-        return addrs
+                if dhcp_type == "dhcp":
+                    v2_config.update({
+                        "dhcp4": True,
+                        "dhcp6": True,
+                    })
+                elif dhcp_type == "dhcp4":
+                    v2_config.update({
+                        "dhcp4": True,
+                    })
+                elif dhcp_type == "dhcp6":
+                    v2_config.update({
+                        "dhcp6": True,
+                    })
+        if version == 1:
+            return v1_config
+        elif version == 2:
+            return v2_config
 
-    def _generate_vlan_operation(self):
+    def _generate_vlan_operation(self, version=1):
         """Generate vlan operation for `iface` and place in
         `network_config`."""
         vlan = self.iface.vlan
-        name = self.iface.get_name()
-        addrs = self._generate_addresses()
+        name = self.name
+        addrs = self._generate_addresses(version=version)
         vlan_operation = self._get_initial_params()
-        vlan_operation.update({
-            "id": name,
-            "type": "vlan",
-            "name": name,
-            "vlan_link": self.iface.parents.first().get_name(),
-            "vlan_id": vlan.vid,
-        })
-        if addrs:
-            vlan_operation["subnets"] = addrs
+        if version == 1:
+            vlan_operation.update({
+                "id": name,
+                "type": "vlan",
+                "name": name,
+                "vlan_link": self.iface.parents.first().get_name(),
+                "vlan_id": vlan.vid,
+            })
+            if addrs:
+                vlan_operation["subnets"] = addrs
+        elif version == 2:
+            vlan_operation.update({
+                "id": vlan.vid,
+                "link": self.iface.parents.first().get_name(),
+            })
+            vlan_operation.update(addrs)
         return vlan_operation
 
-    def _generate_bond_operation(self):
+    def _generate_bond_operation(self, version=1):
         """Generate bond operation for `iface` and place in
         `network_config`."""
-        addrs = self._generate_addresses()
+        addrs = self._generate_addresses(version=version)
         bond_operation = self._get_initial_params()
-        bond_operation.update({
-            "id": self.iface.get_name(),
-            "type": "bond",
-            "name": self.iface.get_name(),
-            "mac_address": str(self.iface.mac_address),
-            "bond_interfaces": [parent.get_name() for parent in
-                                self.iface.parents.order_by('name')],
-            "params": self._get_bond_params(),
-        })
-        if addrs:
-            bond_operation["subnets"] = addrs
+        if version == 1:
+            bond_operation.update({
+                "id": self.name,
+                "type": "bond",
+                "name": self.name,
+                "mac_address": str(self.iface.mac_address),
+                "bond_interfaces": [parent.get_name() for parent in
+                                    self.iface.parents.order_by('name')],
+                "params": self._get_bond_params(),
+            })
+            if addrs:
+                bond_operation["subnets"] = addrs
+        else:
+            bond_operation.update({
+                # XXX mpontillo 2017-02-17: netplan does not yet support
+                # specifying the MAC that should be used for a bond.
+                # See launchpad bug #1664698.
+                # "macaddress": str(self.iface.mac_address),
+                "interfaces": [
+                    parent.get_name()
+                    for parent in self.iface.parents.order_by('name')
+                    ],
+                # XXX mpontillo 2017-02-17: netplan does not yet support
+                # specifying bond parameters. See launchpad bug #1664702.
+                # "params": self._get_bond_params(),
+            })
+            bond_operation.update(addrs)
         return bond_operation
 
-    def _generate_bridge_operation(self):
+    def _generate_bridge_operation(self, version=1):
         """Generate bridge operation for this interface."""
-        addrs = self._generate_addresses()
+        addrs = self._generate_addresses(version=version)
         bridge_operation = self._get_initial_params()
-        bridge_operation.update({
-            "id": self.iface.get_name(),
-            "type": "bridge",
-            "name": self.iface.get_name(),
-            "mac_address": str(self.iface.mac_address),
-            "bridge_interfaces": [parent.get_name() for parent in
-                                  self.iface.parents.order_by('name')],
-            "params": self._get_bridge_params(),
-        })
-        if addrs:
-            bridge_operation["subnets"] = addrs
+        if version == 1:
+            bridge_operation.update({
+                "id": self.name,
+                "type": "bridge",
+                "name": self.name,
+                "mac_address": str(self.iface.mac_address),
+                "bridge_interfaces": [parent.get_name() for parent in
+                                      self.iface.parents.order_by('name')],
+                "params": self._get_bridge_params(),
+            })
+            if addrs:
+                bridge_operation["subnets"] = addrs
+        elif version == 2:
+            bridge_operation.update({
+                # XXX mpontillo 2017-02-17: netplan does not yet support
+                # specifying the MAC that should be used for a bond.
+                # See launchpad bug #1664698.
+                # "macaddress": str(self.iface.mac_address),
+                "interfaces": [
+                    parent.get_name()
+                    for parent in self.iface.parents.order_by('name')
+                ],
+                # XXX mpontillo 2017-02-17: netplan does not yet support
+                # specifying bridge parameters. See launchpad bug #1664702.
+                # "params": self._get_bridge_params(),
+            })
+            bridge_operation.update(addrs)
         return bridge_operation
 
     def _get_initial_params(self):
@@ -299,13 +407,20 @@ class InterfaceConfiguration:
 class NodeNetworkConfiguration:
     """Generator for the YAML network configuration for curtin."""
 
-    def __init__(self, node):
+    def __init__(self, node, version=1):
         """Create the YAML network configuration for the specified node, and
         store it in the `config` ivar.
         """
         self.node = node
         self.matching_routes = set()
-        self.network_config = []
+        self.v1_config = []
+        self.v2_config = {
+            "version": 2
+        }
+        self.v2_ethernets = {}
+        self.v2_vlans = {}
+        self.v2_bonds = {}
+        self.v2_bridges = {}
         self.gateway_ipv4_set = False
         self.gateway_ipv6_set = False
         # The default value is False: expected keys are 4 and 6.
@@ -318,13 +433,21 @@ class NodeNetworkConfiguration:
         for iface in interfaces:
             if not iface.is_enabled():
                 continue
-            generator = InterfaceConfiguration(iface, self)
+            generator = InterfaceConfiguration(iface, self, version=version)
             self.matching_routes.update(generator.matching_routes)
             self.addr_family_present.update(generator.addr_family_present)
-            self.network_config.append(generator.config)
-
-        # Generate each YAML operation in the network_config.
-        self._generate_route_operations()
+            if version == 1:
+                self.v1_config.append(generator.config)
+            elif version == 2:
+                v2_config = {generator.name: generator.config}
+                if generator.type == INTERFACE_TYPE.PHYSICAL:
+                    self.v2_ethernets.update(v2_config)
+                elif generator.type == INTERFACE_TYPE.VLAN:
+                    self.v2_vlans.update(v2_config)
+                elif generator.type == INTERFACE_TYPE.BOND:
+                    self.v2_bonds.update(v2_config)
+                elif generator.type == INTERFACE_TYPE.BRIDGE:
+                    self.v2_bridges.update(v2_config)
 
         # If we have no IPv6 addresses present, make sure we claim IPv4, so
         # that we at least get some address.
@@ -336,31 +459,65 @@ class NodeNetworkConfiguration:
             name
             for name in sorted(get_dns_search_paths())
             if name != self.node.domain.name]
-        self.network_config.append({
+        self._generate_route_operations(version=version)
+        self.v1_config.append({
             "type": "nameserver",
             "address": default_dns_servers,
             "search": search_list,
         })
+        if version == 1:
+            network_config = {
+                "network": {
+                    "version": 1,
+                    "config": self.v1_config,
+                },
+            }
+        else:
+            network_config = {
+                "network": self.v2_config,
+            }
+            v2_config = network_config['network']
+            if len(self.v2_ethernets) > 0:
+                v2_config.update({"ethernets": self.v2_ethernets})
+            if len(self.v2_vlans) > 0:
+                v2_config.update({"vlans": self.v2_vlans})
+            if len(self.v2_bonds) > 0:
+                v2_config.update({"bonds": self.v2_bonds})
+            if len(self.v2_bridges) > 0:
+                v2_config.update({"bridges": self.v2_bridges})
+            # XXX mpontillo 2017-02-17: netplan has no concept of "default"
+            # DNS servers. Need to define how to convey this.
+            # See launchpad bug #1664806.
+            # if len(default_dns_servers) > 0 or len(search_list) > 0:
+            #     nameservers = {}
+            #     if len(search_list) > 0:
+            #         nameservers.update({"search": search_list})
+            #     if len(default_dns_servers) > 0:
+            #         nameservers.update({"addresses": default_dns_servers})
+            #     v2_config.update({"nameservers": nameservers})
+        self.config = network_config
 
-        network_config = {
-            "network_commands": {
-                "builtin": ["curtin", "net-meta", "custom"],
-            },
-            "network": {
-                "version": 1,
-                "config": self.network_config,
-            },
-        }
-        # Render the resulting YAML.
-        self.config = yaml.safe_dump(network_config, default_flow_style=False)
-
-    def _generate_route_operations(self):
+    def _generate_route_operations(self, version=1):
         """Generate all route operations."""
+        routes = []
         for route in sorted(self.matching_routes, key=attrgetter("id")):
-            self.network_config.append(_generate_route_operation(route))
+            routes.append(_generate_route_operation(route, version=version))
+        if version == 1:
+            self.v1_config.extend(routes)
+        elif version == 2 and len(routes) > 0:
+            self.v2_config["routes"] = routes
 
 
-def compose_curtin_network_config(node):
+def compose_curtin_network_config(node, version=1):
     """Compose the network configuration for curtin."""
-    generator = NodeNetworkConfiguration(node)
-    return [generator.config]
+    generator = NodeNetworkConfiguration(node, version=version)
+    curtin_config = {
+        "network_commands": {
+            "builtin": ["curtin", "net-meta", "custom"],
+        }
+    }
+    curtin_config.update(generator.config)
+    # Render the resulting YAML.
+    curtin_config_yaml = yaml.safe_dump(
+        curtin_config, default_flow_style=False)
+    return [curtin_config_yaml]
