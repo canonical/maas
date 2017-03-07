@@ -123,7 +123,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         ];
 
-        $scope.column = 'name';
+        $scope.tableInfo = {column: 'name'};
         $scope.has_disks = false;
         $scope.filesystems = [];
         $scope.filesystemsMap = {};

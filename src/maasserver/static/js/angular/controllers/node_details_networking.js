@@ -199,7 +199,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.loaded = false;
         $scope.nodeHasLoaded = false;
         $scope.managersHaveLoaded = false;
-        $scope.column = 'name';
+        $scope.tableInfo = {column: 'name'};
         $scope.fabrics = FabricsManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.subnets = SubnetsManager.getItems();

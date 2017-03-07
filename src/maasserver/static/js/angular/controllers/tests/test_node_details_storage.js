@@ -264,7 +264,7 @@ describe("NodeStorageController", function() {
 
     it("sets initial values", function() {
         var controller = makeController();
-        expect($scope.column).toBe('name');
+        expect($scope.tableInfo.column).toBe('name');
         expect($scope.has_disks).toBe(false);
         expect($scope.filesystems).toEqual([]);
         expect($scope.filesystemsMap).toEqual({});

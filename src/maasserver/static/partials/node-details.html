@@ -600,13 +600,13 @@
                                   <div class="table__header table-col--12">
                                     <span data-ng-if="!isDevice">
                                       <a class="table__header-link is-active"
-                                          data-ng-class="{ 'is-active': column == 'name' }"
-                                          data-ng-click="column = 'name'">
+                                          data-ng-class="{ 'is-active': tableInfo.column == 'name' }"
+                                          data-ng-click="tableInfo.column = 'name'">
                                           Name
                                       </a>
                                       <span class="divide"></span>
-                                      <a class="table__header-link" data-ng-class="{ 'is-active': column == 'mac' }"
-                                          data-ng-click="column = 'mac'">
+                                      <a class="table__header-link" data-ng-class="{ 'is-active': tableInfo.column == 'mac' }"
+                                          data-ng-click="tableInfo.column = 'mac'">
                                           MAC
                                       </a>
                                     </span>
@@ -636,14 +636,14 @@
                                           data-ng-if="!isController && isNodeEditingAllowed()">
                                       <label for="{$ getUniqueKey(interface) $}"></label>
                                   </div>
-                                  <div class="table__data table-col--12" aria-label="Name" data-ng-if="!isDevice" data-ng-show="column == 'name'">
+                                  <div class="table__data table-col--12" aria-label="Name" data-ng-if="!isDevice" data-ng-show="tableInfo.column == 'name'">
                                       <span data-ng-if="!isEditing(interface)">{$ interface.name $}</span>
                                       <input type="text" class="table__input"
                                           data-ng-if="isEditing(interface) && interface.type != 'vlan'"
                                           data-ng-model="editInterface.name"
                                           data-ng-class="{ 'has-error': isInterfaceNameInvalid(editInterface) }">
                                   </div>
-                                  <div class="table__data table-col--12 ng-hide" data-ng-if="!isDevice" data-ng-show="column == 'mac'">
+                                  <div class="table__data table-col--12 ng-hide" data-ng-if="!isDevice" data-ng-show="tableInfo.column == 'mac'">
                                       {$ interface.mac_address $}
                                   </div>
                                   <div class="table__data table-col--12" data-ng-if="isDevice">{$ interface.mac_address $}</div>
@@ -714,9 +714,9 @@
                                           <div data-ng-show="isShowingMembers(interface)">
                                               <div class="table__data u-padding--top-none table-col--3"></div>
                                               <div class="table__data u-padding--top-none table-col--15"
-                                                  data-ng-show="column == 'name'">{$ member.name $}</div>
+                                                  data-ng-show="tableInfo.column == 'name'">{$ member.name $}</div>
                                               <div class="table__data u-padding--top-none table-col--15 ng-hide"
-                                                  data-ng-show="column == 'mac'">{$ member.mac_address $}</div>
+                                                  data-ng-show="tableInfo.column == 'mac'">{$ member.mac_address $}</div>
                                               <div class="table__data u-padding--top-none table-col--15">{$ getInterfaceTypeText(member) $}</div>
                                               <div class="table__data u-padding--top-none table-col--67">
                                               </div>
@@ -1535,11 +1535,11 @@
                                     <label for="available-check-all"></label>
                                 </div>
                                 <div class="table__header table-col--16">
-                                    <a class="table__header-link" data-ng-click="column = 'name'" data-ng-class="{'is-active': column === 'name'}">Name</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'name'" data-ng-class="{'is-active': tableInfo.column === 'name'}">Name</a>
                                     <span class="divide"></span>
-                                    <a class="table__header-link" data-ng-click="column = 'model'" data-ng-class="{'is-active': column === 'model'}">Model</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'model'" data-ng-class="{'is-active': tableInfo.column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a class="table__header-link" data-ng-click="column = 'serial'" data-ng-class="{'is-active': column === 'serial'}">Serial</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'is-active': tableInfo.column === 'serial'}">Serial</a>
                                 </div>
                                 <div class="table__header table-col--4">Boot</div>
                                 <div class="table__header table-col--15">Size</div>
@@ -1566,7 +1566,7 @@
                                             data-ng-disabled="isAvailableDisabled()" />
                                         <label for="{$ item.name $}" ></label>
                                     </div>
-                                    <div class="table__data table-col--16" data-ng-show="column === 'name'" aria-label="Name">
+                                    <div class="table__data table-col--16" data-ng-show="tableInfo.column === 'name'" aria-label="Name">
                                         <span data-ng-hide="availableMode === 'edit' && item.$selected">{$ item.name $}</span>
                                         <input type="text" class="table__input"
                                             data-ng-model="item.name"
@@ -1575,8 +1575,8 @@
                                             data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
-                                    <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table-col--16 ng-hide" data-ng-show="tableInfo.column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table-col--16 ng-hide" data-ng-show="tableInfo.column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table-col--4 u-align--center" aria-label="Boot">
                                         <input type="radio" name="boot-disk" id="{$ item.name $}-boot"
                                             data-ng-click="setAsBootDisk(item)"
@@ -2248,11 +2248,11 @@
                             <div class="table__row">
                                 <div class="table__header table-col--3"></div>
                                 <div class="table__header table-col--16">
-                                    <a class="table__header-link" data-ng-click="column = 'name'" data-ng-class="{'is-active': column === 'name'}">Name</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'name'" data-ng-class="{'is-active': tableInfo.column === 'name'}">Name</a>
                                     <span class="divide"></span>
-                                    <a class="table__header-link" data-ng-click="column = 'model'" data-ng-class="{'is-active': column === 'model'}">Model</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'model'" data-ng-class="{'is-active': tableInfo.column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a class="table__header-link" data-ng-click="column = 'serial'" data-ng-class="{'is-active': column === 'serial'}">Serial</a>
+                                    <a class="table__header-link" data-ng-click="tableInfo.column = 'serial'" data-ng-class="{'is-active': tableInfo.column === 'serial'}">Serial</a>
                                 </div>
                                 <div class="table__header table-col--4">Boot</div>
                                 <div class="table__header table-col--15">Device type</div>
@@ -2268,9 +2268,9 @@
                             <div data-ng-repeat="item in used">
                                 <div class="table__row details__used">
                                     <div class="table__data table-col--3 u-display--desktop"></div>
-                                    <div class="table__data table-col--16" data-ng-show="column === 'name'" aria-label="Name">{$ item.name $}</div>
-                                    <div class="table__data table-col--16" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table-col--16" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table-col--16" data-ng-show="tableInfo.column === 'name'" aria-label="Name">{$ item.name $}</div>
+                                    <div class="table__data table-col--16" data-ng-show="tableInfo.column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table-col--16" data-ng-show="tableInfo.column === 'serial'">{$ item.serial $}</div>
                                     <div class="table__data table-col--4 u-align--center" aria-label="Boot disk">
                                         <input type="radio" id="{$ item.name $}-boot" name="boot-disk"
                                             data-ng-click="setAsBootDisk(item)"

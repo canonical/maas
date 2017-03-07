@@ -373,7 +373,7 @@ describe("NodeNetworkingController", function() {
         expect($scope.loaded).toBe(false);
         expect($scope.nodeHasLoaded).toBe(false);
         expect($scope.managersHaveLoaded).toBe(false);
-        expect($scope.column).toBe('name');
+        expect($scope.tableInfo.column).toBe('name');
         expect($scope.fabrics).toBe(FabricsManager.getItems());
         expect($scope.vlans).toBe(VLANsManager.getItems());
         expect($scope.subnets).toBe(SubnetsManager.getItems());
