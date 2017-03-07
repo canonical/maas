@@ -173,14 +173,17 @@ NODE_POD_UPDATE_NOTIFY = dedent("""\
     DECLARE
       bmc RECORD;
     BEGIN
-      IF OLD.bmc_id != NEW.bmc_id THEN
+      IF ((OLD.bmc_id IS NULL and NEW.bmc_id IS NOT NULL) OR
+          (OLD.bmc_id IS NOT NULL and NEW.bmc_id IS NULL) OR
+          OLD.bmc_id != NEW.bmc_id) THEN
         IF OLD.bmc_id IS NOT NULL THEN
           SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
           IF bmc.bmc_type = %d THEN
             PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
           END IF;
         END IF;
-      ELSIF NEW.bmc_id IS NOT NULL THEN
+      END IF;
+      IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
         IF bmc.bmc_type = %d THEN
           PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));

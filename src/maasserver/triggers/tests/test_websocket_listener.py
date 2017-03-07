@@ -3343,10 +3343,16 @@ class TestNodePodListener(
             self.create_pod, {"name": factory.make_name('pod')})
         node = yield deferToDatabase(self.create_node, {"bmc": old_pod})
         yield deferToDatabase(register_websocket_triggers)
+        dvs = [DeferredValue(), DeferredValue()]
+
+        def set_defer_value(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    break
 
         listener = PostgresListenerService()
-        dv = DeferredValue()
-        listener.register("pod", lambda *args: dv.set(args))
+        listener.register("pod", set_defer_value)
         yield listener.startService()
         try:
             @transactional
@@ -3354,33 +3360,12 @@ class TestNodePodListener(
                 Node.objects.filter(system_id=system_id).update(bmc_id=pod_id)
 
             yield deferToDatabase(update_direct, node.system_id, new_pod.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % old_pod.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_update_for_old_and_new_node_notification(self):
-        old_pod = yield deferToDatabase(
-            self.create_pod, {"name": factory.make_name('pod')})
-        new_pod = yield deferToDatabase(
-            self.create_pod, {"name": factory.make_name('pod')})
-        node = yield deferToDatabase(self.create_node, {"bmc": old_pod})
-        yield deferToDatabase(register_websocket_triggers)
-        dv = DeferredValue()
-
-        listener = PostgresListenerService()
-        listener.register("pod", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            @transactional
-            def update_direct(system_id, pod_id):
-                Node.objects.filter(system_id=system_id).update(bmc_id=pod_id)
-
-            yield deferToDatabase(update_direct, node.system_id, new_pod.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % old_pod.id), dv.value)
+            yield dvs[0].get(timeout=2)
+            yield dvs[1].get(timeout=2)
+            self.assertItemsEqual([
+                ('update', '%s' % old_pod.id),
+                ('update', '%s' % new_pod.id),
+                ], [dvs[0].value, dvs[1].value])
         finally:
             yield listener.stopService()
 
