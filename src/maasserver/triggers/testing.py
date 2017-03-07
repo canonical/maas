@@ -14,6 +14,10 @@ from maasserver.enum import (
 )
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.bmc import (
+    BMC,
+    Pod,
+)
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
@@ -217,6 +221,36 @@ class TransactionalHelpersMixin:
     def delete_fabric(self, id):
         fabric = Fabric.objects.get(id=id)
         fabric.delete()
+
+    @transactional
+    def create_bmc(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_BMC(**params)
+
+    @transactional
+    def update_bmc(self, id, params):
+        return apply_update_to_model(BMC, id, params)
+
+    @transactional
+    def delete_bmc(self, id):
+        bmc = BMC.objects.get(id=id)
+        bmc.delete()
+
+    @transactional
+    def create_pod(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Pod(**params)
+
+    @transactional
+    def update_pod(self, id, params):
+        return apply_update_to_model(Pod, id, params)
+
+    @transactional
+    def delete_pod(self, id):
+        pod = Pod.objects.get(id=id)
+        pod.as_bmc().delete()
 
     @transactional
     def create_space(self, params=None):

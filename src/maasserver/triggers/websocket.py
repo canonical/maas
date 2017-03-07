@@ -17,7 +17,10 @@ __all__ = [
 
 from textwrap import dedent
 
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import (
+    BMC_TYPE,
+    NODE_TYPE,
+)
 from maasserver.triggers import (
     register_procedure,
     register_trigger,
@@ -94,6 +97,115 @@ TAG_NODES_NOTIFY = dedent("""\
         END IF;
       END LOOP;
       RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a pod is created.
+POD_INSERT_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.bmc_type = %d THEN
+        PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a pod is updated.
+POD_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.bmc_type = NEW.bmc_type THEN
+        IF OLD.bmc_type = %d THEN
+          PERFORM pg_notify('pod_update',CAST(OLD.id AS text));
+        END IF;
+      ELSIF OLD.bmc_type = %d AND NEW.bmc_type = %d THEN
+          PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
+      ELSIF OLD.bmc_type = %d AND NEW.bmc_type = %d THEN
+          PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a pod is deleted.
+POD_DELETE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+      IF OLD.bmc_type = %d THEN
+          PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a machine is created to update its related
+# bmc if bmc_type is pod.
+NODE_POD_INSERT_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc RECORD;
+    BEGIN
+      IF NEW.bmc_id IS NOT NULL THEN
+        SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+        IF bmc.bmc_type = %d THEN
+          PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a machine is updated to update its related
+# bmc if bmc_type is pod.
+NODE_POD_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc RECORD;
+    BEGIN
+      IF OLD.bmc_id != NEW.bmc_id THEN
+        IF OLD.bmc_id IS NOT NULL THEN
+          SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+          IF bmc.bmc_type = %d THEN
+            PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
+          END IF;
+        END IF;
+      ELSIF NEW.bmc_id IS NOT NULL THEN
+        SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+        IF bmc.bmc_type = %d THEN
+          PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a machine is deleted to update its related
+# bmc if bmc_type is pod.
+NODE_POD_DELETE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc RECORD;
+    BEGIN
+      IF OLD.bmc_id IS NOT NULL THEN
+        SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+        IF bmc.bmc_type = %d THEN
+          PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
+        END IF;
+      END IF;
+      RETURN OLD;
     END;
     $$ LANGUAGE plpgsql;
     """)
@@ -1303,6 +1415,43 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_iprange",
         "iprange_subnet_delete_notify", "delete")
+
+    # Pod notifications
+    register_procedure(
+        POD_INSERT_NOTIFY % ('pod_insert_notify', BMC_TYPE.POD))
+    register_procedure(
+        POD_UPDATE_NOTIFY % (
+            'pod_update_notify', BMC_TYPE.POD, BMC_TYPE.BMC,
+            BMC_TYPE.POD, BMC_TYPE.POD, BMC_TYPE.BMC))
+    register_procedure(
+        POD_DELETE_NOTIFY % ('pod_delete_notify', BMC_TYPE.POD))
+    register_trigger(
+        "maasserver_bmc",
+        "pod_insert_notify", "insert")
+    register_trigger(
+        "maasserver_bmc",
+        "pod_update_notify", "update")
+    register_trigger(
+        "maasserver_bmc",
+        "pod_delete_notify", "delete")
+
+    # Node pod notifications
+    register_procedure(
+        NODE_POD_INSERT_NOTIFY % ('node_pod_insert_notify', BMC_TYPE.POD))
+    register_procedure(
+        NODE_POD_UPDATE_NOTIFY % (
+            'node_pod_update_notify', BMC_TYPE.POD, BMC_TYPE.POD))
+    register_procedure(
+        NODE_POD_DELETE_NOTIFY % ('node_pod_delete_notify', BMC_TYPE.POD))
+    register_trigger(
+        "maasserver_node",
+        "node_pod_insert_notify", "insert")
+    register_trigger(
+        "maasserver_node",
+        "node_pod_update_notify", "update")
+    register_trigger(
+        "maasserver_node",
+        "node_pod_delete_notify", "delete")
 
     # DNSData table
     register_procedure(

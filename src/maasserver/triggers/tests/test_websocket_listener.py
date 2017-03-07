@@ -12,6 +12,7 @@ from unittest import skip
 
 from crochet import wait_for
 from maasserver.enum import (
+    BMC_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
     NODE_TYPE,
@@ -19,6 +20,7 @@ from maasserver.enum import (
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.config import Config
+from maasserver.models.node import Node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -3208,6 +3210,195 @@ class TestIPRangeSubnetListener(
             yield deferToDatabase(self.delete_iprange, iprange.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % iprange.subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestPodListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_bmc tables that notifies affected pods."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            pod = yield deferToDatabase(
+                self.create_pod, {"name": factory.make_name('pod')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_same_bmc_types_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_pod, pod.id, {"name": factory.make_name('pod')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_new_POD_bmc_type_notification(self):
+        bmc = yield deferToDatabase(
+            self.create_bmc, {"name": factory.make_name('bmc')})
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_bmc, bmc.id, {"bmc_type": BMC_TYPE.POD})
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % bmc.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_new_BMC_bmc_type_notification(self):
+        pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_pod, pod.id, {"bmc_type": BMC_TYPE.BMC})
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_pod, pod.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestNodePodListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_bmc tables that notifies affected pods."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        pod = yield deferToDatabase(self.create_pod)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_node, {"bmc": pod})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        old_pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        new_pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        node = yield deferToDatabase(self.create_node, {"bmc": old_pod})
+        yield deferToDatabase(register_websocket_triggers)
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            @transactional
+            def update_direct(system_id, pod_id):
+                Node.objects.filter(system_id=system_id).update(bmc_id=pod_id)
+
+            yield deferToDatabase(update_direct, node.system_id, new_pod.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % old_pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_for_old_and_new_node_notification(self):
+        old_pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        new_pod = yield deferToDatabase(
+            self.create_pod, {"name": factory.make_name('pod')})
+        node = yield deferToDatabase(self.create_node, {"bmc": old_pod})
+        yield deferToDatabase(register_websocket_triggers)
+        dv = DeferredValue()
+
+        listener = PostgresListenerService()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            @transactional
+            def update_direct(system_id, pod_id):
+                Node.objects.filter(system_id=system_id).update(bmc_id=pod_id)
+
+            yield deferToDatabase(update_direct, node.system_id, new_pod.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % old_pod.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        pod = yield deferToDatabase(self.create_pod)
+        node = yield deferToDatabase(self.create_node, {"bmc": pod})
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("pod", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node, node.system_id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % pod.id), dv.value)
         finally:
             yield listener.stopService()
 
