@@ -148,7 +148,7 @@ wedge_discover_json(){
     IP="$(sshpass -p "${SSHPASS}" ssh -o StrictHostKeyChecking=no "${SSHUSER}"@"${BMCLLA}"%"${DEV}" \
         'ip -o -4 addr show | awk "{ if(NR>1)print \$4 "} | cut -d/ -f1')" || Error "Unable to obtain the 'wedge' BMC IP address."
     # If we were able to optain the IP address, then we can simply return the credentials.
-    echo -e "{\"power_user\":\""$SSHUSER"\", \"power_pass\":\""$SSHPASS"\",\"power_address\":\""$IP"\"}"
+    echo "{\"power_user\":\""$SSHUSER"\", \"power_pass\":\""$SSHPASS"\",\"power_address\":\""$IP"\"}"
 }
 
 while [ $# -ne 0 ]; do
