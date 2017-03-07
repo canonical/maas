@@ -23,6 +23,7 @@ Usage: ${0##*/} [ options ]
    options:
       -c | --check            check if this is a wedge
       -g | --get-credentials  obtain the credentials for the wedge
+      -e | --get-enlist-creds obtain the credentials for the wedge for enlistment
       -h | --help             display usage
 
    Example:
@@ -33,8 +34,8 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; }
 
-short_opts="hcg"
-long_opts="help,check,get-credentials,"
+short_opts="hcge"
+long_opts="help,check,get-credentials,get-enlist-creds"
 getopt_out=$(getopt --name "${0##*/}" \
         --options "${short_opts}" --long "${long_opts}" -- "$@") &&
         eval set -- "${getopt_out}" ||
@@ -140,12 +141,23 @@ wedge_discover(){
     echo "$SSHUSER,$SSHPASS,$IP,"
 }
 
+
+wedge_discover_json(){
+    # Obtain the IP address of the BMC by logging into it using the default values (we cannot auto-discover
+    # non-default values).
+    IP="$(sshpass -p "${SSHPASS}" ssh -o StrictHostKeyChecking=no "${SSHUSER}"@"${BMCLLA}"%"${DEV}" \
+        'ip -o -4 addr show | awk "{ if(NR>1)print \$4 "} | cut -d/ -f1')" || Error "Unable to obtain the 'wedge' BMC IP address."
+    # If we were able to optain the IP address, then we can simply return the credentials.
+    echo -e "{\"power_user\":\""$SSHUSER"\", \"power_pass\":\""$SSHPASS"\",\"power_address\":\""$IP"\"}"
+}
+
 while [ $# -ne 0 ]; do
         cur="${1}"; next="${2}";
         case "$cur" in
                 -h|--help) Usage; exit 0;;
                 -c|--check) wedge_autodetect; exit 0;;
                 -g|--get-credentials) wedge_discover; exit 0;;
+                -e|--get-enlist-creds) wedge_discover_json; exit 0;;
                 --) shift; break;;
         esac
         shift;

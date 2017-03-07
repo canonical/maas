@@ -136,7 +136,7 @@ Usage: ${0##*/} [ options ]
       -n | --hostname         hostname of the node to register
       -i | --interface        interface address to register (obtains MAC address)
       -a | --arch             architecture of the node to register
-      -t | --power-type       power type (ipmi, virsh, moonshot)
+      -t | --power-type       power type (ipmi, virsh, moonshot, virsh)
       -p | --power-params     power parameters (In JSON format, between single quotes)
                               e.g. --power-params '{"power_address":"192.168.1.10"}'
       --subarch               subarchitecture of the node to register
@@ -223,6 +223,7 @@ if [ -n "$power_type" ]; then
 		ipmi) continue ;;
 		virsh) continue ;;
 		moonshot) continue ;;
+		wedge) continue ;;
 		*) Error "Invalid power type: [$power_type]"
 	esac
 fi

@@ -12,6 +12,8 @@ power_state:
 
 misc_bucket:
  - &maas_enlist |
+   # Bring up all interfaces.
+   ip -o link | cut -d: -f2 | xargs -I{} ip link set dev {} up
    ####  IPMI setup  ######
    # If IPMI network settings have been configured statically, you can
    # make them DHCP. If 'true', the IPMI network source will be changed
@@ -78,6 +80,12 @@ misc_bucket:
    {{endfor}}
    END_MAAS_MOONSHOT_AUTODETECT
 
+   add_bin "maas-wedge-autodetect" <<"END_MAAS_WEDGE_AUTODETECT"
+   {{for line in maas_wedge_autodetect_sh.splitlines()}}
+   {{line}}
+   {{endfor}}
+   END_MAAS_WEDGE_AUTODETECT
+
    add_bin "maas-enlist" <<"END_MAAS_ENLIST"
    {{for line in maas_enlist_sh.splitlines()}}
    {{line}}
@@ -95,6 +103,9 @@ misc_bucket:
    fi
    set -x
    power_type=$(maas-ipmi-autodetect-tool)
+   if [ -z $power_type ]; then
+       power_type=$(maas-wedge-autodetect --check) || power_type=""
+   fi
    case "$power_type" in
        ipmi)
            power_params=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs} --commission-creds) &&
@@ -103,6 +114,9 @@ misc_bucket:
        moonshot)
            power_params=$(maas-moonshot-autodetect --commission-creds) &&
              [ -n "${power_params}" ] && power_params=${power_params%.}
+           ;;
+       wedge)
+           power_params=$(maas-wedge-autodetect --get-enlist-creds) || power_params=""
            ;;
    esac
    # Try maas-enlist without power parameters on failure for older versions of
@@ -116,6 +130,12 @@ misc_bucket:
       cat  /tmp/enlist.out
       echo =============================================
       sleep 10
+      # Uncomment the following to allow troubleshooting for an hour.
+      # echo "ubuntu:ubuntu" | chpasswd
+      # bfile="/tmp/block-poweroff"
+      # { echo "#!/bin/sh"; echo "touch $bfile"; } > /etc/profile.d/A01-block.sh
+      # sleep 3600
+      # [ -e $bfile ] && exit 0
    else
       user="ubuntu"
       pass="ubuntu"
@@ -139,7 +159,7 @@ misc_bucket:
 
 
 
-packages: [ freeipmi-tools, openipmi, ipmitool, archdetect-deb ]
+packages: [ freeipmi-tools, openipmi, ipmitool, archdetect-deb, sshpass ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]
