@@ -27,8 +27,8 @@
                         class="search__input" data-ng-model="search" />
                     <input type="submit" class="search__submit" />
                 </div>
-                <table id="events-listing">
-                    <thead sticky use-placeholder="false" sticky-class="table__head--sticky" offset="116">
+                <table id="events-listing" window-width>
+                    <thead data-ng-if="windowWidth >= 769" sticky sticky-class="table__head--sticky" offset="88" media-query="min-width: 768px">
                         <tr>
                             <th class="table-col--1"></th>
                             <th class="table-col--79">Event</th>

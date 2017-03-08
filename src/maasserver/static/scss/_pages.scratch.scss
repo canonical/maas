@@ -4,8 +4,28 @@
     height: calc(100% - 202px);
   }
 
+  table thead {
+    display: table-header-group !important;
+  }
+
+  table thead,
   .table .table__head {
     width: auto !important;
+
+    &.table__head--sticky {
+      background: #fff;
+      padding: 0;
+      width: 100vw !important;
+      left: 0 !important;
+      right: 0 !important;
+      border-top: 1px dotted #d2d2d2;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      height: auto !important;
+
+      tr th {
+        float: none;
+      }
+    }
   }
 
   .button-group .button-group__item .button-group__item-link {
