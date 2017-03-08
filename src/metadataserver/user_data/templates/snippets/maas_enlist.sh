@@ -36,7 +36,11 @@ get_mac_addresses() {
 	do
 		# We only add more mac's if "$mac" is different
 		# from "$pxe_mac"
-		if [ "$mac" != "$pxe_mac" ]; then
+		if [ "$mac" = "02:00:00:00:00:02" ]; then
+			# This is an OpenBMC MAC and as such, we ignore it.
+			# This MAC will be the same for all Wedge systems (e.g Wedge 40/100).
+			continue
+		elif [ "$mac" != "$pxe_mac" ]; then
 			if [ -z "$mac_addresses" ]; then
 				mac_addresses="$mac"
 			else
