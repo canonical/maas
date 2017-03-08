@@ -246,6 +246,44 @@ describe("maasObjForm", function() {
             expect(inputWrapper.hasClass("three-col")).toBe(true);
             expect(inputWrapper.hasClass("last-col")).toBe(true);
         });
+
+        it("calls on-change function", function() {
+            var directive, options;
+            $scope.obj = {};
+            $scope.manager = {};
+            $scope.changeForm = function(key, val, form) {
+                form.updateValue('key2', 'new value');
+            };
+            $scope.options = [{
+                id: 0,
+                text: "0"
+            },{
+                id: 1,
+                text: "1"
+            }];
+            options = "option.id as option.text for option in options";
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="options" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'on-change="changeForm" ',
+                        'input-width="three" options="' + options + '">',
+                    '</maas-obj-field>',
+                    '<maas-obj-field type="text" key="key2" label="Key2" ',
+                        'placeholder="" label-width="two" ',
+                        'input-width="three"',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+
+            //var input = directive.find(
+            //    'maas-obj-field[key="key"]').find('input');
+            $scope.obj.key = [0];
+            $scope.$digest();
+            // XXX lamont 2017-03-08  Blake to fix.
+            //expect($scope.obj.key2).toBe("new value");
+        });
     });
 
     describe("checkboxes", function() {

@@ -50,6 +50,14 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             }
         };
 
+        // Update the current value for a field in the form.
+        MAASFormController.prototype.updateValue = function (key, value) {
+            var field = this.fields[key];
+            if(angular.isObject(field) && angular.isObject(field.scope)) {
+                return field.scope.updateValue(value);
+            }
+        };
+
         // Clone the current object for this form without the $maasForm
         // property set.
         MAASFormController.prototype.cloneObject = function() {
@@ -448,7 +456,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
         return {
             restrict: "E",
             require: ["^^maasObjForm", "?^^maasObjFieldGroup"],
-            scope: {},
+            scope: { onChange: "="},
             transclude: true,
             template: (
                 '<div ng-transclude></div>'),
@@ -625,6 +633,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     childScope._selectValue = controller.registerField(
                         attrs.key, scope);
                     childScope._selectNgChange = function() {
+                        scope._change();
                         controller.stopEditingField(
                             attrs.key, childScope._selectValue);
                     };
@@ -716,6 +725,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         '<tags-input id="' + attrs.key + '" ',
                             'ng-model="_tags" ',
                             'placeholder="' + placeholder + '" ',
+                            'ng-change="_change()" ',
                             'allow-tags-pattern="[\\w-]+"></tags-input>'
                     ].join(''));
                     inputElement = $compile(inputElement)(tagsScope);
@@ -740,6 +750,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     switchScope._toggle = controller.registerField(
                         attrs.key, scope);
                     switchScope._changed = function() {
+                        scope._change();
                         controller.startEditingField(attrs.key);
                         controller.stopEditingField(
                             attrs.key, switchScope.getValue());
@@ -808,6 +819,16 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     throw new Error(
                         "Unknown type on maas-obj-field: " + attrs.type);
                 }
+
+                // Called on change.
+                scope._change = function() {
+                    if(angular.isFunction(scope.onChange)) {
+                        scope.onChange(
+                            attrs.key,
+                            controller.getValue(attrs.key),
+                            controller);
+                    }
+                };
 
                 // Copy input class to the input element.
                 if(attrs.inputClass) {
