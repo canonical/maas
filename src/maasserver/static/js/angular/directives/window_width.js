@@ -16,18 +16,24 @@ angular.module('MAAS').directive('windowWidth', [
     function ($window) {
         return {
             restrict: 'A',
-            link: function($scope, element, attrs) {
+            link: function($scope, element, attrs){
                 $scope.windowWidth = $window.innerWidth;
-                angular.element($window).on('resize', function() {
-                  if ($scope.windowWidth !== $window.innerWidth) {
-                      $scope.$apply(function () {
-                          $scope.windowWidth = $window.innerWidth;
-                      });
-                  }
-                });
-                $scope.$on('$destroy', function() {
-                  angular.element($window).off('resize', onResize);
-                });
+                function onResize(){
+                    // uncomment for only fire when $window.innerWidth change
+                    if ($scope.windowWidth !== $window.innerWidth) {
+                        $scope.windowWidth = $window.innerWidth;
+                        $scope.$apply(function () {
+                            $scope.message = "Timeout called!";
+                        });
+                    }
+                }
+
+                function cleanUp() {
+                    angular.element($window).off('resize', onResize);
+                }
+
+                angular.element($window).on('resize', onResize);
+                $scope.$on('$destroy', cleanUp);
             }
         };
     }]);
