@@ -37,6 +37,7 @@ from maasserver.models import (
 )
 from maasserver.preseed import (
     compose_curtin_archive_config,
+    compose_curtin_cloud_config,
     compose_curtin_kernel_preseed,
     compose_curtin_maas_reporter,
     compose_curtin_swap_preseed,
@@ -45,6 +46,7 @@ from maasserver.preseed import (
     compose_preseed_url,
     curtin_maas_reporter,
     GENERIC_FILENAME,
+    get_curtin_cloud_config,
     get_curtin_config,
     get_curtin_context,
     get_curtin_image,
@@ -681,6 +683,56 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         else:
             self.assertItemsEqual(
                 ['reporter'], list(reporter.keys()))
+
+
+class TestComposeCurtinCloudConfig(MAASServerTestCase):
+
+    def test__returns_curtin_cloud_config(self):
+        preseeds = compose_curtin_cloud_config(
+            factory.make_Node_with_Interface_on_Subnet())
+        self.assertIsInstance(preseeds, list)
+        self.assertThat(preseeds, HasLength(1))
+
+    def test__get_curtin_cloud_config_includes_datasource_list(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        config = get_curtin_cloud_config(node)
+        self.assertItemsEqual(
+            ['cloudconfig'], list(config.keys()))
+        self.assertItemsEqual(
+            ['maas-datasource', 'maas-cloud-config'],
+            list(config['cloudconfig'].keys()))
+        self.assertThat(
+            config['cloudconfig']['maas-datasource']['content'],
+            Equals('datasource_list: [ MAAS ]'))
+
+    def test__get_curtin_cloud_config_includes_cloudconfig(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        token = NodeKey.objects.get_token_for_node(node)
+        base_url = node.get_boot_primary_rack_controller().url
+        config = get_curtin_cloud_config(node)
+        self.assertItemsEqual(
+            ['cloudconfig'], list(config.keys()))
+        self.assertItemsEqual(
+            ['maas-datasource', 'maas-cloud-config'],
+            list(config['cloudconfig'].keys()))
+        ds_config = {
+            'datasource': {
+                'MAAS': {
+                    'consumer_key': token.consumer.key,
+                    'token_key': token.key,
+                    'token_secret': token.secret,
+                    'metadata_url': absolute_reverse(
+                        'metadata', base_url=base_url),
+                }
+            }
+        }
+        self.assertThat(
+            config['cloudconfig']['maas-cloud-config']['content'],
+            Contains('#cloud-config'))
+        self.assertThat(
+            yaml.safe_load(
+                config['cloudconfig']['maas-cloud-config']['content']),
+            Equals(ds_config))
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):

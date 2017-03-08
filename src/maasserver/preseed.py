@@ -224,6 +224,42 @@ def compose_curtin_maas_reporter(node):
     return [yaml.safe_dump(reporter)]
 
 
+def get_curtin_cloud_config(node):
+    """Compose the curtin cloud-config."""
+    token = NodeKey.objects.get_token_for_node(node)
+    rack_controller = node.get_boot_rack_controller()
+    base_url = rack_controller.url
+    datasource = {
+        'datasource': {
+            'MAAS': {
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+                'metadata_url': absolute_reverse(
+                    'metadata', base_url=base_url),
+            }
+        }
+    }
+
+    return {
+        'cloudconfig': {
+            'maas-datasource': {
+                'path': '/etc/cloud/cloud.cfg.d/90_maas_datasource.cfg',
+                'content': 'datasource_list: [ MAAS ]',
+            },
+            'maas-cloud-config': {
+                'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_config.cfg',
+                'content': "#cloud-config\n%s" % yaml.safe_dump(datasource)
+            },
+        }
+    }
+
+
+def compose_curtin_cloud_config(node):
+    config = get_curtin_cloud_config(node)
+    return [yaml.safe_dump(config)]
+
+
 def compose_curtin_archive_config(node):
     """Return the curtin preseed for configuring a node's apt sources.
 
@@ -297,6 +333,7 @@ def compose_curtin_verbose_preseed():
 def get_curtin_yaml_config(node):
     """Return the curtin configration for the node."""
     main_config = get_curtin_config(node)
+    cloud_config = compose_curtin_cloud_config(node)
     archive_config = compose_curtin_archive_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
     swap_config = compose_curtin_swap_preseed(node)
@@ -327,7 +364,8 @@ def get_curtin_yaml_config(node):
 
     return (
         storage_config + [main_config] + archive_config + reporter_config +
-        network_config + swap_config + kernel_config + verbose_config)
+        network_config + swap_config + kernel_config + verbose_config +
+        cloud_config)
 
 
 def get_curtin_merged_config(node):
