@@ -1,0 +1,136 @@
+<header class="page-header" sticky media-query="min-width: 769px">
+    <div class="wrapper--inner">
+        <h1 class="page-header__title">{$ $parent.site $} MAAS</h1>
+        <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
+        <div class="page-header__controls u-float--right">
+            <div data-ng-if="!selectedItems.length">
+                <button class="button--secondary button--inline ng-hide"
+                    data-ng-click="add.open = true"
+                    data-ng-if="!add.open">Add pod</button>
+                <button class="button--secondary button--inline"
+                    data-ng-click="add.open = false"
+                    data-ng-if="add.open">Close add pod</button>
+            </div>
+            <div data-ng-if="isSuperUser() && selectedItems.length">
+                <span class="u-margin--right">{$ selectedItems.length $} Selected</span>
+                <div data-maas-cta="action.options"
+                    data-ng-model="action.option">
+                </div>
+            </div>
+        </div>
+        <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="!isActionError() && !hasActionsInProgress()">
+                <form class="form form--inline">
+                    <p class="page-header__message page-header__message--error" data-ng-if="hasActionsFailed()">
+                        Performing {$ action.option.sentence $} failed for {$ action.progress.errors $}
+                        <span data-ng-pluralize count="action.progress.errors" when="{'one': 'pod', 'other': 'pods'}"></span>,
+                        see listing for specific error for each pod.
+                    </p>
+                    <div class="page-header__controls">
+                        <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
+                        <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
+                            <span data-ng-if="action.option.name === 'refresh'">Refresh {$ selectedItems.length $}
+                                <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
+                            </span>
+                            <span data-ng-if="action.option.name === 'delete'">Delete {$ selectedItems.length $}
+                                <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
+                            </span>
+                        </button>
+                        <button class="button--secondary button--inline" data-ng-click="actionGo()" data-ng-if="hasActionsFailed()">Retry</button>
+                    </div>
+                </form>
+            </section>
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="hasActionsInProgress()">
+                <p class="page-header__message">
+                    <i class="icon icon--loading u-animation--spin"></i>
+                    Finished performing {$ action.option.sentence $} on {$ action.progress.completed $} of {$ action.progress.total $} pods.
+                </p>
+            </section>
+        </div>
+    </div>
+</header>
+<div class="wrapper--inner">
+    <maas-notifications></maas-notifications>
+</div>
+<div class="u-padding--top-none">
+    <div class="wrapper--inner">
+    <div class="twelve-col last-col">
+        <div class="table">
+            <header class="table__head">
+                <div class="table__row">
+                    <div data-ng-if="isSuperUser()">
+                      <div class="table__header table-col--2">
+                          <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="hasActionsInProgress()" />
+                          <label for="check-all-pods" class="checkbox-label"></label>
+                      </div>
+                      <div class="table__header table-col--18">
+                          <a href="" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                              <span title="Name">Name</span>
+                          </a>
+                      </div>
+                    </div>
+                    <div data-ng-if="!isSuperUser()">
+                      <div class="table__header table-col--20">
+                          <a href="" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                              <span title="Name">Name</span>
+                          </a>
+                      </div>
+                    </div>
+                    <div class="table__header table-col--15">
+                        <a href="" data-ng-click="sortTable('power_type')" data-ng-class="{'is-sorted': predicate === 'power_type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                    </div>
+                    <div class="table__header table-col--15 u-align--right">
+                        <a href="" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
+                    </div>
+                    <div class="table__header table-col--15 u-align--right">
+                        <a href="" data-ng-click="sortTable('available.remote_storage')" data-ng-class="{'is-sorted': predicate === 'available.remote_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Remote storage (GiB)</a>
+                    </div>
+                    <div class="table__header table-col--10 u-align--right">
+                        <a href="" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
+                    </div>
+                    <div class="table__header table-col--15 u-align--right">
+                        <a href="" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
+                    </div>
+                    <div class="table__header table-col--10 u-align--right">
+                        <a href="" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
+                    </div>
+                </div>
+            </header>
+            <main class="table__body">
+                <div class="table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id"
+                    data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
+                    <div data-ng-if="isSuperUser()">
+                      <div class="table__data table-col--2" aria-label="Select pod">
+                          <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="hasActionsInProgress()"/>
+                          <label for="{$ pod.id $}" class="checkbox-label"></label>
+                      </div>
+                      <div class="table__data table-col--18" aria-label="Name">
+                          <!-- <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a> -->
+                          {$ pod.name $}
+                      </div>
+                    </div>
+                    <div data-ng-if="!isSuperUser()">
+                      <div class="table__data table-col--20" aria-label="Name">
+                          <!-- <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a> -->
+                          {$ pod.name $}
+                      </div>
+                    </div>
+                    <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.power_type) $}</div>
+                    <div class="table__data table-col--15 u-align--right" aria-label="Local storage (GiB)">{$ pod.available.local_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.local_storage_gb $}</div></div>
+                    <div class="table__data table-col--15 u-align--right" aria-label="Remote storage (GiB)">0</div>
+                    <div class="table__data table-col--10 u-align--right" aria-label="Cores">{$ pod.available.cores $} free <div class="u-text--subtle">of {$ pod.total.cores $}</div></div>
+                    <div class="table__data table-col--15 u-align--right" aria-label="RAM (GiB)">{$ pod.available.memory_gb $} free <div class="u-text--subtle">of {$ pod.total.memory_gb $}</div></div>
+                    <div class="table__data table-col--10 u-align--right" aria-label="Composed machines">{$ pod.composed_machines_count $}</div>
+                    <div class="table__dropdown" data-ng-if="pod.$selected && pod.action_failed">
+                      <div class="table__row is-active u-border--none">
+                          <div aria-label="label" class="table__data">
+                              <i class="icon icon--error"></i> {$ pod.action_error $}
+                          </div>
+                      </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+</div>

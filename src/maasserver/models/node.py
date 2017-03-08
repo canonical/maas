@@ -1509,9 +1509,12 @@ class Node(CleanSave, TimestampedModel):
             # Circular imports.
             from maasserver.models.bmc import BMC
             try:
-                used_bmcs = [id for id in Node.objects.values_list(
-                    'bmc_id', flat=True).distinct() if id is not None]
-                BMC.objects.exclude(id__in=used_bmcs).delete()
+                used_bmc_ids = (
+                    Node.objects.filter(bmc_id__isnull=False).distinct())
+                used_bmc_ids = used_bmc_ids.values_list('bmc_id', flat=True)
+                unused_bmc = BMC.objects.exclude(bmc_type=BMC_TYPE.POD)
+                unused_bmc = unused_bmc.exclude(id__in=list(used_bmc_ids))
+                unused_bmc.delete()
             except Exception as error:
                 maaslog.info(
                     "%s: Failure cleaning orphaned BMC's: %s",

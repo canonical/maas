@@ -1,0 +1,43 @@
+/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * MAAS Pods Manager
+ *
+ * Manages all of the pods in the browser. The manager uses the
+ * RegionConnection to load the pods, update the pods, and listen for
+ * notification events about pods.
+ */
+
+angular.module('MAAS').service(
+    'PodsManager',
+    ['$q', '$rootScope', '$timeout', 'RegionConnection', 'Manager', function(
+            $q, $rootScope, $timeout, RegionConnection, Manager) {
+
+        function PodsManager() {
+            Manager.call(this);
+
+            this._pk = "id";
+            this._handler = "pod";
+
+            // Listen for notify events for the pod object.
+            var self = this;
+            RegionConnection.registerNotifier("pod",
+                function(action, data) {
+                    self.onNotify(action, data);
+                });
+        }
+
+        PodsManager.prototype = new Manager();
+
+        // Refresh the pod information
+        PodsManager.prototype.refresh = function(pod) {
+            var self = this;
+            return RegionConnection.callMethod("pod.refresh", pod).then(
+                function(pod) {
+                    self._replaceItem(pod);
+                    return pod;
+                });
+        };
+
+        return new PodsManager();
+    }]);

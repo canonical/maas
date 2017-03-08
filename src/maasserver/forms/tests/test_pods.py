@@ -23,8 +23,12 @@ from maasserver.forms.pods import (
 )
 from maasserver.models.node import Machine
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import reload_object
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnce,
     MockNotCalled,
@@ -47,10 +51,16 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
-from twisted.internet.defer import succeed
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
 
 
-class TestPodForm(MAASServerTestCase):
+wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
+
+
+class TestPodForm(MAASTransactionServerTestCase):
 
     def make_pod_info(self):
         # Use virsh pod type as the required fields are specific to the
@@ -133,6 +143,50 @@ class TestPodForm(MAASServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_creates_pod_with_discovered_information_in_twisted(self):
+        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods.discover_pod.return_value = succeed(
+            pods.discover_pod.return_value)
+        pod_info = self.make_pod_info()
+        request = MagicMock()
+        request.user = yield deferToDatabase(factory.make_User)
+        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        pod = yield form.save()
+        self.assertThat(pod, MatchesStructure(
+            architectures=Equals(['amd64/generic']),
+            name=MatchesAll(Not(Is(None)), Not(Equals(''))),
+            cores=Equals(discovered_pod.cores),
+            memory=Equals(discovered_pod.memory),
+            cpu_speed=Equals(discovered_pod.cpu_speed),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({
+                'power_address': pod_info['power_address'],
+                'power_pass': pod_info['power_pass'],
+            }),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
+        ))
+
+        def validate_rack_routes():
+            routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if relation.routable
+            ]
+            not_routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if not relation.routable
+            ]
+            self.assertItemsEqual(routable_racks, discovered_racks)
+            self.assertItemsEqual(not_routable_racks, failed_racks)
+
+        yield deferToDatabase(validate_rack_routes)
+
     def test_prevents_duplicate_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
@@ -201,6 +255,57 @@ class TestPodForm(MAASServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updates_existing_pod_in_twisted(self):
+        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods.discover_pod.return_value = succeed(
+            pods.discover_pod.return_value)
+        pod_info = self.make_pod_info()
+        orig_pod = yield deferToDatabase(
+            factory.make_Pod, pod_type=pod_info['type'])
+        new_name = factory.make_name("pod")
+        pod_info['name'] = new_name
+        request = MagicMock()
+        request.user = yield deferToDatabase(factory.make_User)
+        form = yield deferToDatabase(
+            PodForm, data=pod_info, request=request, instance=orig_pod)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        pod = yield form.save()
+        self.assertThat(pod, MatchesStructure(
+            id=Equals(orig_pod.id),
+            bmc_type=Equals(BMC_TYPE.POD),
+            architectures=Equals(['amd64/generic']),
+            name=Equals(new_name),
+            cores=Equals(discovered_pod.cores),
+            memory=Equals(discovered_pod.memory),
+            cpu_speed=Equals(discovered_pod.cpu_speed),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({
+                'power_address': pod_info['power_address'],
+                'power_pass': pod_info['power_pass'],
+            }),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
+        ))
+
+        def validate_rack_routes():
+            routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if relation.routable
+            ]
+            not_routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if not relation.routable
+            ]
+            self.assertItemsEqual(routable_racks, discovered_racks)
+            self.assertItemsEqual(not_routable_racks, failed_racks)
+
+        yield deferToDatabase(validate_rack_routes)
+
     def test_discover_and_sync_existing_pod(self):
         discovered_pod, discovered_racks, failed_racks = (
             self.fake_pod_discovery())
@@ -235,13 +340,77 @@ class TestPodForm(MAASServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_discover_and_sync_existing_pod_in_twisted(self):
+        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods.discover_pod.return_value = succeed(
+            pods.discover_pod.return_value)
+        pod_info = self.make_pod_info()
+        orig_pod = yield deferToDatabase(
+            factory.make_Pod, pod_type=pod_info['type'])
+        request = MagicMock()
+        request.user = yield deferToDatabase(factory.make_User)
+        form = yield deferToDatabase(
+            PodForm, data=pod_info, request=request, instance=orig_pod)
+        pod = yield form.discover_and_sync_pod()
+        self.assertThat(pod, MatchesStructure(
+            id=Equals(orig_pod.id),
+            bmc_type=Equals(BMC_TYPE.POD),
+            architectures=Equals(['amd64/generic']),
+            name=Equals(orig_pod.name),
+            cores=Equals(discovered_pod.cores),
+            memory=Equals(discovered_pod.memory),
+            cpu_speed=Equals(discovered_pod.cpu_speed),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({}),
+            ip_address=Is(None),
+        ))
+
+        def validate_rack_routes():
+            routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if relation.routable
+            ]
+            not_routable_racks = [
+                relation.rack_controller
+                for relation in pod.routable_rack_relationships.all()
+                if not relation.routable
+            ]
+            self.assertItemsEqual(routable_racks, discovered_racks)
+            self.assertItemsEqual(not_routable_racks, failed_racks)
+
+        yield deferToDatabase(validate_rack_routes)
+
     def test_raises_unable_to_discover_because_no_racks(self):
         self.patch(pods, "discover_pod").return_value = ({}, {})
         form = PodForm(data=self.make_pod_info())
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(
-            "No rack controllers connected to discover a pod.", str(error))
+            "Unable to start the pod discovery process. "
+            "No rack controllers connected.", str(error))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_raises_unable_to_discover_because_no_racks_in_twisted(self):
+        self.patch(pods, "discover_pod").return_value = succeed(({}, {}))
+        form = yield deferToDatabase(PodForm, data=self.make_pod_info())
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+
+        def validate_error(failure):
+            self.assertIsInstance(failure.value, PodProblem)
+            self.assertEquals(
+                "Unable to start the pod discovery process. "
+                "No rack controllers connected.",
+                str(failure.value))
+
+        d = form.save()
+        d.addErrback(validate_error)
+        yield d
 
     def test_raises_exception_from_rack_controller(self):
         failed_rack = factory.make_RackController()
@@ -253,6 +422,26 @@ class TestPodForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEquals(str(exc), str(error))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_raises_exception_from_rack_controller_in_twisted(self):
+        failed_rack = yield deferToDatabase(factory.make_RackController)
+        exc = factory.make_exception()
+        self.patch(pods, "discover_pod").return_value = succeed(({}, {
+            failed_rack.system_id: exc,
+        }))
+        form = yield deferToDatabase(PodForm, data=self.make_pod_info())
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+
+        def validate_error(failure):
+            self.assertIsInstance(failure.value, PodProblem)
+            self.assertEquals(str(exc), str(failure.value))
+
+        d = form.save()
+        d.addErrback(validate_error)
+        yield d
 
 
 class TestComposeMachineForm(MAASServerTestCase):

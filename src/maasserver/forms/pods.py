@@ -7,6 +7,8 @@ __all__ = [
     "PodForm",
     ]
 
+from functools import partial
+
 import crochet
 from django import forms
 from django.core.exceptions import ValidationError
@@ -37,6 +39,8 @@ from maasserver.models import (
 )
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.forms import set_form_error
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     RequestedMachine,
@@ -44,6 +48,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.utils.twisted import asynchronous
+from twisted.python.threadable import isInIOThread
 
 
 class PodForm(MAASModelForm):
@@ -116,77 +121,123 @@ class PodForm(MAASModelForm):
 
     def save(self, *args, **kwargs):
         """Persist the pod into the database."""
-        power_type = self.cleaned_data['type']
-        # Set power_parameters to the generated param_fields.
-        power_parameters = {
-            param_name: self.cleaned_data[param_name]
-            for param_name in self.param_fields.keys()
-            if param_name in self.cleaned_data
-        }
+        def save_into_db():
+            power_type = self.cleaned_data['type']
+            # Set power_parameters to the generated param_fields.
+            power_parameters = {
+                param_name: self.cleaned_data[param_name]
+                for param_name in self.param_fields.keys()
+                if param_name in self.cleaned_data
+            }
 
-        # When the Pod is new try to get a BMC of the same type and parameters
-        # to convert the BMC to a new Pod. When the Pod is not new the form
-        # will use the already existing pod instance to update those fields.
-        # If updating the fields causes a duplicate BMC then a validation erorr
-        # will be raised from the model level.
-        if self.is_new:
-            bmc = BMC.objects.filter(
-                power_type=power_type,
-                power_parameters=power_parameters).first()
-            if bmc is not None:
-                if bmc.bmc_type == BMC_TYPE.BMC:
-                    # Convert the BMC to a Pod and set as the instance for
-                    # the PodForm.
-                    bmc.bmc_type = BMC_TYPE.POD
-                    self.instance = bmc.as_pod()
-                else:
-                    # Pod already exists with the same power_type and
-                    # parameters.
-                    raise ValidationError(
-                        "Pod with type and parameters already exists.")
+            # When the Pod is new try to get a BMC of the same type and
+            # parameters to convert the BMC to a new Pod. When the Pod is not
+            # new the form will use the already existing pod instance to update
+            # those fields. If updating the fields causes a duplicate BMC then
+            # a validation erorr will be raised from the model level.
+            if self.is_new:
+                bmc = BMC.objects.filter(
+                    power_type=power_type,
+                    power_parameters=power_parameters).first()
+                if bmc is not None:
+                    if bmc.bmc_type == BMC_TYPE.BMC:
+                        # Convert the BMC to a Pod and set as the instance for
+                        # the PodForm.
+                        bmc.bmc_type = BMC_TYPE.POD
+                        self.instance = bmc.as_pod()
+                    else:
+                        # Pod already exists with the same power_type and
+                        # parameters.
+                        raise ValidationError(
+                            "Pod %s with type and "
+                            "parameters already exist." % bmc.name)
 
-        self.instance = super(PodForm, self).save(commit=False)
-        if not self.instance.name:
-            self.instance.set_random_name()
-        self.instance.power_type = power_type
-        self.instance.power_parameters = power_parameters
-        self.instance.save()
-        return self.discover_and_sync_pod()
+            self.instance = super(PodForm, self).save(commit=False)
+            if not self.instance.name:
+                self.instance.set_random_name()
+            self.instance.power_type = power_type
+            self.instance.power_parameters = power_parameters
+            self.instance.save()
+
+        if isInIOThread():
+            # Running in twisted reactor, do the work inside the reactor.
+            d = deferToDatabase(transactional(save_into_db))
+            d.addCallback(lambda _: self.discover_and_sync_pod())
+            return d
+        else:
+            # Perform the actions inside the executing thread.
+            save_into_db()
+            return self.discover_and_sync_pod()
 
     def discover_and_sync_pod(self):
         """Discover and sync the pod information."""
-        try:
-            discovered = discover_pod(
+        def update_db(result):
+            discovered_pod, discovered = result
+            self.instance.sync(discovered_pod, self.request.user)
+            # Save which rack controllers can route and which cannot.
+            discovered_rack_ids = [
+                rack_id for rack_id, _ in discovered[0].items()]
+            for rack_controller in RackController.objects.all():
+                routable = rack_controller.system_id in discovered_rack_ids
+                bmc_route_model = BMCRoutableRackControllerRelationship
+                relation, created = (
+                    bmc_route_model.objects.get_or_create(
+                        bmc=self.instance.as_bmc(),
+                        rack_controller=rack_controller,
+                        defaults={'routable': routable}))
+                if not created and relation.routable != routable:
+                    relation.routable = routable
+                    relation.save()
+            return self.instance
+
+        if isInIOThread():
+            # Running in twisted reactor, do the work inside the reactor.
+            d = discover_pod(
                 self.instance.power_type, self.instance.power_parameters,
                 pod_id=self.instance.id, name=self.instance.name)
-        except Exception as exc:
-            raise PodProblem(str(exc)) from exc
+            d.addCallback(
+                lambda discovered: (
+                    get_best_discovered_result(discovered), discovered))
 
-        # Use the first discovered pod object. All other objects are
-        # ignored. The other rack controllers that also provided a result
-        # can route to the pod.
-        try:
-            discovered_pod = get_best_discovered_result(discovered)
-        except Exception as error:
-            raise PodProblem(str(error))
-        if discovered_pod is None:
-            raise PodProblem(
-                "No rack controllers connected to discover a pod.")
-        self.instance.sync(discovered_pod, self.request.user)
+            def catch_no_racks(result):
+                discovered_pod, discovered = result
+                if discovered_pod is None:
+                    raise PodProblem(
+                        "Unable to start the pod discovery process. "
+                        "No rack controllers connected.")
+                return discovered_pod, discovered
 
-        # Save which rack controllers can route and which cannot.
-        discovered_rack_ids = [rack_id for rack_id, _ in discovered[0].items()]
-        for rack_controller in RackController.objects.all():
-            routable = rack_controller.system_id in discovered_rack_ids
-            relation, created = (
-                BMCRoutableRackControllerRelationship.objects.get_or_create(
-                    bmc=self.instance.as_bmc(),
-                    rack_controller=rack_controller,
-                    defaults={'routable': routable}))
-            if not created and relation.routable != routable:
-                relation.routable = routable
-                relation.save()
-        return self.instance
+            def wrap_errors(failure):
+                if failure.check(PodProblem):
+                    return failure
+                else:
+                    raise PodProblem(str(failure.value))
+
+            d.addCallback(catch_no_racks)
+            d.addCallback(partial(deferToDatabase, transactional(update_db)))
+            d.addErrback(wrap_errors)
+            return d
+        else:
+            # Perform the actions inside the executing thread.
+            try:
+                discovered = discover_pod(
+                    self.instance.power_type, self.instance.power_parameters,
+                    pod_id=self.instance.id, name=self.instance.name)
+            except Exception as exc:
+                raise PodProblem(str(exc)) from exc
+
+            # Use the first discovered pod object. All other objects are
+            # ignored. The other rack controllers that also provided a result
+            # can route to the pod.
+            try:
+                discovered_pod = get_best_discovered_result(discovered)
+            except Exception as error:
+                raise PodProblem(str(error))
+            if discovered_pod is None:
+                raise PodProblem(
+                    "Unable to start the pod discovery process. "
+                    "No rack controllers connected.")
+            return update_db((discovered_pod, discovered))
 
 
 class ComposeMachineForm(forms.Form):

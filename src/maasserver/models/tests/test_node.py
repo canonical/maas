@@ -4151,6 +4151,20 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(parameters, node.power_parameters)
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
+    def test_orphaned_bmcs_are_removed(self):
+        bmc = factory.make_BMC()
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        machine.bmc = None
+        machine.save()
+        self.assertIsNone(reload_object(bmc))
+
+    def test_orphaned_pods_are_removed(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        machine.bmc = None
+        machine.save()
+        self.assertIsNotNone(reload_object(pod))
+
 
 class NodeTransitionsTests(MAASServerTestCase):
     """Test the structure of NODE_TRANSITIONS."""

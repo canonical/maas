@@ -7,6 +7,7 @@ __all__ = [
     "populate",
 ]
 
+from collections import defaultdict
 import random
 from socket import gethostname
 from textwrap import dedent
@@ -36,6 +37,7 @@ from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.fields import Bin
 from metadataserver.models import ScriptSet
+from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.ipaddr import get_mac_addresses
 
@@ -235,6 +237,7 @@ def populate_main():
     subnet_2001_db8_42 = factory.make_Subnet(  # noqa
         cidr="2001:db8:42::/64", gateway_ip="",
         vlan=fabric1_vlan42, space=space_ipv6_testbed)
+    ipv4_subnets = [subnet_1, subnet_2, subnet_3, subnet_4]
 
     # Static routes on subnets.
     factory.make_StaticRoute(source=subnet_1, destination=subnet_2)
@@ -388,6 +391,7 @@ def populate_main():
             NODE_STATUS.RESERVED,
             NODE_STATUS.RETIRED]
     ]
+    machines = []
     for _, status in node_statuses:
         owner = None
         if status in ALLOCATED_NODE_STATUSES:
@@ -396,11 +400,15 @@ def populate_main():
                 NODE_STATUS.COMMISSIONING,
                 NODE_STATUS.FAILED_RELEASING]:
             owner = admin
+
         machine = factory.make_Node(
             status=status, owner=owner, zone=random.choice(zones),
             interface=False, with_boot_disk=False, power_type='manual',
-            domain=random.choice(domains))
+            domain=random.choice(domains),
+            memory=random.choice([1024, 4096, 8192]),
+            cpu_count=random.randint(2, 8))
         machine.set_random_hostname()
+        machines.append(machine)
 
         # Create random network configuration.
         RandomInterfaceFactory.create_random(machine)
@@ -503,6 +511,45 @@ def populate_main():
                 RandomInterfaceFactory.assign_ip(
                     device.get_boot_interface(),
                     alloc_type=IPADDRESS_TYPE.STICKY)
+
+    # Create a few pods to and assign a random set of the machines to the pods.
+    pods = [None]
+    machines_in_pods = defaultdict(list)
+    for _ in range(3):
+        subnet = random.choice(ipv4_subnets)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)
+        power_address = "qemu+ssh://ubuntu@%s/system" % ip
+        pod = factory.make_Pod(pod_type='virsh', parameters={
+            'power_address': power_address,
+        }, ip_address=ip_address, capabilities=[
+            Capabilities.DYNAMIC_LOCAL_STORAGE, Capabilities.COMPOSABLE])
+        pods.append(pod)
+    for machine in machines:
+        # Add the machine to the pod if its lucky day!
+        pod = random.choice(pods)
+        if pod is not None:
+            machine.bmc = pod
+            machine.instance_power_parameters = {
+                'power_id': machine.hostname
+            }
+            machine.save()
+            machines_in_pods[pod].append(machine)
+
+    # Update the pod attributes so that it has more available then used.
+    for pod in pods[1:]:
+        pod.cores = pod.get_used_cores() + random.randint(4, 8)
+        pod.memory = (
+            pod.get_used_memory() +
+            random.choice([1024, 2048, 4096, 4096 * 4, 4096 * 8]))
+        pod.local_storage = (
+            pod.get_used_local_storage() +
+            random.choice([
+                1024 ** 3, 2 * (1024 ** 3),
+                3 * (1024 ** 3), 4 * (1024 ** 3),
+                5 * (1024 ** 3)]))
+        pod.save()
 
     # Create a few devices.
     for _ in range(10):

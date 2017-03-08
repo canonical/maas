@@ -80,6 +80,11 @@ angular.module('MAAS',
                         'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
                 }).
+                when('/pods', {
+                    templateUrl: versionedPath(
+                        'static/partials/pods-list.html'),
+                    controller: 'PodsListController'
+                }).
                 when('/images', {
                     templateUrl: versionedPath(
                         'static/partials/images.html'),
