@@ -129,9 +129,9 @@ def list_supported_drives():
             # Each line contains the drive and the device type along with any
             # options needed to run smartctl against the drive.
             drive_with_device_type = line.split('#')[0].split()
+            drive = drive_with_device_type[0]
         except IndexError:
             continue
-        drive = drive_with_device_type[0]
         if drive != '' and drive.split('/')[-1] not in iscsi_drives:
             # Check that SMART is actually supported on the drive.
             with Popen(['sudo', 'smartctl', '-i'] + drive_with_device_type,
@@ -200,7 +200,7 @@ def run_smartctl(test=None):
 if __name__ == '__main__':
     # The MAAS ephemeral environment runs apt-get update for us.
     # Don't use timeout here incase the mirror is running really slow.
-    check_call(['sudo', 'apt-get', '-y', 'install', 'smartmontools'])
+    check_call(['sudo', 'apt-get', '-q', '-y', 'install', 'smartmontools'])
 
     # Determine which test should be run based from the first argument or
     # script name.
