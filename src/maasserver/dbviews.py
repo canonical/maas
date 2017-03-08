@@ -36,7 +36,6 @@ def _register_view(view_name, view_sql):
     with closing(connection.cursor()) as cursor:
         cursor.execute(view_sql)
 
-
 # Note that the `Discovery` model object is backed by this view. Any
 # changes made to this view should be reflected there.
 maasserver_discovery = dedent("""\
@@ -97,7 +96,6 @@ maasserver_discovery = dedent("""\
         subnet_prefixlen DESC -- We want the best-match CIDR.
     """)
 
-
 # Pairs of IP addresses that can route between nodes. In MAAS all addresses in
 # a "space" are mutually routable, so this essentially means finding pairs of
 # IP addresses that are in subnets with the same space ID. Typically this view
@@ -138,7 +136,6 @@ maasserver_routable_pairs = dedent("""\
        AND if_right.enabled AND sip_right.ip IS NOT NULL
        AND family(sip_left.ip) = family(sip_right.ip)
     """)
-
 
 # Views that are helpful for supporting MAAS.
 # These can be batch-run using the maas-region-support-dump script.
@@ -203,6 +200,37 @@ maas_support__node_networking = dedent("""\
             node.hostname, iface.name, sip.alloc_type
     """)
 
+maas_support__ip_allocation = dedent("""\
+    SELECT
+        sip.ip,
+        CASE
+            WHEN sip.alloc_type = 0 THEN 'AUTO'
+            WHEN sip.alloc_type = 1 THEN 'STICKY'
+            WHEN sip.alloc_type = 4 THEN 'USER_RESERVED'
+            WHEN sip.alloc_type = 5 THEN 'DHCP'
+            WHEN sip.alloc_type = 6 THEN 'DISCOVERED'
+            ELSE CAST(sip.alloc_type as CHAR)
+        END "alloc_type",
+        subnet.cidr,
+        node.hostname,
+        iface.id AS "ifid",
+        iface.name AS "ifname",
+        iface.type AS "iftype",
+        iface.mac_address,
+        bmc.power_type
+        FROM maasserver_staticipaddress sip
+            LEFT OUTER JOIN maasserver_subnet subnet
+                ON subnet.id = sip.subnet_id
+            LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
+                ON sip.id = ifip.staticipaddress_id
+            LEFT OUTER JOIN maasserver_interface iface
+                ON iface.id = ifip.interface_id
+            LEFT OUTER JOIN maasserver_node node
+                ON iface.node_id = node.id
+            LEFT OUTER JOIN maasserver_bmc bmc
+                ON bmc.ip_address_id = sip.id
+        ORDER BY sip.ip
+    """)
 
 maas_support__boot_source_selections = dedent("""\
     SELECT
@@ -277,6 +305,7 @@ _ALL_VIEWS = {
     "maas_support__node_overview": maas_support__node_overview,
     "maas_support__device_overview": maas_support__device_overview,
     "maas_support__node_networking": maas_support__node_networking,
+    "maas_support__ip_allocation": maas_support__ip_allocation,
     "maas_support__boot_source_selections":
         maas_support__boot_source_selections,
     "maas_support__boot_source_cache": maas_support__boot_source_cache,
