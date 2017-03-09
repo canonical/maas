@@ -293,6 +293,7 @@ class TestDiscoveredClasses(MAASTestCase):
                             "mac_address": Equals(interface.mac_address),
                             "vid": Equals(interface.vid),
                             "tags": Equals(interface.tags),
+                            "boot": Equals(False),
                         })
                         for interface in machine.interfaces
                     ]),

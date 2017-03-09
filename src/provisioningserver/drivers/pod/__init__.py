@@ -177,6 +177,7 @@ class DiscoveredMachineInterface(AttrHelperMixin):
     mac_address = attr.ib(convert=str)
     vid = attr.ib(convert=int, default=-1)
     tags = attr.ib(convert=convert_list(str), default=[])
+    boot = attr.ib(convert=bool, default=False)
 
 
 @attr.s

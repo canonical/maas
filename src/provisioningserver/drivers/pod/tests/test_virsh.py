@@ -655,6 +655,9 @@ class TestVirshSSH(MAASTestCase):
         self.assertItemsEqual(
             mac_addresses,
             [m.mac_address for m in discovered_machine.interfaces])
+        self.assertTrue(discovered_machine.interfaces[0].boot)
+        self.assertFalse(discovered_machine.interfaces[1].boot)
+        self.assertFalse(discovered_machine.interfaces[2].boot)
 
     def test_poweron(self):
         conn = self.configure_virshssh('')

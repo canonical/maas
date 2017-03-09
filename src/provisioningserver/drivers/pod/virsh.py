@@ -490,10 +490,12 @@ class VirshSSH(pexpect.spawn):
         # Discover interfaces.
         interfaces = []
         mac_addresses = self.list_machine_mac_addresses(machine)
+        boot = True
         for mac in mac_addresses:
             interfaces.append(
                 DiscoveredMachineInterface(
-                    mac_address=mac))
+                    mac_address=mac, boot=boot))
+            boot = False
         discovered_machine.interfaces = interfaces
         return discovered_machine
 

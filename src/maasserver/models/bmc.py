@@ -48,6 +48,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.vlan import VLAN
 from maasserver.rpc import (
     getAllClients,
     getClientFromIdentifiers,
@@ -472,10 +473,15 @@ class Pod(BMC):
 
     def _create_interface(self, discovered_nic, machine, name=None):
         """Create's a new physical `Interface` for `machine`."""
-        # XXX blake_r 2016-12-20: First pass just connected all interfaces
-        # to the default fabric and VLAN. This will change once we have
-        # better discovery of what interface are connected where.
-        vlan = Fabric.objects.get_default_fabric().get_default_vlan()
+        # XXX blake_r 2017-03-09: At the moment just connect the boot interface
+        # to the VLAN where DHCP is running, unless none is running then
+        # connect it to the default VLAN. All remaining interfaces will stay
+        # disconnected.
+        vlan = None
+        if discovered_nic.boot:
+            vlan = VLAN.objects.filter(dhcp_on=True).order_by('id').first()
+            if vlan is None:
+                vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         if name is None:
             name = machine.get_next_ifname()
         nic, created = PhysicalInterface.objects.get_or_create(
@@ -535,8 +541,11 @@ class Pod(BMC):
         # Create the discovered interface and set the default networking
         # configuration.
         for idx, discovered_nic in enumerate(discovered_machine.interfaces):
-            self._create_interface(
+            interface = self._create_interface(
                 discovered_nic, machine, name='eth%d' % idx)
+            if discovered_nic.boot:
+                machine.boot_interface = interface
+                machine.save(update_fields=['boot_interface'])
         if skip_commissioning:
             machine.set_initial_networking_configuration()
 
@@ -659,12 +668,19 @@ class Pod(BMC):
         ]
         for existing_nic in physical_interfaces:
             if existing_nic.mac_address in mac_mapping:
-                self._sync_interface(
-                    mac_mapping.pop(existing_nic.mac_address), existing_nic)
+                discovered_nic = mac_mapping.pop(existing_nic.mac_address)
+                self._sync_interface(discovered_nic, existing_nic)
+                if discovered_nic.boot:
+                    existing_machine.boot_interface = existing_nic
+                    existing_machine.save(update_fields=['boot_interface'])
             else:
                 existing_nic.delete()
         for _, discovered_nic in mac_mapping.items():
-            self._create_interface(discovered_nic, existing_machine)
+            interface = self._create_interface(
+                discovered_nic, existing_machine)
+            if discovered_nic.boot:
+                existing_machine.boot_interface = interface
+                existing_machine.save(update_fields=['boot_interface'])
 
     def _sync_interface(self, discovered_nic, existing_interface):
         """Sync the `discovered_nic` with the `existing_interface`.

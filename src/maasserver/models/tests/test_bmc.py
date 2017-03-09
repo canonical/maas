@@ -27,6 +27,7 @@ from maasserver.models.bmc import (
     Pod,
 )
 from maasserver.models.fabric import Fabric
+from maasserver.models.interface import Interface
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -50,6 +51,8 @@ from provisioningserver.rpc.cluster import DecomposeMachine
 from testtools.matchers import (
     Equals,
     HasLength,
+    Is,
+    IsInstance,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -597,6 +600,7 @@ class TestPod(MAASServerTestCase):
                 self.make_discovered_interface()
                 for _ in range(3)
             ]
+            interfaces[0].boot = True
         return DiscoveredMachine(
             architecture='amd64/generic',
             cores=random.randint(8, 120),
@@ -657,7 +661,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ))
 
-    def test_sync_pod_creates_new_machines(self):
+    def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
         discovered = self.make_discovered_pod()
         mock_set_default_storage_layout = self.patch(
             Machine, "set_default_storage_layout")
@@ -706,6 +710,7 @@ class TestPod(MAASServerTestCase):
                         )
                         for idx, bd in enumerate(machine.block_devices)
                     ]),
+                    boot_interface=IsInstance(Interface),
                     interface_set=MatchesSetwiseWithAll(*[
                         MatchesStructure(
                             name=Equals('eth%d' % idx),
@@ -717,6 +722,110 @@ class TestPod(MAASServerTestCase):
                             ])
                         )
                         for idx, nic in enumerate(machine.interfaces)
+                        if nic.boot
+                    ] + [
+                        MatchesStructure(
+                            name=Equals('eth%d' % idx),
+                            mac_address=Equals(nic.mac_address),
+                            vlan=Is(None),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in nic.tags
+                            ])
+                        )
+                        for idx, nic in enumerate(machine.interfaces)
+                        if not nic.boot
+                    ]),
+                )
+                for machine in discovered.machines
+            ]))
+        self.assertThat(
+            mock_set_default_storage_layout.call_count,
+            Equals(0))
+        self.assertThat(
+            mock_set_initial_networking_configuration.call_count,
+            Equals(0))
+        self.assertThat(
+            mock_start_commissioning.call_count,
+            Equals(len(discovered.machines)))
+
+    def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
+        discovered = self.make_discovered_pod()
+        mock_set_default_storage_layout = self.patch(
+            Machine, "set_default_storage_layout")
+        mock_set_initial_networking_configuration = self.patch(
+            Machine, "set_initial_networking_configuration")
+        mock_start_commissioning = self.patch(
+            Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        pod.sync(discovered, factory.make_User())
+        machine_macs = [
+            machine.interfaces[0].mac_address
+            for machine in discovered.machines
+        ]
+        created_machines = Machine.objects.filter(
+            interface__mac_address__in=machine_macs).distinct()
+        self.assertThat(
+            created_machines,
+            MatchesSetwise(*[
+                MatchesStructure(
+                    architecture=Equals(machine.architecture),
+                    bmc=Equals(pod),
+                    cpu_count=Equals(machine.cores),
+                    cpu_speed=Equals(machine.cpu_speed),
+                    memory=Equals(machine.memory),
+                    power_state=Equals(machine.power_state),
+                    instance_power_parameters=Equals(machine.power_parameters),
+                    creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
+                    tags=MatchesSetwiseWithAll(*[
+                        MatchesStructure(name=Equals(tag))
+                        for tag in machine.tags
+                    ]),
+                    physicalblockdevice_set=MatchesSetwiseWithAll(*[
+                        MatchesStructure(
+                            name=Equals(
+                                BlockDevice._get_block_name_from_idx(idx)),
+                            id_path=Equals(bd.id_path),
+                            model=Equals(bd.model),
+                            serial=Equals(bd.serial),
+                            size=Equals(bd.size),
+                            block_size=Equals(bd.block_size),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in bd.tags
+                            ])
+                        )
+                        for idx, bd in enumerate(machine.block_devices)
+                    ]),
+                    boot_interface=IsInstance(Interface),
+                    interface_set=MatchesSetwiseWithAll(*[
+                        MatchesStructure(
+                            name=Equals('eth%d' % idx),
+                            mac_address=Equals(nic.mac_address),
+                            vlan=Equals(vlan),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in nic.tags
+                            ])
+                        )
+                        for idx, nic in enumerate(machine.interfaces)
+                        if nic.boot
+                    ] + [
+                        MatchesStructure(
+                            name=Equals('eth%d' % idx),
+                            mac_address=Equals(nic.mac_address),
+                            vlan=Is(None),
+                            tags=MatchesSetwise(*[
+                                Equals(tag)
+                                for tag in nic.tags
+                            ])
+                        )
+                        for idx, nic in enumerate(machine.interfaces)
+                        if not nic.boot
                     ]),
                 )
                 for machine in discovered.machines
@@ -912,6 +1021,7 @@ class TestPod(MAASServerTestCase):
         dkeep_interface = self.make_discovered_interface(
             mac_address=keep_interface.mac_address)
         dnew_interface = self.make_discovered_interface()
+        dnew_interface.boot = True
         discovered_machine = self.make_discovered_machine(
             interfaces=[dkeep_interface, dnew_interface])
         discovered_pod = self.make_discovered_pod(
@@ -940,6 +1050,7 @@ class TestPod(MAASServerTestCase):
                     Equals(tag)
                     for tag in dnew_interface.tags
                 ])))
+        self.assertEqual(new_interface, machine.boot_interface)
 
 
 class TestPodDelete(MAASTransactionServerTestCase):
