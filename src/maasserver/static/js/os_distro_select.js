@@ -153,3 +153,17 @@ module.OSReleaseWidget = OSReleaseWidget;
 
 }, '0.1', {'requires': ['widget', 'maas.io']}
 );
+
+YUI().use(
+  'maas.os_distro_select',
+  function (Y) {
+  Y.on('load', function() {
+    // Create OSDistroWidget so that the release field will be
+    // updated each time the value of the os field changes.
+    var releaseWidget = new Y.maas.os_distro_select.OSReleaseWidget({
+        srcNode: '#id_deploy-default_distro_series'
+        });
+    releaseWidget.bindTo(Y.one('#id_deploy-default_osystem'), 'change');
+    releaseWidget.render();
+  });
+});

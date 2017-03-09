@@ -264,3 +264,15 @@ Y.extend(Reveal, Y.Widget, {
 module.Reveal = Reveal;
 
 }, '0.1', {'requires': ['widget', 'node', 'event', 'anim']});
+
+YUI().use('maas.reveal', function (Y) {
+  Y.on('domready', function() {
+    Y.all('.script-expander').each(function (script_entry) {
+      var script_expander = new Y.maas.reveal.Reveal({
+        targetNode: script_entry.one('.script-content'),
+        linkNode: script_entry.one('.script-trigger')
+        });
+      script_expander.render();
+    });
+  });
+});
