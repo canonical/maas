@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Nodes List Controller
@@ -7,12 +7,12 @@
 angular.module('MAAS').controller('NodesListController', [
     '$scope', '$interval', '$rootScope', '$routeParams', '$location',
     'MachinesManager', 'DevicesManager', 'ControllersManager',
-    'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
-    'UsersManager', 'ServicesManager',
+    'GeneralManager', 'ManagerHelperService', 'SearchService',
+    'ZonesManager', 'UsersManager', 'ServicesManager', 'ScriptsManager',
     function($scope, $interval, $rootScope, $routeParams, $location,
-        MachinesManager, DevicesManager, ControllersManager,
-        GeneralManager, ManagerHelperService, SearchService, ZonesManager,
-        UsersManager, ServicesManager) {
+        MachinesManager, DevicesManager, ControllersManager, GeneralManager,
+        ManagerHelperService, SearchService, ZonesManager, UsersManager,
+        ServicesManager, ScriptsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -42,6 +42,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.controllers = ControllersManager.getItems();
         $scope.currentpage = "nodes";
         $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.scripts = ScriptsManager.getItems();
         $scope.loading = true;
 
         $scope.tabs = {};
@@ -81,6 +82,8 @@ angular.module('MAAS').controller('NodesListController', [
             skipStorage: false
         };
         $scope.tabs.nodes.releaseOptions = {};
+        $scope.tabs.nodes.commissioningSelection = [];
+        $scope.tabs.nodes.testSelection = [];
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -224,6 +227,8 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].commissionOptions.skipNetworking = false;
                 $scope.tabs[tab].commissionOptions.skipStorage = false;
             }
+            $scope.tabs[tab].commissioningSelection = [];
+            $scope.tabs[tab].testSelection = [];
         }
 
         // Clear the action if required.
@@ -493,6 +498,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Perform the action on all nodes.
         $scope.actionGo = function(tab) {
             var extra = {};
+            var i;
             // Set deploy parameters if a deploy or set zone action.
             if($scope.tabs[tab].actionOption.name === "deploy" &&
                 angular.isString($scope.tabs[tab].osSelection.osystem) &&
@@ -526,6 +532,38 @@ angular.module('MAAS').controller('NodesListController', [
                     $scope.tabs[tab].commissionOptions.skipNetworking);
                 extra.skip_storage = (
                     $scope.tabs[tab].commissionOptions.skipStorage);
+                extra.commissioning_scripts = [];
+                for(i=0;i<$scope.tabs[tab].commissioningSelection.length;i++) {
+                    extra.commissioning_scripts.push(
+                        $scope.tabs[tab].commissioningSelection[i].id);
+                }
+                if(extra.commissioning_scripts.length === 0) {
+                    // Tell the region not to run any custom commissioning
+                    // scripts.
+                    extra.commissioning_scripts.push('none');
+                }
+                extra.testing_scripts = [];
+                for(i=0;i<$scope.tabs[tab].testSelection.length;i++) {
+                    extra.testing_scripts.push(
+                        $scope.tabs[tab].testSelection[i].id);
+                }
+                if(extra.testing_scripts.length === 0) {
+                    // Tell the region not to run any tests.
+                    extra.testing_scripts.push('none');
+                }
+            } else if($scope.tabs[tab].actionOption.name === "test") {
+                // Set the test options.
+                extra.enable_ssh = (
+                    $scope.tabs[tab].commissionOptions.enableSSH);
+                extra.testing_scripts = [];
+                for(i=0;i<$scope.tabs[tab].testSelection.length;i++) {
+                    extra.testing_scripts.push(
+                        $scope.tabs[tab].testSelection[i].id);
+                }
+                if(extra.testing_scripts.length === 0) {
+                    // Tell the region not to run any tests.
+                    extra.testing_scripts.push('none');
+                }
             } else if($scope.tabs[tab].actionOption.name === "release") {
                 // Set the release options.
                 extra.erase = (
@@ -628,13 +666,23 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
+        $scope.hasCustomCommissioningScripts = function() {
+            var i;
+            for(i=0;i<$scope.scripts.length;i++) {
+                if($scope.scripts[i].script_type === 0) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
         ManagerHelperService.loadManagers($scope, [
             MachinesManager, DevicesManager, ControllersManager,
-            GeneralManager, ZonesManager, UsersManager, ServicesManager]).then(
-            function() {
+            GeneralManager, ZonesManager, UsersManager, ServicesManager,
+            ScriptsManager]).then(function() {
                 $scope.loading = false;
             });
 

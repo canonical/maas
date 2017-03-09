@@ -110,14 +110,18 @@ class TestScriptSetManager(MAASServerTestCase):
         node = factory.make_Node()
         script_selected_by_tag = random.choice(scripts)
         script_selected_by_name = random.choice(scripts)
+        script_selected_by_id = random.choice(scripts)
         expected_scripts = list(NODE_INFO_SCRIPTS)
         expected_scripts.append(script_selected_by_tag.name)
         expected_scripts.append(script_selected_by_name.name)
+        expected_scripts.append(script_selected_by_id.name)
 
         script_set = ScriptSet.objects.create_commissioning_script_set(
             node, scripts=[
                 random.choice(script_selected_by_tag.tags),
-                script_selected_by_name.name])
+                script_selected_by_name.name,
+                script_selected_by_id.id,
+            ])
         self.assertItemsEqual(
             set(expected_scripts),
             [script_result.name for script_result in script_set])
@@ -165,15 +169,20 @@ class TestScriptSetManager(MAASServerTestCase):
         ]
         script_selected_by_tag = random.choice(scripts)
         script_selected_by_name = random.choice(scripts)
+        script_selected_by_id = random.choice(scripts)
         node = factory.make_Node()
         expected_scripts = [
-            script_selected_by_tag.name, script_selected_by_name.name
+            script_selected_by_tag.name,
+            script_selected_by_name.name,
+            script_selected_by_id.name,
         ]
 
         script_set = ScriptSet.objects.create_testing_script_set(
             node, scripts=[
                 random.choice(script_selected_by_tag.tags),
-                script_selected_by_name.name])
+                script_selected_by_name.name,
+                script_selected_by_id.id,
+            ])
 
         self.assertItemsEqual(
             set(expected_scripts),

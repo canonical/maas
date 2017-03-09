@@ -103,12 +103,14 @@
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
             <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')">
                 <form class="form form--inline">
-                    <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'commission'">
+                    <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'commission' || tabs.nodes.actionOption.name === 'test'">
                         <div class="form__group">
                             <input class="form__group-label" id="enableSSH" type="checkbox"
                                 data-ng-model="tabs.nodes.commissionOptions.enableSSH">
                             <label class="checkbox-label" for="enableSSH">Allow SSH access and prevent machine from powering off</label>
                         </div>
+                    </fieldset>
+                    <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'commission'">
                         <div class="form__group">
                             <input class="form__group-label" id="skipNetworking" type="checkbox"
                                 data-ng-model="tabs.nodes.commissionOptions.skipNetworking">
@@ -143,52 +145,83 @@
                             </div>
                         </div>
                     </fieldset>
-                    <div class="page-header__controls">
-                        <a href="" class="button--base button--inline" data-ng-click="actionCancel('nodes')">Cancel</a>
-                        <button class="button--inline" data-ng-class="tabs.nodes.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'commission'">Commission {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'acquire'">Acquire {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'deploy'">Deploy {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'release'">Release {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'set-zone'">Set zone for {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'on'">Power on {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'off'">Power off {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'abort'">Abort action for {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'mark-broken'">Mark {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'mark-fixed'">Mark {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
-                            </span>
-                            <span data-ng-if="tabs.nodes.actionOption.name === 'delete'">Delete {$ tabs.nodes.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                            </span>
-                        </button>
-                        <button class="button--secondary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
-                    </div>
                 </form>
+                <div class="page-header__controls" data-ng-if="tabs.nodes.actionOption.name !== 'commission' && tabs.nodes.actionOption.name !== 'test'">
+                    <a href="" class="button--base button--inline" data-ng-click="actionCancel('nodes')">Cancel</a>
+                    <button class="button--inline" data-ng-class="tabs.nodes.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'acquire'">Acquire {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'deploy'">Deploy {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'release'">Release {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'set-zone'">Set zone for {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'on'">Power on {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'off'">Power off {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'abort'">Abort action for {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'rescue-mode'">Set rescue mode for {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'exit-rescue-mode'">Exit rescue mode for {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'mark-broken'">Mark {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as broken
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'mark-fixed'">Mark {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span> as fixed
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'delete'">Delete {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                    </button>
+                    <button class="button--secondary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
+                </div>
+            </section>
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="tabs.nodes.actionOption.name === 'commission' && hasCustomCommissioningScripts()">
+              <form class="form form--stack">
+                    <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                        <div class="form__group">
+			    <label for="commissiong-scripts">Custom Commissioning Scripts</label>
+                            <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="tabs.nodes.commissioningSelection" class="tags--inline"></span>                     
+                        </div>
+                    </fieldset>
+                </form>
+            </section>
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="tabs.nodes.actionOption.name === 'commission' || tabs.nodes.actionOption.name ==='test'">
+              <form class="form form--stack">
+                    <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                        <div class="form__group">
+			    <label for="testing-scripts">Hardware Testing Scripts</label>
+                            <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.nodes.testSelection" class="tags--inline"></span>
+                        </div>
+                    </fieldset>
+                </form>
+            </section>
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')" data-ng-if="tabs.nodes.actionOption.name === 'commission' || tabs.nodes.actionOption.name === 'test'">
+                <div class="page-header__controls">
+                    <a href="" class="button--base button--inline" data-ng-click="actionCancel('nodes')">Cancel</a>
+                    <button class="button--inline" data-ng-class="tabs.nodes.actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'commission'">Commission {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.nodes.actionOption.name === 'test'">Test {$ tabs.nodes.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </span>
+                    </button>
+                    <button class="button--secondary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
+                </div>
             </section>
 
             <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -529,27 +562,54 @@
                             </div>
                         </div>
                     </fieldset>
-                    <div class="page-header__controls">
-                        <a href="" class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</a>
-                        <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
-                            <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.controllers.actionOption.name === 'on'">Power on {$ tabs.controllers.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.controllers.actionOption.name === 'off'">Power off {$ tabs.controllers.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.controllers.actionOption.name === 'delete'">Delete {$ tabs.controllers.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                            </span>
-                            <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
-                                <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
-                            </span>
-                        </button>
-                    </div>
+                    <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'test'">
+                        <div class="form__group">
+                            <input class="form__group-label" id="enableSSH" type="checkbox"
+                                data-ng-model="tabs.controllers.commissionOptions.enableSSH">
+                            <label class="checkbox-label" for="enableSSH">Allow SSH access and prevent machine from powering off</label>
+                        </div>
+                    </fieldset>
                 </form>
+                <div class="page-header__controls" data-ng-if="tabs.controllers.actionOption.name !== 'test'">
+                    <a href="" class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</a>
+                    <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'set-zone'">Set zone for {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'on'">Power on {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'off'">Power off {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'delete'">Delete {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                        <span data-ng-if="tabs.controllers.actionOption.name === 'import-images'">Import images for {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
+                <form class="form form--stack">
+                    <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                        <div class="form__group">
+                            <label for="testing-scripts">Hardware Testing Scripts</label>
+                            <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.nodes.testSelection" class="tags--inline"></span>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')" data-ng-if="tabs.controllers.actionOption.name === 'test'">
+                <div class="page-header__controls">
+                    <a href="" class="button--base button--inline" data-ng-click="actionCancel('controllers')">Cancel</a>
+                    <button class="button--positive button--inline" data-ng-click="actionGo('controllers')">
+                        <span>Test {$ tabs.controllers.selectedItems.length $}
+                            <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        </span>
+                    </button>
+                </div>
             </div>
 
             <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->

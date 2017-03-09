@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodeDetailsController.
@@ -39,6 +39,7 @@ describe("NodeDetailsController", function() {
     var MachinesManager, ControllersManager, ServicesManager;
     var DevicesManager, GeneralManager, UsersManager, DomainsManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
+    var ScriptsManager;
     var webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
@@ -53,6 +54,7 @@ describe("NodeDetailsController", function() {
         ManagerHelperService = $injector.get("ManagerHelperService");
         ServicesManager = $injector.get("ServicesManager");
         ErrorService = $injector.get("ErrorService");
+        ScriptsManager = $injector.get("ScriptsManager");
 
         // Mock buildSocket so an actual connection is not made.
         webSocket = new MockWebSocket();
@@ -147,7 +149,8 @@ describe("NodeDetailsController", function() {
             DomainsManager: DomainsManager,
             ManagerHelperService: ManagerHelperService,
             ServicesManager: ServicesManager,
-            ErrorService: ErrorService
+            ErrorService: ErrorService,
+            ScriptsManager: ScriptsManager
         });
 
         $scope.nodesManager = MachinesManager;
@@ -265,7 +268,7 @@ describe("NodeDetailsController", function() {
             $scope, [
                 MachinesManager, DevicesManager, ControllersManager,
                 ZonesManager, GeneralManager, UsersManager, TagsManager,
-                DomainsManager, ServicesManager]);
+                DomainsManager, ServicesManager, ScriptsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -1134,15 +1137,61 @@ describe("NodeDetailsController", function() {
             $scope.actionOption = {
                 name: "commission"
             };
+            var commissioning_script_ids = [
+                makeInteger(0, 100), makeInteger(0, 100)];
+            var testing_script_ids = [
+                makeInteger(0, 100), makeInteger(0, 100)];
             $scope.commissionOptions.enableSSH = true;
             $scope.commissionOptions.skipNetworking = false;
             $scope.commissionOptions.skipStorage = false;
+            $scope.commissioningSelection = [];
+            angular.forEach(commissioning_script_ids, function(script_id) {
+                $scope.commissioningSelection.push({
+                    id: script_id,
+                    name: makeName("script_name")
+                });
+            });
+            $scope.testSelection = [];
+            angular.forEach(testing_script_ids, function(script_id) {
+                $scope.testSelection.push({
+                    id: script_id,
+                    name: makeName("script_name")
+                });
+            });
             $scope.actionGo();
             expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "commission", {
                     enable_ssh: true,
                     skip_networking: false,
-                    skip_storage: false
+                    skip_storage: false,
+                    commissioning_scripts: commissioning_script_ids,
+                    testing_scripts: testing_script_ids
+                });
+        });
+
+        it("calls performAction with testOptions", function() {
+            var controller = makeController();
+            spyOn(MachinesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "test"
+            };
+            var testing_script_ids = [
+                makeInteger(0, 100), makeInteger(0, 100)];
+            $scope.commissionOptions.enableSSH = true;
+            $scope.testSelection = [];
+            angular.forEach(testing_script_ids, function(script_id) {
+                $scope.testSelection.push({
+                    id: script_id,
+                    name: makeName("script_name")
+                });
+            });
+            $scope.actionGo();
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
+                node, "test", {
+                    enable_ssh: true,
+                    testing_scripts: testing_script_ids
                 });
         });
 
@@ -1212,6 +1261,14 @@ describe("NodeDetailsController", function() {
             $scope.commissionOptions.enableSSH = true;
             $scope.commissionOptions.skipNetworking = true;
             $scope.commissionOptions.skipStorage = true;
+            $scope.commissioningSelection = [{
+                id: makeInteger(0, 100),
+                name: makeName("script_name")
+            }];
+            $scope.testSelection = [{
+                id: makeInteger(0, 100),
+                name: makeName("script_name")
+            }];
             $scope.actionGo();
             defer.resolve();
             $rootScope.$digest();
@@ -1220,6 +1277,8 @@ describe("NodeDetailsController", function() {
                 skipNetworking: false,
                 skipStorage: false
             });
+            expect($scope.commissioningSelection).toEqual([]);
+            expect($scope.testSelection).toEqual([]);
         });
 
         it("clears actionError on resolve", function() {
@@ -2193,6 +2252,19 @@ describe("NodeDetailsController", function() {
             expect($scope.getServiceClass({
                 status: makeName("status")
             })).toBe("none");
+        });
+    });
+
+    describe("hasCustomCommissioningScripts", function() {
+        it("returns true with custom commissioning scripts", function() {
+            var controller = makeController();
+            ScriptsManager._items.push({script_type: 0});
+            expect($scope.hasCustomCommissioningScripts()).toBe(true);
+        });
+
+        it("returns false without custom commissioning scripts", function() {
+            var controller = makeController();
+            expect($scope.hasCustomCommissioningScripts()).toBe(false);
         });
     });
 });

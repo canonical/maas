@@ -6,14 +6,14 @@
 
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location', '$interval',
-    'DevicesManager',
-    'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
-    'UsersManager', 'TagsManager', 'DomainsManager', 'ManagerHelperService',
-    'ServicesManager', 'ErrorService', 'ValidationService', function(
+    'DevicesManager', 'MachinesManager', 'ControllersManager', 'ZonesManager',
+    'GeneralManager', 'UsersManager', 'TagsManager', 'DomainsManager',
+    'ManagerHelperService', 'ServicesManager', 'ErrorService',
+    'ValidationService', 'ScriptsManager', function(
         $scope, $rootScope, $routeParams, $location, $interval, DevicesManager,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
-        ServicesManager, ErrorService, ValidationService) {
+        ServicesManager, ErrorService, ValidationService, ScriptsManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -47,9 +47,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
             skipNetworking: false,
             skipStorage: false
         };
+        $scope.commissioningSelection = [];
+        $scope.testSelection = [];
         $scope.releaseOptions = {};
         $scope.checkingPower = false;
         $scope.devices = [];
+        $scope.scripts = ScriptsManager.getItems();
 
         // Node header section.
         $scope.header = {
@@ -616,6 +619,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Perform the action.
         $scope.actionGo = function() {
             var extra = {};
+            var i;
             // Set deploy parameters if a deploy.
             if($scope.actionOption.name === "deploy" &&
                 angular.isString($scope.osSelection.osystem) &&
@@ -640,6 +644,35 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.skip_networking = (
                     $scope.commissionOptions.skipNetworking);
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
+                extra.commissioning_scripts = [];
+                for(i=0;i<$scope.commissioningSelection.length;i++) {
+                    extra.commissioning_scripts.push(
+                        $scope.commissioningSelection[i].id);
+                }
+                if(extra.commissioning_scripts.length === 0) {
+                    // Tell the region not to run any custom commissioning
+                    // scripts.
+                    extra.commissioning_scripts.push('none');
+                }
+                extra.testing_scripts = [];
+                for(i=0;i<$scope.testSelection.length;i++) {
+                    extra.testing_scripts.push($scope.testSelection[i].id);
+                }
+                if(extra.testing_scripts.length === 0) {
+                    // Tell the region not to run any tests.
+                    extra.testing_scripts.push('none');
+                }
+            } else if($scope.actionOption.name === "test") {
+                // Set the test options.
+                extra.enable_ssh = $scope.commissionOptions.enableSSH;
+                extra.testing_scripts = [];
+                for(i=0;i<$scope.testSelection.length;i++) {
+                    extra.testing_scripts.push($scope.testSelection[i].id);
+                }
+                if(extra.testing_scripts.length === 0) {
+                    // Tell the region not to run any tests.
+                    extra.testing_scripts.push('none');
+                }
             } else if($scope.actionOption.name === "release") {
                 // Set the release options.
                 extra.erase = $scope.releaseOptions.erase;
@@ -659,6 +692,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.commissionOptions.enableSSH = false;
                     $scope.commissionOptions.skipNetworking = false;
                     $scope.commissionOptions.skipStorage = false;
+                    $scope.commissioningSelection = [];
+                    $scope.testSelection = [];
                 }, function(error) {
                     $scope.actionError = error;
                 });
@@ -1041,6 +1076,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
+        $scope.hasCustomCommissioningScripts = function() {
+            var i;
+            for(i=0;i<$scope.scripts.length;i++) {
+                if($scope.scripts[i].script_type === 0) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
             MachinesManager,
@@ -1051,7 +1096,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             UsersManager,
             TagsManager,
             DomainsManager,
-            ServicesManager
+            ServicesManager,
+            ScriptsManager
         ]).then(function() {
             if('controller' === $routeParams.type) {
                 $scope.nodesManager = ControllersManager;
@@ -1072,6 +1118,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.type_name = 'machine';
                 $scope.type_name_title = 'Machine';
             }
+
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already
             // the activeItem.

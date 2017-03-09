@@ -56,12 +56,14 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name)">
                     <form class="form form--inline">
-                        <fieldset class="form__fieldset ng-hide" data-ng-show="actionOption.name === 'commission'">
+                        <fieldset class="form__fieldset ng-hide" data-ng-show="actionOption.name === 'commission' || actionOption.name === 'test'">
                             <div class="form__group">
                                 <input class="checkbox" id="enableSSH" type="checkbox"
                                     data-ng-model="commissionOptions.enableSSH">
                                 <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
                             </div>
+                        </fieldset>
+                        <fieldset class="form__fieldset ng-hide" data-ng-show="actionOption.name === 'commission'">
                             <div class="form__group">
                                 <input class="checkbox" id="skipNetworking" type="checkbox"
                                     data-ng-model="commissionOptions.skipNetworking">
@@ -86,10 +88,9 @@
                                 <span data-maas-release-options="releaseOptions"></span>
                             </div>
                         </fieldset>
-                        <div class="page-header__controls">
+                        <div class="page-header__controls" data-ng-if="actionOption.name !== 'commission' && actionOption.name !== 'test'">
                             <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
                             <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                                <span data-ng-if="actionOption.name === 'commission'">Commission {$ type_name $}</span>
                                 <span data-ng-if="actionOption.name === 'acquire'">Acquire {$ type_name $}</span>
                                 <span data-ng-if="actionOption.name === 'deploy'">Deploy {$ type_name $}</span>
                                 <span data-ng-if="actionOption.name === 'release'">Release {$ type_name $}</span>
@@ -103,6 +104,37 @@
                                 <span data-ng-if="actionOption.name === 'mark-fixed'">Mark {$ type_name $}</span>
                                 <span data-ng-if="actionOption.name === 'delete'">Delete {$ type_name $}</span>
                                 <span data-ng-if="actionOption.name === 'import-images'">Import images</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name) || actionOption.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
+                    <form class="form form--stack">
+                        <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                            <div class="form__group">
+                                <label for="commissioning-scripts">Custom Commissioning Scripts</label>
+                                <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name) || (actionOption.name !== 'commission' && actionOption.name !== 'test')">
+                    <form class="form form--stack">
+                        <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                            <div class="form__group">
+                                <label for="testing-scripts">Hardware Testing Scripts</label>
+                                <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name)" data-ng-if="actionOption.name === 'commission' || actionOption.name === 'test'">
+                    <form class="form form--inline">
+                        <div class="page-header__controls">
+                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
+                            <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                <span data-ng-if="actionOption.name === 'commission'">Commission {$ type_name $}</span>
+                                <span data-ng-if="actionOption.name === 'test'">Test {$ type_name $}</span>
                             </button>
                         </div>
                     </form>

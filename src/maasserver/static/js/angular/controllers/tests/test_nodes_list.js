@@ -1,4 +1,4 @@
-/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for NodesListController.
@@ -41,6 +41,7 @@ describe("NodesListController", function() {
     var MachinesManager, DevicesManager, ControllersManager, GeneralManager;
     var ZonesManager, UsersManager, ServicesManager;
     var ManagerHelperService, SearchService;
+    var ScriptsManager;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
@@ -51,6 +52,7 @@ describe("NodesListController", function() {
         ServicesManager = $injector.get("ServicesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
+        ScriptsManager = $injector.get("ScriptsManager");
     }));
 
     // Mock the websocket connection to the region
@@ -96,7 +98,8 @@ describe("NodesListController", function() {
             UsersManager: UsersManager,
             ServicesManager: ServicesManager,
             ManagerHelperService: ManagerHelperService,
-            SearchService: SearchService
+            SearchService: SearchService,
+            ScriptsManager: ScriptsManager
         });
 
         // Since the osSelection directive is not used in this test the
@@ -299,7 +302,8 @@ describe("NodesListController", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 $scope, [MachinesManager, DevicesManager, ControllersManager,
-                GeneralManager, ZonesManager, UsersManager, ServicesManager]);
+                GeneralManager, ZonesManager, UsersManager, ServicesManager,
+                ScriptsManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -1423,18 +1427,67 @@ describe("NodesListController", function() {
                     var spy = spyOn(
                         $scope.tabs.nodes.manager,
                         "performAction").and.returnValue(
-                        $q.defer().promise);
+                            $q.defer().promise);
+                    var commissioning_script_ids = [
+                        makeInteger(0, 100), makeInteger(0, 100)];
+                    var testing_script_ids = [
+                        makeInteger(0, 100), makeInteger(0, 100)];
                     $scope.tabs.nodes.actionOption = { name: "commission" };
                     $scope.tabs.nodes.selectedItems = [object];
                     $scope.tabs.nodes.commissionOptions.enableSSH = true;
                     $scope.tabs.nodes.commissionOptions.skipNetworking = false;
                     $scope.tabs.nodes.commissionOptions.skipStorage = false;
+                    $scope.tabs.nodes.commissioningSelection = [];
+                    angular.forEach(
+                            commissioning_script_ids, function(script_id) {
+                        $scope.tabs.nodes.commissioningSelection.push({
+                            id: script_id,
+                            name: makeName("script_name")
+                        });
+                    });
+                    $scope.tabs.nodes.testSelection = [];
+                    angular.forEach(testing_script_ids, function(script_id) {
+                        $scope.tabs.nodes.testSelection.push({
+                            id: script_id,
+                            name: makeName("script_name")
+                        });
+                    });
                     $scope.actionGo("nodes");
                     expect(spy).toHaveBeenCalledWith(
                         object, "commission", {
                             enable_ssh: true,
                             skip_networking: false,
-                            skip_storage: false
+                            skip_storage: false,
+                            commissioning_scripts: commissioning_script_ids,
+                            testing_scripts: testing_script_ids
+                        });
+            });
+
+            it("calls performAction with testOptions",
+                function() {
+                    var controller = makeController();
+                    var object = makeObject("nodes");
+                    var spy = spyOn(
+                        $scope.tabs.nodes.manager,
+                        "performAction").and.returnValue(
+                            $q.defer().promise);
+                    var testing_script_ids = [
+                        makeInteger(0, 100), makeInteger(0, 100)];
+                    $scope.tabs.nodes.actionOption = { name: "test" };
+                    $scope.tabs.nodes.selectedItems = [object];
+                    $scope.tabs.nodes.commissionOptions.enableSSH = true;
+                    $scope.tabs.nodes.testSelection = [];
+                    angular.forEach(testing_script_ids, function(script_id) {
+                        $scope.tabs.nodes.testSelection.push({
+                            id: script_id,
+                            name: makeName("script_name")
+                        });
+                    });
+                    $scope.actionGo("nodes");
+                    expect(spy).toHaveBeenCalledWith(
+                        object, "test", {
+                            enable_ssh: true,
+                            testing_scripts: testing_script_ids
                         });
             });
 
@@ -1480,6 +1533,15 @@ describe("NodesListController", function() {
                 $scope.tabs.nodes.commissionOptions.enableSSH = true;
                 $scope.tabs.nodes.commissionOptions.skipNetworking = true;
                 $scope.tabs.nodes.commissionOptions.skipStorage = true;
+                $scope.tabs.nodes.commissioningSelection = [{
+                    id: makeInteger(0, 100),
+                    name: makeName("script_name")
+                }];
+                $scope.tabs.nodes.testSelection = [{
+                    id: makeInteger(0, 100),
+                    name: makeName("script_name")
+                }];
+
                 $scope.actionGo("nodes");
                 defer.resolve();
                 $scope.$digest();
@@ -1488,6 +1550,8 @@ describe("NodesListController", function() {
                     skipNetworking: false,
                     skipStorage: false
                 });
+                expect($scope.tabs.nodes.commissioningSelection).toEqual([]);
+                expect($scope.tabs.nodes.testSelection).toEqual([]);
             });
         });
     });
@@ -1550,6 +1614,18 @@ describe("NodesListController", function() {
             var controller = makeController();
             expect($scope.getDeviceIPAssignment("static")).toBe(
                 "Static");
+        });
+    });
+
+    describe("hasCustomCommissioningScripts", function() {
+        it("returns true with custom commissioning scripts", function() {
+            var controller = makeController();
+            ScriptsManager._items.push({script_type: 0});
+            expect($scope.hasCustomCommissioningScripts()).toBe(true);
+        });
+        it("returns false without custom commissioning scripts", function() {
+            var controller = makeController();
+            expect($scope.hasCustomCommissioningScripts()).toBe(false);
         });
     });
 });

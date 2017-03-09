@@ -102,6 +102,12 @@ class ScriptForm(ModelForm):
             set_form_error(self, 'name', '"none" is a reserved name.')
             valid = False
 
+        # The name can't be a digit as MAAS allows scripts to be selected by
+        # id.
+        if name is not None and name.isdigit():
+            set_form_error(self, 'name', 'Cannot be a number.')
+            valid = False
+
         # If comment and script exist __init__ combines both fields into a dict
         # to pass to VersionedTextFileField.
         if 'comment' in self.data:

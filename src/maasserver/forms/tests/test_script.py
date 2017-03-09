@@ -230,3 +230,12 @@ class TestScriptForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
             {'name': ['"none" is a reserved name.']}, form.errors)
+
+    def test__errors_on_digit_name(self):
+        form = ScriptForm(data={
+            'name': str(random.randint(0, 1000)),
+            'script': factory.make_string(),
+        })
+        self.assertFalse(form.is_valid())
+        self.assertDictEqual(
+            {'name': ['Cannot be a number.']}, form.errors)

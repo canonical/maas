@@ -90,8 +90,13 @@ class ScriptSetManager(Manager):
             qs = Script.objects.filter(
                 script_type=SCRIPT_TYPE.COMMISSIONING)
         else:
+            ids = [
+                int(id)
+                for id in scripts
+                if isinstance(id, int) or id.isdigit()
+            ]
             qs = Script.objects.filter(
-                Q(name__in=scripts) | Q(tags__overlap=scripts),
+                Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
                 script_type=SCRIPT_TYPE.COMMISSIONING)
         for script in qs:
             ScriptResult.objects.create(
@@ -112,8 +117,13 @@ class ScriptSetManager(Manager):
         if scripts == []:
             scripts.append('commissioning')
 
+        ids = [
+            int(id)
+            for id in scripts
+            if isinstance(id, int) or id.isdigit()
+        ]
         qs = Script.objects.filter(
-            Q(name__in=scripts) | Q(tags__overlap=scripts),
+            Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
             script_type=SCRIPT_TYPE.TESTING)
 
         # A ScriptSet should never be empty. If an empty script set is set as a
