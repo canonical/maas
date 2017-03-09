@@ -1233,6 +1233,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
+            'pod': factory.make_name(),
+            'pod_type': factory.make_name(),
             'storage': '0(ssd),10(ssd)',
             'interfaces': 'label:fabric=fabric-0',
             'fabrics': [factory.make_Fabric().name],

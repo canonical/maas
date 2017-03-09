@@ -21,6 +21,8 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
 )
+import maasserver.forms as forms_module
+from maasserver.forms.pods import ComposeMachineForPodsForm
 from maasserver.models import (
     Config,
     Domain,
@@ -33,6 +35,7 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
 )
+from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
     APITestCase,
@@ -576,6 +579,63 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(machine.system_id, parsed_result['system_id'])
+
+    def test_POST_allocate_returns_a_composed_machine_no_constraints(self):
+        # The "allocate" operation returns a composed machine.
+        available_status = NODE_STATUS.READY
+        pod = factory.make_Pod()
+        pod.architectures = [random.choice([
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ])]
+        pod.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {'op': 'allocate'})
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
+
+    def test_POST_allocate_returns_a_composed_machine_constraints(self):
+        # The "allocate" operation returns a composed machine.
+        available_status = NODE_STATUS.READY
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod = factory.make_Pod(architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        machine = factory.make_Node(
+            status=available_status, owner=None, with_boot_disk=True)
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = machine
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0]
+                })
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(machine.system_id, parsed_result['system_id'])
+        self.assertThat(mock_compose, MockCalledOnceWith())
 
     def test_POST_allocate_allocates_machine(self):
         # The "allocate" operation allocates the machine it returns.

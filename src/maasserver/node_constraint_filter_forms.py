@@ -561,6 +561,12 @@ class AcquireNodeForm(RenamableFieldsForm):
 
     ignore_unknown_constraints = False
 
+    pod = forms.CharField(
+        label="The name of the desired pod", required=False)
+
+    pod_type = forms.CharField(
+        label="The power_type of the desired pod", required=False)
+
     @classmethod
     def Strict(cls, *args, **kwargs):
         """A stricter version of the form which rejects unknown parameters."""

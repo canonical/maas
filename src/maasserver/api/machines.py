@@ -67,11 +67,13 @@ from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
 )
+from maasserver.forms.pods import ComposeMachineForPodsForm
 from maasserver.models import (
     Config,
     Domain,
     Filesystem,
     Machine,
+    Pod,
     RackController,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
@@ -1324,6 +1326,33 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 )
             machines, storage, interfaces = form.filter_nodes(machines)
             machine = get_first(machines)
+            if machine is None:
+                cores = form.cleaned_data.get('cpu_count')
+                if cores is not None:
+                    cores = int(cores)
+                memory = form.cleaned_data.get('mem')
+                if memory is not None:
+                    memory = int(memory)
+                architecture = None
+                architectures = form.cleaned_data.get('arch')
+                if architectures is not None and len(architectures) == 1:
+                    architecture = architectures[0]
+                data = {
+                    "cores": cores,
+                    "memory": memory,
+                    "architecture": architecture,
+                }
+                pods = Pod.objects.all()
+                if pods:
+                    if form.cleaned_data.get('pod'):
+                        pods = pods.filter(name=form.cleaned_data.get('pod'))
+                    elif form.cleaned_data.get('pod_type'):
+                        pods = pods.filter(
+                            power_type=form.cleaned_data.get('pod_type'))
+                    compose_form = ComposeMachineForPodsForm(
+                        request=request, data=data, pods=pods)
+                    if compose_form.is_valid():
+                        machine = compose_form.compose()
             if machine is None:
                 constraints = form.describe_constraints()
                 if constraints == '':

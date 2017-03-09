@@ -6,7 +6,10 @@
 __all__ = []
 
 import random
-from unittest.mock import MagicMock
+from unittest.mock import (
+    call,
+    MagicMock,
+)
 
 import crochet
 from django.core.exceptions import ValidationError
@@ -14,11 +17,15 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
-from maasserver.enum import BMC_TYPE
+from maasserver.enum import (
+    BMC_TYPE,
+    NODE_CREATION_TYPE,
+)
 from maasserver.exceptions import PodProblem
-from maasserver.forms import pods
+from maasserver.forms import pods as pods_module
 from maasserver.forms.pods import (
     ComposeMachineForm,
+    ComposeMachineForPodsForm,
     PodForm,
 )
 from maasserver.models.node import Machine
@@ -31,9 +38,11 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnce,
+    MockCallsMatch,
     MockNotCalled,
 )
 from provisioningserver.drivers.pod import (
+    Capabilities,
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
@@ -58,6 +67,20 @@ from twisted.internet.defer import (
 
 
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
+
+
+def make_pod_with_hints():
+    architectures = [
+        "amd64/generic", "i386/generic", "arm64/generic",
+        "armhf/generic"
+    ]
+    cpu_speed = random.randint(2000, 3000)
+    pod = factory.make_Pod(
+        architectures=architectures, cpu_speed=cpu_speed)
+    pod.hints.cores = random.randint(8, 16)
+    pod.hints.memory = random.randint(4096, 8192)
+    pod.hints.save()
+    return pod
 
 
 class TestPodForm(MAASTransactionServerTestCase):
@@ -89,7 +112,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = ({
+        self.patch(pods_module, "discover_pod").return_value = ({
             discovered_rack_1.system_id: discovered_pod,
             discovered_rack_2.system_id: discovered_pod,
         }, {
@@ -148,8 +171,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_creates_pod_with_discovered_information_in_twisted(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
-        pods.discover_pod.return_value = succeed(
-            pods.discover_pod.return_value)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
         pod_info = self.make_pod_info()
         request = MagicMock()
         request.user = yield deferToDatabase(factory.make_User)
@@ -260,8 +283,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_updates_existing_pod_in_twisted(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
-        pods.discover_pod.return_value = succeed(
-            pods.discover_pod.return_value)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
         pod_info = self.make_pod_info()
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
@@ -345,8 +368,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_discover_and_sync_existing_pod_in_twisted(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery)
-        pods.discover_pod.return_value = succeed(
-            pods.discover_pod.return_value)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
         pod_info = self.make_pod_info()
         orig_pod = yield deferToDatabase(
             factory.make_Pod, pod_type=pod_info['type'])
@@ -385,7 +408,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         yield deferToDatabase(validate_rack_routes)
 
     def test_raises_unable_to_discover_because_no_racks(self):
-        self.patch(pods, "discover_pod").return_value = ({}, {})
+        self.patch(pods_module, "discover_pod").return_value = ({}, {})
         form = PodForm(data=self.make_pod_info())
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
@@ -396,7 +419,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_raises_unable_to_discover_because_no_racks_in_twisted(self):
-        self.patch(pods, "discover_pod").return_value = succeed(({}, {}))
+        self.patch(pods_module, "discover_pod").return_value = succeed(
+            ({}, {}))
         form = yield deferToDatabase(PodForm, data=self.make_pod_info())
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid, form._errors)
@@ -415,7 +439,7 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_exception_from_rack_controller(self):
         failed_rack = factory.make_RackController()
         exc = factory.make_exception()
-        self.patch(pods, "discover_pod").return_value = ({}, {
+        self.patch(pods_module, "discover_pod").return_value = ({}, {
             failed_rack.system_id: exc,
         })
         form = PodForm(data=self.make_pod_info())
@@ -428,7 +452,7 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_exception_from_rack_controller_in_twisted(self):
         failed_rack = yield deferToDatabase(factory.make_RackController)
         exc = factory.make_exception()
-        self.patch(pods, "discover_pod").return_value = succeed(({}, {
+        self.patch(pods_module, "discover_pod").return_value = succeed(({}, {
             failed_rack.system_id: exc,
         }))
         form = yield deferToDatabase(PodForm, data=self.make_pod_info())
@@ -445,19 +469,6 @@ class TestPodForm(MAASTransactionServerTestCase):
 
 
 class TestComposeMachineForm(MAASServerTestCase):
-
-    def make_pod_with_hints(self):
-        architectures = [
-            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
-            for _ in range(3)
-        ]
-        cpu_speed = random.randint(2000, 3000)
-        pod = factory.make_Pod(
-            architectures=architectures, cpu_speed=cpu_speed)
-        pod.hints.cores = random.randint(8, 16)
-        pod.hints.memory = random.randint(4096, 8192)
-        pod.hints.save()
-        return pod
 
     def make_compose_machine_result(self, pod):
         composed_machine = DiscoveredMachine(
@@ -481,7 +492,7 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__sets_up_fields_based_on_pod(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         form = ComposeMachineForm(request=request, pod=pod)
         self.assertThat(form.fields['cores'], MatchesStructure(
             required=Equals(False),
@@ -519,7 +530,7 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__sets_up_fields_based_on_pod_no_max_cpu_speed(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         pod.cpu_speed = 0
         pod.save()
         form = ComposeMachineForm(request=request, pod=pod)
@@ -532,7 +543,7 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__get_requested_machine_uses_all_initial_values(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         request_machine = form.get_requested_machine()
@@ -552,7 +563,7 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__get_requested_machine_uses_passed_values(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         architecture = random.choice(pod.architectures)
         cores = random.randint(1, pod.hints.cores)
         memory = random.randint(1024, pod.hints.memory)
@@ -581,23 +592,23 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__save_raises_AttributeError(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         self.assertRaises(AttributeError, form.save)
 
     def test__compose_with_commissioning(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
 
         # Mock the RPC client.
         client = MagicMock()
-        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
-        mock_compose_machine = self.patch(pods, "compose_machine")
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints))
 
@@ -617,16 +628,16 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__compose_without_commissioning(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
 
         # Mock the RPC client.
         client = MagicMock()
-        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
-        mock_compose_machine = self.patch(pods, "compose_machine")
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
         mock_compose_machine.return_value = succeed(
             (composed_machine, pod_hints))
 
@@ -646,17 +657,129 @@ class TestComposeMachineForm(MAASServerTestCase):
 
     def test__compose_handles_timeout_error(self):
         request = MagicMock()
-        pod = self.make_pod_with_hints()
+        pod = make_pod_with_hints()
 
         # Mock the RPC client.
         client = MagicMock()
         client.side_effect = crochet.TimeoutError()
-        mock_getClient = self.patch(pods, "getClientFromIdentifiers")
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
         mock_getClient.return_value = succeed(client)
 
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEquals(
-            "Unable to composed machine because '%s' driver timed out "
+            "Unable to compose a machine because '%s' driver timed out "
             "after 120 seconds." % pod.power_type, str(error))
+
+
+class TestComposeMachineForPodsForm(MAASServerTestCase):
+
+    def make_data(self, pods):
+        return {
+            "cores": random.randint(
+                1, min([pod.hints.cores for pod in pods])),
+            "memory": random.randint(
+                1024, min([pod.hints.memory for pod in pods])),
+            "architecture": random.choice([
+                "amd64/generic", "i386/generic",
+                "arm64/generic", "armhf/generic"
+            ])
+        }
+
+    def make_pods(self):
+        return [
+            make_pod_with_hints()
+            for _ in range(3)
+        ]
+
+    def test__requires_request_kwarg(self):
+        error = self.assertRaises(ValueError, ComposeMachineForPodsForm)
+        self.assertEqual("'request' kwargs is required.", str(error))
+
+    def test__requires_pods_kwarg(self):
+        request = MagicMock()
+        error = self.assertRaises(
+            ValueError, ComposeMachineForPodsForm, request=request)
+        self.assertEqual("'pods' kwargs is required.", str(error))
+
+    def test__sets_up_pod_forms_based_on_pods(self):
+        request = MagicMock()
+        pods = self.make_pods()
+        data = self.make_data(pods)
+        form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
+        self.assertTrue(form.is_valid())
+        self.assertThat(form.pod_forms, MatchesListwise([
+            MatchesAll(
+                IsInstance(ComposeMachineForm),
+                MatchesStructure(
+                    request=Equals(request), data=Equals(data),
+                    pod=Equals(pod)))
+            for pod in pods
+            ]))
+
+    def test__save_raises_AttributeError(self):
+        request = MagicMock()
+        pods = self.make_pods()
+        data = self.make_data(pods)
+        form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
+        self.assertTrue(form.is_valid())
+        self.assertRaises(AttributeError, form.save)
+
+    def test_compose_uses_non_commit_forms_first(self):
+        request = MagicMock()
+        pods = self.make_pods()
+        # Make it skip the first over commitable pod
+        pods[1].capabilities = [Capabilities.OVER_COMMIT]
+        pods[1].save()
+        data = self.make_data(pods)
+        form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
+        mock_form_compose = self.patch(ComposeMachineForm, 'compose')
+        mock_form_compose.side_effect = [factory.make_exception(), None]
+        self.assertTrue(form.is_valid())
+
+        form.compose()
+        self.assertThat(mock_form_compose, MockCallsMatch(
+            call(
+                skip_commissioning=True,
+                creation_type=NODE_CREATION_TYPE.DYNAMIC),
+            call(
+                skip_commissioning=True,
+                creation_type=NODE_CREATION_TYPE.DYNAMIC)))
+
+    def test_compose_uses_commit_forms_second(self):
+        request = MagicMock()
+        pods = self.make_pods()
+        # Make it skip all pods.
+        for pod in pods:
+            pod.capabilities = [Capabilities.OVER_COMMIT]
+            pod.save()
+        data = self.make_data(pods)
+        form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
+        mock_form_compose = self.patch(ComposeMachineForm, 'compose')
+        mock_form_compose.side_effect = [
+            factory.make_exception(), factory.make_exception(),
+            factory.make_exception(), None]
+        self.assertTrue(form.is_valid())
+
+        form.compose()
+        self.assertThat(mock_form_compose, MockCallsMatch(
+            call(
+                skip_commissioning=True,
+                creation_type=NODE_CREATION_TYPE.DYNAMIC),
+            call(
+                skip_commissioning=True,
+                creation_type=NODE_CREATION_TYPE.DYNAMIC),
+            call(
+                skip_commissioning=True,
+                creation_type=NODE_CREATION_TYPE.DYNAMIC)))
+
+    def test_clean_adds_error_for_no_matching_constraints(self):
+        request = MagicMock()
+        pods = self.make_pods()
+        for pod in pods:
+            pod.architectures = ["Not vaild architecture"]
+            pod.save()
+        data = self.make_data(pods)
+        form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
+        self.assertFalse(form.is_valid())

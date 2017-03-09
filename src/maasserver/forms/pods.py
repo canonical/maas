@@ -43,6 +43,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
+    Capabilities,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -299,7 +300,9 @@ class ComposeMachineForm(forms.Form):
         """Prevent from usage."""
         raise AttributeError("Use `compose` instead of `save`.")
 
-    def compose(self, timeout=120, skip_commissioning=False):
+    def compose(
+            self, timeout=120, skip_commissioning=False,
+            creation_type=NODE_CREATION_TYPE.MANUAL):
         """Compose the machine.
 
         Internal operation of this form is asynchronously. It will block the
@@ -327,12 +330,73 @@ class ComposeMachineForm(forms.Form):
                 name=self.pod.name).wait(timeout)
         except crochet.TimeoutError:
             raise PodProblem(
-                "Unable to composed machine because '%s' driver timed out "
+                "Unable to compose a machine because '%s' driver timed out "
                 "after %d seconds." % (self.pod.power_type, timeout))
 
         created_machine = self.pod.create_machine(
             discovered_machine, self.request.user,
             skip_commissioning=skip_commissioning,
-            creation_type=NODE_CREATION_TYPE.MANUAL)
+            creation_type=creation_type)
         self.pod.sync_hints(pod_hints)
         return created_machine
+
+
+class ComposeMachineForPodsForm(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
+        if self.request is None:
+            raise ValueError("'request' kwargs is required.")
+        self.pods = kwargs.pop('pods', None)
+        if self.pods is None:
+            raise ValueError("'pods' kwargs is required.")
+        super(ComposeMachineForPodsForm, self).__init__(*args, **kwargs)
+        self.pod_forms = [
+            ComposeMachineForm(request=self.request, data=self.data, pod=pod)
+            for pod in self.pods
+        ]
+
+    def save(self):
+        """Prevent from usage."""
+        raise AttributeError("Use `compose` instead of `save`.")
+
+    def compose(self):
+        """Composed machine from available pod."""
+        non_commit_forms = [
+            form
+            for form in self.valid_pod_forms
+            if Capabilities.OVER_COMMIT not in form.pod.capabilities
+        ]
+        commit_forms = [
+            form
+            for form in self.valid_pod_forms
+            if Capabilities.OVER_COMMIT in form.pod.capabilities
+        ]
+        # First, try to compose a machine from non-commitable pods.
+        for form in non_commit_forms:
+            try:
+                return form.compose(
+                    skip_commissioning=True,
+                    creation_type=NODE_CREATION_TYPE.DYNAMIC)
+            except:
+                continue
+        # Second, try to compose a machine from commitable pods
+        for form in commit_forms:
+            try:
+                return form.compose(
+                    skip_commissioning=True,
+                    creation_type=NODE_CREATION_TYPE.DYNAMIC)
+            except:
+                continue
+        # No machine found.
+        return None
+
+    def clean(self):
+        self.valid_pod_forms = [
+            pod_form
+            for pod_form in self.pod_forms
+            if pod_form.is_valid()
+        ]
+        if len(self.valid_pod_forms) == 0:
+            self.add_error(
+                "__all__", "No current pod resources match constraints.")

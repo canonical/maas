@@ -510,10 +510,15 @@ class Pod(BMC):
             skip_commissioning=False,
             creation_type=NODE_CREATION_TYPE.PRE_EXISTING):
         """Create's a `Machine` from `discovered_machines` for this pod."""
+        if skip_commissioning:
+            status = NODE_STATUS.READY
+        else:
+            status = NODE_STATUS.NEW
+
         # Create the machine.
         machine = Machine(
             architecture=discovered_machine.architecture,
-            status=NODE_STATUS.NEW,
+            status=status,
             cpu_count=discovered_machine.cores,
             cpu_speed=discovered_machine.cpu_speed,
             memory=discovered_machine.memory,
