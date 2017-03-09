@@ -1,0 +1,161 @@
+<div data-ng-hide="loaded">
+    <header class="page-header" sticky media-query="min-width: 769px">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">Loading...</h1>
+        </div>
+    </header>
+</div>
+<div class="ng-hide" data-ng-show="loaded" data-window-width>
+    <header class="page-header u-margin--bottom-none" sticky>
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">{$ pod.name $}</h1>
+            <div class="page-header__controls" data-ng-if="isSuperUser()">
+                <div data-maas-cta="action.options"
+                    data-ng-model="action.option"
+                    data-ng-change="actionOptionChanged()">
+                </div>
+            </div>
+            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+                <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="action.inProgress">
+                    <p class="page-header__message">
+                        <i class="icon icon--loading u-animation--spin"></i>
+                        Performing {$ action.option.sentence $}.
+                    </p>
+                </section>
+                <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="action.option && !action.inProgress">
+                    <form class="form form--inline">
+                        <p class="page-header__message page-header__message--error" data-ng-if="action.error">
+                            Performing {$ action.option.sentence $} failed: {$ action.error $}
+                        </p>
+                        <div class="page-header__controls">
+                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
+                            <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
+                                <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
+                                <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
+                            </button>
+                            <button class="button--secondary button--inline" data-ng-click="actionGo()" data-ng-if="action.error">Retry</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="page-navigation" sticky offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
+        <div class="wrapper--inner">
+            <nav class="page-navigation__links">
+                <a href="#" class="page-navigation__link is-active">{$ pod.composed_machines_count $} composed machines</a>
+                <!-- <a href="#" class="page-navigation__link">Storage</a> -->
+                <!-- <a href="#" class="page-navigation__link">Power</a> -->
+            </nav>
+        </div>
+    </div>
+    <section class="row u-padding--top-none">
+        <div class="wrapper--inner u-align--flex">
+            <aside class="three-col u-align--top">
+                <div class="three-col">
+                    <div class="action-card u-margin--bottom">
+                        <h3 class="action-card__title">CPU ({$ pod.total.cores $} cores)</h3>
+                        <meter max="{$ pod.total.cores $}" value="{$ pod.used.cores $}"></meter>
+                        <p>
+                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.cores $} cores used</span>
+                            <span class="u-float--right">{$ pod.available.cores $} cores available</span>
+                        </p>
+                    </div>
+                    <div class="action-card u-margin--bottom">
+                        <h3 class="action-card__title">RAM ({$ pod.total.memory_gb $} GiB)</h3>
+                        <meter max="{$ pod.total.memory $}" value="{$ pod.used.memory $}"></meter>
+                        <p>
+                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.memory_gb $} GiB used</span>
+                            <span class="u-float--right">{$ pod.available.memory_gb $} GiB available</span>
+                        </p>
+                    </div>
+                    <div class="action-card u-margin--bottom">
+                        <h3 class="action-card__title">Local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
+                        <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}"></meter>
+                        <p>
+                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.local_storage_gb $} GiB used</span>
+                            <span class="u-float--right">{$ pod.available.local_storage_gb $} GiB available</span>
+                        </p>
+                    </div>
+                    <div class="action-card u-margin--bottom">
+                        <h3 class="action-card__title">Remote storage</h3>
+                        <p>No remote storage systems haven't been connected yet.</p>
+                        <p>When you connect a remote system to your pod it will be automatically detacted and displayed here.</p>
+                    </div>
+                </div>
+            </aside>
+            <div class="nine-col last-col">
+                <div class="u-align--center u-vertical--align">
+                    <i class="icon icon--compose-machine icon--huge" style="width: 128px; height: 128px;"></i>
+                    <h3>You have not composed any machines yet.</h3>
+                    <button class="button--positive button--inline ng-hide">Compose machine</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="row u-padding--top-none" data-ng-if="false">
+        <div class="wrapper--inner">
+            <div class="six-col">
+                <h3>Total storage ({$ pod.total.local_storage_gb $} GiB)</h3>
+                <div class="action-card u-margin--none">
+                  Graph goes here
+                </div>
+            </div>
+            <div class="six-col last-col">
+              <h3>Total local storage ({$ pod.total.local_storage_gb $} GiB)</h3>
+              <div class="action-card u-margin--bottom">
+                  <h3 class="action-card__title">0 drives</h3>
+                  <meter max="{$ pod.total.local_storage $}" value="{$ pod.used.local_storage $}">{$ pod.used.local_storage $} Mb</meter>
+                  <p>
+                      <span>0 GiB used</span>
+                      <span class="u-float--right">{$ pod.total.local_storage_gb $} GiB available</span>
+                  </p>
+              </div>
+              <h3>Remote storage</h3>
+              <p>No remote storage systems haven't been connected yet.</p>
+              <p>When you connect a remote system to your pod it will be automatically detacted and displayed here.</p>
+            </div>
+            <div class="twelve-col">
+                <h3>Available volumes (2000 GiB)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="table-col--25">
+                                <a href="#">Name</a>
+                            </th>
+                            <th class="table-col--25">
+                                <a href="#">Storage system</a>
+                            </th>
+                            <th class="table-col--25">
+                                <a href="#">Capacity (GiB)</a>
+                            </th>
+                            <th class="table-col--20">
+                                <a href="#">Location</a>
+                            </th>
+                            <th class="table-col--5"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="table-col--25">
+                                <a href="#">sda</a>
+                            </td>
+                            <td class="table-col--25">
+                                lorem ipsum
+                            </td>
+                            <td class="table-col--25">
+                                500
+                            </td>
+                            <td class="table-col--20">
+                                Local
+                            </td>
+                            <td class="table-col--5">
+                                <a href="" class="icon icon--delete"></a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>

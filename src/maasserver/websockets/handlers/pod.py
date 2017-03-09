@@ -39,6 +39,7 @@ class PodHandler(TimestampedModelHandler):
             'create',
             'update',
             'delete',
+            'set_active',
             'refresh',
         ]
         exclude = [

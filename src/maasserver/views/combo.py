@@ -140,6 +140,7 @@ MERGE_VIEWS = {
             "js/angular/controllers/node_result.js",
             "js/angular/controllers/node_events.js",
             "js/angular/controllers/pods_list.js",
+            "js/angular/controllers/pod_details.js",
             "js/angular/controllers/domains_list.js",
             "js/angular/controllers/domain_details.js",
             "js/angular/controllers/fabric_details.js",

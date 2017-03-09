@@ -105,14 +105,12 @@
                           <label for="{$ pod.id $}" class="checkbox-label"></label>
                       </div>
                       <div class="table__data table-col--18" aria-label="Name">
-                          <!-- <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a> -->
-                          {$ pod.name $}
+                          <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
                       </div>
                     </div>
                     <div data-ng-if="!isSuperUser()">
                       <div class="table__data table-col--20" aria-label="Name">
-                          <!-- <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a> -->
-                          {$ pod.name $}
+                          <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
                       </div>
                     </div>
                     <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.power_type) $}</div>
