@@ -60,7 +60,7 @@ BUILTIN_SCRIPTS = [
     BuiltinScript(
         name='smartctl-validate',
         title='Storage status',
-        description='Validate SMART health for all drives in parellel.',
+        description='Validate SMART health for all drives in parallel.',
         tags=['storage', 'commissioning'],
         timeout=60 * 5,
         filename='smartctl.py',
@@ -70,7 +70,7 @@ BUILTIN_SCRIPTS = [
         title='Storage integrity',
         description=(
             'Run the short SMART self-test and validate SMART health on all '
-            'drives in parellel'),
+            'drives in parallel'),
         tags=['storage'],
         timeout=60 * 10,
         filename='smartctl.py',
@@ -80,7 +80,7 @@ BUILTIN_SCRIPTS = [
         title='Storage integrity',
         description=(
             'Run the long SMART self-test and validate SMART health on all '
-            'drives in parellel'),
+            'drives in parallel'),
         tags=['storage'],
         filename='smartctl.py',
         ),
@@ -89,9 +89,40 @@ BUILTIN_SCRIPTS = [
         title='Storage integrity',
         description=(
             'Run the conveyance SMART self-test and validate SMART health on '
-            'all drives in parellel'),
+            'all drives in parallel'),
         tags=['storage'],
         filename='smartctl.py',
+        ),
+    BuiltinScript(
+        name='memtester',
+        title='Memory integrity',
+        description='Run memtester against all available RAM.',
+        tags=['memory'],
+        filename='memtester.sh',
+        ),
+    BuiltinScript(
+        name='internet-connectivity',
+        title='Network validation',
+        description='Download a file from images.maas.io.',
+        tags=['network', 'internet'],
+        timeout=60 * 5,
+        filename='internet_connectivity.sh',
+        ),
+    BuiltinScript(
+        name='stress-ng-cpu-long',
+        title='CPU validation',
+        description='Run the stress-ng CPU tests over 12 hours.',
+        tags=['cpu'],
+        timeout=60 * 60 * 12 + 60 * 5,
+        filename='stress_ng_cpu_long.sh',
+        ),
+    BuiltinScript(
+        name='stress-ng-memory-long',
+        title='Memory integrity',
+        description='Run the stress-ng memory tests over 12 hours.',
+        tags=['memory'],
+        timeout=60 * 60 * 12 + 60 * 5,
+        filename='stress_ng_memory_long.sh',
         ),
 ]
 
