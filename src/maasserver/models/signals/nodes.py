@@ -7,21 +7,12 @@ __all__ = [
     "signals",
 ]
 
-import crochet
 from django.db.models.signals import (
     post_init,
     post_save,
-    pre_delete,
     pre_save,
 )
-from maasserver.clusterrpc.pods import decompose_machine
-from maasserver.enum import (
-    BMC_TYPE,
-    NODE_CREATION_TYPE,
-    NODE_STATUS,
-    NODE_TYPE,
-)
-from maasserver.exceptions import PodProblem
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Controller,
     Device,
@@ -31,11 +22,8 @@ from maasserver.models import (
     RegionController,
     Service,
 )
-from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
-from provisioningserver.drivers.pod import Capabilities
-from provisioningserver.utils.twisted import asynchronous
 
 
 NODE_CLASSES = [
@@ -116,54 +104,6 @@ for klass in NODE_CLASSES:
         klass, ['node_type'], delete=False)
     signals.watch(
         post_save, create_services_on_create,
-        sender=klass)
-
-
-def decompose_machine_on_delete(sender, instance, **kwargs):
-    """Decompose a machine if is part of a pod.
-
-    This will block the deletion of the machine if the machine cannot
-    be decomposed in the pod.
-    """
-    bmc = instance.bmc
-    if (instance.node_type == NODE_TYPE.MACHINE and
-            bmc is not None and
-            bmc.bmc_type == BMC_TYPE.POD and
-            Capabilities.COMPOSABLE in bmc.capabilities and
-            instance.creation_type != NODE_CREATION_TYPE.PRE_EXISTING):
-        pod = bmc.as_pod()
-
-        @asynchronous
-        def wrap_decompose_machine(
-                client_idents, pod_type, parameters, pod_id, name):
-            """Wrapper to get the client."""
-            d = getClientFromIdentifiers(client_idents)
-            d.addCallback(
-                decompose_machine, pod_type, parameters,
-                pod_id=pod_id, name=name)
-            return d
-
-        # Call the decompose in the reactor. This is being called from
-        # a thread that will block waiting on the result. This sucks because
-        # it causes the thread to block, but it will not cause a deadlock
-        # as the work is performed in the reactor and not in another thread.
-        try:
-            hints = wrap_decompose_machine(
-                pod.get_client_identifiers(),
-                pod.power_type,
-                instance.power_parameters,
-                pod_id=pod.id,
-                name=pod.name).wait(60)
-        except crochet.TimeoutError:
-            raise PodProblem(
-                "Unable to decomposed machine because '%s' driver timed out "
-                "after 60 seconds." % pod.power_type)
-        else:
-            pod.sync_hints(hints)
-
-for klass in NODE_CLASSES:
-    signals.watch(
-        pre_delete, decompose_machine_on_delete,
         sender=klass)
 
 

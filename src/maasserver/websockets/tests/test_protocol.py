@@ -702,6 +702,7 @@ ALL_NOTIFIERS = (
     "notification",
     "notificationdismissal",
     "packagerepository",
+    "pod",
     "script",
     "service",
     "space",

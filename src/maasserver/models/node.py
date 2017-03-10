@@ -55,6 +55,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
+from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
     power_cycle,
     power_driver_check,
@@ -163,6 +164,7 @@ from netaddr import (
 )
 import petname
 from piston3.models import Token
+from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -2193,22 +2195,57 @@ class Node(CleanSave, TimestampedModel):
 
     def delete(self):
         """Delete this node."""
-        maaslog.info("%s: Deleting node", self.hostname)
+        bmc = self.bmc
+        if (self.node_type == NODE_TYPE.MACHINE and
+                bmc is not None and
+                bmc.bmc_type == BMC_TYPE.POD and
+                Capabilities.COMPOSABLE in bmc.capabilities and
+                self.creation_type != NODE_CREATION_TYPE.PRE_EXISTING):
+            pod = bmc.as_pod()
 
-        # Delete the related interfaces. This will remove all of IP addresses
-        # that are linked to those interfaces.
-        self.interface_set.all().delete()
+            client_idents = pod.get_client_identifiers()
 
-        # Delete my BMC if no other Nodes are using it.
-        if (self.bmc is not None and
-                self.bmc.bmc_type == BMC_TYPE.BMC and
-                self.bmc.node_set.count() == 1):
-            # Delete my orphaned BMC.
-            maaslog.info(
-                "%s: Deleting my BMC '%s'", self.hostname, self.bmc)
-            self.bmc.delete()
+            @transactional
+            def _save(machine_id, pod_id, hints):
+                # Circular imports.
+                from maasserver.models.bmc import Pod
+                machine = Machine.objects.filter(id=machine_id).first()
+                if machine is not None:
+                    maaslog.info("%s: Deleting machine", machine.hostname)
+                    # Delete the related interfaces. This will remove all of IP
+                    # addresses that are linked to those interfaces.
+                    self.interface_set.all().delete()
+                    super(Node, machine).delete()
+                pod = Pod.objects.filter(id=pod_id).first()
+                if pod is not None:
+                    pod.sync_hints(hints)
 
-        super(Node, self).delete()
+            maaslog.info("%s: Decomposing machine", self.hostname)
+
+            d = post_commit()
+            d.addCallback(lambda _: getClientFromIdentifiers(client_idents))
+            d.addCallback(
+                decompose_machine, pod.power_type, self.power_parameters,
+                pod_id=pod.id, name=pod.name)
+            d.addCallback(lambda hints: (
+                deferToDatabase(_save, self.id, pod.id, hints)))
+        else:
+            maaslog.info("%s: Deleting node", self.hostname)
+
+            # Delete the related interfaces. This will remove all of IP
+            # addresses that are linked to those interfaces.
+            self.interface_set.all().delete()
+
+            # Delete my BMC if no other Nodes are using it.
+            if (self.bmc is not None and
+                    self.bmc.bmc_type == BMC_TYPE.BMC and
+                    self.bmc.node_set.count() == 1):
+                # Delete my orphaned BMC.
+                maaslog.info(
+                    "%s: Deleting my BMC '%s'", self.hostname, self.bmc)
+                self.bmc.delete()
+
+            super(Node, self).delete()
 
     def set_random_hostname(self):
         """Set a random `hostname`."""

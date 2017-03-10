@@ -6,48 +6,28 @@
 __all__ = []
 
 import random
-from unittest.mock import Mock
 
-import crochet
 from maasserver.enum import (
-    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_TYPE,
-    NODE_TYPE_CHOICES,
 )
-from maasserver.exceptions import PodProblem
 from maasserver.models.service import (
     RACK_SERVICES,
     REGION_SERVICES,
     Service,
 )
-from maasserver.models.signals import nodes as nodes_signals
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from metadataserver.models.nodekey import NodeKey
-from provisioningserver.drivers.pod import (
-    Capabilities,
-    DiscoveredPodHints,
-)
-from provisioningserver.rpc.cluster import DecomposeMachine
-from provisioningserver.rpc.exceptions import PodActionFail
 from testtools.matchers import (
     Equals,
     HasLength,
     Is,
     MatchesStructure,
     Not,
-)
-from twisted.internet.defer import (
-    fail,
-    succeed,
 )
 
 
@@ -184,119 +164,3 @@ class TestNodeCreateServices(MAASServerTestCase):
         self.assertThat(
             {service.name for service in services},
             Equals(REGION_SERVICES))
-
-
-class TestDecomposeMachine(MAASServerTestCase):
-    """Test that a machine in a composable pod is decomposed."""
-
-    def make_composable_pod(self):
-        return factory.make_Pod(capabilities=[Capabilities.COMPOSABLE])
-
-    def fake_rpc_client(self):
-        client = Mock()
-        client.return_value = succeed({})
-        self.patch(
-            nodes_signals,
-            "getClientFromIdentifiers").return_value = succeed(client)
-        return client
-
-    def test_does_nothing_unless_machine(self):
-        pod = self.make_composable_pod()
-        client = self.fake_rpc_client()
-        for node_type, _ in NODE_TYPE_CHOICES:
-            if node_type != NODE_TYPE.MACHINE:
-                node = factory.make_Node(node_type=node_type)
-                node.bmc = pod
-                node.save()
-                node.delete()
-        self.assertThat(client, MockNotCalled())
-
-    def test_does_nothing_if_machine_without_bmc(self):
-        client = self.fake_rpc_client()
-        machine = factory.make_Node()
-        machine.bmc = None
-        machine.save()
-        machine.delete()
-        self.assertThat(client, MockNotCalled())
-
-    def test_does_nothing_if_standard_bmc(self):
-        client = self.fake_rpc_client()
-        machine = factory.make_Node()
-        machine.bmc = factory.make_BMC()
-        machine.save()
-        machine.delete()
-        self.assertThat(client, MockNotCalled())
-
-    def test_does_nothing_if_none_composable_pod(self):
-        client = self.fake_rpc_client()
-        machine = factory.make_Node()
-        machine.bmc = factory.make_Pod()
-        machine.save()
-        machine.delete()
-        self.assertThat(client, MockNotCalled())
-
-    def test_does_nothing_if_pre_existing_machine(self):
-        client = self.fake_rpc_client()
-        machine = factory.make_Node()
-        machine.bmc = self.make_composable_pod()
-        machine.save()
-        machine.delete()
-        self.assertThat(client, MockNotCalled())
-
-    def test_performs_decompose_machine(self):
-        hints = DiscoveredPodHints(
-            cores=random.randint(1, 8),
-            cpu_speed=random.randint(1000, 2000),
-            memory=random.randint(1024, 8192), local_storage=0)
-        pod = self.make_composable_pod()
-        client = self.fake_rpc_client()
-        client.return_value = succeed({
-            'hints': hints,
-        })
-        machine = factory.make_Node(
-            creation_type=NODE_CREATION_TYPE.MANUAL)
-        machine.bmc = pod
-        machine.instance_power_parameters = {
-            'power_id': factory.make_name('power_id'),
-        }
-        machine.save()
-        machine.delete()
-        self.assertThat(
-            client, MockCalledOnceWith(
-                DecomposeMachine,
-                type=pod.power_type, context=machine.power_parameters,
-                pod_id=pod.id, name=pod.name))
-        self.assertThat(pod.hints, MatchesStructure.byEquality(
-            cores=hints.cores,
-            memory=hints.memory,
-            local_storage=hints.local_storage,
-        ))
-
-    def test_decompose_machine_handles_timeout(self):
-        pod = self.make_composable_pod()
-        client = self.fake_rpc_client()
-        client.side_effect = crochet.TimeoutError()
-        machine = factory.make_Node(
-            creation_type=NODE_CREATION_TYPE.MANUAL)
-        machine.bmc = pod
-        machine.instance_power_parameters = {
-            'power_id': factory.make_name('power_id'),
-        }
-        machine.save()
-        error = self.assertRaises(PodProblem, machine.delete)
-        self.assertEquals(
-            "Unable to decomposed machine because '%s' driver timed out "
-            "after 60 seconds." % pod.power_type, str(error))
-
-    def test_errors_raised_up(self):
-        pod = self.make_composable_pod()
-        client = self.fake_rpc_client()
-        client.return_value = fail(PodActionFail())
-        machine = factory.make_Node(
-            creation_type=NODE_CREATION_TYPE.MANUAL)
-        machine.bmc = pod
-        machine.instance_power_parameters = {
-            'power_id': factory.make_name('power_id'),
-        }
-        machine.save()
-        self.assertRaises(PodProblem, machine.delete)

@@ -50,6 +50,9 @@ class PodHandler(TimestampedModelHandler):
             'memory',
             'power_parameters'
         ]
+        listen_channels = [
+            "pod",
+        ]
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""

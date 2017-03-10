@@ -49,11 +49,13 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
     SERVICE_STATUS,
 )
 from maasserver.exceptions import (
     NodeStateViolation,
+    PodProblem,
     PowerProblem,
 )
 from maasserver.models import (
@@ -153,6 +155,10 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.drivers.pod import (
+    Capabilities,
+    DiscoveredPodHints,
+)
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -161,6 +167,7 @@ from provisioningserver.events import (
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.rpc.cluster import (
     AddChassis,
+    DecomposeMachine,
     DisableAndShutoffRackd,
     IsImportBootImagesRunning,
     RefreshRackControllerInfo,
@@ -168,6 +175,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import (
     CannotDisableAndShutoffRackd,
     NoConnectionsAvailable,
+    PodActionFail,
     RefreshAlreadyInProgress,
     UnknownPowerType,
 )
@@ -1990,17 +1998,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
         self.expectThat(OwnerData.objects.filter(node=node), HasLength(0))
-
-    def test_release_deletes_dynamic_machine(self):
-        agent_name = factory.make_name('agent-name')
-        owner = factory.make_User()
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
-            creation_type=NODE_CREATION_TYPE.DYNAMIC,
-            power_state=POWER_STATE.OFF)
-        with post_commit_hooks:
-            node.release()
-        self.assertIsNone(reload_object(node))
 
     def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
@@ -4164,6 +4161,149 @@ class TestNodePowerParameters(MAASServerTestCase):
         machine.bmc = None
         machine.save()
         self.assertIsNotNone(reload_object(pod))
+
+
+class TestDecomposeMachineMixin:
+    """Mixin to help `TestDecomposeMachine` and
+    `TestDecomposeMachineTransactional`."""
+
+    def make_composable_pod(self):
+        return factory.make_Pod(capabilities=[Capabilities.COMPOSABLE])
+
+    def fake_rpc_client(self):
+        client = Mock()
+        client.return_value = defer.succeed({})
+        self.patch(
+            node_module,
+            "getClientFromIdentifiers").return_value = defer.succeed(client)
+        return client
+
+
+class TestDecomposeMachine(MAASServerTestCase, TestDecomposeMachineMixin):
+    """Test that a machine in a composable pod is decomposed."""
+
+    def test_does_nothing_unless_machine(self):
+        pod = self.make_composable_pod()
+        client = self.fake_rpc_client()
+        for node_type, _ in NODE_TYPE_CHOICES:
+            if node_type != NODE_TYPE.MACHINE:
+                node = factory.make_Node(node_type=node_type)
+                node.bmc = pod
+                node.save()
+                node.delete()
+        self.assertThat(client, MockNotCalled())
+
+    def test_does_nothing_if_machine_without_bmc(self):
+        client = self.fake_rpc_client()
+        machine = factory.make_Node()
+        machine.bmc = None
+        machine.save()
+        machine.delete()
+        self.assertThat(client, MockNotCalled())
+
+    def test_does_nothing_if_standard_bmc(self):
+        client = self.fake_rpc_client()
+        machine = factory.make_Node()
+        machine.bmc = factory.make_BMC()
+        machine.save()
+        machine.delete()
+        self.assertThat(client, MockNotCalled())
+
+    def test_does_nothing_if_none_composable_pod(self):
+        client = self.fake_rpc_client()
+        machine = factory.make_Node()
+        machine.bmc = factory.make_Pod()
+        machine.save()
+        machine.delete()
+        self.assertThat(client, MockNotCalled())
+
+    def test_does_nothing_if_pre_existing_machine(self):
+        client = self.fake_rpc_client()
+        machine = factory.make_Node()
+        machine.bmc = self.make_composable_pod()
+        machine.save()
+        machine.delete()
+        self.assertThat(client, MockNotCalled())
+
+
+class TestDecomposeMachineTransactional(
+        MAASTransactionServerTestCase, TestDecomposeMachineMixin):
+    """Test that a machine in a composable pod is decomposed."""
+
+    @transactional
+    def create_pod_machine_and_hints(self, **kwargs):
+        hints = DiscoveredPodHints(
+            cores=random.randint(1, 8),
+            cpu_speed=random.randint(1000, 2000),
+            memory=random.randint(1024, 8192), local_storage=0)
+        pod = self.make_composable_pod()
+        client = self.fake_rpc_client()
+        client.return_value = defer.succeed({
+            'hints': hints,
+        })
+        machine = factory.make_Node(**kwargs)
+        machine.bmc = pod
+        machine.instance_power_parameters = {
+            'power_id': factory.make_name('power_id'),
+        }
+        return pod, machine, hints, client
+
+    def test_performs_decompose_machine(self):
+        pod, machine, hints, client = self.create_pod_machine_and_hints(
+            creation_type=NODE_CREATION_TYPE.MANUAL, interface=True)
+        interface = transactional(machine.interface_set.first)()
+        with post_commit_hooks:
+            machine.delete()
+        self.assertThat(
+            client, MockCalledOnceWith(
+                DecomposeMachine,
+                type=pod.power_type, context=machine.power_parameters,
+                pod_id=pod.id, name=pod.name))
+        pod = transactional(reload_object)(pod)
+        self.assertThat(pod.hints, MatchesStructure.byEquality(
+            cores=hints.cores,
+            memory=hints.memory,
+            local_storage=hints.local_storage,
+        ))
+        machine = transactional(reload_object)(machine)
+        self.assertIsNone(machine)
+        interface = transactional(reload_object)(interface)
+        self.assertIsNone(interface)
+
+    def test_errors_raised_up(self):
+        pod, machine, hints, client = self.create_pod_machine_and_hints(
+            creation_type=NODE_CREATION_TYPE.MANUAL)
+        client.return_value = defer.fail(PodActionFail())
+        with ExpectedException(PodProblem):
+            with post_commit_hooks:
+                machine.delete()
+        machine = transactional(reload_object)(machine)
+        self.assertIsNotNone(machine)
+
+    def test_release_deletes_dynamic_machine(self):
+        owner = transactional(factory.make_User)()
+        pod, machine, hints, client = self.create_pod_machine_and_hints(
+            status=NODE_STATUS.ALLOCATED, owner=owner,
+            creation_type=NODE_CREATION_TYPE.DYNAMIC,
+            power_state=POWER_STATE.OFF, interface=True)
+        interface = transactional(machine.interface_set.first)()
+        with post_commit_hooks:
+            machine.release()
+        self.assertThat(
+            client, MockCalledOnceWith(
+                DecomposeMachine,
+                type=pod.power_type, context=machine.power_parameters,
+                pod_id=pod.id, name=pod.name))
+        pod = transactional(reload_object)(pod)
+        self.assertThat(pod.hints, MatchesStructure.byEquality(
+            cores=hints.cores,
+            memory=hints.memory,
+            local_storage=hints.local_storage,
+        ))
+        machine = transactional(reload_object)(machine)
+        self.assertIsNone(machine)
+        interface = transactional(reload_object)(interface)
+        self.assertIsNone(interface)
 
 
 class NodeTransitionsTests(MAASServerTestCase):
