@@ -50,8 +50,8 @@ Y.extend(TokenWidget, Y.Widget, {
             .set('id','create_error');
         this.spinnerNode = Y.Node.create('<img />')
             .addClass('u-animation--spin')
-            .set('src', MAAS_config.uris.statics +
-                'assets/images/icons/in_progress.png');
+            .addClass('icon')
+            .addClass('icon--loading');
         this.get('srcNode').one('#token_creation_placeholder')
             .append(this.create_link)
             .append(this.status_node);
@@ -155,12 +155,8 @@ Y.extend(TokenWidget, Y.Widget, {
                 .set('href', '#')
                 .addClass('delete-link')
                 .addClass('right')
-                .append(Y.Node.create('<img />')
-                    .set('title', 'Delete token')
-                    .set(
-                        'src',
-                        MAAS_config.uris.statics +
-                        'assets/images/icons/delete.png')))
+                .addClass('icon')
+                .addClass('icon--delete'))
             .append(Y.Node.create('<input />')
                 .set('type', 'text')
                 .addClass('disabled')

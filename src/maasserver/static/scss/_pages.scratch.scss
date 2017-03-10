@@ -179,6 +179,10 @@
     align-items: center;
     justify-content: center;
 
+    @media screen and (max-width: 768px) {
+      display: block;
+    }
+
     .u-align--top {
       align-self: flex-start;
     }

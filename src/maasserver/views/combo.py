@@ -166,6 +166,11 @@ MERGE_VIEWS = {
             "js/prefs.js",
             "js/shortpoll.js",
             "js/enums.js",
+        ]
+    },
+    "maas-settings-yui.js": {
+        "content_type": "text/javascript; charset=UTF-8",
+        "files": [
             "js/reveal.js",
             "js/os_distro_select.js",
         ]

@@ -20,6 +20,10 @@
 {% block head %}
 {% endblock %}
 
+{% block extra-js %}
+  <script type="text/javascript" src="{% url "merge" filename="maas-settings-yui.js" %}?v={{files_version}}"></script>
+{% endblock %}
+
 {% block content %}
 <div id="settings">
     <div class="eight-col u-border--bottom">

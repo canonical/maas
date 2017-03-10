@@ -6,7 +6,7 @@
 
 {% block ng-app %}data-ng-app="MAAS"{% endblock %}
 
-{% block head %}
+{% block extra-js %}
   <script type="text/javascript">
   <!--
   YUI().use('maas.prefs', function (Y) {
@@ -29,9 +29,7 @@
                 <ul class="no-bullets">
                     {% for token in user.userprofile.get_authorisation_tokens %}
                     <li class="bundle">
-                        <a href="#" class="delete-link icon right">
-                            <img title="Delete MAAS key" class="left" src="{{ STATIC_URL }}assets/images/icons/delete.png" />
-                        </a>
+                        <a href="#" class="delete-link icon icon--delete right"></a>
                         <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />
                     </li>
                     {% endfor %}

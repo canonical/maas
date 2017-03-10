@@ -257,6 +257,11 @@
     {% block js-conf %}
         {% include "maasserver/js-conf.html" %}
     {% endblock %}
+    {% block yui-js-conf %}
+        {% include "maasserver/yui-js-conf.html" %}
+    {% endblock %}
+    {% block extra-js %}
+    {% endblock %}
 
     <!-- Only present on none AngularJS pages. The MAAS AngularJS module
          handles sending page views between routes.
