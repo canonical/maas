@@ -284,7 +284,11 @@ class TestScriptResult(MAASServerTestCase):
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED,
             started=now - timedelta(seconds=runtime_seconds), ended=now)
-        self.assertEquals('0:00:%d' % runtime_seconds, script_result.runtime)
+        if runtime_seconds < 10:
+            text_seconds = '0%d' % runtime_seconds
+        else:
+            text_seconds = '%d' % runtime_seconds
+        self.assertEquals('0:00:%s' % text_seconds, script_result.runtime)
 
     def test_get_runtime_blank_when_missing(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)

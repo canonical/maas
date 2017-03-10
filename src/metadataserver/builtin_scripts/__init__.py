@@ -59,7 +59,7 @@ class BuiltinScript:
 BUILTIN_SCRIPTS = [
     BuiltinScript(
         name='smartctl-validate',
-        title='Storage Status',
+        title='Storage status',
         description='Validate SMART health for all drives in parellel.',
         tags=['storage', 'commissioning'],
         timeout=60 * 5,
@@ -67,7 +67,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-short',
-        title='Storage Integrity',
+        title='Storage integrity',
         description=(
             'Run the short SMART self-test and validate SMART health on all '
             'drives in parellel'),
@@ -77,7 +77,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-long',
-        title='Storage Integrity',
+        title='Storage integrity',
         description=(
             'Run the long SMART self-test and validate SMART health on all '
             'drives in parellel'),
@@ -86,7 +86,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-conveyance',
-        title='Storage Integrity',
+        title='Storage integrity',
         description=(
             'Run the conveyance SMART self-test and validate SMART health on '
             'all drives in parellel'),
