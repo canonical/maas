@@ -6,6 +6,7 @@
 __all__ = []
 
 from base64 import b64encode
+from copy import deepcopy
 from http import HTTPStatus
 from io import BytesIO
 import json
@@ -917,14 +918,18 @@ class TestRSDPodDriver(MAASTestCase):
             power_parameters={})
         mock_list_resources = self.patch(driver, 'list_resources')
         mock_list_resources.return_value = [
-            interface % b"4", interface % b"5", interface % b"6"]
+            interface % b"%s" % bytes(resource_id)
+            for resource_id in range(4)
+        ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        nic1_data = SAMPLE_JSON_INTERFACE.copy()
+        nic1_data = deepcopy(SAMPLE_JSON_INTERFACE)
         nic1_data['SpeedMbps'] = 900
-        nic2_data = SAMPLE_JSON_INTERFACE.copy()
+        nic2_data = deepcopy(SAMPLE_JSON_INTERFACE)
         nic2_data['SpeedMbps'] = 1000
-        nic3_data = SAMPLE_JSON_INTERFACE.copy()
+        nic3_data = deepcopy(SAMPLE_JSON_INTERFACE)
         nic3_data['SpeedMbps'] = 2000
+        nic4_data = deepcopy(SAMPLE_JSON_INTERFACE)
+        nic4_data['Links']['Oem'] = None
         mock_redfish_request.side_effect = [
             nic1_data,
             SAMPLE_JSON_PORT,
@@ -935,6 +940,7 @@ class TestRSDPodDriver(MAASTestCase):
             nic3_data,
             SAMPLE_JSON_PORT,
             SAMPLE_JSON_VLAN,
+            nic4_data,
         ]
 
         yield driver.scan_machine_interfaces(
@@ -944,16 +950,25 @@ class TestRSDPodDriver(MAASTestCase):
                 mac_address=Equals('54:ab:3a:36:af:45'),
                 vid=Equals(4088),
                 tags=Equals(['e900']),
+                boot=Equals(False),
             ),
             MatchesStructure(
                 mac_address=Equals('54:ab:3a:36:af:45'),
                 vid=Equals(4088),
                 tags=Equals(['1.0']),
+                boot=Equals(False),
             ),
             MatchesStructure(
                 mac_address=Equals('54:ab:3a:36:af:45'),
                 vid=Equals(4088),
                 tags=Equals(['2.0']),
+                boot=Equals(False),
+            ),
+            MatchesStructure(
+                mac_address=Equals('54:ab:3a:36:af:45'),
+                vid=Equals(-1),
+                tags=Equals([]),
+                boot=Equals(True),
             ),
         ]))
 
@@ -1067,6 +1082,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(['ssd'], machine.block_devices[0].tags)
         self.assertEquals("off", machine.power_state)
         self.assertEquals({'node_id': '1'}, machine.power_parameters)
+        self.assertTrue(machine.interfaces[0].boot)
 
     def test_get_pod_hints(self):
         driver = RSDPodDriver()
@@ -1202,8 +1218,8 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         request = make_requested_machine(cores=64)
         discovered_pod = make_discovered_pod()
-        new_machines = discovered_pod.machines.copy()
-        machines = new_machines.copy()
+        new_machines = deepcopy(discovered_pod.machines)
+        machines = deepcopy(new_machines)
         new_machine = machines.pop(0)
         mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
         mock_get_pod_machines.side_effect = [
@@ -1243,8 +1259,8 @@ class TestRSDPodDriver(MAASTestCase):
         context = make_context()
         request = make_requested_machine(cores=1)
         discovered_pod = make_discovered_pod()
-        new_machines = discovered_pod.machines.copy()
-        machines = new_machines.copy()
+        new_machines = deepcopy(discovered_pod.machines)
+        machines = deepcopy(new_machines)
         mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
         mock_get_pod_machines.side_effect = [
             machines, new_machines]

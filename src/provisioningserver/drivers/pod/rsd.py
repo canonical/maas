@@ -353,15 +353,15 @@ class RSDPodDriver(PodDriver):
                     discovered_machine_interface.tags = [
                         "%s" % (nic_speed / 1000)]
             # Oem can be empty sometimes, so let's check this.
-            oem = interface_data.get('Links').get('Oem')
+            oem = interface_data.get('Links', {}).get('Oem')
             if oem:
-                ports = oem.get('Intel_RackScale').get('NeighborPort')
+                ports = oem.get('Intel_RackScale', {}).get('NeighborPort')
                 if ports is not None:
                     for port in ports.values():
                         port = port.lstrip('/').encode('utf-8')
                         port_data = yield self.redfish_request(
                             b"GET", join(url, port), headers)
-                        vlans = port_data.get('Links').get('PrimaryVLAN')
+                        vlans = port_data.get('Links', {}).get('PrimaryVLAN')
                         if vlans is not None:
                             for vlan in vlans.values():
                                 vlan = vlan.lstrip('/').encode('utf-8')
@@ -370,6 +370,11 @@ class RSDPodDriver(PodDriver):
                                 vlan_id = vlan_data.get('VLANId')
                                 if vlan_id is not None:
                                     discovered_machine_interface.vid = vlan_id
+            else:
+                # If no NeighborPort, this interface is on
+                # the management network.
+                discovered_machine_interface.boot = True
+
             discovered_machine.interfaces.append(discovered_machine_interface)
 
     @inlineCallbacks
@@ -456,7 +461,7 @@ class RSDPodDriver(PodDriver):
                     power_state)
             # Find specific system that this composed node is linked too.
             systems = node_data.get(
-                'Links').get('ComputerSystem').values()
+                'Links', {}).get('ComputerSystem').values()
             if systems is not None:
                 for system in systems:
                     system = system.lstrip('/').encode('utf-8')
@@ -468,6 +473,14 @@ class RSDPodDriver(PodDriver):
                         url, headers, system, discovered_machine)
                     yield self.scan_machine_interfaces(
                         url, headers, system, discovered_machine)
+                    # Set one interface to boot if none are set.
+                    boot_flags = [
+                        interface.boot
+                        for interface in discovered_machine.interfaces
+                    ]
+                    if len(boot_flags) > 0 and True not in boot_flags:
+                        # Just set first interface too boot.
+                        discovered_machine.interfaces[0].boot = True
 
             # Set cpu_speed to max of all found cpu_speeds.
             if len(discovered_machine.cpu_speeds):
