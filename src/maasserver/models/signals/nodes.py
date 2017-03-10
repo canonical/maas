@@ -68,7 +68,9 @@ def pre_save_update_status(sender, instance, **kwargs):
                 NODE_STATUS.ENTERING_RESCUE_MODE,
                 NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
                 NODE_STATUS.EXITING_RESCUE_MODE,
-                NODE_STATUS.FAILED_EXITING_RESCUE_MODE)):
+                NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+                NODE_STATUS.TESTING,
+                NODE_STATUS.FAILED_TESTING)):
         instance.previous_status = instance.__previous_status
 
 

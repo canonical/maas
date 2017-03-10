@@ -112,7 +112,7 @@
                     <form class="form form--stack">
                         <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                             <div class="form__group">
-                                <label for="commissioning-scripts">Custom Commissioning Scripts</label>
+                                <label for="commissioning-scripts">Additional commissioning scripts</label>
                                 <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
                             </div>
                         </fieldset>
@@ -122,7 +122,7 @@
                     <form class="form form--stack">
                         <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                             <div class="form__group">
-                                <label for="testing-scripts">Hardware Testing Scripts</label>
+                                <label for="testing-scripts">Hardware Tests</label>
                                 <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
                             </div>
                         </fieldset>
@@ -2363,26 +2363,26 @@
     <div class="row" id="testing_output" data-ng-show='node.testing_results.length > 0'>
         <div class="wrapper--inner">
             <div class="twelve-col">
-                <h2 class="title">Test Results</h2>
+                <h2 class="title">Hardware Tests</h2>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th class="table-col--1 u-padding--left-none u-padding--right-none"></th>
-                        <th class="table-col--35">Filename</th>
+                        <th class="table-col--35">Name</th>
                         <th class="table-col--35">Tags</th>
-                        <th class="table-col--30">Time</th>
-                        <th class="table-col--30">Status</th>
+                        <th class="table-col--30">Runtime</th>
+                        <th class="table-col--30">Result</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr data-ng-repeat="output in node.testing_results">
                         <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                            <span class="icon" data-ng-class="{ 'icon--warning': output.status < 2, 'icon--success': output.status === 2, 'icon--error': output.status > 2 }"></span>
+                            <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--in-progress': output.status === 1, 'icon--pass': output.status === 2, 'icon--error': output.status === 3 || output.status === 5, 'icon--timed-out': output.status === 4 }"></span>
                         </td>
-                        <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                        <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.ui_name $}</a></td>
                         <td class="table-col--30" aria-label="Tags">{$ output.tags $}</td>
-                        <td class="table-col--30" aria-label="Time">{$ output.updated $}</td>
+                        <td class="table-col--30" aria-label="Runtime">{$ output.runtime $}</td>
                         <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
                     </tr>
                 </tbody>
@@ -2425,7 +2425,7 @@
                     <thead>
                         <tr>
                             <th class="table-col--1 u-padding--left-none u-padding--right-none"></th>
-                            <th class="table-col--35">Filename</th>
+                            <th class="table-col--35">Name</th>
                             <th class="table-col--30">Time</th>
                             <th class="table-col--30">Status</th>
                         </tr>
@@ -2433,9 +2433,9 @@
                     <tbody>
                         <tr data-ng-repeat="output in node.commissioning_results">
                             <td class="table-col--1 u-padding--right-none u-padding--left-none">
-                                <span class="icon" data-ng-class="{ 'icon--warning': output.status < 2, 'icon--success': output.status === 2, 'icon--error': output.status > 2 }"></span>
+                                <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--in-progress': output.status === 1, 'icon--pass': output.status === 2, 'icon--error': output.status === 3 || output.status === 5, 'icon--timed-out': output.status === 4 }"></span>
                             </td>
-                            <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <td class="table-col--35" aria-label="Name"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
                             <td class="table-col--30" aria-label="Time">{$ output.updated $}</td>
                             <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
                         </tr>

@@ -32,7 +32,10 @@ DATETIME_FORMAT = "%a, %d %b. %Y %H:%M:%S"
 
 def dehydrate_datetime(datetime):
     """Convert the `datetime` to string with `DATETIME_FORMAT`."""
-    return datetime.strftime(DATETIME_FORMAT)
+    if datetime is None:
+        return ''
+    else:
+        return datetime.strftime(DATETIME_FORMAT)
 
 
 class HandlerError(Exception):

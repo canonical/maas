@@ -28,7 +28,8 @@ angular.module('MAAS').controller('NodesListController', [
             12,  // releasing
             14,  // disk erasing
             17,  // entering rescue mode
-            19   // exiting rescue mode
+            19,  // exiting rescue mode
+            21   // testing
         ];
 
         // Set title and page.

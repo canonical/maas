@@ -766,20 +766,32 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 'id': script_result.id,
                 'name': script_result.name,
+                'ui_name': '%s (%s)' % (
+                    script_result.script.title, script_result.name),
+                'title': script_result.script.title,
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'tags': ', '.join(script_result.script.tags),
                 'output': script_result.stdout,
                 'updated': dehydrate_datetime(script_result.updated),
+                'started': dehydrate_datetime(script_result.started),
+                'ended': dehydrate_datetime(script_result.ended),
+                'runtime': script_result.runtime,
             },
             {
                 'id': script_result.id,
                 'name': '%s.err' % script_result.name,
+                'ui_name': '%s (%s)' % (
+                    script_result.script.title, script_result.name),
+                'title': script_result.script.title,
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'tags': ', '.join(script_result.script.tags),
                 'output': script_result.stderr,
                 'updated': dehydrate_datetime(script_result.updated),
+                'started': dehydrate_datetime(script_result.started),
+                'ended': dehydrate_datetime(script_result.ended),
+                'runtime': script_result.runtime,
             }], handler.dehydrate_script_set(script_set))
 
     def test_dehydrate_script_set_returns_output_if_stdout_empty(self):
@@ -795,11 +807,17 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 'id': script_result.id,
                 'name': script_result.name,
+                'ui_name': '%s (%s)' % (
+                    script_result.script.title, script_result.name),
+                'title': script_result.script.title,
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'tags': ', '.join(script_result.script.tags),
                 'output': script_result.output,
                 'updated': dehydrate_datetime(script_result.updated),
+                'started': dehydrate_datetime(script_result.started),
+                'ended': dehydrate_datetime(script_result.ended),
+                'runtime': script_result.runtime,
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
     def test_dehydrate_script_set_returns_combined_for_testing(self):
@@ -812,11 +830,17 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 'id': script_result.id,
                 'name': script_result.name,
+                'ui_name': '%s (%s)' % (
+                    script_result.script.title, script_result.name),
+                'title': script_result.script.title,
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'tags': ', '.join(script_result.script.tags),
                 'output': script_result.output,
                 'updated': dehydrate_datetime(script_result.updated),
+                'started': dehydrate_datetime(script_result.started),
+                'ended': dehydrate_datetime(script_result.ended),
+                'runtime': script_result.runtime,
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
     def test_dehydrate_script_set_returns_nothing_for_empty_installation(self):

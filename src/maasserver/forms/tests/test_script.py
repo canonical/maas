@@ -39,6 +39,7 @@ class TestScriptForm(MAASServerTestCase):
         script = form.save()
 
         self.assertEquals(name, script.name)
+        self.assertEquals('', script.title)
         self.assertEquals('', script.description)
         self.assertEquals([], script.tags)
         self.assertEquals(SCRIPT_TYPE.TESTING, script.script_type)
@@ -49,6 +50,7 @@ class TestScriptForm(MAASServerTestCase):
 
     def test__create_with_defined_values(self):
         name = factory.make_name('name')
+        title = factory.make_name('title')
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
@@ -59,6 +61,7 @@ class TestScriptForm(MAASServerTestCase):
 
         form = ScriptForm(data={
             'name': name,
+            'title': title,
             'description': description,
             'tags': ','.join(tags),
             'script_type': script_type,
@@ -71,6 +74,7 @@ class TestScriptForm(MAASServerTestCase):
         script = form.save()
 
         self.assertEquals(name, script.name)
+        self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
         self.assertEquals(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
@@ -93,6 +97,7 @@ class TestScriptForm(MAASServerTestCase):
     def test__update(self):
         script = factory.make_Script()
         name = factory.make_name('name')
+        title = factory.make_name('title')
         description = factory.make_name('description')
         tags = [factory.make_name('tag') for _ in range(3)]
         script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
@@ -104,6 +109,7 @@ class TestScriptForm(MAASServerTestCase):
 
         form = ScriptForm(data={
             'name': name,
+            'title': title,
             'description': description,
             'tags': ','.join(tags),
             'script_type': script_type,
@@ -116,6 +122,7 @@ class TestScriptForm(MAASServerTestCase):
         script = form.save()
 
         self.assertEquals(name, script.name)
+        self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
         self.assertEquals(tags, script.tags)
         self.assertEquals(script_type, script.script_type)

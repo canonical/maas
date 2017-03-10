@@ -12,6 +12,7 @@ import crochet
 from maasserver.enum import (
     NODE_CREATION_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
@@ -63,6 +64,25 @@ class TestNodePreviousStatus(MAASServerTestCase):
             node,
             MatchesStructure.byEquality(
                 status=new_status, previous_status=old_status))
+
+    def test_chaning_status_doesnt_store_blacklisted_statuses(self):
+        black_listed_statuses = [
+            NODE_STATUS.RESCUE_MODE,
+            NODE_STATUS.ENTERING_RESCUE_MODE,
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+            NODE_STATUS.EXITING_RESCUE_MODE,
+            NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+            NODE_STATUS.TESTING,
+            NODE_STATUS.FAILED_TESTING,
+        ]
+        status = random.choice(black_listed_statuses)
+        previous_status = factory.pick_choice(
+            NODE_STATUS_CHOICES, but_not=black_listed_statuses)
+        node = factory.make_Node(
+            previous_status=previous_status, status=status)
+        node.status = random.choice(NODE_TRANSITIONS[node.status])
+        node.save()
+        self.assertEquals(previous_status, node.previous_status)
 
 
 class TestNodeKeyPolicy(MAASServerTestCase):

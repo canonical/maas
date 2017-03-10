@@ -28,6 +28,7 @@ from zope.interface.verify import verifyObject
 class IBuiltinScript(Interface):
 
     name = Attribute('Name')
+    title = Attribute('Title')
     description = Attribute('Description')
     tags = Attribute('Tags')
     script_type = Attribute('Script type')
@@ -40,8 +41,9 @@ class IBuiltinScript(Interface):
 @attr.s
 class BuiltinScript:
 
-    name = attr.ib(default=None, validator=optional(instance_of(str)))
-    description = attr.ib(default=None, validator=optional(instance_of(str)))
+    name = attr.ib(default=None, validator=instance_of(str))
+    title = attr.ib(default=None, validator=optional(instance_of(str)))
+    description = attr.ib(default=None, validator=instance_of(str))
     tags = attr.ib(default=None, validator=instance_of(list))
     script_type = attr.ib(
         default=SCRIPT_TYPE.TESTING, validator=instance_of(int))
@@ -57,6 +59,7 @@ class BuiltinScript:
 BUILTIN_SCRIPTS = [
     BuiltinScript(
         name='smartctl-validate',
+        title='Storage Status',
         description='Validate SMART health for all drives in parellel.',
         tags=['storage', 'commissioning'],
         timeout=60 * 5,
@@ -64,6 +67,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-short',
+        title='Storage Integrity',
         description=(
             'Run the short SMART self-test and validate SMART health on all '
             'drives in parellel'),
@@ -73,6 +77,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-long',
+        title='Storage Integrity',
         description=(
             'Run the long SMART self-test and validate SMART health on all '
             'drives in parellel'),
@@ -81,6 +86,7 @@ BUILTIN_SCRIPTS = [
         ),
     BuiltinScript(
         name='smartctl-conveyance',
+        title='Storage Integrity',
         description=(
             'Run the conveyance SMART self-test and validate SMART health on '
             'all drives in parellel'),
@@ -104,10 +110,11 @@ def load_builtin_scripts():
             script_in_db = Script.objects.get(name=script.name)
         except Script.DoesNotExist:
             Script.objects.create(
-                name=script.name, description=script.description,
-                tags=script.tags, script_type=script.script_type,
-                script=script_content, timeout=script.timeout,
-                destructive=script.destructive, default=True)
+                name=script.name, title=script.title,
+                description=script.description, tags=script.tags,
+                script_type=script.script_type, script=script_content,
+                timeout=script.timeout, destructive=script.destructive,
+                default=True)
         else:
             if script_in_db.script.data != script_content:
                 # Don't add back old versions of a script. This prevents two
@@ -120,6 +127,7 @@ def load_builtin_scripts():
                         return
                 script_in_db.script = script_in_db.script.update(
                     script_content)
+            script_in_db.title = script.title
             script_in_db.description = script.description
             script_in_db.script_type = script.script_type
             script_in_db.destructive = script.destructive

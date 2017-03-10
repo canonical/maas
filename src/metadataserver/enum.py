@@ -61,7 +61,7 @@ class SCRIPT_STATUS:
     RUNNING = 1
     PASSED = 2
     FAILED = 3
-    TIMEOUT = 4
+    TIMEDOUT = 4
     ABORTED = 5
 
 
@@ -70,6 +70,6 @@ SCRIPT_STATUS_CHOICES = (
     (SCRIPT_STATUS.RUNNING, "Running"),
     (SCRIPT_STATUS.PASSED, "Passed"),
     (SCRIPT_STATUS.FAILED, "Failed"),
-    (SCRIPT_STATUS.TIMEOUT, "Timed out"),
+    (SCRIPT_STATUS.TIMEDOUT, "Timed out"),
     (SCRIPT_STATUS.ABORTED, "Aborted"),
 )

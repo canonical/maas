@@ -442,27 +442,43 @@ class NodeHandler(TimestampedModelHandler):
 
             if script_result.script is not None:
                 tags = ', '.join(script_result.script.tags)
+                title = script_result.script.title
             else:
                 tags = ''
+                title = ''
+            if title == '':
+                ui_name = script_result.name
+            else:
+                ui_name = '%s (%s)' % (title, script_result.name)
             ret.append({
                 'id': script_result.id,
                 'name': script_result.name,
+                'ui_name': ui_name,
+                'title': title,
                 'status': script_result.status,
                 'status_name': script_result.status_name,
                 'tags': tags,
                 'output': output,
                 'updated': dehydrate_datetime(script_result.updated),
+                'started': dehydrate_datetime(script_result.started),
+                'ended': dehydrate_datetime(script_result.ended),
+                'runtime': script_result.runtime,
             })
             if (script_result.stderr != b'' and
                     script_set.result_type != RESULT_TYPE.TESTING):
                 ret.append({
                     'id': script_result.id,
                     'name': '%s.err' % script_result.name,
+                    'ui_name': ui_name,
+                    'title': title,
                     'status': script_result.status,
                     'status_name': script_result.status_name,
                     'tags': tags,
                     'output': script_result.stderr,
                     'updated': dehydrate_datetime(script_result.updated),
+                    'started': dehydrate_datetime(script_result.started),
+                    'ended': dehydrate_datetime(script_result.ended),
+                    'runtime': script_result.runtime,
                 })
         return sorted(ret, key=lambda i: i['name'])
 

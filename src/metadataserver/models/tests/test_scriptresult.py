@@ -3,6 +3,10 @@
 
 __all__ = []
 
+from datetime import (
+    datetime,
+    timedelta,
+)
 import json
 import random
 from unittest.mock import MagicMock
@@ -259,3 +263,29 @@ class TestScriptResult(MAASServerTestCase):
             mock_hook,
             MockCalledOnceWith(
                 node=script_set.node, output=b'', exit_status=exit_status))
+
+    def test_save_stores_start_time(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
+        self.assertIsNotNone(script_result.started)
+
+    def test_save_stores_end_time(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        script_result.status = random.choice([
+            SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+            SCRIPT_STATUS.ABORTED])
+        script_result.save()
+        self.assertIsNotNone(script_result.ended)
+
+    def test_get_runtime(self):
+        runtime_seconds = random.randint(1, 59)
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PASSED,
+            started=now - timedelta(seconds=runtime_seconds), ended=now)
+        self.assertEquals('0:00:%d' % runtime_seconds, script_result.runtime)
+
+    def test_get_runtime_blank_when_missing(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
+        self.assertEquals('', script_result.runtime)

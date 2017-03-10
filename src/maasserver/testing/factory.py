@@ -643,10 +643,13 @@ class Factory(maastesting.factory.Factory):
         return dnsrr
 
     def make_Script(
-            self, name=None, description=None, tags=None, script_type=None,
-            timeout=None, destructive=False, default=False, script=None):
+            self, name=None, title=None, description=None, tags=None,
+            script_type=None, timeout=None, destructive=False, default=False,
+            script=None):
         if name is None:
             name = self.make_name('name')
+        if title is None:
+            title = self.make_name('title')
         if description is None:
             description = self.make_string()
         if tags is None:
@@ -658,7 +661,7 @@ class Factory(maastesting.factory.Factory):
         if script is None:
             script = VersionedTextFile.objects.create(data=self.make_string())
         return Script.objects.create(
-            name=name, description=description, tags=tags,
+            name=name, title=title, description=description, tags=tags,
             script_type=script_type, timeout=timeout, destructive=destructive,
             default=default, script=script)
 
@@ -675,7 +678,7 @@ class Factory(maastesting.factory.Factory):
     def make_ScriptResult(
             self, script_set=None, script=None, script_version=None,
             status=None, exit_status=None, script_name=None, output=None,
-            stdout=None, stderr=None, result=None):
+            stdout=None, stderr=None, result=None, started=None, ended=None):
         if script_set is None:
             script_set = self.make_ScriptSet()
         if script is None and script_name is None:
@@ -692,6 +695,8 @@ class Factory(maastesting.factory.Factory):
                 stderr = b''
             if result is None:
                 result = ''
+            if status == SCRIPT_STATUS.RUNNING and started is None:
+                started = datetime.now()
         else:
             if exit_status is None:
                 exit_status = random.randint(0, 255)
@@ -705,12 +710,17 @@ class Factory(maastesting.factory.Factory):
                 result = ''
             if script_version is None and script_name is None:
                 script_version = script.script
+            if started is None:
+                started = datetime.now() - timedelta(
+                    seconds=random.randint(1, 500))
+            if ended is None:
+                ended = datetime.now()
         return ScriptResult.objects.create(
             script_set=script_set, script=script,
             script_version=script_version, status=status,
             exit_status=exit_status, script_name=script_name,
             output=Bin(output), stdout=Bin(stdout), stderr=Bin(stderr),
-            result=result)
+            result=result, started=started, ended=ended)
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

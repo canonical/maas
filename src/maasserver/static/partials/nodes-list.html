@@ -189,21 +189,21 @@
                     <button class="button--secondary button--inline" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
                 </div>
             </section>
-            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="tabs.nodes.actionOption.name === 'commission' && hasCustomCommissioningScripts()">
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')" data-ng-if="tabs.nodes.actionOption.name === 'commission' && hasCustomCommissioningScripts()">
               <form class="form form--stack">
                     <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                         <div class="form__group">
-			    <label for="commissiong-scripts">Custom Commissioning Scripts</label>
+			    <label for="commissiong-scripts">Additional commissioning Scripts</label>
                             <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="tabs.nodes.commissioningSelection" class="tags--inline"></span>                     
                         </div>
                     </fieldset>
                 </form>
             </section>
-            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="tabs.nodes.actionOption.name === 'commission' || tabs.nodes.actionOption.name ==='test'">
+            <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError('nodes') || hasActionsInProgress('nodes')" data-ng-if="tabs.nodes.actionOption.name === 'commission' || tabs.nodes.actionOption.name ==='test'">
               <form class="form form--stack">
                     <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                         <div class="form__group">
-			    <label for="testing-scripts">Hardware Testing Scripts</label>
+			    <label for="testing-scripts">Hardware Tests</label>
                             <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.nodes.testSelection" class="tags--inline"></span>
                         </div>
                     </fieldset>
@@ -595,7 +595,7 @@
                 <form class="form form--stack">
                     <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                         <div class="form__group">
-                            <label for="testing-scripts">Hardware Testing Scripts</label>
+                            <label for="testing-scripts">Hardware Tests</label>
                             <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="tabs.nodes.testSelection" class="tags--inline"></span>
                         </div>
                     </fieldset>

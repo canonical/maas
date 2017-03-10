@@ -101,7 +101,7 @@ class ScriptSetManager(Manager):
         for script in qs:
             ScriptResult.objects.create(
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script)
+                script=script, script_name=script.name)
 
         return script_set
 
@@ -139,7 +139,7 @@ class ScriptSetManager(Manager):
         for script in qs:
             ScriptResult.objects.create(
                 script_set=script_set, status=SCRIPT_STATUS.PENDING,
-                script=script)
+                script=script, script_name=script.name)
 
         self._clean_old(node, RESULT_TYPE.TESTING, script_set)
         return script_set

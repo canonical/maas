@@ -76,7 +76,7 @@ class NodeResultsHandler(OperationsHandler):
             for script_result in script_set.scriptresult_set.filter(
                     status__in=(
                         SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
-                        SCRIPT_STATUS.TIMEOUT, SCRIPT_STATUS.ABORTED)):
+                        SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED)):
                 if names is not None and script_result.name not in names:
                     continue
                 # MAAS stores stdout, stderr, and the combined output. The

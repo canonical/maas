@@ -39,6 +39,7 @@ class ScriptForm(ModelForm):
         model = Script
         fields = (
             'name',
+            'title',
             'description',
             'tags',
             'script_type',

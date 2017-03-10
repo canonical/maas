@@ -60,6 +60,8 @@ class Script(CleanSave, TimestampedModel):
 
     name = CharField(max_length=255, unique=True)
 
+    title = CharField(max_length=255, blank=True)
+
     description = TextField(blank=True)
 
     tags = ArrayField(TextField(), blank=True, null=True, default=list)

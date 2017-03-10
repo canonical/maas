@@ -11,12 +11,13 @@ from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.script import ScriptHandler
 
 
-class TestDHCPSnippetHandler(MAASServerTestCase):
+class TestScriptHandler(MAASServerTestCase):
 
     def dehydrate_script(self, script):
         return {
             'id': script.id,
             'name': script.name,
+            'title': script.title,
             'description': script.description,
             'script_type': script.script_type,
             'tags': script.tags,

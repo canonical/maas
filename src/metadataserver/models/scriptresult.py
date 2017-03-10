@@ -5,9 +5,15 @@ __all__ = [
     ]
 
 
+from datetime import (
+    datetime,
+    timedelta,
+)
+
 from django.db.models import (
     CASCADE,
     CharField,
+    DateTimeField,
     ForeignKey,
     IntegerField,
     SET_NULL,
@@ -58,7 +64,8 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     exit_status = IntegerField(blank=True, null=True)
 
-    # Only used by the builtin commissioning scripts and installation result.
+    # Used by the builtin commissioning scripts and installation result. Also
+    # stores the Script name incase the Script is deleted but the result isn't.
     script_name = CharField(
         max_length=255, unique=False, editable=False, null=True)
 
@@ -70,6 +77,12 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     # If a result is given in the output convert it to JSON and store it here.
     result = JSONObjectField(blank=True, default='')
+
+    # When the script started to run
+    started = DateTimeField(editable=False, null=True, blank=True)
+
+    # When the script finished running
+    ended = DateTimeField(editable=False, null=True, blank=True)
 
     @property
     def name(self):
@@ -83,6 +96,14 @@ class ScriptResult(CleanSave, TimestampedModel):
     @property
     def status_name(self):
         return SCRIPT_STATUS_CHOICES[self.status][1]
+
+    @property
+    def runtime(self):
+        if None not in (self.ended, self.started):
+            runtime = self.ended - self.started
+            return str(runtime - timedelta(microseconds=runtime.microseconds))
+        else:
+            return ''
 
     def __str__(self):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
@@ -153,3 +174,13 @@ class ScriptResult(CleanSave, TimestampedModel):
                 exit_status=self.exit_status)
 
         self.save()
+
+    def save(self, *args, **kwargs):
+        if self.started is None and self.status == SCRIPT_STATUS.RUNNING:
+            self.started = datetime.now()
+        elif self.ended is None and self.status in {
+                SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED}:
+            self.ended = datetime.now()
+
+        return super().save(*args, **kwargs)
