@@ -23,13 +23,19 @@ from maasserver.utils.orm import reload_object
 class TestBootResourceForm(MAASServerTestCase):
 
     def pick_filetype(self):
-        upload_type = random.choice([
-            'tgz', 'ddtgz'])
-        if upload_type == 'tgz':
-            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
-        elif upload_type == 'ddtgz':
-            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_DD
-        return upload_type, filetype
+        filetypes = {
+            'tgz': BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            'ddtgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ,
+            'ddtar': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,
+            'ddraw': BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
+            'ddtbz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTBZ,
+            'ddtxz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTXZ,
+            'ddbz2': BOOT_RESOURCE_FILE_TYPE.ROOT_DDBZ2,
+            'ddgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDGZ,
+            'ddxz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ
+        }
+
+        return random.choice(list(filetypes.items()))
 
     def test_creates_boot_resource(self):
         name = factory.make_name('name')

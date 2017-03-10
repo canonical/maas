@@ -381,6 +381,21 @@ class BOOT_RESOURCE_FILE_TYPE:
 
     #: Tarball of dd image.
     ROOT_DD = 'root-dd'
+    ROOT_DDTAR = 'root-dd.tar'
+
+    #: Raw dd image
+    ROOT_DDRAW = 'root-dd.raw'
+
+    #: Compressed dd image types
+    ROOT_DDBZ2 = 'root-dd.bz2'
+    ROOT_DDGZ = 'root-dd.gz'
+    ROOT_DDXZ = 'root-dd.xz'
+
+    #: Compressed tarballs of dd images
+    ROOT_DDTBZ = 'root-dd.tar.bz2'
+    ROOT_DDTXZ = 'root-dd.tar.xz'
+    #: For backwards compatibility, DDTGZ files are named root-dd
+    ROOT_DDTGZ = 'root-dd'
 
     # Following are not allowed on user upload. Only used for syncing
     # from another simplestreams source. (Most likely images.maas.io)
@@ -413,6 +428,18 @@ class BOOT_RESOURCE_FILE_TYPE:
 BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, "Root Image (tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_DD, "Root Compressed DD (dd -> tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ, "Root Compressed DD (dd -> tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,
+        "Root Tarfile with DD (dd -> root-dd.tar)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
+        "Raw root DD image(dd -> root-dd.raw)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTBZ,
+        "Root Compressed DD (dd -> root-dd.tar.bz2)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDTXZ,
+        "Root Compressed DD (dd -> root-dd.tar.xz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDBZ2, "Root Compressed DD (root-dd.bz2)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDGZ, "Root Compressed DD (root-dd.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ, "Root Compressed DD (root-dd.xz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE, "Compressed Root Image"),
     (BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE, "SquashFS Root Image"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),

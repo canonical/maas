@@ -2151,6 +2151,13 @@ class LicenseKeyForm(MAASModelForm):
 BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
     ('tgz', "Root Image (tar.gz)"),
     ('ddtgz', "Root Compressed DD (dd -> tar.gz)"),
+    ('ddtbz', "Root Compressed DD (dd -> root-dd.tar.bz2)"),
+    ('ddtxz', "Root Compressed DD (dd -> root-dd.tar.xz)"),
+    ('ddtar', "Root Tarfile with DD (dd -> root-dd.tar)"),
+    ('ddbz2', "Root Compressed DD (root-dd.bz2)"),
+    ('ddgz', "Root Compressed DD (root-dd.gz)"),
+    ('ddxz', "Root Compressed DD (root-dd.xz)"),
+    ('ddraw', "Raw root DD image(dd -> root-dd.raw)"),
     )
 
 
@@ -2235,10 +2242,18 @@ class BootResourceForm(MAASModelForm):
 
     def get_resource_filetype(self, value):
         """Convert the upload filetype to the filetype for `BootResource`."""
-        if value == 'tgz':
-            return BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
-        elif value == 'ddtgz':
-            return BOOT_RESOURCE_FILE_TYPE.ROOT_DD
+        filetypes = {
+            'tgz': BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            'ddtgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ,
+            'ddtar': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTAR,
+            'ddraw': BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
+            'ddtbz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTBZ,
+            'ddtxz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDTXZ,
+            'ddbz2': BOOT_RESOURCE_FILE_TYPE.ROOT_DDBZ2,
+            'ddgz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDGZ,
+            'ddxz': BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ
+        }
+        return filetypes.get(value)
 
     def create_resource_file(self, resource_set, data):
         """Creates a new `BootResourceFile` on the given resource set."""

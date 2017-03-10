@@ -202,6 +202,7 @@ class OperatingSystemRegistry(Registry):
 
 
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.ubuntucore import UbuntuCoreOS
 from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
 from provisioningserver.drivers.osystem.centos import CentOS
 from provisioningserver.drivers.osystem.custom import CustomOS
@@ -210,6 +211,7 @@ from provisioningserver.drivers.osystem.suse import SUSEOS
 
 builtin_osystems = [
     UbuntuOS(),
+    UbuntuCoreOS(),
     BootLoaderOS(),
     CentOS(),
     CustomOS(),

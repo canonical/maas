@@ -178,7 +178,9 @@ class BootResourcesHandler(OperationsHandler):
         :param name: Name of the boot resource.
         :param title: Title for the boot resource.
         :param architecture: Architecture the boot resource supports.
-        :param filetype: Filetype for uploaded content. (Default: tgz)
+        :param filetype: Filetype for uploaded content. (Default: tgz,
+            Supported: tgz, ddtgz, ddtbz, ddtxz, ddtar, ddbz2, ddgz,
+            ddxz, ddraw
         :param content: Image content. Note: this is not a normal parameter,
             but a file upload.
         """
