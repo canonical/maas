@@ -131,6 +131,11 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             }
         };
 
+        // Called by maas-obj-field to unregister it as a editable field.
+        MAASFormController.prototype.unregisterField = function(key) {
+            delete this.fields[key];
+        };
+
         // Called by maas-obj-field to place field in edit mode.
         MAASFormController.prototype.startEditingField = function(key) {
             this.fields[key].editing = true;
@@ -358,6 +363,12 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                 scope: scope
             };
             return this.formController.registerField(key, scope);
+        };
+
+        // Called by maas-obj-field to unregister it as a editable field.
+        MAASGroupController.prototype.unregisterField = function(key) {
+            delete this.fields[key];
+            this.formController.unregisterField(key);
         };
 
         // Called by maas-obj-field to place field in edit mode.
@@ -874,6 +885,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 scope.hasErrors = function() {
                     return inputElement.hasClass("has-error");
                 };
+
+                // Called when the scope is destroyed.
+                scope.$on("$destroy", function() {
+                    controller.unregisterField(attrs.key);
+                });
             }
         };
     }]);

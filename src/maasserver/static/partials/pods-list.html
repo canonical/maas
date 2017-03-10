@@ -4,11 +4,11 @@
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls u-float--right">
             <div data-ng-if="!selectedItems.length">
-                <button class="button--secondary button--inline ng-hide"
+                <button class="button--secondary button--inline"
                     data-ng-click="add.open = true"
                     data-ng-if="!add.open">Add pod</button>
                 <button class="button--secondary button--inline"
-                    data-ng-click="add.open = false"
+                    data-ng-click="cancelAddPod()"
                     data-ng-if="add.open">Close add pod</button>
             </div>
             <div data-ng-if="isSuperUser() && selectedItems.length">
@@ -47,6 +47,27 @@
                 </p>
             </section>
         </div>
+        <div class="page-header__dropdown" data-ng-class="{ 'is-open': add.open }">
+            <maas-obj-form obj="add.obj" manager="podManager" manager-method="createItem"
+                table-form="true" save-on-blur="false" after-save="cancelAddPod"  data-ng-if="add.open">
+                <section class="page-header__section twelve-col u-margin--bottom-none">
+                    <h3 class="page-header__dropdown-title">Add pod</h3>
+                    <div class="form__fieldset six-col">
+                        <maas-obj-field type="text" key="name" label="Name" label-width="two" input-width="three" placeholder="Name (optional)"></maas-obj-field>
+                    </div>
+                    <div class="form__fieldset six-col last-col">
+                        <maas-pod-parameters></maas-pod-parameters>
+                    </div>
+                </section>
+                <section class="page-header__section twelve-col u-margin--bottom-none ">
+                    <p class="page-header__message page-header__message--error"><maas-obj-errors></maas-obj-errors></p>
+                    <div class="page-header__controls">
+                        <a href="" class="button--base button--inline" data-ng-click="cancelAddPod()">Cancel</a>
+                        <button class="button--positive button--inline" maas-obj-save>Save pod</button>
+                    </div>
+                </section>
+            </maas-obj-form>
+        </div>
     </div>
 </header>
 <div class="wrapper--inner">
@@ -60,7 +81,7 @@
                 <div class="table__row">
                     <div data-ng-if="isSuperUser()">
                       <div class="table__header table-col--2">
-                          <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="hasActionsInProgress()" />
+                          <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
                           <label for="check-all-pods" class="checkbox-label"></label>
                       </div>
                       <div class="table__header table-col--18">
@@ -101,7 +122,7 @@
                     data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                     <div data-ng-if="isSuperUser()">
                       <div class="table__data table-col--2" aria-label="Select pod">
-                          <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="hasActionsInProgress()"/>
+                          <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
                           <label for="{$ pod.id $}" class="checkbox-label"></label>
                       </div>
                       <div class="table__data table-col--18" aria-label="Name">

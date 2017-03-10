@@ -109,6 +109,7 @@ MERGE_VIEWS = {
             "js/angular/directives/maas_obj_form.js",
             "js/angular/directives/os_select.js",
             "js/angular/directives/placeholder.js",
+            "js/angular/directives/pod_parameters.js",
             "js/angular/directives/power_parameters.js",
             "js/angular/directives/release_options.js",
             "js/angular/directives/script_select.js",

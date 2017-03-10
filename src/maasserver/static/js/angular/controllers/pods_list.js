@@ -15,6 +15,7 @@ angular.module('MAAS').controller('PodsListController', [
         $rootScope.page = "pods";
 
         // Set initial values.
+        $scope.podManager = PodsManager;
         $scope.pods = PodsManager.getItems();
         $scope.loading = true;
 
@@ -45,7 +46,8 @@ angular.module('MAAS').controller('PodsListController', [
           }
         };
         $scope.add = {
-          open: false
+          open: false,
+          obj: {}
         };
         $scope.powerTypes = GeneralManager.getData("power_types");
 
@@ -193,12 +195,13 @@ angular.module('MAAS').controller('PodsListController', [
 
         // Called when the add pod button is pressed.
         $scope.addPod = function() {
-            $scope.addPodScope.show();
+            $scope.add.open = true;
         };
 
         // Called when the cancel add pod button is pressed.
         $scope.cancelAddPod = function() {
-            $scope.addPodScope.cancel();
+            $scope.add.open = false;
+            $scope.add.obj = {};
         };
 
         // Return true if the authenticated user is super user.

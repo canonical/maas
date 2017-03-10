@@ -438,25 +438,24 @@ describe("PodsListController", function() {
 
     describe("addPod", function() {
 
-        it("calls show in addPodScope", function() {
+        it("sets add.open to true", function() {
             var controller = makeController();
-            $scope.addPodScope = {
-                show: jasmine.createSpy("show")
-            };
             $scope.addPod();
-            expect($scope.addPodScope.show).toHaveBeenCalled();
+            expect($scope.add.open).toBe(true);
         });
     });
 
     describe("cancelAddPod", function() {
 
-        it("calls cancel in addPodScope", function() {
+        it("set add.open to false and clears add.obj", function() {
             var controller = makeController();
-            $scope.addPodScope = {
-                cancel: jasmine.createSpy("cancel")
-            };
+            var obj = {};
+            $scope.add.obj = obj;
+            $scope.add.open = true;
             $scope.cancelAddPod();
-            expect($scope.addPodScope.cancel).toHaveBeenCalled();
+            expect($scope.add.open).toBe(false);
+            expect($scope.add.obj).toEqual({});
+            expect($scope.add.obj).not.toBe(obj);
         });
     });
 

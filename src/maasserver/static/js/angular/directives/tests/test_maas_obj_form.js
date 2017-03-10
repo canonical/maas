@@ -1045,4 +1045,31 @@ describe("maasObjForm", function() {
             expect(input.hasClass("new-class")).toBe(true);
         });
     });
+
+    describe("unregisterField", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            $scope.show = true;
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<div ng-if="show">',
+                      '<maas-obj-field type="text" key="key" ' +
+                          'input-class="new-class"></maas-obj-field>',
+                      '</maas-obj-field>',
+                    '</div>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("fields is unregistered when removed", function() {
+            expect($scope.obj.$maasForm.fields.key).toBeDefined();
+            $scope.show = false;
+            $scope.$digest();
+            expect($scope.obj.$maasForm.fields.key).toBeUndefined();
+        });
+    });
 });
