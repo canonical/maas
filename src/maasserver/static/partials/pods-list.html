@@ -64,35 +64,35 @@
                           <label for="check-all-pods" class="checkbox-label"></label>
                       </div>
                       <div class="table__header table-col--18">
-                          <a href="" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                          <a href=""  class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                               <span title="Name">Name</span>
                           </a>
                       </div>
                     </div>
                     <div data-ng-if="!isSuperUser()">
                       <div class="table__header table-col--20">
-                          <a href="" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                          <a href="" class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
                               <span title="Name">Name</span>
                           </a>
                       </div>
                     </div>
                     <div class="table__header table-col--15">
-                        <a href="" data-ng-click="sortTable('power_type')" data-ng-class="{'is-sorted': predicate === 'power_type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('power_type')" data-ng-class="{'is-sorted': predicate === 'power_type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
                     </div>
                     <div class="table__header table-col--15 u-align--right">
-                        <a href="" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
                     </div>
                     <div class="table__header table-col--15 u-align--right">
-                        <a href="" data-ng-click="sortTable('available.remote_storage')" data-ng-class="{'is-sorted': predicate === 'available.remote_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Remote storage (GiB)</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('available.remote_storage')" data-ng-class="{'is-sorted': predicate === 'available.remote_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Remote storage (GiB)</a>
                     </div>
                     <div class="table__header table-col--10 u-align--right">
-                        <a href="" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
                     </div>
                     <div class="table__header table-col--15 u-align--right">
-                        <a href="" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
                     </div>
                     <div class="table__header table-col--10 u-align--right">
-                        <a href="" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
                     </div>
                 </div>
             </header>
