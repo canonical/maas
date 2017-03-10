@@ -6,7 +6,6 @@
 __all__ = []
 
 from operator import itemgetter
-import random
 from unittest.mock import ANY
 
 from maasserver.enum import (
@@ -896,7 +895,8 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         handler = DeviceHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet()
-        link_id = random.randint(0, 100)
+        sip = factory.make_StaticIPAddress(interface=interface)
+        link_id = sip.id
         ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT_TYPE)
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             mode = INTERFACE_LINK_TYPE.STATIC
@@ -918,6 +918,41 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             Interface.update_link_by_id,
             MockCalledOnceWith(
                 ANY, link_id, mode, subnet, ip_address=ip_address))
+
+    @transactional
+    def test_link_subnet_calls_link_subnet_if_link_id_deleted(self):
+        user = factory.make_admin()
+        node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
+        handler = DeviceHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        sip = factory.make_StaticIPAddress(interface=interface, subnet=subnet)
+        link_id = sip.id
+        ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT_TYPE)
+        if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
+            mode = INTERFACE_LINK_TYPE.STATIC
+        elif ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
+            mode = INTERFACE_LINK_TYPE.DHCP
+        else:
+            mode = INTERFACE_LINK_TYPE.LINK_UP
+        ip_address = factory.make_ip_address()
+        sip.delete()
+        self.patch_autospec(Interface, "link_subnet")
+        handler.link_subnet({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "subnet": subnet.id,
+            "link_id": link_id,
+            "ip_assignment": ip_assignment,
+            "ip_address": ip_address,
+            })
+        if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
+            self.assertThat(
+                Interface.link_subnet,
+                MockCalledOnceWith(
+                    ANY, mode, subnet, ip_address=ip_address))
+        else:
+            self.assertThat(Interface.link_subnet, MockNotCalled())
 
     @transactional
     def test_link_subnet_calls_link_subnet_if_not_link_id(self):

@@ -89,7 +89,10 @@ from maasserver.websockets.handlers.machine import (
     Node as node_model,
 )
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -2473,7 +2476,8 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         subnet = factory.make_Subnet()
-        link_id = random.randint(0, 100)
+        sip = factory.make_StaticIPAddress(interface=interface)
+        link_id = sip.id
         mode = factory.pick_enum(INTERFACE_LINK_TYPE)
         ip_address = factory.make_ip_address()
         self.patch_autospec(Interface, "update_link_by_id")
@@ -2489,6 +2493,30 @@ class TestMachineHandler(MAASServerTestCase):
             Interface.update_link_by_id,
             MockCalledOnceWith(
                 ANY, link_id, mode, subnet, ip_address=ip_address))
+
+    def test_link_subnet_calls_nothing_if_link_id_is_deleted(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+        handler = MachineHandler(user, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        sip = factory.make_StaticIPAddress(interface=interface)
+        link_id = sip.id
+        sip.delete()
+        mode = factory.pick_enum(INTERFACE_LINK_TYPE)
+        ip_address = factory.make_ip_address()
+        self.patch_autospec(Interface, "update_link_by_id")
+        handler.link_subnet({
+            "system_id": node.system_id,
+            "interface_id": interface.id,
+            "link_id": link_id,
+            "subnet": subnet.id,
+            "mode": mode,
+            "ip_address": ip_address,
+            })
+        self.assertThat(
+            Interface.update_link_by_id,
+            MockNotCalled())
 
     def test_link_subnet_calls_link_subnet_if_not_link_id(self):
         user = factory.make_admin()

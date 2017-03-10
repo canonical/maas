@@ -818,6 +818,9 @@ class MachineHandler(NodeHandler):
             self._update_obj_tags(interface, params)
         else:
             raise ValidationError(form.errors)
+        if 'mode' in params:
+            self.link_subnet(params)
+        return self.full_dehydrate(node)
 
     def delete_interface(self, params):
         """Delete the interface."""
@@ -840,11 +843,13 @@ class MachineHandler(NodeHandler):
         subnet = None
         if "subnet" in params:
             subnet = Subnet.objects.get(id=params["subnet"])
-        if "link_id" in params:
-            # We are updating an already existing link.
-            interface.update_link_by_id(
-                params["link_id"], params["mode"], subnet,
-                ip_address=params.get("ip_address", None))
+        if ("link_id" in params):
+            if interface.ip_addresses.filter(id=params['link_id']).exists():
+                # We are updating an already existing link.  Which may have
+                # been deleted.
+                interface.update_link_by_id(
+                    params["link_id"], params["mode"], subnet,
+                    ip_address=params.get("ip_address", None))
         else:
             # We are creating a new link.
             interface.link_subnet(

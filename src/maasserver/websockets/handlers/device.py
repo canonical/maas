@@ -283,6 +283,9 @@ class DeviceHandler(NodeHandler):
         ip_assignment = params["ip_assignment"]
         interface.ip_addresses.all().delete()
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
+            if 'ip_address' not in params:
+                raise ValidationError(
+                    {'ip_address': ['IP address must be specified']})
             subnet = Subnet.objects.get_best_subnet_for_ip(
                 params["ip_address"])
             sticky_ip = StaticIPAddress.objects.create(
@@ -379,8 +382,11 @@ class DeviceHandler(NodeHandler):
         subnet = None
         if "subnet" in params:
             subnet = Subnet.objects.get(id=params["subnet"])
-        if "link_id" in params:
-            # We are updating an already existing link.
+        if ("link_id" in params and
+                interface.ip_addresses.filter(
+                    id=params["link_id"]).exists()):
+            # We are updating an already existing link, which may have been
+            # removed earlier in this transaction (via update_interface.)
             interface.update_link_by_id(
                 params["link_id"], mode, subnet,
                 ip_address=params.get("ip_address", None))

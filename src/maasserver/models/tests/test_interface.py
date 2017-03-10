@@ -793,6 +793,19 @@ class InterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL,
             name='invalid*name')
 
+    def test_rejects_invalid_mac_address(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Interface,
+            INTERFACE_TYPE.PHYSICAL,
+            mac_address="invalid")
+
+    def test_allows_blank_mac_address(self):
+        factory.make_Interface(INTERFACE_TYPE.UNKNOWN, mac_address='')
+
+    def test_allows_none_mac_address(self):
+        factory.make_Interface(INTERFACE_TYPE.UNKNOWN, mac_address=None)
+
     def test_get_type_returns_None(self):
         self.assertIsNone(Interface.get_type())
 

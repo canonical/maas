@@ -45,6 +45,7 @@ from maasserver.exceptions import (
 from maasserver.fields import (
     JSONObjectField,
     MACAddressField,
+    validate_mac,
     VerboseRegexValidator,
 )
 from maasserver.models.cleansave import CleanSave
@@ -1232,6 +1233,11 @@ class Interface(CleanSave, TimestampedModel):
 
     def clean(self):
         super(Interface, self).clean()
+
+        # Verify that the MAC address is legal.
+        if self.mac_address is not None:
+            validate_mac(self.mac_address)
+
         # Acquired can only be set on bridge interface types and the node
         # must be in an allocated state.
         if self.acquired and self.type != INTERFACE_TYPE.BRIDGE:

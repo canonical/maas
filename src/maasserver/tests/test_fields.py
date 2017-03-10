@@ -243,6 +243,11 @@ class TestMACAddressField(MAASServerTestCase):
         # No error.
         pass
 
+    def test_accepts_cisco_format(self):
+        validate_mac('0000.0200.3fff')
+        # No error.
+        pass
+
     def test_accepts_leading_and_trailing_whitespace(self):
         validate_mac(' AA:BB:CC:DD:EE:FF ')
         # No error.

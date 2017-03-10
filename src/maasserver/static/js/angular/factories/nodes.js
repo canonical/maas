@@ -117,6 +117,13 @@ angular.module('MAAS').service(
                     this._handler + ".update_interface", params);
             };
 
+        // Update an interface from a maas-obj-form.
+        NodesManager.prototype.updateInterfaceForm = function(
+            params) {
+                return RegionConnection.callMethod(
+                    this._handler + ".update_interface", params);
+            };
+
         // Delete the interface for the node.
         NodesManager.prototype.deleteInterface = function(
             node, interface_id) {

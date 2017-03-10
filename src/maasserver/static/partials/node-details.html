@@ -840,115 +840,82 @@
                                                       </div>
                                                   </fieldset>
                                               </div>
-                                              <div class="table__data table-col--100" data-ng-if="isEditing(interface)">
-                                                  <fieldset class="form__fieldset six-col">
-                                                      <dl>
-                                                        <span data-ng-if="!isDevice">
-                                                          <dt class="two-col">Type</dt>
-                                                              <dd class="four-col last-col">{$ getInterfaceTypeText(interface) $}</dd>
-                                                        </span>
-                                                      </dl>
-                                                      <div class="form__group" data-ng-if="interface.type != 'alias' && interface.type != 'vlan'">
-                                                          <label for="mac" class="two-col">MAC address</label>
-                                                          <input name="mac" type="text" class="three-col"
-                                                              placeholder="00:00:00:00:00:00"
-                                                              data-ng-model="editInterface.mac_address"
-                                                              data-ng-class="{ 'has-error': isMACAddressInvalid(editInterface.mac_address, true) }">
+                                              <maas-obj-form obj="editInterface" manager="nodesManager" manager-method="updateInterfaceForm"
+                                                  table-form="true" save-on-blur="false" after-save="editSave" pre-process="preProcessInterface"
+                                                  data-ng-if="isEditing(editInterface)">
+                                                  <div class="table__data table-col--100">
+                                                      <fieldset class="form__fieldset six-col">
+                                                          <dl>
+                                                              <span data-ng-if="!isDevice">
+                                                                  <dt class="two-col">Type</dt>
+                                                                  <dd class="four-col last-col">{$ getInterfaceTypeText(interface) $}</dd>
+                                                              </span>
+                                                          </dl>
+                                                          <maas-obj-field type="text" key="mac_address" label="MAC address" label-width="two" input-width="three"
+                                                               data-ng-if="interface.type != 'alias' && interface.type != 'vlan'" disable-label="false"
+                                                               input-class="table__input u-margin--none" placeholder="00:00:00:00:00:00"></maas-obj-field>
+                                                          <maas-obj-field type="tags" key="tags" label="Tags" label-width="two" input-width="three"
+                                                               placeholder="Add a tag"
+                                                               data-ng-if="!isLimitedEditingAllowed(interface) && interface.type != 'alias'"
+                                                               disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
+                                                      </fieldset>
+                                                      <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
+                                                          <maas-obj-field type="options" key="fabric" label="Fabric" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              data-ng-if="!isDevice && interface.type !== 'vlan'"
+                                                              on-change="fabricChangedForm"
+                                                              options="fabric as fabric.name for fabric in fabrics"></maas-obj-field>
+                                                          <maas-obj-field type="options" key="vlan" label="VLAN" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric')"
+                                                              disabled="interface.type === 'physical' || interface.type === 'bond'"
+                                                              on-change="vlanChangedForm"
+                                                              options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.$maasForm.getValue('fabric')">
+                                                              </maas-obj-field>
+                                                          <maas-obj-field type="options" key="ip_assignment" label="IP Assignment" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              data-ng-if="isDevice"
+                                                              options="assignment.name as assignment.text for assignment in ipAssignments"></maas-obj-field>
+                                                          <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
+                                                              disable-label="false" input-class="table__input u-margin--none" label-width="two" input-width="three"
+                                                              data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric')"
+                                                              on-change="subnetChangedForm"
+                                                              options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')">
+                                                              </maas-obj-field>
+                                                          <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
+                                                              ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="two" input-width="three"
+                                                              data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
+                                                              on-change="subnetChangedForm"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              options="subnet as getSubnetText(subnet) for subnet in subnets"></maas-obj-field>
+                                                          <maas-obj-field type="options" key="mode" label="IP mode" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              data-ng-if="!isDevice && editInterface.$maasForm.getValue('fabric') && !isLinkModeDisabled(editInterface.$maasForm)"
+                                                              options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface.$maasForm">
+                                                              on-change="modeChangedForm"
+                                                              </maas-obj-field>
+                                                          <maas-obj-field type="text" key="ip_address" label="IP address" placeholder="IP Address" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"
+                                                              data-ng-if="(!isDevice && editInterface.$maasForm.getValue('fabric') && editInterface.$maasForm.getValue('mode') == 'static') || (isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'external')">
+                                                              </maas-obj-field>
+                                                          <maas-obj-field type="text" key="ip_address" label="IP Address" placeholder="IP Address (optional)"
+                                                              data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="two" input-width="three"
+                                                              disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
+                                                      </fieldset>
+                                                    <div class="table__row is-active">
+                                                      <div class="table__data u-float--left">
+                                                          <maas-obj-errors></maas-obj-errors>
                                                       </div>
-                                                      <div class="form__group" data-ng-if="!isDevice && !isLimitedEditingAllowed(interface)">
-                                                          <label class="two-col" data-ng-if="interface.type != 'alias'">Tags</label>
-                                                          <div class="form__group-input three-col last-col" data-ng-if="interface.type != 'alias'">
-                                                              <tags-input ng-model="editInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
-                                                          </div>
+                                                      <div class="table__data u-float--right">
+                                                          <a class="button--base button--inline"
+                                                              data-ng-click="editCancel()">Cancel</a>
+                                                          <button class="button--positive button--inline"
+                                                           data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                           maas-obj-save>Save</button>
                                                       </div>
-                                                  </fieldset>
-                                                  <fieldset class="form__fieldset six-col last-col" data-ng-if="!isDevice && !isLimitedEditingAllowed(interface)">
-                                                      <div class="form__group">
-                                                          <label for="fabric" class="two-col">Fabric</label>
-                                                          <select name="fabric" class="three-col"
-                                                              data-ng-model="editInterface.fabric"
-                                                              data-ng-change="fabricChanged(editInterface)"
-                                                              data-ng-disabled="interface.type === 'vlan'"
-                                                              data-ng-options="fabric as fabric.name for fabric in fabrics">
-                                                                  <option value="">Disconnected</option>
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.fabric">
-                                                          <label for="vlan" class="two-col">VLAN</label>
-                                                          <select name="vlan" class="three-col"
-                                                              ng-model="editInterface.vlan"
-                                                              data-ng-disabled="interface.type === 'physical' || interface.type === 'bond'"
-                                                              data-ng-change="vlanChanged(editInterface)"
-                                                              data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:editInterface.fabric">
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.fabric">
-                                                          <label for="subnet" class="two-col">Subnet</label>
-                                                          <select name="subnet" class="three-col"
-                                                              ng-model="editInterface.subnet"
-                                                              data-ng-change="subnetChanged(editInterface)"
-                                                              data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.vlan">
-                                                              <option value="" data-ng-hide="interface.links.length > 1">Unconfigured</option>
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.fabric && !isLinkModeDisabled(editInterface)">
-                                                          <label for="link-mode" class="two-col">IP mode</label>
-                                                          <select name="link-mode" class="three-col"
-                                                              ng-model="editInterface.mode"
-                                                              data-ng-change="modeChanged(editInterface)"
-                                                              data-ng-options="mode.mode as mode.text for mode in modes | filterLinkModes:editInterface">
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.fabric && editInterface.mode == 'static'">
-                                                          <label for="ip-address" class="two-col">IP address</label>
-                                                          <div class="form__group-input three-col last-col">
-                                                              <input name="ip-address" type="text"
-                                                                  placeholder="IP address"
-                                                                  ng-model="editInterface.ip_address"
-                                                                  data-ng-class="{ 'has-error': isIPAddressInvalid(editInterface) }">
-                                                              <ul class="errors u-margin--bottom-none form__group--errors" data-ng-if="getInterfaceError(editInterface)">
-                                                                  <li>{$ getInterfaceError(editInterface) $}</li>
-                                                              </ul>
-                                                          </div>
-                                                      </div>
-                                                  </fieldset>
-                                                  <fieldset class="form__fieldset six-col last-col" data-ng-if="isDevice && !isLimitedEditingAllowed(interface)">
-                                                      <div class="form__group">
-                                                          <label for="ip-assignment" class="two-col">IP Assignment</label>
-                                                          <select name="ip-assignment" class="three-col"
-                                                              ng-model="editInterface.ip_assignment"
-                                                              data-ng-options="assignment.name as assignment.text for assignment in ipAssignments">
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.ip_assignment === 'static'">
-                                                          <label for="subnet" class="two-col">Subnet</label>
-                                                          <select name="subnet" class="three-col"
-                                                              ng-init="editInterface.subnet = editInterface.defaultSubnet"
-                                                              ng-model="editInterface.subnet"
-                                                              data-ng-change="subnetChanged(editInterface)"
-                                                              data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets">
-                                                          </select>
-                                                      </div>
-                                                      <div class="form__group" data-ng-if="editInterface.ip_assignment !== 'dynamic'">
-                                                          <label for="ip-address" class="two-col">IP address</label>
-                                                          <div class="form__group-input three-col last-col">
-                                                              <input name="ip-address" type="text"
-                                                                  data-ng-if="editInterface.ip_assignment === 'static'"
-                                                                  placeholder="IP address (optional)"
-                                                                  ng-model="editInterface.ip_address"
-                                                                  data-ng-class="{ 'has-error': isIPAddressInvalid(editInterface) }">
-                                                              <input name="ip-address" type="text"
-                                                                  data-ng-if="editInterface.ip_assignment !== 'static'"
-                                                                  placeholder="IP address"
-                                                                  ng-model="editInterface.ip_address"
-                                                                  data-ng-class="{ 'has-error': isIPAddressInvalid(editInterface) }">
-                                                              <ul class="errors u-margin--bottom-none form__group--errors" data-ng-if="getInterfaceError(editInterface)">
-                                                                  <li>{$ getInterfaceError(editInterface) $}</li>
-                                                              </ul>
-                                                          </div>
-                                                      </div>
-                                                  </fieldset>
-                                              </div>
+                                                    </div>
+                                                  </div>
+                                              </maas-obj-form>
                                           </div>
                                           <div class="table__row is-active" data-ng-if="isShowingDeleteConfirm()">
                                               <div class="table__data u-float--left">
@@ -957,12 +924,6 @@
                                               <div class="table__data u-float--right">
                                                     <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
                                                     <button class="button--destructive button--inline" data-ng-click="confirmRemove(interface)">Remove</button>
-                                              </div>
-                                          </div>
-                                          <div class="table__row is-active" data-ng-if="isEditing(interface)">
-                                              <div class="table__data u-float--right">
-                                                  <a class="button--base button--inline" data-ng-click="editCancel()">Cancel</a>
-                                                  <button class="button--positive button--inline" data-ng-disabled="isInterfaceNameInvalid(editInterface) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)" data-ng-click="editSave()">Save</button>
                                               </div>
                                           </div>
                                           <div class="table__row is-active" data-ng-if="isShowingAdd() && !newInterface.saving">
@@ -1282,12 +1243,12 @@
                                                       <label for="ip-address" class="two-col">IP address</label>
                                                       <div class="form__group-input three-col last-col">
                                                           <input name="ip-address" type="text"
-                                                              data-ng-if="editInterface.ip_assignment === 'static'"
+                                                              data-ng-if="newInterface.ip_assignment === 'static'"
                                                               placeholder="IP address (optional)"
                                                               ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                           <input name="ip-address" type="text"
-                                                              data-ng-if="editInterface.ip_assignment !== 'static'"
+                                                              data-ng-if="newInterface.ip_assignment !== 'static'"
                                                               placeholder="IP address"
                                                               ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">

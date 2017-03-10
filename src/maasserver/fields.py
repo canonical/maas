@@ -18,6 +18,7 @@ __all__ = [
     "register_mac_type",
     "VerboseRegexValidator",
     "VersionedTextFileField",
+    "validate_mac",
     ]
 
 from copy import deepcopy
@@ -80,7 +81,12 @@ class Field(_BrokenField):
         super(Field, self).__init__(*args, **kwargs)
 
 
-MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{1,2}[:-]){5}[0-9a-fA-F]{1,2}\s*$')
+MAC_RE = re.compile(
+    r'^\s*('
+    r'([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|'
+    r'([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|'
+    r'([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}'
+    r')\s*$')
 
 MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
 

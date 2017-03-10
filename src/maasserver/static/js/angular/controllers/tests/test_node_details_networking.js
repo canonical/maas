@@ -241,6 +241,18 @@ describe("filterLinkModes", function() {
         ]);
     });
 
+    it("honors getValue()", function() {
+        var nic = {
+            getValue: function() { return null; }
+        };
+        expect(filterLinkModes(modes, nic)).toEqual([
+            {
+                "mode": "link_up",
+                "text": "Unconfigured"
+            }
+        ]);
+    });
+
     it("all modes if only one link", function() {
         var nic = {
             subnet : {},
@@ -487,6 +499,7 @@ describe("NodeNetworkingController", function() {
             id: 1,
             name: "eth0",
             ip_assignment: 'static',
+            tags: [],
             subnet: $scope.subnets[1]
             };
         $scope.edit(nic);
@@ -501,6 +514,7 @@ describe("NodeNetworkingController", function() {
             id: 1,
             name: "eth0",
             ip_assignment: 'static',
+            tags: [],
             subnet: null
             };
         $scope.edit(nic);
@@ -1595,6 +1609,9 @@ describe("NodeNetworkingController", function() {
                     "name": nic.name,
                     "mac_address": undefined,
                     "vlan": vlan.id,
+                    "mode": undefined,
+                    "fabric": null,
+                    "subnet": null,
                     "tags": []
                 });
         });
@@ -1626,6 +1643,9 @@ describe("NodeNetworkingController", function() {
                     "name": name,
                     "mac_address": undefined,
                     "vlan": vlan.id,
+                    "mode": undefined,
+                    "fabric": null,
+                    "subnet": null,
                     "tags": []
                 });
         });
@@ -1657,6 +1677,9 @@ describe("NodeNetworkingController", function() {
                     "name": name,
                     "mac_address": undefined,
                     "vlan": vlan.id,
+                    "mode": undefined,
+                    "fabric": null,
+                    "subnet": null,
                     "tags": []
                 });
         });
@@ -1687,6 +1710,9 @@ describe("NodeNetworkingController", function() {
                 node, id, {
                     "name": name,
                     "mac_address": undefined,
+                    "mode": undefined,
+                    "fabric": null,
+                    "subnet": null,
                     "vlan": null,
                     "tags": []
                 });
@@ -1799,6 +1825,22 @@ describe("NodeNetworkingController", function() {
             };
             expect($scope.isLinkModeDisabled(nic)).toBe(true);
         });
+
+        it("enabled when subnet with getValue", function() {
+            var controller = makeController();
+            var nic = {
+                getValue : function() { return {};}
+            };
+            expect($scope.isLinkModeDisabled(nic)).toBe(false);
+        });
+
+        it("disabled when not subnet with getValue", function() {
+            var controller = makeController();
+            var nic = {
+                getValue : function() { return null;}
+            };
+            expect($scope.isLinkModeDisabled(nic)).toBe(true);
+        });
     });
 
     describe("saveInterfaceLink", function() {
@@ -1857,6 +1899,47 @@ describe("NodeNetworkingController", function() {
             spyOn($scope, "saveInterfaceLink");
             $scope.subnetChanged(nic);
             expect(nic.ip_address).toBe("");
+        });
+    });
+
+    describe("subnetChangedForm", function() {
+
+        it("sets mode to link_up if set to no subnet", function() {
+            var controller = makeController();
+            var nic = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _subnet: null
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChangedForm('subnet', null, nic);
+            expect(nic._mode).toBe("link_up");
+        });
+
+        it("doesnt set mode to link_up if set if subnet", function() {
+            var controller = makeController();
+            var nic = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _mode: "static",
+                _subnet: {}
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChangedForm('subnet', {}, nic);
+            expect(nic._mode).toBe("static");
+        });
+
+        it("clears ip_address", function() {
+            var controller = makeController();
+            var nic = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _subnet: null,
+                _ip_address: makeName("ip")
+            };
+            spyOn($scope, "saveInterfaceLink");
+            $scope.subnetChangedForm('subnet', null, nic);
+            expect(nic._ip_address).toBe("");
         });
     });
 
@@ -2845,6 +2928,20 @@ describe("NodeNetworkingController", function() {
             };
             $scope.vlanChanged($scope.newInterface);
             expect($scope.newInterface.subnet).toBeNull();
+        });
+    });
+
+    describe("vlanChangedForm", function() {
+
+        it("clears subnets on newInterface", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _subnet: {}
+            };
+            $scope.vlanChangedForm('vlan', {}, $scope.newInterface);
+            expect($scope.newInterface._subnet).toBeNull();
         });
     });
 
@@ -3884,6 +3981,30 @@ describe("NodeNetworkingController", function() {
         });
     });
 
+    describe("fabricChangedForm", function() {
+
+        it("sets newInterface.vlan with new fabric", function() {
+            var controller = makeController();
+            var vlan = { id: 0, fabric: 0 };
+            var fabric = {
+                id: 0, name: makeName("fabric"),
+                default_vlan_id: 0, vlan_ids: [0]
+            };
+            VLANsManager._items = [vlan];
+            $scope.newInterface._fabric = fabric;
+            $scope.newInterface._subnet = {};
+            $scope.newInterface._mode = "auto";
+            $scope.newInterface.getValue = function(name) {
+                return this["_" + name];};
+            $scope.newInterface.updateValue = function(name, val) {
+                this["_" + name] = val; };
+            $scope.fabricChangedForm('fabric', fabric, $scope.newInterface);
+            expect($scope.newInterface._vlan).toBe(vlan);
+            expect($scope.newInterface._subnet).toBeNull();
+            expect($scope.newInterface._mode).toBe("link_up");
+        });
+    });
+
     describe("subnetChanged", function() {
 
         it("sets mode to link_up when no subnet", function() {
@@ -3900,6 +4021,33 @@ describe("NodeNetworkingController", function() {
             $scope.newInterface.mode = "auto";
             $scope.subnetChanged($scope.newInterface);
             expect($scope.newInterface.mode).toBe("auto");
+        });
+    });
+
+    describe("subnetChangedForm", function() {
+
+        it("sets mode to link_up when no subnet", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _subnet: null,
+                _mode: "auto"
+            };
+            $scope.subnetChangedForm("subnet", null, $scope.newInterface);
+            expect($scope.newInterface._mode).toBe("link_up");
+        });
+
+        it("leaves mode to original when subnet", function() {
+            var controller = makeController();
+            $scope.newInterface = {
+                getValue: function(name) { return this["_" + name];},
+                updateValue: function(name, val) { this["_" + name] = val; },
+                _subnet: {},
+                _mode: "auto"
+            };
+            $scope.subnetChangedForm("subnet", {}, $scope.newInterface);
+            expect($scope.newInterface._mode).toBe("auto");
         });
     });
 
