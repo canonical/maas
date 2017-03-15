@@ -28,6 +28,7 @@ import maasserver.forms as maasserver_forms
 from maasserver.models import (
     Interface,
     PhysicalBlockDevice,
+    Pod,
     Subnet,
     Tag,
     VLAN,
@@ -728,6 +729,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         :rtype: `django.db.models.query.QuerySet`
         """
         filtered_nodes = nodes
+        filtered_nodes = self.filter_by_pod_or_pod_type(filtered_nodes)
         filtered_nodes = self.filter_by_hostname(filtered_nodes)
         filtered_nodes = self.filter_by_system_id(filtered_nodes)
         filtered_nodes = self.filter_by_arch(filtered_nodes)
@@ -896,4 +898,20 @@ class AcquireNodeForm(RenamableFieldsForm):
             else:
                 clause = Q(hostname=hostname)
             filtered_nodes = filtered_nodes.filter(clause)
+        return filtered_nodes
+
+    def filter_by_pod_or_pod_type(self, filtered_nodes):
+        # Filter by pod or pod type.
+        # We are filtering for both pod and pod_type to keep
+        # the query count down.
+        pod = self.cleaned_data.get(self.get_field_name('pod'))
+        pod_type = self.cleaned_data.get(self.get_field_name('pod_type'))
+        if pod or pod_type:
+            pods = Pod.objects.all()
+            if pod:
+                pods = pods.filter(name=pod)
+            if pod_type:
+                pods = pods.filter(power_type=pod_type)
+            filtered_nodes = filtered_nodes.filter(
+                bmc_id__in=pods.values_list('id', flat=True))
         return filtered_nodes

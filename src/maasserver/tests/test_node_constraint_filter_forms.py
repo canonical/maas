@@ -282,6 +282,33 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([node2], {'cpu_count': '2'})
         self.assertConstrainedNodes([], {'cpu_count': '4'})
 
+    def test_pod_or_pod_type_for_pod(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type, name='pod1')
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type, name='pod2')
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node1], {'pod': pod1.name})
+        self.assertConstrainedNodes([node2], {'pod': pod2.name})
+        self.assertConstrainedNodes([], {'pod': factory.make_name('pod')})
+
+    def test_pod_or_pod_type_for_pod_type(self):
+        node1 = factory.make_Node(power_type='virsh')
+        pod1 = factory.make_Pod(pod_type=node1.power_type)
+        node2 = factory.make_Node(power_type='rsd')
+        pod2 = factory.make_Pod(pod_type=node2.power_type)
+        node1.bmc = pod1
+        node1.save()
+        node2.bmc = pod2
+        node2.save()
+        self.assertConstrainedNodes([node1], {'pod_type': pod1.power_type})
+        self.assertConstrainedNodes([node2], {'pod_type': pod2.power_type})
+        self.assertConstrainedNodes(
+            [], {'pod_type': factory.make_name('pod_type')})
+
     def test_invalid_cpu_count(self):
         form = AcquireNodeForm(data={'cpu_count': 'invalid'})
         self.assertEqual(
