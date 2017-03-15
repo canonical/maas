@@ -10,7 +10,7 @@ __all__ = [
 
 from django import forms
 from django.conf import settings as django_settings
-from django.contrib import messages
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.views import (
     login as dj_login,
     logout as dj_logout,
@@ -30,7 +30,15 @@ def login(request):
     if request.user.is_authenticated():
         return HttpResponseRedirect(reverse('index'))
     else:
-        return dj_login(request, extra_context=extra_context)
+        redirect_url = request.GET.get(
+            REDIRECT_FIELD_NAME, request.POST.get(REDIRECT_FIELD_NAME))
+        if redirect_url == reverse('logout'):
+            redirect_field_name = None  # Ignore next page.
+        else:
+            redirect_field_name = REDIRECT_FIELD_NAME
+        return dj_login(
+            request, redirect_field_name=redirect_field_name,
+            extra_context=extra_context)
 
 
 class LogoutForm(forms.Form):
@@ -45,7 +53,6 @@ def logout(request):
     if request.method == 'POST':
         form = LogoutForm(request.POST)
         if form.is_valid():
-            messages.info(request, "You have been logged out.")
             return dj_logout(request, next_page=reverse('login'))
     else:
         form = LogoutForm()

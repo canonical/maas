@@ -8,7 +8,10 @@ __all__ = []
 import http.client
 
 from django.conf import settings
-from django.contrib.auth import SESSION_KEY
+from django.contrib.auth import (
+    REDIRECT_FIELD_NAME,
+    SESSION_KEY,
+)
 from django.core.urlresolvers import reverse
 from lxml.html import (
     fromstring,
@@ -49,6 +52,46 @@ class TestLogin(MAASServerTestCase):
         response = self.client.get('/accounts/login/')
         self.assertEqual('/', extract_redirect(response))
 
+    def test_login_doesnt_redirect_to_logout_GET(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        response = self.client.post(
+            '/accounts/login/?%s=%s' % (
+                REDIRECT_FIELD_NAME, reverse('logout')),
+            {'username': user.username, 'password': password})
+        self.assertEqual('/', extract_redirect(response))
+
+    def test_login_redirects_GET(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        response = self.client.post(
+            '/accounts/login/?%s=%s' % (
+                REDIRECT_FIELD_NAME, reverse('prefs')),
+            {'username': user.username, 'password': password})
+        self.assertEqual(reverse('prefs'), extract_redirect(response))
+
+    def test_login_doesnt_redirect_to_logout_POST(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        response = self.client.post(
+            '/accounts/login/', {
+                'username': user.username,
+                'password': password,
+                REDIRECT_FIELD_NAME: reverse('logout'),
+            })
+        self.assertEqual('/', extract_redirect(response))
+
+    def test_login_redirects_POST(self):
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        response = self.client.post(
+            '/accounts/login/', {
+                'username': user.username,
+                'password': password,
+                REDIRECT_FIELD_NAME: reverse('prefs'),
+            })
+        self.assertEqual(reverse('prefs'), extract_redirect(response))
+
     def test_login_sets_autocomplete_off_in_production(self):
         self.patch(settings, 'DEBUG', False)
         factory.make_User()
@@ -69,12 +112,16 @@ class TestLogin(MAASServerTestCase):
 class TestLogout(MAASServerTestCase):
 
     def test_logout_doesnt_redirect_when_intro_not_completed(self):
-        self.client_log_in(completed_intro=False)
+        password = factory.make_string()
+        user = factory.make_User(password=password, completed_intro=False)
+        self.client.login(username=user.username, password=password)
         response = self.client.get(reverse('logout'))
         self.assertEqual(http.client.OK, response.status_code)
 
     def test_logout_link_present_on_homepage(self):
-        self.client_log_in()
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.login(username=user.username, password=password)
         response = self.client.get(reverse('index'))
         logout_link = reverse('logout')
         self.assertIn(
@@ -85,6 +132,8 @@ class TestLogout(MAASServerTestCase):
         # Using POST for logging out, along with Django's csrf_token
         # tag, guarantees that we're protected against CSRF attacks on
         # the loggout page.
-        self.client_log_in()
+        password = factory.make_string()
+        user = factory.make_User(password=password)
+        self.client.login(username=user.username, password=password)
         self.client.post(reverse('logout'))
         self.assertNotIn(SESSION_KEY, self.client.session)
