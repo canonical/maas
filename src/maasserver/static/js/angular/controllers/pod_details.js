@@ -19,6 +19,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.pod = null;
+        $scope.podManager = PodsManager;
         $scope.action = {
           option: null,
           options: [
@@ -39,6 +40,9 @@ angular.module('MAAS').controller('PodDetailsController', [
           error: null
         };
         $scope.powerTypes = GeneralManager.getData("power_types");
+        $scope.section = {
+          area: 'summary'
+        };
 
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
@@ -77,6 +81,18 @@ angular.module('MAAS').controller('PodDetailsController', [
                   $scope.action.inProgress = false;
                   $scope.action.error = error;
               });
+        };
+
+        // Return the title of the pod type.
+        $scope.getPodTypeTitle = function() {
+            var i;
+            for(i = 0; i < $scope.powerTypes.length; i++) {
+                var powerType = $scope.powerTypes[i];
+                if(powerType.name === $scope.pod.type) {
+                    return powerType.description;
+                }
+            }
+            return $scope.pod.type;
         };
 
         // Start watching key fields.

@@ -74,7 +74,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "id": pod.id,
             "name": pod.name,
             "cpu_speed": pod.cpu_speed,
-            "power_type": pod.power_type,
+            "type": pod.power_type,
             "ip_address": pod.ip_address,
             "updated": dehydrate_datetime(pod.updated),
             "created": dehydrate_datetime(pod.created),
@@ -115,7 +115,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             data['available']['local_disks'] = (
                 pod.local_disks - pod.get_used_local_disks())
         if admin:
-            data['power_parameters'] = pod.power_parameters
+            data.update(pod.power_parameters)
         return data
 
     def test_get(self):
@@ -168,3 +168,17 @@ class TestPodHandler(MAASTransactionServerTestCase):
         yield deferToDatabase(self.fake_pod_discovery)
         created_pod = yield handler.create(pod_info)
         self.assertIsNotNone(created_pod['id'])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_update(self):
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {})
+        pod_info = self.make_pod_info()
+        pod = yield deferToDatabase(
+            factory.make_Pod, pod_type=pod_info['type'])
+        pod_info['id'] = pod.id
+        pod_info['name'] = factory.make_name('pod')
+        yield deferToDatabase(self.fake_pod_discovery)
+        updated_pod = yield handler.update(pod_info)
+        self.assertEqual(pod_info['name'], updated_pod['name'])

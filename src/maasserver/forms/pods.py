@@ -122,15 +122,7 @@ class PodForm(MAASModelForm):
 
     def save(self, *args, **kwargs):
         """Persist the pod into the database."""
-        def save_into_db():
-            power_type = self.cleaned_data['type']
-            # Set power_parameters to the generated param_fields.
-            power_parameters = {
-                param_name: self.cleaned_data[param_name]
-                for param_name in self.param_fields.keys()
-                if param_name in self.cleaned_data
-            }
-
+        def check_for_duplicate(power_type, power_parameters):
             # When the Pod is new try to get a BMC of the same type and
             # parameters to convert the BMC to a new Pod. When the Pod is not
             # new the form will use the already existing pod instance to update
@@ -145,7 +137,7 @@ class PodForm(MAASModelForm):
                         # Convert the BMC to a Pod and set as the instance for
                         # the PodForm.
                         bmc.bmc_type = BMC_TYPE.POD
-                        self.instance = bmc.as_pod()
+                        return bmc.as_pod()
                     else:
                         # Pod already exists with the same power_type and
                         # parameters.
@@ -153,28 +145,50 @@ class PodForm(MAASModelForm):
                             "Pod %s with type and "
                             "parameters already exist." % bmc.name)
 
+        def update_obj(existing_obj):
+            if existing_obj is not None:
+                self.instance = existing_obj
             self.instance = super(PodForm, self).save(commit=False)
-            if not self.instance.name:
-                self.instance.set_random_name()
             self.instance.power_type = power_type
             self.instance.power_parameters = power_parameters
-            self.instance.save()
+            return self.instance
+
+        power_type = self.cleaned_data['type']
+        # Set power_parameters to the generated param_fields.
+        power_parameters = {
+            param_name: self.cleaned_data[param_name]
+            for param_name in self.param_fields.keys()
+            if param_name in self.cleaned_data
+        }
 
         if isInIOThread():
             # Running in twisted reactor, do the work inside the reactor.
-            d = deferToDatabase(transactional(save_into_db))
+            d = deferToDatabase(
+                transactional(check_for_duplicate),
+                power_type, power_parameters)
+            d.addCallback(update_obj)
             d.addCallback(lambda _: self.discover_and_sync_pod())
             return d
         else:
             # Perform the actions inside the executing thread.
-            save_into_db()
+            existing_obj = check_for_duplicate(power_type, power_parameters)
+            if existing_obj is not None:
+                self.instance = existing_obj
+            self.instance = update_obj(self.instance)
             return self.discover_and_sync_pod()
 
     def discover_and_sync_pod(self):
         """Discover and sync the pod information."""
         def update_db(result):
             discovered_pod, discovered = result
+
+            # When called with an instance that has no name, be sure to set
+            # it before going any furture. If this is a new instance this will
+            # also create it in the database.
+            if not self.instance.name:
+                self.instance.set_random_name()
             self.instance.sync(discovered_pod, self.request.user)
+
             # Save which rack controllers can route and which cannot.
             discovered_rack_ids = [
                 rack_id for rack_id, _ in discovered[0].items()]

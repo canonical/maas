@@ -104,7 +104,7 @@ describe("maasPodParameters", function() {
         });
 
         it("sets podTypes", function() {
-          var scope = directive.scope();
+          var scope = directive.isolateScope();
           expect(scope.podTypes).toEqual(podTypes);
         });
 

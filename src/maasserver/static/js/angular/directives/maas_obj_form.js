@@ -15,6 +15,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             this.fields = {};
             this.scope = scope;
             this.scope.saving = false;
+            this.scope.savingKeys = [];
             if(angular.isObject(this.scope.obj)) {
                 this.scope.obj.$maasForm = this;
             }
@@ -91,6 +92,18 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             }
         };
 
+        // Return true if the form is saving this field.
+        MAASFormController.prototype.isSaving = function(key) {
+            return (
+                this.scope.saving && this.scope.savingKeys.indexOf(key) >= 0);
+        };
+
+        // Return true if the input should show the saving spinner. This is
+        // only show on inputs in forms that are using save on blur.
+        MAASFormController.prototype.showInputSaving = function(key) {
+            return this.saveOnBlur() && this.isSaving(key);
+        };
+
         // Return true if any field in the form as an error.
         MAASFormController.prototype.hasErrors = function() {
             var hasErrors = false;
@@ -165,6 +178,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
 
             // Update the item in the manager.
             this.scope.saving = true;
+            this.scope.savingKeys = [key];
             this.updateItem(updatedObj, [key]);
         };
 
@@ -186,6 +200,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                     field.editing = false;
                     field.scope.updateValue(newObj[key]);
                     self.scope.saving = false;
+                    self.scope.savingKeys = [];
                     if(angular.isFunction(self.scope.afterSave)) {
                         self.scope.afterSave(newObj);
                     }
@@ -221,6 +236,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                         field.scope.setErrors([error]);
                     }
                     self.scope.saving = false;
+                    self.scope.savingKeys = [];
                     return error;
                 });
         };
@@ -251,9 +267,11 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
 
             var self = this;
             this.scope.saving = true;
+            this.scope.savingKeys = keys;
             return this.manager[this.managerMethod](
                 updatedObj).then(function(newObj) {
                     self.scope.saving = false;
+                    self.scope.savingKeys = [];
                     if(angular.isFunction(self.scope.afterSave)) {
                         self.scope.afterSave(newObj);
                     }
@@ -298,6 +316,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                         }
                     }
                     self.scope.saving = false;
+                    self.scope.savingKeys = [];
                     return error;
                 });
         };
@@ -331,6 +350,8 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
         function MAASGroupController(scope, timeout) {
             this.fields = {};
             this.scope = scope;
+            this.scope.saving = false;
+            this.scope.savingKeys = [];
             this.timeout = timeout;
 
             var self = this;
@@ -353,6 +374,20 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
         // Return true if should save on blur.
         MAASGroupController.prototype.saveOnBlur = function () {
             return this.formController.saveOnBlur();
+        };
+
+        // Return true if group is saving.
+        MAASGroupController.prototype.isSaving = function(key) {
+            return (
+                this.scope.saving && this.scope.savingKeys.indexOf(key) >= 0);
+        };
+
+        // Return true if the input should show the saving spinner. This is
+        // only show on inputs in forms that are using save on blur.
+        MAASGroupController.prototype.showInputSaving = function(key) {
+            // In a group we say the entire group is saving, not just that
+            // one key in the field is being saved.
+            return this.saveOnBlur() && this.scope.saving;
         };
 
         // Called by maas-obj-field to register it as a editable field.
@@ -433,7 +468,18 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                 }
 
                 // Save the object.
-                self.formController.updateItem(updatedObj, keys);
+                self.scope.saving = true;
+                self.scope.savingKeys = keys;
+                self.formController.updateItem(updatedObj, keys).then(
+                    function(obj) {
+                      self.scope.saving = false;
+                      self.scope.savingKeys = [];
+                      return obj;
+                  }, function(error) {
+                      self.scope.saving = false;
+                      self.scope.savingKeys = [];
+                      return error;
+                  });
             }, 10); // Really short has to be next click.
         };
 
@@ -457,6 +503,11 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
 
                     // Set ngDisabled on this scope from the form controller.
                     scope.ngDisabled = controllers[0].scope.ngDisabled;
+
+                    // Set the object to always be the same on the scope.
+                    controllers[0].scope.$watch("obj", function(obj) {
+                        scope.obj = obj;
+                    });
                 }
             }
         };
@@ -886,6 +937,30 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     return inputElement.hasClass("has-error");
                 };
 
+                // Watch the showing of saving spinner. Update the elements
+                // correctly to show the saving.
+                scope.$watch(function() {
+                    return controller.showInputSaving(attrs.key);
+                }, function(value) {
+                    if(value) {
+                        inputWrapper.children(
+                            ':first').addClass('u-border--information');
+                        inputWrapper.append(
+                            '<i class="obj-saving icon ' +
+                            'icon--loading u-animation--spin"></i>');
+                        inputWrapper.addClass('tooltip');
+                        inputWrapper.addClass('tooltip--right');
+                        inputWrapper.attr('aria-label', 'Saving');
+                    } else {
+                      inputWrapper.children(
+                          ':first').removeClass('u-border--information');
+                        inputWrapper.find('i.obj-saving').remove();
+                        inputWrapper.removeClass('tooltip');
+                        inputWrapper.removeClass('tooltip--right');
+                        inputWrapper.removeAttr('aria-label');
+                    }
+                });
+
                 // Called when the scope is destroyed.
                 scope.$on("$destroy", function() {
                     controller.unregisterField(attrs.key);
@@ -909,7 +984,9 @@ angular.module('MAAS').directive('maasObjSave', function() {
                 }
 
                 element.on("click", function() {
-                    controller.saveForm();
+                    scope.$apply(function() {
+                        controller.saveForm();
+                    });
                 });
             }
         };
@@ -946,6 +1023,67 @@ angular.module('MAAS').directive('maasObjErrors', function() {
                 scope.hasErrors = function() {
                     return ul.children().length > 0;
                 };
+            }
+        };
+    });
+
+
+angular.module('MAAS').directive('maasObjSaving', function() {
+        return {
+            restrict: "E",
+            require: "^^maasObjForm",
+            scope: {},
+            transclude: true,
+            template: [
+              '<span ng-if="saving">',
+                '<i class="icon icon--loading u-animation--spin"></i>',
+                '<span ng-transclude></span>',
+              '</span>'].join(''),
+            link: function(scope, element, attrs, controller) {
+                scope.saving = false;
+                scope.$watch(function() {
+                    return controller.scope.saving;
+                }, function(value) {
+                    scope.saving = value;
+                });
+            }
+        };
+    });
+
+
+angular.module('MAAS').directive('maasObjShowSaving', function() {
+        return {
+            restrict: "A",
+            require: "^^maasObjForm",
+            link: function(scope, element, attrs, controller) {
+                scope.$watch(function() {
+                    return controller.scope.saving;
+                }, function(value) {
+                    if(value) {
+                        element.removeClass("ng-hide");
+                    } else {
+                        element.addClass("ng-hide");
+                    }
+                });
+            }
+        };
+    });
+
+
+angular.module('MAAS').directive('maasObjHideSaving', function() {
+        return {
+            restrict: "A",
+            require: "^^maasObjForm",
+            link: function(scope, element, attrs, controller) {
+                scope.$watch(function() {
+                    return controller.scope.saving;
+                }, function(value) {
+                    if(value) {
+                        element.addClass("ng-hide");
+                    } else {
+                        element.removeClass("ng-hide");
+                    }
+                });
             }
         };
     });

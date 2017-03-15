@@ -28,6 +28,7 @@ from maasserver.forms.pods import (
     ComposeMachineForPodsForm,
     PodForm,
 )
+from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -50,6 +51,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
@@ -61,6 +63,7 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import (
+    fail,
     inlineCallbacks,
     succeed,
 )
@@ -209,6 +212,26 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.assertItemsEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_doesnt_create_pod_when_discovery_fails_in_twisted(self):
+        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods_module.discover_pod.return_value = fail(factory.make_exception())
+        pod_info = self.make_pod_info()
+        request = MagicMock()
+        request.user = yield deferToDatabase(factory.make_User)
+        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        with ExpectedException(PodProblem):
+            yield form.save()
+
+        def validate_no_pods():
+            self.assertItemsEqual([], Pod.objects.all())
+
+        yield deferToDatabase(validate_no_pods)
 
     def test_prevents_duplicate_pod(self):
         discovered_pod, _, _ = self.fake_pod_discovery()

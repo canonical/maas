@@ -11,7 +11,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
           'label-width="two" input-width="three" ',
           'placeholder="Select the pod type" ',
           'class="u-margin--bottom-small" ',
-          'options="type.name as type.description for type in podTypes">',
+          'options="type.name as type.description for type in podTypes" ',
+          'ng-if="!hideType">',
         '</maas-obj-field>',
         '<div pod-fields></div>'
     ].join(''));
@@ -25,6 +26,9 @@ angular.module('MAAS').directive(
     return {
         restrict: "E",
         require: "^^maasObjForm",
+        scope: {
+          hideType: '='
+        },
         templateUrl: 'directive/templates/pod-parameters.html',
         link: function(scope, element, attrs, controller) {
             scope.powerTypes = GeneralManager.getData('power_types');
@@ -34,24 +38,22 @@ angular.module('MAAS').directive(
             var childScope, fieldsElement = angular.element(
                 element.find('div[pod-fields]'));
 
-            // Set the type on the scope when its changed in the controller.
-            scope.$watch(function() {
-                return controller.getValue('type');
-            }, function(value) {
+            // Function to update the editable fields.
+            var updateFields = function(podType) {
                 var type = null;
                 var i;
                 for(i = 0; i < scope.podTypes.length; i++) {
-                    if(scope.podTypes[i].name === value) {
+                    if(scope.podTypes[i].name === podType) {
                       type = scope.podTypes[i];
                     }
                 }
 
+                fieldsElement.empty();
                 if(childScope) {
                   childScope.$destroy();
                 }
-                fieldsElement.empty();
                 if(angular.isObject(type)) {
-                  var html = '';
+                  var html = '<maas-obj-field-group>';
                   angular.forEach(type.fields, function(field) {
                       if(field.scope === 'bmc') {
                           html += (
@@ -61,12 +63,24 @@ angular.module('MAAS').directive(
                             '</maas-obj-field>');
                       }
                   });
+                  html += '</maas-obj-field-group>';
                   childScope = scope.$new();
-                  fieldsElement.append(
-                      $compile(html)(
-                          childScope, undefined, {maasObjForm: controller}));
+                  fieldsElement.append($compile(html)(
+                      childScope, undefined, {maasObjForm: controller}));
                 }
-            });
+            };
+
+            // Return the selected type.
+            var getType = function() {
+                if(scope.hideType) {
+                    return controller.obj.type;
+                } else {
+                    return controller.getValue('type');
+                }
+            };
+
+            // Update the fields when the type changes.
+            scope.$watch(getType, updateFields);
 
             // Update the pod types when the power types is updated.
             scope.$watchCollection("powerTypes", function() {
@@ -76,6 +90,7 @@ angular.module('MAAS').directive(
                         scope.podTypes.push(type);
                     }
                 });
+                updateFields(getType());
             });
 
             // When destroyed stop polling the power types.

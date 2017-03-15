@@ -60,8 +60,9 @@
                     </div>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none ">
-                    <p class="page-header__message page-header__message--error"><maas-obj-errors></maas-obj-errors></p>
-                    <div class="page-header__controls">
+                    <p class="page-header__message page-header__message--error" maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
+                    <p class="page-header__message" maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
+                    <div class="page-header__controls" maas-obj-hide-saving>
                         <a href="" class="button--base button--inline" data-ng-click="cancelAddPod()">Cancel</a>
                         <button class="button--positive button--inline" maas-obj-save>Save pod</button>
                     </div>
@@ -98,7 +99,7 @@
                       </div>
                     </div>
                     <div class="table__header table-col--15">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('power_type')" data-ng-class="{'is-sorted': predicate === 'power_type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                        <a href="" class="table__header-link" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
                     </div>
                     <div class="table__header table-col--15 u-align--right">
                         <a href="" class="table__header-link" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
@@ -134,7 +135,7 @@
                           <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
                       </div>
                     </div>
-                    <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.power_type) $}</div>
+                    <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.type) $}</div>
                     <div class="table__data table-col--15 u-align--right" aria-label="Local storage (GiB)">{$ pod.available.local_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.local_storage_gb $}</div></div>
                     <div class="table__data table-col--15 u-align--right" aria-label="Remote storage (GiB)">0</div>
                     <div class="table__data table-col--10 u-align--right" aria-label="Cores">{$ pod.available.cores $} free <div class="u-text--subtle">of {$ pod.total.cores $}</div></div>

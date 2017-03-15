@@ -43,13 +43,13 @@
     <div class="page-navigation" sticky offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
         <div class="wrapper--inner">
             <nav class="page-navigation__links">
-                <a href="#" class="page-navigation__link is-active">{$ pod.composed_machines_count $} composed machines</a>
+                <a class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
                 <!-- <a href="#" class="page-navigation__link">Storage</a> -->
-                <!-- <a href="#" class="page-navigation__link">Power</a> -->
+                <a class="page-navigation__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</a>
             </nav>
         </div>
     </div>
-    <section class="row u-padding--top-none">
+    <section class="row u-padding--top-none" data-ng-if="section.area === 'summary'">
         <div class="wrapper--inner u-align--flex">
             <aside class="three-col u-align--top">
                 <div class="three-col">
@@ -93,7 +93,26 @@
             </div>
         </div>
     </section>
-    <section class="row u-padding--top-none" data-ng-if="false">
+    <section class="row u-padding--top-none" data-ng-if="pod && section.area === 'power'">
+        <div class="wrapper--inner">
+            <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
+                table-form="true" save-on-blur="true">
+                <div class="six-col">
+                    <div class="form__fieldset six-col">
+                        <dl>
+                            <dt class="two-col">Type</dt>
+                            <dd class="four-col last-col">{$ getPodTypeTitle() $}</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="six-col last-col">
+                    <maas-pod-parameters hide-type="true"></maas-pod-parameters>
+                    <maas-obj-errors></maas-obj-errors>
+                </div>
+            </maas-obj-form>
+        </div>
+    </section>
+    <section class="row u-padding--top-none" data-ng-if="section.area === 'storage'">
         <div class="wrapper--inner">
             <div class="six-col">
                 <h3>Total storage ({$ pod.total.local_storage_gb $} GiB)</h3>

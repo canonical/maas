@@ -1072,4 +1072,140 @@ describe("maasObjForm", function() {
             expect($scope.obj.$maasForm.fields.key).toBeUndefined();
         });
     });
+
+    describe("maasObjSaving", function() {
+
+        var directive, defer;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {
+              updateItem: jasmine.createSpy("updateItem")
+            };
+            defer = $q.defer();
+            $scope.manager.updateItem.and.returnValue(defer.promise);
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'input-class="new-class"></maas-obj-field>',
+                    '</maas-obj-field>',
+                    '<button maas-obj-save>Save</button>',
+                    '<maas-obj-saving>Test saving</maas-obj-saving>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("shows spinner and text when saving", function() {
+            var saveBtn = directive.find("button[maas-obj-save]");
+            var spinner = directive.find("maas-obj-saving").find("i");
+            expect(spinner.length).toBe(0);
+
+            saveBtn.click();
+            spinner = directive.find("maas-obj-saving").find("i");
+            expect(spinner.length).toBe(1);
+            var text = directive.find(
+                "maas-obj-saving").find("span[ng-transclude]");
+            expect(text.text()).toBe("Test saving");
+
+            defer.resolve({});
+            $scope.$digest();
+            spinner = directive.find("maas-obj-saving").find("i");
+            expect(spinner.length).toBe(0);
+        });
+    });
+
+    describe("maasObjShowSaving", function() {
+
+        var directive, defer;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {
+              updateItem: jasmine.createSpy("updateItem")
+            };
+            defer = $q.defer();
+            $scope.manager.updateItem.and.returnValue(defer.promise);
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'input-class="new-class"></maas-obj-field>',
+                    '</maas-obj-field>',
+                    '<button maas-obj-save>Save</button>',
+                    '<div maas-obj-show-saving></div>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("sets ng-hide initially", function() {
+            var testElem = directive.find("div[maas-obj-show-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(true);
+        });
+
+        it("removes ng-hide when saving", function() {
+            var saveBtn = directive.find("button[maas-obj-save]");
+            saveBtn.click();
+
+            var testElem = directive.find("div[maas-obj-show-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(false);
+        });
+
+        it("removes ng-hide when done saving", function() {
+            var saveBtn = directive.find("button[maas-obj-save]");
+            saveBtn.click();
+            defer.resolve({});
+            $scope.$digest();
+
+            var testElem = directive.find("div[maas-obj-show-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(true);
+        });
+    });
+
+    describe("maasObjHideSaving", function() {
+
+        var directive, defer;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {
+              updateItem: jasmine.createSpy("updateItem")
+            };
+            defer = $q.defer();
+            $scope.manager.updateItem.and.returnValue(defer.promise);
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" ' +
+                        'input-class="new-class"></maas-obj-field>',
+                    '</maas-obj-field>',
+                    '<button maas-obj-save>Save</button>',
+                    '<div maas-obj-hide-saving></div>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("no ng-hide initially", function() {
+            var testElem = directive.find("div[maas-obj-hide-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(false);
+        });
+
+        it("adds ng-hide when saving", function() {
+            var saveBtn = directive.find("button[maas-obj-save]");
+            saveBtn.click();
+
+            var testElem = directive.find("div[maas-obj-hide-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(true);
+        });
+
+        it("no ng-hide when done saving", function() {
+            var saveBtn = directive.find("button[maas-obj-save]");
+            saveBtn.click();
+            defer.resolve({});
+            $scope.$digest();
+
+            var testElem = directive.find("div[maas-obj-hide-saving]");
+            expect(testElem.hasClass('ng-hide')).toBe(false);
+        });
+    });
 });

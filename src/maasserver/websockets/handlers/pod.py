@@ -48,7 +48,8 @@ class PodHandler(TimestampedModelHandler):
             'local_disks',
             'local_storage',
             'memory',
-            'power_parameters'
+            'power_type',
+            'power_parameters',
         ]
         listen_channels = [
             "pod",
@@ -57,7 +58,8 @@ class PodHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         if reload_object(self.user).is_superuser:
-            data['power_parameters'] = obj.power_parameters
+            data.update(obj.power_parameters)
+        data["type"] = obj.power_type
         data["total"] = self.dehydrate_total(obj)
         data["used"] = self.dehydrate_used(obj)
         data["available"] = self.dehydrate_available(obj)
@@ -135,6 +137,31 @@ class PodHandler(TimestampedModelHandler):
         return d
 
     @asynchronous
+    def update(self, params):
+        """Update a pod."""
+        assert self.user.is_superuser, "Permission denied."
+
+        @transactional
+        def get_form(params):
+            obj = self.get_object(params)
+            request = HttpRequest()
+            request.user = self.user
+            form = PodForm(instance=obj, data=params, request=request)
+            if not form.is_valid():
+                raise HandlerValidationError(form.errors)
+            else:
+                return form
+
+        @transactional
+        def render_obj(obj):
+            return self.full_dehydrate(obj)
+
+        d = deferToDatabase(get_form, params)
+        d.addCallback(lambda form: form.save())
+        d.addCallback(partial(deferToDatabase, render_obj))
+        return d
+
+    @asynchronous
     def delete(self, params):
         """Delete the object."""
         assert self.user.is_superuser, "Permission denied."
@@ -154,7 +181,9 @@ class PodHandler(TimestampedModelHandler):
 
         @transactional
         def get_form(obj, params):
-            return PodForm(instance=obj, data=params)
+            request = HttpRequest()
+            request.user = self.user
+            return PodForm(instance=obj, data=params, request=request)
 
         @transactional
         def render_obj(obj):
