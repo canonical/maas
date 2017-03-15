@@ -1,10 +1,9 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation for curtin network."""
 
-__all__ = [
-    ]
+__all__ = []
 
 from collections import defaultdict
 from operator import attrgetter
@@ -18,6 +17,10 @@ from maasserver.enum import (
 from maasserver.models import Interface
 from maasserver.models.staticroute import StaticRoute
 from netaddr import IPNetwork
+from provisioningserver.utils.netplan import (
+    get_netplan_bond_parameters,
+    get_netplan_bridge_parameters,
+)
 import yaml
 
 
@@ -324,10 +327,10 @@ class InterfaceConfiguration:
                     parent.get_name()
                     for parent in self.iface.parents.order_by('name')
                     ],
-                # XXX mpontillo 2017-02-17: netplan does not yet support
-                # specifying bond parameters. See launchpad bug #1664702.
-                # "params": self._get_bond_params(),
             })
+            bond_params = get_netplan_bond_parameters(self._get_bond_params())
+            if len(bond_params) > 0:
+                bond_operation['parameters'] = bond_params
             bond_operation.update(addrs)
         return bond_operation
 
@@ -357,10 +360,11 @@ class InterfaceConfiguration:
                     parent.get_name()
                     for parent in self.iface.parents.order_by('name')
                 ],
-                # XXX mpontillo 2017-02-17: netplan does not yet support
-                # specifying bridge parameters. See launchpad bug #1664702.
-                # "params": self._get_bridge_params(),
             })
+            bridge_params = get_netplan_bridge_parameters(
+                self._get_bridge_params())
+            if len(bridge_params) > 0:
+                bridge_operation['parameters'] = bridge_params
             bridge_operation.update(addrs)
         return bridge_operation
 
@@ -390,17 +394,22 @@ class InterfaceConfiguration:
                 if key.startswith("bond_"):
                     # Bond parameters are seperated with '-' instead of '_'
                     # which MAAS uses to keep consistent with bridges.
-                    params[key.replace("bond_", "bond-")] = (
+                    params[key.replace("_", "-")] = (
                         _get_param_value(value))
         return params
 
-    def _get_bridge_params(self):
+    def _get_bridge_params(self, version=1):
         params = {}
         if self.iface.params:
             for key, value in self.iface.params.items():
                 # Only include bridge parameters.
                 if key.startswith("bridge_"):
-                    params[key] = _get_param_value(value)
+                    if version == 1:
+                        # The v1 YAML needs an extra translation layer (for
+                        # example, it changes bool to int).
+                        params[key] = _get_param_value(value)
+                    else:
+                        params[key] = value
         return params
 
 

@@ -551,6 +551,50 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(netplan, Equals(expected_netplan))
 
+    def test__bond_with_params(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node, name='bond0', parents=[eth0, eth1], params={
+                "bond_mode": "active-backup",
+                "bond_lacp_rate": "slow",
+                "bond_xmit_hash_policy": "layer2",
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bonds': {
+                    'bond0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'parameters': {
+                            "mode": "active-backup",
+                            "lacp-rate": "slow",
+                            "transmit-hash-policy": "layer2",
+                        },
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
     def test__bridge(self):
         node = factory.make_Node()
         eth0 = factory.make_Interface(
@@ -580,6 +624,48 @@ class TestNetplan(MAASServerTestCase):
                     'br0': {
                         'interfaces': ['eth0', 'eth1'],
                         'mtu': 1500
+                    },
+                },
+            }
+        }
+        self.expectThat(netplan, Equals(expected_netplan))
+
+    def test__bridge_with_params(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(
+            node=node, name='eth0', mac_address="00:01:02:03:04:05")
+        eth1 = factory.make_Interface(
+            node=node, name='eth1', mac_address="02:01:02:03:04:05")
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node, name='br0', parents=[eth0, eth1], params={
+                "bridge_stp": False,
+                "bridge_fd": 15
+            })
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            'network': {
+                'version': 2,
+                'ethernets': {
+                    'eth0': {
+                        'match': {'macaddress': '00:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth0'
+                    },
+                    'eth1': {
+                        'match': {'macaddress': '02:01:02:03:04:05'},
+                        'mtu': 1500,
+                        'set-name': 'eth1'
+                    },
+                },
+                'bridges': {
+                    'br0': {
+                        'interfaces': ['eth0', 'eth1'],
+                        'mtu': 1500,
+                        'parameters': {
+                            'forward-delay': 15,
+                            'stp': False,
+                        },
                     },
                 },
             }

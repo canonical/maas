@@ -1153,7 +1153,7 @@ class Factory(maastesting.factory.Factory):
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
             ip=None, subnet=None, enabled=True, fabric=None, tags=None,
-            disconnected=False):
+            disconnected=False, params=""):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
@@ -1207,7 +1207,7 @@ class Factory(maastesting.factory.Factory):
             tags = [self.make_name('tag') for _ in range(3)]
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,
-            name=name, vlan=vlan, enabled=enabled, tags=tags)
+            name=name, vlan=vlan, enabled=enabled, tags=tags, params=params)
         interface.save()
         if subnet is not None:
             sip = StaticIPAddress.objects.create(
