@@ -72,15 +72,15 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
-    def test_update(self):
+    def test_update_custom_repository(self):
+        """Updates a custom repository"""
         self.become_admin()
+        # Creates a repository which is not 'default'.
         package_repository = factory.make_PackageRepository()
         new_values = {
             'url': factory.make_url(scheme='http'),
             'distributions': [
                 factory.make_name("distribution%d" % i) for i in range(3)],
-            'disabled_pockets': [
-                factory.make_name("disabled_pocket%d" % i) for i in range(1)],
             'components': [factory.make_name("comp%d" % i) for i in range(4)],
             'arches': [
                 random.choice(PackageRepository.KNOWN_ARCHES),
@@ -93,6 +93,121 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         package_repository = reload_object(package_repository)
         self.assertAttributes(package_repository, new_values)
+
+    def test_update_custom_repository_fails_if_disabled_components(self):
+        """Test that updating a custom repository fails if specifying
+           'disabled_components'. This is only needed when the repository
+           is an Ubuntu repository"""
+        self.become_admin()
+        # Creates a repository which is not 'default'.
+        package_repository = factory.make_PackageRepository()
+        new_values = {
+            'url': factory.make_url(scheme='http'),
+            'distributions': [
+                factory.make_name("distribution%d" % i) for i in range(3)],
+            'components': [factory.make_name("comp%d" % i) for i in range(4)],
+            'disabled_components': [
+                factory.make_name("comp%d" % i) for i in range(4)],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
+        }
+        response = self.client.put(
+            self.get_package_repository_uri(package_repository), new_values)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_update_ubuntu_mirror(self):
+        """Updates a Ubuntu mirror"""
+        self.become_admin()
+        # Create an Ubuntu mirror without components
+        package_repository = factory.make_PackageRepository(
+            default=True, components=[])
+        new_values = {
+            'url': factory.make_url(scheme='http'),
+            'distributions': [
+                factory.make_name("distribution%d" % i) for i in range(3)],
+            'disabled_pockets': ["updates", "security"],
+            'disabled_components': ["universe", "multiverse"],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
+        }
+        response = self.client.put(
+            self.get_package_repository_uri(package_repository), new_values)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        package_repository = reload_object(package_repository)
+        self.assertAttributes(package_repository, new_values)
+
+    def test_update_ubuntu_mirror_fail_with_invalid_disabled_pockets(self):
+        """Test that updating an Ubuntu mirror with invalid pockets fails"""
+        self.become_admin()
+        # Create an Ubuntu mirror without components
+        package_repository = factory.make_PackageRepository(
+            default=True, components=[])
+        new_values = {
+            'url': factory.make_url(scheme='http'),
+            'distributions': [
+                factory.make_name("distribution%d" % i) for i in range(3)],
+            'disabled_pockets': ["updateses"],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
+        }
+        response = self.client.put(
+            self.get_package_repository_uri(package_repository), new_values)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_update_ubuntu_mirror_fail_with_invalid_disabled_components(self):
+        """Test that updating an Ubuntu mirror with invalid components fails"""
+        self.become_admin()
+        # Create an Ubuntu mirror without components
+        package_repository = factory.make_PackageRepository(
+            default=True, components=[])
+        new_values = {
+            'url': factory.make_url(scheme='http'),
+            'distributions': [
+                factory.make_name("distribution%d" % i) for i in range(3)],
+            'disabled_components': ['universes'],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
+        }
+        response = self.client.put(
+            self.get_package_repository_uri(package_repository), new_values)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_update_ubuntu_mirror_fails_if_components_are_passed(self):
+        """Test that updating a Ubuntu mirror fails if specifying
+           'components'. This is only needed when the repository is not
+           an Ubuntu repository"""
+        self.become_admin()
+        # Create an Ubuntu mirror without components
+        package_repository = factory.make_PackageRepository(
+            default=True, components=[])
+        new_values = {
+            'url': factory.make_url(scheme='http'),
+            'distributions': [
+                factory.make_name("distribution%d" % i) for i in range(3)],
+            'components': [factory.make_name("comp%d" % i) for i in range(4)],
+            'disabled_components': [
+                factory.make_name("comp%d" % i) for i in range(4)],
+            'arches': [
+                random.choice(PackageRepository.KNOWN_ARCHES),
+                random.choice(PackageRepository.KNOWN_ARCHES),
+            ]
+        }
+        response = self.client.put(
+            self.get_package_repository_uri(package_repository), new_values)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_update_admin_only(self):
         package_repository = factory.make_PackageRepository()

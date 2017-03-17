@@ -27,10 +27,10 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         arch2 = random.choice(PackageRepository.KNOWN_ARCHES)
         dist1 = factory.make_name('dist')
         dist2 = factory.make_name('dist')
-        pock1 = factory.make_name('pock')
-        pock2 = factory.make_name('pock')
-        comp1 = factory.make_name('comp')
-        comp2 = factory.make_name('comp')
+        pock1 = 'updates'
+        pock2 = 'backports'
+        comp1 = 'universe'
+        comp2 = 'multiverse'
         enabled = factory.pick_bool()
         params = {
             'name': name,
@@ -195,18 +195,40 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_pockets': ['val1,val2']})
+            data={'disabled_pockets': ['updates,backports']})
         repo = form.save()
-        self.assertItemsEqual(['val1', 'val2'], repo.disabled_pockets)
+        self.assertItemsEqual(['updates', 'backports'], repo.disabled_pockets)
         form = PackageRepositoryForm(
             instance=package_repository,
-            data={'disabled_pockets': ['val1, val2']})
+            data={'disabled_pockets': ['updates, backports']})
         repo = form.save()
-        self.assertItemsEqual(['val1', 'val2'], repo.disabled_pockets)
+        self.assertItemsEqual(['updates', 'backports'], repo.disabled_pockets)
         form = PackageRepositoryForm(
-            instance=package_repository, data={'disabled_pockets': ['val1']})
+            instance=package_repository,
+            data={'disabled_pockets': ['updates']})
         repo = form.save()
-        self.assertItemsEqual(['val1'], repo.disabled_pockets)
+        self.assertItemsEqual(['updates'], repo.disabled_pockets)
+
+    def test__disabled_component_comma_cleaning(self):
+        package_repository = factory.make_PackageRepository(
+            default=True, components=[])
+        form = PackageRepositoryForm(
+            instance=package_repository,
+            data={'disabled_components': ['universe,multiverse']})
+        repo = form.save()
+        self.assertItemsEqual(
+            ['universe', 'multiverse'], repo.disabled_components)
+        form = PackageRepositoryForm(
+            instance=package_repository,
+            data={'disabled_components': ['universe, multiverse']})
+        repo = form.save()
+        self.assertItemsEqual(
+            ['universe', 'multiverse'], repo.disabled_components)
+        form = PackageRepositoryForm(
+            instance=package_repository,
+            data={'disabled_components': ['universe']})
+        repo = form.save()
+        self.assertItemsEqual(['universe'], repo.disabled_components)
 
     def test__component_comma_cleaning(self):
         package_repository = factory.make_PackageRepository()

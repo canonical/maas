@@ -34,6 +34,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
             'url': package_repository.url,
             'distributions': package_repository.distributions,
             'disabled_pockets': package_repository.disabled_pockets,
+            'disabled_components': package_repository.disabled_components,
             'components': package_repository.components,
             'arches': package_repository.arches,
             'key': package_repository.key,

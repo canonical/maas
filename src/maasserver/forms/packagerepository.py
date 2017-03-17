@@ -27,6 +27,7 @@ class PackageRepositoryForm(MAASModelForm):
             'url',
             'distributions',
             'disabled_pockets',
+            'disabled_components',
             'components',
             'arches',
             'key',
@@ -49,6 +50,9 @@ class PackageRepositoryForm(MAASModelForm):
 
     disabled_pockets = UnconstrainedMultipleChoiceField(
         label="Disabled Pocket list")
+
+    disabled_components = UnconstrainedMultipleChoiceField(
+        label="Disabled Component list")
 
     components = UnconstrainedMultipleChoiceField(label="Component list")
 
@@ -99,10 +103,54 @@ class PackageRepositoryForm(MAASModelForm):
         values = []
         for value in self.cleaned_data.get('disabled_pockets', []):
             values.extend([s.strip() for s in value.split(',')])
+        # This allows to reset the values of disabled_pockets if one of the
+        # following is passed over the API:
+        #   disabled_pockets=
+        #   disabled_pockets=''
+        #   disabled_pockets=None
+        #   disabled_pockets=[]
+        if values == [''] or values == ['None'] or values == ['[]']:
+            return []
+        # Check that a valid pocket is being disable.
+        for pocket in values:
+            if pocket not in PackageRepository.POCKETS_TO_DISABLE:
+                raise ValidationError(
+                    "'%s' is not a valid Ubuntu archive pocket. You "
+                    "can only disable %s." % (
+                        pocket, PackageRepository.POCKETS_TO_DISABLE))
+        return values
+
+    def clean_disabled_components(self):
+        values = []
+        for value in self.cleaned_data.get('disabled_components', []):
+            values.extend([s.strip() for s in value.split(',')])
+        # This allows to reset the values of disabled_components if one of the
+        # following is passed over the API:
+        #   disabled_components=
+        #   disabled_components=''
+        #   disabled_components=None
+        #   disabled_components=[]
+        if values == [''] or values == ['None'] or values == ['[]']:
+            return []
+        if self.instance is not None and not self.instance.default and values:
+            raise ValidationError(
+                "This is a custom repository. Please update 'components' "
+                "instead.")
+        # Check that a valid component is being passed.
+        for component in values:
+            if component not in PackageRepository.COMPONENTS_TO_DISABLE:
+                raise ValidationError(
+                    "'%s' is not a valid Ubuntu archive component. You "
+                    "can only disable %s." % (
+                        component, PackageRepository.COMPONENTS_TO_DISABLE))
         return values
 
     def clean_components(self):
         values = []
         for value in self.cleaned_data.get('components', []):
             values.extend([s.strip() for s in value.split(',')])
+        if self.instance is not None and self.instance.default and values:
+            raise ValidationError(
+                "This is a default Ubuntu repository. Please update "
+                "'disabled_components' instead.")
         return values

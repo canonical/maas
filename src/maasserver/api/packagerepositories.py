@@ -22,6 +22,7 @@ DISPLAYED_PACKAGE_REPOSITORY_FIELDS = (
     'url',
     'distributions',
     'disabled_pockets',
+    'disabled_components',
     'components',
     'arches',
     'key',
@@ -70,7 +71,11 @@ class PackageRepositoryHandler(OperationsHandler):
 
         :param disabled_pockets: The list of pockets to disable.
 
-        :param components: The list of components to enable.
+        :param disabled_components: The list of components to disable. Only
+            applicable to the default Ubuntu repositories.
+
+        :param components: The list of components to enable. Only applicable
+            to custom repositories.
 
         :param arches: The list of supported architectures.
 
@@ -129,7 +134,11 @@ class PackageRepositoriesHandler(OperationsHandler):
 
         :param disabled_pockets: The list of pockets to disable.
 
-        :param components: The list of components to enable.
+        :param disabled_components: The list of components to disable. Only
+            applicable to the default Ubuntu repositories.
+
+        :param components: The list of components to enable. Only applicable
+            to custom repositories.
 
         :param arches: The list of supported architectures.
 

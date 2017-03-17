@@ -1230,6 +1230,31 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             preseed['apt']['disable_suites'],
             archive.disabled_pockets)
 
+    def test_compose_curtin_archive_config_with_disabled_pockets(self):
+        """Test that main archive has a configuration that includes
+           disabled_pockets. If so, MAAS will create its own sources_list
+           instead of letting curtin/cloud-init create it based on its own
+           template"""
+        PackageRepository.objects.all().delete()
+        node = self.make_fastpath_node('amd64')
+        node.osystem = 'ubuntu'
+        node.distro_series = 'xenial'
+        main_url = 'http://us.archive.ubuntu.com/ubuntu'
+        factory.make_PackageRepository(
+            url=main_url, default=True, arches=['i386', 'amd64'],
+            disabled_pockets=['updates', 'backports'],
+            disabled_components=['universe', 'multiverse'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        # compose_curtin_archive_config returns a list.
+        userdata = compose_curtin_archive_config(node)
+        preseed = yaml.safe_load(userdata[0])
+        self.assertThat(
+            preseed['apt']['sources_list'],
+            Contains('$RELEASE main restricted'))
+        self.assertThat(
+            preseed['apt']['sources_list'],
+            Contains('$RELEASE-security main restricted'))
+
     def test_compose_curtin_archive_config_has_ppa(self):
         node = self.make_fastpath_node('i386')
         node.osystem = 'ubuntu'
@@ -1283,7 +1308,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             )
         self.assertThat(
             preseed['apt']['sources'][ppa_name]['source'],
-            ContainsAll("deb %s %s main" % (ppa_first.url, node.distro_series))
+            ContainsAll("deb %s $RELEASE main" % ppa_first.url)
             )
         # Clean up PPA name
         ppa_name = make_clean_repo_name(ppa_second)
@@ -1293,8 +1318,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             )
         self.assertThat(
             preseed['apt']['sources'][ppa_name]['source'],
-            ContainsAll("deb %s %s main" % (
-                ppa_second.url, node.distro_series)))
+            ContainsAll("deb %s $RELEASE main" % ppa_second.url))
 
     def test_compose_curtin_archive_config_has_custom_repository(self):
         node = self.make_fastpath_node('i386')
@@ -1318,8 +1342,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             )
         self.assertThat(
             preseed['apt']['sources'][repo_name]['source'],
-            ContainsAll("deb %s %s main" % (
-                repository.url, node.distro_series)))
+            ContainsAll("deb %s $RELEASE main" % repository.url))
 
     def test_compose_curtin_archive_config_custom_repo_with_components(self):
         node = self.make_fastpath_node('i386')
@@ -1348,8 +1371,8 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             )
         self.assertThat(
             preseed['apt']['sources'][repo_name]['source'],
-            ContainsAll("deb %s %s %s" % (
-                repository.url, node.distro_series, components)))
+            ContainsAll("deb %s $RELEASE %s" % (
+                repository.url, components)))
 
     def test_compose_curtin_archive_config_custom_repo_components_dists(self):
         node = self.make_fastpath_node('i386')

@@ -61,3 +61,8 @@ class TestPackageRepositoryManager(MAASServerTestCase):
         self.assertEqual(
             PackageRepository.objects.get_pockets_to_disable(),
             PackageRepository.POCKETS_TO_DISABLE)
+
+    def test_get_components_to_disable(self):
+        self.assertEqual(
+            PackageRepository.objects.get_components_to_disable(),
+            PackageRepository.COMPONENTS_TO_DISABLE)

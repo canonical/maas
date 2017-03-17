@@ -74,6 +74,9 @@ class PackageRepositoryManager(Manager, PackageRepositoryQueriesMixin):
     def get_pockets_to_disable(self):
         return PackageRepository.POCKETS_TO_DISABLE
 
+    def get_components_to_disable(self):
+        return PackageRepository.COMPONENTS_TO_DISABLE
+
     def get_default_archive(self, arch):
         return PackageRepository.objects.filter(
             arches__contains=[arch],
@@ -94,6 +97,8 @@ class PackageRepository(CleanSave, TimestampedModel):
     PORTS_ARCHES = ['armhf', 'arm64', 'ppc64el']
     KNOWN_ARCHES = MAIN_ARCHES + PORTS_ARCHES
     POCKETS_TO_DISABLE = ['updates', 'security', 'backports']
+    COMPONENTS_TO_DISABLE = ['restricted', 'universe', 'multiverse']
+    KNOWN_COMPONENTS = ['main', 'restricted', 'universe', 'multiverse']
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
@@ -109,6 +114,9 @@ class PackageRepository(CleanSave, TimestampedModel):
         TextField(), blank=True, null=True, default=list)
 
     disabled_pockets = ArrayField(
+        TextField(), blank=True, null=True, default=list)
+
+    disabled_components = ArrayField(
         TextField(), blank=True, null=True, default=list)
 
     components = ArrayField(TextField(), blank=True, null=True, default=list)

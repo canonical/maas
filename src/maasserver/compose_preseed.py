@@ -61,25 +61,41 @@ def get_archive_config(node, preserve_sources=False):
     apt_proxy = get_apt_proxy_for_node(node)
 
     # Process the default Ubuntu Archives or Mirror.
-    archives = {
-        'apt': {
-            'preserve_sources_list': preserve_sources,
-            'primary': [
-                {
-                    'arches': ['default'],
-                    'uri': archive.url
-                },
-            ],
-            'security': [
-                {
-                    'arches': ['default'],
-                    'uri': archive.url
-                },
-            ],
-        },
-    }
-    if archive.disabled_pockets:
-        archives['apt']['disable_suites'] = archive.disabled_pockets
+    archives = {}
+    archives['apt'] = {}
+    archives['apt']['preserve_sources_list'] = preserve_sources
+    # If disabled_components exist, build a custom list of repositories
+    if archive.disabled_components:
+        urls = ''
+        components = archive.KNOWN_COMPONENTS[:]
+
+        for comp in archive.COMPONENTS_TO_DISABLE:
+            if comp in archive.disabled_components:
+                components.remove(comp)
+        urls += 'deb %s $RELEASE %s\n' % (
+            archive.url, ' '.join(components))
+
+        for pocket in archive.POCKETS_TO_DISABLE:
+            if pocket not in archive.disabled_pockets:
+                urls += 'deb %s $RELEASE-%s %s\n' % (
+                    archive.url, pocket, ' '.join(components))
+
+        archives['apt']['sources_list'] = urls
+    else:
+        archives['apt']['primary'] = [
+            {
+                'arches': ['default'],
+                'uri': archive.url
+            }
+        ]
+        archives['apt']['security'] = [
+            {
+                'arches': ['default'],
+                'uri': archive.url
+            }
+        ]
+        if archive.disabled_pockets:
+            archives['apt']['disable_suites'] = archive.disabled_pockets
     if apt_proxy:
         archives['apt']['proxy'] = apt_proxy
     if archive.key:
@@ -94,7 +110,7 @@ def get_archive_config(node, preserve_sources=False):
         if repo.url.startswith('ppa:'):
             url = repo.url
         elif 'ppa.launchpad.net' in repo.url:
-            url = 'deb %s %s main' % (repo.url, node.distro_series)
+            url = 'deb %s $RELEASE main' % (repo.url)
         else:
             components = ''
             if not repo.components:
@@ -105,8 +121,8 @@ def get_archive_config(node, preserve_sources=False):
             components = components.strip()
 
             if not repo.distributions:
-                url = 'deb %s %s %s' % (
-                    repo.url, node.distro_series, components)
+                url = 'deb %s $RELEASE %s' % (
+                    repo.url, components)
             else:
                 url = ''
                 for dist in repo.distributions:
@@ -120,11 +136,11 @@ def get_archive_config(node, preserve_sources=False):
         if repo.key:
             archives['apt']['sources'][repo_name] = {
                 'key': repo.key,
-                'source': url
+                'source': url.strip()
             }
         else:
             archives['apt']['sources'][repo_name] = {
-                'source': url
+                'source': url.strip()
             }
 
     return archives
