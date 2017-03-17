@@ -177,7 +177,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             },
             {
                 name: 'vmware',
-                description: 'VMWare',
+                description: 'VMware',
                 fields: [
                     {
                         name: 'hostname',
