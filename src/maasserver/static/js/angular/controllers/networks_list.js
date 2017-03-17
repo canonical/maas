@@ -94,8 +94,7 @@ angular.module('MAAS').controller('NetworksListController', [
             subnet: function() {
                 // Set initial VLAN and space.
                 return {
-                    vlan: $scope.fabrics[0].vlan_ids[0],
-                    space: $scope.spaces[0].id
+                    vlan: $scope.fabrics[0].vlan_ids[0]
                 };
             }
         };

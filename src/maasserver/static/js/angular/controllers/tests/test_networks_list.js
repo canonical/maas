@@ -395,8 +395,7 @@ describe("NetworksListController", function() {
             };
             $scope.actionChanged();
             expect($scope.newObject).toEqual({
-                vlan: vlan.id,
-                space: space.id
+                vlan: vlan.id
             });
         });
     });
