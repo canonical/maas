@@ -116,6 +116,8 @@ describe("SettingsController", function() {
             GeneralManager.getData("known_architectures"));
         expect($scope.pockets_to_disable).toBe(
             GeneralManager.getData("pockets_to_disable"));
+        expect($scope.components_to_disable).toBe(
+            GeneralManager.getData("components_to_disable"));
         expect($scope.packageRepositoriesManager).toBe(
             PackageRepositoriesManager);
         expect($scope.repositories).toBe(

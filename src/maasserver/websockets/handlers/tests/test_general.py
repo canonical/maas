@@ -103,6 +103,12 @@ class TestGeneralHandler(MAASServerTestCase):
             PackageRepository.objects.get_pockets_to_disable(),
             handler.pockets_to_disable({}))
 
+    def test_components_to_disable(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertEqual(
+            PackageRepository.objects.get_components_to_disable(),
+            handler.components_to_disable({}))
+
     def test_hwe_kernels(self):
         expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {})

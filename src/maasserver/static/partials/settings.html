@@ -488,6 +488,11 @@
                                                         <maas-obj-field type="checkboxes" key="disabled_pockets" label="Disabled Pockets"
                                                             label-width="two" input-width="three" values="pockets_to_disable"></maas-obj-field>
                                                     </div>
+                                                    <div class="form__group u-align--left-mobile"
+                                                        data-ng-if="isMirror(editRepository) && !isPPA(editRepository)">
+                                                        <maas-obj-field type="checkboxes" key="disabled_components" label="Disabled Components"
+                                                            label-width="two" input-width="three" values="components_to_disable"></maas-obj-field>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="table__row is-active">

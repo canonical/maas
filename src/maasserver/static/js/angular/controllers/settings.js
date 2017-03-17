@@ -30,6 +30,8 @@ angular.module('MAAS').controller('SettingsController', [
             GeneralManager.getData("known_architectures");
         $scope.pockets_to_disable =
             GeneralManager.getData("pockets_to_disable");
+        $scope.components_to_disable =
+            GeneralManager.getData("components_to_disable");
         $scope.packageRepositoriesManager = PackageRepositoriesManager;
         $scope.repositories =
             PackageRepositoriesManager.getItems();

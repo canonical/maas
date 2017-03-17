@@ -46,6 +46,7 @@ class GeneralHandler(Handler):
             'architectures',
             'known_architectures',
             'pockets_to_disable',
+            'components_to_disable',
             'hwe_kernels',
             'min_hwe_kernels',
             'default_min_hwe_kernel',
@@ -73,6 +74,10 @@ class GeneralHandler(Handler):
     def pockets_to_disable(self, params):
         """Return pockets that can be disabled."""
         return PackageRepository.objects.get_pockets_to_disable()
+
+    def components_to_disable(self, params):
+        "Return compoennts that can be disable for default Ubuntu archives"
+        return PackageRepository.objects.get_components_to_disable()
 
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
