@@ -835,10 +835,16 @@ class TestRSDPodDriver(MAASTestCase):
             power_parameters={})
         mock_list_resources = self.patch(driver, 'list_resources')
         mock_list_resources.return_value = [
-            b"redfish/v1/Systems/1/Memory/1"
+            b"redfish/v1/Systems/1/Memory/1",
+            b"redfish/v1/Systems/1/Memory/2",
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.return_value = SAMPLE_JSON_MEMORY
+        NO_MEMORY = deepcopy(SAMPLE_JSON_MEMORY)
+        NO_MEMORY['CapacityMiB'] = None
+        mock_redfish_request.side_effect = [
+            SAMPLE_JSON_MEMORY,
+            NO_MEMORY,
+        ]
 
         yield driver.scan_machine_memories(url, headers, system, machine)
         self.assertEquals(7812, machine.memory)
@@ -858,14 +864,20 @@ class TestRSDPodDriver(MAASTestCase):
         machine.cpu_speeds = []
         mock_list_resources = self.patch(driver, 'list_resources')
         mock_list_resources.return_value = [
-            b"redfish/v1/Systems/1/Processors/1"
+            b"redfish/v1/Systems/1/Processors/1",
+            b"redfish/v1/Systems/1/Processors/2",
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.return_value = SAMPLE_JSON_PROCESSOR
+        NO_THREADS = deepcopy(SAMPLE_JSON_PROCESSOR)
+        NO_THREADS['TotalThreads'] = None
+        mock_redfish_request.side_effect = [
+            SAMPLE_JSON_PROCESSOR,
+            NO_THREADS,
+        ]
 
         yield driver.scan_machine_processors(url, headers, system, machine)
         self.assertEquals(28, machine.cores)
-        self.assertEquals([2300], machine.cpu_speeds)
+        self.assertEquals([2300, 2300], machine.cpu_speeds)
         self.assertEquals("amd64/generic", machine.architecture)
 
     @inlineCallbacks

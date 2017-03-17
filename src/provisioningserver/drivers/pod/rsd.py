@@ -257,7 +257,9 @@ class RSDPodDriver(PodDriver):
         for memory in memories:
             memory_data = yield self.redfish_request(
                 b"GET", join(url, memory), headers)
-            discovered_machine.memory += memory_data.get('CapacityMiB')
+            mem = memory_data.get('CapacityMiB')
+            if mem is not None:
+                discovered_machine.memory += mem
 
     @inlineCallbacks
     def scan_machine_processors(
@@ -275,8 +277,9 @@ class RSDPodDriver(PodDriver):
                 b"GET", join(url, processor), headers)
             # Using 'TotalThreads' instead of 'TotalCores'
             # as this is what MAAS finds when commissioning.
-            discovered_machine.cores += processor_data.get(
-                'TotalThreads')
+            total_threads = processor_data.get('TotalThreads')
+            if total_threads is not None:
+                discovered_machine.cores += total_threads
             discovered_machine.cpu_speeds.append(
                 processor_data.get('MaxSpeedMHz'))
             # Set architecture to first processor
@@ -461,9 +464,9 @@ class RSDPodDriver(PodDriver):
                     power_state)
             # Find specific system that this composed node is linked too.
             systems = node_data.get(
-                'Links', {}).get('ComputerSystem').values()
+                'Links', {}).get('ComputerSystem')
             if systems is not None:
-                for system in systems:
+                for system in systems.values():
                     system = system.lstrip('/').encode('utf-8')
                     yield self.scan_machine_memories(
                         url, headers, system, discovered_machine)
@@ -496,7 +499,8 @@ class RSDPodDriver(PodDriver):
         used_cores = used_memory = used_storage = used_disks = 0
         for machine in discovered_pod.machines:
             for cpu_speed in machine.cpu_speeds:
-                discovered_pod.cpu_speeds.remove(cpu_speed)
+                if cpu_speed in discovered_pod.cpu_speeds:
+                    discovered_pod.cpu_speeds.remove(cpu_speed)
             # Delete cpu_speeds place holder.
             del machine.cpu_speeds
             used_cores += machine.cores
