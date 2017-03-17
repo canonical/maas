@@ -24,6 +24,7 @@ __all__ = [
     'post_commit_do',
     'psql_array',
     'request_transaction_retry',
+    'retry_context',
     'retry_on_retryable_failure',
     'savepoint',
     'TotallyDisconnected',

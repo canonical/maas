@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 import io
+from itertools import count
 import logging
 from random import (
     randint,
@@ -40,6 +41,8 @@ from maasserver.utils import views
 from maasserver.utils.orm import (
     make_deadlock_failure,
     post_commit_hooks,
+    request_transaction_retry,
+    retry_context,
     validate_in_transaction,
 )
 from maasserver.utils.views import HttpResponseConflict
@@ -386,6 +389,49 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             response.reason_phrase,
             Equals(REASON_PHRASES[http.client.CONFLICT]))
 
+    def test__get_response_prepare_retry_context_before_each_try(self):
+
+        class ObserveContext:
+
+            def __init__(self, callback, name):
+                self.callback = callback
+                self.name = name
+
+            def __enter__(self):
+                self.callback("%s:enter" % self.name)
+
+            def __exit__(self, *exc_info):
+                self.callback("%s:exit" % self.name)
+
+        counter = count(1)
+        calls = []
+
+        def get_response_and_retry(request):
+            calls.append("get_response")
+            request_transaction_retry(ObserveContext(
+                calls.append, "context#%d" % next(counter)))
+
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = get_response_and_retry
+
+        reset_request = self.patch_autospec(views, "reset_request")
+        reset_request.side_effect = lambda request: request
+
+        request = make_request()
+        request.path = factory.make_name("path")
+        handler = views.WebApplicationHandler(3)
+        handler.get_response(request)
+
+        self.assertThat(calls, Equals([
+            "get_response",     # 1st attempt.
+            "context#1:enter",  # Retry requested, enter 1st new context.
+            "get_response",     # 2nd attempt.
+            "context#2:enter",  # Retry requested, enter 2nd new context.
+            "get_response",     # 3rd attempt, and last.
+            "context#2:exit",   # Exit 2nd context.
+            "context#1:exit",   # Exit 1st context.
+        ]))
+
     def test__get_response_logs_retry_and_resets_request(self):
         timeout = 1.0 + (random() * 99)
         handler = views.WebApplicationHandler(2, timeout)
@@ -428,6 +474,23 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         handler.get_response(request)
 
+        self.assertThat(get_response, MockCalledOnceWith(request))
+
+    def test__get_response_is_in_retry_context_in_transaction(self):
+        handler = views.WebApplicationHandler(2)
+
+        def check_retry_context_active(request):
+            self.assertThat(retry_context.active, Is(True))
+
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = check_retry_context_active
+
+        request = make_request()
+        request.path = factory.make_name("path")
+
+        self.assertThat(retry_context.active, Is(False))
+        handler.get_response(request)
+        self.assertThat(retry_context.active, Is(False))
         self.assertThat(get_response, MockCalledOnceWith(request))
 
     def test__get_response_restores_files_across_requests(self):

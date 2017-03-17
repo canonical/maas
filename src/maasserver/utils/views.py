@@ -23,6 +23,8 @@ from maasserver.utils.orm import (
     gen_retry_intervals,
     is_retryable_failure,
     post_commit_hooks,
+    retry_context,
+    RetryTransaction,
 )
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
@@ -145,7 +147,9 @@ class WebApplicationHandler(WSGIHandler):
         # Add it to the retry set if this response was caused by a
         # retryable failure.
         exc_type, exc_value, exc_traceback = exc_info
-        if is_retryable_failure(exc_value):
+        if isinstance(exc_value, RetryTransaction):
+            self.__retry.add(response)
+        elif is_retryable_failure(exc_value):
             self.__retry.add(response)
         else:
             logger.error(
@@ -220,21 +224,24 @@ class WebApplicationHandler(WSGIHandler):
         retry_attempts = self.__retry_attempts
         retry_set = self.__retry
 
-        for attempt in count(1):
-            response = get_response(request)
-            if response in retry_set:
-                elapsed, remaining, wait = next(retry_details)
-                if attempt == retry_attempts or wait == 0:
-                    # Time's up: this was the final attempt.
-                    log_final_failed_attempt(request, attempt, elapsed)
-                    conflict_response = HttpResponseConflict(response)
-                    conflict_response.render()
-                    return conflict_response
-
-                # We'll retry after a brief interlude.
-                log_failed_attempt(request, attempt, elapsed, remaining, wait)
-                delete_oauth_nonce(request)
-                request = reset_request(request)
-                sleep(wait)
-            else:
-                return response
+        with retry_context:
+            for attempt in count(1):
+                retry_context.prepare()
+                response = get_response(request)
+                if response in retry_set:
+                    elapsed, remaining, wait = next(retry_details)
+                    if attempt == retry_attempts or wait == 0:
+                        # Time's up: this was the final attempt.
+                        log_final_failed_attempt(request, attempt, elapsed)
+                        conflict_response = HttpResponseConflict(response)
+                        conflict_response.render()
+                        return conflict_response
+                    else:
+                        # We'll retry after a brief interlude.
+                        log_failed_attempt(
+                            request, attempt, elapsed, remaining, wait)
+                        delete_oauth_nonce(request)
+                        request = reset_request(request)
+                        sleep(wait)
+                else:
+                    return response
