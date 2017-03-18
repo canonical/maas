@@ -2661,6 +2661,36 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Should have 3 AUTO IP addresses with an IP address assigned.")
         self.assertItemsEqual(assigned_addresses, observed)
 
+    def test__keeps_ip_address_ids_consistent(self):
+        auto_ip_ids = []
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3):
+                subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                    vlan=interface.vlan)
+                auto_ip = factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                    subnet=subnet, interface=interface)
+                auto_ip_ids.append(auto_ip.id)
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
+        # Should now have 3 AUTO with IP addresses assigned.
+        interface = reload_object(interface)
+        assigned_addresses = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+        assigned_addresses = [
+            ip
+            for ip in assigned_addresses
+            if ip.ip
+        ]
+        self.assertEqual(
+            3, len(assigned_addresses),
+            "Should have 3 AUTO IP addresses with an IP address assigned.")
+        self.assertItemsEqual(assigned_addresses, observed)
+        # Make sure the IDs didn't change upon allocation.
+        self.assertItemsEqual(
+            auto_ip_ids, (ip.id for ip in assigned_addresses))
+
     def test__claims_all_missing_assigned_auto_ip_addresses(self):
         with transaction.atomic():
             interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

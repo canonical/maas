@@ -36,6 +36,8 @@ LP: #1665459    Fix anonymous auto-enlistment to properly detect rack-facing reg
 
 LP: #1665143    Select the shortest by-id path when discovering block devices to address issues when discovering nvme devices.
 
+LP: #1671891    Fix deployment with AUTO IPs set as the gateway link.
+
 
 Other notable changes
 ---------------------

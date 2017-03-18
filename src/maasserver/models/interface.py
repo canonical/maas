@@ -1055,13 +1055,15 @@ class Interface(CleanSave, TimestampedModel):
         new_ip = StaticIPAddress.objects.allocate_new(
             subnet=subnet, alloc_type=IPADDRESS_TYPE.AUTO,
             exclude_addresses=exclude_addresses)
-        self.ip_addresses.add(new_ip)
+        auto_ip.ip = new_ip.ip
+        # Throw away the newly-allocated address and assign it to the old AUTO
+        # address, so that the interface link IDs remain consistent.
+        new_ip.delete()
+        auto_ip.save()
         maaslog.info("Allocated automatic IP address %s for %s." % (
-            new_ip.ip,
+            auto_ip.ip,
             self.get_log_string()))
-
-        auto_ip.delete()
-        return new_ip
+        return auto_ip
 
     def release_auto_ips(self):
         """Release all AUTO IP address for this interface that have an IP
