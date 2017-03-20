@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from http import HTTPStatus
 import http.client
 
 from django.conf import settings
@@ -17,12 +18,22 @@ from lxml.html import (
     fromstring,
     tostring,
 )
+from maasserver.models.user import (
+    create_auth_token,
+    get_auth_tokens,
+)
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+)
 
 
 class TestLoginLegacy(MAASServerTestCase):
@@ -137,3 +148,154 @@ class TestLogout(MAASServerTestCase):
         self.client.login(username=user.username, password=password)
         self.client.post(reverse('logout'))
         self.assertNotIn(SESSION_KEY, self.client.session)
+
+
+def token_to_dict(token):
+    return {
+        "token_key": token.key,
+        "token_secret": token.secret,
+        "consumer_key": token.consumer.key,
+        "name": token.consumer.name,
+    }
+
+
+class TestAuthenticate(MAASServerTestCase):
+    """Tests for the `authenticate` view."""
+
+    def test__returns_existing_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        user = factory.make_User(username, password)
+        [token] = get_auth_tokens(user)
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(token_to_dict(token)))
+
+    def test__returns_first_of_existing_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        user = factory.make_User(username, password)
+        [token] = get_auth_tokens(user)
+        for i in range(1, 6):
+            create_auth_token(user, "Token #%d" % i)
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(token_to_dict(token)))
+
+    def test__returns_existing_named_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        consumer = factory.make_name("consumer")
+        user = factory.make_User(username, password)
+        token = create_auth_token(user, consumer)
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+                "consumer": consumer,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(token_to_dict(token)))
+
+    def test__returns_first_of_existing_named_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        consumer = factory.make_name("consumer")
+        user = factory.make_User(username, password)
+        tokens = [create_auth_token(user, consumer) for _ in range(1, 6)]
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+                "consumer": consumer,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(token_to_dict(tokens[0])))
+
+    def test__returns_new_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        user = factory.make_User(username, password)
+        get_auth_tokens(user).delete()  # Delete all tokens.
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        [token] = get_auth_tokens(user)
+        self.assertThat(
+            json_load_bytes(response.content),
+            Equals(token_to_dict(token)))
+
+    def test__returns_new_named_credentials(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        consumer = factory.make_name("consumer")
+        user = factory.make_User(username, password)
+        get_auth_tokens(user).delete()  # Delete all tokens.
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+                "consumer": consumer,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertThat(
+            json_load_bytes(response.content),
+            ContainsDict({"name": Equals(consumer)}))
+
+    def test__rejects_unknown_username(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+
+    def test__rejects_incorrect_password(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        factory.make_User(username, password)
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password + "-garbage",
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+
+    def test__rejects_inactive_user(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        user = factory.make_User(username, password)
+        user.is_active = False
+        user.save()
+        response = self.client.post(
+            reverse("authenticate"), data={
+                "username": username,
+                "password": password,
+            })
+        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+
+    def test__rejects_GET(self):
+        response = self.client.get(reverse("authenticate"))
+        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+        self.assertThat(response["Allow"], Equals("POST"))

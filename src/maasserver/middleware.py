@@ -84,6 +84,8 @@ class AccessMiddleware:
         public_url_roots = [
             # Login page: must be visible to anonymous users.
             reverse('login'),
+            # Authentication: must be visible to anonymous users.
+            reverse('authenticate'),
             # The combo loaders are publicly accessible.
             reverse('combo-yui'),
             # Static resources are publicly visible.

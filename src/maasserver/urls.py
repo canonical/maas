@@ -19,6 +19,7 @@ from maasserver.bootresources import (
 )
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
+    authenticate,
     login,
     logout,
 )
@@ -70,6 +71,7 @@ urlpatterns = patterns(
 urlpatterns += patterns(
     'maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
+    url(r'^accounts/authenticate/$', authenticate, name='authenticate'),
     url(
         r'^images-stream/streams/v1/(?P<filename>.*)$',
         simplestreams_stream_handler, name='simplestreams_stream_handler'),

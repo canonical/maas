@@ -79,3 +79,11 @@ the version when creating a client application.
 ``bridging-automatic-ubuntu``
   Deploy nodes, automatically configuring bridges on all interfaces.
   Available since 2.1 on Ubuntu deployments.
+
+.. _cap_authenticate_api:
+
+``authenticate-api``
+  An ``/accounts/authenticate/`` endpoint is available for API clients.
+  Clients can pass a username and password and, assuming they are valid,
+  receive in return an API token. The caller is *not* logged-in to MAAS
+  via a session cookie.

@@ -17,6 +17,7 @@ from maasserver.models.service import (
     REGION_SERVICES,
     Service,
 )
+from maasserver.models.signals import power
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -33,6 +34,12 @@ from testtools.matchers import (
 
 class TestNodePreviousStatus(MAASServerTestCase):
     """Test that `previous_status` is set when the status is changed."""
+
+    def setUp(self):
+        super(TestNodePreviousStatus, self).setUp()
+        # Disable power signals: some status transitions prompt a power check.
+        self.addCleanup(power.signals.enable)
+        power.signals.disable()
 
     def test_changing_status_updates_previous_status(self):
         node = factory.make_Node()
