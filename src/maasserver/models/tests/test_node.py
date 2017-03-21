@@ -197,6 +197,7 @@ from testtools.matchers import (
     HasLength,
     Is,
     IsInstance,
+    MatchesAll,
     MatchesSetwise,
     MatchesStructure,
     Not,
@@ -5209,6 +5210,24 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
 
+def MatchesDefaultGateways(ipv4, ipv6):
+    # Matches a `DefaultGateways` instance, which must contain
+    # `GatewayDefinition` instances, not just plain tuples.
+    return MatchesAll(
+        IsInstance(DefaultGateways),
+        MatchesStructure(
+            ipv4=MatchesAll(
+                IsInstance(GatewayDefinition),
+                Equals(ipv4),
+            ),
+            ipv6=MatchesAll(
+                IsInstance(GatewayDefinition),
+                Equals(ipv6),
+            ),
+        ),
+    )
+
+
 class TestGetDefaultGateways(MAASServerTestCase):
     """Tests for `Node.get_default_gateways`."""
 
@@ -5244,10 +5263,11 @@ class TestGetDefaultGateways(MAASServerTestCase):
         node.gateway_link_ipv4 = link_v4
         node.gateway_link_ipv6 = link_v6
         node.save()
-        self.assertEqual((
-            (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
-            (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
-            ), node.get_default_gateways())
+        self.assertThat(
+            node.get_default_gateways(), MatchesDefaultGateways(
+                (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
+                (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
+            ))
 
     def test__return_set_ipv4_and_guess_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -5273,10 +5293,11 @@ class TestGetDefaultGateways(MAASServerTestCase):
             subnet=subnet_v6, interface=interface)
         node.gateway_link_ipv4 = link_v4
         node.save()
-        self.assertEqual((
-            (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
-            (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ), node.get_default_gateways())
+        self.assertThat(
+            node.get_default_gateways(), MatchesDefaultGateways(
+                (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
+                (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
+            ))
 
     def test__return_set_ipv6_and_guess_ipv4(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -5302,10 +5323,11 @@ class TestGetDefaultGateways(MAASServerTestCase):
             subnet=subnet_v6_2, interface=interface)
         node.gateway_link_ipv6 = link_v6
         node.save()
-        self.assertEqual((
-            (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
-            (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
-            ), node.get_default_gateways())
+        self.assertThat(
+            node.get_default_gateways(), MatchesDefaultGateways(
+                (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
+                (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
+            ))
 
     def test__return_guess_ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -5322,10 +5344,11 @@ class TestGetDefaultGateways(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v6),
             subnet=subnet_v6, interface=interface)
-        self.assertEqual((
-            (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
-            (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
-            ), node.get_default_gateways())
+        self.assertThat(
+            node.get_default_gateways(), MatchesDefaultGateways(
+                (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
+                (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
+            ))
 
 
 class TestGetDefaultDNSServers(MAASServerTestCase):

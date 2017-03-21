@@ -3129,7 +3129,7 @@ class Node(CleanSave, TimestampedModel):
                 interface.id
             """, (self.id,))
         return [
-            GatewayDefinition._make((found[0], found[1], found[2]))
+            GatewayDefinition(found[0], found[1], found[2])
             for found in cursor.fetchall()
         ]
 
@@ -3141,7 +3141,7 @@ class Node(CleanSave, TimestampedModel):
     def _get_gateway_tuple(self, gateway_link):
         """Return a tuple for the interface id, subnet id, and gateway IP for
         the `gateway_link`."""
-        return (
+        return GatewayDefinition(
             self._get_best_interface_from_gateway_link(
                 gateway_link),
             gateway_link.subnet.id,
@@ -3181,7 +3181,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Early out if we already have both gateways.
         if gateway_ipv4 and gateway_ipv6:
-            return DefaultGateways._make((gateway_ipv4, gateway_ipv6))
+            return DefaultGateways(gateway_ipv4, gateway_ipv6)
 
         # Get the best guesses for the missing IP families.
         found_gateways = self.get_best_guess_for_default_gateways()
@@ -3191,7 +3191,7 @@ class Node(CleanSave, TimestampedModel):
         if not gateway_ipv6:
             gateway_ipv6 = self._get_gateway_tuple_by_family(
                 found_gateways, IPADDRESS_FAMILY.IPv6)
-        return DefaultGateways._make((gateway_ipv4, gateway_ipv6))
+        return DefaultGateways(gateway_ipv4, gateway_ipv6)
 
     def get_default_dns_servers(self, ipv4=True, ipv6=True):
         """Return the default DNS servers for this node."""
