@@ -1335,8 +1335,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     memory = int(memory)
                 architecture = None
                 architectures = form.cleaned_data.get('arch')
-                if architectures is not None and len(architectures) == 1:
-                    architecture = architectures[0]
+                if architectures is not None:
+                    architecture = (
+                        None if len(architectures) == 0
+                        else min(architectures))
                 data = {
                     "cores": cores,
                     "memory": memory,
