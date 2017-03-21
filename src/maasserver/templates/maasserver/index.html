@@ -79,11 +79,9 @@
                     </svg>
                 </a>
             </div>
-            <div id="nav">
-                <div class="nav-toggle">
-                    <a href="#nav" class="nav-toggle__link open"></a>
-                    <a href="#" class="nav-toggle__link close"></a>
-                </div>
+            <div class="nav" ng-class="{'active':active }" ng-click="active= !active">
+                <button class="nav-toggle">
+                </button>
                 <ul id="main-nav" data-ng-if="page !== 'intro'">
                     {% if user.is_authenticated %}
                     <li>

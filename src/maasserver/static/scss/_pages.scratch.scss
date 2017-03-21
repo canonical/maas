@@ -28,6 +28,29 @@
     }
   }
 
+  @media only screen and (max-width: 768px) {
+    .nav {
+
+      .nav-toggle {
+        background-color: $transparent;
+      }
+
+      &.active ul {
+        display: initial;
+      }
+
+      &.no-ng {
+
+        &:hover {
+
+          ul {
+            display: block;
+          }
+        }
+      }
+    }
+  }
+
   .button-group .button-group__item .button-group__item-link {
     text-transform: none;
   }
