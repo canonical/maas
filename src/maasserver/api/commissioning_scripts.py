@@ -33,6 +33,8 @@ class CommissioningScriptsHandler(OperationsHandler):
     """Manage custom commissioning scripts.
 
     This functionality is only available to administrators.
+
+    This endpoint has been deprecated in favor of the node-scripts endpoint.
     """
     api_doc_section_name = "Commissioning scripts"
 
@@ -101,6 +103,8 @@ class CommissioningScriptHandler(OperationsHandler):
     """Manage a custom commissioning script.
 
     This functionality is only available to administrators.
+
+    This endpoint has been deprecated in favor of the node-script endpoint.
     """
     api_doc_section_name = "Commissioning script"
 

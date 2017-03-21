@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -137,6 +137,10 @@ from maasserver.api.regioncontrollers import (
     RegionControllersHandler,
 )
 from maasserver.api.results import NodeResultsHandler
+from maasserver.api.scripts import (
+    NodeScriptHandler,
+    NodeScriptsHandler,
+)
 from maasserver.api.spaces import (
     SpaceHandler,
     SpacesHandler,
@@ -301,7 +305,9 @@ notification_handler = RestrictedResource(
     NotificationHandler, authentication=api_auth)
 notifications_handler = RestrictedResource(
     NotificationsHandler, authentication=api_auth)
-
+script_handler = RestrictedResource(NodeScriptHandler, authentication=api_auth)
+scripts_handler = RestrictedResource(
+    NodeScriptsHandler, authentication=api_auth)
 
 # Admin handlers.
 commissioning_script_handler = AdminRestrictedResource(
@@ -516,6 +522,8 @@ urlpatterns += patterns(
     url(
         r'^notifications/(?P<id>[^/]+)/$',
         notification_handler, name='notification_handler'),
+    url(r'^scripts/$', scripts_handler, name='scripts_handler'),
+    url(r'^scripts/(?P<name>[^/]+)$', script_handler, name='script_handler'),
 )
 
 
