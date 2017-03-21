@@ -12,6 +12,7 @@ from operator import itemgetter
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
+    BMC_TYPE,
     INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -91,7 +92,7 @@ class MachineHandler(NodeHandler):
 
     class Meta(NodeHandler.Meta):
         abstract = False
-        queryset = node_prefetch(Machine.objects.all())
+        queryset = node_prefetch(Machine.objects.all()).select_related('bmc')
         allowed_methods = [
             'list',
             'get',
@@ -186,6 +187,9 @@ class MachineHandler(NodeHandler):
         """Add extra fields to `data`."""
         data = super(MachineHandler, self).dehydrate(
             obj, data, for_list=for_list)
+        bmc = obj.bmc
+        if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
+            data['pod'] = bmc.id
 
         if not for_list:
             # Add info specific to a machine.

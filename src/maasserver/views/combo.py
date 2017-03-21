@@ -107,6 +107,7 @@ MERGE_VIEWS = {
             "js/angular/directives/error_overlay.js",
             "js/angular/directives/error_toggle.js",
             "js/angular/directives/maas_obj_form.js",
+            "js/angular/directives/machines_table.js",
             "js/angular/directives/os_select.js",
             "js/angular/directives/placeholder.js",
             "js/angular/directives/pod_parameters.js",

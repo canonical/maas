@@ -84,7 +84,10 @@
                     </div>
                 </div>
             </aside>
-            <div class="nine-col last-col">
+            <div class="nine-col last-col u-align--top" data-ng-if="pod.composed_machines_count">
+                <maas-machines-table search="machinesSearch" hide-checkboxes="true"></maas-machines-table>
+            </div>
+            <div class="nine-col last-col" data-ng-if="!pod.composed_machines_count">
                 <div class="u-align--center u-vertical--align u-align--center">
                     <i class="icon icon--compose-machine icon--huge" style="width: 128px; height: 128px;"></i>
                     <h3>You have not composed any machines yet.</h3>

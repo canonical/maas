@@ -155,87 +155,6 @@ describe("NodesListController", function() {
         });
     });
 
-    describe("getReleaseTitle", function() {
-        it("returns release title from osinfo", function() {
-            var controller = makeController();
-            $scope.osinfo = {
-                releases: [
-                    ['ubuntu/xenial', 'Ubuntu Xenial']
-                ]
-            };
-            expect($scope.getReleaseTitle('ubuntu/xenial')).toBe(
-                'Ubuntu Xenial');
-        });
-
-        it("returns release name when not in osinfo", function() {
-            var controller = makeController();
-            $scope.osinfo = {
-                releases: []
-            };
-            expect($scope.getReleaseTitle('ubuntu/xenial')).toBe(
-                'ubuntu/xenial');
-        });
-    });
-
-    describe("getStatusText", function() {
-        it("returns status text when not deployed or deploying", function() {
-            var controller = makeController();
-            var node = {
-                status: makeName("status")
-            };
-
-            expect($scope.getStatusText(node)).toBe(node.status);
-        });
-
-        it("returns status with release title when deploying", function() {
-            var controller = makeController();
-            var node = {
-                status: "Deploying",
-                osystem: "ubuntu",
-                distro_series: "xenial"
-            };
-            $scope.osinfo = {
-                releases: [
-                    ['ubuntu/xenial', 'Ubuntu Xenial']
-                ]
-            };
-            expect($scope.getStatusText(node)).toBe(
-                'Deploying Ubuntu Xenial');
-        });
-
-        it("returns release title when deployed", function() {
-            var controller = makeController();
-            var node = {
-                status: "Deployed",
-                osystem: "ubuntu",
-                distro_series: "xenial"
-            };
-            $scope.osinfo = {
-                releases: [
-                    ['ubuntu/xenial', 'Ubuntu Xenial']
-                ]
-            };
-            expect($scope.getStatusText(node)).toBe(
-                'Ubuntu Xenial');
-        });
-
-        it("returns release title without codename when deployed", function() {
-            var controller = makeController();
-            var node = {
-                status: "Deployed",
-                osystem: "ubuntu",
-                distro_series: "xenial"
-            };
-            $scope.osinfo = {
-                releases: [
-                    ['ubuntu/xenial', 'Ubuntu 16.04 LTS "Xenial Xerus"']
-                ]
-            };
-            expect($scope.getStatusText(node)).toBe(
-                'Ubuntu 16.04 LTS');
-        });
-    });
-
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Machines");
@@ -387,19 +306,6 @@ describe("NodesListController", function() {
 
         describe("tab(" + tab + ")", function() {
 
-            var manager;
-            beforeEach(function() {
-                if(tab === "nodes") {
-                    manager = MachinesManager;
-                } else if(tab === "devices") {
-                    manager = DevicesManager;
-                } else if(tab === "controllers") {
-                    manager = ControllersManager;
-                } else {
-                    throw new Error("Unknown manager for tab: " + tab);
-                }
-            });
-
             it("sets initial values on $scope", function() {
                 // Only controllers tab uses the registerUrl and
                 // registerSecret. Set the values before the controller is
@@ -419,16 +325,22 @@ describe("NodesListController", function() {
                 expect(tabScope.previous_search).toBe("");
                 expect(tabScope.search).toBe("");
                 expect(tabScope.searchValid).toBe(true);
-                expect(tabScope.filtered_items).toEqual([]);
-                expect(tabScope.predicate).toBe("fqdn");
-                expect(tabScope.allViewableChecked).toBe(false);
                 expect(tabScope.selectedItems).toBe(
                     tabScope.manager.getSelectedItems());
                 expect(tabScope.metadata).toBe(tabScope.manager.getMetadata());
                 expect(tabScope.filters).toEqual(
                     SearchService.getEmptyFilter());
-                expect(tabScope.column).toBe("fqdn");
                 expect(tabScope.actionOption).toBeNull();
+
+                // Only devices and controllers use the sorting and column
+                // as the nodes tab uses the maas-machines-table directive.
+                if(tab !== "nodes") {
+                    expect(tabScope.filtered_items).toEqual([]);
+                    expect(tabScope.predicate).toBe("fqdn");
+                    expect(tabScope.allViewableChecked).toBe(false);
+                    expect(tabScope.column).toBe("fqdn");
+                }
+
                 // The controllers page uses a function so it can handle
                 // different controller types
                 if(tab !== "controllers") {
@@ -457,6 +369,12 @@ describe("NodesListController", function() {
                     expect(tabScope.registerSecret).toBe(registerSecret);
                 }
             });
+        });
+    });
+
+    angular.forEach(["devices", "controllers"], function(tab) {
+
+        describe("tab(" + tab + ")", function() {
 
             it("resets search matches previous search and empty filtered_items",
                 function() {
@@ -464,17 +382,31 @@ describe("NodesListController", function() {
                     var tabScope = $scope.tabs[tab];
                     var search = makeName("search");
 
-                    // Add item to filtered_items.
-                    tabScope.filtered_items.push(makeObject(tab));
-                    tabScope.search = "in:(Selected)";
-                    tabScope.previous_search = search;
-                    $scope.$digest();
+                    if(tab === 'nodes') {
+                        // Nodes uses the maas-machines-table directive, so
+                        // the interaction is a little different.
+                        tabScope.search = "in:(Selected)";
+                        tabScope.previous_search = search;
+                        $scope.onMachineListingChanged([makeObject(tab)]);
 
-                    // Empty the filtered_items, which should clear the search.
-                    tabScope.filtered_items.splice(0, 1);
-                    tabScope.search = search;
-                    $scope.$digest();
-                    expect(tabScope.search).toBe("");
+                        // Empty the listing search should be reset.
+                        tabScope.search = search;
+                        $scope.onMachineListingChanged([]);
+                        expect(tabScope.search).toBe("");
+                    } else {
+                        // Add item to filtered_items.
+                        tabScope.filtered_items.push(makeObject(tab));
+                        tabScope.search = "in:(Selected)";
+                        tabScope.previous_search = search;
+                        $scope.$digest();
+
+                        // Empty the filtered_items, which should clear the
+                        // search.
+                        tabScope.filtered_items.splice(0, 1);
+                        tabScope.search = search;
+                        $scope.$digest();
+                        expect(tabScope.search).toBe("");
+                    }
                 });
 
             it("doesnt reset search matches if not empty filtered_items",
@@ -518,7 +450,6 @@ describe("NodesListController", function() {
                     expect(tabScope.search).toBe(search);
                 });
         });
-
     });
 
     angular.forEach(["nodes", "devices", "controllers"], function(tab) {
@@ -541,6 +472,12 @@ describe("NodesListController", function() {
                     expect($scope.updateFilters).toHaveBeenCalledWith(tab);
                 });
             });
+        });
+    });
+
+    angular.forEach(["nodes"], function(tab) {
+
+        describe("tab(" + tab + ")", function() {
 
             describe("toggleChecked", function() {
 
@@ -549,7 +486,102 @@ describe("NodesListController", function() {
                     controller = makeController();
                     object = makeObject(tab);
                     tabObj = $scope.tabs[tab];
-                    $scope.tabs.nodes.filtered_items = $scope.nodes;
+                });
+
+                it("resets search when in:selected and none selected",
+                    function() {
+                    tabObj.search = "in:(Selected)";
+                    $scope.toggleChecked(object, tab);
+                    $scope.toggleChecked(object, tab);
+                    expect(tabObj.search).toBe("");
+                });
+
+                it("ignores search when not in:selected and none selected",
+                    function() {
+                    tabObj.search = "other";
+                    $scope.toggleChecked(object, tab);
+                    $scope.toggleChecked(object, tab);
+                    expect(tabObj.search).toBe("other");
+                });
+
+                it("updates actionErrorCount", function() {
+                    tabObj.manager.selectItem(object.system_id);
+                    object.actions = [];
+                    tabObj.actionOption = {
+                        "name": "deploy"
+                    };
+                    $scope.toggleChecked(object, tab);
+                    expect(tabObj.actionErrorCount).toBe(1);
+                });
+
+                it("clears action option when none selected", function() {
+                    object.actions = [];
+                    tabObj.actionOption = {};
+                    $scope.toggleChecked(object, tab);
+                    $scope.toggleChecked(object, tab);
+                    expect(tabObj.actionOption).toBeNull();
+                });
+            });
+
+            describe("toggleCheckAll", function() {
+
+                var controller, object1, object2, tabObj;
+                beforeEach(function() {
+                    controller = makeController();
+                    object1 = makeObject(tab);
+                    object2 = makeObject(tab);
+                    tabObj = $scope.tabs[tab];
+                });
+
+                it("resets search when in:selected and none selected",
+                    function() {
+                    tabObj.search = "in:(Selected)";
+                    $scope.toggleCheckAll(tab);
+                    $scope.toggleCheckAll(tab);
+                    expect(tabObj.search).toBe("");
+                });
+
+                it("ignores search when not in:selected and none selected",
+                    function() {
+                    tabObj.search = "other";
+                    $scope.toggleCheckAll(tab);
+                    $scope.toggleCheckAll(tab);
+                    expect(tabObj.search).toBe("other");
+                });
+
+                it("updates actionErrorCount", function() {
+                    tabObj.manager.selectItem(object1.system_id);
+                    tabObj.manager.selectItem(object2.system_id);
+                    object1.actions = [];
+                    object2.actions = [];
+                    tabObj.actionOption = {
+                        "name": "deploy"
+                    };
+                    $scope.toggleCheckAll(tab);
+                    expect(tabObj.actionErrorCount).toBe(2);
+                });
+
+                it("clears action option when none selected", function() {
+                    $scope.actionOption = {};
+                    $scope.toggleCheckAll(tab);
+                    $scope.toggleCheckAll(tab);
+                    expect(tabObj.actionOption).toBeNull();
+                });
+            });
+        });
+    });
+
+    angular.forEach(["devices", "controllers"], function(tab) {
+
+        describe("tab(" + tab + ")", function() {
+
+            describe("toggleChecked", function() {
+
+                var controller, object, tabObj;
+                beforeEach(function() {
+                    controller = makeController();
+                    object = makeObject(tab);
+                    tabObj = $scope.tabs[tab];
                     $scope.tabs.devices.filtered_items = $scope.devices;
                     $scope.tabs.controllers.filtered_items = $scope.controllers;
                 });
@@ -630,7 +662,6 @@ describe("NodesListController", function() {
                     object1 = makeObject(tab);
                     object2 = makeObject(tab);
                     tabObj = $scope.tabs[tab];
-                    $scope.tabs.nodes.filtered_items = $scope.nodes;
                     $scope.tabs.devices.filtered_items = $scope.devices;
                     $scope.tabs.controllers.filtered_items = $scope.controllers;
                 });
@@ -681,6 +712,49 @@ describe("NodesListController", function() {
                     expect(tabObj.actionOption).toBeNull();
                 });
             });
+
+            describe("sortTable", function() {
+
+                it("sets predicate", function() {
+                    var controller = makeController();
+                    var predicate = makeName('predicate');
+                    $scope.sortTable(predicate, tab);
+                    expect($scope.tabs[tab].predicate).toBe(predicate);
+                });
+
+                it("reverses reverse", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].reverse = true;
+                    $scope.sortTable(makeName('predicate'), tab);
+                    expect($scope.tabs[tab].reverse).toBe(false);
+                });
+            });
+
+            describe("selectColumnOrSort", function() {
+
+                it("sets column if different", function() {
+                    var controller = makeController();
+                    var column = makeName('column');
+                    $scope.selectColumnOrSort(column, tab);
+                    expect($scope.tabs[tab].column).toBe(column);
+                });
+
+                it("calls sortTable if column already set", function() {
+                    var controller = makeController();
+                    var column = makeName('column');
+                    $scope.tabs[tab].column = column;
+                    spyOn($scope, "sortTable");
+                    $scope.selectColumnOrSort(column, tab);
+                    expect($scope.sortTable).toHaveBeenCalledWith(
+                        column, tab);
+                });
+            });
+        });
+    });
+
+    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
+
+        describe("tab(" + tab + ")", function() {
 
             describe("showSelected", function() {
 
@@ -790,43 +864,6 @@ describe("NodesListController", function() {
                     });
             });
 
-            describe("sortTable", function() {
-
-                it("sets predicate", function() {
-                    var controller = makeController();
-                    var predicate = makeName('predicate');
-                    $scope.sortTable(predicate, tab);
-                    expect($scope.tabs[tab].predicate).toBe(predicate);
-                });
-
-                it("reverses reverse", function() {
-                    var controller = makeController();
-                    $scope.tabs[tab].reverse = true;
-                    $scope.sortTable(makeName('predicate'), tab);
-                    expect($scope.tabs[tab].reverse).toBe(false);
-                });
-            });
-
-            describe("selectColumnOrSort", function() {
-
-                it("sets column if different", function() {
-                    var controller = makeController();
-                    var column = makeName('column');
-                    $scope.selectColumnOrSort(column, tab);
-                    expect($scope.tabs[tab].column).toBe(column);
-                });
-
-                it("calls sortTable if column already set", function() {
-                    var controller = makeController();
-                    var column = makeName('column');
-                    $scope.tabs[tab].column = column;
-                    spyOn($scope, "sortTable");
-                    $scope.selectColumnOrSort(column, tab);
-                    expect($scope.sortTable).toHaveBeenCalledWith(
-                        column, tab);
-                });
-            });
-
             describe("supportsAction", function() {
 
                 it("returns true if actionOption is null", function() {
@@ -854,28 +891,6 @@ describe("NodesListController", function() {
                     expect($scope.supportsAction(object, tab)).toBe(false);
                 });
             });
-
-            if(tab === "nodes") {
-
-                // Only used on nodes tab.
-                describe("showSpinner", function() {
-
-                    it("returns false/true based on status codes", function() {
-                        var STATUSES = [1, 9, 12, 14, 17, 19];
-                        var i, controller = makeController();
-                        for(i = 0; i < 20; i++) {
-                            var node = {
-                                status_code: i
-                            };
-                            var expected = false;
-                            if(STATUSES.indexOf(i) > -1) {
-                                expected = true;
-                            }
-                            expect($scope.showSpinner(node)).toBe(expected);
-                        }
-                    });
-                });
-            }
         });
     });
 

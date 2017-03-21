@@ -21,17 +21,6 @@ angular.module('MAAS').controller('NodesListController', [
             "static": "Static"
         };
 
-        // Statuses that should show spinner.
-        var SPINNER_STATUSES = [
-            1,   // commissioning
-            9,   // deploying
-            12,  // releasing
-            14,  // disk erasing
-            17,  // entering rescue mode
-            19,  // exiting rescue mode
-            21   // testing
-        ];
-
         // Set title and page.
         $rootScope.title = "Machines";
         $rootScope.page = "nodes";
@@ -56,12 +45,8 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.search = "";
         $scope.tabs.nodes.searchValid = true;
         $scope.tabs.nodes.selectedItems = MachinesManager.getSelectedItems();
-        $scope.tabs.nodes.filtered_items = [];
-        $scope.tabs.nodes.predicate = 'fqdn';
-        $scope.tabs.nodes.allViewableChecked = false;
         $scope.tabs.nodes.metadata = MachinesManager.getMetadata();
         $scope.tabs.nodes.filters = SearchService.getEmptyFilter();
-        $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
         $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
             "machine_actions");
@@ -209,7 +194,8 @@ angular.module('MAAS').controller('NodesListController', [
                     return;
                 }
             }
-            $scope.tabs[tab].allViewableChecked = true;        }
+            $scope.tabs[tab].allViewableChecked = true;
+        }
 
         function clearAction(tab) {
             resetActionProgress(tab);
@@ -323,40 +309,51 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node, tab) {
-            if($scope.tabs[tab].manager.isSelected(node.system_id)) {
-                $scope.tabs[tab].manager.unselectItem(node.system_id);
-            } else {
-                $scope.tabs[tab].manager.selectItem(node.system_id);
+            if(tab !== 'nodes') {
+                if($scope.tabs[tab].manager.isSelected(node.system_id)) {
+                    $scope.tabs[tab].manager.unselectItem(node.system_id);
+                } else {
+                    $scope.tabs[tab].manager.selectItem(node.system_id);
+                }
+                updateAllViewableChecked(tab);
             }
-            updateAllViewableChecked(tab);
             updateActionErrorCount(tab);
             shouldClearAction(tab);
         };
 
         // Select all viewable nodes or deselect all viewable nodes.
         $scope.toggleCheckAll = function(tab) {
-            if($scope.tabs[tab].allViewableChecked) {
-                angular.forEach(
-                    $scope.tabs[tab].filtered_items, function(node) {
-                        $scope.tabs[tab].manager.unselectItem(node.system_id);
-                });
-            } else {
-                angular.forEach(
-                    $scope.tabs[tab].filtered_items, function(node) {
-                        $scope.tabs[tab].manager.selectItem(node.system_id);
-                });
+            if(tab !== 'nodes') {
+                if($scope.tabs[tab].allViewableChecked) {
+                    angular.forEach(
+                        $scope.tabs[tab].filtered_items, function(node) {
+                            $scope.tabs[tab].manager.unselectItem(
+                                node.system_id);
+                    });
+                } else {
+                    angular.forEach(
+                        $scope.tabs[tab].filtered_items, function(node) {
+                            $scope.tabs[tab].manager.selectItem(
+                                node.system_id);
+                    });
+                }
+                updateAllViewableChecked(tab);
             }
-            updateAllViewableChecked(tab);
             updateActionErrorCount(tab);
             shouldClearAction(tab);
         };
 
+        $scope.onMachineListingChanged = function(machines) {
+          if(machines.length === 0 &&
+              $scope.tabs.nodes.search !== "" &&
+              $scope.tabs.nodes.search === $scope.tabs.nodes.previous_search) {
+              $scope.tabs.nodes.search = "";
+              $scope.updateFilters('nodes');
+          }
+        };
+
         // When the filtered nodes change update if all check buttons
         // should be checked or not.
-        $scope.$watchCollection("tabs.nodes.filtered_items", function() {
-            updateAllViewableChecked("nodes");
-            removeEmptyFilter("nodes");
-        });
         $scope.$watchCollection("tabs.devices.filtered_items", function() {
             updateAllViewableChecked("devices");
             removeEmptyFilter("devices");
@@ -365,11 +362,6 @@ angular.module('MAAS').controller('NodesListController', [
             updateAllViewableChecked("controllers");
             removeEmptyFilter("controllers");
         });
-
-        // Return true if spinner should be shown.
-        $scope.showSpinner = function(node) {
-            return SPINNER_STATUSES.indexOf(node.status_code) > -1;
-        };
 
         // Shows the current selection.
         $scope.showSelected = function(tab) {
@@ -634,37 +626,6 @@ angular.module('MAAS').controller('NodesListController', [
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
-        };
-
-        // Returns the release title from osinfo.
-        $scope.getReleaseTitle = function(os_release) {
-            for(i = 0; i < $scope.osinfo.releases.length; i++) {
-                var release = $scope.osinfo.releases[i];
-                if(release[0] === os_release) {
-                    return release[1];
-                }
-            }
-            return os_release;
-        };
-
-        // Returns the status text to show on the node listing.
-        $scope.getStatusText = function(node) {
-            var showRelease = ['Deploying', 'Deployed'];
-            if(showRelease.indexOf(node.status) === -1) {
-                return node.status;
-            } else {
-                var releaseTitle = $scope.getReleaseTitle(
-                    node.osystem + '/' + node.distro_series);
-                if(node.osystem === "ubuntu") {
-                    releaseTitle = releaseTitle.split('"')[0].trim();
-                }
-                if(node.status === "Deployed") {
-                    return releaseTitle;
-                }
-                if(node.status === "Deploying") {
-                    return node.status + ' ' + releaseTitle;
-                }
-            }
         };
 
         $scope.hasCustomCommissioningScripts = function() {

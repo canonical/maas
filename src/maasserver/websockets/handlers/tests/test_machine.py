@@ -17,6 +17,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from lxml import etree
 from maasserver.enum import (
+    BMC_TYPE,
     BOND_MODE,
     CACHE_MODE_TYPE,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
@@ -248,6 +249,9 @@ class TestMachineHandler(MAASServerTestCase):
             "default_user": node.default_user,
             "dhcp_on": node.interface_set.filter(vlan__dhcp_on=True).exists(),
         }
+        bmc = node.bmc
+        if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
+            data['pod'] = bmc.id
         if for_list:
             allowed_fields = MachineHandler.Meta.list_fields + [
                 "actions",
@@ -268,6 +272,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "osystem",
                 "distro_series",
                 "dhcp_on",
+                "pod",
             ]
             for key in list(data):
                 if key not in allowed_fields:

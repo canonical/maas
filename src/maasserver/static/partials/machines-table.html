@@ -1,0 +1,70 @@
+<table>
+    <thead>
+        <tr>
+            <th class="table-col--3 u-display--block-mobile" aria-label="Select all" data-ng-if="!hideCheckboxes">
+                <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="table.allViewableChecked" id="check-all" data-ng-disabled="ngDisabled()" />
+                <label class="checkbox-label" for="check-all"></label>
+            </th>
+            <th colspan="2" class="u-align--left">
+                <a href=""
+                    data-ng-click="selectColumnOrSort('fqdn')"
+                    data-ng-class="{'is-active': table.column === 'fqdn', 'is-sorted': table.predicate === 'fqdn', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Fully Qualified Domain Name">FQDN</span></a>
+                <span class="divide"></span>
+                <a href=""
+                    data-ng-click="selectColumnOrSort('pxe_mac')"
+                    data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Media Access Control addresses">MAC</span></a>
+            </th>
+            <th class="u-align--center">
+                <a href="" class="u-align--center" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</a>
+            </th>
+            <th class="table-col--3">
+            </th>
+            <th>
+                <a href="" data-ng-click="sortTable('status')" data-ng-class="{'is-sorted': table.predicate === 'status', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Status</a>
+            </th>
+            <th class="table-col--10">
+                <a href="" data-ng-click="sortTable('owner')" data-ng-class="{'is-sorted': table.predicate === 'owner', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Owner</a>
+            </th>
+            <th class="u-align--right">
+                <a href="" data-ng-click="sortTable('cpu_count')" data-ng-class="{'is-sorted': table.predicate=== 'cpu_count', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Cores</a>
+            </th>
+            <th class="u-align--right">
+                <a href="" data-ng-click="sortTable('memory')" data-ng-class="{'is-sorted': table.predicate === 'memory', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">RAM (GiB)</a>
+            </th>
+            <th class="u-align--right">
+                <a href="" data-ng-click="sortTable('disks')" data-ng-class="{'is-sorted': table.predicate === 'disks', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Disks</a>
+            </th>
+            <th class="u-align--right">
+                <a href="" data-ng-click="sortTable('storage')" data-ng-class="{'is-sorted': table.predicate === 'storage', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Storage (GB)</a>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr
+            data-ng-repeat="node in filteredMachines = (machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
+            data-ng-class="{ 'table--error': machineHasError({ $machine: node }), selected: node.$selected }">
+            <td class="table-col--3" aria-label="Select node" data-ng-if="!hideCheckboxes">
+                <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node)" data-ng-checked="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="ngDisable()" />
+                <label class="checkbox-label" for="{$ node.fqdn $}"></label>
+            </td>
+            <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'" colspan="2">
+                <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
+            </td>
+            <td class="ng-hide u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'" colspan="2">
+                <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+            </td>
+            <td class="powerstate u-align--center" aria-label="Power state">
+                <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $} u-display--desktop"></span>
+                <span class="u-display--mobile u-text--{$ node.power_state $}"><span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span> {$ node.power_state $}</span>
+            </td>
+            <td class="table-col--3 u-display--desktop"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin"></i></td>
+            <td class="status u-text--truncate" aria-label="Status">{$ getStatusText(node) $} <span class="u-display--mobile"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i></span></td>
+            <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
+            <td class="u-align--right u-display--desktop" aria-label="CPU">{$ node.cpu_count $}</td>
+            <td class="u-align--right u-display--desktop" aria-label="Memory">{$ node.memory $}</td>
+            <td class="u-align--right u-display--desktop" aria-label="Disks">{$ node.physical_disk_count $}</td>
+            <td class="u-align--right u-display--desktop" aria-label="Storage">{$ node.storage $}</td>
+        </tr>
+    </tbody>
+</table>

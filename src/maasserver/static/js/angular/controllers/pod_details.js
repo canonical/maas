@@ -43,6 +43,7 @@ angular.module('MAAS').controller('PodDetailsController', [
         $scope.section = {
           area: 'summary'
         };
+        $scope.machinesSearch = 'pod:=invalid';
 
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
@@ -113,12 +114,14 @@ angular.module('MAAS').controller('PodDetailsController', [
                 activePod.id === parseInt($routeParams.id, 10)) {
                 $scope.pod = activePod;
                 $scope.loaded = true;
+                $scope.machinesSearch = 'pod:=' + $scope.pod.id;
                 $scope.startWatching();
             } else {
                 PodsManager.setActiveItem(
                     parseInt($routeParams.id, 10)).then(function(pod) {
                         $scope.pod = pod;
                         $scope.loaded = true;
+                        $scope.machinesSearch = 'pod:=' + $scope.pod.id;
                         $scope.startWatching();
                     }, function(error) {
                         ErrorService.raiseError(error);
