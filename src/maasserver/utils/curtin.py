@@ -6,6 +6,22 @@
 import curtin
 
 
-def curtin_supports_webhook_events():
+def curtin_supports_feature(feature):
     curtin_features = getattr(curtin, 'FEATURES', [])
-    return 'REPORTING_EVENTS_WEBHOOK' in curtin_features
+    return feature in curtin_features
+
+
+def curtin_supports_webhook_events():
+    """Return True if the installed curtin supports reporting events."""
+    return curtin_supports_feature('REPORTING_EVENTS_WEBHOOK')
+
+
+def curtin_supports_custom_storage():
+    """Return True if the installed curtin supports custom storage."""
+    return curtin_supports_feature('STORAGE_CONFIG_V1')
+
+
+def curtin_supports_custom_storage_for_dd():
+    """Return True if the installed curtin supports custom storage
+       for DD images."""
+    return curtin_supports_feature('STORAGE_CONFIG_V1_DD')

@@ -875,6 +875,26 @@ class TestGetCurtinUserData(
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockNotCalled())
 
+    def test_get_curtin_userdata_includes_storage_for_windows(self):
+        # Tests that storage config is sent when deploying windows. This is
+        # required to select the correct root device based on the boot device
+        # See LP:1640301
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        arch, subarch = node.architecture.split('/')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
+        mock_compose_storage = self.patch(
+            preseed_module, "compose_curtin_storage_config")
+        self.patch(
+            preseed_module, "curtin_supports_custom_storage").value = True
+        self.patch(
+            preseed_module,
+            "curtin_supports_custom_storage_for_dd").value = True
+        node.osystem = 'windows'
+        user_data = get_curtin_userdata(node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+
     def test_get_curtin_userdata_includes_networking_for_non_ubuntu(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)

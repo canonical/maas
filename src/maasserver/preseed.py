@@ -25,7 +25,6 @@ from urllib.parse import (
 )
 
 from crochet import TimeoutError
-from curtin.commands import block_meta
 from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
@@ -59,7 +58,11 @@ from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
-from maasserver.utils.curtin import curtin_supports_webhook_events
+from maasserver.utils.curtin import (
+    curtin_supports_custom_storage,
+    curtin_supports_custom_storage_for_dd,
+    curtin_supports_webhook_events,
+)
 from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -88,12 +91,6 @@ OS_WITH_IPv6_SUPPORT = ['ubuntu']
 # The path to the Curtin installation log. Curtin uploads this file to MAAS
 # with its full path once the deployment is finished.
 CURTIN_INSTALL_LOG = "/tmp/install.log"
-
-
-def curtin_supports_custom_storage():
-    """Return True if the installed curtin supports custom storage."""
-    # Check that the block_meta command defines the CUSTOM storage mode.
-    return hasattr(block_meta, "CUSTOM")
 
 
 def get_enlist_preseed(rack_controller=None):
@@ -356,6 +353,14 @@ def get_curtin_yaml_config(node):
             "Ubuntu. Using flat storage layout."
             % node.hostname)
         supports_custom_storage = False
+        if (node.osystem == "windows" and
+           curtin_supports_custom_storage_for_dd()):
+            # Windows does not support custom storage, however we still pass
+            # the storage config to ensure that curtin correctly selects the
+            # boot device as the root device.
+            #
+            # This also requires curtin support. See (LP:1640301).
+            supports_custom_storage = True
 
     if supports_custom_storage:
         storage_config = compose_curtin_storage_config(node)
