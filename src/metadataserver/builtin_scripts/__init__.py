@@ -124,6 +124,14 @@ BUILTIN_SCRIPTS = [
         timeout=60 * 60 * 12 + 60 * 5,
         filename='stress_ng_memory_long.sh',
         ),
+    BuiltinScript(
+        name='ntp',
+        title='NTP validation',
+        description='Run ntp clock set to verify NTP connectivity.',
+        tags=['network', 'internet'],
+        timeout=60,
+        filename='ntp.sh',
+        ),
 ]
 
 
