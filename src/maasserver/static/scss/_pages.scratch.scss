@@ -51,6 +51,21 @@
     }
   }
 
+  .banner {
+
+    .nav-primary {
+      overflow: visible;
+
+      .logo {
+        overflow: visible;
+
+        a {
+          @include focus($offset: 2px);
+        }
+      }
+    }
+  }
+
   .button-group .button-group__item .button-group__item-link {
     text-transform: none;
   }
