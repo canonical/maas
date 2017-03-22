@@ -169,6 +169,31 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
 
+    def test_creates_pod_with_name(self):
+        discovered_pod, discovered_racks, failed_racks = (
+            self.fake_pod_discovery())
+        pod_info = self.make_pod_info()
+        request = MagicMock()
+        request.user = factory.make_User()
+        pod_name = factory.make_name('pod')
+        pod_info['name'] = pod_name
+        form = PodForm(data=pod_info, request=request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertThat(pod, MatchesStructure(
+            architectures=Equals(['amd64/generic']),
+            name=Equals(pod_name),
+            cores=Equals(discovered_pod.cores),
+            memory=Equals(discovered_pod.memory),
+            cpu_speed=Equals(discovered_pod.cpu_speed),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({
+                'power_address': pod_info['power_address'],
+                'power_pass': pod_info['power_pass'],
+            }),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
+        ))
+
     @wait_for_reactor
     @inlineCallbacks
     def test_creates_pod_with_discovered_information_in_twisted(self):
@@ -212,6 +237,36 @@ class TestPodForm(MAASTransactionServerTestCase):
             self.assertItemsEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_creates_pod_with_name_in_twisted(self):
+        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
+            self.fake_pod_discovery)
+        pods_module.discover_pod.return_value = succeed(
+            pods_module.discover_pod.return_value)
+        pod_info = self.make_pod_info()
+        pod_name = factory.make_name('pod')
+        pod_info['name'] = pod_name
+        request = MagicMock()
+        request.user = yield deferToDatabase(factory.make_User)
+        form = yield deferToDatabase(PodForm, data=pod_info, request=request)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid, form._errors)
+        pod = yield form.save()
+        self.assertThat(pod, MatchesStructure(
+            architectures=Equals(['amd64/generic']),
+            name=Equals(pod_name),
+            cores=Equals(discovered_pod.cores),
+            memory=Equals(discovered_pod.memory),
+            cpu_speed=Equals(discovered_pod.cpu_speed),
+            power_type=Equals(pod_info['type']),
+            power_parameters=Equals({
+                'power_address': pod_info['power_address'],
+                'power_pass': pod_info['power_pass'],
+            }),
+            ip_address=MatchesStructure(ip=Equals(pod_info['ip_address'])),
+        ))
 
     @wait_for_reactor
     @inlineCallbacks
