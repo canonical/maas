@@ -2,6 +2,19 @@
 Changelog
 =========
 
+2.1.5
+=====
+
+Bugs fixed in this release
+--------------------------
+
+LP: #1671891    Fix deployment with AUTO IPs set as the gateway link.
+
+LP: #1671048    Fix crash when getting the default gateways for a machine.
+
+LP: #1673916    Fix regression that causes traceback in rack-based mDNS monitoring service.
+
+
 2.1.4
 =====
 
@@ -35,8 +48,6 @@ LP: #1645912    Fix IPMI autodetection to wrap IPv6 addresses in brackers when u
 LP: #1665459    Fix anonymous auto-enlistment to properly detect rack-facing region IP address
 
 LP: #1665143    Select the shortest by-id path when discovering block devices to address issues when discovering nvme devices.
-
-LP: #1671891    Fix deployment with AUTO IPs set as the gateway link.
 
 
 Other notable changes

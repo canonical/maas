@@ -70,6 +70,6 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
     def reportMDNSEntries(self, mdns):
         """Report mDNS entries to the region."""
         d = self.clientService.getClientNow()
-        d.addCleanup(lambda client: client(
+        d.addCallback(lambda client: client(
             ReportMDNSEntries, system_id=client.localIdent, mdns=mdns))
         return d
