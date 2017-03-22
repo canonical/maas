@@ -313,7 +313,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     blockdevs = []
     block_list = check_output((
         "lsblk", "--exclude", "1,2,7", "-d", "-P",
-        "-o", "NAME,RO,RM,MODEL,ROTA"))
+        "-o", "NAME,RO,RM,MODEL,ROTA", "-x", "NAME"))
     block_list = block_list.decode("utf-8")
     for blockdev in block_list.splitlines():
         tokens = shlex.split(blockdev)
