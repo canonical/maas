@@ -8,9 +8,61 @@ __all__ = [
     "ArchitectureRegistry",
     ]
 
+import attr
 from jsonschema import validate
 from provisioningserver.utils import typed
 from provisioningserver.utils.registry import Registry
+
+
+def convert_obj(expected, optional=False):
+    """Convert the given value to an object of type `expected`."""
+    def convert(value):
+        if optional and value is None:
+            return None
+        if isinstance(value, expected):
+            return value
+        elif isinstance(value, dict):
+            return expected(**value)
+        else:
+            raise TypeError(
+                "%r is not of type %s or dict" % (value, expected))
+    return convert
+
+
+def convert_list(expected):
+    """Convert the given value to a list of objects of type `expected`."""
+    def convert(value):
+        if isinstance(value, list):
+            if len(value) == 0:
+                return value
+            else:
+                new_list = []
+                for item in value:
+                    if isinstance(item, expected):
+                        new_list.append(item)
+                    elif isinstance(item, dict):
+                        new_list.append(expected(**item))
+                    else:
+                        raise TypeError(
+                            "Item %r is not of type %s or dict" % (
+                                item, expected))
+                return new_list
+        else:
+            raise TypeError("%r is not of type list" % value)
+    return convert
+
+
+class AttrHelperMixin:
+    """Mixin to add the `fromdict` and `asdict` to the classes."""
+
+    @classmethod
+    def fromdict(cls, data):
+        """Convert from a dictionary."""
+        return cls(**data)
+
+    def asdict(self):
+        """Convert to a dictionary."""
+        return attr.asdict(self)
 
 
 class IP_EXTRACTOR_PATTERNS:
@@ -99,7 +151,8 @@ SETTING_PARAMETER_FIELD_SCHEMA = {
         'required': {
             'type': 'boolean',
         },
-        # 'bmc' or 'node': Whether value lives on bmc (global) or node/device.
+        # 'bmc', 'node', 'storage': Whether value lives on bmc (global),
+        # node/device or storage system.
         'scope': {
             'type': 'string',
         },
@@ -122,6 +175,7 @@ def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
 class SETTING_SCOPE:
     BMC = "bmc"
     NODE = "node"
+    STORAGE = "storage"
 
 
 def make_setting_field(
@@ -155,7 +209,8 @@ def make_setting_field(
     validate(choices, CHOICE_FIELD_SCHEMA)
     if default is None:
         default = ""
-    if scope not in (SETTING_SCOPE.BMC, SETTING_SCOPE.NODE):
+    if scope not in (
+            SETTING_SCOPE.BMC, SETTING_SCOPE.NODE, SETTING_SCOPE.STORAGE):
         scope = SETTING_SCOPE.BMC
     return {
         'name': name,

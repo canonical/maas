@@ -70,6 +70,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.drivers.storage.registry import StorageDriverRegistry
 from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     boot_images,
@@ -415,6 +416,27 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
             PowerDriverRegistry.get_schema(), response["power_types"])
+
+
+class TestClusterProtocol_DescribeStorageTypes(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_describe_storage_types_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DescribeStorageTypes.commandName)
+        self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test_describe_storage_types_returns_jsonized_schema(self):
+
+        response = yield call_responder(
+            Cluster(), cluster.DescribeStorageTypes, {})
+
+        self.assertThat(response, KeysEqual("storage_types"))
+        self.assertItemsEqual(
+            StorageDriverRegistry.get_schema(), response["storage_types"])
 
 
 class TestPatchedURI(MAASTestCase):

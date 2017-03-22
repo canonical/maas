@@ -29,6 +29,10 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
+from provisioningserver.drivers.storage import (
+    DiscoveredStorage,
+    DiscoveredVolume,
+)
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -205,15 +209,26 @@ class TestDiscoveredClasses(MAASTestCase):
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
+        storage = []
+        for _ in range(3):
+            volumes = [
+                DiscoveredVolume(size=random.randint(1024, 4096))
+                for _ in range(3)
+            ]
+            storage.append(
+                DiscoveredStorage(
+                    size=random.randint(8192, 8192 ** 2), volumes=volumes))
         pod = DiscoveredPod(
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            local_storage=local_storage, hints=hints, machines=machines)
+            local_storage=local_storage, hints=hints, machines=machines,
+            storage=storage)
         self.assertEquals(cores, pod.cores)
         self.assertEquals(cpu_speed, pod.cpu_speed)
         self.assertEquals(memory, pod.memory)
         self.assertEquals(local_storage, pod.local_storage)
         self.assertEquals(machines, pod.machines)
+        self.assertEquals(storage, pod.storage)
 
     def test_pod_asdict(self):
         cores = random.randint(1, 8)
@@ -260,11 +275,20 @@ class TestDiscoveredClasses(MAASTestCase):
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
+        storage = []
+        for _ in range(3):
+            volumes = [
+                DiscoveredVolume(size=random.randint(1024, 4096))
+                for _ in range(3)
+            ]
+            storage.append(
+                DiscoveredStorage(
+                    size=random.randint(8192, 8192 ** 2), volumes=volumes))
         pod = DiscoveredPod(
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, local_disks=local_disks,
-            hints=hints, machines=machines)
+            hints=hints, machines=machines, storage=storage)
         self.assertThat(pod.asdict(), MatchesDict({
             "architectures": Equals(["amd64/generic"]),
             "cores": Equals(cores),
@@ -311,6 +335,22 @@ class TestDiscoveredClasses(MAASTestCase):
                     "tags": Equals(machine.tags),
                 })
                 for machine in machines
+            ]),
+            "storage": MatchesListwise([
+                MatchesDict({
+                    "size": Equals(stor.size),
+                    "driver_type": Equals(None),
+                    "parameters": Equals({}),
+                    "volumes": MatchesListwise([
+                        MatchesDict({
+                            "size": Equals(volume.size),
+                            "block_size": Equals(volume.block_size),
+                            "tags": Equals(volume.tags),
+                        })
+                        for volume in stor.volumes
+                    ]),
+                })
+                for stor in storage
             ]),
         }))
 
