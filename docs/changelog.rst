@@ -14,6 +14,8 @@ LP: #1671048    Fix crash when getting the default gateways for a machine.
 
 LP: #1673916    Fix regression that causes traceback in rack-based mDNS monitoring service.
 
+LP: #1673724    Due to a potential regression in lsblk, try to ensure list of block devices is ordered correctly
+
 
 2.1.4
 =====
