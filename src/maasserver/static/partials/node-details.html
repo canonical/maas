@@ -902,18 +902,18 @@
                                                               data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
                                                       </fieldset>
-                                                    <div class="table__row is-active">
-                                                      <div class="table__data u-float--left">
-                                                          <maas-obj-errors></maas-obj-errors>
+                                                      <div class="table__row is-active">
+                                                        <div class="table__data u-float--left">
+                                                            <maas-obj-errors></maas-obj-errors>
+                                                        </div>
+                                                        <div class="table__data u-float--right">
+                                                            <a class="button--base button--inline"
+                                                                data-ng-click="editCancel()">Cancel</a>
+                                                            <button class="button--positive button--inline"
+                                                             data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                             maas-obj-save>Save</button>
+                                                        </div>
                                                       </div>
-                                                      <div class="table__data u-float--right">
-                                                          <a class="button--base button--inline"
-                                                              data-ng-click="editCancel()">Cancel</a>
-                                                          <button class="button--positive button--inline"
-                                                           data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
-                                                           maas-obj-save>Save</button>
-                                                      </div>
-                                                    </div>
                                                   </div>
                                               </maas-obj-form>
                                           </div>
@@ -1275,21 +1275,18 @@
                               </div>
                           </main>
                       </div>
-                      <div data-ng-if="!isController && !isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                      <div data-ng-if="!isController" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
                           <a class="button--secondary button--inline"
                               data-ng-disabled="selectedMode !== null"
                               data-ng-click="showCreatePhysical()">Add interface</a>
                           <a class="button--secondary button--inline"
+                              data-ng-if="!isDevice"
                               data-ng-disabled="!canCreateBond()"
                               data-ng-click="showCreateBond()">Create bond</a>
                           <a class="button--secondary button--inline"
+                              data-ng-if="!isDevice"
                               data-ng-disabled="!canCreateBridge()"
                               data-ng-click="showCreateBridge()">Create bridge</a>
-                      </div>
-                      <div data-ng-if="isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
-                          <a class="button--secondary button--inline"
-                              data-ng-disabled="selectedMode !== null"
-                              data-ng-click="showCreatePhysical()">Add interface</a>
                       </div>
                     </div>
                 </form>

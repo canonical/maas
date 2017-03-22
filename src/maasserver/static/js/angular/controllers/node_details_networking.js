@@ -579,7 +579,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return false;
             }
             if ($scope.$parent.isDevice) {
-                // Devices are never Ready, for our purposes, for now.
+                // Devices are always Ready, for our purposes, for now.
                 return true;
             }
             if ($scope.$parent.isController) {
