@@ -89,13 +89,15 @@
             </div>
         </nav>
     </header>
+
     <main id="body" class="wrapper">
         {% block page-title-block %}
-        <header class="page-header" sticky media-query="min-width: 769px">
+        <header class="page-header {% block page-header-classes %}{% endblock %}" sticky media-query="min-width: 769px">
             <div class="wrapper--inner">
                 <h1 class="page-header__title">{% block page-title %}{% endblock %}</h1>
             </div>
         </header>
+        {% block page-navigation %}{% endblock %}
         {% endblock %}
         <div id="main-content">
             {% if user.is_authenticated %}

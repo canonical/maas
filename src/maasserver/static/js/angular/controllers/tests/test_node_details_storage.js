@@ -109,6 +109,7 @@ describe("NodeStorageController", function() {
         $parentScope.node = node;
         $parentScope.updateNode = updateNodeSpy;
         $parentScope.canEdit = canEditSpy;
+        $parentScope.controllerLoaded = jasmine.createSpy("controllerLoaded");
     });
 
     // Makes the NodeStorageController

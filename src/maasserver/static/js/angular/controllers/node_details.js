@@ -29,12 +29,17 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.node = null;
-        $scope.actionOption = null;
-        $scope.allActionOptions = null;
-        $scope.availableActionOptions = [];
-        $scope.actionError = null;
+        $scope.action = {
+          option: null,
+          allOptions: null,
+          availableOptions: [],
+          error: null
+        };
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.osinfo = GeneralManager.getData("osinfo");
+        $scope.section = {
+            area: 'summary'
+        };
         $scope.osSelection = {
             osystem: null,
             release: null,
@@ -144,14 +149,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Update the available action options for the node.
         function updateAvailableActionOptions() {
-            $scope.availableActionOptions = [];
+            $scope.action.availableOptions = [];
             if(!angular.isObject($scope.node)) {
                 return;
             }
 
             // Initialize the allowed action list.
-            if($scope.allActionOptions === null) {
-                $scope.allActionOptions =
+            if($scope.action.allOptions === null) {
+                $scope.action.allOptions =
                     $scope.getAllActionOptions($scope.node.node_type);
             }
 
@@ -159,10 +164,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // allowed actions, except set-zone which does not make
             // sense in this view because the form has this
             // functionality
-            angular.forEach($scope.allActionOptions, function(option) {
+            angular.forEach($scope.action.allOptions, function(option) {
                 if($scope.node.actions.indexOf(option.name) >= 0
                    && option.name !== "set-zone") {
-                    $scope.availableActionOptions.push(option);
+                    $scope.action.availableOptions.push(option);
                 }
             });
         }
@@ -567,7 +572,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true if there is an action error.
         $scope.isActionError = function() {
-            return $scope.actionError !== null;
+            return $scope.action.error !== null;
         };
 
         // Return True if in deploy action and the osinfo is missing.
@@ -580,8 +585,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             var missing_osinfo = (
                 angular.isUndefined($scope.osinfo.osystems) ||
                 $scope.osinfo.osystems.length === 0);
-            if(angular.isObject($scope.actionOption) &&
-                $scope.actionOption.name === "deploy" &&
+            if(angular.isObject($scope.action.option) &&
+                $scope.action.option.name === "deploy" &&
                 missing_osinfo) {
                 return true;
             }
@@ -594,8 +599,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if($scope.isActionError()) {
                 return false;
             }
-            if(angular.isObject($scope.actionOption) &&
-                $scope.actionOption.name === "deploy" &&
+            if(angular.isObject($scope.action.option) &&
+                $scope.action.option.name === "deploy" &&
                 UsersManager.getSSHKeyCount() === 0) {
                 return true;
             }
@@ -603,15 +608,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
 
         // Called when the actionOption has changed.
-        $scope.actionOptionChanged = function() {
+        $scope.action.optionChanged = function() {
             // Clear the action error.
-            $scope.actionError = null;
+            $scope.action.error = null;
         };
 
         // Cancel the action.
         $scope.actionCancel = function() {
-            $scope.actionOption = null;
-            $scope.actionError = null;
+            $scope.action.option = null;
+            $scope.action.error = null;
         };
 
         // Perform the action.
@@ -619,7 +624,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             var extra = {};
             var i;
             // Set deploy parameters if a deploy.
-            if($scope.actionOption.name === "deploy" &&
+            if($scope.action.option.name === "deploy" &&
                 angular.isString($scope.osSelection.osystem) &&
                 angular.isString($scope.osSelection.release)) {
 
@@ -637,7 +642,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.osSelection.hwe_kernel.indexOf('ga-') >= 0)) {
                     extra.hwe_kernel = $scope.osSelection.hwe_kernel;
                 }
-            } else if($scope.actionOption.name === "commission") {
+            } else if($scope.action.option.name === "commission") {
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
                 extra.skip_networking = (
                     $scope.commissionOptions.skipNetworking);
@@ -660,7 +665,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     // Tell the region not to run any tests.
                     extra.testing_scripts.push('none');
                 }
-            } else if($scope.actionOption.name === "test") {
+            } else if($scope.action.option.name === "test") {
                 // Set the test options.
                 extra.enable_ssh = $scope.commissionOptions.enableSSH;
                 extra.testing_scripts = [];
@@ -671,7 +676,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     // Tell the region not to run any tests.
                     extra.testing_scripts.push('none');
                 }
-            } else if($scope.actionOption.name === "release") {
+            } else if($scope.action.option.name === "release") {
                 // Set the release options.
                 extra.erase = $scope.releaseOptions.erase;
                 extra.secure_erase = $scope.releaseOptions.secureErase;
@@ -679,13 +684,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
 
             $scope.nodesManager.performAction(
-                $scope.node, $scope.actionOption.name, extra).then(function() {
+                $scope.node, $scope.action.option.name, extra).then(function() {
                     // If the action was delete, then go back to listing.
-                    if($scope.actionOption.name === "delete") {
+                    if($scope.action.option.name === "delete") {
                         $location.path("/nodes");
                     }
-                    $scope.actionOption = null;
-                    $scope.actionError = null;
+                    $scope.action.option = null;
+                    $scope.action.error = null;
                     $scope.osSelection.$reset();
                     $scope.commissionOptions.enableSSH = false;
                     $scope.commissionOptions.skipNetworking = false;
@@ -693,7 +698,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.commissioningSelection = [];
                     $scope.testSelection = [];
                 }, function(error) {
-                    $scope.actionError = error;
+                    $scope.action.error = error;
                 });
         };
 
@@ -1082,6 +1087,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 }
             }
             return false;
+        };
+
+        // Called by the children controllers to let the parent know.
+        $scope.controllerLoaded = function(name, scope) {
+            $scope[name] = scope;
+            if(angular.isObject(scope.node)) {
+              scope.nodeLoaded();
+            }
         };
 
         // Load all the required managers.

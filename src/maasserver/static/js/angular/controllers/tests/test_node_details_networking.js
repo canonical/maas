@@ -353,6 +353,7 @@ describe("NodeNetworkingController", function() {
         };
         $parentScope.node = node;
         $parentScope.isController = false;
+        $parentScope.controllerLoaded = jasmine.createSpy("controllerLoaded");
     });
 
     // Makes the NodeStorageController.

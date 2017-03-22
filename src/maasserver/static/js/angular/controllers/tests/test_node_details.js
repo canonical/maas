@@ -189,10 +189,10 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect($scope.loaded).toBe(false);
         expect($scope.node).toBeNull();
-        expect($scope.actionOption).toBeNull();
-        expect($scope.allActionOptions).toBeNull();
-        expect($scope.availableActionOptions).toEqual([]);
-        expect($scope.actionError).toBeNull();
+        expect($scope.action.option).toBeNull();
+        expect($scope.action.allOptions).toBeNull();
+        expect($scope.action.availableOptions).toEqual([]);
+        expect($scope.action.error).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.power_types).toBe(GeneralManager.getData("power_types"));
         expect($scope.osSelection.osystem).toBeNull();
@@ -921,13 +921,13 @@ describe("NodeDetailsController", function() {
 
         it("returns true if actionError", function() {
             var controller = makeController();
-            $scope.actionError = makeName("error");
+            $scope.action.error = makeName("error");
             expect($scope.isActionError()).toBe(true);
         });
 
         it("returns false if not actionError", function() {
             var controller = makeController();
-            $scope.actionError = null;
+            $scope.action.error = null;
             expect($scope.isActionError()).toBe(false);
         });
     });
@@ -936,13 +936,13 @@ describe("NodeDetailsController", function() {
 
         it("returns false if already actionError", function() {
             var controller = makeController();
-            $scope.actionError = makeName("error");
+            $scope.action.error = makeName("error");
             expect($scope.isDeployError()).toBe(false);
         });
 
         it("returns true if deploy action and missing osinfo", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             expect($scope.isDeployError()).toBe(true);
@@ -950,7 +950,7 @@ describe("NodeDetailsController", function() {
 
         it("returns true if deploy action and no osystems", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osinfo = {
@@ -966,7 +966,7 @@ describe("NodeDetailsController", function() {
 
         it("returns false if not deploy action", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "release"
             };
             expect($scope.isDeployError()).toBe(false);
@@ -974,7 +974,7 @@ describe("NodeDetailsController", function() {
 
         it("returns false if osystems present", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osinfo = {
@@ -989,7 +989,7 @@ describe("NodeDetailsController", function() {
 
         it("returns true if deploy action and missing ssh keys", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             var firstUser = makeUser();
@@ -1008,7 +1008,7 @@ describe("NodeDetailsController", function() {
 
         it("returns false if not deploy action", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "release"
             };
             var firstUser = makeUser();
@@ -1019,7 +1019,7 @@ describe("NodeDetailsController", function() {
 
         it("returns false if ssh keys present", function() {
             var controller = makeController();
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             var firstUser = makeUser();
@@ -1033,9 +1033,9 @@ describe("NodeDetailsController", function() {
 
         it("clears actionError", function() {
             var controller = makeController();
-            $scope.actionError = makeName("error");
-            $scope.actionOptionChanged();
-            expect($scope.actionError).toBeNull();
+            $scope.action.error = makeName("error");
+            $scope.action.optionChanged();
+            expect($scope.action.error).toBeNull();
         });
     });
 
@@ -1043,16 +1043,16 @@ describe("NodeDetailsController", function() {
 
         it("sets actionOption to null", function() {
             var controller = makeController();
-            $scope.actionOption = {};
+            $scope.action.option = {};
             $scope.actionCancel();
-            expect($scope.actionOption).toBeNull();
+            expect($scope.action.option).toBeNull();
         });
 
         it("clears actionError", function() {
             var controller = makeController();
-            $scope.actionError = makeName("error");
+            $scope.action.error = makeName("error");
             $scope.actionCancel();
-            expect($scope.actionError).toBeNull();
+            expect($scope.action.error).toBeNull();
         });
     });
 
@@ -1063,7 +1063,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "power_off"
             };
             $scope.actionGo();
@@ -1076,7 +1076,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osSelection.osystem = "ubuntu";
@@ -1094,7 +1094,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osSelection.osystem = "ubuntu";
@@ -1114,7 +1114,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osSelection.osystem = "ubuntu";
@@ -1134,7 +1134,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "commission"
             };
             var commissioning_script_ids = [
@@ -1174,7 +1174,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "test"
             };
             var testing_script_ids = [
@@ -1200,7 +1200,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "release"
             };
             var secureErase = makeName("secureErase");
@@ -1223,13 +1223,13 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.actionGo();
             defer.resolve();
             $rootScope.$digest();
-            expect($scope.actionOption).toBeNull();
+            expect($scope.action.option).toBeNull();
         });
 
         it("clears osSelection on resolve", function() {
@@ -1238,7 +1238,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             $scope.osSelection.osystem = "ubuntu";
@@ -1255,7 +1255,7 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "commission"
             };
             $scope.commissionOptions.enableSSH = true;
@@ -1287,14 +1287,14 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
-            $scope.actionError = makeName("error");
+            $scope.action.error = makeName("error");
             $scope.actionGo();
             defer.resolve();
             $rootScope.$digest();
-            expect($scope.actionError).toBeNull();
+            expect($scope.action.error).toBeNull();
         });
 
         it("changes path to node listing on delete", function() {
@@ -1304,7 +1304,7 @@ describe("NodeDetailsController", function() {
                 defer.promise);
             spyOn($location, "path");
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "delete"
             };
             $scope.actionGo();
@@ -1319,14 +1319,14 @@ describe("NodeDetailsController", function() {
             spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
-            $scope.actionOption = {
+            $scope.action.option = {
                 name: "deploy"
             };
             var error = makeName("error");
             $scope.actionGo();
             defer.reject(error);
             $rootScope.$digest();
-            expect($scope.actionError).toBe(error);
+            expect($scope.action.error).toBe(error);
         });
     });
 

@@ -3,25 +3,27 @@
 {% block nav-active-settings %}active{% endblock %}
 
 {% block title %}General settings{% endblock %}
-{% block page-title %}Settings
-<ul class="tabs u-margin--bottom-none">
-    <li class="tabs__tab is-active">
-        <a class="tabs__tab-link" href="{% url 'settings' %}">General</a>
-    </li>
-    <li class="tabs__tab">
-        <a class="tabs__tab-link" href="{% url 'index' %}#/settings/dhcp">DHCP Snippets</a>
-    </li>
-    <li class="tabs__tab">
-        <a class="tabs__tab-link" href="{% url 'index' %}#/settings/repositories">Package repositories</a>
-    </li>
-</ul>
-{% endblock %}
+{% block page-title %}Settings{% endblock %}
 
 {% block head %}
 {% endblock %}
 
 {% block extra-js %}
   <script type="text/javascript" src="{% url "merge" filename="maas-settings-yui.js" %}?v={{files_version}}"></script>
+{% endblock %}
+
+{% block page-header-classes %}u-margin--bottom-none{% endblock %}
+
+{% block page-navigation %}
+<div class="page-navigation">
+    <div class="wrapper--inner">
+        <nav class="page-navigation__links">
+            <a class="page-navigation__link is-active" href="{% url 'settings' %}">General</a>
+            <a class="page-navigation__link" href="{% url 'index' %}#/settings/dhcp">DHCP Snippets</a>
+            <a class="page-navigation__link" href="{% url 'index' %}#/settings/repositories">Package repositories</a>
+        </nav>
+    </div>
+</div>
 {% endblock %}
 
 {% block content %}

@@ -245,10 +245,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
         ];
 
-        // Give $parent which is the NodeDetailsController access to this scope
-        // it will call `nodeLoaded` once the node has been fully loaded.
-        $scope.$parent.networkingController = $scope;
-
         // Sets loaded to true if both the node has been loaded at the
         // other required managers for this scope have been loaded.
         function updateLoaded() {
@@ -1696,4 +1692,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.managersHaveLoaded = true;
             updateLoaded();
         });
+
+        // Tell $parent that the networkingController has been loaded.
+        $scope.$parent.controllerLoaded('networkingController', $scope);
     }]);

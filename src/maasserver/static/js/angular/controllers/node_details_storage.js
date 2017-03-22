@@ -141,10 +141,6 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.used = [];
         $scope.showMembers = [];
 
-        // Give $parent which is the NodeDetailsController access to this scope
-        // it will call `nodeLoaded` once the node has been fully loaded.
-        $scope.$parent.storageController = $scope;
-
         // Return True if the filesystem is mounted.
         function isMountedFilesystem(filesystem) {
             return angular.isObject(filesystem) &&
@@ -2038,4 +2034,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
             return false;
         };
+
+        // Tell $parent that the storageController has been loaded.
+        $scope.$parent.controllerLoaded('storageController', $scope);
     }]);
