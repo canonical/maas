@@ -96,6 +96,28 @@ class TestRackNetworksMonitoringService(MAASTestCase):
                 neighbours=neighbours))
 
     @inlineCallbacks
+    def test_reports_mdns_to_region(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateInterfaces, region.ReportMDNSEntries)
+        self.addCleanup((yield connecting))
+        rpc_service = services.getServiceNamed('rpc')
+        service = RackNetworksMonitoringService(
+            rpc_service, Clock(), enable_monitoring=False)
+        mdns = [
+            {
+                'interface': 'eth0',
+                'hostname': 'boggle.example.com',
+                'address': factory.make_ip_address(),
+            }
+        ]
+        yield service.reportMDNSEntries(mdns)
+        self.assertThat(
+            protocol.ReportMDNSEntries, MockCalledOnceWith(
+                protocol, system_id=rpc_service.getClient().localIdent,
+                mdns=mdns))
+
+    @inlineCallbacks
     def test_asks_region_for_monitoring_state(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
