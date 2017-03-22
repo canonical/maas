@@ -694,7 +694,93 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_dehydrate_interface_for_rescue_mode_node(self):
         owner = factory.make_User()
-        node = factory.make_Node(owner=owner, status=NODE_STATUS.RESCUE_MODE)
+        node = factory.make_Node(
+            owner=owner,
+            status=random.choice([
+                NODE_STATUS.ENTERING_RESCUE_MODE, NODE_STATUS.RESCUE_MODE,
+                NODE_STATUS.EXITING_RESCUE_MODE]))
+        handler = MachineHandler(owner, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=interface)
+        expected_links = interface.get_links()
+        for link in expected_links:
+            link["subnet_id"] = link.pop("subnet").id
+        discovered_subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=factory.pick_ip_in_network(discovered_subnet.get_ipnetwork()),
+            subnet=discovered_subnet, interface=interface)
+        expected_discovered = interface.get_discovered()
+        for discovered in expected_discovered:
+            discovered["subnet_id"] = discovered.pop("subnet").id
+        self.assertEqual({
+            "id": interface.id,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "tags": interface.tags,
+            "enabled": interface.is_enabled(),
+            "is_boot": interface == node.get_boot_interface(),
+            "mac_address": "%s" % interface.mac_address,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": expected_links,
+            "discovered": expected_discovered,
+        }, handler.dehydrate_interface(interface, node))
+
+    def test_dehydrate_interface_for_testing_node(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.TESTING)
+        handler = MachineHandler(owner, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=interface)
+        expected_links = interface.get_links()
+        for link in expected_links:
+            link["subnet_id"] = link.pop("subnet").id
+        discovered_subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=factory.pick_ip_in_network(discovered_subnet.get_ipnetwork()),
+            subnet=discovered_subnet, interface=interface)
+        expected_discovered = interface.get_discovered()
+        for discovered in expected_discovered:
+            discovered["subnet_id"] = discovered.pop("subnet").id
+        self.assertEqual({
+            "id": interface.id,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "tags": interface.tags,
+            "enabled": interface.is_enabled(),
+            "is_boot": interface == node.get_boot_interface(),
+            "mac_address": "%s" % interface.mac_address,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": expected_links,
+            "discovered": expected_discovered,
+        }, handler.dehydrate_interface(interface, node))
+
+    def test_dehydrate_interface_for_failed_testing_node(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=NODE_STATUS.FAILED_TESTING,
+            power_state=POWER_STATE.ON)
         handler = MachineHandler(owner, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(

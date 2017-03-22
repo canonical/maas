@@ -17,6 +17,7 @@ from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     NODE_STATUS,
     NODE_TYPE,
+    POWER_STATE,
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
@@ -377,10 +378,15 @@ class NodeHandler(TimestampedModelHandler):
             "links": links,
         }
 
-        # When the node is commissioning or in rescue mode display the
-        # discovered IP address for this interface. This will only be shown on
-        # interfaces that are connected to a MAAS managed subnet.
-        if obj.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.RESCUE_MODE):
+        # When the node is an ephemeral state display the discovered IP address
+        # for this interface. This will only be shown on interfaces that are
+        # connected to a MAAS managed subnet.
+        if obj.status in {
+                NODE_STATUS.COMMISSIONING, NODE_STATUS.ENTERING_RESCUE_MODE,
+                NODE_STATUS.RESCUE_MODE, NODE_STATUS.EXITING_RESCUE_MODE,
+                NODE_STATUS.TESTING} or (
+                    obj.status == NODE_STATUS.FAILED_TESTING and
+                    obj.power_state == POWER_STATE.ON):
             discovereds = interface.get_discovered()
             if discovereds is not None:
                 for discovered in discovereds:

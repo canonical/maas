@@ -738,7 +738,7 @@
                                       <span data-ng-if="!isDevice && !isEditing(interface)">{$ getVLANText(interface.vlan) $}</span>
                                   </div>
                                   <div class="table__data table-col--18" aria-label="Subnet">
-                                      <span data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || interface.fabric)">{$ getSubnetText(interface.subnet) $}</span>
+                                      <span data-ng-if="!isEditing(interface) && ((isDevice && interface.subnet) || (interface.fabric && !interface.discovered[0].subnet_id))">{$ getSubnetText(interface.subnet) $}</span>
                                       <span data-ng-if="isAllNetworkingDisabled() && interface.discovered[0].subnet_id">
                                           {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                       </span>
