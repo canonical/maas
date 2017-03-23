@@ -5,8 +5,10 @@
 
 __all__ = []
 
+import io
 import os
 import os.path
+import random
 from shutil import rmtree
 import stat
 from subprocess import (
@@ -15,16 +17,21 @@ from subprocess import (
 )
 import tempfile
 import time
+import tokenize
+import types
 from unittest.mock import (
     ANY,
     call,
+    create_autospec,
     Mock,
     sentinel,
 )
 
 from maastesting import root
 from maastesting.factory import factory
+from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import (
+    DocTestMatches,
     FileContains,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -53,12 +60,15 @@ from provisioningserver.utils.fs import (
 )
 import provisioningserver.utils.fs as fs_module
 from testtools.matchers import (
+    AllMatch,
     DirContains,
     DirExists,
     EndsWith,
     Equals,
     FileExists,
+    GreaterThan,
     HasLength,
+    IsInstance,
     MatchesRegex,
     Not,
     SamePath,
@@ -431,6 +441,122 @@ class TestSudoDeleteFile(MAASTestCase):
         self.assertRaises(
             CalledProcessError,
             sudo_delete_file, self.make_file())
+
+
+def load_script(filename):
+    """Load the Python script at `filename` into a new module."""
+    modname = os.path.relpath(filename, root).replace(os.sep, ".")
+    module = types.ModuleType(modname)
+    with tokenize.open(filename) as fd:
+        code = compile(fd.read(), filename, "exec", dont_inherit=True)
+        exec(code, module.__dict__, module.__dict__)
+    return module
+
+
+class TestSudoWriteFileScript(MAASTestCase):
+    """Tests for `scripts/maas-write-file`."""
+
+    def setUp(self):
+        super(TestSudoWriteFileScript, self).setUp()
+        self.script_path = os.path.join(root, "scripts/maas-write-file")
+        self.script = load_script(self.script_path)
+        self.script.atomic_write = create_autospec(self.script.atomic_write)
+
+    def test__white_list_is_a_non_empty_set_of_file_names(self):
+        self.assertThat(self.script.whitelist, IsInstance(set))
+        self.assertThat(self.script.whitelist, Not(HasLength(0)))
+        self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
+
+    def test__accepts_file_names_on_white_list(self):
+        calls_expected = []
+        for filename in self.script.whitelist:
+            content = factory.make_bytes()  # It's binary safe.
+            mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
+            args = self.script.arg_parser.parse_args([filename, oct(mode)])
+            self.script.main(args, io.BytesIO(content))
+            calls_expected.append(call(
+                content, filename, overwrite=True, mode=mode))
+        self.assertThat(
+            self.script.atomic_write,
+            MockCallsMatch(*calls_expected))
+
+    def test__rejects_file_name_not_on_white_list(self):
+        filename = factory.make_name("/some/where", sep="/")
+        mode = random.randint(0o000, 0o777)  # Inclusive of endpoints.
+        args = self.script.arg_parser.parse_args([filename, oct(mode)])
+        with CaptureStandardIO() as stdio:
+            error = self.assertRaises(
+                SystemExit, self.script.main, args, io.BytesIO())
+        self.assertThat(error.code, GreaterThan(0))
+        self.assertThat(self.script.atomic_write, MockNotCalled())
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), DocTestMatches(
+            "usage: ... Given filename ... is not in the "
+            "white list. Choose from: ..."
+        ))
+
+    def test__rejects_file_mode_with_high_bits_set(self):
+        filename = random.choice(list(self.script.whitelist))
+        mode = random.randint(0o1000, 0o7777)  # Inclusive of endpoints.
+        args = self.script.arg_parser.parse_args([filename, oct(mode)])
+        with CaptureStandardIO() as stdio:
+            error = self.assertRaises(
+                SystemExit, self.script.main, args, io.BytesIO())
+        self.assertThat(error.code, GreaterThan(0))
+        self.assertThat(self.script.atomic_write, MockNotCalled())
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), DocTestMatches(
+            "usage: ... Given file mode 0o... is not permitted; "
+            "only permission bits may be set."
+        ))
+
+
+class TestSudoDeleteFileScript(MAASTestCase):
+    """Tests for `scripts/maas-delete-file`."""
+
+    def setUp(self):
+        super(TestSudoDeleteFileScript, self).setUp()
+        self.script_path = os.path.join(root, "scripts/maas-delete-file")
+        self.script = load_script(self.script_path)
+        self.script.atomic_delete = create_autospec(self.script.atomic_delete)
+
+    def test__white_list_is_a_non_empty_set_of_file_names(self):
+        self.assertThat(self.script.whitelist, IsInstance(set))
+        self.assertThat(self.script.whitelist, Not(HasLength(0)))
+        self.assertThat(self.script.whitelist, AllMatch(IsInstance(str)))
+
+    def test__accepts_file_names_on_white_list(self):
+        calls_expected = []
+        for filename in self.script.whitelist:
+            args = self.script.arg_parser.parse_args([filename])
+            self.script.main(args)
+            calls_expected.append(call(filename))
+        self.assertThat(
+            self.script.atomic_delete,
+            MockCallsMatch(*calls_expected))
+
+    def test__is_okay_when_the_file_does_not_exist(self):
+        filename = random.choice(list(self.script.whitelist))
+        args = self.script.arg_parser.parse_args([filename])
+        self.script.atomic_delete.side_effect = FileNotFoundError
+        self.script.main(args)
+        self.assertThat(
+            self.script.atomic_delete,
+            MockCalledOnceWith(filename))
+
+    def test__rejects_file_name_not_on_white_list(self):
+        filename = factory.make_name("/some/where", sep="/")
+        args = self.script.arg_parser.parse_args([filename])
+        with CaptureStandardIO() as stdio:
+            error = self.assertRaises(
+                SystemExit, self.script.main, args)
+        self.assertThat(error.code, GreaterThan(0))
+        self.assertThat(self.script.atomic_delete, MockNotCalled())
+        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertThat(stdio.getError(), DocTestMatches(
+            "usage: ... Given filename ... is not in the "
+            "white list. Choose from: ..."
+        ))
 
 
 class TestTempDir(MAASTestCase):

@@ -1,0 +1,47 @@
+#!/usr/bin/env python3.5
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Atomically delete a file.
+
+The filename is checked against an internal white list. As such it's intended
+to be used behind `sudo`.
+"""
+
+import argparse
+import pipes
+
+from provisioningserver.utils.fs import atomic_delete
+
+
+whitelist = {
+    "/var/lib/maas/dhcpd.conf",
+    "/var/lib/maas/dhcpd6.conf",
+}
+
+
+arg_parser = argparse.ArgumentParser(description=__doc__)
+arg_parser.add_argument("filename", help="The file to delete.")
+
+
+def main(args):
+
+    # Validate the filename here because using a `choices` argument in the
+    # parser results in ugly help and error text.
+    if args.filename not in whitelist:
+        arg_parser.error(
+            "Given filename %s is not in the white list. "
+            "Choose from: %s." % (
+                pipes.quote(args.filename), ", ".join(
+                    map(pipes.quote, sorted(whitelist)))))
+
+    # Okay, good to go.
+    else:
+        try:
+            atomic_delete(args.filename)
+        except FileNotFoundError:
+            pass  # Ignore; it's already gone.
+
+
+if __name__ == "__main__":
+    main(arg_parser.parse_args())
