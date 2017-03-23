@@ -24,4 +24,5 @@ sudo apt-get install -q -y memtester
 # Memtester can only test memory available to userspace. Reserve 32M so the
 # test doesn't fail due to the OOM killer. Only run memtester against available
 # RAM once.
-sudo memtester $(awk '/MemAvailable/ { print ($2 - 32768) }' /proc/meminfo)K 1
+sudo memtester \
+     $(awk '/MemAvailable/ { print ($2 - 32768) "K"}' /proc/meminfo) 1

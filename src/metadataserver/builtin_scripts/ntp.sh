@@ -19,6 +19,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# cloud-init configures ntp to use the rack controller or a user configured
+# external ntp server before running the test scripts. This test ensures that
+# the configured NTP server is accessible.
 e=0
 ntpq -np
 sudo systemctl stop ntp.service

@@ -30,7 +30,7 @@ from metadataserver.enum import (
 
 class ScriptManager(Manager):
 
-    def create(self, *, script=None, timeout=None, **kwargs):
+    def create(self, *, script=None, timeout=None, comment=None, **kwargs):
         """Create a Script.
 
         This is a modified version of Django's create method for use with
@@ -39,7 +39,8 @@ class ScriptManager(Manager):
         automatically created.
         """
         if script is not None and not isinstance(script, VersionedTextFile):
-            script = VersionedTextFile.objects.create(data=script)
+            script = VersionedTextFile.objects.create(
+                data=script, comment=comment)
 
         if timeout is not None:
             if isinstance(timeout, datetime.timedelta):

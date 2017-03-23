@@ -242,6 +242,13 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
         self.assertIsNotNone(reload_object(script))
 
+    def test_DELETE_prevents_deleting_default(self):
+        self.become_admin()
+        script = factory.make_Script(default=True)
+        response = self.client.delete(self.get_script_uri(script))
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertIsNotNone(reload_object(script))
+
     def test_PUT(self):
         self.become_admin()
         script = factory.make_Script()
@@ -427,6 +434,17 @@ class TestScriptAPI(APITestCase.ForUser):
                 'to': textfile.id,
             }
         )
+        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+
+    def test_revert_prevents_reverting_default(self):
+        self.become_admin()
+        script = factory.make_Script(default=True)
+        response = self.client.post(
+            self.get_script_uri(script),
+            {
+                'op': 'revert',
+                'to': script.script.id,
+            })
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test_add_tag(self):

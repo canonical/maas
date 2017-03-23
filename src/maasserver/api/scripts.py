@@ -192,6 +192,10 @@ class NodeScriptHandler(OperationsHandler):
             script = get_object_or_404(Script, id=int(name))
         else:
             script = get_object_or_404(Script, name=name)
+
+        if script.default:
+            raise MAASAPIValidationError("Unable to delete default script")
+
         script.delete()
         return rc.DELETED
 
@@ -292,6 +296,9 @@ class NodeScriptHandler(OperationsHandler):
         else:
             script = get_object_or_404(Script, name=name)
         try:
+            if script.default:
+                raise MAASAPIValidationError("Unable to revert default script")
+
             def gc_hook(value):
                 script.script = value
                 script.save()

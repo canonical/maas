@@ -14,6 +14,7 @@ from attr.validators import (
     instance_of,
     optional,
 )
+from maasserver.utils.version import get_maas_package_version
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
 from provisioningserver.utils.fs import read_text_file
@@ -128,7 +129,7 @@ BUILTIN_SCRIPTS = [
         name='ntp',
         title='NTP validation',
         description='Run ntp clock set to verify NTP connectivity.',
-        tags=['network', 'internet'],
+        tags=['network', 'ntp'],
         timeout=60,
         filename='ntp.sh',
         ),
@@ -152,6 +153,7 @@ def load_builtin_scripts():
                 name=script.name, title=script.title,
                 description=script.description, tags=script.tags,
                 script_type=script.script_type, script=script_content,
+                comment="Created by maas-%s" % get_maas_package_version(),
                 timeout=script.timeout, destructive=script.destructive,
                 default=True)
         else:
@@ -165,7 +167,8 @@ def load_builtin_scripts():
                         # version of the builtin scripts
                         return
                 script_in_db.script = script_in_db.script.update(
-                    script_content)
+                    script_content,
+                    "Updated by maas-%s" % get_maas_package_version())
             script_in_db.title = script.title
             script_in_db.description = script.description
             script_in_db.script_type = script.script_type

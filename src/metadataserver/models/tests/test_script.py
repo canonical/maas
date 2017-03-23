@@ -19,10 +19,13 @@ class TestScriptManager(MAASServerTestCase):
     def test_create_accepts_str_for_script(self):
         name = factory.make_name('name')
         script_str = factory.make_string()
+        comment = factory.make_name('comment')
 
-        script = Script.objects.create(name=name, script=script_str)
+        script = Script.objects.create(
+            name=name, script=script_str, comment=comment)
 
         self.assertEquals(script_str, script.script.data)
+        self.assertEquals(comment, script.script.comment)
 
     def test_create_accepts_ver_txt_file_for_script(self):
         name = factory.make_name('name')
