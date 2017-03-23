@@ -223,18 +223,20 @@ lxd:
 test+lxd: lxd $(strip $(test-scripts))
 	utilities/isolated-make-test
 
-test: bin/test.parallel
+test: bin/test.parallel bin/coverage
+	@$(RM) .coverage .coverage.*
 	@bin/test.parallel --subprocess-per-core
+	@bin/coverage combine
 
 test-serial: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@$(RM) coverage.data .failed
+	@$(RM) .coverage .coverage.* .failed
 	$(foreach test,$^,$(test-template);)
 	@test ! -f .failed
 
 test-failed: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
-	@$(RM) coverage.data .failed
+	@$(RM) .coverage .coverage.* .failed
 	$(foreach test,$^,$(test-template-failed);)
 	@test ! -f .failed
 
@@ -268,19 +270,18 @@ test-serial+coverage: test-serial
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
 
-coverage.xml: bin/coverage coverage.data
-	bin/coverage xml --include 'src/*' -o $@
+coverage.xml: bin/coverage .coverage
+	bin/coverage xml -o $@
 
 coverage/index.html: revno = $(or $(shell bzr revno 2>/dev/null),???)
-coverage/index.html: bin/coverage coverage.data
+coverage/index.html: bin/coverage .coverage
 	@$(RM) -r $(@D)
-	bin/coverage html --include 'src/*' \
-	    --omit 'src/*/tests/*,src/*/testing/*' \
-	    --title "MAAS r$(revno)" --directory $(@D)
+	bin/coverage html \
+	    --title "Coverage for MAAS r$(revno)" \
+	    --directory $(@D)
 
-coverage.data:
-	@$(error Use `$(MAKE) test-serial+coverage` to generate coverage \
-            data, or invoke a test script using the `--with-coverage` flag)
+.coverage:
+	@$(error Use `$(MAKE) test` to generate coverage)
 
 lint: \
     lint-py lint-py-complexity lint-py-imports \
@@ -409,7 +410,7 @@ clean: stop clean-failed
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build
 	$(RM) -r man/.doctrees
-	$(RM) coverage.data coverage.xml
+	$(RM) .coverage .coverage.* coverage.xml
 	$(RM) -r coverage
 	$(RM) -r .hypothesis
 	$(RM) -r bin include lib local

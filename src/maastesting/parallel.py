@@ -52,8 +52,11 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         """
 
     def extendCommand(self, command):
-        """Extend the command (a tuple) with additional arguments."""
-        return command
+        """Extend the command (a tuple) with additional arguments.
+
+        By default this ensures that coverage data is collected.
+        """
+        return ("bin/coverage", "run", "--parallel-mode", *command)
 
     def run(self, result):
         with tempfile.NamedTemporaryFile() as log:
@@ -72,10 +75,11 @@ class TestScriptBase(metaclass=abc.ABCMeta):
                     })
 
     def _run(self, result, log):
-        # Build the script first, which may do nothing (but is quick).
+        # Build things first, which may do nothing (but is quick).
         with self.lock:
             subprocess.check_call(
-                ("make", "--quiet", self.script), stdout=log, stderr=log)
+                ("make", "--quiet", "bin/coverage", self.script),
+                stdout=log, stderr=log)
         # Run the script in a subprocess, capturing subunit output.
         pread, pwrite = os.pipe()
         with io.open(pread, "rb") as preader:
