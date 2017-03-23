@@ -53,6 +53,7 @@ from twisted.internet import (
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
+    DeferredQueue,
     inlineCallbacks,
 )
 from twisted.logger import LogLevel
@@ -111,17 +112,51 @@ class TestPostgresListenerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__handles_missing_system_handler_on_notification(self):
-        listener = PostgresListenerService()
+        # Captured notifications from the database will go here.
+        notices = DeferredQueue()
+
+        class PostgresListenerServiceSpy(PostgresListenerService):
+            """Send notices off to `notices` right after processing."""
+            def doRead(self):
+                try:
+                    self.connection.connection.poll()
+                except:
+                    self.loseConnection(Failure(error.ConnectionLost()))
+                else:
+                    # Copy the pending notices now but don't put them in the
+                    # queue until after the real doRead has processed them.
+                    notifies = list(self.connection.connection.notifies)
+                    try:
+                        return super().doRead()
+                    finally:
+                        for notice in notifies:
+                            notices.put(notice)
+
+        listener = PostgresListenerServiceSpy()
         # Change notifications to a frozenset. This makes sure that
         # the system message does not go into the queue. Instead if should
         # call the handler directly in `doRead`.
         listener.notifications = frozenset()
         yield listener.startService()
-        yield deferToDatabase(listener.registerChannel, "sys_test")
-        listener.listeners["sys_test"] = []
+
+        # Use a randomised channel name even though LISTEN/NOTIFY is
+        # per-database and _not_ per-cluster.
+        channel = factory.make_name("sys_test", sep="_").lower()
+        self.assertTrue(listener.isSystemChannel(channel))
+        payload = factory.make_name("payload")
+
+        yield deferToDatabase(listener.registerChannel, channel)
+        listener.listeners[channel] = []
         try:
-            yield deferToDatabase(self.send_notification, "sys_test", 1)
-            self.assertFalse("sys_test" in listener.listeners)
+            # Notify our channel with a payload and wait for it to come back.
+            yield deferToDatabase(self.send_notification, channel, payload)
+            while True:
+                notice = yield notices.get()
+                if notice.channel == channel:
+                    self.assertThat(notice.payload, Equals(payload))
+                    # Our channel has been deleted from the listeners map.
+                    self.assertFalse(channel in listener.listeners)
+                    break
         finally:
             yield listener.stopService()
 
