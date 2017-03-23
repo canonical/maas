@@ -5,7 +5,6 @@
 
 __all__ = [
     'ActionScript',
-    'AtomicWriteScript',
     'MainScript',
     ]
 
@@ -17,11 +16,6 @@ import io
 import signal
 from subprocess import CalledProcessError
 import sys
-
-from provisioningserver.utils.fs import (
-    atomic_delete,
-    atomic_write,
-)
 
 
 class ActionScriptError(ValueError):
@@ -109,62 +103,3 @@ class ActionScript:
 
 class MainScript(ActionScript):
     """An `ActionScript` denoting the main script in an application."""
-
-
-class AtomicWriteScript:
-    """Wrap the atomic_write function turning it into an ActionScript.
-
-    To use:
-    >>> main = MainScript(atomic_write.__doc__)
-    >>> main.register("myscriptname", AtomicWriteScript)
-    >>> main()
-    """
-
-    @staticmethod
-    def add_arguments(parser):
-        """Initialise options for writing files atomically.
-
-        :param parser: An instance of :class:`ArgumentParser`.
-        """
-        parser.add_argument(
-            "--no-overwrite", action="store_true", required=False,
-            default=False, help="Don't overwrite file if it exists")
-        parser.add_argument(
-            "--filename", action="store", required=True, help=(
-                "The name of the file in which to store contents of stdin"))
-        parser.add_argument(
-            "--mode", action="store", required=False, default="0600", help=(
-                "They permissions to set on the file. If not set "
-                "will be r/w only to owner"))
-
-    @staticmethod
-    def run(args):
-        """Take content from stdin and write it atomically to a file."""
-        atomic_write(
-            sys.stdin.buffer.read(), args.filename, mode=int(args.mode, 8),
-            overwrite=(not args.no_overwrite))
-
-
-class AtomicDeleteScript:
-    """Wrap the atomic_delete function turning it into an ActionScript.
-
-    To use:
-    >>> main = MainScript(atomic_delete.__doc__)
-    >>> main.register("myscriptname", AtomicDeleteScript)
-    >>> main()
-    """
-
-    @staticmethod
-    def add_arguments(parser):
-        """Initialise options for deleting files atomically.
-
-        :param parser: An instance of :class:`ArgumentParser`.
-        """
-        parser.add_argument(
-            "--filename", action="store", required=True, help=(
-                "The name of the file to delete."))
-
-    @staticmethod
-    def run(args):
-        """Delete the file atomically."""
-        atomic_delete(args.filename)

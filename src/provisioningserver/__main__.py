@@ -14,16 +14,10 @@ import provisioningserver.utils.arp
 import provisioningserver.utils.avahi
 import provisioningserver.utils.dhcp
 import provisioningserver.utils.scan_network
-from provisioningserver.utils.script import (
-    AtomicDeleteScript,
-    AtomicWriteScript,
-    MainScript,
-)
+from provisioningserver.utils.script import MainScript
 
 
 script_commands = {
-    'atomic-write': AtomicWriteScript,
-    'atomic-delete': AtomicDeleteScript,
     'check-for-shared-secret': security.CheckForSharedSecretScript,
     'config': provisioningserver.cluster_config_command,
     'install-shared-secret': security.InstallSharedSecretScript,
