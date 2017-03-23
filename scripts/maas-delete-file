@@ -9,6 +9,7 @@ to be used behind `sudo`.
 """
 
 import argparse
+import os
 import pipes
 
 from provisioningserver.utils.fs import atomic_delete
@@ -18,6 +19,18 @@ whitelist = {
     "/var/lib/maas/dhcpd.conf",
     "/var/lib/maas/dhcpd6.conf",
 }
+
+
+# For DEVELOPMENT ONLY update the paths in the white list to all be prefixed
+# with MAAS_ROOT, if defined. Check real and effective UIDs to be super extra
+# paranoid (only the latter actually matters).
+if os.getuid() != 0 and os.geteuid() != 0:
+    root = os.environ.get("MAAS_ROOT")
+    if root is not None:
+        whitelist = {
+            os.path.abspath(root + os.sep + path)
+            for path in whitelist
+        }
 
 
 arg_parser = argparse.ArgumentParser(description=__doc__)

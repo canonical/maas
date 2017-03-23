@@ -40,13 +40,17 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
-from provisioningserver.path import get_tentative_path
+from provisioningserver.path import (
+    get_path,
+    get_tentative_path,
+)
 from provisioningserver.utils.fs import (
     atomic_copy,
     atomic_delete,
     atomic_symlink,
     atomic_write,
     FileLock,
+    get_library_script_path,
     get_maas_provision_command,
     incremental_write,
     NamedLock,
@@ -380,6 +384,26 @@ class TestGetMAASProvisionCommand(MAASTestCase):
             get_maas_provision_command())
 
 
+class TestGetLibraryScriptPath(MAASTestCase):
+    """Tests for `get_library_script_path`."""
+
+    def test__returns_usr_lib_maas_name_for_production(self):
+        self.patch(provisioningserver.config, "is_dev_environment")
+        provisioningserver.config.is_dev_environment.return_value = False
+        script_name = factory.make_name("script")
+        self.assertEqual(
+            "/usr/lib/maas/" + script_name,
+            get_library_script_path(script_name))
+
+    def test__returns_full_path_for_development(self):
+        self.patch(provisioningserver.config, "is_dev_environment")
+        provisioningserver.config.is_dev_environment.return_value = True
+        script_name = factory.make_name("script")
+        self.assertEqual(
+            root.rstrip("/") + "/scripts/" + script_name,
+            get_library_script_path(script_name))
+
+
 def patch_popen(test, returncode=0):
     process = test.patch_autospec(fs_module, 'Popen').return_value
     process.communicate.return_value = 'output', 'error output'
@@ -388,11 +412,15 @@ def patch_popen(test, returncode=0):
 
 
 def patch_sudo(test):
-    # Ensure that the `sudo` function always prepends a call to `sudo -n`
-    # to the command; is_develoo_mode and is_dev_environment will
-    # otherwise influence it.
+    # Ensure that the `sudo` function always prepends a call to `sudo -n` to
+    # the command; is_dev_environment will otherwise influence it.
     sudo = test.patch_autospec(fs_module, "sudo")
     sudo.side_effect = lambda command: ["sudo", "-n", *command]
+
+
+def patch_dev(test, is_dev_environment):
+    ide = test.patch_autospec(provisioningserver.config, "is_dev_environment")
+    ide.return_value = bool(is_dev_environment)
 
 
 class TestSudoWriteFile(MAASTestCase):
@@ -401,14 +429,15 @@ class TestSudoWriteFile(MAASTestCase):
     def test_calls_atomic_write(self):
         patch_popen(self)
         patch_sudo(self)
+        patch_dev(self, False)
 
         path = os.path.join(self.make_dir(), factory.make_name('file'))
         contents = factory.make_bytes()
         sudo_write_file(path, contents)
 
         self.assertThat(fs_module.Popen, MockCalledOnceWith(
-            ['sudo', '-n', get_maas_provision_command(), 'atomic-write',
-             '--filename', path, '--mode', '0644'], stdin=PIPE))
+            ['sudo', '-n', get_library_script_path("maas-write-file"),
+             path, "0644"], stdin=PIPE))
 
     def test_rejects_non_bytes_contents(self):
         self.assertRaises(
@@ -421,6 +450,14 @@ class TestSudoWriteFile(MAASTestCase):
             CalledProcessError,
             sudo_write_file, self.make_file(), factory.make_bytes())
 
+    def test_can_write_file_in_development(self):
+        filename = get_path("/var/lib/maas/dhcpd.conf")
+        contents = factory.make_bytes()  # Binary safe.
+        mode = random.randint(0o000, 0o777) | 0o400  # Always u+r.
+        sudo_write_file(filename, contents, mode)
+        self.assertThat(filename, FileContains(contents))
+        self.assertThat(os.stat(filename).st_mode & 0o777, Equals(mode))
+
 
 class TestSudoDeleteFile(MAASTestCase):
     """Testing for `sudo_delete_file`."""
@@ -428,19 +465,26 @@ class TestSudoDeleteFile(MAASTestCase):
     def test_calls_atomic_delete(self):
         patch_popen(self)
         patch_sudo(self)
+        patch_dev(self, False)
 
         path = os.path.join(self.make_dir(), factory.make_name('file'))
         sudo_delete_file(path)
 
         self.assertThat(fs_module.Popen, MockCalledOnceWith(
-            ['sudo', '-n', get_maas_provision_command(), 'atomic-delete',
-             '--filename', path]))
+            ['sudo', '-n', get_library_script_path("maas-delete-file"), path]))
 
     def test_catches_failures(self):
         patch_popen(self, 1)
         self.assertRaises(
             CalledProcessError,
             sudo_delete_file, self.make_file())
+
+    def test_can_delete_file_in_development(self):
+        filename = get_path("/var/lib/maas/dhcpd.conf")
+        with open(filename, "wb") as fd:
+            fd.write(factory.make_bytes())
+        sudo_delete_file(filename)
+        self.assertThat(filename, Not(FileExists()))
 
 
 def load_script(filename):

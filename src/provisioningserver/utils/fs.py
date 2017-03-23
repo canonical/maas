@@ -9,6 +9,7 @@ __all__ = [
     'atomic_symlink',
     'atomic_write',
     'FileLock',
+    'get_library_script_path',
     'incremental_write',
     'NamedLock',
     'read_text_file',
@@ -68,6 +69,28 @@ def get_maas_provision_command():
         return os.path.join(root, "bin", "maas-rack")
     else:
         return "maas-rack"
+
+
+def get_library_script_path(name):
+    """Return path to a "library script".
+
+    By convention (here) scripts are always installed to ``/usr/lib/maas`` on
+    the target machine.
+
+    The FHS (Filesystem Hierarchy Standard) defines ``/usr/lib/`` as the
+    location for libraries used by binaries in ``/usr/bin`` and ``/usr/sbin``,
+    hence the term "library script".
+
+    In production mode this will return ``/usr/lib/maas/$name``, but in
+    development mode it will return ``$root/scripts/$name``.
+    """
+    # Avoid circular imports.
+    from provisioningserver.config import is_dev_environment
+    if is_dev_environment():
+        from maastesting import root
+        return os.path.join(root, "scripts", name)
+    else:
+        return os.path.join("/usr/lib/maas", name)
 
 
 def _write_temp_file(content, filename):
@@ -261,6 +284,16 @@ def incremental_write(content, filename, mode=0o600):
     atomic_write(content, filename, mode=mode)
 
 
+def _with_dev_python(*command):
+    # Avoid circular imports.
+    from provisioningserver.config import is_dev_environment
+    if is_dev_environment():
+        from maastesting import root
+        interpreter = os.path.join(root, "bin", "py")
+        command = interpreter, *command
+    return command
+
+
 def sudo_write_file(filename, contents, mode=0o644):
     """Write (or overwrite) file as root.  USE WITH EXTREME CARE.
 
@@ -271,13 +304,8 @@ def sudo_write_file(filename, contents, mode=0o644):
     """
     if not isinstance(contents, bytes):
         raise TypeError("Content must be bytes, got: %r" % (contents, ))
-    maas_provision_cmd = get_maas_provision_command()
-    command = [
-        maas_provision_cmd,
-        'atomic-write',
-        '--filename', filename,
-        '--mode', "%.4o" % mode,
-    ]
+    maas_write_file = get_library_script_path("maas-write-file")
+    command = _with_dev_python(maas_write_file, filename, "%.4o" % mode)
     proc = Popen(sudo(command), stdin=PIPE)
     stdout, stderr = proc.communicate(contents)
     if proc.returncode != 0:
@@ -290,12 +318,8 @@ def sudo_delete_file(filename):
     Runs an atomic update using non-interactive `sudo`.  This will fail if
     it needs to prompt for a password.
     """
-    maas_provision_cmd = get_maas_provision_command()
-    command = [
-        maas_provision_cmd,
-        'atomic-delete',
-        '--filename', filename,
-    ]
+    maas_delete_file = get_library_script_path("maas-delete-file")
+    command = _with_dev_python(maas_delete_file, filename)
     proc = Popen(sudo(command))
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
