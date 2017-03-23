@@ -1380,7 +1380,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     tags: [],
                     parents: parents,
                     primary: parents[0],
-                    macAddress: "",
+                    mac_address: "",
                     mode: "active-backup",
                     lacpRate: "slow",
                     xmitHashPolicy: "layer2"
@@ -1414,14 +1414,14 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
         // Return true if the user has inputed a value in the MAC address field
         // but it is invalid.
-        $scope.isMACAddressInvalid = function(macAddress, invalidEmpty) {
+        $scope.isMACAddressInvalid = function(mac_address, invalidEmpty) {
             if(angular.isUndefined(invalidEmpty)) {
                 invalidEmpty = false;
             }
-            if(!angular.isString(macAddress) || macAddress === "") {
+            if(!angular.isString(mac_address) || mac_address === "") {
                 return invalidEmpty;
             }
-            return !ValidationService.validateMAC(macAddress);
+            return !ValidationService.validateMAC(mac_address);
         };
 
         // Return true when the LACR rate selection should be shown.
@@ -1441,7 +1441,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.cannotAddBond = function() {
             return (
                 $scope.isInterfaceNameInvalid($scope.newBondInterface) ||
-                $scope.isMACAddressInvalid($scope.newBondInterface.macAddress));
+                $scope.isMACAddressInvalid(
+                    $scope.newBondInterface.mac_address));
         };
 
         // Actually add the bond.
@@ -1452,9 +1453,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             var parents = $scope.newBondInterface.parents.map(
                 function(nic) { return nic.id; });
-            var macAddress = $scope.newBondInterface.macAddress;
-            if(macAddress === "") {
-                macAddress = $scope.newBondInterface.primary.mac_address;
+            var mac_address = $scope.newBondInterface.mac_address;
+            if(mac_address === "") {
+                mac_address = $scope.newBondInterface.primary.mac_address;
             }
             var vlan_id, vlan = $scope.newBondInterface.primary.vlan;
             if(angular.isObject(vlan)) {
@@ -1464,7 +1465,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
             var params = {
                 name: $scope.newBondInterface.name,
-                mac_address: macAddress,
+                mac_address: mac_address,
                 tags: $scope.newBondInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
@@ -1527,7 +1528,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     tags: [],
                     parents: parents,
                     primary: parents[0],
-                    macAddress: "",
+                    mac_address: "",
                     bridge_stp: false,
                     bridge_fd: 15
                 };
@@ -1539,7 +1540,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return (
                 $scope.isInterfaceNameInvalid($scope.newBridgeInterface) ||
                 $scope.isMACAddressInvalid(
-                    $scope.newBridgeInterface.macAddress));
+                    $scope.newBridgeInterface.mac_address));
         };
 
         // Actually add the bridge.
@@ -1549,13 +1550,13 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
 
             var parents = [$scope.newBridgeInterface.primary.id];
-            var macAddress = $scope.newBridgeInterface.macAddress;
-            if(macAddress === "") {
-                macAddress = $scope.newBridgeInterface.primary.mac_address;
+            var mac_address = $scope.newBridgeInterface.mac_address;
+            if(mac_address === "") {
+                mac_address = $scope.newBridgeInterface.primary.mac_address;
             }
             var params = {
                 name: $scope.newBridgeInterface.name,
-                mac_address: macAddress,
+                mac_address: mac_address,
                 tags: $scope.newBridgeInterface.tags.map(
                     function(tag) { return tag.text; }),
                 parents: parents,
@@ -1596,7 +1597,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 if($scope.$parent.isDevice) {
                     $scope.newInterface = {
                         name: getNextName("eth"),
-                        macAddress: "",
+                        mac_address: "",
                         macError: false,
                         tags: [],
                         errorMsg: null,
@@ -1606,7 +1607,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 } else {
                     $scope.newInterface = {
                         name: getNextName("eth"),
-                        macAddress: "",
+                        mac_address: "",
                         macError: false,
                         tags: [],
                         errorMsg: null,
@@ -1624,7 +1625,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             return (
                 $scope.isInterfaceNameInvalid($scope.newInterface) ||
                 $scope.isMACAddressInvalid(
-                    $scope.newInterface.macAddress, true));
+                    $scope.newInterface.mac_address, true));
         };
 
         // Actually add the new physical interface.
@@ -1637,7 +1638,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if($scope.$parent.isDevice) {
                 params = {
                     name: $scope.newInterface.name,
-                    mac_address: $scope.newInterface.macAddress,
+                    mac_address: $scope.newInterface.mac_address,
                     tags: $scope.newInterface.tags.map(
                         function(tag) { return tag.text; }),
                     ip_assignment: $scope.newInterface.ip_assignment,
@@ -1648,7 +1649,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     name: $scope.newInterface.name,
                     tags: $scope.newInterface.tags.map(
                         function(tag) { return tag.text; }),
-                    mac_address: $scope.newInterface.macAddress,
+                    mac_address: $scope.newInterface.mac_address,
                     vlan: $scope.newInterface.vlan.id,
                     mode: $scope.newInterface.mode
                 };

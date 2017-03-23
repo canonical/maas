@@ -712,7 +712,7 @@
                                   <div class="table__data table-col--12" aria-label="Name" data-ng-if="!isDevice" data-ng-show="tableInfo.column == 'name'">
                                       <span data-ng-if="!isEditing(interface)">{$ interface.name $}</span>
                                       <input type="text" class="table__input"
-                                          data-ng-if="isEditing(interface) && interface.type != 'vlan'"
+                                          data-ng-if="isEditing(interface) && interface.type !== 'vlan'"
                                           data-ng-model="editInterface.name"
                                           data-ng-class="{ 'has-error': isInterfaceNameInvalid(editInterface) }">
                                   </div>
@@ -823,7 +823,7 @@
                                                               <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
                                                           </select>
                                                       </div>
-                                                      <div class="form__group" data-ng-if="newInterface.type === 'vlan'">
+                                                      <div class="form__group" data-ng-if="newInterface.type !== 'alias'">
                                                           <label class="two-col">Tags</label>
                                                           <div class="form__group-input three-col last-col">
                                                               <tags-input ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
@@ -893,11 +893,11 @@
                                                               </span>
                                                           </dl>
                                                           <maas-obj-field type="text" key="mac_address" label="MAC address" label-width="two" input-width="three"
-                                                               data-ng-if="interface.type != 'alias' && interface.type != 'vlan'" disable-label="false"
+                                                               data-ng-if="interface.type !== 'alias' && interface.type !== 'vlan'" disable-label="false"
                                                                input-class="table__input u-margin--none" placeholder="00:00:00:00:00:00"></maas-obj-field>
                                                           <maas-obj-field type="tags" key="tags" label="Tags" label-width="two" input-width="three"
                                                                placeholder="Add a tag"
-                                                               data-ng-if="!isLimitedEditingAllowed(interface) && interface.type != 'alias'"
+                                                               data-ng-if="!isLimitedEditingAllowed(interface) && interface.type !== 'alias'"
                                                                disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
                                                       </fieldset>
                                                       <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
@@ -1026,8 +1026,8 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
-                                                          data-ng-model="newBondInterface.macAddress"
-                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newBondInterface.macAddress) }"
+                                                          data-ng-model="newBondInterface.mac_address"
+                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newBondInterface.mac_address) }"
                                                           data-ng-placeholder="getInterfacePlaceholderMACAddress(newBondInterface)">
                                                   </div>
                                                   <div class="form__group">
@@ -1122,8 +1122,8 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
-                                                          data-ng-model="newBridgeInterface.macAddress"
-                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newBridgeInterface.macAddress) }"
+                                                          data-ng-model="newBridgeInterface.mac_address"
+                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newBridgeInterface.mac_address) }"
                                                           data-ng-placeholder="getInterfacePlaceholderMACAddress(newBridgeInterface)">
                                                   </div>
                                                   <div class="form__group">
@@ -1198,8 +1198,8 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
-                                                          data-ng-model="newInterface.macAddress"
-                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.macAddress, false) || newInterface.macError }">
+                                                          data-ng-model="newInterface.mac_address"
+                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, false) || newInterface.macError }">
                                                   </div>
                                                   <div class="form__group">
                                                       <label class="two-col">Tags</label>
@@ -1259,8 +1259,8 @@
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input name="mac" type="text" class="three-col"
                                                           placeholder="00:00:00:00:00:00"
-                                                          data-ng-model="newInterface.macAddress"
-                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.macAddress, true) }">
+                                                          data-ng-model="newInterface.mac_address"
+                                                          data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, true) }">
                                                   </div>
                                               </fieldset>
                                               <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">

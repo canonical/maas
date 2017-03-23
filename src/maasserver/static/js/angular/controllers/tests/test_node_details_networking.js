@@ -3383,7 +3383,7 @@ describe("NodeNetworkingController", function() {
                 parents: [nic1, nic2],
                 primary: nic1,
                 tags: [],
-                macAddress: "",
+                mac_address: "",
                 mode: "active-backup",
                 lacpRate: "slow",
                 xmitHashPolicy: "layer2"
@@ -3435,36 +3435,36 @@ describe("NodeNetworkingController", function() {
 
         it("returns the MAC address of the primary interface", function() {
             var controller = makeController();
-            var macAddress = makeName("mac");
+            var mac_address = makeName("mac");
             $scope.newBondInterface.primary = {
-                mac_address: macAddress
+                mac_address: mac_address
             };
             expect(
                 $scope.getInterfacePlaceholderMACAddress(
-                    $scope.newBondInterface)).toBe(macAddress);
+                    $scope.newBondInterface)).toBe(mac_address);
         });
     });
 
     describe("isMACAddressInvalid", function() {
 
-        it("returns false when the macAddress blank and not invalidEmpty",
+        it("returns false when the mac_address blank and not invalidEmpty",
             function() {
                 var controller = makeController();
                 expect($scope.isMACAddressInvalid("")).toBe(false);
             });
 
-        it("returns truw when the macAddress is blank and invalidEmpty",
+        it("returns truw when the mac_address is blank and invalidEmpty",
             function() {
                 var controller = makeController();
                 expect($scope.isMACAddressInvalid("", true)).toBe(true);
             });
 
-        it("returns false if valid macAddress", function() {
+        it("returns false if valid mac_address", function() {
             var controller = makeController();
             expect($scope.isMACAddressInvalid("00:11:22:33:44:55")).toBe(false);
         });
 
-        it("returns true if invalid macAddress", function() {
+        it("returns true if invalid mac_address", function() {
             var controller = makeController();
             expect($scope.isMACAddressInvalid("00:11:22:33:44")).toBe(true);
         });
@@ -3568,7 +3568,7 @@ describe("NodeNetworkingController", function() {
                 $q.defer().promise);
             spyOn($scope, "cannotAddBond").and.returnValue(true);
             $scope.newBondInterface.name = "bond0";
-            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            $scope.newBondInterface.mac_address = "00:11:22:33:44:55";
 
             $scope.addBond();
             expect(MachinesManager.createBondInterface).not.toHaveBeenCalled();
@@ -3605,7 +3605,7 @@ describe("NodeNetworkingController", function() {
                 $q.defer().promise);
             spyOn($scope, "cannotAddBond").and.returnValue(false);
             $scope.newBondInterface.name = "bond0";
-            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            $scope.newBondInterface.mac_address = "00:11:22:33:44:55";
             $scope.addBond();
 
             expect(MachinesManager.createBondInterface).toHaveBeenCalledWith(
@@ -3653,7 +3653,7 @@ describe("NodeNetworkingController", function() {
                 $q.defer().promise);
             spyOn($scope, "cannotAddBond").and.returnValue(false);
             $scope.newBondInterface.name = "bond0";
-            $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
+            $scope.newBondInterface.mac_address = "00:11:22:33:44:55";
             $scope.addBond();
 
             expect(MachinesManager.createBondInterface).toHaveBeenCalledWith(
@@ -3803,7 +3803,7 @@ describe("NodeNetworkingController", function() {
                 parents: [nic1],
                 primary: nic1,
                 tags: [],
-                macAddress: "",
+                mac_address: "",
                 bridge_stp: false,
                 bridge_fd: 15
             });
@@ -3857,7 +3857,7 @@ describe("NodeNetworkingController", function() {
                 $q.defer().promise);
             spyOn($scope, "cannotAddBridge").and.returnValue(true);
             $scope.newBridgeInterface.name = "br0";
-            $scope.newBridgeInterface.macAddress = "00:11:22:33:44:55";
+            $scope.newBridgeInterface.mac_address = "00:11:22:33:44:55";
 
             $scope.addBridge();
             expect(
@@ -3886,7 +3886,7 @@ describe("NodeNetworkingController", function() {
                 $q.defer().promise);
             spyOn($scope, "cannotAddBridge").and.returnValue(false);
             $scope.newBridgeInterface.name = "br0";
-            $scope.newBridgeInterface.macAddress = "00:11:22:33:44:55";
+            $scope.newBridgeInterface.mac_address = "00:11:22:33:44:55";
             $scope.addBridge();
 
             expect(MachinesManager.createBridgeInterface).toHaveBeenCalledWith(
@@ -3950,7 +3950,7 @@ describe("NodeNetworkingController", function() {
             $scope.showCreatePhysical();
             expect($scope.newInterface).toEqual({
                 name: "eth0",
-                macAddress: "",
+                mac_address: "",
                 macError: false,
                 tags: [],
                 errorMsg: null,
@@ -4087,7 +4087,7 @@ describe("NodeNetworkingController", function() {
             };
             $scope.newInterface = {
                 name: "eth0",
-                macAddress: "00:11:22:33:44:55",
+                mac_address: "00:11:22:33:44:55",
                 tags: [],
                 vlan: vlan,
                 subnet: subnet,
@@ -4113,7 +4113,7 @@ describe("NodeNetworkingController", function() {
             };
             $scope.newInterface = {
                 name: "eth0",
-                macAddress: "00:11:22:33:44:55",
+                mac_address: "00:11:22:33:44:55",
                 tags: [],
                 vlan: vlan,
                 subnet: subnet,
@@ -4153,7 +4153,7 @@ describe("NodeNetworkingController", function() {
             };
             $scope.newInterface = {
                 name: "eth0",
-                macAddress: "00:11:22:33:44:55",
+                mac_address: "00:11:22:33:44:55",
                 tags: [],
                 vlan: vlan,
                 subnet: subnet,
@@ -4172,7 +4172,7 @@ describe("NodeNetworkingController", function() {
             expect($scope.newInterface.errorMsg).toBeNull();
         });
 
-        it("handles macAddress error", function() {
+        it("handles mac_address error", function() {
             var controller = makeController();
             var vlan = {
                 id: makeInteger(0, 100)
@@ -4182,7 +4182,7 @@ describe("NodeNetworkingController", function() {
             };
             $scope.newInterface = {
                 name: "eth0",
-                macAddress: "00:11:22:33:44:55",
+                mac_address: "00:11:22:33:44:55",
                 tags: [],
                 vlan: vlan,
                 subnet: subnet,
