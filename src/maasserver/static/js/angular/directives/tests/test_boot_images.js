@@ -88,6 +88,7 @@ describe("maasBootImages", function() {
         expect(scope.generatedImages).toEqual([]);
         expect(scope.customImages).toEqual([]);
         expect(scope.ubuntuDeleteId).toBeNull();
+        expect(scope.removingImage).toBeNull();
     });
 
     it("clears loading once polling and user manager loaded", function() {
@@ -1166,6 +1167,7 @@ describe("maasBootImages", function() {
             var size = makeName("size");
             var status = makeName("status");
             scope.bootResources.resources = [{
+                id: 3,
                 rtype: 1,
                 icon: icon,
                 title: title,
@@ -1179,6 +1181,7 @@ describe("maasBootImages", function() {
                 icon: 'icon--status-' + icon + ' u-animation--pulse',
                 title: title,
                 arch: arch,
+                image_id: 3,
                 size: size,
                 status: status
             }]);
@@ -1197,6 +1200,7 @@ describe("maasBootImages", function() {
             var status = makeName("status");
             scope.bootResources.resources = [{
                 rtype: 2,
+                id: 3,
                 icon: icon,
                 title: title,
                 arch: arch,
@@ -1209,9 +1213,85 @@ describe("maasBootImages", function() {
                 icon: 'icon--status-' + icon + ' u-animation--pulse',
                 title: title,
                 arch: arch,
+                image_id: 3,
                 size: size,
                 status: status
             }]);
+        });
+    });
+
+    describe("isShowingDeleteConfirm", function() {
+        it("returns false when not deleting", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {image_id: 3};
+            expect(scope.isShowingDeleteConfirm(image)).toBe(false);
+        });
+
+        it("returns true when deleting this image", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image1 = {image_id: 3};
+            var image2 = {image_id: 7};
+            scope.removingImage = image1;
+            expect(scope.isShowingDeleteConfirm(image1)).toBe(true);
+        });
+
+        it("returns false when deleting other image", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image1 = {image_id: 3};
+            var image2 = {image_id: 7};
+            scope.removingImage = image1;
+            expect(scope.isShowingDeleteConfirm(image2)).toBe(false);
+        });
+    });
+
+    describe("quickRemove", function() {
+        it("sets removingImage", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {image_id: 3};
+            scope.quickRemove(image);
+            expect(scope.removingImage).toBe(image);
+        });
+    });
+
+    describe("cancelRemove", function() {
+        it("clears removingImage", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {image_id: 3};
+            scope.removingImage = image;
+            scope.cancelRemove();
+            expect(scope.removingImage).toBe(null);
+        });
+    });
+
+    describe("confirmRemove", function() {
+        it("calls delete_image if given removingImage", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image1 = {image_id: 3};
+            var image2 = {image_id: 7};
+            scope.removingImage = image1;
+            spyOn(BootResourcesManager, "deleteImage");
+            scope.confirmRemove(image1);
+            expect(scope.removingImage).toBe(null);
+            expect(BootResourcesManager.deleteImage).toHaveBeenCalledWith(
+                {id: image1.image_id});
+        });
+
+        it("does not call delete_image if given other image", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image1 = {image_id: 3};
+            var image2 = {image_id: 7};
+            scope.removingImage = image1;
+            spyOn(BootResourcesManager, "deleteImage");
+            scope.confirmRemove(image2);
+            expect(scope.removingImage).toBe(null);
+            expect(BootResourcesManager.deleteImage).not.toHaveBeenCalled();
         });
     });
 

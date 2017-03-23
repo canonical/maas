@@ -116,7 +116,7 @@
                             <div class="table__header table-col--25">Release</div>
                             <div class="table__header table-col--15">Architecture</div>
                             <div class="table__header table-col--20">Size</div>
-                            <div class="table__header table-col--30">Status</div>
+                            <div class="table__header table-col--40">Status</div>
                         </div>
                     </header>
                     <main class="table__body">
@@ -192,7 +192,7 @@
                     <div class="table__header table-col--25">Release</div>
                     <div class="table__header table-col--15">Architecture</div>
                     <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--30">Status</div>
+                    <div class="table__header table-col--40">Status</div>
                 </div>
             </header>
             <main class="table__body">
@@ -210,7 +210,7 @@
                     </div>
                     <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
                     <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
+                    <div class="table__data table-col--40" aria-label="Status">{$ image.status $}</div>
                 </div>
             </main>
         </section>
@@ -233,7 +233,7 @@
                     <div class="table__header table-col--25">Release</div>
                     <div class="table__header table-col--15">Architecture</div>
                     <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--30">Status</div>
+                    <div class="table__header table-col--40">Status</div>
                 </div>
             </header>
             <main class="table__body">
@@ -251,7 +251,26 @@
                     </div>
                     <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
                     <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
+                    <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
+                    <div class="table__data table--mobile-controls  table-col--3">
+                        <div class="table__controls u-align--right">
+                            <a class="u-display--desktop icon icon--delete tooltip"
+                                aria-label="Remove"
+                                data-ng-click="quickRemove(image)"></a>
+                            <a class="button--secondary u-display--mobile"
+                                aria-label="Remove"
+                                data-ng-click="quickRemove(image)">Remove image</a>
+                        </div>
+                    </div>
+                    <div class="table__row is-active" data-ng-if="isShowingDeleteConfirm(image)">
+                        <div class="table__data u-float--left">
+                              <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this image?</p>
+                        </div>
+                        <div class="table__data u-float--right">
+                              <a class="button--base button--inline" data-ng-click="cancelRemove()">Cancel</a>
+                              <button class="button--destructive button--inline" data-ng-click="confirmRemove(image)">Remove</button>
+                        </div>
+                    </div>
                 </div>
             </main>
         </section>
@@ -266,7 +285,7 @@
                     <div class="table__header table-col--25">Release</div>
                     <div class="table__header table-col--15">Architecture</div>
                     <div class="table__header table-col--20">Size</div>
-                    <div class="table__header table-col--30">Status</div>
+                    <div class="table__header table-col--40">Status</div>
                 </div>
             </header>
             <main class="table__body">
@@ -284,7 +303,26 @@
                     </div>
                     <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
                     <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
-                    <div class="table__data table-col--30" aria-label="Status">{$ image.status $}</div>
+                    <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
+                    <div class="table__data table--mobile-controls  table-col--3">
+                        <div class="table__controls u-align--right">
+                            <a class="u-display--desktop icon icon--delete tooltip"
+                                aria-label="Remove"
+                                data-ng-click="quickRemove(image)"></a>
+                            <a class="button--secondary u-display--mobile"
+                                aria-label="Remove"
+                                data-ng-click="quickRemove(image)">Remove image</a>
+                        </div>
+                    </div>
+                    <div class="table__row is-active" data-ng-if="isShowingDeleteConfirm(image)">
+                        <div class="table__data u-float--left">
+                              <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this image?</p>
+                        </div>
+                        <div class="table__data u-float--right">
+                              <a class="button--base button--inline" data-ng-click="cancelRemove()">Cancel</a>
+                              <button class="button--destructive button--inline" data-ng-click="confirmRemove(image)">Remove</button>
+                        </div>
+                    </div>
                 </div>
             </main>
         </section>

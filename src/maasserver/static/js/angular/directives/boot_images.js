@@ -84,6 +84,7 @@ angular.module('MAAS').directive('maasBootImages', [
                 $scope.generatedImages = [];
                 $scope.customImages = [];
                 $scope.ubuntuDeleteId = null;
+                $scope.removingImage = null;
 
                 // Return true if the authenticated user is super user.
                 $scope.isSuperUser = function() {
@@ -498,6 +499,7 @@ angular.module('MAAS').directive('maasBootImages', [
                                     icon: 'icon--status-' + resource.icon,
                                     title: resource.title,
                                     arch: resource.arch,
+                                    image_id: resource.id,
                                     size: resource.size,
                                     status: resource.status
                                 };
@@ -535,6 +537,30 @@ angular.module('MAAS').directive('maasBootImages', [
                         }
                     }
                     return false;
+                };
+
+                // Return if we are asking about deleting this image.
+                $scope.isShowingDeleteConfirm = function(image) {
+                    return image === $scope.removingImage;
+                };
+
+                // Mark the image for deletion.
+                $scope.quickRemove = function(image) {
+                    $scope.removingImage = image;
+                };
+
+                // Cancel image deletion.
+                $scope.cancelRemove = function() {
+                    $scope.removingImage = null;
+                };
+
+                // Mark the image for deletion.
+                $scope.confirmRemove = function(image) {
+                    if(image === $scope.removingImage) {
+                        BootResourcesManager.deleteImage(
+                            {id: image.image_id});
+                    }
+                    $scope.cancelRemove();
                 };
 
                 // Return true if the stop import button should be shown.
