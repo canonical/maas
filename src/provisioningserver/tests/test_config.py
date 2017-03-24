@@ -93,11 +93,6 @@ class TestConfigurationMeta(MAASTestCase):
         ("file", dict(example_configuration=ExampleConfigurationForFile)),
     )
 
-    def setUp(self):
-        super(TestConfigurationMeta, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
-
     def set_envvar(self, filepath=None):
         """Set the env. variable named by `ExampleConfiguration.envvar"."""
         self.useFixture(EnvironmentVariableFixture(

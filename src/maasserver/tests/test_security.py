@@ -10,7 +10,6 @@ from binascii import b2a_hex
 from datetime import datetime
 from os import unlink
 
-from fixtures import EnvironmentVariableFixture
 from maasserver import security
 from maasserver.models.config import Config
 from maasserver.testing.testcase import (
@@ -104,11 +103,6 @@ is_valid_secret = MatchesAll(
 
 
 class TestGetSharedSecret(MAASTransactionServerTestCase):
-
-    def setUp(self):
-        super(TestGetSharedSecret, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
 
     def test__generates_new_secret_when_none_exists(self):
         secret = security.get_shared_secret()

@@ -99,6 +99,9 @@ bin/buildout: bootstrap-buildout.py
 	$(python) bootstrap-buildout.py --allow-site-packages
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
+# buildout.cfg refers to .run and .run-e2e.
+buildout.cfg: .run .run-e2e
+
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
@@ -110,7 +113,7 @@ bin/test.parallel: \
 
 bin/maas-region bin/twistd.region: \
     bin/buildout buildout.cfg versions.cfg setup.py \
-    $(js_enums) $(scss_output) .run
+    $(js_enums) $(scss_output)
 	$(buildout) install region
 	@touch --no-create $@
 
@@ -138,7 +141,7 @@ bin/test.js: bin/karma bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/test.e2e: \
-    bin/protractor bin/buildout buildout.cfg versions.cfg setup.py .run-e2e
+    bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
@@ -151,7 +154,7 @@ bin/test.testing: \
 	@touch --no-create $@
 
 bin/maas-rack bin/twistd.rack: \
-  bin/buildout buildout.cfg versions.cfg setup.py .run
+  bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@
 
@@ -378,7 +381,7 @@ man/%: docs/man/%.rst | bin/sphinx-build
 	bin/sphinx-build -b man docs man $^
 
 .run .run-e2e: run-skel
-	cp -av $^ $@
+	@cp --archive --verbose $^ $@
 
 enums: $(js_enums)
 

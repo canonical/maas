@@ -18,7 +18,6 @@ from unittest.mock import (
     sentinel,
 )
 
-from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -31,11 +30,6 @@ from provisioningserver.utils.fs import (
 
 
 class TestGetSharedSecretFromFilesystem(MAASTestCase):
-
-    def setUp(self):
-        super(TestGetSharedSecretFromFilesystem, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
 
     def write_secret(self):
         secret = factory.make_bytes()
@@ -95,11 +89,6 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
 
-    def setUp(self):
-        super(TestSetSharedSecretOnFilesystem, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
-
     def read_secret(self):
         secret_path = security.get_shared_secret_filesystem_path()
         secret_hex = read_text_file(secret_path)
@@ -135,11 +124,6 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
 
 
 class TestInstallSharedSecretScript(MAASTestCase):
-
-    def setUp(self):
-        super(TestInstallSharedSecretScript, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
 
     def test__has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
@@ -256,11 +240,6 @@ class TestInstallSharedSecretScript(MAASTestCase):
 
 
 class TestCheckForSharedSecretScript(MAASTestCase):
-
-    def setUp(self):
-        super(TestCheckForSharedSecretScript, self).setUp()
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_ROOT", self.make_dir()))
 
     def test__has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
