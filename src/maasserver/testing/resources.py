@@ -245,12 +245,31 @@ class DjangoDatabasesManager(TestResourceManager):
                 for database in databases:
                     dbname = database["NAME"]
                     template = re.search(r"^(.+)_\d+_\d+$", dbname).group(1)
-                    stmt = "DROP DATABASE %s" % dbname
-                    cursor.execute(stmt)
-                    debug(
-                        "Dropped {dbname}; statement: {stmt}",
-                        dbname=dbname, stmt=stmt)
+                    self._stopOtherActivity(cursor, dbname)
+                    self._dropDatabase(cursor, dbname)
                     database["NAME"] = template
+
+    @staticmethod
+    def _stopOtherActivity(cursor, dbname):
+        """Terminate other connections to the given database."""
+        cursor.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE pid != pg_backend_pid() AND datname = %s", [dbname])
+        count = sum(
+            (1 if success else 0)
+            for [success] in cursor.fetchall())
+        debug(
+            "Killed {count} other backends in {dbname}",
+            count=count, dbname=dbname)
+
+    @staticmethod
+    def _dropDatabase(cursor, dbname):
+        """Drop the given database."""
+        stmt = "DROP DATABASE %s" % dbname
+        cursor.execute(stmt)
+        debug(
+            "Dropped {dbname}; statement: {stmt}",
+            dbname=dbname, stmt=stmt)
 
     def isDirty(self):
         from django.db import connections
