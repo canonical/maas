@@ -204,7 +204,6 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         from maasserver.models import (
             Fabric,
             Interface,
-            Space,
             VLAN,
         )
 
@@ -219,7 +218,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
             'interface': (Interface.objects, 'ip_addresses__subnet'),
             'ip': self._add_ip_in_subnet_query,
             'name': "__name",
-            'space': (Space.objects, 'vlan__subnet'),
+            'space': self._add_space_query,
             'vid': self._add_vlan_vid_query,
             'vlan': (VLAN.objects, 'subnet'),
         }
@@ -244,6 +243,17 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         else:
             cidr = str(ip.cidr)
             return op(current_q, Q(cidr=cidr))
+
+    def _add_space_query(self, current_q, op, space):
+        """Query for a related VLAN with the specified space."""
+        # Circular imports.
+        from maasserver.models import Space
+        if space == Space.UNDEFINED:
+            current_q = op(current_q, Q(vlan__space__isnull=True))
+        else:
+            space = Space.objects.get_object_by_specifiers_or_raise(space)
+            current_q = op(current_q, Q(vlan__space=space))
+        return current_q
 
     def _add_unvalidated_cidr_query(self, current_q, op, item):
         ip = IPNetwork(item)

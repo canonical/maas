@@ -27,6 +27,7 @@ from maasserver.enum import (
     RDNS_MODE_CHOICES,
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
+from maasserver.models import Space
 from maasserver.models.subnet import (
     create_cidr,
     Subnet,
@@ -264,6 +265,19 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         self.assertItemsEqual(
             Subnet.objects.filter_by_specifiers("ip:1.1.1.1"),
             [])
+
+    def test__filter_by_specifiers_space_filter(self):
+        space1 = factory.make_Space()
+        vlan1 = factory.make_VLAN(space=space1)
+        vlan2 = factory.make_VLAN(space=None)
+        subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
+        subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("space:%s" % space1.name),
+            [subnet1])
+        self.assertItemsEqual(
+            Subnet.objects.filter_by_specifiers("space:%s" % Space.UNDEFINED),
+            [subnet2])
 
     def test__matches_interfaces(self):
         node1 = factory.make_Node_with_Interface_on_Subnet()
