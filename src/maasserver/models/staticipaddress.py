@@ -511,7 +511,8 @@ class StaticIPAddressManager(Manager):
                         THEN 5
                     ELSE staticip.alloc_type
                 END,
-                interface.id
+                interface.id,
+                inet 'fc00::/7' >> ip /* ULA after non-ULA */
             """
         iface_sql_query = """
             SELECT
