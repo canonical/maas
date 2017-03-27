@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from maasserver.compose_preseed import (
     compose_preseed,
     get_apt_proxy_for_node,
@@ -209,6 +211,21 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         preseed = compose_preseed(PRESEED_TYPE.COMMISSIONING, node)
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
+
+    def test_compose_preseed_for_commissioning_node_manages_etc_hosts(self):
+        # Regression test for LP:1670444
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=random.choice([
+                NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING,
+                NODE_STATUS.RESCUE_MODE]))
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertTrue(preseed['manage_etc_hosts'])
 
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
             self):

@@ -303,6 +303,13 @@ def _compose_cloud_init_preseed(
                 'maas': get_rsyslog_host_port(node),
             }
         },
+        # The ephemeral environment doesn't have a domain search path set which
+        # cases sudo to fail to resolve itself and print out a warning message.
+        # These messages are caught when logging during commissioning and
+        # testing. Allow /etc/hosts to be managed by cloud-init so the lookup
+        # works. This may cause 1087183 to come back if anyone tries to JuJu
+        # deploy in an ephemeral environment.
+        'manage_etc_hosts': True,
     }
     # Add the system configuration information.
     cloud_config.update(get_system_info())
