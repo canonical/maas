@@ -216,7 +216,7 @@
                         data-ng-click="section.area = 'commissioning'">Commissioning</a>
                     <a class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
                         data-ng-class="{ 'is-active': section.area === 'testing'}"
-                        data-ng-click="section.area = 'testing'">Hardware</a>
+                        data-ng-click="section.area = 'testing'">Hardware tests</a>
                     <a class="page-navigation__link" data-ng-if="!isDevice"
                         data-ng-class="{ 'is-active': section.area === 'events'}"
                         data-ng-click="section.area = 'events'">Events</a>
@@ -2370,7 +2370,9 @@
                             <td class="table-col--1 u-padding--right-none u-padding--left-none">
                                 <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--running': output.status === 1, 'icon--pass': output.status === 2, 'icon--status-failed': output.status === 3 || output.status === 5, 'icon--timed-out': output.status === 4 }"></span>
                             </td>
-                            <td class="table-col--35" aria-label="Name"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <!-- Only link to the commissioning result when we've received it, this is indicated with status 2(passed) or 3(failed) -->
+                            <td class="table-col--35" aria-label="Name" data-ng-if="output.status === 2 || output.status === 3"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <td class="table-col--35" aria-label="Name" data-ng-if="output.status !== 2 && output.status !== 3">{$ output.name $}</td>
                             <td class="table-col--30" aria-label="Time">{$ output.updated $}</td>
                             <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>
                         </tr>
@@ -2400,7 +2402,9 @@
                         <td class="table-col--1 u-padding--right-none u-padding--left-none">
                             <span class="icon" data-ng-class="{ 'icon--pending': output.status === 0, 'icon--running': output.status === 1, 'icon--pass': output.status === 2, 'icon--status-failed': output.status === 3 || output.status === 5, 'icon--timed-out': output.status === 4 }"></span>
                         </td>
-                        <td class="table-col--35" aria-label="Filename"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.ui_name $}</a></td>
+                        <!-- Only link to the test result when we've received it, this is indicated with status 2(passed) or 3(failed) -->
+                        <td class="table-col--35" aria-label="Filename" data-ng-if="output.status === 2 || output.status === 3"><a href="#/node/{$ type_name $}/{$ node.system_id $}/result/{$ output.name $}">{$ output.ui_name $}</a></td>
+                        <td class="table-col--35" aria-label="Filename" data-ng-if="output.status !== 2 && output.status !== 3">{$ output.ui_name $}</td>
                         <td class="table-col--30" aria-label="Tags">{$ output.tags $}</td>
                         <td class="table-col--30" aria-label="Runtime">{$ output.runtime $}</td>
                         <td class="table-col--30" aria-label="Status">{$ output.status_name $}</td>

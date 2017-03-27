@@ -28,15 +28,22 @@ from metadataserver.builtin_scripts import smartctl
 class TestSmartCTL(MAASTestCase):
 
     def test_list_supported_drives(self):
+        mock_print = self.patch(smartctl, 'print')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = [
             b'Attached scsi disk sda        State: running',
             b'/dev/sda -d scsi # /dev/sda, SCSI device\n'
             b'/dev/sdb -d scsi # /dev/sdb, SCSI device',
+            b'NAME MODEL            SERIAL\n'
+            b'sda  HGST HDN724040AL abc123\n'
+            b'sdb  HGST HDN724040AL abc123\n'
+            b'sdc  HGST HDN724040AL abc123',
         ]
         mock_popen = self.patch(smartctl, 'Popen')
-        mock_popen.return_value = Popen(
-            ['echo', 'SMART support is: Available'], stdout=PIPE)
+        mock_popen.side_effect = [
+            Popen(['echo', 'SMART support is: Available'], stdout=PIPE),
+            Popen(['echo', 'SMART support is: Unavailable'], stdout=PIPE),
+        ]
 
         self.assertItemsEqual(
             [['/dev/sdb', '-d', 'scsi']], smartctl.list_supported_drives())
@@ -47,17 +54,32 @@ class TestSmartCTL(MAASTestCase):
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
                     ['sudo', 'smartctl', '--scan-open'],
-                    timeout=smartctl.TIMEOUT)))
+                    timeout=smartctl.TIMEOUT),
+                call(
+                    [
+                        'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+                        'NAME,MODEL,SERIAL', '-x', 'NAME',
+                    ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
                 ['sudo', 'smartctl', '-i', '/dev/sdb', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
+        self.assertThat(
+            mock_print, MockCallsMatch(
+                call(),
+                call('The following drives do not support SMART:'),
+                call('NAME MODEL            SERIAL'),
+                call('sdc  HGST HDN724040AL abc123'),
+                call()))
 
     def test_list_supported_drives_ignores_iscsiadm_timeout(self):
+        mock_print = self.patch(smartctl, 'print')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = [
             TimeoutExpired('iscsiadm', 60),
             b'/dev/sda -d scsi # /dev/sda, SCSI device',
+            b'NAME MODEL            SERIAL\n'
+            b'sda  HGST HDN724040AL abc123',
         ]
         mock_popen = self.patch(smartctl, 'Popen')
         mock_popen.return_value = Popen(
@@ -72,17 +94,26 @@ class TestSmartCTL(MAASTestCase):
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
                     ['sudo', 'smartctl', '--scan-open'],
-                    timeout=smartctl.TIMEOUT)))
+                    timeout=smartctl.TIMEOUT),
+                call(
+                    [
+                        'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+                        'NAME,MODEL,SERIAL', '-x', 'NAME',
+                    ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
                 ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
+        self.assertThat(mock_print, MockNotCalled())
 
     def test_list_supported_drives_ignores_iscsiadm_errors(self):
+        mock_print = self.patch(smartctl, 'print')
         mock_check_output = self.patch(smartctl, 'check_output')
         mock_check_output.side_effect = [
             CalledProcessError(1, 'iscsiadm'),
             b'/dev/sda -d scsi # /dev/sda, SCSI device',
+            b'NAME MODEL            SERIAL\n'
+            b'sda  HGST HDN724040AL abc123',
         ]
         mock_popen = self.patch(smartctl, 'Popen')
         mock_popen.return_value = Popen(
@@ -97,35 +128,17 @@ class TestSmartCTL(MAASTestCase):
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
                     ['sudo', 'smartctl', '--scan-open'],
-                    timeout=smartctl.TIMEOUT)))
+                    timeout=smartctl.TIMEOUT),
+                call(
+                    [
+                        'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+                        'NAME,MODEL,SERIAL', '-x', 'NAME',
+                    ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
                 ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
-
-    def test_list_supported_drives_ignores_drives_without_smart(self):
-        mock_check_output = self.patch(smartctl, 'check_output')
-        mock_check_output.side_effect = [
-            CalledProcessError(1, 'iscsiadm'),
-            b'/dev/sda -d scsi # /dev/sda, SCSI device',
-        ]
-        mock_popen = self.patch(smartctl, 'Popen')
-        mock_popen.return_value = Popen(
-            ['echo', 'SMART support is: Unavailable'], stdout=PIPE)
-
-        self.assertItemsEqual([], smartctl.list_supported_drives())
-        self.assertThat(
-            mock_check_output, MockCallsMatch(
-                call(
-                    ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
-                    timeout=smartctl.TIMEOUT, stderr=DEVNULL),
-                call(
-                    ['sudo', 'smartctl', '--scan-open'],
-                    timeout=smartctl.TIMEOUT)))
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
-                stdout=PIPE, stderr=DEVNULL))
+        self.assertThat(mock_print, MockNotCalled())
 
     def test_run_smartctl_selftest(self):
         drive = factory.make_name('drive')

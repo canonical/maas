@@ -78,7 +78,7 @@ class RunSmartCtl(Thread):
                         sleep(1)
 
     def run(self):
-        if self.test is not None:
+        if self.test not in ('validate', None):
             self._run_smartctl_selftest()
 
         # Run smartctl and capture its output. Once all threads have completed
@@ -145,6 +145,25 @@ def list_supported_drives():
                     m = smart_support_regex.search(output.decode('utf-8'))
                     if m is not None:
                         drives.append(drive_with_device_type)
+
+    all_drives = check_output(
+        [
+            'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+            'NAME,MODEL,SERIAL', '-x', 'NAME',
+        ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
+    supported_drives = iscsi_drives + [
+        drive[0].split('/')[-1] for drive in drives]
+    unsupported_drives = [
+        line for line in all_drives[1:]
+        if line.split()[0] not in supported_drives
+    ]
+    if len(unsupported_drives) != 0:
+        print()
+        print('The following drives do not support SMART:')
+        print(all_drives[0])
+        print('\n'.join(unsupported_drives))
+        print()
+
     return drives
 
 
@@ -173,7 +192,7 @@ def run_smartctl(test=None):
 
         if thread.running_test_failed:
             smartctl_failures += 1
-            print('Failed to start and wait for smartctl self-test %s', test)
+            print('Failed to start and wait for smartctl self-test: %s' % test)
             print()
         if thread.timedout:
             smartctl_failures += 1
