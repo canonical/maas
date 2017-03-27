@@ -421,7 +421,9 @@ class TestTFTPBackend(MAASTestCase):
 
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.
-        reader = yield backend.get_boot_method_reader(method, fake_params)
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = factory.make_ipv4_address()
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
@@ -429,7 +431,7 @@ class TestTFTPBackend(MAASTestCase):
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
         self.assertThat(method.get_reader, MockCalledOnceWith(
-            backend, kernel_params=fake_kernel_params, **fake_params))
+            backend, kernel_params=fake_kernel_params, **params_with_ip))
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params_for_local(self):
@@ -462,7 +464,9 @@ class TestTFTPBackend(MAASTestCase):
 
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.
-        reader = yield backend.get_boot_method_reader(method, fake_params)
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = factory.make_ipv4_address()
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
@@ -470,7 +474,52 @@ class TestTFTPBackend(MAASTestCase):
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
         self.assertThat(method.get_reader, MockCalledOnceWith(
-            backend, kernel_params=fake_kernel_params, **fake_params))
+            backend, kernel_params=fake_kernel_params, **params_with_ip))
+
+    @inlineCallbacks
+    def test_get_boot_method_reader_returns_no_image(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters(label='no-such-image')
+        fake_params = fake_kernel_params._asdict()
+
+        # Stub the output of list_boot_images so no images exist.
+        self.patch(tftp_module, "list_boot_images").return_value = []
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = succeed(fake_params)
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the rendered configuration, which will actually be a JSON dump
+        # of the render-time parameters.
+        params_with_ip = dict(fake_params)
+        params_with_ip['remote_ip'] = factory.make_ipv4_address()
+        reader = yield backend.get_boot_method_reader(method, params_with_ip)
+        self.addCleanup(reader.finish)
+        self.assertIsInstance(reader, BytesReader)
+        output = reader.read(10000)
+
+        # The result has been rendered by `method.get_reader`.
+        self.assertEqual(fake_render_result, output)
+        self.assertThat(method.get_reader, MockCalledOnceWith(
+            backend, kernel_params=fake_kernel_params, **params_with_ip))
 
     @inlineCallbacks
     def test_get_boot_method_render_substitutes_armhf_in_params(self):

@@ -177,7 +177,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 returnValue((method, params))
         returnValue((None, None))
 
-    def get_boot_image(self, params, client):
+    def get_boot_image(self, params, client, remote_ip):
         """Get the boot image for the params on this rack controller.
 
         Calls `MarkNodeFailed` for the machine if its a known machine.
@@ -208,7 +208,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
                     maaslog.error(
                         "Enlistment failed to boot %s; missing required boot "
                         "image %s/%s/%s/%s." % (
-                            params["remote_ip"],
+                            remote_ip,
                             params['osystem'], params["arch"],
                             params["subarch"], params["release"]))
                 params["label"] = "no-such-image"
@@ -239,7 +239,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         def fetch(client, params):
             params["system_id"] = client.localIdent
             d = self.fetcher(client, GetBootConfig, **params)
-            d.addCallback(self.get_boot_image, client)
+            d.addCallback(self.get_boot_image, client, params['remote_ip'])
             d.addCallback(lambda data: KernelParameters(**data))
             return d
 

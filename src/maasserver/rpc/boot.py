@@ -78,8 +78,14 @@ def get_boot_filenames(arch, subarch, osystem, series):
     if subarch == 'generic':
         # MAAS doesn't store in the BootResource table what subarch is the
         # generic subarch so lookup what the generic subarch maps to.
-        boot_resource_subarch = validate_hwe_kernel(
-            subarch, None, "%s/%s" % (arch, subarch), osystem, series)
+        try:
+            boot_resource_subarch = validate_hwe_kernel(
+                subarch, None, "%s/%s" % (arch, subarch), osystem, series)
+        except ValidationError:
+            # It's possible that no kernel's exist at all for this arch,
+            # subarch, osystem, series combination. In that case just fallback
+            # to 'generic'.
+            boot_resource_subarch = 'generic'
     else:
         boot_resource_subarch = subarch
 

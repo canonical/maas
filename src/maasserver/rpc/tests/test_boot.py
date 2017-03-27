@@ -646,6 +646,13 @@ class TestGetBootFilenames(MAASServerTestCase):
                 factory.make_name('arch'), factory.make_name('subarch'),
                 factory.make_name('osystem'), factory.make_name('series')))
 
+    def test_returns_all_none_when_not_found_and_generic(self):
+        self.assertItemsEqual(
+            (None, None, None),
+            get_boot_filenames(
+                factory.make_name('arch'), 'generic',
+                factory.make_name('osystem'), factory.make_name('series')))
+
     def test_allows_no_boot_dtb(self):
         release = factory.make_default_ubuntu_release_bootable()
         arch, subarch = release.architecture.split('/')
