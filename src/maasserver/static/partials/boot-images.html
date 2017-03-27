@@ -12,10 +12,10 @@
                 <div data-ng-if="isSuperUser() && !source.tooMany">
                     <h3>Choose source</h3>
                     <div class="form__group">
-                        <input type="radio" ng-model="source.source_type" id="source_maas" value="maas.io"
+                        <input type="radio" data-ng-model="source.source_type" id="source_maas" value="maas.io"
                             data-ng-change="sourceChanged()" data-ng-disabled="saving">
                         <label for="source_maas" class="u-margin--right">maas.io</label>
-                        <input type="radio" ng-model="source.source_type" id="source_custom" value="custom"
+                        <input type="radio" data-ng-model="source.source_type" id="source_custom" value="custom"
                             data-ng-change="sourceChanged()" data-ng-disabled="saving">
                         <label for="source_custom">Custom</label>
                     </div>
@@ -23,9 +23,16 @@
                         <h3>Mirror URL</h3>
                         <p>Add the URL you want to use to select your images from.</p>
                         <div class="u-width--half u-display--inline-block u-float--left">
-                            <div class="form__group">
+                            <div class="form__group eight-col">
                                 <input type="text" name="mirrorUrl" placeholder="e.g. http:// or https://"
                                     data-ng-model="source.url" data-ng-change="sourceChanged()">
+                            </div>
+                            <div class="u-display--inline-block u-float--left">
+                                <button class="button--base button--inline" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()" >
+                                    <i class="icon" data-ng-class="{ 'icon--close': !isShowingAdvancedOptions(), 'icon--open': isShowingAdvancedOptions() }"></i>
+                                    <span data-ng-if="!isShowingAdvancedOptions()">Show advanced options</span>
+                                    <span data-ng-if="isShowingAdvancedOptions()">Hide advanced options</span>
+                                </button>
                             </div>
                             <div data-ng-if="isShowingAdvancedOptions()">
                                 <div class="form__group">
@@ -49,11 +56,6 @@
                             </div>
                         </div>
                         <div class="u-width--half u-display--inline-block u-float--left">
-                            <div class="u-display--inline-block u-float--left u-margin--top-tiny u-margin--left">
-                                <i class="icon" data-ng-class="{ 'icon--close': !isShowingAdvancedOptions(), 'icon--open': isShowingAdvancedOptions() }"></i>
-                                <a data-ng-click="toggleAdvancedOptions()" data-ng-if="!isShowingAdvancedOptions()">Show advanced options</a>
-                                <a data-ng-click="toggleAdvancedOptions()" data-ng-if="isShowingAdvancedOptions()">Hide advanced options</a>
-                            </div>
                             <button class="button--secondary button--inline u-float--right"
                                 data-ng-if="showConnectButton()"
                                 data-ng-disabled="isConnectButtonDisabled()"
@@ -160,11 +162,11 @@
                 </section>
                 <div class="twelve-col" data-ng-if="!source.tooMany">
                     <div class="u-align--right">
-                        <a class="button--base button--inline"
+                        <button class="button--base button--inline"
                             data-ng-if="showStopImportButton()"
                             data-ng-disabled="!canStopImport()"
-                            data-ng-click="stopImport()">{$ getStopImportText() $}</a>
-                        <button class="button--positive button--inline"
+                            data-ng-click="stopImport()">{$ getStopImportText() $}</button>
+                        <button type="submit" class="button--positive button--inline"
                             data-ng-if="isSuperUser() && showSaveSelection()"
                             data-ng-disabled="!canSaveSelection()"
                             data-ng-click="saveSelection()">{$ getSaveSelectionText() $}</button>

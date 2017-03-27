@@ -1469,7 +1469,7 @@
                                           <a class="button--base button--inline"
                                               ng-click="cancel()">Cancel</a>
                                           <button class="button--secondary button--inline ng-binding"
-                                              ng-disabled="!canMount()"
+                                             data-ng-disabled="!canMount()"
                                               ng-click="mount()">Mount</button>
                                       </div>
                                     </div>
@@ -1724,7 +1724,7 @@
                                                         <input type="text" id="mount-point" class="three-col"
                                                             placeholder="Absolute path"
                                                             ng-model="item.$options.mountPoint"
-                                                            ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                           data-ng-disabled="!usesMountPoint(item.$options.fstype)"
                                                             ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
                                                     </div>
                                                     <div class="form__group">
@@ -1771,7 +1771,7 @@
                                                             <input type="text" id="mount-point" class="three-col"
                                                                 placeholder="Absolute path"
                                                                 ng-model="item.$options.mountPoint"
-                                                                ng-disabled="!usesMountPoint(item.$options.fstype)"
+                                                               data-ng-disabled="!usesMountPoint(item.$options.fstype)"
                                                                 ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
                                                         </div>
                                                         <div class="form__group">

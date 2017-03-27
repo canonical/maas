@@ -33,7 +33,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             'user-select: none;',
         '}'
     ].join('');
-    document.body.appendChild(styleElement);
+    document.getElementsByTagName('head')[0].appendChild(styleElement);
 
     // Inject the double_click_overlay.html into the template cache.
     $templateCache.put('directive/templates/double_click_overlay.html', [

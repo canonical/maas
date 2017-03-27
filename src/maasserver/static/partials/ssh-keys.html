@@ -14,20 +14,20 @@
             <div data-ng-if="group.source !== 'upload'">
                 <div class="table__data table-col--35" aria-label="ID">{$ group.authId $}</div>
                 <div class="table__data table-col--30" aria-label="Number of keys">{$ group.keys.length $}
-                    <a class="icon icon--open tooltip u-margin--top-tiny u-padding--left-large" aria-label="Open"
+                    <button class="icon icon--open tooltip u-margin--top-tiny u-padding--left-large" aria-label="Open"
                       data-ng-click="open(group, 'view')"
-                      data-ng-if="group.source !== 'upload' && openRow !== group.id">Open</a>
-                    <a class="icon icon--close tooltip u-margin--top-tiny u-padding--left-large" aria-label="Close"
+                      data-ng-if="group.source !== 'upload' && openRow !== group.id">Open</button>
+                    <button class="icon icon--close tooltip u-margin--top-tiny u-padding--left-large" aria-label="Close"
                         data-ng-click="close()"
-                        data-ng-if="group.source !== 'upload' && openRow === group.id">Close</a>
+                        data-ng-if="group.source !== 'upload' && openRow === group.id">Close</button>
                 </div>
             </div>
             <div data-ng-if="group.source === 'upload'">
                 <div class="table__data table-col--65" data-ng-bind-html="trustAsHtml(group.keys[0].display)"></div>
             </div>
             <div class="table__data table-col--10 u-align--right">
-                <a class="icon icon--delete tooltip" aria-label="Delete"
-                    data-ng-click="open(group, 'delete')">Delete</a>
+                <button class="icon icon--delete tooltip" aria-label="Delete"
+                    data-ng-click="open(group, 'delete')">Delete</button>
             </div>
             <div class="table__dropdown">
                 <div class="table__row u-border--none"
