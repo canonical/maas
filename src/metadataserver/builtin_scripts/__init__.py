@@ -114,7 +114,7 @@ BUILTIN_SCRIPTS = [
         title='CPU validation',
         description='Run the stress-ng CPU tests over 12 hours.',
         tags=['cpu'],
-        timeout=60 * 60 * 12 + 60 * 5,
+        timeout=60 * 60 * 12,
         filename='stress_ng_cpu_long.sh',
         ),
     BuiltinScript(
@@ -122,7 +122,7 @@ BUILTIN_SCRIPTS = [
         title='Memory integrity',
         description='Run the stress-ng memory tests over 12 hours.',
         tags=['memory'],
-        timeout=60 * 60 * 12 + 60 * 5,
+        timeout=60 * 60 * 12,
         filename='stress_ng_memory_long.sh',
         ),
     BuiltinScript(

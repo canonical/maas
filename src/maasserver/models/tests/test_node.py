@@ -2983,6 +2983,37 @@ class TestNode(MAASServerTestCase):
                 "%s: Could not start testing for node: %s",
                 node.hostname, exception))
 
+    def test_start_testing_sets_status_expired(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        admin = factory.make_admin()
+
+        timeout = random.randint(1, 100)
+        set_status_expires = self.patch_autospec(
+            Node, "_set_status_expires")
+
+        self.patch(node, '_power_cycle').return_value = None
+        self.patch(node, 'get_testing_time')
+        node.get_testing_time.return_value = timeout
+
+        with post_commit_hooks:
+            node.start_testing(admin, testing_scripts=[script.name])
+
+        self.assertThat(
+            set_status_expires, MockCalledOnceWith(node.system_id, timeout))
+
+    def test_abort_testing_clears_status_expires(self):
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        admin = factory.make_admin()
+        self.patch(Node, "_stop").return_value = None
+        clear_status_expires = self.patch_autospec(
+            Node, "_clear_status_expires")
+        self.patch(Node, "_set_status")
+        with post_commit_hooks:
+            node.abort_testing(admin)
+        self.assertThat(
+            clear_status_expires, MockCalledOnceWith(node.system_id))
+
     def test_full_clean_logs_node_status_transition(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())

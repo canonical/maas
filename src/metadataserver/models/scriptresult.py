@@ -178,9 +178,13 @@ class ScriptResult(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         if self.started is None and self.status == SCRIPT_STATUS.RUNNING:
             self.started = datetime.now()
+            if 'update_fields' in kwargs:
+                kwargs['update_fields'].append('started')
         elif self.ended is None and self.status in {
                 SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED,
                 SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.ABORTED}:
             self.ended = datetime.now()
+            if 'update_fields' in kwargs:
+                kwargs['update_fields'].append('ended')
 
         return super().save(*args, **kwargs)

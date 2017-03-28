@@ -1167,6 +1167,18 @@ class Node(CleanSave, TimestampedModel):
             minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
                 NODE_STATUS.COMMISSIONING]).total_seconds()
 
+    def get_testing_time(self):
+        """Return the testing time of this node (in seconds).
+
+        This is the maximum time a node is allowed to take to start testing.
+        Once testing has begun MAAS relies on a heartbeat to know if the node
+        has failed testing.
+        """
+        # Return a *very* conservative estimate for now.
+        return timedelta(
+            minutes=NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[
+                NODE_STATUS.TESTING]).total_seconds()
+
     def get_entering_rescue_mode_time(self):
         """Return the entering-rescue-mode time of this node (in seconds).
 
@@ -1529,6 +1541,9 @@ class Node(CleanSave, TimestampedModel):
         # status_expire being set.
         if self.status not in MONITORED_STATUSES:
             self.status_expires = None
+            if ('update_fields' in kwargs and
+                    'status_expires' not in kwargs['update_fields']):
+                kwargs['update_fields'].append('status_expires')
 
         super(Node, self).save(*args, **kwargs)
 
@@ -1911,6 +1926,10 @@ class Node(CleanSave, TimestampedModel):
                 # MAAS can direct the node to start.
                 is_cycling = True
 
+            post_commit().addCallback(
+                callOutToDatabase, Node._set_status_expires,
+                self.system_id, self.get_testing_time())
+
             cycling.addCallback(
                 callOut, self._start_testing_async, is_cycling, self.hostname)
 
@@ -2041,6 +2060,8 @@ class Node(CleanSave, TimestampedModel):
             # confusion when testing. Return a Deferred from side_effect.
             assert isinstance(stopping, Deferred) or stopping is None
 
+            post_commit().addCallback(
+                callOutToDatabase, Node._clear_status_expires, self.system_id)
             post_commit().addCallback(
                 callOutToDatabase, Node._abort_all_tests,
                 self.current_testing_script_set_id)

@@ -51,22 +51,35 @@ class TimestampedModel(Model, object):
 
         If the record already exists, `updated` is set to the current time.
         """
+        update_created = False
+        update_updated = False
         if self.id is None:
             # New record; set created if not set.
             if self.created is None:
                 self.created = now()
             # Set updated to same as created.
             self.updated = self.created
+            update_created = True
+            update_updated = True
         else:
             # Existing record; set updated always.
             self.updated = now()
+            update_updated = True
         # Allow overriding the values before saving, so that these values can
         # be changed in sample data, unit tests, etc.
         if _created is not None:
             self.created = _created
+            update_created = True
         if _updated is not None:
             self.updated = _updated
+            update_updated = True
             # Ensure consistency.
             if self.updated < self.created:
                 self.created = self.updated
+                update_created = True
+        if 'update_fields' in kwargs:
+            if update_created:
+                kwargs['update_fields'].append('created')
+            if update_updated:
+                kwargs['update_fields'].append('updated')
         return super(TimestampedModel, self).save(*args, **kwargs)

@@ -18,6 +18,7 @@ from maasserver.models import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -267,16 +268,16 @@ class TestScriptResult(MAASServerTestCase):
     def test_save_stores_start_time(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         script_result.status = SCRIPT_STATUS.RUNNING
-        script_result.save()
-        self.assertIsNotNone(script_result.started)
+        script_result.save(update_fields=['status'])
+        self.assertIsNotNone(reload_object(script_result).started)
 
     def test_save_stores_end_time(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
         script_result.status = random.choice([
             SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
             SCRIPT_STATUS.ABORTED])
-        script_result.save()
-        self.assertIsNotNone(script_result.ended)
+        script_result.save(update_fields=['status'])
+        self.assertIsNotNone(reload_object(script_result).ended)
 
     def test_get_runtime(self):
         runtime_seconds = random.randint(1, 59)

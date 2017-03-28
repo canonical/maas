@@ -2035,6 +2035,22 @@ class TestTestingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEquals(script_status, script_result.status)
 
+    def test_signaling_testing_resets_status_expires(self):
+        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, owner=factory.make_User(),
+            with_empty_script_sets=True)
+        node.status_expires = datetime.now()
+        node.save()
+        script_result = (
+            node.current_testing_script_set.scriptresult_set.first())
+        client = make_node_client(node=node)
+        response = call_signal(
+            client, status='WORKING', script_result_id=script_result.id)
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        node = reload_object(node)
+        self.assertIsNone(node.status_expires)
+
 
 class TestDiskErasingAPI(MAASServerTestCase):
 
