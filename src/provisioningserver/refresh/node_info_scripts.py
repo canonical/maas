@@ -97,6 +97,16 @@ CPUINFO_SCRIPT = dedent("""\
     lscpu -p=cpu,core,socket
     """)
 
+SERIAL_PORTS_SCRIPT = dedent("""\
+    #!/bin/bash
+    # Do not fail commissioning if this fails.
+    set +e
+    find /sys/class/tty/ ! -type d -print0 2> /dev/null \
+        | xargs -0 readlink -f \
+        | sort -u
+    exit 0
+    """)
+
 SRIOV_SCRIPT = dedent("""\
     #!/bin/sh
     for file in $(find /sys/devices/ -name sriov_numvfs); do
@@ -106,6 +116,137 @@ SRIOV_SCRIPT = dedent("""\
             echo "$eth $mac"
         done
     done
+    """)
+
+SUPPORT_SCRIPT = dedent("""\
+    #!/bin/bash
+    # Do not fail commissioning if this fails.
+    set +e
+    echo "-----BEGIN KERNEL INFO-----"
+    uname -a
+    echo "-----END KERNEL INFO-----"
+    echo ""
+    echo "-----BEGIN KERNEL COMMAND LINE-----"
+    cat /proc/cmdline
+    echo "-----END KERNEL COMMAND LINE-----"
+    CMDLINE="$(cat /proc/cmdline)"
+    CLOUD_CONFIG="$(echo $CMDLINE | xargs -n1 echo | grep cloud-config-url)"
+    URL="$(echo $CLOUD_CONFIG | grep -o http.*)"
+    if [ "$URL" != "" ]; then
+        echo ""
+        echo "-----BEGIN CLOUD CONFIG QUERY-----"
+        curl -v "$URL" 2>&1
+        echo "-----END CLOUD CONFIG QUERY-----"
+    fi
+    echo ""
+    echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
+    cat /proc/cpuinfo | grep '^model name' | cut -d: -f 2- | sort | uniq -c
+    echo "-----BEGIN CPU CORE COUNT AND MODEL-----"
+    if [ -x "$(which lspci)" ]; then
+        echo ""
+        echo "-----BEGIN PCI INFO-----"
+        lspci -nnv
+        echo "-----END PCI INFO-----"
+    fi
+    if [ -x "$(which lsusb)" ]; then
+        echo ""
+        echo "-----BEGIN USB INFO-----"
+        lsusb
+        echo "-----END USB INFO-----"
+    fi
+    echo ""
+    echo "-----BEGIN MODALIASES-----"
+    find /sys -name modalias -print0 2> /dev/null | xargs -0 cat | sort \
+        | uniq -c
+    echo "-----END MODALIASES-----"
+    echo ""
+    echo "-----BEGIN SERIAL PORTS-----"
+    find /sys/class/tty/ ! -type d -print0 2> /dev/null \
+        | xargs -0 readlink -f \
+        | sort -u
+    echo "-----END SERIAL PORTS-----"
+    echo ""
+    echo "-----BEGIN NETWORK INTERFACES-----"
+    ip -o link
+    echo "-----END NETWORK INTERFACES-----"
+    if [ -x "$(which lsblk)" ]; then
+        echo ""
+        echo "-----BEGIN BLOCK DEVICE SUMMARY-----"
+        lsblk
+        echo "-----END BLOCK DEVICE SUMMARY-----"
+    fi
+    # The remainder of this script only runs as root (during commissioning).
+    if [ "$(id -u)" != "0" ]; then
+        exit 0
+    fi
+    if [ -x "$(which lsblk)" ]; then
+        echo ""
+        echo "-----BEGIN DETAILED BLOCK DEVICE INFO-----"
+        # Note: excluding ramdisks, floppy drives, and loopback devices.
+        lsblk --exclude 1,2,7 -d -P -x MAJ:MIN
+        echo ""
+        for dev in $(lsblk -n --exclude 1,2,7 --output KNAME); do
+            echo "$dev:"
+            udevadm info -q all -n $dev
+            size64="$(blockdev --getsize64 /dev/$dev 2> /dev/null || echo ?)"
+            bsz="$(blockdev --getbsz /dev/$dev 2> /dev/null || echo ?)"
+            echo ""
+            echo "    size64: $size64"
+            echo "       bsz: $bsz"
+        done
+        echo ""
+        # Enumerate the mappings that were generated (by device).
+        find /dev/disk -type l | xargs ls -ln | awk '{ print $9, $10, $11 }' \
+            | sort -k2
+        echo "-----END DETAILED BLOCK DEVICE INFO-----"
+    fi
+    if [ -x "$(which dmidecode)" ]; then
+        DMI_OUTFILE=/root/dmi.bin
+        echo ""
+        dmidecode -u --dump-bin $DMI_OUTFILE && (
+            echo "-----BEGIN DMI DATA-----" ;
+            base64 $DMI_OUTFILE
+            echo "-----END DMI DATA-----"
+        ) || (echo "Unable to read DMI information."; exit 0)
+        echo ""
+        echo "-----BEGIN FULL DMI DECODE-----"
+        dmidecode -u --from-dump $DMI_OUTFILE
+        echo "-----END FULL DMI DECODE-----"
+        # via http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmiopt.c
+        DMI_STRINGS="
+            bios-vendor
+            bios-version
+            bios-release-date
+            system-manufacturer
+            system-product-name
+            system-version
+            system-serial-number
+            system-uuid
+            baseboard-manufacturer
+            baseboard-product-name
+            baseboard-version
+            baseboard-serial-number
+            baseboard-asset-tag
+            chassis-manufacturer
+            chassis-type
+            chassis-version
+            chassis-serial-number
+            chassis-asset-tag
+            processor-family
+            processor-manufacturer
+            processor-version
+            processor-frequency
+        "
+        echo ""
+        echo "-----BEGIN DMI KEYPAIRS-----"
+        for key in $DMI_STRINGS; do
+            value=$(dmidecode --from-dump $DMI_OUTFILE -s $key)
+            printf "%s=%s\\n" "$key" "$(echo $value)"
+        done
+        echo "-----END DMI KEYPAIRS-----"
+    fi
+    # Do not fail commissioning if this fails.
+    exit 0
     """)
 
 
@@ -418,6 +559,11 @@ def null_hook(node, output, exit_status):
 # controller isn't running django. On the region controller we set the hooks in
 # metadataserver/models/commissioningscript.py
 NODE_INFO_SCRIPTS = OrderedDict([
+    ('00-maas-00-support-info', {
+        'content': SUPPORT_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'run_on_controller': True,
+    }),
     (LSHW_OUTPUT_NAME, {
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': null_hook,
@@ -451,6 +597,11 @@ NODE_INFO_SCRIPTS = OrderedDict([
     }),
     ('00-maas-07-block-devices', {
         'content': make_function_call_script(gather_physical_block_devices),
+        'hook': null_hook,
+        'run_on_controller': True,
+    }),
+    ('00-maas-08-serial-ports', {
+        'content': SERIAL_PORTS_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': True,
     }),
