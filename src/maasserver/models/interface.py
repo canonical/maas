@@ -597,6 +597,13 @@ class Interface(CleanSave, TimestampedModel):
             # MTU set and it is disconnected.
             from maasserver.models.vlan import DEFAULT_MTU
             mtu = DEFAULT_MTU
+        children = self.get_successors()
+        # Check if any child interface has a greater MTU. It is an invalid
+        # configuration for the parent MTU to be smaller. (LP: #1662948)
+        for child in children:
+            child_mtu = child.get_effective_mtu()
+            if mtu < child_mtu:
+                mtu = child_mtu
         return mtu
 
     def get_links(self):

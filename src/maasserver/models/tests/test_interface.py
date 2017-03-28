@@ -913,27 +913,6 @@ class InterfaceTest(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO, interface=nic1)
         self.assertTrue(nic1.is_configured())
 
-    def test_get_effective_mtu_returns_interface_mtu(self):
-        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nic_mtu = random.randint(552, 4096)
-        nic1.params = {
-            "mtu": nic_mtu
-        }
-        nic1.save()
-        self.assertEqual(nic_mtu, nic1.get_effective_mtu())
-
-    def test_get_effective_mtu_returns_vlan_mtu(self):
-        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        vlan_mtu = random.randint(552, 4096)
-        nic1.vlan.mtu = vlan_mtu
-        nic1.vlan.save()
-        self.assertEqual(vlan_mtu, nic1.get_effective_mtu())
-
-    def test_get_effective_mtu_returns_default_mtu(self):
-        nic1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, disconnected=True)
-        self.assertEqual(DEFAULT_MTU, nic1.get_effective_mtu())
-
     def test_get_links_returns_links_for_each_type(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         links = []
@@ -1370,6 +1349,80 @@ class PhysicalInterfaceTest(MAASServerTestCase):
         # Test is that this does not fail.
         interface.save()
         self.assertFalse(reload_object(interface).enabled)
+
+
+class InterfaceMTUTest(MAASServerTestCase):
+
+    def test_get_effective_mtu_returns_default_mtu(self):
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, disconnected=True)
+        self.assertEqual(DEFAULT_MTU, nic1.get_effective_mtu())
+
+    def test_get_effective_mtu_returns_interface_mtu(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        nic_mtu = random.randint(552, 9100)
+        nic1.params = {
+            "mtu": nic_mtu
+        }
+        nic1.save()
+        self.assertEqual(nic_mtu, nic1.get_effective_mtu())
+
+    def test_get_effective_mtu_returns_vlan_mtu(self):
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan_mtu = random.randint(552, 9100)
+        nic1.vlan.mtu = vlan_mtu
+        nic1.vlan.save()
+        self.assertEqual(vlan_mtu, nic1.get_effective_mtu())
+
+    def test_get_effective_mtu_considers_jumbo_vlan_children(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan())
+        eth0_vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, vlan=vlan, parents=[eth0])
+        vlan_mtu = random.randint(DEFAULT_MTU + 1, 9100)
+        eth0_vlan.vlan.mtu = vlan_mtu
+        eth0_vlan.vlan.save()
+        self.assertEqual(vlan_mtu, eth0.get_effective_mtu())
+
+    def test_get_effective_mtu_returns_highest_vlan_mtu(self):
+        fabric = factory.make_Fabric()
+        vlan1 = factory.make_VLAN(fabric=fabric)
+        vlan2 = factory.make_VLAN(fabric=fabric)
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan())
+        eth0_vlan1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, vlan=vlan1, parents=[eth0])
+        eth0_vlan2 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[eth0])
+        eth0_vlan1.vlan.mtu = random.randint(1000, 1999)
+        eth0_vlan1.vlan.save()
+        eth0_vlan2.vlan.mtu = random.randint(2000, 2999)
+        eth0_vlan2.vlan.save()
+        self.assertEqual(eth0_vlan2.vlan.mtu, eth0.get_effective_mtu())
+
+    def test__creates_acquired_bridge_copies_mtu(self):
+        mtu = random.randint(600, 9100)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent.params = {'mtu': mtu}
+        parent.save()
+        bridge = parent.create_acquired_bridge()
+        self.assertThat(bridge, MatchesStructure(
+            name=Equals("br-%s" % parent.get_name()),
+            mac_address=Equals(parent.mac_address),
+            node=Equals(parent.node),
+            vlan=Equals(parent.vlan),
+            enabled=Equals(True),
+            acquired=Equals(True),
+            params=MatchesDict({
+                "bridge_stp": Equals(False),
+                "bridge_fd": Equals(15),
+                "mtu": Equals(mtu),
+            })
+        ))
+        self.assertEquals(
+            [parent.id], [p.id for p in bridge.parents.all()])
 
 
 class VLANInterfaceTest(MAASServerTestCase):
@@ -2963,28 +3016,6 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             params=MatchesDict({
                 "bridge_stp": Equals(bridge_stp),
                 "bridge_fd": Equals(bridge_fd),
-            })
-        ))
-        self.assertEquals(
-            [parent.id], [p.id for p in bridge.parents.all()])
-
-    def test__creates_acquired_bridge_copies_mtu(self):
-        mtu = random.randint(600, 1000)
-        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        parent.params = {'mtu': mtu}
-        parent.save()
-        bridge = parent.create_acquired_bridge()
-        self.assertThat(bridge, MatchesStructure(
-            name=Equals("br-%s" % parent.get_name()),
-            mac_address=Equals(parent.mac_address),
-            node=Equals(parent.node),
-            vlan=Equals(parent.vlan),
-            enabled=Equals(True),
-            acquired=Equals(True),
-            params=MatchesDict({
-                "bridge_stp": Equals(False),
-                "bridge_fd": Equals(15),
-                "mtu": Equals(mtu),
             })
         ))
         self.assertEquals(
