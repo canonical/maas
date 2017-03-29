@@ -621,16 +621,18 @@ describe("NodeDetailsController", function() {
         defer.resolve();
         $rootScope.$digest();
 
-        expect(GeneralManager.startPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["hwe_kernels"], ["osinfo"], ["power_types"]]);
+        expect(GeneralManager.startPolling.calls.allArgs()).toEqual([
+          [$scope, "architectures"], [$scope, "hwe_kernels"],
+          [$scope, "osinfo"], [$scope, "power_types"]]);
     });
 
     it("calls stopPolling when the $scope is destroyed", function() {
         spyOn(GeneralManager, "stopPolling");
         var controller = makeController();
         $scope.$destroy();
-        expect(GeneralManager.stopPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["hwe_kernels"], ["osinfo"], ["power_types"]]);
+        expect(GeneralManager.stopPolling.calls.allArgs()).toEqual([
+          [$scope, "architectures"], [$scope, "hwe_kernels"],
+          [$scope, "osinfo"], [$scope, "power_types"]]);
     });
 
     it("updates $scope.devices", function() {
@@ -845,58 +847,6 @@ describe("NodeDetailsController", function() {
                 $rootScope.$digest();
                 expect($scope.checkingPower).toBe(false);
             });
-    });
-
-    describe("getOSText", function() {
-
-        it("returns blank if no node", function() {
-            var controller = makeController();
-            expect($scope.getOSText()).toBe("");
-        });
-
-        it("returns osystem/series if no osinfo", function() {
-            var controller = makeController();
-            var osystem = makeName("osystem");
-            var series = makeName("distro_series");
-            var os_series = osystem + "/" + series;
-            $scope.node = node;
-            node.osystem = osystem;
-            node.distro_series = series;
-            expect($scope.getOSText()).toBe(os_series);
-        });
-
-        it("returns release title if osinfo", function() {
-            var controller = makeController();
-            var osystem = makeName("osystem");
-            var series = makeName("distro_series");
-            var os_series = osystem + "/" + series;
-            var title = makeName("title");
-            $scope.node = node;
-            $scope.osinfo = {
-                releases: [
-                    [os_series, title]
-                ]
-            };
-            node.osystem = osystem;
-            node.distro_series = series;
-            expect($scope.getOSText()).toBe(title);
-        });
-
-        it("returns osystem/series not in osinfo", function() {
-            var controller = makeController();
-            var osystem = makeName("osystem");
-            var series = makeName("distro_series");
-            var os_series = osystem + "/" + series;
-            $scope.node = node;
-            $scope.osinfo = {
-                releases: [
-                    [makeName("release"), makeName("title")]
-                ]
-            };
-            node.osystem = osystem;
-            node.distro_series = series;
-            expect($scope.getOSText()).toBe(os_series);
-        });
     });
 
     describe("isUbuntuOS", function() {

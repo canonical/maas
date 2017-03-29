@@ -367,13 +367,13 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.viewable = true;
 
             // Start the polling of architectures.
-            GeneralManager.startPolling("architectures");
+            GeneralManager.startPolling($scope, "architectures");
 
             // Start the polling of hwe_kernels.
-            GeneralManager.startPolling("hwe_kernels");
+            GeneralManager.startPolling($scope, "hwe_kernels");
 
             // Start the polling of power_types.
-            GeneralManager.startPolling("power_types");
+            GeneralManager.startPolling($scope, "power_types");
         };
 
         // Called by the parent scope when this controller is hidden.
@@ -381,13 +381,13 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.viewable = false;
 
             // Stop the polling of architectures.
-            GeneralManager.stopPolling("architectures");
+            GeneralManager.stopPolling($scope, "architectures");
 
             // Stop the polling of hwe_kernels.
-            GeneralManager.stopPolling("hwe_kernels");
+            GeneralManager.stopPolling($scope, "hwe_kernels");
 
             // Stop the polling of power_types.
-            GeneralManager.stopPolling("power_types");
+            GeneralManager.stopPolling($scope, "power_types");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -596,7 +596,8 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Stop polling when the scope is destroyed.
         $scope.$on("$destroy", function() {
-            GeneralManager.stopPolling("architectures");
-            GeneralManager.stopPolling("hwe_kernels");
+            GeneralManager.stopPolling($scope, "architectures");
+            GeneralManager.stopPolling($scope, "hwe_kernels");
+            GeneralManager.stopPolling($scope, "power_types");
         });
     }]);

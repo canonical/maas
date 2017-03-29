@@ -1,0 +1,59 @@
+/* Copyright 2017 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ *
+ * Release name.
+ *
+ * Converts the provided release name into the release title.
+ */
+
+
+angular.module('MAAS').directive('maasReleaseName', [
+    'GeneralManager', 'ManagerHelperService',
+    function(GeneralManager, ManagerHelperService) {
+    return {
+        restrict: "A",
+        scope: {
+          releaseName: "=maasReleaseName"
+        },
+        link: function(scope, element, attrs) {
+            scope.osinfo = GeneralManager.getData("osinfo");
+
+            // Gets the release name.
+            var getName = function() {
+                if(angular.isArray(scope.osinfo.releases)) {
+                  for(i = 0; i < scope.osinfo.releases.length; i++) {
+                      var release = scope.osinfo.releases[i];
+                      if(release[0] === scope.releaseName) {
+                          return release[1];
+                      }
+                  }
+                }
+                return scope.releaseName;
+            };
+
+            // Sets the text inside the element.
+            var setText = function() {
+                element.text(getName());
+            };
+
+            // Update the text when the release name or osinfo changes.
+            scope.$watch('releaseName', function() {
+              setText();
+            });
+            scope.$watchCollection('osinfo.releases', function() {
+              setText();
+            });
+
+            // Load the manager and start polling.
+            ManagerHelperService.loadManager(scope, GeneralManager).then(
+                function() {
+                    GeneralManager.startPolling(scope, 'osinfo');
+                });
+
+            // Stop polling when the scope is destroyed.
+            scope.$on('$destroy', function() {
+              GeneralManager.stopPolling(scope, 'osinfo');
+            });
+        }
+    };
+}]);

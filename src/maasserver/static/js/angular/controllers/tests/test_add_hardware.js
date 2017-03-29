@@ -201,9 +201,11 @@ describe("AddHardwareController", function() {
         spyOn(GeneralManager, "stopPolling");
         $scope.$destroy();
         expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            "architectures");
+            $scope, "architectures");
         expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            "hwe_kernels");
+            $scope, "hwe_kernels");
+        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+            $scope, "power_types");
     });
 
     describe("show", function() {
@@ -219,7 +221,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "startPolling");
             $scope.show();
             expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                "architectures");
+                $scope, "architectures");
         });
 
         it("calls startPolling for hwe_kernels", function() {
@@ -227,7 +229,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "startPolling");
             $scope.show();
             expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                "hwe_kernels");
+                $scope, "hwe_kernels");
         });
 
         it("calls startPolling for power_types", function() {
@@ -235,7 +237,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "startPolling");
             $scope.show();
             expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-                "power_types");
+                $scope, "power_types");
         });
     });
 
@@ -253,7 +255,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "stopPolling");
             $scope.hide();
             expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-                "architectures");
+                $scope, "architectures");
         });
 
         it("calls stopPolling for hwe_kernels", function() {
@@ -261,7 +263,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "stopPolling");
             $scope.hide();
             expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-                "hwe_kernels");
+                $scope, "hwe_kernels");
         });
 
         it("calls stopPolling for power_types", function() {
@@ -269,7 +271,7 @@ describe("AddHardwareController", function() {
             spyOn(GeneralManager, "stopPolling");
             $scope.hide();
             expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-                "power_types");
+                $scope, "power_types");
         });
 
         it("emits addHardwareHidden event", function(done) {

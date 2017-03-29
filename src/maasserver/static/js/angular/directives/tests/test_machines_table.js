@@ -90,7 +90,8 @@ describe("maasMachinesTable", function() {
 
         managerDefer.resolve();
         $scope.$digest();
-        expect(GeneralManager.startPolling).toHaveBeenCalledWith("osinfo");
+        expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+            scope, "osinfo");
     });
 
     it("stops polling on scope destroy", function() {
@@ -99,7 +100,8 @@ describe("maasMachinesTable", function() {
         var scope = directive.isolateScope();
 
         $scope.$destroy();
-        expect(GeneralManager.stopPolling).toHaveBeenCalledWith("osinfo");
+        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+            scope, "osinfo");
     });
 
     describe("updateAllChecked", function() {

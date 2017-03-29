@@ -156,12 +156,12 @@ angular.module('MAAS').directive('maasMachinesTable', [
         // Load the required managers and start polling for osinfo.
         ManagerHelperService.loadManagers(
           scope, [MachinesManager, GeneralManager]).then(function() {
-            GeneralManager.startPolling("osinfo");
+            GeneralManager.startPolling(scope, "osinfo");
           });
 
         // Stop polling when the scope is destroyed.
         scope.$on("$destroy", function() {
-          GeneralManager.stopPolling("osinfo");
+          GeneralManager.stopPolling(scope, "osinfo");
         });
       }
     };

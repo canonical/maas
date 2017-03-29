@@ -25,84 +25,84 @@ angular.module('MAAS').factory(
                     method: "general.machine_actions",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 device_actions: {
                     method: "general.device_actions",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 region_controller_actions: {
                     method: "general.region_controller_actions",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 rack_controller_actions: {
                     method: "general.rack_controller_actions",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 region_and_rack_controller_actions: {
                     method: "general.region_and_rack_controller_actions",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 architectures: {
                     method: "general.architectures",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 known_architectures: {
                     method: "general.known_architectures",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 pockets_to_disable: {
                     method: "general.pockets_to_disable",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 components_to_disable: {
                     method: "general.components_to_disable",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 hwe_kernels: {
                     method: "general.hwe_kernels",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 min_hwe_kernels: {
                     method: "general.min_hwe_kernels",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null
                 },
                 default_min_hwe_kernel: {
                     method: "general.default_min_hwe_kernel",
                     data: { text: '' },
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
                         oldData.text = newData;
@@ -112,7 +112,7 @@ angular.module('MAAS').factory(
                     method: "general.osinfo",
                     data: {},
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     isEmpty: function(data) {
                         var osystems = data.osystems;
@@ -127,7 +127,7 @@ angular.module('MAAS').factory(
                     method: "general.bond_options",
                     data: {},
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
                         angular.copy(newData, oldData);
@@ -137,7 +137,7 @@ angular.module('MAAS').factory(
                     method: "general.version",
                     data: { text: null },
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
                         oldData.text = newData;
@@ -147,7 +147,7 @@ angular.module('MAAS').factory(
                     method: "general.power_types",
                     data: [],
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
                         // Add new power types.
@@ -195,7 +195,7 @@ angular.module('MAAS').factory(
                     method: "general.release_options",
                     data: {},
                     loaded: false,
-                    polling: false,
+                    polling: [],
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
                         angular.copy(newData, oldData);
@@ -259,7 +259,7 @@ angular.module('MAAS').factory(
         GeneralManager.prototype.isPolling = function() {
             var polling = false;
             angular.forEach(this._data, function(data) {
-                if(data.polling) {
+                if(data.polling.length > 0) {
                     polling = true;
                 }
             });
@@ -272,19 +272,28 @@ angular.module('MAAS').factory(
         };
 
         // Starts the manager polling for data.
-        GeneralManager.prototype.startPolling = function(name) {
+        GeneralManager.prototype.startPolling = function(scope, name) {
             var data = this._getInternalData(name);
-            if(!data.polling) {
-                data.polling = true;
-                this._poll(data);
+            var idx = data.polling.indexOf(scope);
+            if(idx === -1) {
+                data.polling.push(scope);
+                if(data.polling.length === 1) {
+                    // Polling needs to be started. This is the first scope
+                    // that is requesting for polling to be performed.
+                    this._poll(data);
+                }
             }
         };
 
         // Stops the manager polling for data.
-        GeneralManager.prototype.stopPolling = function(name) {
+        GeneralManager.prototype.stopPolling = function(scope, name) {
             var data = this._getInternalData(name);
-            data.polling = false;
-            if(angular.isObject(data.nextPromise)) {
+            var idx = data.polling.indexOf(scope);
+            if(idx >= 0) {
+                data.polling.splice(idx, 1);
+            }
+            if(data.polling.length === 0 &&
+                angular.isObject(data.nextPromise)) {
                 $timeout.cancel(data.nextPromise);
                 data.nextPromise = null;
             }

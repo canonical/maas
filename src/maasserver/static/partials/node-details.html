@@ -377,7 +377,7 @@
                                 {$ node.storage $}GB over {$ node.physical_disk_count $} disks
                             </dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info">Operating System</dt>
-                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info">{$ getOSText() $}</dd>
+                            <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info" data-maas-release-name="node.osystem + '/' + node.distro_series"></dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">Kernel</dt>
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && isUbuntuOS() && !isController">{$ node.hwe_kernel $}</dd>
                         <dt class="two-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">Third Party Driver</dt>

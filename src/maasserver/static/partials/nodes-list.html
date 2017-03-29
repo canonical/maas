@@ -695,7 +695,7 @@
                     <div class="accordion__tab-content">
                         <ul class="accordion__tab-list">
                             <li class="accordion__tab-item" data-ng-repeat="release in tabs.nodes.metadata.release | orderBy:['name', '-count']" data-ng-class="{ 'is-active': isFilterActive('release', release.name, 'nodes') }">
-                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('release', release.name, 'nodes')">{$ getReleaseTitle(release.name) $} ({$ release.count $})</a>
+                                <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('release', release.name, 'nodes')"><span data-maas-release-name="release.name"></span> ({$ release.count $})</a>
                             </li>
                         </ul>
                     </div>

@@ -527,35 +527,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
         };
 
-        // Returns the nice name of the OS for the node.
-        $scope.getOSText = function() {
-            // This will get called very early and node can be empty.
-            // In that case just return an empty string. It will be
-            // called again to show the correct information.
-            if(!angular.isObject($scope.node)) {
-                return "";
-            }
-
-            var i;
-            var os_release = $scope.node.osystem +
-                "/" + $scope.node.distro_series;
-
-            // Possible that osinfo has not been fully loaded. In that case
-            // we just return the os_release identifier.
-            if(angular.isUndefined($scope.osinfo.releases)) {
-                return os_release;
-            }
-
-            // Get the nice release name from osinfo.
-            for(i = 0; i < $scope.osinfo.releases.length; i++) {
-                var release = $scope.osinfo.releases[i];
-                if(release[0] === os_release) {
-                    return release[1];
-                }
-            }
-            return os_release;
-        };
-
         $scope.isUbuntuOS = function() {
             // This will get called very early and node can be empty.
             // In that case just return an empty string. It will be
@@ -1154,18 +1125,18 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // time. This is because the user can always see the architecture
             // and operating system. Need to keep this information up-to-date
             // so the user is viewing current data.
-            GeneralManager.startPolling("architectures");
-            GeneralManager.startPolling("hwe_kernels");
-            GeneralManager.startPolling("osinfo");
-            GeneralManager.startPolling("power_types");
+            GeneralManager.startPolling($scope, "architectures");
+            GeneralManager.startPolling($scope, "hwe_kernels");
+            GeneralManager.startPolling($scope, "osinfo");
+            GeneralManager.startPolling($scope, "power_types");
         });
 
         // Stop polling for architectures, hwe_kernels, and osinfo when the
         // scope is destroyed.
         $scope.$on("$destroy", function() {
-            GeneralManager.stopPolling("architectures");
-            GeneralManager.stopPolling("hwe_kernels");
-            GeneralManager.stopPolling("osinfo");
-            GeneralManager.stopPolling("power_types");
+            GeneralManager.stopPolling($scope, "architectures");
+            GeneralManager.stopPolling($scope, "hwe_kernels");
+            GeneralManager.stopPolling($scope, "osinfo");
+            GeneralManager.stopPolling($scope, "power_types");
         });
     }]);

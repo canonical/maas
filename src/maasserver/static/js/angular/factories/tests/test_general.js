@@ -63,7 +63,7 @@ describe("GeneralManager", function() {
         expect(machine_actions.method).toBe("general.machine_actions");
         expect(machine_actions.data).toEqual([]);
         expect(machine_actions.loaded).toBe(false);
-        expect(machine_actions.polling).toBe(false);
+        expect(machine_actions.polling).toEqual([]);
         expect(machine_actions.nextPromise).toBeNull();
     });
 
@@ -72,7 +72,7 @@ describe("GeneralManager", function() {
         expect(device_actions.method).toBe("general.device_actions");
         expect(device_actions.data).toEqual([]);
         expect(device_actions.loaded).toBe(false);
-        expect(device_actions.polling).toBe(false);
+        expect(device_actions.polling).toEqual([]);
         expect(device_actions.nextPromise).toBeNull();
     });
 
@@ -83,7 +83,7 @@ describe("GeneralManager", function() {
             "general.region_controller_actions");
         expect(region_controller_actions.data).toEqual([]);
         expect(region_controller_actions.loaded).toBe(false);
-        expect(region_controller_actions.polling).toBe(false);
+        expect(region_controller_actions.polling).toEqual([]);
         expect(region_controller_actions.nextPromise).toBeNull();
     });
 
@@ -94,7 +94,7 @@ describe("GeneralManager", function() {
             "general.rack_controller_actions");
         expect(rack_controller_actions.data).toEqual([]);
         expect(rack_controller_actions.loaded).toBe(false);
-        expect(rack_controller_actions.polling).toBe(false);
+        expect(rack_controller_actions.polling).toEqual([]);
         expect(rack_controller_actions.nextPromise).toBeNull();
     });
 
@@ -105,7 +105,7 @@ describe("GeneralManager", function() {
             "general.region_and_rack_controller_actions");
         expect(region_and_rack_controller_actions.data).toEqual([]);
         expect(region_and_rack_controller_actions.loaded).toBe(false);
-        expect(region_and_rack_controller_actions.polling).toBe(false);
+        expect(region_and_rack_controller_actions.polling).toEqual([]);
         expect(region_and_rack_controller_actions.nextPromise).toBeNull();
     });
 
@@ -114,7 +114,7 @@ describe("GeneralManager", function() {
         expect(architectures.method).toBe("general.architectures");
         expect(architectures.data).toEqual([]);
         expect(architectures.loaded).toBe(false);
-        expect(architectures.polling).toBe(false);
+        expect(architectures.polling).toEqual([]);
         expect(architectures.nextPromise).toBeNull();
     });
 
@@ -123,7 +123,7 @@ describe("GeneralManager", function() {
         expect(ka.method).toBe("general.known_architectures");
         expect(ka.data).toEqual([]);
         expect(ka.loaded).toBe(false);
-        expect(ka.polling).toBe(false);
+        expect(ka.polling).toEqual([]);
         expect(ka.nextPromise).toBeNull();
     });
 
@@ -132,7 +132,7 @@ describe("GeneralManager", function() {
         expect(ptd.method).toBe("general.pockets_to_disable");
         expect(ptd.data).toEqual([]);
         expect(ptd.loaded).toBe(false);
-        expect(ptd.polling).toBe(false);
+        expect(ptd.polling).toEqual([]);
         expect(ptd.nextPromise).toBeNull();
     });
 
@@ -141,7 +141,7 @@ describe("GeneralManager", function() {
         expect(ptd.method).toBe("general.components_to_disable");
         expect(ptd.data).toEqual([]);
         expect(ptd.loaded).toBe(false);
-        expect(ptd.polling).toBe(false);
+        expect(ptd.polling).toEqual([]);
         expect(ptd.nextPromise).toBeNull();
     });
 
@@ -150,7 +150,7 @@ describe("GeneralManager", function() {
         expect(hwe_kernels.method).toBe("general.hwe_kernels");
         expect(hwe_kernels.data).toEqual([]);
         expect(hwe_kernels.loaded).toBe(false);
-        expect(hwe_kernels.polling).toBe(false);
+        expect(hwe_kernels.polling).toEqual([]);
         expect(hwe_kernels.nextPromise).toBeNull();
     });
 
@@ -161,7 +161,7 @@ describe("GeneralManager", function() {
             "general.default_min_hwe_kernel");
         expect(default_min_hwe_kernel.data).toEqual({text: ''});
         expect(default_min_hwe_kernel.loaded).toBe(false);
-        expect(default_min_hwe_kernel.polling).toBe(false);
+        expect(default_min_hwe_kernel.polling).toEqual([]);
         expect(default_min_hwe_kernel.nextPromise).toBeNull();
     });
 
@@ -170,7 +170,7 @@ describe("GeneralManager", function() {
         expect(osinfo.method).toBe("general.osinfo");
         expect(osinfo.data).toEqual({});
         expect(osinfo.loaded).toBe(false);
-        expect(osinfo.polling).toBe(false);
+        expect(osinfo.polling).toEqual([]);
         expect(osinfo.nextPromise).toBeNull();
         expect(angular.isFunction(osinfo.isEmpty)).toBe(true);
         expect(angular.isFunction(osinfo.replaceData)).toBe(true);
@@ -181,7 +181,7 @@ describe("GeneralManager", function() {
         expect(bond_options.method).toBe("general.bond_options");
         expect(bond_options.data).toEqual({});
         expect(bond_options.loaded).toBe(false);
-        expect(bond_options.polling).toBe(false);
+        expect(bond_options.polling).toEqual([]);
         expect(bond_options.nextPromise).toBeNull();
         expect(angular.isFunction(bond_options.replaceData)).toBe(true);
     });
@@ -191,7 +191,7 @@ describe("GeneralManager", function() {
         expect(version.method).toBe("general.version");
         expect(version.data).toEqual({ text: null });
         expect(version.loaded).toBe(false);
-        expect(version.polling).toBe(false);
+        expect(version.polling).toEqual([]);
         expect(version.nextPromise).toBeNull();
         expect(angular.isFunction(version.replaceData)).toBe(true);
     });
@@ -201,7 +201,7 @@ describe("GeneralManager", function() {
         expect(power_types.method).toBe("general.power_types");
         expect(power_types.data).toEqual([]);
         expect(power_types.loaded).toBe(false);
-        expect(power_types.polling).toBe(false);
+        expect(power_types.polling).toEqual([]);
         expect(power_types.nextPromise).toBeNull();
         expect(angular.isFunction(power_types.replaceData)).toBe(true);
     });
@@ -211,7 +211,7 @@ describe("GeneralManager", function() {
         expect(release_options.method).toBe("general.release_options");
         expect(release_options.data).toEqual({});
         expect(release_options.loaded).toBe(false);
-        expect(release_options.polling).toBe(false);
+        expect(release_options.polling).toEqual([]);
         expect(release_options.nextPromise).toBeNull();
         expect(angular.isFunction(release_options.replaceData)).toBe(true);
     });
@@ -360,24 +360,26 @@ describe("GeneralManager", function() {
         });
 
         it("returns true if one true", function() {
-            GeneralManager._data.machine_actions.polling = true;
-            GeneralManager._data.architectures.polling = false;
-            GeneralManager._data.known_architectures.polling = false;
-            GeneralManager._data.pockets_to_disable.polling = false;
-            GeneralManager._data.components_to_disable.polling = false;
-            GeneralManager._data.hwe_kernels.polling = false;
-            GeneralManager._data.osinfo.polling = false;
+            var scope = $rootScope.$new();
+            GeneralManager._data.machine_actions.polling = [scope];
+            GeneralManager._data.architectures.polling = [];
+            GeneralManager._data.known_architectures.polling = [];
+            GeneralManager._data.pockets_to_disable.polling = [];
+            GeneralManager._data.components_to_disable.polling = [];
+            GeneralManager._data.hwe_kernels.polling = [];
+            GeneralManager._data.osinfo.polling = [];
             expect(GeneralManager.isPolling()).toBe(true);
         });
 
         it("returns true if all true", function() {
-            GeneralManager._data.machine_actions.polling = true;
-            GeneralManager._data.architectures.polling = true;
-            GeneralManager._data.known_architectures.polling = true;
-            GeneralManager._data.pockets_to_disable.polling = true;
-            GeneralManager._data.components_to_disable.polling = true;
-            GeneralManager._data.hwe_kernels.polling = true;
-            GeneralManager._data.osinfo.polling = true;
+            var scope = $rootScope.$new();
+            GeneralManager._data.machine_actions.polling = [scope];
+            GeneralManager._data.architectures.polling = [scope];
+            GeneralManager._data.known_architectures.polling = [scope];
+            GeneralManager._data.pockets_to_disable.polling = [scope];
+            GeneralManager._data.components_to_disable.polling = [scope];
+            GeneralManager._data.hwe_kernels.polling = [scope];
+            GeneralManager._data.osinfo.polling = [scope];
             expect(GeneralManager.isPolling()).toBe(true);
         });
     });
@@ -396,16 +398,21 @@ describe("GeneralManager", function() {
 
         it("sets polling to true and calls _poll", function() {
             spyOn(GeneralManager, "_poll");
-            GeneralManager.startPolling("machine_actions");
-            expect(GeneralManager._data.machine_actions.polling).toBe(true);
+            var scope = $rootScope.$new();
+            GeneralManager.startPolling(scope, "machine_actions");
+            expect(GeneralManager._data.machine_actions.polling).toEqual(
+                [scope]);
             expect(GeneralManager._poll).toHaveBeenCalledWith(
                 GeneralManager._data.machine_actions);
         });
 
         it("does nothing if already polling", function() {
             spyOn(GeneralManager, "_poll");
-            GeneralManager._data.machine_actions.polling = true;
-            GeneralManager.startPolling("machine_actions");
+            var scope = $rootScope.$new();
+            GeneralManager._data.machine_actions.polling = [scope];
+            GeneralManager.startPolling(scope, "machine_actions");
+            expect(GeneralManager._data.machine_actions.polling).toEqual(
+                [scope]);
             expect(GeneralManager._poll).not.toHaveBeenCalled();
         });
     });
@@ -415,10 +422,11 @@ describe("GeneralManager", function() {
         it("sets polling to false and cancels promise", function() {
             spyOn($timeout, "cancel");
             var nextPromise = {};
-            GeneralManager._data.machine_actions.polling = true;
+            var scope = $rootScope.$new();
+            GeneralManager._data.machine_actions.polling = [scope];
             GeneralManager._data.machine_actions.nextPromise = nextPromise;
-            GeneralManager.stopPolling("machine_actions");
-            expect(GeneralManager._data.machine_actions.polling).toBe(false);
+            GeneralManager.stopPolling(scope, "machine_actions");
+            expect(GeneralManager._data.machine_actions.polling).toEqual([]);
             expect($timeout.cancel).toHaveBeenCalledWith(nextPromise);
         });
     });

@@ -187,7 +187,7 @@ describe("NodesListController", function() {
         spyOn(GeneralManager, "startPolling");
         var controller = makeController();
         expect(GeneralManager.startPolling).toHaveBeenCalledWith(
-            "osinfo");
+            $scope, "osinfo");
     });
 
     it("calls stopPolling when scope destroyed", function() {
@@ -195,7 +195,7 @@ describe("NodesListController", function() {
         spyOn(GeneralManager, "stopPolling");
         $scope.$destroy();
         expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
-            "osinfo");
+            $scope, "osinfo");
     });
 
     it("saves current filters for nodes and devices when scope destroyed",

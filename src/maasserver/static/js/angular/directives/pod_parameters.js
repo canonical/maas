@@ -96,14 +96,14 @@ angular.module('MAAS').directive(
             // When destroyed stop polling the power types.
             scope.$on("$destroy", function() {
                 if(GeneralManager.isPolling("power_types")) {
-                    GeneralManager.stopPolling("power_types");
+                    GeneralManager.stopPolling($scope, "power_types");
                 }
             });
 
             // Load the general manager and start polling.
             ManagerHelperService.loadManager(scope, GeneralManager).then(
                 function() {
-                  GeneralManager.startPolling("power_types");
+                  GeneralManager.startPolling($scope, "power_types");
                 });
         }
     };
