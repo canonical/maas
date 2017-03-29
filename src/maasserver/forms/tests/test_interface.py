@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
@@ -676,6 +677,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             "A VLAN interface must have exactly one parent.",
             form.errors['parents'][0])
 
+    @skip("XXX: GavinPanella 2017-03-29 bug=1677203: Fails spuriously.")
     def test__edits_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(

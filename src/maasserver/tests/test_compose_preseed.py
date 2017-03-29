@@ -217,8 +217,9 @@ class TestComposePreseed(MAASServerTestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=random.choice([
-                NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING,
-                NODE_STATUS.RESCUE_MODE]))
+                NODE_STATUS.COMMISSIONING, NODE_STATUS.RESCUE_MODE,
+                # XXX: Should also include TESTING?
+            ]))
         nic = node.get_boot_interface()
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller

@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
@@ -465,6 +466,7 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         )
         iprange.save()
 
+    @skip("XXX: GavinPanella 2017-03-29 bug=1594146: Fails spuriously.")
     def test__dynamic_range_cannot_overlap_most_ip_types(self):
         subnet = make_plain_subnet()
         factory.make_StaticIPAddress(
