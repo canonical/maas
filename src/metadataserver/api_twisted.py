@@ -344,8 +344,14 @@ class StatusWorkerService(TimerService, object):
 
     @transactional
     def _processMessageNow(self, authorization, message):
-        node = NodeKey.objects.get_node_for_key(authorization)
-        return self._processMessage(node, message)
+        try:
+            node = NodeKey.objects.get_node_for_key(authorization)
+        except NodeKey.DoesNotExist:
+            # The node that should get this message has already had its owner
+            # cleared or changed and this message cannot be saved.
+            return None
+        else:
+            return self._processMessage(node, message)
 
     @deferred
     def queueMessage(self, authorization, message):

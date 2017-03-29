@@ -275,6 +275,29 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             mock_processMessage,
             MockCalledOnceWith(node, message))
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_queueMessages_handled_invalid_nodekey_with_instant_msg(self):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        mock_processMessage = self.patch(worker, "_processMessage")
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
+        message = self.make_message()
+        message['files'] = [
+            {
+                "path": "sample.txt",
+                "encoding": "uuencode",
+                "compression": "bzip2",
+                "content": encoded_content
+            }
+        ]
+        nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
+        node, token = nodes_with_tokens[0]
+        yield deferToDatabase(token.delete)
+        yield worker.queueMessage(token.key, message)
+        self.assertThat(
+            mock_processMessage, MockNotCalled())
+
 
 def encode_as_base64(content):
     return base64.encodebytes(content).decode("ascii")
