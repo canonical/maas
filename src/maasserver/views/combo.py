@@ -127,6 +127,7 @@ MERGE_VIEWS = {
             "js/angular/filters/by_vlan.js",
             "js/angular/filters/by_space.js",
             "js/angular/filters/by_subnet.js",
+            "js/angular/filters/order_by_date.js",
             "js/angular/filters/remove_default_vlan.js",
             "js/angular/controllers/nodes_list.js",
             "js/angular/controllers/add_hardware.js",

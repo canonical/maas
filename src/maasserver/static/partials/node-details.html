@@ -2334,7 +2334,7 @@
                     </thead>
                     <tbody>
                         <tr
-                            data-ng-repeat="event in node.events | limitTo:events.limit">
+                            data-ng-repeat="event in node.events | orderByDate:'created':'id' | limitTo:events.limit">
                             <td class="table-col--2" aria-label="{$ event.type.level $}">
                                 <span class="icon icon--{$ event.type.level $}"></span>
                             </td>
