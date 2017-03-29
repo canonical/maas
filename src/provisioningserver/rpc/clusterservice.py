@@ -538,6 +538,12 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
         """
+        def _refresh():
+            with ClusterConfiguration.open() as config:
+                return deferToThread(
+                    refresh, system_id, consumer_key, token_key,
+                    token_secret, config.maas_url)
+
         lock = NamedLock('refresh')
         try:
             lock.acquire()
@@ -545,14 +551,9 @@ class Cluster(RPCProtocol):
             # Refresh is already running, don't do anything
             raise exceptions.RefreshAlreadyInProgress()
         else:
-            with ClusterConfiguration.open() as config:
-                maas_url = config.maas_url
-            # Start gathering node results(lshw, lsblk, etc) but don't wait.
-            d = deferToThread(
-                refresh, system_id, consumer_key, token_key, token_secret,
-                maas_url)
-            d.addErrback(log.err, 'Failed to refresh the rack controller.')
-            d.addBoth(callOut, lock.release)
+            # Start gathering node results (lshw, lsblk, etc) but don't wait.
+            maybeDeferred(_refresh).addBoth(callOut, lock.release).addErrback(
+                log.err, 'Failed to refresh the rack controller.')
 
         return deferToThread(get_sys_info)
 

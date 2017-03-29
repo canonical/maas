@@ -2174,7 +2174,35 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         ))
 
 
-class TestClusterProtocol_Refresh(MAASTestCase):
+class MAASTestCaseThatWaitsForDeferredThreads(MAASTestCase):
+    """Capture deferred threads and wait for them during teardown.
+
+    This will capture calls to `deferToThread` in the `clusterservice` module,
+    and can be useful when work is deferred to threads in a way that cannot be
+    observed via the system under test.
+
+    Use of this may be an indicator for code that is poorly designed for
+    testing. Consider refactoring so that your tests can explicitly deal with
+    threads that have been deferred outside of the reactor.
+    """
+
+    # Subclasses can override this, but they MUST choose a runner that runs
+    # the test itself and all clean-up functions in the Twisted reactor.
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.__deferToThreadOrig = clusterservice.deferToThread
+        self.patch(clusterservice, "deferToThread", self.__deferToThread)
+
+    def __deferToThread(self, f, *args, **kwargs):
+        d = self.__deferToThreadOrig(f, *args, **kwargs)
+        self.addCleanup(lambda: d)  # Wait during teardown.
+        return d
+
+
+class TestClusterProtocol_Refresh(
+        MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -2326,7 +2354,8 @@ class TestClusterProtocol_Refresh(MAASTestCase):
             }, response)
 
 
-class TestClusterProtocol_ScanNetworks(MAASTestCase):
+class TestClusterProtocol_ScanNetworks(
+        MAASTestCaseThatWaitsForDeferredThreads):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
