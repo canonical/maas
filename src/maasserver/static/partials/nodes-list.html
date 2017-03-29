@@ -328,10 +328,10 @@
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
                         <button class="button--secondary button--inline"
-                            data-ng-class="{ disabled: machineHasError() }"
+                            data-ng-disabled="machineHasError()"
                             data-ng-click="saveMachine(true)">Save and add another</button>
                         <button class="button--positive button--inline"
-                            data-ng-class="{ disabled: machineHasError() }"
+                            data-ng-disabled="machineHasError()"
                             data-ng-click="saveMachine(false)">Save machine</button>
                     </div>
                 </section>
@@ -342,10 +342,10 @@
                     <div class="page-header__controls">
                         <a href="" class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
                         <button class="button--secondary button--inline"
-                            data-ng-class="{ disabled: chassisHasErrors() }"
+                            data-ng-disabled="chassisHasErrors()"
                             data-ng-click="saveChassis(true)">Save and add another</button>
                         <button class="button--positive button--inline"
-                            data-ng-class="{ disabled: chassisHasErrors() }"
+                            data-ng-disabled="chassisHasErrors()"
                             data-ng-click="saveChassis(false)">Save chassis</button>
                     </div>
                 </section>
