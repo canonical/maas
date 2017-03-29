@@ -47,6 +47,13 @@ class DNSResourceForm(MAASModelForm):
             'ip_addresses',
             )
 
+    def __init__(
+            self, data=None, instance=None, request=None, *args, **kwargs):
+        # Always save the user, in case we create a StaticIPAddress in save().
+        if request is not None:
+            self.user = request.user
+        super().__init__(data=data, instance=instance, *args, **kwargs)
+
     def clean_ip(self, ipaddr):
         """Process one IP address (id or address) and return the id."""
         # If it's a simple number, then assume it's already an id.
@@ -101,6 +108,7 @@ class DNSResourceForm(MAASModelForm):
                 defaults={
                     'alloc_type': IPADDRESS_TYPE.USER_RESERVED,
                     'subnet': subnet,
+                    'user': self.user,
                 })
             new_list.append(static_ip.id)
         self.cleaned_data['ip_addresses'] = new_list

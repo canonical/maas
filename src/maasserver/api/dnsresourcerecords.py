@@ -129,7 +129,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
         # Do we already have a DNSResource for this fqdn?
         dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         if not dnsrr.exists():
-            form = DNSResourceForm(data=request.data)
+            form = DNSResourceForm(data=request.data, request=request)
             if form.is_valid():
                 form.save()
             else:

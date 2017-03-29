@@ -107,7 +107,7 @@ class DNSResourcesHandler(OperationsHandler):
                     "name:%s" % domainname, user=request.user,
                     perm=NODE_PERMISSION.VIEW)
             data['domain'] = domain.id
-        form = DNSResourceForm(data=request.data)
+        form = DNSResourceForm(data=request.data, request=request)
         if form.is_valid():
             return form.save()
         else:
@@ -164,7 +164,8 @@ class DNSResourceHandler(OperationsHandler):
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NODE_PERMISSION.ADMIN)
-        form = DNSResourceForm(instance=dnsresource, data=request.data)
+        form = DNSResourceForm(
+            instance=dnsresource, data=request.data, request=request)
         if form.is_valid():
             return form.save()
         else:

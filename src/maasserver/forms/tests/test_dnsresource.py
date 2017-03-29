@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import Mock
 
 from maasserver.forms.dnsresource import DNSResourceForm
 from maasserver.testing.factory import factory
@@ -19,11 +20,13 @@ class TestDNSResourceForm(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         sip = factory.make_StaticIPAddress()
         domain = factory.make_Domain()
+        request = Mock()
+        request.user = factory.make_User()
         form = DNSResourceForm({
             "name": name,
             "domain": domain.id,
             "ip_addresses": [sip.id],
-        })
+        }, request=request)
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
@@ -49,17 +52,22 @@ class TestDNSResourceForm(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         ips = [factory.make_ip_address() for _ in range(3)]
+        request = Mock()
+        request.user = factory.make_User()
         form = DNSResourceForm({
             "name": name,
             "domain": domain.id,
             "ip_addresses": " ".join(ips),
-        })
+        }, request=request)
         self.assertTrue(form.is_valid(), form.errors)
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
-        actual = {str(ip.ip) for ip in dnsresource.ip_addresses.all()}
+        actual_ips = dnsresource.ip_addresses.all()
+        actual = {str(ip.ip) for ip in actual_ips}
         self.assertItemsEqual(set(ips), actual)
+        actual_users = {ip.user_id for ip in actual_ips}
+        self.assertItemsEqual({request.user.id}, actual_users)
 
     def test__accepts_mix_of_id_and_ipaddress(self):
         name = factory.make_name("dnsresource")
