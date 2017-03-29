@@ -46,7 +46,8 @@ class TestForm(Form):
         self.fields['testing_scripts'] = MultipleChoiceField(
             required=False, initial=None, choices=choices)
 
-    def __init__(self, instance, user, data={}, **kwargs):
+    def __init__(self, instance, user, data=None, **kwargs):
+        data = {} if data is None else data
         super().__init__(data=data, **kwargs)
         self._set_up_script_fields()
         self.instance = instance

@@ -104,7 +104,7 @@ class DiscoveredVolume(AttrHelperMixin):
     """Discovered storage volume."""
     size = attr.ib(convert=int)
     block_size = attr.ib(convert=int, default=512)
-    tags = attr.ib(convert=convert_list(str), default=[])
+    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
 
 
 @attr.s
@@ -112,8 +112,8 @@ class DiscoveredStorage(AttrHelperMixin):
     """Discovered storage information."""
     size = attr.ib(convert=int)
     volumes = attr.ib(
-        convert=convert_list(DiscoveredVolume), default=[])
-    parameters = attr.ib(convert=convert_obj(dict), default={})
+        convert=convert_list(DiscoveredVolume), default=attr.Factory(list))
+    parameters = attr.ib(convert=convert_obj(dict), default=attr.Factory(dict))
 
     # When a Pod discovers storage it sets the driver_type so MAAS knows
     # which storage driver to call to perform the action. When a storage

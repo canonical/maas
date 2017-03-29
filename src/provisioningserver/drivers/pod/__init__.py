@@ -129,7 +129,7 @@ class DiscoveredMachineInterface(AttrHelperMixin):
     """Discovered machine interface."""
     mac_address = attr.ib(convert=str)
     vid = attr.ib(convert=int, default=-1)
-    tags = attr.ib(convert=convert_list(str), default=[])
+    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
     boot = attr.ib(convert=bool, default=False)
 
 
@@ -140,7 +140,7 @@ class DiscoveredMachineBlockDevice(AttrHelperMixin):
     serial = attr.ib(convert=convert_obj(str, optional=True))
     size = attr.ib(convert=int)
     block_size = attr.ib(convert=int, default=512)
-    tags = attr.ib(convert=convert_list(str), default=[])
+    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
     id_path = attr.ib(convert=convert_obj(str, optional=True), default=None)
 
 
@@ -155,8 +155,9 @@ class DiscoveredMachine(AttrHelperMixin):
     block_devices = attr.ib(
         convert=convert_list(DiscoveredMachineBlockDevice))
     power_state = attr.ib(convert=str, default='unknown')
-    power_parameters = attr.ib(convert=convert_obj(dict), default={})
-    tags = attr.ib(convert=convert_list(str), default=[])
+    power_parameters = attr.ib(
+        convert=convert_obj(dict), default=attr.Factory(dict))
+    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
 
 
 @attr.s
@@ -184,11 +185,12 @@ class DiscoveredPod(AttrHelperMixin):
     hints = attr.ib(convert=convert_obj(DiscoveredPodHints))
     local_disks = attr.ib(convert=int, default=-1)
     capabilities = attr.ib(
-        convert=convert_list(str), default=[Capabilities.FIXED_LOCAL_STORAGE])
+        convert=convert_list(str), default=attr.Factory(
+            lambda: [Capabilities.FIXED_LOCAL_STORAGE]))
     machines = attr.ib(
-        convert=convert_list(DiscoveredMachine), default=[])
+        convert=convert_list(DiscoveredMachine), default=attr.Factory(list))
     storage = attr.ib(
-        convert=convert_list(DiscoveredStorage), default=[])
+        convert=convert_list(DiscoveredStorage), default=attr.Factory(list))
 
 
 @attr.s
