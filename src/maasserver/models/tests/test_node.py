@@ -5561,8 +5561,9 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh",
-            power_state=POWER_STATE.OFF):
-        network = factory.make_ip4_or_6_network()
+            power_state=POWER_STATE.OFF, network=None):
+        if network is None:
+            network = factory.make_ip4_or_6_network()
         cidr = str(network.cidr)
         # Make sure that the maas_server address is of the same addr family.
         gethost = self.patch(server_address, "get_maas_facing_server_host")
@@ -5595,6 +5596,34 @@ class TestNode_Start(MAASTransactionServerTestCase):
             gethost.return_value = "192.168.1.1"
         else:
             gethost.return_value = "2001:db8::3"
+        with ExpectedException(ValidationError):
+            node.start(admin)
+
+    def test__treats_ipv4_mapped_address_as_ipv4(self):
+        admin = factory.make_admin()
+        network = factory.make_ipv4_network()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual", network=network)
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        subnet = node.get_boot_interface().ip_addresses.first().subnet
+        # Force an address family mismatch.  See Bug#1630361.
+        gethost.return_value = str(IPAddress(
+            IPNetwork(subnet.cidr).first + 1).ipv6())
+        register_event = self.patch(node, '_register_request_event')
+        node.start(admin)
+        self.assertThat(
+            register_event, MockCalledOnceWith(
+                admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT,
+                action='start', comment=None))
+
+    def test__rejects_ipv6_only_host_when_url_is_ipv4_mapped(self):
+        admin = factory.make_admin()
+        network = factory.make_ipv6_network()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual", network=network)
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        # Force an address family mismatch.  See Bug#1630361.
+        gethost.return_value = '::ffff:192.168.1.1'
         with ExpectedException(ValidationError):
             node.start(admin)
 

@@ -3433,7 +3433,8 @@ class Node(CleanSave, TimestampedModel):
             cidrs = subnets.values_list("cidr", flat=True)
             my_address_families = {IPNetwork(cidr).version for cidr in cidrs}
             rack_address_families = set(
-                addr.version for addr in get_maas_facing_server_addresses(
+                4 if addr.is_ipv4_mapped() else addr.version
+                for addr in get_maas_facing_server_addresses(
                     self.get_boot_primary_rack_controller()))
             if my_address_families & rack_address_families == set():
                 raise ValidationError(
