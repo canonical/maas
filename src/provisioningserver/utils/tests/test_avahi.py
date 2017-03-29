@@ -12,6 +12,8 @@ import json
 from tempfile import NamedTemporaryFile
 import time
 
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import avahi as avahi_module
 from provisioningserver.utils.avahi import (
@@ -279,3 +281,10 @@ class TestObserveMDNSCommand(MAASTestCase):
         output = io.StringIO()
         with ExpectedException(SystemExit, '.*42.*'):
             run(args, output=output)
+
+    def test__sets_self_as_process_group_leader(self):
+        exception_type = factory.make_exception_type()
+        os = self.patch(avahi_module, "os")
+        os.setpgrp.side_effect = exception_type
+        self.assertRaises(exception_type, run, [])
+        self.assertThat(os.setpgrp, MockCalledOnceWith())

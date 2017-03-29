@@ -32,7 +32,6 @@ from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
     deferred,
-    ProcessGroupLeaderMixin,
     terminateProcess,
 )
 from twisted.application.internet import TimerService
@@ -124,8 +123,7 @@ class JSONPerLineProtocol(ProcessProtocol):
             self.done.errback(reason)
 
 
-class ProtocolForObserveARP(
-        ProcessGroupLeaderMixin, JSONPerLineProtocol):
+class ProtocolForObserveARP(JSONPerLineProtocol):
     """Protocol used when spawning `maas-rack observe-arp`.
 
     The difference between `JSONPerLineProtocol` and `ProtocolForObserveARP`
@@ -149,8 +147,7 @@ class ProtocolForObserveARP(
         log.msg("observe-arp[%s]:" % self.interface, line)
 
 
-class ProtocolForObserveMDNS(
-        ProcessGroupLeaderMixin, JSONPerLineProtocol):
+class ProtocolForObserveMDNS(JSONPerLineProtocol):
     """Protocol used when spawning `maas-rack observe-mdns`.
 
     This ensures that the spawned process is configured as a process group
