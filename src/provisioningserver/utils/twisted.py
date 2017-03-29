@@ -20,7 +20,6 @@ __all__ = [
     'LONGTIME',
     'makeDeferredWithProcessProtocol',
     'pause',
-    'ProcessGroupLeaderMixin',
     'retries',
     'synchronous',
     'ThreadPool',
@@ -46,7 +45,6 @@ import os
 from os import (
     kill as _os_kill,
     killpg as _os_killpg,
-    setpgid as _os_setpgid,
 )
 import signal
 import threading
@@ -1003,9 +1001,8 @@ def terminateProcess(
     Steps #3 and #5 have a safeguard: if the process identified by `pid` has
     the same process group as the invoking process the signal is sent only to
     the process and not to the process group. This prevents the caller from
-    inadvertently killing itself. You may want to use this in conjunction with
-    `ProcessGroupLeaderMixin` to ensure that the child process becomes a
-    process group leader soon after spawning.
+    inadvertently killing itself. For best effect, ensure that new processes
+    become process group leaders soon after spawning.
 
     :param pid: The PID to terminate.
     :param done: A `Deferred` that fires when the process exits.
@@ -1046,15 +1043,3 @@ def terminateProcess(
                 killer.cancel()
 
     done.addBoth(callOut, ended)
-
-
-class ProcessGroupLeaderMixin(ProcessProtocol):
-    """Mix-in to ensure that the spawned process is a process group leader."""
-
-    def connectionMade(self):
-        super().connectionMade()
-        if self.transport.pid is not None:
-            try:
-                _os_setpgid(self.transport.pid, 0)
-            except ProcessLookupError:
-                pass  # Already exited.

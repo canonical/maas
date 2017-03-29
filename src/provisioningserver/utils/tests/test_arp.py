@@ -14,6 +14,8 @@ from textwrap import dedent
 import time
 from unittest.mock import Mock
 
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     EUI,
@@ -509,3 +511,10 @@ class TestObserveARPCommand(MAASTestCase):
         with ExpectedException(
                 SystemExit, '.*42.*'):
             run(args, output=output)
+
+    def test__sets_self_as_process_group_leader(self):
+        exception_type = factory.make_exception_type()
+        os = self.patch(arp_module, "os")
+        os.setpgrp.side_effect = exception_type
+        self.assertRaises(exception_type, run, [])
+        self.assertThat(os.setpgrp, MockCalledOnceWith())

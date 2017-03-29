@@ -38,6 +38,7 @@ __all__ = [
 from contextlib import contextmanager
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -203,6 +204,11 @@ def add_arguments(parser):
 
 def run(args, output=sys.stdout, stdin=sys.stdin):
     """Observe an Ethernet interface and print ARP bindings."""
+
+    # First, become a progress group leader, so that signals can be directed
+    # to this process and its children; see p.u.twisted.terminateProcess.
+    os.setpgrp()
+
     if args.input_file is None:
         reader = _reader_from_avahi()
     elif args.input_file == "-":

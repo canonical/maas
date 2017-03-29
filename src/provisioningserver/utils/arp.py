@@ -370,6 +370,11 @@ def add_arguments(parser):
 def run(args, output=sys.stdout, stdin=sys.stdin,
         stdin_buffer=sys.stdin.buffer):
     """Observe an Ethernet interface and print ARP bindings."""
+
+    # First, become a progress group leader, so that signals can be directed
+    # to this process and its children; see p.u.twisted.terminateProcess.
+    os.setpgrp()
+
     network_monitor = None
     if args.input_file is None:
         if args.interface is None:
