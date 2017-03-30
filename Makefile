@@ -159,7 +159,7 @@ bin/maas-rack bin/twistd.rack: \
 	@touch --no-create $@
 
 bin/test.rack: \
-  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack
+  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack bin/py
 	$(buildout) install rack-test
 	@touch --no-create $@
 
