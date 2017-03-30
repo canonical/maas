@@ -152,12 +152,12 @@
                                                 data-ng-if="convertTo.type === 'interface'"></maas-obj-field>
                                         </fieldset>
                                         <fieldset class="form__fieldset six-col last-col">
+                                            <maas-obj-field type="options" subtle="false" key="ip_assignment" label="IP assignment" placeholder="Select IP assignment"
+                                                options="option[0] as option[1] for option in convertTo.deviceIPOptions" label-width="two" input-width="three"></maas-obj-field>
                                             <maas-obj-field type="options" subtle="false" key="parent" label="Parent" placeholder="Select parent (optional)" placeholder-enabled="true"
                                                 options="machine.system_id as machine.fqdn for machine in machines | filter:{status_code: 6} | orderBy:'fqdn'"
                                                 label-width="two" label-info="Assign this device as a child of the parent machine." input-width="three"
                                                 data-ng-if="convertTo.type === 'device'"></maas-obj-field>
-                                            <maas-obj-field type="options" subtle="false" key="ip_assignment" label="IP assignment" placeholder="Select IP assignment"
-                                                options="option[0] as option[1] for option in convertTo.deviceIPOptions" label-width="two" input-width="three"></maas-obj-field>
                                         </fieldset>
                                     </div>
                                 </div>

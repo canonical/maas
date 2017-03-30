@@ -16,8 +16,8 @@ angular.module('MAAS').controller('DashboardController', [
 
         // Default device IP options.
         var deviceIPOptions = [
-            ['dynamic', 'Dynamic'],
             ['static', 'Static'],
+            ['dynamic', 'Dynamic'],
             ['external', 'External']
         ];
 

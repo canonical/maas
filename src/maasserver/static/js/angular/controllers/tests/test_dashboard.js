@@ -211,8 +211,8 @@ describe("DashboardController", function() {
                 goTo: false,
                 saved: false,
                 deviceIPOptions: [
-                    ['dynamic', 'Dynamic'],
                     ['static', 'Static'],
+                    ['dynamic', 'Dynamic'],
                     ['external', 'External']
                 ]
             });
@@ -278,8 +278,8 @@ describe("DashboardController", function() {
                 goTo: false,
                 saved: false,
                 deviceIPOptions: [
-                    ['dynamic', 'Dynamic'],
                     ['static', 'Static'],
+                    ['dynamic', 'Dynamic'],
                     ['external', 'External']
                 ],
                 primary_mac: discovered.mac_address,
@@ -321,8 +321,8 @@ describe("DashboardController", function() {
                 goTo: false,
                 saved: false,
                 deviceIPOptions: [
-                    ['dynamic', 'Dynamic'],
                     ['static', 'Static'],
+                    ['dynamic', 'Dynamic'],
                     ['external', 'External']
                 ],
                 mac_address: discovered.mac_address,
