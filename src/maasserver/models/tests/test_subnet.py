@@ -919,6 +919,23 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
         discovery = subnet.get_least_recently_seen_unknown_neighbour()
         self.assertThat(discovery.ip, Equals("10.0.0.2"))
 
+    def test__returns_least_recently_seen_neighbour_excludes_in_use(self):
+        # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None)
+        rackif = factory.make_Interface(vlan=subnet.vlan)
+        now = datetime.now()
+        yesterday = now - timedelta(days=1)
+        factory.make_Discovery(
+            ip="10.0.0.1", interface=rackif, updated=now)
+        factory.make_Discovery(
+            ip="10.0.0.2", interface=rackif, updated=yesterday)
+        factory.make_IPRange(
+            subnet, start_ip="10.0.0.2", end_ip="10.0.0.2",
+            type=IPRANGE_TYPE.RESERVED)
+        discovery = subnet.get_least_recently_seen_unknown_neighbour()
+        self.assertThat(discovery.ip, Equals("10.0.0.1"))
+
     def test__returns_none_if_no_neighbours(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
         subnet = factory.make_Subnet(

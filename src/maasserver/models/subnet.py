@@ -593,8 +593,17 @@ class Subnet(CleanSave, TimestampedModel):
         """
         # Circular imports.
         from maasserver.models import Discovery
-        return Discovery.objects.filter(
-            subnet=self).by_unknown_ip().order_by('last_seen').first()
+        # Note: for the purposes of this function, being in part of a "used"
+        # range (such as a router IP address or reserved range) makes it
+        # "known". So we need to avoid those here in order to avoid stepping
+        # on network infrastructure, reserved ranges, etc.
+        unused = self.get_ipranges_not_in_use(ignore_discovered_ips=True)
+        least_recent_neighbours = Discovery.objects.filter(
+            subnet=self).by_unknown_ip().order_by('last_seen')
+        for neighbor in least_recent_neighbours:
+            if neighbor.ip in unused:
+                return neighbor
+        return None
 
     def get_iprange_usage(self, with_neighbours=False) -> MAASIPSet:
         """Returns both the reserved and unreserved IP ranges in this Subnet.

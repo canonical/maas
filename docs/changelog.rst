@@ -2,6 +2,15 @@
 Changelog
 =========
 
+2.1.6
+=====
+
+Bugs fixed in this release
+--------------------------
+
+LP: ##1677507   Fix potential IP allocation from incorrect range.
+
+
 2.1.5
 =====
 
