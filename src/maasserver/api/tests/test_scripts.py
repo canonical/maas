@@ -67,6 +67,8 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timeout, script.timeout.seconds)
@@ -105,6 +107,8 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timeout, script.timeout.seconds)
@@ -282,6 +286,8 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timeout, script.timeout.seconds)
@@ -320,6 +326,8 @@ class TestScriptAPI(APITestCase.ForUser):
 
         self.assertEquals(name, script.name)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertItemsEqual(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timeout, script.timeout.seconds)
@@ -503,7 +511,7 @@ class TestScriptAPI(APITestCase.ForUser):
 
     def test_remove_tag(self):
         self.become_admin()
-        script = factory.make_Script()
+        script = factory.make_Script(destructive=False)
         removed_tag = random.choice(script.tags)
         response = self.client.post(
             self.get_script_uri(script),
@@ -516,7 +524,7 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertNotIn(removed_tag, reload_object(script).tags)
 
     def test_remove_tag_admin_only(self):
-        script = factory.make_Script()
+        script = factory.make_Script(destructive=False)
         response = self.client.post(
             self.get_script_uri(script),
             {

@@ -76,6 +76,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertEquals(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timedelta(0, timeout), script.timeout)
@@ -124,6 +126,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEquals(name, script.name)
         self.assertEquals(title, script.title)
         self.assertEquals(description, script.description)
+        if script.destructive:
+            tags.append('destructive')
         self.assertEquals(tags, script.tags)
         self.assertEquals(script_type, script.script_type)
         self.assertEquals(timedelta(0, timeout), script.timeout)
@@ -165,7 +169,7 @@ class TestScriptForm(MAASServerTestCase):
             self.assertEquals(1, VersionedTextFile.objects.all().count())
 
     def test__update_allows_editing_tag_and_timeout_on_default_script(self):
-        script = factory.make_Script(default=True)
+        script = factory.make_Script(default=True, destructive=False)
         tags = [factory.make_name('tag') for _ in range(3)]
         timeout = random.randint(0, 1000)
 

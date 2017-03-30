@@ -150,6 +150,7 @@ from metadataserver.models import (
     NodeKey,
     NodeUserData,
     ScriptResult,
+    ScriptSet,
 )
 from netaddr import (
     IPAddress,
@@ -3013,6 +3014,28 @@ class TestNode(MAASServerTestCase):
             node.abort_testing(admin)
         self.assertThat(
             clear_status_expires, MockCalledOnceWith(node.system_id))
+
+    def test_start_testing_prevents_destructive_tests_on_deployed(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, destructive=True)
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.assertRaises(
+            ValidationError,
+            node.start_testing, admin, testing_scripts=[script.name])
+        self.assertFalse(ScriptSet.objects.filter(node=node).exists())
+
+    def test_start_testing_prevents_destructive_tests_on_prev_deployed(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, destructive=True)
+        admin = factory.make_admin()
+        node = factory.make_Node(
+            previous_status=NODE_STATUS.DEPLOYED,
+            status=NODE_STATUS.FAILED_TESTING)
+        self.assertRaises(
+            ValidationError,
+            node.start_testing, admin, testing_scripts=[script.name])
+        self.assertFalse(ScriptSet.objects.filter(node=node).exists())
 
     def test_full_clean_logs_node_status_transition(self):
         node = factory.make_Node(

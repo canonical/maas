@@ -3,6 +3,7 @@
 
 __all__ = []
 
+import copy
 from datetime import timedelta
 import random
 
@@ -52,7 +53,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         script.script = old_script
         # User changeable fields.
         user_tags = [factory.make_name('tag') for _ in range(3)]
-        script.tags = user_tags
+        script.tags = copy.deepcopy(user_tags)
         user_timeout = timedelta(random.randint(0, 1000))
         script.timeout = user_timeout
         script.save()
@@ -72,6 +73,8 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertEquals(
             update_script_values.destructive, script.destructive)
         self.assertEquals(old_script, script.script.previous_version)
+        if script.destructive:
+            user_tags.append('destructive')
         self.assertEquals(user_tags, script.tags)
         self.assertEquals(user_timeout, script.timeout)
         self.assertTrue(script.default)

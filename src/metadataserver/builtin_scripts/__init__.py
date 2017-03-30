@@ -151,6 +151,23 @@ BUILTIN_SCRIPTS = [
         timeout=timedelta(minutes=1),
         filename='ntp.sh',
         ),
+    BuiltinScript(
+        name='badblocks',
+        title='Storage integrity',
+        description=(
+            'Run badblocks readonly tests against all drives in parallel.'),
+        tags=['storage'],
+        filename='badblocks.py',
+        ),
+    BuiltinScript(
+        name='badblocks-destructive',
+        title='Storage integrity',
+        description=(
+            'Run badblocks destructive tests against all drives in parallel.'),
+        tags=['storage'],
+        filename='badblocks.py',
+        destructive=True,
+        ),
 ]
 
 

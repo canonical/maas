@@ -1871,6 +1871,19 @@ class Node(CleanSave, TimestampedModel):
                 "Unconfigured power type. "
                 "Please configure the power type and try again.")
 
+        # Create a new ScriptSet for the tests to be run.
+        script_set = ScriptSet.objects.create_testing_script_set(
+            self, testing_scripts)
+        if NODE_STATUS.DEPLOYED in (self.status, self.previous_status):
+            qs = script_set.scriptresult_set.all()
+            qs.prefetch_related('script')
+            for script_result in qs:
+                if script_result.script.destructive:
+                    script_set.delete()
+                    raise ValidationError(
+                        'Unable to run destructive test while deployed!')
+        self.current_testing_script_set = script_set
+
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_START_TESTING,
             action='start testing')
@@ -1885,11 +1898,6 @@ class Node(CleanSave, TimestampedModel):
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, testing_user_data)
-
-        # Create a new ScriptSet for the tests to be run.
-        script_set = ScriptSet.objects.create_testing_script_set(
-            self, testing_scripts)
-        self.current_testing_script_set = script_set
 
         # We need to mark the node as TESTING now to avoid a race when starting
         # multiple nodes. We hang on to old_status just in case the power

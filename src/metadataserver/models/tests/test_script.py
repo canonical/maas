@@ -90,3 +90,15 @@ class TestScript(MAASServerTestCase):
         script.remove_tag(factory.make_name('tag'))
         script.save()
         self.assertEquals(tag_count, len(reload_object(script).tags))
+
+    def test_destructive_true_adds_tag(self):
+        script = factory.make_Script(destructive=False)
+        script.destructive = True
+        script.save()
+        self.assertIn('destructive', reload_object(script).tags)
+
+    def test_destructive_false_removes_tag(self):
+        script = factory.make_Script(destructive=True)
+        script.destructive = False
+        script.save()
+        self.assertNotIn('destructive', reload_object(script).tags)

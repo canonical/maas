@@ -92,3 +92,10 @@ class Script(CleanSave, TimestampedModel):
         """Remove tag from Script."""
         if tag in self.tags:
             self.tags.remove(tag)
+
+    def save(self, *args, **kwargs):
+        if self.destructive:
+            self.add_tag('destructive')
+        else:
+            self.remove_tag('destructive')
+        return super().save(*args, **kwargs)
