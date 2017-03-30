@@ -531,7 +531,7 @@ SAMPLE_JSON_MEMORY = {
 
 def make_context():
     return {
-        'power_address': factory.make_ip_address(),
+        'power_address': factory.make_ipv4_address(),
         'power_user': factory.make_name('power_user'),
         'power_pass': factory.make_name('power_pass'),
         'node_id': factory.make_name('node_id'),
@@ -668,7 +668,7 @@ class TestRSDPodDriver(MAASTestCase):
             b"User-Agent": [b"MAAS"],
             b"Authorization": [b"Basic " + authorization],
             b"Content-Type": [b"application/json; charset=utf-8"],
-            }
+        }
         driver = RSDPodDriver()
         headers = driver.make_auth_headers(power_user, power_pass)
         self.assertEquals(headers, Headers(attributes))
@@ -682,14 +682,18 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         mock_agent = self.patch(rsd_module, 'Agent')
         mock_agent.return_value.request = Mock()
-        mock_agent.return_value.request.return_value = succeed(None)
+        expected_headers = Mock()
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers)
         mock_readBody = self.patch(rsd_module, 'readBody')
         mock_readBody.return_value = succeed(
             json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'))
         expected_response = SAMPLE_JSON_SYSTEMS
 
-        response = yield driver.redfish_request(b"GET", uri, headers)
+        response, headers = yield driver.redfish_request(b"GET", uri, headers)
         self.assertEquals(expected_response, response)
+        self.assertEquals(expected_headers.headers, headers)
 
     @inlineCallbacks
     def test_redfish_request_continues_partial_download_error(self):
@@ -700,7 +704,10 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         mock_agent = self.patch(rsd_module, 'Agent')
         mock_agent.return_value.request = Mock()
-        mock_agent.return_value.request.return_value = succeed(None)
+        expected_headers = Mock()
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers)
         mock_readBody = self.patch(rsd_module, 'readBody')
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
@@ -708,8 +715,9 @@ class TestRSDPodDriver(MAASTestCase):
         mock_readBody.return_value = fail(error)
         expected_response = SAMPLE_JSON_SYSTEMS
 
-        response = yield driver.redfish_request(b"GET", uri, headers)
+        response, headers = yield driver.redfish_request(b"GET", uri, headers)
         self.assertEquals(expected_response, response)
+        self.assertEquals(expected_headers.headers, headers)
 
     @inlineCallbacks
     def test_redfish_request_raises_failures(self):
@@ -720,7 +728,10 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         mock_agent = self.patch(rsd_module, 'Agent')
         mock_agent.return_value.request = Mock()
-        mock_agent.return_value.request.return_value = succeed("Response")
+        expected_headers = Mock()
+        expected_headers.headers = "Testing Headers"
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers)
         mock_readBody = self.patch(rsd_module, 'readBody')
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
@@ -730,7 +741,7 @@ class TestRSDPodDriver(MAASTestCase):
         with ExpectedException(PartialDownloadError):
             yield driver.redfish_request(b"GET", uri, headers)
         self.assertThat(mock_readBody, MockCalledOnceWith(
-            "Response"))
+            expected_headers))
 
     @inlineCallbacks
     def test__list_resources(self):
@@ -739,7 +750,7 @@ class TestRSDPodDriver(MAASTestCase):
         endpoint = factory.make_name('endpoint')
         headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.return_value = SAMPLE_JSON_SYSTEMS
+        mock_redfish_request.return_value = (SAMPLE_JSON_SYSTEMS, None)
         expected_data = SAMPLE_JSON_SYSTEMS
         members = expected_data.get('Members')
         resource_ids = []
@@ -763,8 +774,8 @@ class TestRSDPodDriver(MAASTestCase):
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_MEMORY,
-            SAMPLE_JSON_MEMORY,
+            (SAMPLE_JSON_MEMORY, None),
+            (SAMPLE_JSON_MEMORY, None),
         ]
 
         memories = yield driver.get_pod_memory_resources(
@@ -785,8 +796,8 @@ class TestRSDPodDriver(MAASTestCase):
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_PROCESSOR,
-            SAMPLE_JSON_PROCESSOR,
+            (SAMPLE_JSON_PROCESSOR, None),
+            (SAMPLE_JSON_PROCESSOR, None),
         ]
 
         cores, cpu_speeds, arch = yield driver.get_pod_processor_resources(
@@ -812,8 +823,8 @@ class TestRSDPodDriver(MAASTestCase):
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_DEVICE,
-            SAMPLE_JSON_DEVICE,
+            (SAMPLE_JSON_DEVICE, None),
+            (SAMPLE_JSON_DEVICE, None),
         ]
 
         storages = yield driver.get_pod_storage_resources(
@@ -842,8 +853,8 @@ class TestRSDPodDriver(MAASTestCase):
         NO_MEMORY = deepcopy(SAMPLE_JSON_MEMORY)
         NO_MEMORY['CapacityMiB'] = None
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_MEMORY,
-            NO_MEMORY,
+            (SAMPLE_JSON_MEMORY, None),
+            (NO_MEMORY, None),
         ]
 
         yield driver.scan_machine_memories(url, headers, system, machine)
@@ -871,8 +882,8 @@ class TestRSDPodDriver(MAASTestCase):
         NO_THREADS = deepcopy(SAMPLE_JSON_PROCESSOR)
         NO_THREADS['TotalThreads'] = None
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_PROCESSOR,
-            NO_THREADS,
+            (SAMPLE_JSON_PROCESSOR, None),
+            (NO_THREADS, None),
         ]
 
         yield driver.scan_machine_processors(url, headers, system, machine)
@@ -900,8 +911,8 @@ class TestRSDPodDriver(MAASTestCase):
         ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_DEVICE,
-            SAMPLE_JSON_DEVICE,
+            (SAMPLE_JSON_DEVICE, None),
+            (SAMPLE_JSON_DEVICE, None),
         ]
 
         yield driver.scan_machine_local_storage(
@@ -943,16 +954,16 @@ class TestRSDPodDriver(MAASTestCase):
         nic4_data = deepcopy(SAMPLE_JSON_INTERFACE)
         nic4_data['Links']['Oem'] = None
         mock_redfish_request.side_effect = [
-            nic1_data,
-            SAMPLE_JSON_PORT,
-            SAMPLE_JSON_VLAN,
-            nic2_data,
-            SAMPLE_JSON_PORT,
-            SAMPLE_JSON_VLAN,
-            nic3_data,
-            SAMPLE_JSON_PORT,
-            SAMPLE_JSON_VLAN,
-            nic4_data,
+            (nic1_data, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            (nic2_data, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            (nic3_data, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            (nic4_data, None),
         ]
 
         yield driver.scan_machine_interfaces(
@@ -1004,12 +1015,12 @@ class TestRSDPodDriver(MAASTestCase):
             ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_MEMORY,
-            SAMPLE_JSON_PROCESSOR,
-            SAMPLE_JSON_DEVICE,
-            SAMPLE_JSON_MEMORY,
-            SAMPLE_JSON_PROCESSOR,
-            SAMPLE_JSON_DEVICE,
+            (SAMPLE_JSON_MEMORY, None),
+            (SAMPLE_JSON_PROCESSOR, None),
+            (SAMPLE_JSON_DEVICE, None),
+            (SAMPLE_JSON_MEMORY, None),
+            (SAMPLE_JSON_PROCESSOR, None),
+            (SAMPLE_JSON_DEVICE, None),
             ]
 
         pod = yield driver.get_pod_resources(url, headers)
@@ -1041,9 +1052,9 @@ class TestRSDPodDriver(MAASTestCase):
             driver, 'get_pod_memory_resources')
         mock_get_pod_memory_resources.return_value = [None]
         mock_redfish_request.side_effect = [
-            SAMPLE_JSON_SYSTEM,
-            SAMPLE_JSON_PROCESSOR,
-            SAMPLE_JSON_DEVICE,
+            (SAMPLE_JSON_SYSTEM, None),
+            (SAMPLE_JSON_PROCESSOR, None),
+            (SAMPLE_JSON_DEVICE, None),
             ]
 
         pod = yield driver.get_pod_resources(url, headers)
@@ -1051,6 +1062,48 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(0, pod.cpu_speed)
         self.assertEquals(0, pod.memory)
         self.assertEquals(0, pod.local_storage)
+
+    @inlineCallbacks
+    def test__get_pod_machine(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        mock_list_resources = self.patch(driver, 'list_resources')
+        mock_list_resources.side_effect = [
+            [b"redfish/v1/Systems/1/Memory/1"],
+            [b"redfish/v1/Systems/1/Processors/1"],
+            [b"redfish/v1/Systems/1/Adapters/3"],
+            [b"redfish/v1/Systems/1/Adapters/3/Devices/2"],
+            [b"redfish/v1/Systems/1/EthernetInterfaces/5"],
+            ]
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.side_effect = [
+            (SAMPLE_JSON_NODE, None),
+            (SAMPLE_JSON_MEMORY, None),
+            (SAMPLE_JSON_PROCESSOR, None),
+            (SAMPLE_JSON_DEVICE, None),
+            (SAMPLE_JSON_INTERFACE, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            ]
+
+        machine = yield driver.get_pod_machine(
+            b"redfish/v1/Nodes/1", url, headers)
+        self.assertEquals("amd64/generic", machine.architecture)
+        self.assertEquals(28, machine.cores)
+        self.assertEquals(2300, machine.cpu_speed)
+        self.assertEquals(7812, machine.memory)
+        self.assertEquals(
+            "54:ab:3a:36:af:45", machine.interfaces[0].mac_address)
+        self.assertEquals(
+            "INTEL_SSDMCEAC120B3", machine.block_devices[0].model)
+        self.assertEquals("CVLI310601PY120E", machine.block_devices[0].serial)
+        self.assertEquals(119999999999.99997, machine.block_devices[0].size)
+        self.assertEquals(['ssd'], machine.block_devices[0].tags)
+        self.assertEquals("off", machine.power_state)
+        self.assertEquals({'node_id': '1'}, machine.power_parameters)
+        self.assertTrue(machine.interfaces[0].boot)
 
     @inlineCallbacks
     def test__get_pod_machines(self):
@@ -1067,36 +1120,16 @@ class TestRSDPodDriver(MAASTestCase):
             [b"redfish/v1/Systems/1/Adapters/3/Devices/2"],
             [b"redfish/v1/Systems/1/EthernetInterfaces/5"],
             ]
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.side_effect = [
-            SAMPLE_JSON_NODE,
-            SAMPLE_JSON_MEMORY,
-            SAMPLE_JSON_PROCESSOR,
-            SAMPLE_JSON_DEVICE,
-            SAMPLE_JSON_INTERFACE,
-            SAMPLE_JSON_PORT,
-            SAMPLE_JSON_VLAN
-            ]
+        expected_machines = [make_discovered_machine for _ in range(3)]
+        mock_get_pod_machine = self.patch(driver, 'get_pod_machine')
+        mock_get_pod_machine.return_value = expected_machines
 
         discovered_machines = yield driver.get_pod_machines(url, headers)
-        machine = discovered_machines[0]
         self.assertEquals(1, len(discovered_machines))
-        self.assertEquals("amd64/generic", machine.architecture)
-        self.assertEquals(28, machine.cores)
-        self.assertEquals(2300, machine.cpu_speed)
-        self.assertEquals(7812, machine.memory)
-        self.assertEquals(
-            "54:ab:3a:36:af:45", machine.interfaces[0].mac_address)
-        self.assertEquals(
-            "INTEL_SSDMCEAC120B3", machine.block_devices[0].model)
-        self.assertEquals("CVLI310601PY120E", machine.block_devices[0].serial)
-        self.assertEquals(119999999999.99997, machine.block_devices[0].size)
-        self.assertEquals(['ssd'], machine.block_devices[0].tags)
-        self.assertEquals("off", machine.power_state)
-        self.assertEquals({'node_id': '1'}, machine.power_parameters)
-        self.assertTrue(machine.interfaces[0].boot)
+        self.assertThat(mock_get_pod_machine, MockCalledOnceWith(
+            b"redfish/v1/Nodes/1", url, headers))
 
-    def test_get_pod_hints(self):
+    def test__get_pod_hints(self):
         driver = RSDPodDriver()
         discovered_pod = make_discovered_pod()
         # Calculate expected hints.
@@ -1127,7 +1160,7 @@ class TestRSDPodDriver(MAASTestCase):
             expected_local_disks, discovered_pod_hints.local_disks)
 
     @inlineCallbacks
-    def test_discover(self):
+    def test__discover(self):
         driver = RSDPodDriver()
         context = make_context()
         headers = driver.make_auth_headers(**context)
@@ -1230,21 +1263,23 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         request = make_requested_machine(cores=64)
         discovered_pod = make_discovered_pod()
-        new_machines = deepcopy(discovered_pod.machines)
-        machines = deepcopy(new_machines)
-        new_machine = machines.pop(0)
-        mock_get_pod_machines = self.patch(driver, 'get_pod_machines')
-        mock_get_pod_machines.side_effect = [
-            machines, new_machines]
+        new_machine = make_discovered_machine()
+        mock_get_pod_machine = self.patch(driver, 'get_pod_machine')
+        mock_get_pod_machine.return_value = new_machine
         mock_convert_request_to_json_payload = self.patch(
             driver, 'convert_request_to_json_payload')
-        payload = json.dumps(
-            {
-                'Test': "Testing Compose"
-            }).encode('utf-8')
+        payload = json.dumps({
+            'Test': "Testing Compose"
+        }).encode('utf-8')
         mock_convert_request_to_json_payload.side_effect = [payload] * 4
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.side_effect = [Exception('Error')] * 3 + [None]
+        response_headers = Headers({
+            b"location": [
+                join(url, b"redfish/v1/Nodes/%s" %
+                     new_machine.power_parameters.get(
+                         'node_id').encode('utf-8'))]})
+        mock_redfish_request.side_effect = [
+            Exception('Error')] * 3 + [(None, response_headers)]
         mock_assemble_node = self.patch(driver, 'assemble_node')
         mock_set_pxe_boot = self.patch(driver, 'set_pxe_boot')
         mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
@@ -1284,7 +1319,7 @@ class TestRSDPodDriver(MAASTestCase):
             }).encode('utf-8')
         mock_convert_request_to_json_payload.side_effect = [payload] * 4
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.side_effect = [Exception('Error')]
+        mock_redfish_request.side_effect = [(Exception('Error'), None)]
         with ExpectedException(PodInvalidResources):
             yield driver.compose(
                 factory.make_name('system_id'), context, request)
@@ -1393,7 +1428,7 @@ class TestRSDPodDriver(MAASTestCase):
         node_id = context.get('node_id').encode('utf-8')
         headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.return_value = SAMPLE_JSON_NODE
+        mock_redfish_request.return_value = (SAMPLE_JSON_NODE, None)
         uri = join(url, b"redfish/v1/Nodes/%s" % node_id)
 
         power_state = yield driver.get_composed_node_state(

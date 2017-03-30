@@ -165,9 +165,13 @@ class RSDPodDriver(PodDriver):
                     else:
                         return response
 
+            def cb_attach_headers(data, headers):
+                return data, headers
+
             d = readBody(response)
             d.addErrback(eb_catch_partial)
             d.addCallback(cb_json_decode)
+            d.addCallback(cb_attach_headers, headers=response.headers)
             return d
 
         d.addCallback(render_response)
@@ -181,7 +185,7 @@ class RSDPodDriver(PodDriver):
         `Members` attribute with a list of members which populate the
         list.
         """
-        resources = yield self.redfish_request(b"GET", uri, headers)
+        resources, _ = yield self.redfish_request(b"GET", uri, headers)
         members = resources.get('Members')
         resource_ids = []
         for resource in members:
@@ -198,7 +202,7 @@ class RSDPodDriver(PodDriver):
         memories = yield self.list_resources(memories_uri, headers)
         # Iterate over all the memories for this specific system.
         for memory in memories:
-            memory_data = yield self.redfish_request(
+            memory_data, _ = yield self.redfish_request(
                 b"GET", join(url, memory), headers)
             system_memory.append(memory_data.get('CapacityMiB'))
         return system_memory
@@ -214,7 +218,7 @@ class RSDPodDriver(PodDriver):
         processors = yield self.list_resources(processors_uri, headers)
         # Iterate over all processors for this specific system.
         for processor in processors:
-            processor_data = yield self.redfish_request(
+            processor_data, _ = yield self.redfish_request(
                 b"GET", join(url, processor), headers)
             # Using 'TotalThreads' instead of 'TotalCores'
             # as this is what MAAS finds when commissioning.
@@ -241,7 +245,7 @@ class RSDPodDriver(PodDriver):
                 devices_uri, headers)
             # Iterate over all the devices for this specific adapter.
             for device in devices:
-                device_data = yield self.redfish_request(
+                device_data, _ = yield self.redfish_request(
                     b"GET", join(url, device), headers)
                 storages.append(device_data.get('CapacityGiB'))
         return storages
@@ -255,7 +259,7 @@ class RSDPodDriver(PodDriver):
         memories = yield self.list_resources(memories_uri, headers)
         # Iterate over all the memories for this specific system.
         for memory in memories:
-            memory_data = yield self.redfish_request(
+            memory_data, _ = yield self.redfish_request(
                 b"GET", join(url, memory), headers)
             mem = memory_data.get('CapacityMiB')
             if mem is not None:
@@ -273,7 +277,7 @@ class RSDPodDriver(PodDriver):
         # Iterate over all processors for this specific system.
         for processor in processors:
             # Get the data for this specific processor.
-            processor_data = yield self.redfish_request(
+            processor_data, _ = yield self.redfish_request(
                 b"GET", join(url, processor), headers)
             # Using 'TotalThreads' instead of 'TotalCores'
             # as this is what MAAS finds when commissioning.
@@ -308,7 +312,7 @@ class RSDPodDriver(PodDriver):
                 discovered_machine_block_device = (
                     DiscoveredMachineBlockDevice(
                         model='', serial='', size=0))
-                device_data = yield self.redfish_request(
+                device_data, _ = yield self.redfish_request(
                     b"GET", join(url, device), headers)
                 model = device_data.get('Model')
                 if model is not None:
@@ -340,7 +344,7 @@ class RSDPodDriver(PodDriver):
             discovered_machine_interface = DiscoveredMachineInterface(
                 mac_address='')
             # Get the data for this specific interface.
-            interface_data = yield self.redfish_request(
+            interface_data, _ = yield self.redfish_request(
                 b"GET", join(url, interface), headers)
             mac_address = interface_data.get('MACAddress')
             if mac_address is not None:
@@ -362,13 +366,13 @@ class RSDPodDriver(PodDriver):
                 if ports is not None:
                     for port in ports.values():
                         port = port.lstrip('/').encode('utf-8')
-                        port_data = yield self.redfish_request(
+                        port_data, _ = yield self.redfish_request(
                             b"GET", join(url, port), headers)
                         vlans = port_data.get('Links', {}).get('PrimaryVLAN')
                         if vlans is not None:
                             for vlan in vlans.values():
                                 vlan = vlan.lstrip('/').encode('utf-8')
-                                vlan_data = yield self.redfish_request(
+                                vlan_data, _ = yield self.redfish_request(
                                     b"GET", join(url, vlan), headers)
                                 vlan_id = vlan_data.get('VLANId')
                                 if vlan_id is not None:
@@ -434,6 +438,57 @@ class RSDPodDriver(PodDriver):
         return discovered_pod
 
     @inlineCallbacks
+    def get_pod_machine(self, node, url, headers):
+        """Get pod composed machine.
+
+        If required resources cannot be found, this
+        composed machine will not be returned to the region.
+        """
+        discovered_machine = DiscoveredMachine(
+            architecture="amd64/generic", cores=0, cpu_speed=0,
+            memory=0, interfaces=[], block_devices=[],
+            power_state="unknown",
+            power_parameters={
+                'node_id': node.decode('utf-8').rsplit('/')[-1]})
+        # Save list of all cpu_speeds being used by composed nodes
+        # that we will use later in our pod hints calculations.
+        discovered_machine.cpu_speeds = []
+        node_data, _ = yield self.redfish_request(
+            b"GET", join(url, node), headers)
+        power_state = node_data.get('PowerState')
+        if power_state is not None:
+            discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
+                power_state)
+        # Find specific system that this composed node is linked too.
+        systems = node_data.get(
+            'Links', {}).get('ComputerSystem')
+        if systems is not None:
+            for system in systems.values():
+                system = system.lstrip('/').encode('utf-8')
+                yield self.scan_machine_memories(
+                    url, headers, system, discovered_machine)
+                yield self.scan_machine_processors(
+                    url, headers, system, discovered_machine)
+                yield self.scan_machine_local_storage(
+                    url, headers, system, discovered_machine)
+                yield self.scan_machine_interfaces(
+                    url, headers, system, discovered_machine)
+                # Set one interface to boot if none are set.
+                boot_flags = [
+                    interface.boot
+                    for interface in discovered_machine.interfaces
+                ]
+                if len(boot_flags) > 0 and True not in boot_flags:
+                    # Just set first interface too boot.
+                    discovered_machine.interfaces[0].boot = True
+
+        # Set cpu_speed to max of all found cpu_speeds.
+        if len(discovered_machine.cpu_speeds):
+            discovered_machine.cpu_speed = max(
+                discovered_machine.cpu_speeds)
+        return discovered_machine
+
+    @inlineCallbacks
     def get_pod_machines(self, url, headers):
         """Get pod composed machines.
 
@@ -447,48 +502,7 @@ class RSDPodDriver(PodDriver):
         nodes = yield self.list_resources(nodes_uri, headers)
         # Iterate over all composed nodes in the pod.
         for node in nodes:
-            discovered_machine = DiscoveredMachine(
-                architecture="amd64/generic", cores=0, cpu_speed=0,
-                memory=0, interfaces=[], block_devices=[],
-                power_state="unknown",
-                power_parameters={
-                    'node_id': node.decode('utf-8').rsplit('/')[-1]})
-            # Save list of all cpu_speeds being used by composed nodes
-            # that we will use later in our pod hints calculations.
-            discovered_machine.cpu_speeds = []
-            node_data = yield self.redfish_request(
-                b"GET", join(url, node), headers)
-            power_state = node_data.get('PowerState')
-            if power_state is not None:
-                discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
-                    power_state)
-            # Find specific system that this composed node is linked too.
-            systems = node_data.get(
-                'Links', {}).get('ComputerSystem')
-            if systems is not None:
-                for system in systems.values():
-                    system = system.lstrip('/').encode('utf-8')
-                    yield self.scan_machine_memories(
-                        url, headers, system, discovered_machine)
-                    yield self.scan_machine_processors(
-                        url, headers, system, discovered_machine)
-                    yield self.scan_machine_local_storage(
-                        url, headers, system, discovered_machine)
-                    yield self.scan_machine_interfaces(
-                        url, headers, system, discovered_machine)
-                    # Set one interface to boot if none are set.
-                    boot_flags = [
-                        interface.boot
-                        for interface in discovered_machine.interfaces
-                    ]
-                    if len(boot_flags) > 0 and True not in boot_flags:
-                        # Just set first interface too boot.
-                        discovered_machine.interfaces[0].boot = True
-
-            # Set cpu_speed to max of all found cpu_speeds.
-            if len(discovered_machine.cpu_speeds):
-                discovered_machine.cpu_speed = max(
-                    discovered_machine.cpu_speeds)
+            discovered_machine = yield self.get_pod_machine(node, url, headers)
             discovered_machines.append(discovered_machine)
         return discovered_machines
 
@@ -624,9 +638,6 @@ class RSDPodDriver(PodDriver):
         url = self.get_url(context)
         headers = self.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/Actions/Allocate"
-        # Get previous list of composed machines in pod.
-        previous_machines = yield self.get_pod_machines(
-            url, headers)
         # Create allocate payload.
         requested_cores = request.cores
         if requested_cores % 2 != 0:
@@ -643,7 +654,7 @@ class RSDPodDriver(PodDriver):
             payload = self.convert_request_to_json_payload(
                 processors, cores, request)
             try:
-                yield self.redfish_request(
+                _, response_headers = yield self.redfish_request(
                     b"POST", join(url, endpoint), headers,
                     FileBodyProducer(BytesIO(payload)))
                 # Break out of loop if allocation was successful.
@@ -657,33 +668,29 @@ class RSDPodDriver(PodDriver):
                     break
                 continue
 
-        # Sieve the new machine.
-        discovered_machine = None
-        current_machines = yield self.get_pod_machines(url, headers)
-        previous_node_ids = [
-            pm.power_parameters.get('node_id') for pm in previous_machines]
-        for cm in current_machines:
-            if cm.power_parameters.get('node_id') not in previous_node_ids:
-                discovered_machine = cm
+        if response_headers is not None:
+            location = response_headers.getRawHeaders("location")
+            node_id = location[0].rsplit('/', 1)[-1]
+            node_path = location[0].split('/', 3)[-1]
 
-        if discovered_machine is None:
-            # Allocation did not succeed.
-            raise PodInvalidResources(
-                "Unable to allocate machine with requested resources.")
+            # Retrieve new node.
+            discovered_machine = yield self.get_pod_machine(
+                node_path.encode('utf-8'), url, headers)
+            # Assemble the node.
+            yield self.assemble_node(url, node_id.encode('utf-8'), headers)
+            # Set to PXE boot.
+            yield self.set_pxe_boot(url, node_id.encode('utf-8'), headers)
 
-        node_id = discovered_machine.power_parameters.get(
-            'node_id').encode('utf-8')
-        # Assemble the node.
-        yield self.assemble_node(url, node_id, headers)
-        # Set to PXE boot.
-        yield self.set_pxe_boot(url, node_id, headers)
+            # Retrieve pod resources.
+            discovered_pod = yield self.get_pod_resources(url, headers)
+            # Retrive pod hints.
+            discovered_pod.hints = self.get_pod_hints(discovered_pod)
 
-        # Retrieve pod resources.
-        discovered_pod = yield self.get_pod_resources(url, headers)
-        # Retrive pod hints.
-        discovered_pod.hints = self.get_pod_hints(discovered_pod)
+            return discovered_machine, discovered_pod.hints
 
-        return discovered_machine, discovered_pod.hints
+        # Allocation did not succeed.
+        raise PodInvalidResources(
+            "Unable to allocate machine with requested resources.")
 
     @inlineCallbacks
     def decompose(self, pod_id, context):
@@ -734,7 +741,7 @@ class RSDPodDriver(PodDriver):
         """Return the `ComposedNodeState` of the composed machine."""
         endpoint = b"redfish/v1/Nodes/%s" % node_id
         # Get endpoint data for node_id.
-        node_data = yield self.redfish_request(
+        node_data, _ = yield self.redfish_request(
             b"GET", join(url, endpoint), headers)
         return node_data.get('ComposedNodeState')
 
