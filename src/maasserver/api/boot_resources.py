@@ -160,7 +160,9 @@ class BootResourcesHandler(OperationsHandler):
             resources = BootResource.objects.filter(
                 rtype=TYPE_MAPPING[rtype]).order_by('name', 'architecture')
         else:
-            raise MAASAPIBadRequest("Bad type '%s'" % rtype)
+            raise MAASAPIBadRequest(
+                "'%s' is not a valid boot resource type. Available "
+                "types: %s" % (rtype, list(TYPE_MAPPING.keys())))
 
         resource_list = [
             boot_resource_to_dict(resource)
