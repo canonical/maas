@@ -130,6 +130,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'node_type_name',
     'special_filesystems',
     'pod',
+    'default_gateways',
 )
 
 # Limited set of machine fields exposed on the anonymous API.
@@ -204,6 +205,23 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             }
         else:
             return None
+
+    @classmethod
+    def default_gateways(handler, machine):
+        """The default gateways that will be used for this machine."""
+        gateways = machine.get_default_gateways()
+        ipv4 = gateways.ipv4.gateway_ip if gateways.ipv4 is not None else None
+        ipv6 = gateways.ipv6.gateway_ip if gateways.ipv6 is not None else None
+        return {
+            "ipv4": {
+                "gateway_ip": ipv4,
+                "link_id": machine.gateway_link_ipv4_id,
+            },
+            "ipv6": {
+                "gateway_ip": ipv6,
+                "link_id": machine.gateway_link_ipv6_id,
+            }
+        }
 
     @admin_method
     def update(self, request, system_id):
