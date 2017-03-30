@@ -1,8 +1,8 @@
 #!/bin/bash -e
 #
-# ntp - Run ntp clock set to verify NTP connectivity.
+# stress-ng-cpu-long - Run stress-ng memory tests over 12 hours.
 #
-# Author: Michael Iatrou <michael.iatrou (at) canonical.com>
+# Author: Lee Trager <lee.trager@canonical.com>
 #
 # Copyright (C) 2017 Canonical
 #
@@ -19,12 +19,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# cloud-init configures ntp to use the rack controller or a user configured
-# external ntp server before running the test scripts. This test ensures that
-# the configured NTP server is accessible.
-e=0
-ntpq -np
-sudo -n systemctl stop ntp.service
-sudo -n timeout 10 ntpd -gq || e=$?
-sudo -n systemctl start ntp.service
-exit $e
+sudo -n apt-get install -q -y stress-ng
+echo
+
+sudo -n stress-ng --aggressive -a 0 --class cpu,cpu-cache --ignite-cpu \
+    --log-brief --metrics-brief --times --tz --verify --timeout 12h

@@ -356,6 +356,20 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertEquals(
             script.script.previous_version.data, response.content.decode())
 
+    def test_download_gets_previous_rev(self):
+        script = factory.make_Script()
+        script.script = script.script.update(factory.make_string())
+        script.save()
+        response = self.client.get(
+            self.get_script_uri(script),
+            {
+                'op': 'download',
+                'rev': script.script.previous_version.id,
+            })
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEquals(
+            script.script.previous_version.data, response.content.decode())
+
     def test_download_errors_on_unknown_revision(self):
         script = factory.make_Script()
         response = self.client.get(

@@ -944,7 +944,7 @@ class TestVirtualityScript(MAASTestCase):
         self.sysdv.unlink()
         sysdv_name = factory.make_name("virt")
         with self.sysdv.open("w") as fd:
-            fd.write("#!/bin/sh\n")
+            fd.write("#!/bin/bash\n")
             fd.write("echo %s\n" % sysdv_name)
             fd.write("exit 1\n")
         self.sysdv.chmod(0o700)

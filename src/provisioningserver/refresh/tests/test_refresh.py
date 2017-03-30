@@ -137,7 +137,7 @@ class TestRefresh(MAASTestCase):
         if script_name is None:
             script_name = factory.make_name('script_name')
         TEST_SCRIPT = dedent("""\
-            #!/bin/sh
+            #!/bin/bash
             echo 'test script'
             """)
         refresh.NODE_INFO_SCRIPTS = OrderedDict([
@@ -151,7 +151,7 @@ class TestRefresh(MAASTestCase):
         if script_name is None:
             script_name = factory.make_name('script_name')
         TEST_SCRIPT = dedent("""\
-            #!/bin/sh
+            #!/bin/bash
             echo 'test failed'
             exit 1
             """)

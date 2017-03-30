@@ -259,7 +259,8 @@ class NodeScriptHandler(OperationsHandler):
     def download(self, request, name):
         """Download a script.
 
-        :param revision: What revision to download, latest by default.
+        :param revision: What revision to download, latest by default. Can use
+            rev as a shortcut.
         :type revision: integer
         """
         if name.isdigit():
@@ -267,6 +268,8 @@ class NodeScriptHandler(OperationsHandler):
         else:
             script = get_object_or_404(Script, name=name)
         revision = get_optional_param(request.GET, 'revision', None, Int)
+        if revision is None:
+            revision = get_optional_param(request.GET, 'rev', None, Int)
         if revision is not None:
             for rev in script.script.previous_versions():
                 if rev.id == revision:

@@ -2479,7 +2479,7 @@ class TestClusterProtocol_ScanNetworks(
     @inlineCallbacks
     def test_spawnProcessAndNullifyStdout_nullifies_stdout(self):
         done, protocol = makeDeferredWithProcessProtocol()
-        args = [b"/bin/sh", b'-c', b"echo foo"]
+        args = [b"/bin/bash", b'-c', b"echo foo"]
         outReceived = Mock()
         protocol.outReceived = outReceived
         spawnProcessAndNullifyStdout(protocol, args)
@@ -2489,7 +2489,7 @@ class TestClusterProtocol_ScanNetworks(
     @inlineCallbacks
     def test_spawnProcessAndNullifyStdout_captures_stderr(self):
         done, protocol = makeDeferredWithProcessProtocol()
-        args = [b"/bin/sh", b'-c', b"echo foo >&2"]
+        args = [b"/bin/bash", b'-c', b"echo foo >&2"]
         errReceived = Mock()
         protocol.errReceived = errReceived
         spawnProcessAndNullifyStdout(protocol, args)
@@ -2500,7 +2500,7 @@ class TestClusterProtocol_ScanNetworks(
     def test_executeScanNetworksSubprocess(self):
         mock_scan_args = self.patch(
             clusterservice, 'get_scan_all_networks_args')
-        mock_scan_args.return_value = [b"/bin/sh", b'-c', b"echo -n foo >&2"]
+        mock_scan_args.return_value = [b"/bin/bash", b'-c', b"echo -n foo >&2"]
         mock_log_msg = self.patch(clusterservice.log, 'msg')
         d = executeScanNetworksSubprocess()
         yield d

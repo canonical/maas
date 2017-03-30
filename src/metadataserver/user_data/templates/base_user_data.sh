@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This script carries inside it multiple files.  When executed, it creates
 # the files into a temporary directory and uses them to execute commands

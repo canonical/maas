@@ -233,6 +233,12 @@ def main():
         fail("URL must be provided either in --url or in config\n")
     url = "%s/%s/" % (url, args.apiver)
 
+    # Disable the OOM killer on the runner process, the OOM killer will still
+    # go after any tests spawned.
+    oom_score_adj_path = os.path.join(
+        '/proc', str(os.getpid()), 'oom_score_adj')
+    open(oom_score_adj_path, 'w').write('-1000')
+
     heart_beat = HeartBeat(url, creds)
     heart_beat.start()
 

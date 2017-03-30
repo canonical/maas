@@ -60,19 +60,19 @@ def make_function_call_script(function, *args, **kwargs):
 
 # Built-in script to run lshw.
 LSHW_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     sudo -n /usr/bin/lshw -xml
     """)
 
 # Built-in script to run `ip addr`
 IPADDR_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     ip addr
     """)
 
 # Built-in script to detect virtual instances.
 VIRTUALITY_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     # In Bourne Shell `type -p` does not work; `which` is closest.
     if which systemd-detect-virt > /dev/null; then
         # systemd-detect-virt prints "none" and returns nonzero if
@@ -90,7 +90,7 @@ VIRTUALITY_SCRIPT = dedent("""\
     """)
 
 CPUINFO_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     # Gather the standard output as it has some extra info
     lscpu
     # Gather the machine readable output for processing
@@ -108,7 +108,7 @@ SERIAL_PORTS_SCRIPT = dedent("""\
     """)
 
 SRIOV_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     for file in $(find /sys/devices/ -name sriov_numvfs); do
         dir=$(dirname "$file")
         for eth in $(ls "$dir/net/"); do
@@ -388,7 +388,7 @@ def lldpd_capture():
 
 LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases'
 LIST_MODALIASES_SCRIPT = dedent("""\
-    #!/bin/sh
+    #!/bin/bash
     find /sys -name modalias -print0 | xargs -0 cat | sort -u
     """)
 

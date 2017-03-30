@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # internet_connectivity - Check if the system has access to the Internet.
 #
@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Download the index.sjson file used by MAAS to download images to validate
-# internet connectivity. Close stderr so we don't get the progress from curl.
-curl -I -A maas_internet_connectivity_test \
-    https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson
+# internet connectivity.
+URL="https://images.maas.io/ephemeral-v3/daily/streams/v1/index.sjson"
+echo "Attempting to retrieve: $URL"
+curl -ILSsv -A maas_internet_connectivity_test $URL

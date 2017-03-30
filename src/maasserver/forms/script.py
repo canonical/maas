@@ -83,6 +83,11 @@ class ScriptForm(ModelForm):
                 self, 'script_type',
                 'Must be %d, test, testing, %d, commission, or commissioning.'
                 % (SCRIPT_TYPE.TESTING, SCRIPT_TYPE.COMMISSIONING))
+        # If a field wasn't passed in keep the old values when updating.
+        if self.instance.id is not None:
+            for field in self._meta.fields:
+                if field not in self.data:
+                    cleaned_data[field] = getattr(self.instance, field)
         return cleaned_data
 
     def is_valid(self):

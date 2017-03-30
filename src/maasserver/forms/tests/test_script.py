@@ -193,6 +193,30 @@ class TestScriptForm(MAASServerTestCase):
                 ]
             }, form.errors)
 
+    def test__update_script_doesnt_effect_other_fields(self):
+        script = factory.make_Script()
+        script_content = factory.make_string()
+        name = script.name
+        title = script.title
+        description = script.description
+        tags = script.tags
+        script_type = script.script_type
+        timeout = script.timeout
+        destructive = script.destructive
+
+        form = ScriptForm(data={'script': script_content}, instance=script)
+        self.assertTrue(form.is_valid(), form.errors)
+        script = form.save()
+
+        self.assertEquals(name, script.name)
+        self.assertEquals(title, script.title)
+        self.assertEquals(description, script.description)
+        self.assertEquals(tags, script.tags)
+        self.assertEquals(script_type, script.script_type)
+        self.assertEquals(timeout, script.timeout)
+        self.assertEquals(destructive, script.destructive)
+        self.assertFalse(script.default)
+
     def test__can_use_script_type_name(self):
         script_type_name = random.choice([
             'test', 'testing',

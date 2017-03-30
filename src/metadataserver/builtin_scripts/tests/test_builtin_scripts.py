@@ -34,8 +34,7 @@ class TestBuiltinScripts(MAASServerTestCase):
                 script_in_db.script.comment)
             self.assertItemsEqual(script.tags, script_in_db.tags)
             self.assertEquals(script.script_type, script_in_db.script_type)
-            self.assertEquals(
-                timedelta(seconds=script.timeout), script_in_db.timeout)
+            self.assertEquals(script.timeout, script_in_db.timeout)
             self.assertEquals(script.destructive, script_in_db.destructive)
             self.assertTrue(script_in_db.default)
 
@@ -79,7 +78,8 @@ class TestBuiltinScripts(MAASServerTestCase):
 
     def test_update_doesnt_revert_script(self):
         load_builtin_scripts()
-        update_script_values = random.choice(BUILTIN_SCRIPTS)
+        update_script_index = random.randint(0, len(BUILTIN_SCRIPTS) - 2)
+        update_script_values = BUILTIN_SCRIPTS[update_script_index]
         script = Script.objects.get(name=update_script_values.name)
         # Put fake new data in to simulate another MAAS region updating
         # to a newer version.
@@ -99,6 +99,14 @@ class TestBuiltinScripts(MAASServerTestCase):
         script.timeout = user_timeout
         script.save()
 
+        # Test that subsequent scripts still get updated
+        second_update_script_values = BUILTIN_SCRIPTS[update_script_index + 1]
+        second_script = Script.objects.get(
+            name=second_update_script_values.name)
+        # Put fake old data in to simulate updating a script.
+        second_script.title = factory.make_string()
+        second_script.save()
+
         load_builtin_scripts()
         script = reload_object(script)
 
@@ -111,3 +119,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertEquals(user_tags, script.tags)
         self.assertEquals(user_timeout, script.timeout)
         self.assertTrue(script.default)
+
+        second_script = reload_object(second_script)
+        self.assertEquals(
+            second_update_script_values.title, second_script.title)

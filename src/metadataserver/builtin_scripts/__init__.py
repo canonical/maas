@@ -7,6 +7,7 @@ __all__ = [
     'load_builtin_scripts',
 ]
 
+from datetime import timedelta
 import os
 
 import attr
@@ -48,7 +49,8 @@ class BuiltinScript:
     tags = attr.ib(default=None, validator=instance_of(list))
     script_type = attr.ib(
         default=SCRIPT_TYPE.TESTING, validator=instance_of(int))
-    timeout = attr.ib(default=0, validator=instance_of(int))
+    timeout = attr.ib(
+        default=timedelta(seconds=0), validator=instance_of(timedelta))
     destructive = attr.ib(default=False, validator=instance_of(bool))
     filename = attr.ib(default=None, validator=instance_of(str))
 
@@ -63,7 +65,7 @@ BUILTIN_SCRIPTS = [
         title='Storage status',
         description='Validate SMART health for all drives in parallel.',
         tags=['storage', 'commissioning'],
-        timeout=60 * 5,
+        timeout=timedelta(minutes=5),
         filename='smartctl.py',
         ),
     BuiltinScript(
@@ -73,7 +75,7 @@ BUILTIN_SCRIPTS = [
             'Run the short SMART self-test and validate SMART health on all '
             'drives in parallel'),
         tags=['storage'],
-        timeout=60 * 10,
+        timeout=timedelta(minutes=10),
         filename='smartctl.py',
         ),
     BuiltinScript(
@@ -106,7 +108,7 @@ BUILTIN_SCRIPTS = [
         title='Network validation',
         description='Download a file from images.maas.io.',
         tags=['network', 'internet'],
-        timeout=60 * 5,
+        timeout=timedelta(minutes=5),
         filename='internet_connectivity.sh',
         ),
     BuiltinScript(
@@ -114,23 +116,39 @@ BUILTIN_SCRIPTS = [
         title='CPU validation',
         description='Run the stress-ng CPU tests over 12 hours.',
         tags=['cpu'],
-        timeout=60 * 60 * 12,
-        filename='stress_ng_cpu_long.sh',
+        timeout=timedelta(hours=12),
+        filename='stress-ng-cpu-long.sh',
+        ),
+    BuiltinScript(
+        name='stress-ng-cpu-short',
+        title='CPU validation',
+        description='Stress test the CPU for 5 minutes.',
+        tags=['cpu'],
+        timeout=timedelta(minutes=5),
+        filename='stress-ng-cpu-short.sh',
         ),
     BuiltinScript(
         name='stress-ng-memory-long',
         title='Memory integrity',
         description='Run the stress-ng memory tests over 12 hours.',
         tags=['memory'],
-        timeout=60 * 60 * 12,
-        filename='stress_ng_memory_long.sh',
+        timeout=timedelta(hours=12),
+        filename='stress-ng-memory-long.sh',
+        ),
+    BuiltinScript(
+        name='stress-ng-memory-short',
+        title='Memory validation',
+        description='Stress test memory for 5 minutes.',
+        tags=['memory'],
+        timeout=timedelta(minutes=5),
+        filename='stress-ng-memory-short.sh',
         ),
     BuiltinScript(
         name='ntp',
         title='NTP validation',
         description='Run ntp clock set to verify NTP connectivity.',
         tags=['network', 'ntp'],
-        timeout=60,
+        timeout=timedelta(minutes=1),
         filename='ntp.sh',
         ),
 ]
@@ -161,11 +179,15 @@ def load_builtin_scripts():
                 # Don't add back old versions of a script. This prevents two
                 # connected regions with different versions of a script from
                 # fighting with eachother.
+                no_update = False
                 for vtf in script_in_db.script.previous_versions():
                     if vtf.data == script_content:
                         # Don't update anything if we detect we have an old
                         # version of the builtin scripts
-                        return
+                        no_update = True
+                        break
+                if no_update:
+                    continue
                 script_in_db.script = script_in_db.script.update(
                     script_content,
                     "Updated by maas-%s" % get_maas_package_version())
