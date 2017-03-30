@@ -51,7 +51,7 @@
                                         label-width="two" input-width="three"></maas-obj-field>
                                 </div>
                                 <maas-obj-field data-ng-if="iprange.type !== 'dynamic'"
-                                    type="text" key="comment" label="Purpose" placeholder="Purpose for IP range (optional)"
+                                    type="text" key="comment" label="Purpose" placeholder="IP range purpose (optional)"
                                     label-width="two" input-width="nine"></maas-obj-field>
                                 <div data-ng-if="iprange.type === 'dynamic'">
                                     <div class="form__group">
@@ -98,6 +98,11 @@
                                     <maas-obj-field type="text" key="end_ip" label="End IP address"
                                         label-width="two" input-width="three"></maas-obj-field>
                                 </div>
+                            </div>
+                            <div class="table__data table-col--100" data-ng-if="newRange.type !== 'dynamic'">
+                                <maas-obj-field
+                                    type="text" key="comment" label="Purpose" placeholder="IP range purpose (optional)"
+                                    label-width="two" input-width="nine"></maas-obj-field>
                             </div>
                         </div>
                         <div class="table__row is-active">
