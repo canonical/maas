@@ -295,14 +295,17 @@ def dhcp_explore():
     # run into issues if the link-local address has not finished
     # conflict-detection before it starts.  This is complicated by interaction
     # with dhclient -4 bringing the interface up, so we address the issue by
-    # running dhclient -6 in a loop.  See https://launchpad.net/bugs/1447715
+    # running dhclient -6 in a loop that only tries 10 times.  Per RFC 5227,
+    # conflict-detection could take as long as 9 seconds, so we sleep 10.
+    # See https://launchpad.net/bugs/1447715
     for iface in sorted(unconfigured_ifaces_4):
         call(["dhclient", "-nw", "-4", iface])
     for iface in sorted(unconfigured_ifaces_6):
         iface_str = iface.decode('utf-8')
         Popen([
             "sh", "-c",
-            "while ! dhclient -6 %s; do sleep .05; done" % iface_str])
+            "for idx in $(seq 10); do"
+            " dhclient -6 %s && break || sleep 10; done" % iface_str])
         # Ignore return value and continue running dhclient on the
         # other interfaces.
 

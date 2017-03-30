@@ -297,6 +297,10 @@ ip_wlan0 = b"""\
 """
 
 
+DHCP6_TEMPLATE = (
+    "for idx in $(seq 10); do dhclient -6 %s && break || sleep 10; done")
+
+
 class TestDHCPExplore(MAASTestCase):
 
     def test_calls_dhclient_on_unconfigured_interfaces(self):
@@ -319,21 +323,11 @@ class TestDHCPExplore(MAASTestCase):
         self.assertThat(
             mock_popen,
             MockCallsMatch(
-                call([
-                    "sh", "-c",
-                    "while ! dhclient -6 eth1; do sleep .05; done"]),
-                call([
-                    "sh", "-c",
-                    "while ! dhclient -6 eth2; do sleep .05; done"]),
-                call([
-                    "sh", "-c",
-                    "while ! dhclient -6 eth4; do sleep .05; done"]),
-                call([
-                    "sh", "-c",
-                    "while ! dhclient -6 virbr0; do sleep .05; done"]),
-                call([
-                    "sh", "-c",
-                    "while ! dhclient -6 wlan0; do sleep .05; done"])))
+                call(["sh", "-c", DHCP6_TEMPLATE % "eth1"]),
+                call(["sh", "-c", DHCP6_TEMPLATE % "eth2"]),
+                call(["sh", "-c", DHCP6_TEMPLATE % "eth4"]),
+                call(["sh", "-c", DHCP6_TEMPLATE % "virbr0"]),
+                call(["sh", "-c", DHCP6_TEMPLATE % "wlan0"])))
 
 
 class TestGatherPhysicalBlockDevices(MAASTestCase):
