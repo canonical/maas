@@ -22,19 +22,19 @@
                         data-ng-options="domain as domain.name for domain in header.domain.options">
                     </select>
                 </h1>
-                <a href="" class="button--base button--inline u-margin--bottom-small ng-hide"
+                <button class="button--base button--inline u-margin--bottom-small ng-hide"
                     data-ng-show="header.editing"
-                    data-ng-click="cancelEditHeader()">Cancel</a>
-                <a href="" class="button--positive button--inline u-margin--bottom-small ng-hide"
+                    data-ng-click="cancelEditHeader()">Cancel</button>
+                <button class="button--positive button--inline u-margin--bottom-small ng-hide"
                     data-ng-show="header.editing"
                     data-ng-disabled="editHeaderInvalid()"
-                    data-ng-click="saveEditHeader()">Save</a>
+                    data-ng-click="saveEditHeader()">Save</button>
 
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
                 <p class="page-header__status" data-ng-if="!isController && !isDevice && !header.editing">
                     {$ node.status $}
                     <span class="u-text--{$ getPowerStateClass() $} u-margin--left-small"><i class="icon icon--power-{$ getPowerStateClass() $} u-margin--right-tiny"></i>{$ getPowerStateText() $}</span>
-                    <a href="" class="page-header__status-check" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</a>
+                    <button class="page-header__status-check" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
                 </p>
 
                 <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
@@ -46,183 +46,180 @@
                 </div>
 
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+                 <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-if="!isDevice && !node.dhcp_on">
+                           <p class="page-header__message page-header__message--warning">MAAS is not providing DHCP.</p>
+                     </div>
 
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-if="!isDevice && !node.dhcp_on">
-    	                  <p class="page-header__message page-header__message--warning">
-                            MAAS is not providing DHCP.
-    		                </p>
-                    </div>
+                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
+                         <form class="form form--inline">
+                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
+                                 <div class="form__group">
+                                     <input class="checkbox" id="enableSSH" type="checkbox"
+                                         data-ng-model="commissionOptions.enableSSH">
+                                     <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
+                                 </div>
+                             </fieldset>
+                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission'">
+                                 <div class="form__group">
+                                     <input class="checkbox" id="skipNetworking" type="checkbox"
+                                         data-ng-model="commissionOptions.skipNetworking">
+                                     <label for="skipNetworking">Retain network configuration</label>
+                                 </div>
+                                 <div class="form__group">
+                                     <input class="checkbox" id="skipStorage" type="checkbox"
+                                         data-ng-model="commissionOptions.skipStorage">
+                                     <label for="skipStorage">Retain storage configuration</label>
+                                 </div>
+                             </fieldset>
+                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
+                                 <div class="form__group">
+                                     <label for="image" class="form__group-label">Choose your image</label>
+                                     <div class="form__group-input">
+                                         <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
+                                     </div>
+                                 </div>
+                             </fieldset>
+                             <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">
+                                 <div class="form__group">
+                                     <span data-maas-release-options="releaseOptions"></span>
+                                 </div>
+                             </fieldset>
+                             <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
+                                 <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                                 <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                     <span data-ng-if="action.option.name === 'acquire'">Acquire {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'deploy'">Deploy {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'release'">Release {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'set-zone'">Set zone for {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'on'">Power on {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'off'">Power off {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'abort'">Abort action on {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'rescue-mode'">Rescue {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'exit-rescue-mode'">Exit rescue mode</span>
+                                     <span data-ng-if="action.option.name === 'mark-broken'">Mark {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'mark-fixed'">Mark {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'delete'">Delete {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'import-images'">Import images</span>
+                                 </button>
+                             </div>
+                         </form>
+                     </div>
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
+                         <form class="form form--stack">
+                             <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                                 <div class="form__group">
+                                     <label for="commissioning-scripts">Additional commissioning scripts</label>
+                                     <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
+                                 </div>
+                             </fieldset>
+                         </form>
+                     </div>
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
+                         <form class="form form--stack">
+                             <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                                 <div class="form__group">
+                                     <label for="testing-scripts">Hardware tests</label>
+                                     <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
+                                 </div>
+                             </fieldset>
+                         </form>
+                     </div>
+                     <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test'">
+                         <form class="form form--inline">
+                             <div class="page-header__controls">
+                                 <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                                 <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                     <span data-ng-if="action.option.name === 'commission'">Commission {$ type_name $}</span>
+                                     <span data-ng-if="action.option.name === 'test'">Test {$ type_name $}</span>
+                                 </button>
+                             </div>
+                         </form>
+                     </div>
 
-                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
-                        <form class="form form--inline">
-                            <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
-                                <div class="form__group">
-                                    <input class="checkbox" id="enableSSH" type="checkbox"
-                                        data-ng-model="commissionOptions.enableSSH">
-                                    <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
-                                </div>
-                            </fieldset>
-                            <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission'">
-                                <div class="form__group">
-                                    <input class="checkbox" id="skipNetworking" type="checkbox"
-                                        data-ng-model="commissionOptions.skipNetworking">
-                                    <label for="skipNetworking">Retain network configuration</label>
-                                </div>
-                                <div class="form__group">
-                                    <input class="checkbox" id="skipStorage" type="checkbox"
-                                        data-ng-model="commissionOptions.skipStorage">
-                                    <label for="skipStorage">Retain storage configuration</label>
-                                </div>
-                            </fieldset>
-                            <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
-                                <div class="form__group">
-                                    <label for="image" class="form__group-label">Choose your image</label>
-                                    <div class="form__group-input">
-                                        <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">
-                                <div class="form__group">
-                                    <span data-maas-release-options="releaseOptions"></span>
-                                </div>
-                            </fieldset>
-                            <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
-                                <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                                <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                                    <span data-ng-if="action.option.name === 'acquire'">Acquire {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'deploy'">Deploy {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'release'">Release {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'set-zone'">Set zone for {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'on'">Power on {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'off'">Power off {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'abort'">Abort action on {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'rescue-mode'">Rescue {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'exit-rescue-mode'">Exit rescue mode</span>
-                                    <span data-ng-if="action.option.name === 'mark-broken'">Mark {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'mark-fixed'">Mark {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'delete'">Delete {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'import-images'">Import images</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
-                        <form class="form form--stack">
-                            <fieldset class="form__fieldset eight-col u-margin--bottom-small">
-                                <div class="form__group">
-                                    <label for="commissioning-scripts">Additional commissioning scripts</label>
-                                    <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
-                                </div>
-                            </fieldset>
-                        </form>
-                    </div>
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
-                        <form class="form form--stack">
-                            <fieldset class="form__fieldset eight-col u-margin--bottom-small">
-                                <div class="form__group">
-                                    <label for="testing-scripts">Hardware tests</label>
-                                    <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
-                                </div>
-                            </fieldset>
-                        </form>
-                    </div>
-                    <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test'">
-                        <form class="form form--inline">
-                            <div class="page-header__controls">
-                                <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                                <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                                    <span data-ng-if="action.option.name === 'commission'">Commission {$ type_name $}</span>
-                                    <span data-ng-if="action.option.name === 'test'">Test {$ type_name $}</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isActionError()">
+                         <p class="page-header__message page-header__message--error">
+                             Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
+                         </p>
+                         <div class="page-header__controls">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                             <button class="button--secondary button--inline" data-ng-click="actionGo()">Retry</button>
+                         </div>
+                     </div>
 
-                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isActionError()">
-                        <p class="page-header__message page-header__message--error">
-                            Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
-                        </p>
-                        <div class="page-header__controls">
-                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                            <button class="button--secondary button--inline" data-ng-click="actionGo()">Retry</button>
-                        </div>
-                    </div>
+                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isDeployError()">
+                         <p class="page-header__message page-header__message--error">
+                             Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                         </p>
+                         <div class="page-header__controls">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                         </div>
+                     </div>
 
-                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isDeployError()">
-                        <p class="page-header__message page-header__message--error">
-                            Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
-                        </p>
-                        <div class="page-header__controls">
-                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                        </div>
-                    </div>
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
+                         <p class="page-header__message page-header__message--error">
+                             Node cannot be {$ action.option.sentence $}, because power control software for the
+                             node is missing from its rack controller. To proceed, install the
+                             {$ getPowerErrors() $} on the rack controller.
+                         </p>
+                         <div class="page-header__controls">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                         </div>
+                     </div>
 
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
-                        <p class="page-header__message page-header__message--error">
-                            Node cannot be {$ action.option.sentence $}, because power control software for the
-                            node is missing from its rack controller. To proceed, install the
-                            {$ getPowerErrors() $} on the rack controller.
-                        </p>
-                        <div class="page-header__controls">
-                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                        </div>
-                    </div>
-
-                    <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
-                        <p class="page-header__message page-header__message--error">
-                            Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
-                        </p>
-                        <div class="page-header__controls">
-                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
+                         <p class="page-header__message page-header__message--error">
+                             Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                         </p>
+                         <div class="page-header__controls">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                         </div>
+                     </div>
+                  </div>
+              </div>
         </header>
         <div class="page-navigation" data-ng-class="{ 'u-visibility--hidden': action.option }">
             <div class="wrapper--inner">
-                <nav class="page-navigation__links">
-                    <a class="page-navigation__link" data-ng-if="!isController && !isDevice"
+                <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
+                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
                         data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Machine summary</a>
-                    <a class="page-navigation__link" data-ng-if="isController"
+                        data-ng-click="section.area = 'summary'">Machine summary</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
                         data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Controller summary</a>
-                    <a class="page-navigation__link" data-ng-if="isDevice"
+                        data-ng-click="section.area = 'summary'">Controller summary</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="isDevice"
                         data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Device summary</a>
-                    <a class="page-navigation__link" data-ng-if="!isController && devices.length"
+                        data-ng-click="section.area = 'summary'">Device summary</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && devices.length"
                         data-ng-class="{ 'is-active': section.area === 'containers'}"
-                        data-ng-click="section.area = 'containers'">Containers</a>
-                    <a class="page-navigation__link" data-ng-if="isController"
+                        data-ng-click="section.area = 'containers'">Containers</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
                         data-ng-class="{ 'is-active': section.area === 'services'}"
-                        data-ng-click="section.area = 'services'"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> Services</a>
-                    <a class="page-navigation__link" data-ng-if="isController"
+                        data-ng-click="section.area = 'services'"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> Services</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
                         data-ng-class="{ 'is-active': section.area === 'vlans'}"
-                        data-ng-click="section.area = 'vlans'">VLANs</a>
-                    <a class="page-navigation__link"
+                        data-ng-click="section.area = 'vlans'">VLANs</button>
+                    <button role="tab" class="page-navigation__link"
                         data-ng-class="{ 'is-active': section.area === 'interfaces'}"
-                        data-ng-click="section.area = 'interfaces'">Interfaces</a>
-                    <a class="page-navigation__link" data-ng-if="!isController && !isDevice"
+                        data-ng-click="section.area = 'interfaces'">Interfaces</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
                         data-ng-class="{ 'is-active': section.area === 'storage'}"
-                        data-ng-click="section.area = 'storage'">Storage</a>
-                    <a class="page-navigation__link" data-ng-if="node.commissioning_results.length > 0"
+                        data-ng-click="section.area = 'storage'">Storage</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="node.commissioning_results.length > 0"
                         data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                        data-ng-click="section.area = 'commissioning'">Commissioning</a>
-                    <a class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
+                        data-ng-click="section.area = 'commissioning'">Commissioning</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
                         data-ng-class="{ 'is-active': section.area === 'testing'}"
-                        data-ng-click="section.area = 'testing'">Hardware tests</a>
-                    <a class="page-navigation__link" data-ng-if="!isDevice"
+                        data-ng-click="section.area = 'testing'">Hardware tests</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
                         data-ng-class="{ 'is-active': section.area === 'events'}"
-                        data-ng-click="section.area = 'events'">Events</a>
-                    <a class="page-navigation__link" data-ng-if="!isController && !isDevice && isSuperUser()"
+                        data-ng-click="section.area = 'events'">Events</button>
+                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice && isSuperUser()"
                         data-ng-class="{ 'is-active': section.area === 'power'}"
-                        data-ng-click="section.area = 'power'">Power</a>
+                        data-ng-click="section.area = 'power'">Power</button>
                 </nav>
             </div>
         </div>
@@ -247,20 +244,30 @@
                 </div>
             </div>
             <div data-ng-if="!isController">
-                <div class="twelve-col u-align--right" data-ng-if="!summary.editing">
-                    <a href="" class="button--secondary button--inline"
+                <div class="four-col last-col u-align--right" data-ng-hide="summary.editing">
+                    <button class="button--secondary button--inline"
                         data-ng-if="canEdit()"
-                        data-ng-click="editSummary()">Edit</a>
-                </div>
-                <div class="twelve-col u-align--right" data-ng-if="summary.editing">
-                    <a href="" class="button--base button--inline"
-                       data-ng-click="cancelEditSummary()">Cancel</a>
-                    <button class="button--positive button--inline"
-                        data-ng-class="{ secondary: invalidArchitecture() }"
-                        data-ng-click="saveEditSummary()">Save changes</button>
+                        data-ng-click="editSummary()">Edit</button>
                 </div>
             </div>
-            <form class="form form--stack">
+            <div class="twelve-col" data-ng-if="isSuperUser()">
+                <div class="p-notification--error"
+                    data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
+                    <p class="p-notification__response">
+                      <span class="p-notification__status">Error:</span>Editing is currently disabled because no rack controller is currently connected to the region.</p>
+                </div>
+                <div class="p-notification--error"
+                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && hasUsableArchitectures()">
+                        <p class="p-notification__response">
+                          <span class="p-notification__status">Error:</span>This machine currently has an invalid architecture. Update the architecture of this machine to make it deployable.</p>
+                </div>
+                <div class="p-notification--error"
+                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && !hasUsableArchitectures()">
+                        <p class="p-notification__response">
+                          <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
+                </div>
+            </div>
+            <form class="form form--stack twelve-col">
                 <fieldset class="form__fieldset six-col ng-hide" data-ng-show="isSuperUser() && !isController">
                     <div class="form__group">
                         <label for="zone" class="form__group-label two-col">Zone</label>
@@ -386,6 +393,13 @@
                             </dd>
                     </dl>
                 </div>
+                <div class="twelve-col u-align--right ng-hide" data-ng-show="summary.editing">
+                    <button class="button--base button--inline"
+                       data-ng-click="cancelEditSummary()">Cancel</button>
+                    <button class="button--positive button--inline"
+                        data-ng-class="{ secondary: invalidArchitecture() }"
+                        data-ng-click="saveEditSummary()">Save changes</button>
+                </div>
             </form>
         </div>
     </section>
@@ -396,15 +410,15 @@
                 <ul class="tabs">
                     <li class="tabs__tab is-active"
                         data-ng-class="{ 'is-active': machine_output.summaryType === 'yaml' }">
-                        <a href=""
+                        <button
                             class="tabs__tab-link"
-                            data-ng-click="machine_output.summaryType = 'yaml'">YAML</a>
+                            data-ng-click="machine_output.summaryType = 'yaml'">YAML</button>
                     </li>
                     <li class="tabs__tab"
                         data-ng-class="{ 'is-active': machine_output.summaryType === 'xml' }">
-                        <a href=""
+                        <button
                             class="tabs__tab-link"
-                            data-ng-click="machine_output.summaryType = 'xml'">XML</a>
+                            data-ng-click="machine_output.summaryType = 'xml'">XML</button>
                     </li>
                 </ul>
             </div>
@@ -438,17 +452,11 @@
     </section>
     <section class="row" data-ng-if="section.area === 'power'">
         <div class="wrapper--inner">
-            <div class="twelve-col u-align--right" data-ng-if="!power.editing">
-                <a href="" class="button--secondary button--inline"
+            <h2 class="eight-col">Power</h2>
+            <div class="four-col last-col u-align--right" data-ng-hide="power.editing">
+                <button class="button--secondary button--inline"
                     data-ng-show="canEdit() && power_types.length"
-                    data-ng-click="editPower()">Edit</a>
-            </div>
-            <div class="twelve-col u-align--right" data-ng-if="power.editing">
-                <a href="" class="button--base button--inline"
-                    data-ng-click="cancelEditPower()">Cancel</a>
-                <button class="button--positive button--inline"
-                    data-ng-class="{ secondary: invalidPowerType() }"
-                    data-ng-click="saveEditPower()">Save changes</button>
+                    data-ng-click="editPower()">Edit</button>
             </div>
             <div class="twelve-col">
                 <div class="p-notification--error" data-ng-if="!isRackControllerConnected()">
@@ -485,13 +493,20 @@
                     Changing power parameters will affect these nodes.</p>
                 </div>
             </div>
-            <form class="form form--stack" class="disabled">
+            <form class="form form--stack twelve-col" class="disabled">
                 <fieldset class="form__fieldset six-col ng-hide"
                     data-ng-show="power_types.length"
                     data-ng-disabled="!power.editing"
                     data-maas-power-parameters="power_types"
                     data-ng-model="power">
                 </fieldset>
+                <div class="twelve-col u-align--right ng-hide" data-ng-show="power.editing">
+                    <button class="button--base button--inline"
+                        data-ng-click="cancelEditPower()">Cancel</button>
+                    <button class="button--positive button--inline"
+                        data-ng-class="{ secondary: invalidPowerType() }"
+                        data-ng-click="saveEditPower()">Save changes</button>
+                </div>
             </form>
         </div>
     </section>
@@ -756,30 +771,30 @@
                                   </div>
                                   <div class="table__data table--mobile-controls  table-col--8">
                                       <div class="table__controls u-align--right" data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
-                                          <a class="u-display--desktop icon icon--add tooltip"
+                                          <button class="u-display--desktop icon icon--add tooltip"
                                               aria-label="Add Alias or VLAN"
                                               data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
-                                              data-ng-click="quickAdd(interface)"></a>
-                                          <a class="u-display--desktop icon icon--edit tooltip"
+                                              data-ng-click="quickAdd(interface)"></button>
+                                          <button class="u-display--desktop icon icon--edit tooltip"
                                               data-ng-if="!cannotEditInterface(interface)"
                                               aria-label="Edit"
-                                              data-ng-click="edit(interface)"></a>
-                                          <a class="u-display--desktop icon icon--delete tooltip u-margin--left"
+                                              data-ng-click="edit(interface)"></button>
+                                          <button class="u-display--desktop icon icon--delete tooltip u-margin--left"
                                               data-ng-if="canBeRemoved()"
                                               aria-label="Remove"
-                                              data-ng-click="quickRemove(interface)"></a>
-                                          <a class="button--secondary u-display--mobile"
+                                              data-ng-click="quickRemove(interface)"></button>
+                                          <button class="button--secondary u-display--mobile"
                                               aria-label="Add Alias or VLAN"
                                               data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
-                                              data-ng-click="quickAdd(interface)">Add alias or VLAN</a>
-                                          <a class="button--secondary u-display--mobile"
+                                              data-ng-click="quickAdd(interface)">Add alias or VLAN</button>
+                                          <button class="button--secondary u-display--mobile"
                                               data-ng-if="!cannotEditInterface(interface)"
                                               aria-label="Edit"
-                                              data-ng-click="edit(interface)">Edit interface</a>
-                                          <a class="button--secondary u-display--mobile"
+                                              data-ng-click="edit(interface)">Edit interface</button>
+                                          <button class="button--secondary u-display--mobile"
                                               data-ng-if="canBeRemoved()"
                                               aria-label="Remove"
-                                              data-ng-click="quickRemove(interface)">Remove interface</a>
+                                              data-ng-click="quickRemove(interface)">Remove interface</button>
                                       </div>
                                   </div>
                                   <div class="table__dropdown table__dropdown--info" data-ng-if="isShowingMembers(interface)">
@@ -797,7 +812,7 @@
                                       </div>
                                   </div>
                                   <div data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
-                                      <div class="table__dropdown" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
+                                      <div class="table__dropdown" tabindex="0" data-ng-if="isShowingAdd() || isEditing(interface) || isShowingDeleteConfirm() || isShowingAdd() && !newInterface.saving">
                                           <div class="table__dropdown-title">
                                               <h2 data-ng-click="cancel()" class="u-float--left">
                                                  <span data-ng-if="canAddAlias(newInterface.parent)">Adding alias</span>
@@ -805,7 +820,7 @@
                                                  <span data-ng-if="isEditing(interface)">Editing {$ interface.name $}</span>
                                                  <span data-ng-if="isShowingDeleteConfirm()">Removing {$ interface.name $}</span>
                                               </h2>
-                                              <i data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                              <button data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                           </div>
                                           <div class="table__row form form--stack" data-ng-class="{ 'is-active': isEditing(interface) || isShowingAdd() }">
                                               <div class="table__data table-col--100" data-ng-if="isShowingAdd()">
@@ -943,18 +958,18 @@
                                                               data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
                                                       </fieldset>
-                                                      <div class="table__row is-active">
-                                                        <div class="table__data u-float--left">
-                                                            <maas-obj-errors></maas-obj-errors>
-                                                        </div>
-                                                        <div class="table__data u-float--right">
-                                                            <a class="button--base button--inline"
-                                                                data-ng-click="editCancel()">Cancel</a>
-                                                            <button class="button--positive button--inline"
-                                                             data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
-                                                             maas-obj-save>Save</button>
-                                                        </div>
+                                                    <div class="table__row is-active">
+                                                      <div class="table__data u-float--left">
+                                                          <maas-obj-errors></maas-obj-errors>
                                                       </div>
+                                                      <div class="table__data u-float--right">
+                                                          <button class="button--base button--inline"
+                                                              data-ng-click="editCancel()">Cancel</button>
+                                                          <button class="button--positive button--inline"
+                                                           data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
+                                                           maas-obj-save>Save</button>
+                                                      </div>
+                                                    </div>
                                                   </div>
                                               </maas-obj-form>
                                           </div>
@@ -963,7 +978,7 @@
                                                     <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
                                               </div>
                                               <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
                                                     <button class="button--destructive button--inline" data-ng-click="confirmRemove(interface)">Remove</button>
                                               </div>
                                           </div>
@@ -977,14 +992,14 @@
                                                       data-ng-show="canAddAnotherVLAN(interface)">Add <span data-ng-show="newInterface.type === 'vlan'">another </span>VLAN</button>
                                               </div>
                                               <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
                                                     <button class="button--positive button--inline" data-ng-click="addInterface()">Add</button>
                                               </div>
                                           </div>
                                       </div>
                                   </div>
                               </div>
-                              <div class="table__row is-active" data-ng-if="isShowingCreateBond() && isNodeEditingAllowed()">
+                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBond() && isNodeEditingAllowed()">
                                   <div class="table__data table-col--3">
                                       <input type="checkbox" class="checkbox" name="bond-create" disabled="disabled" checked />
                                       <label for="bond-create"></label>
@@ -1005,7 +1020,7 @@
                                         <h2 data-ng-click="cancel()" class="u-float--left">&lsaquo;&nbsp;&nbsp;
                                            Create bond
                                         </h2>
-                                        <i data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
@@ -1075,7 +1090,7 @@
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
-                                            <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
+                                            <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
                                             <button class="button--positive button--inline"
                                                 data-ng-click="addBond()"
                                                 data-ng-disabled="cannotAddBond()">Save</button>
@@ -1083,7 +1098,7 @@
                                     </div>
                                   </div>
                               </div>
-                              <div class="table__row is-active" data-ng-if="isShowingCreateBridge() && isNodeEditingAllowed()">
+                              <div class="table__row is-active" tabindex="0" data-ng-if="isShowingCreateBridge() && isNodeEditingAllowed()">
                                   <div class="table__data table-col--3">
                                       <input type="checkbox" class="checkbox" id="bond-create" disabled="disabled" checked />
                                       <label for="bridge-create"></label>
@@ -1104,7 +1119,7 @@
                                         <h2 data-ng-click="cancel()" class="u-float--left">&lsaquo;&nbsp;&nbsp;
                                            Create bridge
                                         </h2>
-                                        <i data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
@@ -1157,7 +1172,7 @@
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
-                                            <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
+                                            <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
                                             <button class="button--positive button--inline"
                                                 data-ng-click="addBridge()"
                                                 data-ng-disabled="cannotAddBridge()">Save</button>
@@ -1165,7 +1180,7 @@
                                     </div>
                                   </div>
                               </div>
-                              <div class="table__row is-active" data-ng-show="isShowingCreatePhysical()">
+                              <div class="table__row is-active ng-hide" tabindex="0" data-ng-show="isShowingCreatePhysical()">
                                   <div class="table__data table-col--3" data-ng-if="!isDevice">
                                       <input type="checkbox" class="checkbox" id="interface-create" disabled="disabled" checked />
                                       <label for="interface-create"></label>
@@ -1306,7 +1321,7 @@
                                               <span class="icon icon--error u-margin--right-small"></span>{$ newInterface.errorMsg $}
                                           </div>
                                           <div class="table__data u-float--right">
-                                              <a class="button--base button--inline" data-ng-click="cancel()">Cancel</a>
+                                              <button class="button--base button--inline" data-ng-click="cancel()">Cancel</button>
                                               <button class="button--positive button--inline"
                                                   data-ng-click="addPhysicalInterface()"
                                                   data-ng-disabled="cannotAddPhysicalInterface()">Save</button>
@@ -1316,18 +1331,21 @@
                               </div>
                           </main>
                       </div>
-                      <div data-ng-if="!isController" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
-                          <a class="button--secondary button--inline"
+                      <div data-ng-if="!isController && !isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                          <button class="button--secondary button--inline"
                               data-ng-disabled="selectedMode !== null"
-                              data-ng-click="showCreatePhysical()">Add interface</a>
-                          <a class="button--secondary button--inline"
-                              data-ng-if="!isDevice"
+                              data-ng-click="showCreatePhysical()">Add interface</button>
+                          <button class="button--secondary button--inline"
                               data-ng-disabled="!canCreateBond()"
-                              data-ng-click="showCreateBond()">Create bond</a>
-                          <a class="button--secondary button--inline"
-                              data-ng-if="!isDevice"
+                              data-ng-click="showCreateBond()">Create bond</button>
+                          <button class="button--secondary button--inline"
                               data-ng-disabled="!canCreateBridge()"
-                              data-ng-click="showCreateBridge()">Create bridge</a>
+                              data-ng-click="showCreateBridge()">Create bridge</button>
+                      </div>
+                      <div data-ng-if="isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
+                          <button class="button--secondary button--inline"
+                              data-ng-disabled="selectedMode !== null"
+                              data-ng-click="showCreatePhysical()">Add interface</button>
                       </div>
                     </div>
                 </form>
@@ -1383,14 +1401,14 @@
                                     <div class="table__data table-col--20" aria-label="Mount options">{$ filesystem.mount_options $}</div>
                                     <div class="table__data table-col--10 table--mobile-controls">
                                         <div class="table__controls">
-                                            <a class="u-display--desktop icon icon--unmount tooltip" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
-                                               data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</a>
-                                            <a class="u-display--desktop icon icon--delete tooltip" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
-                                               data-ng-show="!isAllStorageDisabled()">Remove</a>
-                                           <a class="button--secondary u-display--mobile" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
-                                              data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount filesystem</a>
-                                           <a class="button--secondary u-display--mobile" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
-                                              data-ng-show="!isAllStorageDisabled()">Remove filesystem</a>
+                                            <button class="u-display--desktop icon icon--unmount tooltip" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
+                                               data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</button>
+                                            <button class="u-display--desktop icon icon--delete tooltip" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
+                                               data-ng-show="!isAllStorageDisabled()">Remove</button>
+                                           <button class="button--secondary u-display--mobile" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
+                                              data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount filesystem</button>
+                                           <button class="button--secondary u-display--mobile" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
+                                              data-ng-show="!isAllStorageDisabled()">Remove filesystem</button>
                                         </div>
                                     </div>
                                     <div class="table__dropdown" data-ng-if="filesystemMode === 'unmount' || filesystemMode === 'delete'">
@@ -1399,7 +1417,7 @@
                                                 <span data-ng-if="filesystemMode === 'unmount'">Unmounting {$ filesystem.name $}</span>
                                                 <span data-ng-if="filesystemMode === 'delete'">Removing {$ filesystem.name $}</span>
                                             </h2>
-                                            <i data-ng-click="filesystemCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                            <button data-ng-click="filesystemCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                         </div>
                                         <div class="table__row" data-ng-if="filesystemMode !== null && filesystemMode !== 'multi'" data-ng-class="{ 'is-active': filesystemMode !== null && filesystemMode !== 'multi' }">
                                             <div data-ng-if="filesystemMode === 'unmount'">
@@ -1407,7 +1425,7 @@
                                                     <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to unmount this filesystem?</p>
                                                 </div>
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="filesystemCancel()">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="filesystemCancel()">Cancel</button>
                                                     <button class="button--secondary button--inline" data-ng-click="filesystemConfirmUnmount(filesystem)">Unmount</button>
                                                 </div>
                                             </div>
@@ -1416,7 +1434,7 @@
                                                     <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this {$ getRemoveTypeText(filesystem) $}?</p>
                                                 </div>
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="filesystemCancel(filesystem)">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="filesystemCancel(filesystem)">Cancel</button>
                                                     <button class="button--destructive button--inline" data-ng-click="filesystemConfirmDelete(filesystem)">Remove</button>
                                                 </div>
                                             </div>
@@ -1425,7 +1443,7 @@
                                 </div>
                             </div>
 
-                            <div class="table__row is-active" data-ng-if="dropdown" ng-switch="dropdown">
+                            <div class="table__row is-active" tabindex="1" data-ng-if="dropdown" ng-switch="dropdown">
                                 <!-- Adding a new TMPFS or RAMFPS file system -->
                                 <div class="table__dropdown" ng-controller="NodeAddSpecialFilesystemController" ng-switch-when="special">
                                     <div class="table__dropdown-title">
@@ -1466,8 +1484,8 @@
                                     </div>
                                     <div class="table__row is-active">
                                       <div class="table__data u-float--right">
-                                          <a class="button--base button--inline"
-                                              ng-click="cancel()">Cancel</a>
+                                          <button class="button--base button--inline"
+                                              ng-click="cancel()">Cancel</button>
                                           <button class="button--secondary button--inline ng-binding"
                                              data-ng-disabled="!canMount()"
                                               ng-click="mount()">Mount</button>
@@ -1477,11 +1495,11 @@
                             </div>
                         </main>
                     </section>
-                    <a class="button--secondary button--inline tooltip"
+                    <button class="button--secondary button--inline tooltip"
                        aria-label="Create a tmpfs or ramfs filesystem"
                        data-ng-disabled="dropdown !== null"
                        data-ng-if="!isAllStorageDisabled()"
-                       data-ng-click="addSpecialFilesystem()">Add special filesystem</a>
+                       data-ng-click="addSpecialFilesystem()">Add special filesystem</button>
                 </div>
                 <div data-ng-show="cachesets.length">
                     <div class="twelve-col">
@@ -1507,12 +1525,12 @@
                                     <div class="table__data table-col--45" aria-label="Used by">{$ cacheset.used_by $}</div>
                                     <div class="table__data table-col--10 table--mobile-controls">
                                         <div class="table__controls">
-                                            <a class="u-display--desktop icon icon--delete tooltip" aria-label="Remove"
+                                            <button class="u-display--desktop icon icon--delete tooltip" aria-label="Remove"
                                                 data-ng-show="canDeleteCacheSet(cacheset)"
-                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove</a>
-                                            <a class="button--secondary u-display--mobile" aria-label="Remove"
+                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove</button>
+                                            <button class="button--secondary u-display--mobile" aria-label="Remove"
                                                 data-ng-show="canDeleteCacheSet(cacheset)"
-                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove cacheset</a>
+                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove cacheset</button>
                                         </div>
                                     </div>
                                     <div class="table__dropdown" data-ng-if="cachesetsMode === 'delete'">
@@ -1525,9 +1543,9 @@
                                         <div class="table__row" data-ng-class="{ 'is-active': cachesetsMode !== null && cachesetsMode !== 'multi' }">
                                             <div data-ng-show="cachesetsMode === 'single' && canDeleteCacheSet(cacheset)">
                                                 <div class="table__data u-float--left">
-                                                    <a class="button--base button--inline"
+                                                    <button class="button--base button--inline"
                                                         data-ng-show="canDeleteCacheSet(cacheset)"
-                                                        data-ng-click="cacheSetDelete()">Remove</a>
+                                                        data-ng-click="cacheSetDelete()">Remove</button>
                                                 </div>
                                             </div>
                                             <div class="ng-hide" data-ng-show="cachesetsMode === 'delete'">
@@ -1535,7 +1553,7 @@
                                                     <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to delete this cache set?</p>
                                                 </div>
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="cacheSetCancel()">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="cacheSetCancel()">Cancel</button>
                                                     <button class="button--destructive button--inline" data-ng-click="cacheSetConfirmDelete(cacheset)">Remove</button>
                                                 </div>
                                             </div>
@@ -1633,39 +1651,39 @@
                                     <div class="table__data table-col--12 table--mobile-controls">
                                         <div class="table__controls">
                                             <div class="u-display--mobile">
-                                                <a class="button--secondary ng-hide"
+                                                <button class="button--secondary ng-hide"
                                                     aria-label="Add logical volume"
                                                     data-ng-show="canAddLogicalVolume(item)"
-                                                    data-ng-click="availableLogicalVolume(item)">Add logical volume</a>
-                                                <a class="button--secondary ng-hide"
+                                                    data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
+                                                <button class="button--secondary ng-hide"
                                                     aria-label="Partition"
                                                     data-ng-show="canAddPartition(item)"
-                                                    data-ng-click="availableQuickPartition(item)">Add partition</a>
-                                                <a class="button--secondary ng-hide"
+                                                    data-ng-click="availableQuickPartition(item)">Add partition</button>
+                                                <button class="button--secondary ng-hide"
                                                     aria-label="Edit"
                                                     data-ng-show="canEdit(item)"
-                                                    data-ng-click="availableQuickEdit(item)">Edit disk</a>
-                                                <a class="button--secondary ng-hide"
+                                                    data-ng-click="availableQuickEdit(item)">Edit disk</button>
+                                                <button class="button--secondary ng-hide"
                                                     aria-label="Remove"
                                                     data-ng-show="canDelete(item)"
-                                                    data-ng-click="availableQuickDelete(item)">Remove disk</a>
+                                                    data-ng-click="availableQuickDelete(item)">Remove disk</button>
                                             </div>
-                                            <a class="icon u-display--desktop icon--logical-volume tooltip ng-hide"
+                                            <button class="icon u-display--desktop icon--logical-volume tooltip ng-hide"
                                                 aria-label="Add logical volume"
                                                 data-ng-show="canAddLogicalVolume(item)"
-                                                data-ng-click="availableLogicalVolume(item)"></a>
-                                            <a class="icon u-display--desktop icon--partition tooltip ng-hide"
+                                                data-ng-click="availableLogicalVolume(item)"></button>
+                                            <button class="icon u-display--desktop icon--partition tooltip ng-hide"
                                                 aria-label="Partition"
                                                 data-ng-show="canAddPartition(item)"
-                                                data-ng-click="availableQuickPartition(item)">Partition</a>
-                                            <a class="icon u-display--desktop icon--edit tooltip ng-hide"
+                                                data-ng-click="availableQuickPartition(item)">Partition</button>
+                                            <button class="icon u-display--desktop icon--edit tooltip ng-hide"
                                                 aria-label="Edit"
                                                 data-ng-show="canEdit(item)"
-                                                data-ng-click="availableQuickEdit(item)">Edit</a>
-                                            <a class="icon u-display--desktop icon--delete tooltip ng-hide u-margin--left"
+                                                data-ng-click="availableQuickEdit(item)">Edit</button>
+                                            <button class="icon u-display--desktop icon--delete tooltip ng-hide u-margin--left"
                                                 aria-label="Remove"
                                                 data-ng-show="canDelete(item)"
-                                                data-ng-click="availableQuickDelete(item)">Remove</a>
+                                                data-ng-click="availableQuickDelete(item)">Remove</button>
 
                                         </div>
                                     </div>
@@ -1918,7 +1936,7 @@
                                             data-ng-class="{ 'is-active': availableMode !== null && activeMode !== 'multi' }">
                                             <div data-ng-if="availableMode === 'edit'">
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</button>
                                                     <button class="button--positive button--inline"
                                                         data-ng-disabled="isMountPointInvalid(item.$options.mountPoint) || isNameInvalid(item)"
                                                         data-ng-click="availableConfirmEdit(item)">Save</button>
@@ -1929,13 +1947,13 @@
                                                     <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this {$ getRemoveTypeText(item) $}?</p>
                                                 </div>
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</button>
                                                     <button class="button--destructive button--inline" data-ng-click="availableConfirmDelete(item)">Remove</button>
                                                 </div>
                                             </div>
                                               <div data-ng-if="availableMode === 'partition'">
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</button>
                                                     <button class="button--positive button--inline"
                                                         data-ng-disabled="isAddPartitionSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmPartition(item)">Add partition</button>
@@ -1943,7 +1961,7 @@
                                             </div>
                                             <div data-ng-if="availableMode === 'logical-volume'">
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</a>
+                                                    <button class="button--base button--inline" data-ng-click="availableCancel(item)">Cancel</button>
                                                     <button class="button--positive button--inline"
                                                         data-ng-disabled="isLogicalVolumeNameInvalid(item) || isAddLogicalVolumeSizeInvalid(item) || isMountPointInvalid(item.$options.mountPoint)"
                                                         data-ng-click="availableConfirmLogicalVolume(item)">Add logical volume</button>
@@ -1970,7 +1988,7 @@
                                 <div class="table__dropdown">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="availableCancel()" class="u-float--left">Creating Bcache</h2>
-                                        <i data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
@@ -2055,8 +2073,8 @@
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
-                                            <a class="button--base button--inline"
-                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="button--base button--inline"
+                                                data-ng-click="availableCancel()">Cancel</button>
                                             <button class="button--positive button--inline"
                                                 data-ng-disabled="!createBcacheCanSave()"
                                                 data-ng-click="availableConfirmCreateBcache()">Create bcache</button>
@@ -2078,7 +2096,7 @@
                                 <div class="table__dropdown">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="availableCancel()" class="u-float--left">Creating RAID</h2>
-                                        <i data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row form form--stack is-active u-padding--top u-padding--right u-padding--left box-sizing">
                                         <div class="table__data table-col--100">
@@ -2172,8 +2190,8 @@
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
-                                            <a class="button--base button--inline"
-                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="button--base button--inline"
+                                                data-ng-click="availableCancel()">Cancel</button>
                                             <button class="button--positive button--inline"
                                                 data-ng-disabled="!createRAIDCanSave()"
                                                 data-ng-click="availableConfirmCreateRAID()">Create RAID</button>
@@ -2195,7 +2213,7 @@
                                 <div class="table__dropdown">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="availableCancel()" class="u-float--left">Creating volume group</h2>
-                                        <i data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="availableCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row form form--stack is-active">
                                         <div class="table__data table-col--100">
@@ -2234,8 +2252,8 @@
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--right">
-                                            <a class="button--base button--inline"
-                                                data-ng-click="availableCancel()">Cancel</a>
+                                            <button class="button--base button--inline"
+                                                data-ng-click="availableCancel()">Cancel</button>
                                             <button class="button--positive button--inline"
                                                 data-ng-disabled="!createVolumeGroupCanSave()"
                                                 data-ng-click="availableConfirmCreateVolumeGroup()">Create volume group</button>
@@ -2245,27 +2263,27 @@
                             </div>
                         </main>
                     </section>
-                    <a class="button--secondary button--inline tooltip"
+                    <button class="button--secondary button--inline tooltip"
                         aria-label="Select two or more physical devices to create a RAID"
                         data-ng-disabled="!canCreateRAID()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
-                        data-ng-click="createRAID()">Create RAID</a>
-                    <a class="button--secondary button--inline tooltip"
+                        data-ng-click="createRAID()">Create RAID</button>
+                    <button class="button--secondary button--inline tooltip"
                         aria-label="Select one or more devices to create a volume group"
                         data-ng-disabled="!canCreateVolumeGroup()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
-                        data-ng-click="createVolumeGroup()">Create volume group</a>
-                    <a class="button--secondary button--inline tooltip"
+                        data-ng-click="createVolumeGroup()">Create volume group</button>
+                    <button class="button--secondary button--inline tooltip"
                         aria-label="Select one device to create a cache set"
                         data-ng-disabled="!canCreateCacheSet()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
-                        data-ng-click="createCacheSet()">Create cache Set</a>
-                    <a class="button--secondary button--inline tooltip"
+                        data-ng-click="createCacheSet()">Create cache Set</button>
+                    <button class="button--secondary button--inline tooltip"
                         aria-label="{$ getCannotCreateBcacheMsg() $}"
                         data-ng-class="{ tooltip: !canCreateBcache() }"
                         data-ng-disabled="!canCreateBcache()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
-                        data-ng-click="createBcache()">Create bcache</a>
+                        data-ng-click="createBcache()">Create bcache</button>
                 </div>
                 <div class="twelve-col">
                     <h3>Used disks and partitions</h3>
@@ -2347,7 +2365,7 @@
             <div class="twelve-col u-align--center">
                 <p>
                     <span data-ng-show="allowShowMoreEvents()">
-                        <a href="" data-ng-click="showMoreEvents()">Load next 10 events</a>
+                        <button class="button--base button--inline" data-ng-click="showMoreEvents()">Load next 10 events</button>
                     </span>
                 </p>
             </div>

@@ -8,18 +8,18 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the cta.html into the template cache.
     $templateCache.put('directive/templates/cta.html', [
         '<div class="button-group button-group--inline">',
-            '<a class="button-group__link button--secondary"',
+            '<button class="button-group__link button--secondary"',
                 'data-ng-click="shown=!shown">',
                 '{$ getTitle() $}',
-            '</a>',
+            '</button>',
             '<ul class="button-group__dropdown" ',
                 'role="menu" data-ng-show="shown">',
                 '<li class="button-group__item" ',
                     'data-ng-repeat="select in maasCta">',
-                    '<a class="button-group__item-link" ',
+                    '<button class="button-group__item-link" ',
                         'data-ng-click="selectItem(select)">',
                         '{$ getOptionTitle(select) $}',
-                    '</a>',
+                    '</button>',
                 '</li>',
             '</ul>',
         '</div>'
