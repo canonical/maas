@@ -919,6 +919,7 @@
                                                           <maas-obj-field type="options" key="fabric" label="Fabric" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"
                                                               data-ng-if="!isDevice && interface.type !== 'vlan'"
+                                                              placeholder="Disconnected" placeholder-enabled="true"
                                                               on-change="fabricChangedForm"
                                                               options="fabric as fabric.name for fabric in fabrics"></maas-obj-field>
                                                           <maas-obj-field type="options" key="vlan" label="VLAN" label-width="two" input-width="three"
