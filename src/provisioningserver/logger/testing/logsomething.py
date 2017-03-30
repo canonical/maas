@@ -62,6 +62,8 @@ def main():
 
     # Twisted, legacy.
     twisted.python.log.msg("From `twisted.python.log`.", system=options.name)
+    # Twisted, legacy `logfile`. This has its own namespace.
+    twisted.python.log.logfile.write("From `twisted.python.log.logfile`.\n")
 
     # Standard library.
     logging.getLogger(options.name).debug("From `logging`.")

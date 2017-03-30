@@ -14,6 +14,7 @@ from provisioningserver.logger import _twisted
 from provisioningserver.logger._common import DEFAULT_LOG_FORMAT_DATE
 from provisioningserver.logger._twisted import (
     _formatModernEvent,
+    _getCommandName,
     _getSystemName,
     EventLogger,
     LegacyLogger,
@@ -250,6 +251,44 @@ class TestGetSystemName(MAASTestCase):
         self.assertThat(
             _getSystemName(self.string_in),
             Equals(self.string_out))
+
+
+class TestGetCommandName(MAASTestCase):
+    """Tests for `_getCommandName`."""
+
+    expectations = {
+        # maas-rackd
+        ("/usr/bin/twistd3", "--nodaemon", "--pidfile=",
+         "--logger=provisioningserver.logger.EventLogger",
+         "maas-rackd"): "rackd",
+        # maas-regiond
+        ("twistd3", "--nodaemon", "--pidfile=",
+         "--logger=provisioningserver.logger.EventLogger",
+         "maas-regiond"): "regiond",
+        # twistd running ...
+        ("twistd3", "--an-option",
+         "something-else"): "daemon",
+        # command
+        ("some-command", ): "some-command",
+        # command with .py suffix
+        ("some-command-with-suffix.py", ): "some-command-with-suffix",
+        # command running under python
+        ("python", "py-command", ): "py-command",
+        # command running under python with .py suffix
+        ("python", "py-command-with-suffix.py", ): "py-command-with-suffix",
+        # something else
+        ("python", "-c", "print('woo')"): "command",
+    }
+
+    scenarios = tuple(
+        (expected, {"argv": argv, "expected": expected})
+        for argv, expected in expectations.items()
+    )
+
+    def test(self):
+        self.assertThat(
+            _getCommandName(self.argv),
+            Equals(self.expected))
 
 
 class TestFormatModernEvent(MAASTestCase):

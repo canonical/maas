@@ -10,6 +10,7 @@ __all__ = [
     "VerbosityOptions",
 ]
 
+import os
 import re
 import sys
 import warnings
@@ -74,6 +75,11 @@ def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     warn_unless(hasattr(twistedLegacy, "startLoggingWithObserver"), (
         "No startLoggingWithObserver function found; please investigate!"))
     twistedLegacy.startLoggingWithObserver = _startLoggingWithObserver
+
+    # Set the legacy `logfile` namespace according to the environment in which
+    # we guess we're running. This `logfile` is used primarily — in MAAS — by
+    # Twisted's HTTP server machinery for combined access logging.
+    twistedLegacy.logfile.log.namespace = _getCommandName(sys.argv)
 
     # Customise warnings behaviour. Ensure that nothing else — neither the
     # standard library's `logging` module nor Django — clobbers this later.
@@ -181,6 +187,43 @@ def _getSystemName(system):
         return None
     else:
         return system.split("._")[0]
+
+
+def _getCommandName(argv):
+    """Return a guess at the currently running command's name.
+
+    When running under `twistd`, it will return "regiond", "rackd", or
+    "daemon". The latter is unlikely to happen, but it's a safe default.
+
+    Otherwise it assumes a command is being run and tries to derive a name
+    from the script being run.
+    """
+    if any("twist" in arg for arg in argv):
+        if any("maas-regiond" in arg for arg in argv):
+            return "regiond"
+        elif any("maas-rackd" in arg for arg in argv):
+            return "rackd"
+        else:
+            # Return a safe default.
+            return "daemon"
+    else:
+        candidates = map(os.path.basename, argv)
+        try:
+            command = next(candidates)
+            if "python" in command:
+                command = next(candidates)
+        except StopIteration:
+            # Return a safe default.
+            return "command"
+        else:
+            if command.startswith("-"):
+                # It's probably a command-line option.
+                return "command"
+            elif command.endswith(".py"):
+                # Remove the .py suffix.
+                return command[:-3]
+            else:
+                return command
 
 
 class LegacyLogger(twistedModern.Logger):
