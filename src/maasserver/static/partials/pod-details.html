@@ -28,7 +28,7 @@
                             Performing {$ action.option.sentence $} failed: {$ action.error $}
                         </p>
                         <div class="page-header__controls">
-                            <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
+                            <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
                             <button class="button--inline" data-ng-class="actionOption.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!action.error">
                                 <span data-ng-if="action.option.name === 'refresh'">Refresh pod</span>
                                 <span data-ng-if="action.option.name === 'delete'">Delete pod</span>
@@ -42,10 +42,10 @@
     </header>
     <div class="page-navigation" sticky offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
         <div class="wrapper--inner">
-            <nav class="page-navigation__links">
-                <a class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</a>
-                <!-- <a href="#" class="page-navigation__link">Storage</a> -->
-                <a class="page-navigation__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</a>
+            <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
+                <button role="tab" class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</button>
+                <!-- <button role="tab" class="page-navigation__link">Storage</button> -->
+                <button role="tab" class="page-navigation__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</button>
             </nav>
         </div>
     </div>
@@ -172,7 +172,7 @@
                                 Local
                             </td>
                             <td class="table-col--5">
-                                <a href="" class="icon icon--delete"></a>
+                                <button class="icon icon--delete"></button>
                             </td>
                         </tr>
                     </tbody>

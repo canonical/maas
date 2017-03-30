@@ -27,7 +27,7 @@
                         see listing for specific error for each pod.
                     </p>
                     <div class="page-header__controls">
-                        <a href="" class="button--base button--inline" data-ng-click="actionCancel()">Cancel</a>
+                        <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
                         <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo()" data-ng-if="!hasActionsFailed()">
                             <span data-ng-if="action.option.name === 'refresh'">Refresh {$ selectedItems.length $}
                                 <span data-ng-pluralize count="selectedItems.length" when="{'one': 'pod', 'other': 'pods'}"></span>
@@ -63,7 +63,7 @@
                     <p class="page-header__message page-header__message--error" maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
                     <p class="page-header__message" maas-obj-show-saving><maas-obj-saving>Trying to connect and discover pod</maas-obj-saving></p>
                     <div class="page-header__controls" maas-obj-hide-saving>
-                        <a href="" class="button--base button--inline" data-ng-click="cancelAddPod()">Cancel</a>
+                        <button class="button--base button--inline" data-ng-click="cancelAddPod()">Cancel</button>
                         <button class="button--positive button--inline" maas-obj-save>Save pod</button>
                     </div>
                 </section>

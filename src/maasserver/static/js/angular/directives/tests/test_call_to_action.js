@@ -66,8 +66,8 @@ describe("maasCta", function() {
     it("sets default title to 'Take action'", function() {
         var directive = compileDirective("items", "active");
         expect(
-          directive.find(
-            "button.button-group__link").text()).toBe("Take action");
+          directive.find("button.button-group__link").text())
+            .toBe("Take action");
     });
 
     it("sets default title to another name", function() {

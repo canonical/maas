@@ -10,11 +10,11 @@
     <div class="page-navigation">
         <div class="wrapper--inner">
             <nav class="page-navigation__links">
-                <a class="page-navigation__link" href="settings/">General</a>
-                <a class="page-navigation__link" href="#/settings/dhcp"
-                    data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP Snippets</a>
-                <a class="page-navigation__link" href="#/settings/repositories"
-                    data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</a>
+                <button role="tab" class="page-navigation__link" href="settings/">General</button>
+                <button role="tab" class="page-navigation__link" href="#/settings/dhcp"
+                    data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP Snippets</button>
+                <button role="tab" class="page-navigation__link" href="#/settings/repositories"
+                    data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</button>
             </nav>
         </div>
     </div>
@@ -68,16 +68,16 @@
                                     <div class="table__data table--mobile-controls table-col--20">
                                         <div class="table__controls">
                                             <div data-ng-if="windowWidth >= 769">
-                                                <a class="icon icon--edit tooltip" aria-label="Edit"
-                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</a>
-                                                <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                                <button class="icon icon--edit tooltip" aria-label="Edit"
+                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</button>
+                                                <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</button>
                                             </div>
                                             <div data-ng-if="windowWidth <= 786">
-                                                <a class="button--secondary" aria-label="Edit"
-                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</a>
-                                                <a class="button--secondary" aria-label="Remove"
-                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                                <button class="button--secondary" aria-label="Edit"
+                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</button>
+                                                <button class="button--secondary" aria-label="Remove"
+                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</button>
                                             </div>
                                         </div>
                                     </div>
@@ -107,15 +107,15 @@
                                     <div class="table__data table-col--10"></div>
                                     <div class="table__data table-col--20">
                                         <div class="table__controls">
-                                            <a class="icon icon--edit tooltip" aria-label="Edit">Edit</a>
-                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                            <button class="icon icon--edit tooltip" aria-label="Edit">Edit</button>
+                                            <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                                data-ng-click="snippetEnterRemove(snippet)">Remove</button>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
                                         <div class="table__dropdown-title">
                                             <h2 data-ng-click="snippetExitEdit(snippet)" class="u-float--left">Editing {$ snippet.name $}</h2>
-                                            <i data-ng-click="snippetExitEdit(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                            <button data-ng-click="snippetExitEdit(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                         </div>
                                         <div class="table__row form is-active">
                                             <div class="table__data table-col--100 u-padding--top-none">
@@ -143,8 +143,8 @@
                                               <maas-obj-errors></maas-obj-errors>
                                           </div>
                                           <div class="table__data u-float--right">
-                                              <a class="button--base button--inline"
-                                                  data-ng-click="snippetExitEdit(snippet)">Cancel</a>
+                                              <button class="button--base button--inline"
+                                                  data-ng-click="snippetExitEdit(snippet)">Cancel</button>
                                               <button class="button--positive button--inline" maas-obj-save>Save snippet</button>
                                           </div>
                                         </div>
@@ -153,14 +153,14 @@
                                 <div class="table__dropdown" data-ng-if="deleteSnippet === snippet">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="snippetExitRemove(snippet)" class="u-float--left">Removing {$ snippet.name $}</h2>
-                                        <i data-ng-click="snippetExitRemove(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="snippetExitRemove(snippet)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                               <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this snippet?</p>
                                         </div>
                                         <div class="table__data u-float--right">
-                                              <a class="button--base button--inline" data-ng-click="snippetExitRemove(snippet)">Cancel</a>
+                                              <button class="button--base button--inline" data-ng-click="snippetExitRemove(snippet)">Cancel</button>
                                               <button class="button--destructive button--inline" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
                                         </div>
                                     </div>
@@ -172,7 +172,7 @@
                                     <div class="table__dropdown">
                                         <div class="table__dropdown-title">
                                             <h2 data-ng-click="snippetAddCancel()" class="u-float--left">Adding snippet</h2>
-                                            <i data-ng-click="snippetAddCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                            <button data-ng-click="snippetAddCancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                         </div>
                                         <div class="table__row form is-active">
                                             <div data-ng-if="windowWidth >= 769">
@@ -259,8 +259,8 @@
                                               <maas-obj-errors></maas-obj-errors>
                                           </div>
                                           <div class="table__data u-float--right">
-                                              <a class="button--base button--inline"
-                                                  data-ng-click="snippetAddCancel()">Cancel</a>
+                                              <button class="button--base button--inline"
+                                                  data-ng-click="snippetAddCancel()">Cancel</button>
                                               <button class="button--positive button--inline" maas-obj-save>Save snippet</button>
                                           </div>
                                         </div>
@@ -269,10 +269,10 @@
                             </div>
                         </div>
                     </div>
-                    <a href="" class="button--secondary button--inline"
+                    <button class="button--secondary button--inline"
                         data-ng-disabled="editing"
                         data-ng-if="!newSnippet"
-                        data-ng-click="editing || snippetAdd()">Add custom snippet</a>
+                        data-ng-click="editing || snippetAdd()">Add custom snippet</button>
                 </div>
 
             </div>
@@ -380,18 +380,18 @@
                                     <div class="table__data table--mobile-controls table-col--15">
                                         <div class="table__controls">
                                             <div data-ng-if="windowWidth >= 769">
-                                                <a class="icon icon--edit tooltip" aria-label="Edit"
-                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</a>
-                                                <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                                <button class="icon icon--edit tooltip" aria-label="Edit"
+                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</button>
+                                                <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                     data-ng-if="!isMirror(repository)"
-                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</button>
                                             </div>
                                             <div data-ng-if="windowWidth <= 786">
-                                                <a class="button--secondary" aria-label="Edit"
-                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</a>
-                                                <a class="button--secondary" aria-label="Remove"
+                                                <button class="button--secondary" aria-label="Edit"
+                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</button>
+                                                <button class="button--secondary" aria-label="Remove"
                                                     data-ng-if="!isMirror(repository)"
-                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</button>
                                             </div>
                                         </div>
                                     </div>
@@ -424,10 +424,10 @@
                                     <div class="table__data table-col--10"></div>
                                     <div class="table__data table-col--15">
                                         <div class="table__controls">
-                                            <a class="icon icon--edit tooltip" aria-label="Edit">Edit</a>
-                                            <a class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                            <button class="icon icon--edit tooltip" aria-label="Edit">Edit</button>
+                                            <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
                                                 data-ng-if="!isMirror(repository)"
-                                                data-ng-click="repositoryEnterRemove(repository)">Remove</a>
+                                                data-ng-click="repositoryEnterRemove(repository)">Remove</button>
                                         </div>
                                     </div>
                                     <div class="table__dropdown form">
@@ -443,7 +443,7 @@
                                                   Editing {$ repository.name $}
                                               </span>
                                             </h2>
-                                            <i data-ng-click="repositoryExitEdit()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                            <button data-ng-click="repositoryExitEdit()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                         </div>
                                         <div class="table__row is-active">
                                             <div class="table__data table-col--100 form form--stack">
@@ -495,8 +495,8 @@
                                                     <maas-obj-errors></maas-obj-errors>
                                                 </div>
                                                 <div class="table__data u-float--right">
-                                                    <a class="button--base button--inline"
-                                                        data-ng-click="repositoryExitEdit()">Cancel</a>
+                                                    <button class="button--base button--inline"
+                                                        data-ng-click="repositoryExitEdit()">Cancel</button>
                                                     <button class="button--positive button--inline" maas-obj-save>Save repository</button>
                                                 </div>
                                             </div>
@@ -506,14 +506,14 @@
                                 <div class="table__dropdown" data-ng-if="deleteRepository === repository">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="repositoryExitRemove()" class="u-float--left">Removing {$ repository.name $}</h2>
-                                        <i data-ng-click="repositoryExitRemove()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                        <button data-ng-click="repositoryExitRemove()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                     </div>
                                     <div class="table__row is-active">
                                         <div class="table__data u-float--left">
                                               <p><span class="icon icon--warning u-margin--right-small"></span> Are you sure you want to remove this repository?</p>
                                         </div>
                                         <div class="table__data u-float--right">
-                                              <a class="button--base button--inline" data-ng-click="repositoryExitRemove()">Cancel</a>
+                                              <button class="button--base button--inline" data-ng-click="repositoryExitRemove()">Cancel</button>
                                               <button class="button--destructive button--inline" data-ng-click="repositoryConfirmRemove()">Remove</button>
                                         </div>
                                     </div>
@@ -534,7 +534,7 @@
                                     <div class="table__dropdown form">
                                         <div class="table__dropdown-title">
                                             <h2 data-ng-click="repositoryAddCancel" class="u-float--left">Adding <span data-ng-if="isPPA(newRepository)">PPA</span><span data-ng-if="!isPPA(newRepository)">repository</span></h2>
-                                            <i data-ng-click="repositoryAddCancel" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                            <button data-ng-click="repositoryAddCancel" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                         </div>
                                         <div class="table__row is-active">
                                             <div class="table__data table-col--100 form form--stack">
@@ -575,8 +575,8 @@
                                                 <maas-obj-errors></maas-obj-errors>
                                             </div>
                                             <div class="table__data u-float--right">
-                                                <a class="button--base button--inline"
-                                                    data-ng-click="repositoryAddCancel()">Cancel</a>
+                                                <button class="button--base button--inline"
+                                                    data-ng-click="repositoryAddCancel()">Cancel</button>
                                                 <button class="button--positive button--inline" maas-obj-save>Add repository</button>
                                             </div>
                                         </div>
@@ -585,14 +585,14 @@
                             </div>
                         </div>
                     </div>
-                    <a href="" class="button--secondary button--inline"
+                    <button class="button--secondary button--inline"
                         data-ng-disabled="editing"
                         data-ng-if="!newRepository"
-                        data-ng-click="editing || repositoryAdd(true)">Add PPA</a>
-                    <a href="" class="button--secondary button--inline"
+                        data-ng-click="editing || repositoryAdd(true)">Add PPA</button>
+                    <button class="button--secondary button--inline"
                         data-ng-disabled="editing"
                         data-ng-if="!newRepository"
-                        data-ng-click="editing || repositoryAdd(false)">Add repository</a>
+                        data-ng-click="editing || repositoryAdd(false)">Add repository</button>
                 </div>
             </div>
         </div>
