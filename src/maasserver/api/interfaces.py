@@ -402,7 +402,7 @@ class InterfaceHandler(OperationsHandler):
     def update(self, request, system_id, id):
         """Update interface on node.
 
-        Machines must has status of Ready or Broken to have access to all
+        Machines must have a status of Ready or Broken to have access to all
         options. Machines with Deployed status can only have the name and/or
         mac_address updated for an interface. This is intented to allow a bad
         interface to be replaced while the machine remains deployed.
