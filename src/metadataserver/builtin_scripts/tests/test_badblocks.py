@@ -170,7 +170,7 @@ class TestSmartCTL(MAASTestCase):
         mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
         mock_print = self.patch(badblocks, 'print')
 
-        badblocks.run_badblocks()
+        self.assertEquals(0, badblocks.run_badblocks())
 
         dashes = '-' * int((80.0 - (2 + len(drive['PATH']))) / 2)
         header = '%s %s %s' % (dashes, drive['PATH'], dashes)
@@ -197,7 +197,7 @@ class TestSmartCTL(MAASTestCase):
             'echo -n %s; exit 1' % output, stdout=PIPE, shell=True)
         mock_print = self.patch(badblocks, 'print')
 
-        badblocks.run_badblocks()
+        self.assertEquals(1, badblocks.run_badblocks())
 
         dashes = '-' * int((80.0 - (2 + len(drive['PATH']))) / 2)
         header = '%s %s %s' % (dashes, drive['PATH'], dashes)
