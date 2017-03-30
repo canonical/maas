@@ -50,10 +50,10 @@ class TestSmartCTL(MAASTestCase):
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
-                    ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
+                    ['sudo', '-n', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan-open'],
+                    ['sudo', '-n', 'smartctl', '--scan-open'],
                     timeout=smartctl.TIMEOUT),
                 call(
                     [
@@ -62,7 +62,7 @@ class TestSmartCTL(MAASTestCase):
                     ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-i', '/dev/sdb', '-d', 'scsi'],
+                ['sudo', '-n', 'smartctl', '-i', '/dev/sdb', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
         self.assertThat(
             mock_print, MockCallsMatch(
@@ -90,10 +90,10 @@ class TestSmartCTL(MAASTestCase):
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
-                    ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
+                    ['sudo', '-n', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan-open'],
+                    ['sudo', '-n', 'smartctl', '--scan-open'],
                     timeout=smartctl.TIMEOUT),
                 call(
                     [
@@ -102,7 +102,7 @@ class TestSmartCTL(MAASTestCase):
                     ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
+                ['sudo', '-n', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
         self.assertThat(mock_print, MockNotCalled())
 
@@ -124,10 +124,10 @@ class TestSmartCTL(MAASTestCase):
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
-                    ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'],
+                    ['sudo', '-n', 'iscsiadm', '-m', 'session', '-P', '3'],
                     timeout=smartctl.TIMEOUT, stderr=DEVNULL),
                 call(
-                    ['sudo', 'smartctl', '--scan-open'],
+                    ['sudo', '-n', 'smartctl', '--scan-open'],
                     timeout=smartctl.TIMEOUT),
                 call(
                     [
@@ -136,7 +136,7 @@ class TestSmartCTL(MAASTestCase):
                     ], timeout=smartctl.TIMEOUT, stderr=DEVNULL)))
         self.assertThat(
             mock_popen, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
+                ['sudo', '-n', 'smartctl', '-i', '/dev/sda', '-d', 'scsi'],
                 stdout=PIPE, stderr=DEVNULL))
         self.assertThat(mock_print, MockNotCalled())
 
@@ -153,11 +153,12 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(
             mock_check_output, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-c', drive], timeout=smartctl.TIMEOUT))
+                ['sudo', '-n', 'smartctl', '-c', drive],
+                timeout=smartctl.TIMEOUT))
 
     def test_run_smartctl_selftest_waits_for_finish(self):
         drive = factory.make_name('drive')
@@ -177,21 +178,21 @@ class TestSmartCTL(MAASTestCase):
 
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(
             mock_check_output, MockCallsMatch(
                 call(
-                    ['sudo', 'smartctl', '-c', drive],
+                    ['sudo', '-n', 'smartctl', '-c', drive],
                     timeout=smartctl.TIMEOUT),
                 call(
-                    ['sudo', 'smartctl', '-c', drive],
+                    ['sudo', '-n', 'smartctl', '-c', drive],
                     timeout=smartctl.TIMEOUT),
                 call(
-                    ['sudo', 'smartctl', '-c', drive],
+                    ['sudo', '-n', 'smartctl', '-c', drive],
                     timeout=smartctl.TIMEOUT),
                 call(
-                    ['sudo', 'smartctl', '-c', drive],
+                    ['sudo', '-n', 'smartctl', '-c', drive],
                     timeout=smartctl.TIMEOUT)))
 
     def test_run_smartctl_selftest_sets_failure_on_timeout_of_test_start(self):
@@ -207,7 +208,7 @@ class TestSmartCTL(MAASTestCase):
         self.assertTrue(run_smartctl.running_test_failed)
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(mock_check_output, MockNotCalled())
 
@@ -224,7 +225,7 @@ class TestSmartCTL(MAASTestCase):
         self.assertTrue(run_smartctl.running_test_failed)
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(mock_check_output, MockNotCalled())
 
@@ -241,11 +242,12 @@ class TestSmartCTL(MAASTestCase):
         self.assertTrue(run_smartctl.running_test_failed)
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(
             mock_check_output, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-c', drive], timeout=smartctl.TIMEOUT))
+                ['sudo', '-n', 'smartctl', '-c', drive],
+                timeout=smartctl.TIMEOUT))
 
     def test_run_smartctl_selftest_sets_failure_on_exc_fail_status_check(self):
         drive = factory.make_name('drive')
@@ -260,11 +262,12 @@ class TestSmartCTL(MAASTestCase):
         self.assertTrue(run_smartctl.running_test_failed)
         self.assertThat(
             mock_check_call, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-s', 'on', '-t', test, drive],
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', test, drive],
                 timeout=smartctl.TIMEOUT, stdout=DEVNULL, stderr=DEVNULL))
         self.assertThat(
             mock_check_output, MockCalledOnceWith(
-                ['sudo', 'smartctl', '-c', drive], timeout=smartctl.TIMEOUT))
+                ['sudo', '-n', 'smartctl', '-c', drive],
+                timeout=smartctl.TIMEOUT))
 
     def test_was_successful(self):
         run_smartctl = smartctl.RunSmartCtl(
@@ -273,3 +276,94 @@ class TestSmartCTL(MAASTestCase):
         self.assertTrue(run_smartctl.was_successful)
         run_smartctl.returncode = random.randint(5, 256)
         self.assertFalse(run_smartctl.was_successful)
+
+    def test_run_smartctl(self):
+        self.patch(smartctl, 'list_supported_drives').return_value = [
+            ['/dev/sda', '-d', 'sat'],
+        ]
+        output = factory.make_string()
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
+        mock_print = self.patch(smartctl, 'print')
+
+        self.assertEquals(0, smartctl.run_smartctl())
+
+        dashes = '-' * int((80.0 - (2 + len('/dev/sda'))) / 2)
+        header = '%s /dev/sda %s' % (dashes, dashes)
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(header),
+                call(),
+                call(output)))
+
+    def test_run_smartctl_with_smartctl_failure(self):
+        self.patch(smartctl, 'list_supported_drives').return_value = [
+            ['/dev/sda', '-d', 'sat'],
+        ]
+        output = factory.make_string()
+        self.patch(smartctl, 'check_call').side_effect = CalledProcessError(
+            1, 'smartctl'),
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(['echo', '-n', output], stdout=PIPE)
+        mock_print = self.patch(smartctl, 'print')
+        test = factory.make_name('test')
+
+        self.assertEquals(1, smartctl.run_smartctl(test))
+
+        dashes = '-' * int((80.0 - (2 + len('/dev/sda'))) / 2)
+        header = '%s /dev/sda %s' % (dashes, dashes)
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(header),
+                call(),
+                call(
+                    'Failed to start and wait for smartctl self-test: %s' %
+                    test),
+                call(),
+                call(output)))
+
+    def test_run_smartctl_timedout(self):
+        self.patch(smartctl, 'list_supported_drives').return_value = [
+            ['/dev/sda', '-d', 'sat'],
+        ]
+        smartctl.TIMEOUT = 1
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(['sleep', '60'], stdout=PIPE)
+        mock_print = self.patch(smartctl, 'print')
+
+        self.assertEquals(1, smartctl.run_smartctl())
+
+        dashes = '-' * int((80.0 - (2 + len('/dev/sda'))) / 2)
+        header = '%s /dev/sda %s' % (dashes, dashes)
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(header),
+                call(),
+                call('Running `smartctl --xall /dev/sda -d sat` timed out!')))
+
+    def test_run_smartctl_failure(self):
+        self.patch(smartctl, 'list_supported_drives').return_value = [
+            ['/dev/sda', '-d', 'sat'],
+        ]
+        output = factory.make_string()
+        mock_popen = self.patch(smartctl, 'Popen')
+        mock_popen.return_value = Popen(
+            'echo -n %s; exit 1' % output, stdout=PIPE, shell=True)
+        mock_print = self.patch(smartctl, 'print')
+
+        self.assertEquals(1, smartctl.run_smartctl())
+
+        dashes = '-' * int((80.0 - (2 + len('/dev/sda'))) / 2)
+        header = '%s /dev/sda %s' % (dashes, dashes)
+        self.assertThat(
+            mock_print,
+            MockCallsMatch(
+                call(header),
+                call(),
+                call('Error, `smartctl --xall /dev/sda -d sat` returned 1!'),
+                call('See the smartctl man page for return code meaning'),
+                call(),
+                call(output)))

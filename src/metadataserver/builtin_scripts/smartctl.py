@@ -53,7 +53,7 @@ class RunSmartCtl(Thread):
         try:
             # Start testing.
             check_call(
-                ['sudo', 'smartctl', '-s', 'on', '-t', self.test] +
+                ['sudo', '-n', 'smartctl', '-s', 'on', '-t', self.test] +
                 self.smartctl_args, timeout=TIMEOUT, stdout=DEVNULL,
                 stderr=DEVNULL)
         except (TimeoutExpired, CalledProcessError):
@@ -65,7 +65,7 @@ class RunSmartCtl(Thread):
             while True:
                 try:
                     stdout = check_output(
-                        ['sudo', 'smartctl', '-c'] + self.smartctl_args,
+                        ['sudo', '-n', 'smartctl', '-c'] + self.smartctl_args,
                         timeout=TIMEOUT)
                 except (TimeoutExpired, CalledProcessError):
                     self.running_test_failed = True
@@ -84,7 +84,7 @@ class RunSmartCtl(Thread):
         # Run smartctl and capture its output. Once all threads have completed
         # we'll output the results serially so output is properly grouped.
         with Popen(
-                ['sudo', 'smartctl', '--xall'] + self.smartctl_args,
+                ['sudo', '-n', 'smartctl', '--xall'] + self.smartctl_args,
                 stdout=PIPE, stderr=STDOUT) as proc:
             try:
                 self.output, _ = proc.communicate(timeout=TIMEOUT)
@@ -110,8 +110,8 @@ def list_supported_drives():
     # only want to scan local disks during testing.
     try:
         output = check_output(
-            ['sudo', 'iscsiadm', '-m', 'session', '-P', '3'], timeout=TIMEOUT,
-            stderr=DEVNULL)
+            ['sudo', '-n', 'iscsiadm', '-m', 'session', '-P', '3'],
+            timeout=TIMEOUT, stderr=DEVNULL)
     except (TimeoutExpired, CalledProcessError):
         # If this command failed ISCSI is most likely not running/installed.
         # Ignore the error and move on, worst case scenario we run smartctl
@@ -123,7 +123,8 @@ def list_supported_drives():
 
     drives = []
     smart_support_regex = re.compile('SMART support is:\s+Available')
-    output = check_output(['sudo', 'smartctl', '--scan-open'], timeout=TIMEOUT)
+    output = check_output(
+        ['sudo', '-n', 'smartctl', '--scan-open'], timeout=TIMEOUT)
     for line in output.decode('utf-8').splitlines():
         try:
             # Each line contains the drive and the device type along with any
@@ -134,8 +135,9 @@ def list_supported_drives():
             continue
         if drive != '' and drive.split('/')[-1] not in iscsi_drives:
             # Check that SMART is actually supported on the drive.
-            with Popen(['sudo', 'smartctl', '-i'] + drive_with_device_type,
-                       stdout=PIPE, stderr=DEVNULL) as proc:
+            with Popen(
+                    ['sudo', '-n', 'smartctl', '-i'] + drive_with_device_type,
+                    stdout=PIPE, stderr=DEVNULL) as proc:
                 try:
                     output, _ = proc.communicate(timeout=TIMEOUT)
                 except TimeoutExpired:
@@ -198,8 +200,8 @@ def run_smartctl(test=None):
             smartctl_failures += 1
             print(
                 'Running `smartctl --xall %s` timed out!' %
-                ' '.join(thread.drive_with_device_type))
-            print()
+                ' '.join(thread.smartctl_args))
+            continue
         elif not thread.was_successful:
             # smartctl returns 0 when there are no errors. It returns 4 if
             # a SMART or ATA command to the disk failed. This is surprisingly
@@ -207,8 +209,7 @@ def run_smartctl(test=None):
             smartctl_failures += 1
             print(
                 'Error, `smartctl --xall %s` returned %d!' % (
-                    ' '.join(thread.drive_with_device_type),
-                    thread.returncode))
+                    ' '.join(smartctl_args), thread.returncode))
             print('See the smartctl man page for return code meaning')
             print()
         print(thread.output.decode('utf-8'))
@@ -219,7 +220,8 @@ def run_smartctl(test=None):
 if __name__ == '__main__':
     # The MAAS ephemeral environment runs apt-get update for us.
     # Don't use timeout here incase the mirror is running really slow.
-    check_call(['sudo', 'apt-get', '-q', '-y', 'install', 'smartmontools'])
+    check_call(
+        ['sudo', '-n', 'apt-get', '-q', '-y', 'install', 'smartmontools'])
 
     # Determine which test should be run based from the first argument or
     # script name.
