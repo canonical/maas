@@ -103,6 +103,7 @@ MERGE_VIEWS = {
             "js/angular/directives/controller_image_status.js",
             "js/angular/directives/controller_status.js",
             "js/angular/directives/dbl_click_overlay.js",
+            "js/angular/directives/enter.js",
             "js/angular/directives/enter_blur.js",
             "js/angular/directives/error_overlay.js",
             "js/angular/directives/error_toggle.js",

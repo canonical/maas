@@ -54,7 +54,7 @@
                         <div data-ng-if="discovery.first_seen !== selectedDevice"
                             data-ng-dblclick="toggleSelected(discovery.first_seen)">
                             <div class="table__data table-col--37" aria-label="Name">
-                                <a href="" data-ng-click="toggleSelected(discovery.first_seen)">{$ getDiscoveryName(discovery) $}</a>
+                                <button class="button--base button--inline" aria-label="Click to edit and add device" data-ng-click="toggleSelected(discovery.first_seen)"><strong>{$ getDiscoveryName(discovery) $}</strong></button>
                                 <i data-ng-show="discovery.is_external_dhcp === true" class="icon icon--info tooltip u-margin--left-tiny ng-hide" aria-label="This device is providing DHCP."></i>
                             </div>
                             <div class="table__data table-col--15" aria-label="MAC">
@@ -71,11 +71,11 @@
                                 <time>{$ discovery.last_seen $}</time>
                             </div>
                             <div class="table__data table--mobile-controls  table-col--3">
-                                <div class="table__controls u-align--right">
-                                    <i class="icon icon--open tooltip" data-ng-if="windowWidth >= 769" aria-label="Open"
-                                        data-ng-click="toggleSelected(discovery.first_seen)">Open</i>
-                                    <a class="button--secondary" data-ng-if="windowWidth <= 768"
-                                        data-ng-click="toggleSelected(discovery.first_seen)">Add device</a>
+                                <div class="u-align--right">
+                                    <button class="icon icon--open tooltip" data-ng-if="windowWidth >= 769" aria-label="Click to edit and add device"
+                                        data-ng-click="toggleSelected(discovery.first_seen)">Open</button>
+                                    <button class="button--secondary" data-ng-if="windowWidth <= 768"
+                                        data-ng-click="toggleSelected(discovery.first_seen)">Add device</button>
                                 </div>
                             </div>
                         </div>
@@ -88,13 +88,13 @@
                             </div>
                             <div class="table__data table-col--77"></div>
                             <div class="table__data table-col--3">
-                                <i class="icon icon--close tooltip" data-ng-if="windowWidth >= 769" aria-label="Close"
-                                    data-ng-click="toggleSelected(discovery.first_seen)">Close</i>
+                                <button class="icon icon--close tooltip" data-ng-if="windowWidth >= 769" aria-label="Close editing deivce"
+                                    data-ng-click="toggleSelected(discovery.first_seen)">Close</button>
                             </div>
                             <div class="table__dropdown">
                                 <div class="table__dropdown-title" data-ng-if="windowWidth <= 768">
                                     <h2 data-ng-click="toggleSelected(selectedDevice)" class="u-float--left">Adding {$ getDiscoveryName(discovery) $}</h2>
-                                    <i data-ng-click="toggleSelected(selectedDevice)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
+                                    <button aria-label="Close editing device" data-ng-click="toggleSelected(selectedDevice)" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></button>
                                 </div>
                                 <div class="table__row is-active">
                                     <div class="table__data table-col--100">
@@ -166,7 +166,7 @@
                                         <maas-obj-errors></maas-obj-errors>
                                     </div>
                                     <div class="table__data u-float--right">
-                                        <a class="button--base button--inline" data-ng-click="toggleSelected(selectedDevice)">Cancel</a>
+                                        <button class="button--base button--inline" data-ng-click="toggleSelected(selectedDevice)">Cancel</button>
                                         <button class="button--secondary button--inline"
                                             data-ng-click="convertTo.goTo = true"
                                             data-ng-if="!convertTo.$maasForm.getValue('parent')"

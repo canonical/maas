@@ -103,7 +103,7 @@ describe("maasNotifications", function() {
             theNotificationsManager._items = [notification];
             var dismiss = spyOn(theNotificationsManager, "dismiss");
             var directive = compileDirective();
-            directive.find("div > div > p > a").click();
+            directive.find("div > div > p > button").click();
             expect(dismiss).toHaveBeenCalledWith(notification);
         });
 

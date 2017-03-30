@@ -102,6 +102,44 @@
     margin-bottom: 20px;
   }
 
+  .p-notification__response {
+    background-color: $transparent;
+    color: $text-color;
+    padding: 0;
+    height: initial;
+    background-position: left center;
+
+    &:hover {
+      background-color: $transparent;
+    }
+
+    &:focus {
+      outline: 1px solid $color-focus;
+      outline-offset: 2px;
+    }
+
+    .button--inline {
+      vertical-align: initial;
+    }
+  }
+
+  .p-notification--group {
+
+    .p-notification__status:before {
+      line-height: 24px;
+    }
+
+    .p-notification__item {
+
+      .p-notification__msg {
+
+        .button--inline {
+          vertical-align: initial;
+        }
+      }
+    }
+  }
+
   #loader {
     width: 10px;
     margin: 16px auto 0 auto;
