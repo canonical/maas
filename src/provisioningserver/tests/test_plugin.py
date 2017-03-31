@@ -46,10 +46,12 @@ from provisioningserver.rackdservices.tftp import (
 )
 from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.twisted import reducedWebLogFormatter
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
     Equals,
+    Is,
     IsInstance,
     KeysEqual,
     MatchesAll,
@@ -206,6 +208,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         image_service = service.getServiceNamed("image_service")
         self.assertIsInstance(image_service, BootImageEndpointService)
         self.assertIsInstance(image_service.site, Site)
+        self.assertThat(image_service.site, MatchesStructure(
+            _logFormatter=Is(reducedWebLogFormatter)))
         resource = image_service.site.resource
         root = resource.getChildWithDefault(b"images", request=None)
         self.assertThat(root, IsInstance(FilePath))

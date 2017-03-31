@@ -63,6 +63,7 @@ from provisioningserver.utils.twisted import (
     LONGTIME,
     makeDeferredWithProcessProtocol,
     pause,
+    reducedWebLogFormatter,
     retries,
     RPCFetcher,
     synchronous,
@@ -71,6 +72,7 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
     ThreadUnpool,
 )
+from testscenarios import multiply_scenarios
 from testtools.content import content_from_stream
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
@@ -88,7 +90,10 @@ from testtools.matchers import (
     Raises,
 )
 from testtools.testcase import ExpectedException
-from twisted.internet import reactor
+from twisted.internet import (
+    address,
+    reactor,
+)
 from twisted.internet.defer import (
     AlreadyCalledError,
     CancelledError,
@@ -112,6 +117,7 @@ from twisted.python import (
     threadable,
 )
 from twisted.python.failure import Failure
+from twisted.web.test import requesthelper
 
 
 def return_args(*args, **kwargs):
@@ -1883,3 +1889,120 @@ class TestTerminateProcess(MAASTestCase):
             ))
         self.assertThat(
             twisted_module._os_killpg, MockNotCalled())
+
+
+class TestReducedWebLogFormatter(MAASTestCase):
+    """Tests for `reducedWebLogFormatter`."""
+
+    ipv4_address = factory.make_ipv4_address()
+    ipv6_address = factory.make_ipv6_address()
+    simple_http_url = factory.make_simple_http_url()
+    simple_uri = factory.make_absolute_path()
+    agent_name = factory.make_name("agent")
+    status = factory.make_status_code()
+
+    scenarios_methods = (
+        ("no-method", {"method": None, "method_expected": "???"}),
+        ("method", {"method": "GET", "method_expected": "GET"}),
+    )
+
+    scenarios_clients = (
+        ("no-client", {
+            "client": None,
+            "client_expected": "-",
+        }),
+        ("ipv4-client", {
+            "client": ipv4_address,
+            "client_expected": ipv4_address,
+        }),
+        ("ipv6-client", {
+            "client": ipv6_address,
+            "client_expected": ipv6_address,
+        }),
+        ("ipv4-mapped-client", {
+            "client": "::ffff:" + ipv4_address,
+            "client_expected": ipv4_address,
+        }),
+    )
+
+    scenarios_referrers = (
+        ("no-referrer", {
+            "referrer": None,
+            "referrer_expected": "-",
+        }),
+        ("referrer", {
+            "referrer": simple_http_url,
+            "referrer_expected": simple_http_url,
+        }),
+    )
+
+    scenarios_agents = (
+        ("no-agent", {
+            "agent": None,
+            "agent_expected": "-",
+        }),
+        ("agent", {
+            "agent": agent_name,
+            "agent_expected": agent_name,
+        }),
+    )
+
+    scenarios_uris = (
+        ("no-uri", {
+            "uri": None,
+            "uri_expected": "-",
+        }),
+        ("uri", {
+            "uri": simple_uri,
+            "uri_expected": simple_uri,
+        }),
+    )
+
+    scenarios_statuses = (
+        ("no-status", {
+            "status": None,
+            "status_expected": "???",
+        }),
+        ("status", {
+            "status": status.value,
+            "status_expected": "%d %s" % (status.value, status.name),
+        }),
+        ("status-unknown", {
+            "status": 678,
+            "status_expected": "678",
+        }),
+    )
+
+    scenarios_types = (
+        ("plain", {"prep": lambda string: string}),
+        ("bytes", {"prep": lambda string: (
+            None if string is None else string.encode("ascii"))}),
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_methods, scenarios_clients, scenarios_referrers,
+        scenarios_agents, scenarios_uris, scenarios_statuses, scenarios_types,
+    )
+
+    def test__renders_full_request(self):
+        request = requesthelper.DummyRequest("foo/bar")
+        request.method = self.prep(self.method)
+        request.client = address.IPv4Address(
+            "TCP", self.prep(self.client), 12345)
+        request.requestHeaders.addRawHeader(
+            "referer", self.prep(self.referrer))
+        request.requestHeaders.addRawHeader(
+            "user-agent", self.prep(self.agent))
+        request.uri = self.prep(self.uri)
+        request.code = self.status
+
+        self.assertThat(
+            reducedWebLogFormatter(sentinel.timestamp, request),
+            Equals(
+                "%s %s %s HTTP/1.0 --> %s (referrer: %s; agent: %s)" % (
+                    self.client_expected, self.method_expected,
+                    self.uri_expected, self.status_expected,
+                    self.referrer_expected, self.agent_expected,
+                )
+            ),
+        )

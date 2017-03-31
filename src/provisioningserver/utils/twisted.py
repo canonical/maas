@@ -20,6 +20,7 @@ __all__ = [
     'LONGTIME',
     'makeDeferredWithProcessProtocol',
     'pause',
+    'reducedWebLogFormatter',
     'retries',
     'synchronous',
     'ThreadPool',
@@ -35,6 +36,7 @@ from functools import (
     partial,
     wraps,
 )
+from http import HTTPStatus
 from itertools import (
     chain,
     repeat,
@@ -50,6 +52,10 @@ import signal
 import threading
 
 from crochet import run_in_reactor
+from netaddr import (
+    AddrFormatError,
+    IPAddress,
+)
 from provisioningserver.logger import LegacyLogger
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -70,7 +76,9 @@ from twisted.python import (
 )
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
+from twisted.web.iweb import IAccessLogFormatter
 from zope import interface
+from zope.interface import provider
 
 
 log = LegacyLogger()
@@ -1043,3 +1051,62 @@ def terminateProcess(
                 killer.cancel()
 
     done.addBoth(callOut, ended)
+
+
+@provider(IAccessLogFormatter)
+def reducedWebLogFormatter(timestamp, request):
+    """Return a reduced formatted log line for the given request.
+
+    The `timestamp` argument is ignored. The line returned is expected to be
+    sent out by a logger which will add its own timestamp, so this one is
+    superfluous.
+
+    :see: `IAccessLogFormatter`
+    :see: `combinedLogFormatter`
+    """
+    template = (
+        "{origin} {method} {uri} {proto} --> {status} "
+        "(referrer: {referrer}; agent: {agent})"
+    )
+
+    def field(value, default):
+        if value is None or len(value) == 0 or value.isspace():
+            return default
+        elif isinstance(value, bytes):
+            return value.decode("ascii", "replace")
+        else:
+            return value
+
+    def normaliseAddress(address):
+        """Normalise an IP address."""
+        try:
+            address = IPAddress(address)
+        except AddrFormatError:
+            return address  # Hostname?
+        else:
+            if address.is_ipv4_mapped():
+                return address.ipv4()
+            else:
+                return address
+
+    def describeHttpStatus(code):
+        try:
+            code = HTTPStatus(code)
+        except ValueError:
+            if isinstance(code, int):
+                return str(code)
+            else:
+                return "???"
+        else:
+            return "{code.value:d} {code.name}".format(code=code)
+
+    origin = field(request.getClientIP(), None)
+    origin = "-" if origin is None else normaliseAddress(origin)
+
+    return template.format(
+        referrer=field(request.getHeader(b"referer"), "-"),
+        agent=field(request.getHeader(b"user-agent"), "-"),
+        status=describeHttpStatus(request.code), origin=origin,
+        method=field(request.method, "???"), uri=field(request.uri, "-"),
+        proto=field(request.clientproto, "-"),
+    )

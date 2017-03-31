@@ -7,6 +7,7 @@ __all__ = [
     "BootImageEndpointService",
     ]
 
+from provisioningserver.utils.twisted import reducedWebLogFormatter
 from twisted.application.internet import StreamServerEndpointService
 from twisted.web.resource import Resource
 from twisted.web.server import Site
@@ -28,5 +29,5 @@ class BootImageEndpointService(StreamServerEndpointService):
         """
         resource = Resource()
         resource.putChild(b'images', File(resource_root))
-        self.site = Site(resource)
+        self.site = Site(resource, logFormatter=reducedWebLogFormatter)
         super(BootImageEndpointService, self).__init__(endpoint, self.site)

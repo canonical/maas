@@ -25,6 +25,7 @@ from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import (
     asynchronous,
+    reducedWebLogFormatter,
     ThreadPoolLimiter,
 )
 from twisted.application.internet import StreamServerEndpointService
@@ -184,7 +185,8 @@ class WebApplicationService(StreamServerEndpointService):
     """
 
     def __init__(self, endpoint, listener, status_worker):
-        self.site = OverlaySite(StartPage())
+        self.site = OverlaySite(
+            StartPage(), logFormatter=reducedWebLogFormatter)
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.websocket = WebSocketFactory(listener)
@@ -235,7 +237,8 @@ class WebApplicationService(StreamServerEndpointService):
             WSGIResource(reactor, self.threadpool, application))
         underlay_root = Resource()
         underlay_root.putChild(b'MAAS', underlay_maas)
-        underlay_site = Site(underlay_root)
+        underlay_site = Site(
+            underlay_root, logFormatter=reducedWebLogFormatter)
         underlay_site.requestFactory = CleanPathRequest
 
         # Setup the main resource as the twisted handler and the underlay

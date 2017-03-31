@@ -23,6 +23,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver.utils.twisted import reducedWebLogFormatter
 from testtools.matchers import (
     Equals,
     Is,
@@ -205,8 +206,10 @@ class TestWebApplicationService(MAASTestCase):
     def test__init_creates_site(self):
         service = self.make_webapp()
         self.assertThat(service.site, IsInstance(Site))
-        self.assertThat(
-            service.site.requestFactory, Is(webapp.CleanPathRequest))
+        self.assertThat(service.site, MatchesStructure(
+            requestFactory=Is(webapp.CleanPathRequest),
+            _logFormatter=Is(reducedWebLogFormatter),
+        ))
         self.assertThat(service.websocket, IsInstance(WebSocketFactory))
 
     def test__default_site_renders_starting_page(self):
