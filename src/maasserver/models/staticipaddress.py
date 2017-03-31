@@ -252,14 +252,21 @@ class StaticIPAddressManager(Manager):
         """Get the special mappings, possibly limited to a single Domain.
 
         This function is responsible for creating these mappings:
-        - any USER_RESERVED IP,
+        - any USER_RESERVED IP that has no name (dnsrr or node),
         - any IP not associated with a Node,
         - any IP associated with a DNSResource.
+
+        Addresses that are associated with both a Node and a DNSResource behave
+        thusly:
+        - Both forward mappings include the address
+        - The reverse mapping points only to the Node (and is the
+          responsibility of the caller.)
+
         The caller is responsible for addresses otherwise derived from nodes.
 
         Because of how the get hostname_ip_mapping code works, we actually need
-        to fetch ALL of the entries for subnets, but forward mappings need to
-        be domain-specific.
+        to fetch ALL of the entries for subnets, but forward mappings are
+        domain-specific.
 
         :param domain: limit return to just the given Domain.  If anything
             other than a Domain is passed in (e.g., a Subnet or None), we
@@ -270,32 +277,6 @@ class StaticIPAddressManager(Manager):
         :return: a (default) dict of hostname: HostnameIPMapping entries.
         """
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
-        if isinstance(domain, Domain):
-            # Domains are special in that we only want to have entries for the
-            # domain that we were asked about.  And they can possibly come from
-            # either the child or the parent for glue.
-            where_clause = """
-                AND (
-                    dnsrr.dom2_id = %s OR
-                    node.dom2_id = %s OR
-                    dnsrr.domain_id = %s OR
-                    node.domain_id = %s
-            """
-            query_parms = [domain.id, domain.id, domain.id, domain.id]
-            # And the default domain is extra special, since it needs to have
-            # A/AAAA RRs for any USER_RESERVED addresses that have no name
-            # otherwise attached to them.
-            if domain.is_default():
-                where_clause += """ OR (
-                    dnsrr.fqdn IS NULL AND
-                    node.fqdn IS NULL)
-                """
-            where_clause += ")"
-        else:
-            # There is nothing special about the query for subnets.
-            domain = None
-            where_clause = ""
-            query_parms = []
         # raw_ttl says that we don't coalesce, but we need to pick one, so we
         # go with DNSResource if it is involved.
         if raw_ttl:
@@ -371,27 +352,78 @@ class StaticIPAddressManager(Manager):
                 ) AS node ON
                     node_sip_id = staticip.id
             WHERE
-                staticip.ip IS NOT NULL AND
-                host(staticip.ip) != '' AND
-                (
-                    staticip.alloc_type = %s OR
-                    node.fqdn IS NULL OR
-                    dnsrr IS NOT NULL
-                )""" + where_clause + """
-        """
+                (staticip.ip IS NOT NULL AND host(staticip.ip) != '') AND
+                """
+
+        query_parms = []
+        if isinstance(domain, Domain):
+            if domain.is_default():
+                # The default domain is extra special, since it needs to have
+                # A/AAAA RRs for any USER_RESERVED addresses that have no name
+                # otherwise attached to them.
+                # We need to get all of the entries that are:
+                # - in this domain and have a dnsrr associated, OR
+                # - are USER_RESERVED and have NO fqdn associated at all.
+                sql_query += """ ((
+                        staticip.alloc_type = %s AND
+                        dnsrr.fqdn IS NULL AND
+                        node.fqdn IS NULL
+                    ) OR (
+                        dnsrr.fqdn IS NOT NULL AND
+                        (
+                            dnsrr.dom2_id = %s OR
+                            node.dom2_id = %s OR
+                            dnsrr.domain_id = %s OR
+                            node.domain_id = %s)))"""
+                query_parms += [IPADDRESS_TYPE.USER_RESERVED]
+            else:
+                # For domains, we only need answers for the domain we were
+                # given.  These can can possibly come from either the child or
+                # the parent for glue.  Anything with a node associated will be
+                # found inside of get_hostname_ip_mapping() - we need any
+                # entries that are:
+                # - in this domain and have a dnsrr associated.
+                sql_query += """ (
+                    dnsrr.fqdn IS NOT NULL AND
+                    (
+                        dnsrr.dom2_id = %s OR
+                        node.dom2_id = %s OR
+                        dnsrr.domain_id = %s OR
+                        node.domain_id = %s))"""
+            query_parms += [domain.id, domain.id, domain.id, domain.id]
+        else:
+            # In the subnet map, addresses attached to nodes only map back to
+            # the node, since some things don't like multiple PTR RRs in
+            # answers from the DNS.
+            # Since that is handled in get_hostname_ip_mapping, we exclude
+            # anything where the node also has a link to the address.
+            domain = None
+            sql_query += """ ((
+                    node.fqdn IS NULL AND dnsrr.fqdn IS NOT NULL
+                ) OR (
+                    staticip.alloc_type = %s AND
+                    dnsrr.fqdn IS NULL AND
+                    node.fqdn IS NULL))"""
+            query_parms += [IPADDRESS_TYPE.USER_RESERVED]
+
         default_domain = Domain.objects.get_default_domain()
         mapping = defaultdict(HostnameIPMapping)
         cursor = connection.cursor()
-        query_parms = [IPADDRESS_TYPE.USER_RESERVED] + query_parms
         cursor.execute(sql_query, query_parms)
-        for (fqdn, system_id, node_type, ttl,
-                ip) in cursor.fetchall():
+        for (fqdn, system_id, node_type, ttl, ip) in cursor.fetchall():
             if fqdn is None or fqdn == '':
                 fqdn = "%s.%s" % (
                     get_ip_based_hostname(ip), default_domain.name)
-            mapping[fqdn].node_type = node_type
-            mapping[fqdn].system_id = system_id
-            mapping[fqdn].ttl = ttl
+            # It is possible that there are both Node and DNSResource entries
+            # for this fqdn.  If we have any system_id, preserve it.  Ditto for
+            # TTL.  It is left as an exercise for the admin to make sure that
+            # the any non-default TTL applied to the Node and DNSResource are
+            # equal.
+            if system_id is not None:
+                mapping[fqdn].node_type = node_type
+                mapping[fqdn].system_id = system_id
+            if ttl is not None:
+                mapping[fqdn].ttl = ttl
             mapping[fqdn].ips.add(ip)
         return mapping
 
