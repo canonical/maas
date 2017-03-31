@@ -371,37 +371,55 @@ class Factory:
             "Could not find available IP in static range")
 
     def pick_ip_in_network(self, network, *, but_not=EMPTY_SET):
-        but_not = {IPAddress(but) for but in but_not if but is not None}
-        if network.version == 6:
+        but_not = {
+            IPAddress(but) for but in but_not
+            if but is not None and IPAddress(but) in network
+        }
+        # Unless the prefix length is very small, make sure we don't select
+        # a normally-unusable IP address.
+        if network.version == 6 and network.prefixlen < 127:
+            # Don't pick the all-zeroes address, since it has special meaning
+            # in IPv6 as the subnet-router anycast address. IPv6 does not have
+            # a broadcast address, though.
             first, last = network.first + 1, network.last
+            network_size = network.size - 1
+        elif network.prefixlen < 31:
+            # Don't pick broadcast or network addresses.
+            first, last = network.first + 1, network.last - 1
+            network_size = network.size - 2
         else:
             first, last = network.first, network.last
+            network_size = network.size
+        if len(but_not) == network_size:
+            raise ValueError(
+                "No IP addresses available in network: %s (but_not=%r)" % (
+                    network, but_not))
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
                 return str(address)
-        raise TooManyRandomRetries("Could not find available IP in network")
+        raise TooManyRandomRetries(
+            "Could not find available IP in network: %s (but_not=%r)" % (
+                network, but_not))
 
-    def make_ip_range(self, network, *, but_not=None):
+    def make_ip_range(self, network):
         """Return a pair of IP addresses from the given network.
 
         :param network: Return IP addresses within this network.
         :param but_not: A pair of addresses that should not be returned.
         :return: A pair of `IPAddress`.
         """
-        if but_not is not None:
-            low, high = but_not
-            but_not = IPAddress(low), IPAddress(high)
         for _ in range(100):
             ip_range = tuple(sorted(
                 IPAddress(factory.pick_ip_in_network(network))
                 for _ in range(2)
                 ))
-            if ip_range[0] < ip_range[1] and ip_range != but_not:
+            if ip_range[0] < ip_range[1]:
                 return ip_range
-        raise TooManyRandomRetries("Could not find available IP range")
+        raise TooManyRandomRetries(
+            "Could not find available IP range in network: %s" % network)
 
-    def make_ipv4_range(self, network=None, *, but_not=None):
+    def make_ipv4_range(self, network=None):
         """Return a pair of IPv4 addresses.
 
         :param network: Return IP addresses within this network.
@@ -410,9 +428,9 @@ class Factory:
         """
         if network is None:
             network = self.make_ipv4_network()
-        return self.make_ip_range(network=network, but_not=but_not)
+        return self.make_ip_range(network=network)
 
-    def make_ipv6_range(self, network=None, *, but_not=None):
+    def make_ipv6_range(self, network=None):
         """Return a pair of IPv6 addresses.
 
         :param network: Return IP addresses within this network.
@@ -421,7 +439,7 @@ class Factory:
         """
         if network is None:
             network = self.make_ipv6_network()
-        return self.make_ip_range(network=network, but_not=but_not)
+        return self.make_ip_range(network=network)
 
     def make_mac_address(self, delimiter=":"):
         assert isinstance(delimiter, str)

@@ -1968,8 +1968,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         configure.side_effect = (
             exceptions.CannotConfigureDHCP("Deliberate failure"))
         omapi_key = factory.make_name('key')
-        network = self.make_network()
-        ip_low, ip_high = factory.make_ip_range(network)
         failover_peers = [make_failover_peer_config()]
         shared_networks = [self.make_shared_network()]
         shared_networks = fix_shared_networks_failover(

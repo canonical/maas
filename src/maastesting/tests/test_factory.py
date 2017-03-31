@@ -153,11 +153,17 @@ class TestFactory(MAASTestCase):
         self.assertNotIn(new_network, existing_network)
         self.assertNotIn(existing_network, new_network)
 
-    def test_pick_ip_in_network_for_ipv4(self):
+    def test_pick_ip_in_network_for_ipv4_slash_31(self):
         network = factory.make_ipv4_network(slash=31)
         ip = factory.pick_ip_in_network(network)
         self.assertTrue(
             network.first <= IPAddress(ip).value <= network.last)
+
+    def test_pick_ip_in_network_for_ipv4_slash_30(self):
+        network = factory.make_ipv4_network(slash=30)
+        ip = factory.pick_ip_in_network(network)
+        self.assertTrue(
+            network.first < IPAddress(ip).value < network.last)
 
     def test_pick_ip_in_network_for_ipv6(self):
         # For IPv6, pick_ip_in_network will not consider the very first
@@ -392,28 +398,19 @@ class TestMakeIPRange(MAASTestCase):
             self.make_network(slash=(31 if self.version == 4 else 126)))
         self.assertLess(low, high)
 
-    def test_make_ip_range_obeys_but_not(self):
-        # Make a very very small network, to maximise the chances of exposure
-        # if the method gets this wrong.
-        network = self.make_network(slash=(30 if self.version == 4 else 126))
-        first_low, first_high = factory.make_ip_range(network)
-        second_low, second_high = factory.make_ip_range(
-            network, but_not=(first_low, first_high))
-        self.assertNotEqual((first_low, first_high), (second_low, second_high))
-
     def test_make_ipvN_range_calls_make_ip_range(self):
         self.patch_autospec(factory, "make_ip_range")
         factory.make_ip_range.return_value = sentinel.ip_range
         network = self.make_network()
-        ip_range = self.make_range(network, but_not=sentinel.but_not)
+        ip_range = self.make_range(network)
         self.assertThat(ip_range, Is(sentinel.ip_range))
         self.assertThat(factory.make_ip_range, MockCalledOnceWith(
-            network=network, but_not=sentinel.but_not))
+            network=network))
 
     def test_make_ipvN_range_creates_random_network_if_not_supplied(self):
         self.patch_autospec(factory, "make_ip_range")
         factory.make_ip_range.return_value = sentinel.ip_range
-        ip_range = self.make_range(but_not=sentinel.but_not)
+        ip_range = self.make_range()
         self.assertThat(ip_range, Is(sentinel.ip_range))
         self.assertThat(
             factory.make_ip_range,
@@ -425,6 +422,5 @@ class TestMakeIPRange(MAASTestCase):
                         first_only=True,
                     ),
                 ),
-                but_not=sentinel.but_not,
             ),
         )

@@ -129,6 +129,15 @@ class IPRange(CleanSave, TimestampedModel):
     def __contains__(self, item):
         return item in self.netaddr_iprange
 
+    def _raise_validation_error(self, message, fields=None):
+        if fields is None:
+            # By default, highlight the start_ip and the end_ip.
+            fields = ['start_ip', 'end_ip']
+        validation_errors = {}
+        for field in fields:
+            validation_errors[field] = [message]
+        raise ValidationError(validation_errors)
+
     def clean(self):
         super().clean()
         try:
@@ -141,29 +150,40 @@ class IPRange(CleanSave, TimestampedModel):
             # This validation will be called even if the start_ip or end_ip
             # field is missing. So we need to check them again here, before
             # proceeding with the validation (and potentially crashing).
-            raise ValidationError(
+            self._raise_validation_error(
                 "Start IP address and end IP address are both required.")
         if end_ip.version != start_ip.version:
-            raise ValidationError(
+            self._raise_validation_error(
                 "Start IP address and end IP address must be in the same "
                 "address family.")
         if end_ip < start_ip:
-            raise ValidationError(
-                "End IP address must not be less than Start IP address.")
+            self._raise_validation_error(
+                "End IP address must not be less than Start IP address.",
+                fields=['end_ip'])
         if self.subnet_id is not None:
             cidr = IPNetwork(self.subnet.cidr)
             if start_ip not in cidr and end_ip not in cidr:
-                raise ValidationError(
+                self._raise_validation_error(
                     "IP addresses must be within subnet: %s." % cidr)
             if start_ip not in cidr:
-                raise ValidationError(
-                    "Start IP address must be within subnet: %s." % cidr)
+                self._raise_validation_error(
+                    "Start IP address must be within subnet: %s." % cidr,
+                    fields=['start_ip'])
             if end_ip not in cidr:
-                raise ValidationError(
-                    "End IP address must be within subnet: %s." % cidr)
+                self._raise_validation_error(
+                    "End IP address must be within subnet: %s." % cidr,
+                    fields=['end_ip'])
+            if cidr.network == start_ip:
+                self._raise_validation_error(
+                    "Reserved network address cannot be included in IP range.",
+                    fields=['start_ip'])
+            if cidr.version == 4 and cidr.broadcast == end_ip:
+                self._raise_validation_error(
+                    "Broadcast address cannot be included in IP range.",
+                    fields=['end_ip'])
         if (start_ip.version == 6 and self.type == IPRANGE_TYPE.DYNAMIC and
                 netaddr.IPRange(start_ip, end_ip).size < 256):
-            raise ValidationError(
+            self._raise_validation_error(
                 "IPv6 dynamic range must be at least 256 addresses in size.")
         self.clean_prevent_dupes_and_overlaps()
 
@@ -183,12 +203,6 @@ class IPRange(CleanSave, TimestampedModel):
         """Make sure the new or updated range isn't going to cause a conflict.
         If it will, raise ValidationError.
         """
-
-        # A range overlap/conflict could be due to any of these fields.
-        def fail(message, fields=['start_ip', 'end_ip', 'type']):
-            for field in fields:
-                validation_errors[field] = [message]
-            raise ValidationError(validation_errors)
 
         # Check against the valid types before going further, since whether
         # or not the range overlaps anything that could cause an error heavily
@@ -233,10 +247,16 @@ class IPRange(CleanSave, TimestampedModel):
         else:
             unused = self.subnet.get_ipranges_available_for_dynamic_range()
 
-        validation_errors = {}
         if len(unused) == 0:
-            fail("There is no room for any %s ranges on this subnet." % (
-                self.type))
+            self._raise_validation_error(
+                "There is no room for any %s ranges on this subnet." % (
+                    self.type))
+
+        message = "Requested %s range conflicts with an existing " % self.type
+        if self.type == IPRANGE_TYPE.RESERVED:
+            message += "range."
+        else:
+            message += "IP address or range."
 
         # Find unused range for start_ip
         for range in unused:
@@ -245,11 +265,5 @@ class IPRange(CleanSave, TimestampedModel):
                     # Success, start and end IP are in an unused range.
                     return
                 else:
-                    message = ("Requested %s range conflicts with "
-                               "an existing ") % (self.type)
-                    if self.type == IPRANGE_TYPE.RESERVED:
-                        fail(message + "range.")
-                    else:
-                        fail(message + "IP address or range.")
-        fail("No %s range can be created at requested start IP." % self.type,
-             ['start_ip', 'type'])
+                    self._raise_validation_error(message)
+        self._raise_validation_error(message)

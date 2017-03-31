@@ -370,10 +370,10 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         # Accessible nodes.
         node_ids = [
             self.make_Node(bmc_connected_to=rack).system_id
-            for _ in range(5)
+            for _ in range(3)
         ]
         # Inaccessible nodes.
-        for _ in range(5):
+        for _ in range(3):
             node = self.make_Node(bmc_connected_to=rack)
             node.bmc = None
             node.save()
