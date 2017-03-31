@@ -59,4 +59,28 @@ describe("DomainsManager", function() {
                 DomainsManager._items[0]);
         });
     });
+
+    describe("getDomainByName", function() {
+        it("returns null when no domains", function() {
+            expect(DomainsManager.getDomainByName('meh')).toBe(null);
+        });
+
+        it("getDefaultDomain returns named domain", function() {
+            var zero = makeDomain(0);
+            DomainsManager._items.push(makeDomain(1));
+            DomainsManager._items.push(zero);
+            var ours = makeDomain(5);
+            DomainsManager._items.push(ours);
+            DomainsManager._items.push(makeDomain(3));
+            expect(DomainsManager.getDomainByName(ours.name)).toBe(ours);
+        });
+
+        it("getDefaultDomain returns null when not found", function() {
+            var i;
+            for(i=0;i<3;i++) {
+                DomainsManager._items.push(makeDomain());
+            }
+            expect(DomainsManager.getDomainByName("notname")).toBe(null);
+        });
+    });
 });

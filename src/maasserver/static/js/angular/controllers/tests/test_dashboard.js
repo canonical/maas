@@ -217,6 +217,31 @@ describe("DashboardController", function() {
                 ]
             });
         });
+        it("sets handles fqdn correctly", function() {
+            var controller = makeController();
+            var id = makeInteger(0, 100);
+            var defaultDomain = {
+                id: 0
+            };
+            var domain = {
+                id: 1,
+                name: makeName("domain")
+            };
+            var hostname = makeName("hostname");
+            DomainsManager._items = [defaultDomain, domain];
+            var discovered = {
+                first_seen: id,
+                hostname: hostname + "." + domain.name,
+                subnet: makeInteger(0, 100)
+            };
+            DiscoveriesManager._items = [discovered];
+            $scope.toggleSelected(id);
+            expect($scope.selectedDevice).toBe(id);
+            // Just confirm the hostname and domain, the rest is checked in the
+            // above test.
+            expect($scope.convertTo.hostname).toBe(hostname);
+            expect($scope.convertTo.domain).toBe(domain);
+        });
 
         it("sets selectedDevice and convertTo without static", function() {
             var controller = makeController();

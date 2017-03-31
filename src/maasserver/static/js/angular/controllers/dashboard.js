@@ -86,10 +86,22 @@ angular.module('MAAS').controller('DashboardController', [
                 $scope.selectedDevice = null;
             } else {
                 var discovered = DiscoveriesManager.getItemFromList(deviceId);
+                var hostname = $scope.getDiscoveryName(discovered);
+                var domain;
+                if(hostname.indexOf('.') > 0) {
+                    domain = DomainsManager.getDomainByName(
+                        hostname.slice(hostname.indexOf('.') + 1));
+                    hostname = hostname.split(".", 1)[0];
+                    if(domain === null) {
+                        domain = DomainsManager.getDefaultDomain();
+                    }
+                } else {
+                    domain = DomainsManager.getDefaultDomain();
+                }
                 $scope.convertTo = {
                     type: 'device',
-                    hostname: $scope.getDiscoveryName(discovered),
-                    domain: DomainsManager.getDefaultDomain(),
+                    hostname: hostname,
+                    domain: domain,
                     parent: null,
                     ip_assignment: 'dynamic',
                     goTo: false,

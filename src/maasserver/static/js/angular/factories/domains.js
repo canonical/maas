@@ -56,5 +56,17 @@ angular.module('MAAS').factory(
             return this._items[0];
         };
 
+        DomainsManager.prototype.getDomainByName = function(name) {
+            if(this._items.length > 0) {
+                var i;
+                for(i=0;i<this._items.length;i++) {
+                    if(this._items[i].name === name) {
+                        return this._items[i];
+                    }
+                }
+            }
+            return null;
+        };
+
         return new DomainsManager();
     }]);
