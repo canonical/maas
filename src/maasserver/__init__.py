@@ -17,6 +17,8 @@ from maasserver.monkey import add_patches_to_django
 from provisioningserver.monkey import add_patches_to_twisted
 
 
+__version__ = '2.2.0'
+
 logger = logging.getLogger("maasserver")
 
 

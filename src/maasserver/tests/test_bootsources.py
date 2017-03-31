@@ -40,7 +40,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
-from maasserver.utils.version import get_maas_version_ui
+from maasserver.utils.version import get_maas_version_user_agent
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
@@ -237,7 +237,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertThat(
             mock_download,
             MockCalledOnceWith(
-                ANY, user_agent="MAAS %s" % get_maas_version_ui()))
+                ANY, user_agent=get_maas_version_user_agent()))
 
     @skip("XXX: GavinPanella 2015-12-04 bug=1546235: Fails spuriously.")
     def test__doesnt_have_env_http_and_https_proxy_set_if_disabled(self):

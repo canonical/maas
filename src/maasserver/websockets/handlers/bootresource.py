@@ -42,7 +42,7 @@ from maasserver.models import (
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_ui
+from maasserver.utils.version import get_maas_version_user_agent
 from maasserver.websockets.base import (
     Handler,
     HandlerError,
@@ -701,7 +701,8 @@ class BootResourceHandler(Handler):
             [source] = write_all_keyrings(keyrings_path, [source])
             try:
                 descriptions = download_all_image_descriptions(
-                    [source], user_agent="MAAS %s" % get_maas_version_ui())
+                    [source],
+                    user_agent=get_maas_version_user_agent())
             except Exception as error:
                 raise HandlerError(str(error))
         items = list(descriptions.items())

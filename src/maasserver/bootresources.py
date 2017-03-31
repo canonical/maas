@@ -77,7 +77,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_ui
+from maasserver.utils.version import get_maas_version_user_agent
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
@@ -1150,7 +1150,7 @@ def download_boot_resources(path, store, product_mapping,
     try:
         reader = UrlMirrorReader(
             mirror, policy=policy,
-            user_agent="MAAS %s" % get_maas_version_ui())
+            user_agent=get_maas_version_user_agent())
     except TypeError:
         # UrlMirrorReader doesn't support the user_agent argument.
         # simplestream >=bzr429 is required for this feature.

@@ -32,7 +32,7 @@ from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
-from maasserver.utils.version import get_maas_version_ui
+from maasserver.utils.version import get_maas_version_user_agent
 from maasserver.websockets.base import (
     HandlerError,
     HandlerValidationError,
@@ -895,7 +895,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             mock_download,
             MockCalledOnceWith(
                 [expected_source],
-                user_agent="MAAS %s" % get_maas_version_ui()))
+                user_agent=get_maas_version_user_agent()))
 
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()

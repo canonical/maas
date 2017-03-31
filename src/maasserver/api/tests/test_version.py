@@ -41,7 +41,7 @@ class TestVersionAPI(APITestCase.ForAnonymousAndUser):
         self.assertEqual(
             {
                 'capabilities': API_CAPABILITIES_LIST,
-                'version': '1.8.0',
-                'subversion': 'alpha4+bzr356',
+                'version': '1.8.0~alpha4',
+                'subversion': 'bzr356-0ubuntu1',
             },
             parsed_result)

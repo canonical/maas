@@ -89,7 +89,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_ui
+from maasserver.utils.version import get_maas_version_user_agent
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -1533,7 +1533,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertThat(
             mock_UrlMirrorReader,
             MockCalledOnceWith(
-                ANY, policy=ANY, user_agent="MAAS %s" % get_maas_version_ui()))
+                ANY, policy=ANY, user_agent=get_maas_version_user_agent()))
 
     def test_download_boot_resources_fallsback_to_no_user_agent(self):
         self.patch(bootresources.BootResourceRepoWriter, 'sync')
@@ -1551,7 +1551,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             MockCallsMatch(
                 call(
                     ANY, policy=ANY,
-                    user_agent="MAAS %s" % get_maas_version_ui()),
+                    user_agent=get_maas_version_user_agent()),
                 call(
                     ANY, policy=ANY)))
 

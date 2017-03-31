@@ -13,6 +13,7 @@ from unittest.mock import (
     sentinel,
 )
 
+from maasserver import __version__ as old_version
 from maasserver.utils import version
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
@@ -93,16 +94,16 @@ class TestExtractVersionSubversion(MAASTestCase):
 
     scenarios = [
         ("with ~", {
-            "version": "1.8.0~alpha4+bzr356-0ubuntu1",
-            "output": ("1.8.0", "alpha4+bzr356"),
+            "version": "2.2.0~beta4+bzr5856-0ubuntu1",
+            "output": ("2.2.0~beta4", "bzr5856-0ubuntu1"),
             }),
         ("without ~", {
-            "version": "1.8.0+bzr356-0ubuntu1",
-            "output": ("1.8.0", "+bzr356"),
+            "version": "2.1.0+bzr5480-0ubuntu1",
+            "output": ("2.1.0", "bzr5480-0ubuntu1"),
             }),
         ("without ~ or +", {
-            "version": "1.8.0-0ubuntu1",
-            "output": ("1.8.0", ""),
+            "version": "2.1.0-0ubuntu1",
+            "output": ("2.1.0", "0ubuntu1"),
             }),
     ]
 
@@ -138,7 +139,8 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
         self.assertEqual(
-            ("1.8.0", "alpha4+bzr356"), version.get_maas_version_subversion())
+            ("1.8.0~alpha4", "bzr356-0ubuntu1"),
+            version.get_maas_version_subversion())
 
     def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
@@ -146,7 +148,8 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_branch_version = self.patch(version, "get_maas_branch_version")
         mock_branch_version.return_value = None
         self.assertEqual(
-            ("unknown", ""), version.get_maas_version_subversion())
+            (old_version, "unknown"),
+            version.get_maas_version_subversion())
 
     def test__returns_from_source_and_revno_from_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
@@ -155,7 +158,7 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_branch_version = self.patch(version, "get_maas_branch_version")
         mock_branch_version.return_value = revno
         self.assertEqual(
-            ("from source (+bzr%s)" % revno, ""),
+            ("%s from source" % old_version, "bzr%d" % revno),
             version.get_maas_version_subversion())
 
 
@@ -165,14 +168,16 @@ class TestGetMAASVersionUI(TestVersionTestCase):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
         self.assertEqual(
-            "1.8.0 (alpha4+bzr356)", version.get_maas_version_ui())
+            "1.8.0~alpha4 (bzr356-0ubuntu1)", version.get_maas_version_ui())
 
     def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
         mock_version.return_value = ""
         mock_branch_version = self.patch(version, "get_maas_branch_version")
         mock_branch_version.return_value = None
-        self.assertEqual("unknown", version.get_maas_version_ui())
+        self.assertEqual(
+            "%s (unknown)" % old_version,
+            version.get_maas_version_ui())
 
     def test__returns_from_source_and_revno_from_branch(self):
         mock_version = self.patch(version, "get_version_from_apt")
@@ -181,7 +186,37 @@ class TestGetMAASVersionUI(TestVersionTestCase):
         mock_branch_version = self.patch(version, "get_maas_branch_version")
         mock_branch_version.return_value = revno
         self.assertEqual(
-            "from source (+bzr%s)" % revno, version.get_maas_version_ui())
+            "%s from source (bzr%d)" % (old_version, revno),
+            version.get_maas_version_ui())
+
+
+class TestGetMAASVersionUserAgent(TestVersionTestCase):
+
+    def test__returns_package_version(self):
+        mock_apt = self.patch(version, "get_version_from_apt")
+        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
+        self.assertEqual(
+            "maas/1.8.0~alpha4/bzr356-0ubuntu1",
+            version.get_maas_version_user_agent())
+
+    def test__returns_unknown_if_version_is_empty_and_not_bzr_branch(self):
+        mock_version = self.patch(version, "get_version_from_apt")
+        mock_version.return_value = ""
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = None
+        self.assertEqual(
+            "maas/%s/unknown" % old_version,
+            version.get_maas_version_user_agent())
+
+    def test__returns_from_source_and_revno_from_branch(self):
+        mock_version = self.patch(version, "get_version_from_apt")
+        mock_version.return_value = ""
+        revno = random.randint(1, 5000)
+        mock_branch_version = self.patch(version, "get_maas_branch_version")
+        mock_branch_version.return_value = revno
+        self.assertEqual(
+            "maas/%s from source/bzr%d" % (old_version, revno),
+            version.get_maas_version_user_agent())
 
 
 class TestGetMAASDocVersion(TestVersionTestCase):

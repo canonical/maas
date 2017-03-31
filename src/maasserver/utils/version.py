@@ -10,8 +10,10 @@ __all__ = [
     ]
 
 from functools import lru_cache
+import re
 
 import apt_pkg
+from maasserver import __version__ as old_version
 from maasserver.api.logger import maaslog
 from provisioningserver.utils import shell
 
@@ -43,14 +45,8 @@ def get_version_from_apt(package):
 
 def extract_version_subversion(version):
     """Return a tuple (version, subversion) from the given apt version."""
-    if "~" in version:
-        main_version, extra = version.split("~", 1)
-        return main_version, extra.split("-", 1)[0]
-    elif "+" in version:
-        main_version, extra = version.split("+", 1)
-        return main_version, "+" + extra.split("-", 1)[0]
-    else:
-        return version.split("-", 1)[0], ''
+    main_version, subversion = re.split('[+|-]', version, 1)
+    return main_version, subversion
 
 
 def get_maas_branch_version():
@@ -98,9 +94,9 @@ def get_maas_version_subversion():
         if branch_version is None:
             # Not installed not in branch, then no way to identify. This should
             # not happen, but just in case.
-            return "unknown", ''
+            return old_version, "unknown"
         else:
-            return "from source (+bzr%d)" % branch_version, ''
+            return "%s from source" % old_version, "bzr%d" % branch_version
 
 
 @lru_cache(maxsize=1)
@@ -114,12 +110,22 @@ def get_maas_version_ui():
 
 
 @lru_cache(maxsize=1)
+def get_maas_version_user_agent():
+    """Return the version string for the running MAAS region.
+
+    The returned string is suitable to set the user agent.
+    """
+    version, subversion = get_maas_version_subversion()
+    return "maas/%s/%s" % (version, subversion)
+
+
+@lru_cache(maxsize=1)
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
     doc_prefix = 'docs'
     apt_version = get_maas_package_version()
     if apt_version:
         version, _ = extract_version_subversion(apt_version)
-        return doc_prefix + '.'.join(version.split('.')[:2])
+        return doc_prefix + '.'.join(version.split('~')[0].split('.')[:2])
     else:
         return doc_prefix
