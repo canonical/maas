@@ -21,12 +21,9 @@ from provisioningserver.monkey import (
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
-from twisted.application.internet import TCPServer
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
-from twisted.web.resource import Resource
-from twisted.web.server import Site
 from zope.interface import implementer
 
 
@@ -43,17 +40,6 @@ class ProvisioningServiceMaker:
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
-
-    def _makeSiteService(self, papi_xmlrpc, config):
-        """Create the site service."""
-        site_root = Resource()
-        site_root.putChild("api", papi_xmlrpc)
-        site = Site(site_root)
-        site_port = config["port"]
-        site_interface = config["interface"]
-        site_service = TCPServer(site_port, site, interface=site_interface)
-        site_service.setName("site")
-        return site_service
 
     def _makeImageService(self, resource_root):
         from provisioningserver.rackdservices.image import (
