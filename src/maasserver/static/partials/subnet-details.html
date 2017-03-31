@@ -12,7 +12,7 @@
             <!-- "Take action" dropdown -->
             <div class="page-header__controls u-float--right ng-hide" data-ng-show="isSuperUser() && !isDefaultSubnet() && !loading && actionOptions.length">
                 <div data-maas-cta="actionOptions"
-                    data-default-title="Take Action"
+                    data-default-title="Take action"
                     data-ng-model="actionOption"
                     data-ng-change="actionChanged()">
                 </div>
@@ -24,7 +24,7 @@
                     </p>
                     <div class="page-header__controls">
                         <button class="button--base button--inline" data-ng-click="cancelAction()">Cancel</button>
-                        <button class="button--positive button--inline" data-ng-click="actionGo()">Activate subnet mapping</button>
+                        <button class="button--positive button--inline" data-ng-click="actionGo()">Map subnet</button>
                     </div>
                 </section>
                 <section class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!actionError && actionOption.name == 'delete'">

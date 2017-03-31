@@ -58,7 +58,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         $scope.MAP_SUBNET_ACTION = {
             name: "map_subnet",
-            title: "Map Subnet"
+            title: "Map subnet"
         };
         $scope.DELETE_ACTION = {
             name: "delete",
