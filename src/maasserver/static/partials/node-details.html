@@ -243,30 +243,6 @@
                           <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
                 </div>
             </div>
-            <div data-ng-if="!isController">
-                <div class="four-col last-col u-align--right" data-ng-hide="summary.editing">
-                    <button class="button--secondary button--inline"
-                        data-ng-if="canEdit()"
-                        data-ng-click="editSummary()">Edit</button>
-                </div>
-            </div>
-            <div class="twelve-col" data-ng-if="isSuperUser()">
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && !isRackControllerConnected()">
-                    <p class="p-notification__response">
-                      <span class="p-notification__status">Error:</span>Editing is currently disabled because no rack controller is currently connected to the region.</p>
-                </div>
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && hasUsableArchitectures()">
-                        <p class="p-notification__response">
-                          <span class="p-notification__status">Error:</span>This machine currently has an invalid architecture. Update the architecture of this machine to make it deployable.</p>
-                </div>
-                <div class="p-notification--error"
-                    data-ng-if="!isController && !isDevice && hasInvalidArchitecture() && isRackControllerConnected() && !hasUsableArchitectures()">
-                        <p class="p-notification__response">
-                          <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
-                </div>
-            </div>
             <form class="form form--stack twelve-col">
                 <fieldset class="form__fieldset six-col ng-hide" data-ng-show="isSuperUser() && !isController">
                     <div class="form__group">
@@ -392,6 +368,13 @@
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
                             </dd>
                     </dl>
+                </div>
+                <div data-ng-if="!isController">
+                    <div class="twelve-col u-align--right u-align--right" data-ng-hide="summary.editing">
+                        <button class="button--secondary button--inline"
+                            data-ng-if="canEdit()"
+                            data-ng-click="editSummary()">Edit</button>
+                    </div>
                 </div>
                 <div class="twelve-col u-align--right ng-hide" data-ng-show="summary.editing">
                     <button class="button--base button--inline"
