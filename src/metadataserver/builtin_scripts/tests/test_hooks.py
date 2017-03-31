@@ -47,6 +47,7 @@ from testtools.matchers import (
     ContainsAll,
     DocTestMatches,
     Equals,
+    Is,
     MatchesStructure,
     Not,
 )
@@ -940,6 +941,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         'ens3': MAC("52:54:00:2d:39:49"),
         'ens10': MAC("52:54:00:e5:c6:6b"),
         'ens11': MAC("52:54:00:ed:9f:9d"),
+        'ens12': MAC("52:54:00:ed:9f:00"),
     }
 
     IP_ADDR_OUTPUT_FILE = os.path.join(
@@ -1250,3 +1252,20 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
                 ip=address))
         self.assertThat(eth0.ip_addresses.count(), Equals(1))
+
+    def test__handles_disconnected_interfaces(self):
+        node = factory.make_Node()
+        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        ens12 = Interface.objects.get(node=node, name='ens12')
+        self.assertThat(ens12.vlan, Is(None))
+
+    def test__disconnects_previously_connected_interface(self):
+        node = factory.make_Node()
+        subnet = factory.make_Subnet()
+        ens12 = factory.make_Interface(
+            name='ens12', node=node, mac_address='52:54:00:ed:9f:00',
+            subnet=subnet)
+        self.assertThat(ens12.vlan, Equals(subnet.vlan))
+        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        ens12 = Interface.objects.get(node=node, name='ens12')
+        self.assertThat(ens12.vlan, Is(None))

@@ -14,3 +14,5 @@
     link/ether 52:54:00:e5:c6:6b brd ff:ff:ff:ff:ff:ff
 4: ens11: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
     link/ether 52:54:00:ed:9f:9d brd ff:ff:ff:ff:ff:ff
+4: ens12: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 52:54:00:ed:9f:00 brd ff:ff:ff:ff:ff:ff

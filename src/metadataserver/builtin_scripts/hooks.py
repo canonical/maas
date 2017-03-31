@@ -138,8 +138,9 @@ def update_node_network_information(node, output, exit_status):
                 else:
                     # Interface already exists on this Node, so just update
                     # the name.
-                    interface.name = ifname
-                    interface.save()
+                    if interface.name != ifname:
+                        interface.name = ifname
+                        interface.save(update_fields=['name', 'updated'])
             except PhysicalInterface.DoesNotExist:
                 interface = _create_default_physical_interface(
                     node, ifname, link_mac)
@@ -147,6 +148,11 @@ def update_node_network_information(node, output, exit_status):
             current_interfaces.add(interface)
             ips = link.get('inet', []) + link.get('inet6', [])
             interface.update_ip_addresses(ips)
+            if 'NO-CARRIER' in link.get('flags', []):
+                # This interface is now disconnected.
+                if interface.vlan is not None:
+                    interface.vlan = None
+                    interface.save(update_fields=['vlan', 'updated'])
 
     for iface in PhysicalInterface.objects.filter(node=node):
         if iface not in current_interfaces:
