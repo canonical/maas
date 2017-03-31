@@ -5,8 +5,6 @@
 
 __all__ = []
 
-from operator import methodcaller
-
 from maasserver.models.config import Config
 from maasserver.ntp import (
     get_peers_for,
@@ -14,10 +12,12 @@ from maasserver.ntp import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPSet,
+)
 from testtools.matchers import (
     AfterPreprocessing,
-    AllMatch,
     ContainsAll,
     Equals,
     HasLength,
@@ -231,7 +231,7 @@ class TestGetServersFor_Selection(MAASServerTestCase):
 
     For racks, machines, and devices, a selection process takes place to
     determine which of several candidate addresses per server to choose. This
-    result is stable, i.e. it will choose the same address each time.
+    result is semi-stable, i.e. it will always prefer "closer" addresses.
     """
 
     scenarios = (
@@ -253,23 +253,31 @@ class TestGetServersFor_Selection(MAASServerTestCase):
         super(TestGetServersFor_Selection, self).setUp()
         Config.objects.set_config("ntp_external_only", False)
 
-    def test_prefers_ipv6_to_ipv4_peers_then_highest_numerically(self):
+    def test_prefers_closest_addresses(self):
         subnet4 = factory.make_Subnet(version=4)
-        subnet6a = factory.make_Subnet(version=6)
-        subnet6b = factory.make_Subnet(version=6)
-        # Ensure that addresses in subnet6a < those in subnet6b.
-        subnet6a, subnet6b = sorted(
-            {subnet6a, subnet6b}, key=methodcaller("get_ipnetwork"))
-        # Create a node and server with an address in each subnet.
-        node, server = self.make_node(), self.make_server()
-        subnets = {subnet4, subnet6a, subnet6b}
-        populate_node_with_addresses(node, subnets)
-        populate_node_with_addresses(server, subnets)
+        subnet6 = factory.make_Subnet(version=6)
+        # Separate subnets but sharing the VLAN, hence routable.
+        subnet4v = factory.make_Subnet(version=4, vlan=subnet4.vlan)
+        subnet6v = factory.make_Subnet(version=6, vlan=subnet6.vlan)
+
+        # Create a node with an address in the first two subnets...
+        node = self.make_node()
+        populate_node_with_addresses(node, {subnet4, subnet6})
+        # ... and a server with an address in every subnet.
+        server = self.make_server()
+        populate_node_with_addresses(
+            server, {subnet4, subnet6, subnet4v, subnet6v})
+
+        # The NTP server addresses chosen will be those that are "closest" to
+        # the node, and same-subnet wins in this over same-VLAN. No additional
+        # preference is made between IPv4 or IPv6, hence we allow for either.
+        preferred_subnets = subnet4, subnet6
+        preferred_networks = IPSet(
+            subnet.get_ipnetwork() for subnet in preferred_subnets)
 
         servers = get_servers_for(node)
         self.assertThat(servers, Not(HasLength(0)))
-        self.assertThat(servers, AllMatch(IsIPv6Address))
-        self.assertThat(subnet6b.get_ipnetwork(), ContainsAll(servers))
+        self.assertThat(preferred_networks, ContainsAll(servers))
 
 
 class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
@@ -296,23 +304,37 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
             get_peers_for(node2),
             IsSetOfServers({node1_address.ip}))
 
-    def test_prefers_ipv6_to_ipv4_peers_then_highest_numerically(self):
+    def test_prefers_closest_addresses(self):
         subnet4 = factory.make_Subnet(version=4)
-        subnet6a = factory.make_Subnet(version=6)
-        subnet6b = factory.make_Subnet(version=6)
-        # Ensure that addresses in subnet6a < those in subnet6b.
-        subnet6a, subnet6b = sorted(
-            {subnet6a, subnet6b}, key=methodcaller("get_ipnetwork"))
-        # Create some peers, each with an address in each subnet.
-        nodes = self.make_node(), self.make_node()
-        subnets = {subnet4, subnet6a, subnet6b}
-        for node in nodes:
-            populate_node_with_addresses(node, subnets)
-        for node in nodes:
+        subnet6 = factory.make_Subnet(version=6)
+        # Separate subnets but sharing the VLAN, hence routable.
+        subnet4v1 = factory.make_Subnet(version=4, vlan=subnet4.vlan)
+        subnet6v1 = factory.make_Subnet(version=6, vlan=subnet6.vlan)
+        subnet4v2 = factory.make_Subnet(version=4, vlan=subnet4.vlan)
+        subnet6v2 = factory.make_Subnet(version=6, vlan=subnet6.vlan)
+
+        # Create a node with an address in the first two subnets and the first
+        # two same-VLAN subnets.
+        node1 = self.make_node()
+        populate_node_with_addresses(
+            node1, {subnet4, subnet6, subnet4v1, subnet6v1})
+        # Create a node with an address in the first two subnets and the
+        # second two same-VLAN subnets.
+        node2 = self.make_node()
+        populate_node_with_addresses(
+            node2, {subnet4, subnet6, subnet4v2, subnet6v2})
+
+        # The NTP server addresses chosen will be those that are "closest" to
+        # the node, and same-subnet wins in this over same-VLAN. No additional
+        # preference is made between IPv4 or IPv6, hence we allow for either.
+        preferred_subnets = subnet4, subnet6
+        preferred_networks = IPSet(
+            subnet.get_ipnetwork() for subnet in preferred_subnets)
+
+        for node in (node1, node2):
             peers = get_peers_for(node)
             self.assertThat(peers, Not(HasLength(0)))
-            self.assertThat(peers, AllMatch(IsIPv6Address))
-            self.assertThat(subnet6b.get_ipnetwork(), ContainsAll(peers))
+            self.assertThat(preferred_networks, ContainsAll(peers))
 
 
 class TestGetPeersFor_Other(MAASServerTestCase):

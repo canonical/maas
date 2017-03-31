@@ -4,6 +4,7 @@
 """testtools custom matchers"""
 
 __all__ = [
+    'ContainedBy',
     'DocTestMatches',
     'FileContains',
     'GreaterThanOrEqual',
@@ -481,3 +482,20 @@ IsNonEmptyString = MatchesAll(
         (lambda observed: not observed.isspace()),
         "%r is whitespace"),
     first_only=True)
+
+
+class ContainedBy(Matcher):
+    """Test if the matchee is in the given container."""
+
+    def __init__(self, haystack):
+        super(ContainedBy, self).__init__()
+        self.haystack = haystack
+
+    def __str__(self):
+        return "%s(%r)" % (
+            self.__class__.__name__, self.haystack)
+
+    def match(self, needle):
+        if needle not in self.haystack:
+            return Mismatch(
+                "%r not in %r" % (needle, self.haystack))

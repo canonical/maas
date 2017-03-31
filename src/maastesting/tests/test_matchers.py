@@ -18,6 +18,7 @@ from unittest.mock import (
 from maastesting import matchers
 from maastesting.factory import factory
 from maastesting.matchers import (
+    ContainedBy,
     FileContains,
     GreaterThanOrEqual,
     HasAttribute,
@@ -588,3 +589,13 @@ class TestIsNonEmptyString(MAASTestCase, MockTestMixin):
     def test_does_not_match_non_strings(self):
         self.assertMismatch(
             IsNonEmptyString.match(1234), "1234 is not a string")
+
+
+class TestContainedBy(MAASTestCase, MockTestMixin):
+    """Tests for the `ContainedBy` matcher."""
+
+    def test_matches_needle_in_haystack(self):
+        self.assertThat("foo", ContainedBy({"foo", "bar"}))
+
+    def test_does_not_match_needle_not_in_haystack(self):
+        self.assertMismatch(ContainedBy([]).match("foo"), "'foo' not in []")

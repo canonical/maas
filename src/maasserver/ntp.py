@@ -124,8 +124,9 @@ def _reduce_routable_address_map(
         routable_addrs_map: AddressMap) -> Iterable[IPAddress]:
     """Choose one routable address per destination node.
 
-    The result is stable, preferring IPv6 over IPv4, and then the highest
-    address numberically. (In fact it relies on the ordering provided by
-    `netaddr.IPAddress`, which is basically that.)
+    The addresses are in preference order (see `find_addresses_between_nodes`
+    for information on how that's derived) so this simply chooses the first.
     """
-    return map(max, routable_addrs_map.values())
+    for addresses in routable_addrs_map.values():
+        assert len(addresses) >= 1
+        yield addresses[0]

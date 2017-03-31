@@ -36,6 +36,7 @@ def _register_view(view_name, view_sql):
     with closing(connection.cursor()) as cursor:
         cursor.execute(view_sql)
 
+
 # Note that the `Discovery` model object is backed by this view. Any
 # changes made to this view should be reflected there.
 maasserver_discovery = dedent("""\
@@ -102,17 +103,33 @@ maasserver_discovery = dedent("""\
 # should not be used without constraining, say, the sets of nodes, to find
 # addresses that are mutually routable between region controllers for example.
 maasserver_routable_pairs = dedent("""\
-    SELECT if_left.node_id AS left_node_id,
+    SELECT
+           -- "Left" node.
+           if_left.node_id AS left_node_id,
            if_left.id AS left_interface_id,
            subnet_left.id AS left_subnet_id,
            vlan_left.id AS left_vlan_id,
            sip_left.ip AS left_ip,
+
+           -- "Right" node.
            if_right.node_id AS right_node_id,
            if_right.id AS right_interface_id,
            subnet_right.id AS right_subnet_id,
            vlan_right.id AS right_vlan_id,
            sip_right.ip AS right_ip,
-           vlan_left.space_id AS space_id
+
+           -- Space that left and right have in commmon. Can be NULL.
+           vlan_left.space_id AS space_id,
+
+           -- Relative metric; lower is better.
+           CASE
+             WHEN if_left.node_id = if_right.node_id THEN 0
+             WHEN subnet_left.id = subnet_right.id THEN 1
+             WHEN vlan_left.id = vlan_right.id THEN 2
+             WHEN vlan_left.space_id IS NOT NULL THEN 3
+             ELSE 4  -- The NULL space.
+           END AS metric
+
       FROM maasserver_interface AS if_left
       JOIN maasserver_interface_ip_addresses AS ifia_left
         ON if_left.id = ifia_left.interface_id
