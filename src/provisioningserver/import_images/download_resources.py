@@ -12,13 +12,13 @@ from gzip import GzipFile
 import os.path
 import tarfile
 
+from provisioningserver.config import is_dev_environment
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     maaslog,
 )
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import call_and_check
 from simplestreams.contentsource import FdContentSource
 from simplestreams.mirrors import (
@@ -73,7 +73,7 @@ def call_uec2roottar(root_image_path, root_tgz_path):
     :param root_image_path: Input file.
     :param root_tgz_path: Output file.
     """
-    if in_develop_mode():
+    if is_dev_environment():
         # In debug mode this is skipped as it requires the uec2roottar
         # script to have sudo abilities. The root-tgz is created as an
         # empty file so the correct links can be made.

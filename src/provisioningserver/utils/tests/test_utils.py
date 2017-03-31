@@ -22,7 +22,6 @@ from provisioningserver.utils import (
     CircularDependency,
     classify,
     flatten,
-    in_develop_mode,
     is_instance_or_subclass,
     locate_config,
     locate_template,
@@ -225,47 +224,19 @@ class TestFlatten(MAASTestCase):
         self.assertItemsEqual("abcdef", flatten("a", "b", "c", "d", "e", "f"))
 
 
-class TestInDebugMode(MAASTestCase):
-
-    def test_in_develop_mode_returns_False(self):
-        self.assertFalse(in_develop_mode())
-
-    def test_in_develop_mode_returns_True(self):
-        self.patch(provisioningserver.utils.os, 'getenv').return_value = "TRUE"
-        self.assertTrue(in_develop_mode())
-
-
 class TestSudo(MAASTestCase):
-
-    def set_in_develop_mode(self, value):
-        self.patch(provisioningserver.utils, 'in_develop_mode')
-        provisioningserver.utils.in_develop_mode.return_value = value
 
     def set_is_dev_environment(self, value):
         self.patch(provisioningserver.config, 'is_dev_environment')
         provisioningserver.config.is_dev_environment.return_value = value
 
-    def test_returns_same_command_when_in_develop_mode(self):
-        cmd = [factory.make_name('cmd') for _ in range(3)]
-        self.set_in_develop_mode(True)
-        self.set_is_dev_environment(False)
-        self.assertEqual(cmd, sudo(cmd))
-
     def test_returns_same_command_when_is_dev_environment(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
-        self.set_in_develop_mode(False)
         self.set_is_dev_environment(True)
         self.assertEqual(cmd, sudo(cmd))
 
-    def test_returns_same_command_when_in_develop_mode_or_is_dev_env(self):
+    def test_returns_sudo_command_when_is_not_dev_environment(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
-        self.set_in_develop_mode(True)
-        self.set_is_dev_environment(True)
-        self.assertEqual(cmd, sudo(cmd))
-
-    def test_returns_sudo_cmd_when_not_in_dev_mode_and_is_not_dev_env(self):
-        cmd = [factory.make_name('cmd') for _ in range(3)]
-        self.set_in_develop_mode(False)
         self.set_is_dev_environment(False)
         self.assertEqual(['sudo', '-n'] + cmd, sudo(cmd))
 

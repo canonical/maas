@@ -6,7 +6,6 @@
 __all__ = [
     "CircularDependency",
     "flatten",
-    "in_develop_mode",
     "locate_config",
     "locate_template",
     "parse_key_value_file",
@@ -186,20 +185,10 @@ def is_true(value):
     return value.lower() in ("yes", "true", "t", "1")
 
 
-def in_develop_mode():
-    """Return True if `MAAS_RACK_DEVELOP` environment variable is true.
-
-    Deprecated. Use `is_dev_environment` instead.
-    """
-    return is_true(os.getenv('MAAS_RACK_DEVELOP', None))
-
-
 def sudo(command_args):
     """Wrap the command arguments in a sudo command, if not in debug mode."""
     from provisioningserver.config import is_dev_environment  # Circular.
-    if in_develop_mode():
-        return command_args
-    elif is_dev_environment():
+    if is_dev_environment():
         return command_args
     else:
         return ['sudo', '-n', *command_args]
