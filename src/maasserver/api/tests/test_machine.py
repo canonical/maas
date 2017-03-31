@@ -1830,7 +1830,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
                 "using status %d" % status)
 
 
-class TestClearDefaultGateways(APITestCase.ForUser):
+class TestDefaultGateways(APITestCase.ForUser):
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
@@ -1872,6 +1872,105 @@ class TestClearDefaultGateways(APITestCase.ForUser):
         machine = reload_object(machine)
         self.assertIsNone(machine.gateway_link_ipv4)
         self.assertIsNone(machine.gateway_link_ipv6)
+
+    def test__returns_null_gateway_if_no_explicit_gateway_exists(self):
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.ALLOCATED)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(
+            cidr=str(network_v4.cidr), vlan=interface.vlan, gateway_ip=None)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v4, interface=interface)
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(
+            cidr=str(network_v6.cidr), vlan=interface.vlan, gateway_ip=None)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v6, interface=interface)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response = json_load_bytes(response.content)
+        self.assertThat(response['default_gateways'], Equals({
+            "ipv4": {
+                "link_id": None,
+                "gateway_ip": None,
+            },
+            "ipv6": {
+                "link_id": None,
+                "gateway_ip": None,
+            },
+        }))
+
+    def test__returns_effective_gateway_if_no_explicit_gateway_set(self):
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.ALLOCATED)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(
+            cidr=str(network_v4.cidr), vlan=interface.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v4, interface=interface)
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(
+            cidr=str(network_v6.cidr), vlan=interface.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v6, interface=interface)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response = json_load_bytes(response.content)
+        self.assertThat(response['default_gateways'], Equals({
+            "ipv4": {
+                "link_id": None,
+                "gateway_ip": str(subnet_v4.gateway_ip),
+            },
+            "ipv6": {
+                "link_id": None,
+                "gateway_ip": str(subnet_v6.gateway_ip),
+            },
+        }))
+
+    def test__returns_links_if_set(self):
+        machine = factory.make_Node(
+            owner=self.user, status=NODE_STATUS.ALLOCATED)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(
+            cidr=str(network_v4.cidr), vlan=interface.vlan)
+        link_v4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v4, interface=interface)
+        machine.gateway_link_ipv4 = link_v4
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(
+            cidr=str(network_v6.cidr), vlan=interface.vlan)
+        link_v6 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet_v6, interface=interface)
+        machine.gateway_link_ipv6 = link_v6
+        machine.save()
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response = json_load_bytes(response.content)
+        self.assertThat(response['default_gateways'], Equals({
+            "ipv4": {
+                "link_id": link_v4.id,
+                "gateway_ip": str(subnet_v4.gateway_ip),
+            },
+            "ipv6": {
+                "link_id": link_v6.id,
+                "gateway_ip": str(subnet_v6.gateway_ip),
+            },
+        }))
 
 
 class TestGetCurtinConfig(APITestCase.ForUser):

@@ -8,7 +8,9 @@ Changelog
 Bugs fixed in this release
 --------------------------
 
-LP: ##1677507   Fix potential IP allocation from incorrect range.
+LP: #1677507    Fix potential IP allocation from incorrect range.
+
+LP: #1674807    Fix missing default_gateways entry in machine API output.
 
 
 2.1.5

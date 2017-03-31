@@ -493,6 +493,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
         self.assertItemsEqual(
             [
                 'hostname',
+                'default_gateways',
                 'domain',
                 'fqdn',
                 'owner',
@@ -652,6 +653,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
         self.assertItemsEqual(
             [
                 'hostname',
+                'default_gateways',
                 'domain',
                 'fqdn',
                 'owner',
