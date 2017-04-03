@@ -186,6 +186,38 @@ class TestNodeListener(
         finally:
             yield listener.stopService()
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_all_handler_on_domain_name_change(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dvs = DeferredValue()
+        domain = yield deferToDatabase(self.create_domain, {})
+        params = self.params.copy()
+        params['domain'] = domain
+        dvs = []
+        nodes = set()
+        for _ in range(3):
+            node = yield deferToDatabase(self.create_node, params)
+            nodes.add(node)
+            dvs.append(DeferredValue())
+        save_dvs = dvs[:]
+        listener.register(self.listener, lambda *args: dvs.pop().set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_domain,
+                domain.id,
+                {'name': factory.make_name('name')})
+            results = yield DeferredList(
+                (dv.get(timeout=2) for dv in save_dvs))
+            self.assertItemsEqual({
+                ('update', '%s' % node.system_id)
+                for node in nodes},
+                {res for (suc, res) in results})
+        finally:
+            yield listener.stopService()
+
 
 class TestDeviceWithParentListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):

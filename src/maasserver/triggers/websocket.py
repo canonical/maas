@@ -921,25 +921,28 @@ DOMAIN_NODE_NOTIFY = dedent("""\
       pnode RECORD;
     BEGIN
       IF OLD.name != NEW.name THEN
-        SELECT system_id, node_type, parent_id INTO node
-        FROM maasserver_node
-        WHERE maasserver_node.domain_id = NEW.id;
-
-        IF node.system_id IS NOT NULL THEN
-          IF node.node_type = %d THEN
-            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-          ELSIF node.node_type IN (%d, %d, %d) THEN
-            PERFORM pg_notify(
-              'controller_update',CAST(node.system_id AS text));
-          ELSIF node.parent_id IS NOT NULL THEN
-            SELECT system_id INTO pnode
-            FROM maasserver_node
-            WHERE id = node.parent_id;
-            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
-          ELSE
-            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        FOR node IN (
+          SELECT system_id, node_type, parent_id
+          FROM maasserver_node
+          WHERE maasserver_node.domain_id = NEW.id)
+        LOOP
+          IF node.system_id IS NOT NULL THEN
+            IF node.node_type = %d THEN
+              PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+            ELSIF node.node_type IN (%d, %d, %d) THEN
+              PERFORM pg_notify(
+                'controller_update',CAST(node.system_id AS text));
+            ELSIF node.parent_id IS NOT NULL THEN
+              SELECT system_id INTO pnode
+              FROM maasserver_node
+              WHERE id = node.parent_id;
+              PERFORM
+                pg_notify('machine_update',CAST(pnode.system_id AS text));
+            ELSE
+              PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+            END IF;
           END IF;
-        END IF;
+        END LOOP;
       END IF;
       RETURN NEW;
     END;
