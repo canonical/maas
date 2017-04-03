@@ -635,18 +635,18 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
 <div sticky media-query="min-width: 769px" offset="89" class="page-navigation" data-ng-class="{ 'u-visibility--hidden': tabs.nodes.actionOption || addHardwareScope.viewable || tabs.devices.actionOption || addDeviceScope.viewable || tabs.controllers.actionOption || tabs.controllers.addController }">
     <div class="wrapper--inner">
         <nav class="page-navigation__links">
-            <a class="page-navigation__link tooltip"
+            <button class="page-navigation__link tooltip"
                 aria-label="A deployable node managed by MAAS."
                 data-ng-class="{ 'is-active': currentpage === 'nodes'}"
-                data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></a>
-            <a class="page-navigation__link tooltip"
+                data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></button>
+            <button class="page-navigation__link tooltip"
                 aria-label="A node known to MAAS, but is not deployable."
                 data-ng-class="{ 'is-active': currentpage === 'devices'}"
-                data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize></a>
-            <a class="page-navigation__link tooltip"
+                data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize></button>
+            <button class="page-navigation__link tooltip"
                 aria-label="A node that provides MAAS services."
                 data-ng-class="{ 'is-active': currentpage === 'controllers'}"
-                data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize></a>
+                data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize></button>
         </nav>
     </div>
 </div>
