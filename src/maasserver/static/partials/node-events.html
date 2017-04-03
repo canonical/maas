@@ -6,7 +6,7 @@
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded">
-    <header class="page-header u-margin--bottom" sticky>
+    <header class="page-header" sticky>
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ node.fqdn $}</h1>
             <p class="page-header__status">
@@ -14,11 +14,11 @@
                 <button href="" class="page-header__status-check" data-ng-click="loadMore()">load 30 more days</button>
             </p>
             <div class="page-header__controls u-float--right">
-                <button class="button--base button--inline" href="#/node/{$ type_name $}/{$ node.system_id $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
+                <a href="#/node/{$ type_name $}/{$ node.system_id $}">&lsaquo;&nbsp;Back to {$ type_name $} details</a>
             </div>
         </div>
     </header>
-    <div class="row u-padding--top-none">
+    <div class="row">
         <div class="wrapper--inner">
             <form>
                 <div id="search-bar" class="search twelve-col">

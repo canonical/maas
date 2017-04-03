@@ -6,225 +6,223 @@
     </header>
 </div>
 <div data-ng-if="loaded">
-    <div sticky use-placeholder="true" media-query="min-width: 769px">
-        <header class="page-header u-margin--bottom-none">
-            <div class="wrapper--inner">
-                <h1 class="page-header__title">
-                    <span contenteditable="true"
-                        data-ng-class="{ editable: canEdit(), 'has-error': editHeaderInvalid(), editmode: header.editing }"
-                        data-ng-model="header.hostname.value"
-                        data-ng-disabled="!canEdit()"
-                        data-maas-editing="editHeader()"></span>
-                    <span class="page-header__title-dot ng-hide" data-ng-show="header.editing">.</span>
-                    <select class="page-header__title-domain ng-hide"
-                        data-ng-show="header.editing"
-                        data-ng-model="header.domain.selected"
-                        data-ng-options="domain as domain.name for domain in header.domain.options">
-                    </select>
-                </h1>
-                <button class="button--base button--inline u-margin--bottom-small ng-hide"
+    <header sticky use-placeholder="true" media-query="min-width: 769px" class="page-header u-margin--bottom-none">
+        <div class="wrapper--inner">
+            <h1 class="page-header__title">
+                <span contenteditable="true"
+                    data-ng-class="{ editable: canEdit(), 'has-error': editHeaderInvalid(), editmode: header.editing }"
+                    data-ng-model="header.hostname.value"
+                    data-ng-disabled="!canEdit()"
+                    data-maas-editing="editHeader()"></span>
+                <span class="page-header__title-dot ng-hide" data-ng-show="header.editing">.</span>
+                <select class="page-header__title-domain ng-hide"
                     data-ng-show="header.editing"
-                    data-ng-click="cancelEditHeader()">Cancel</button>
-                <button class="button--positive button--inline u-margin--bottom-small ng-hide"
-                    data-ng-show="header.editing"
-                    data-ng-disabled="editHeaderInvalid()"
-                    data-ng-click="saveEditHeader()">Save</button>
+                    data-ng-model="header.domain.selected"
+                    data-ng-options="domain as domain.name for domain in header.domain.options">
+                </select>
+            </h1>
+            <button class="button--base button--inline u-margin--bottom-small ng-hide"
+                data-ng-show="header.editing"
+                data-ng-click="cancelEditHeader()">Cancel</button>
+            <button class="button--positive button--inline u-margin--bottom-small ng-hide"
+                data-ng-show="header.editing"
+                data-ng-disabled="editHeaderInvalid()"
+                data-ng-click="saveEditHeader()">Save</button>
 
-                <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                <p class="page-header__status" data-ng-if="!isController && !isDevice && !header.editing">
-                    {$ node.status $}
-                    <span class="u-text--{$ getPowerStateClass() $} u-margin--left-small"><i class="icon icon--power-{$ getPowerStateClass() $} u-margin--right-tiny"></i>{$ getPowerStateText() $}</span>
-                    <button class="page-header__status-check" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
-                </p>
+            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+            <p class="page-header__status" data-ng-if="!isController && !isDevice && !header.editing">
+                {$ node.status $}
+                <span class="u-text--{$ getPowerStateClass() $} u-margin--left-small"><i class="icon icon--power-{$ getPowerStateClass() $} u-margin--right-tiny"></i>{$ getPowerStateText() $}</span>
+                <button class="page-header__status-check" data-ng-show="canCheckPowerState()" data-ng-click="checkPowerState()">check now</button>
+            </p>
 
-                <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
-                <div class="page-header__controls" data-ng-show="!header.editing && action.availableOptions.length">
-                    <div data-maas-cta="action.availableOptions"
-                        data-ng-model="action.option"
-                        data-ng-change="actionOptionChanged()">
-                    </div>
+            <!-- XXX ricgard 2016-06-16 - Need to add e2e test. -->
+            <div class="page-header__controls" data-ng-show="!header.editing && action.availableOptions.length">
+                <div data-maas-cta="action.availableOptions"
+                    data-ng-model="action.option"
+                    data-ng-change="actionOptionChanged()">
                 </div>
-
-                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                 <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-if="!isDevice && !node.dhcp_on">
-                           <p class="page-header__message page-header__message--warning">MAAS is not providing DHCP.</p>
-                     </div>
-
-                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
-                         <form class="form form--inline">
-                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
-                                 <div class="form__group">
-                                     <input class="checkbox" id="enableSSH" type="checkbox"
-                                         data-ng-model="commissionOptions.enableSSH">
-                                     <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
-                                 </div>
-                             </fieldset>
-                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission'">
-                                 <div class="form__group">
-                                     <input class="checkbox" id="skipNetworking" type="checkbox"
-                                         data-ng-model="commissionOptions.skipNetworking">
-                                     <label for="skipNetworking">Retain network configuration</label>
-                                 </div>
-                                 <div class="form__group">
-                                     <input class="checkbox" id="skipStorage" type="checkbox"
-                                         data-ng-model="commissionOptions.skipStorage">
-                                     <label for="skipStorage">Retain storage configuration</label>
-                                 </div>
-                             </fieldset>
-                             <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
-                                 <div class="form__group">
-                                     <label for="image" class="form__group-label">Choose your image</label>
-                                     <div class="form__group-input">
-                                         <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
-                                     </div>
-                                 </div>
-                             </fieldset>
-                             <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">
-                                 <div class="form__group">
-                                     <span data-maas-release-options="releaseOptions"></span>
-                                 </div>
-                             </fieldset>
-                             <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
-                                 <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                                 <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                                     <span data-ng-if="action.option.name === 'acquire'">Acquire {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'deploy'">Deploy {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'release'">Release {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'set-zone'">Set zone for {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'on'">Power on {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'off'">Power off {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'abort'">Abort action on {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'rescue-mode'">Rescue {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'exit-rescue-mode'">Exit rescue mode</span>
-                                     <span data-ng-if="action.option.name === 'mark-broken'">Mark {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'mark-fixed'">Mark {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'delete'">Delete {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'import-images'">Import images</span>
-                                 </button>
-                             </div>
-                         </form>
-                     </div>
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
-                         <form class="form form--stack">
-                             <fieldset class="form__fieldset eight-col u-margin--bottom-small">
-                                 <div class="form__group">
-                                     <label for="commissioning-scripts">Additional commissioning scripts</label>
-                                     <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
-                                 </div>
-                             </fieldset>
-                         </form>
-                     </div>
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
-                         <form class="form form--stack">
-                             <fieldset class="form__fieldset eight-col u-margin--bottom-small">
-                                 <div class="form__group">
-                                     <label for="testing-scripts">Hardware tests</label>
-                                     <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
-                                 </div>
-                             </fieldset>
-                         </form>
-                     </div>
-                     <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test'">
-                         <form class="form form--inline">
-                             <div class="page-header__controls">
-                                 <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                                 <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
-                                     <span data-ng-if="action.option.name === 'commission'">Commission {$ type_name $}</span>
-                                     <span data-ng-if="action.option.name === 'test'">Test {$ type_name $}</span>
-                                 </button>
-                             </div>
-                         </form>
-                     </div>
-
-                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isActionError()">
-                         <p class="page-header__message page-header__message--error">
-                             Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
-                         </p>
-                         <div class="page-header__controls">
-                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                             <button class="button--secondary button--inline" data-ng-click="actionGo()">Retry</button>
-                         </div>
-                     </div>
-
-                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isDeployError()">
-                         <p class="page-header__message page-header__message--error">
-                             Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
-                         </p>
-                         <div class="page-header__controls">
-                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                         </div>
-                     </div>
-
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
-                         <p class="page-header__message page-header__message--error">
-                             Node cannot be {$ action.option.sentence $}, because power control software for the
-                             node is missing from its rack controller. To proceed, install the
-                             {$ getPowerErrors() $} on the rack controller.
-                         </p>
-                         <div class="page-header__controls">
-                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                         </div>
-                     </div>
-
-                     <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
-                         <p class="page-header__message page-header__message--error">
-                             Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
-                         </p>
-                         <div class="page-header__controls">
-                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
-                         </div>
-                     </div>
-                  </div>
-              </div>
-        </header>
-        <div class="page-navigation" data-ng-class="{ 'u-visibility--hidden': action.option }">
-            <div class="wrapper--inner">
-                <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
-                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
-                        data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Machine summary</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
-                        data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Controller summary</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="isDevice"
-                        data-ng-class="{ 'is-active': section.area === 'summary'}"
-                        data-ng-click="section.area = 'summary'">Device summary</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && devices.length"
-                        data-ng-class="{ 'is-active': section.area === 'containers'}"
-                        data-ng-click="section.area = 'containers'">Containers</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
-                        data-ng-class="{ 'is-active': section.area === 'services'}"
-                        data-ng-click="section.area = 'services'"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> Services</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="isController"
-                        data-ng-class="{ 'is-active': section.area === 'vlans'}"
-                        data-ng-click="section.area = 'vlans'">VLANs</button>
-                    <button role="tab" class="page-navigation__link"
-                        data-ng-class="{ 'is-active': section.area === 'interfaces'}"
-                        data-ng-click="section.area = 'interfaces'">Interfaces</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
-                        data-ng-class="{ 'is-active': section.area === 'storage'}"
-                        data-ng-click="section.area = 'storage'">Storage</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="node.commissioning_results.length > 0"
-                        data-ng-class="{ 'is-active': section.area === 'commissioning'}"
-                        data-ng-click="section.area = 'commissioning'">Commissioning</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
-                        data-ng-class="{ 'is-active': section.area === 'testing'}"
-                        data-ng-click="section.area = 'testing'">Hardware tests</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
-                        data-ng-class="{ 'is-active': section.area === 'events'}"
-                        data-ng-click="section.area = 'events'">Events</button>
-                    <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice && isSuperUser()"
-                        data-ng-class="{ 'is-active': section.area === 'power'}"
-                        data-ng-click="section.area = 'power'">Power</button>
-                </nav>
             </div>
+
+            <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+             <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-if="!isDevice && !node.dhcp_on">
+                       <p class="page-header__message page-header__message--warning">MAAS is not providing DHCP.</p>
+                 </div>
+
+                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
+                     <form class="form form--inline">
+                         <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
+                             <div class="form__group">
+                                 <input class="checkbox" id="enableSSH" type="checkbox"
+                                     data-ng-model="commissionOptions.enableSSH">
+                                 <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
+                             </div>
+                         </fieldset>
+                         <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission'">
+                             <div class="form__group">
+                                 <input class="checkbox" id="skipNetworking" type="checkbox"
+                                     data-ng-model="commissionOptions.skipNetworking">
+                                 <label for="skipNetworking">Retain network configuration</label>
+                             </div>
+                             <div class="form__group">
+                                 <input class="checkbox" id="skipStorage" type="checkbox"
+                                     data-ng-model="commissionOptions.skipStorage">
+                                 <label for="skipStorage">Retain storage configuration</label>
+                             </div>
+                         </fieldset>
+                         <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
+                             <div class="form__group">
+                                 <label for="image" class="form__group-label">Choose your image</label>
+                                 <div class="form__group-input">
+                                     <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
+                                 </div>
+                             </div>
+                         </fieldset>
+                         <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">
+                             <div class="form__group">
+                                 <span data-maas-release-options="releaseOptions"></span>
+                             </div>
+                         </fieldset>
+                         <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                             <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                 <span data-ng-if="action.option.name === 'acquire'">Acquire {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'deploy'">Deploy {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'release'">Release {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'set-zone'">Set zone for {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'on'">Power on {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'off'">Power off {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'abort'">Abort action on {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'rescue-mode'">Rescue {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'exit-rescue-mode'">Exit rescue mode</span>
+                                 <span data-ng-if="action.option.name === 'mark-broken'">Mark {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'mark-fixed'">Mark {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'delete'">Delete {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'import-images'">Import images</span>
+                             </button>
+                         </div>
+                     </form>
+                 </div>
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || action.option.name !== 'commission'" data-ng-if="hasCustomCommissioningScripts()">
+                     <form class="form form--stack">
+                         <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                             <div class="form__group">
+                                 <label for="commissioning-scripts">Additional commissioning scripts</label>
+                                 <span id="commissioning-scripts" data-maas-script-select="script" data-script-type="0" data-ng-model="commissioningSelection" class="tags--inline"></span>
+                             </div>
+                         </fieldset>
+                     </form>
+                 </div>
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name) || (action.option.name !== 'commission' && action.option.name !== 'test')">
+                     <form class="form form--stack">
+                         <fieldset class="form__fieldset eight-col u-margin--bottom-small">
+                             <div class="form__group">
+                                 <label for="testing-scripts">Hardware tests</label>
+                                 <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
+                             </div>
+                         </fieldset>
+                     </form>
+                 </div>
+                 <div class="page-header__section twelve-col u-margin--bottom-none" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)" data-ng-if="action.option.name === 'commission' || action.option.name === 'test'">
+                     <form class="form form--inline">
+                         <div class="page-header__controls">
+                             <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                             <button class="button--inline" data-ng-class="action.option.name === 'delete' ? 'button--destructive' : 'button--positive'" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">
+                                 <span data-ng-if="action.option.name === 'commission'">Commission {$ type_name $}</span>
+                                 <span data-ng-if="action.option.name === 'test'">Test {$ type_name $}</span>
+                             </button>
+                         </div>
+                     </form>
+                 </div>
+
+                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isActionError()">
+                     <p class="page-header__message page-header__message--error">
+                         Node failed to be {$ action.option.sentence $}, because of the following error: {$ action.error $}
+                     </p>
+                     <div class="page-header__controls">
+                         <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                         <button class="button--secondary button--inline" data-ng-click="actionGo()">Retry</button>
+                     </div>
+                 </div>
+
+                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="isDeployError()">
+                     <p class="page-header__message page-header__message--error">
+                         Node cannot be {$ action.option.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
+                     </p>
+                     <div class="page-header__controls">
+                         <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                     </div>
+                 </div>
+
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="hasActionPowerError(action.option.name)">
+                     <p class="page-header__message page-header__message--error">
+                         Node cannot be {$ action.option.sentence $}, because power control software for the
+                         node is missing from its rack controller. To proceed, install the
+                         {$ getPowerErrors() $} on the rack controller.
+                     </p>
+                     <div class="page-header__controls">
+                         <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                     </div>
+                 </div>
+
+                 <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-show="!isDeployError() && isSSHKeyError()">
+                     <p class="page-header__message page-header__message--error">
+                         Node cannot be {$ action.option.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
+                     </p>
+                     <div class="page-header__controls">
+                         <button class="button--base button--inline" data-ng-click="actionCancel()">Cancel</button>
+                     </div>
+                 </div>
+              </div>
+          </div>
+    </header>
+    <div sticky use-placeholder="true" media-query="min-width: 769px" offset="89" class="page-navigation" data-ng-class="{ 'u-visibility--hidden': action.option }">
+        <div class="wrapper--inner">
+            <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
+                <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
+                    data-ng-class="{ 'is-active': section.area === 'summary'}"
+                    data-ng-click="section.area = 'summary'">Machine summary</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="isController"
+                    data-ng-class="{ 'is-active': section.area === 'summary'}"
+                    data-ng-click="section.area = 'summary'">Controller summary</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="isDevice"
+                    data-ng-class="{ 'is-active': section.area === 'summary'}"
+                    data-ng-click="section.area = 'summary'">Device summary</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="!isController && devices.length"
+                    data-ng-class="{ 'is-active': section.area === 'containers'}"
+                    data-ng-click="section.area = 'containers'">Containers</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="isController"
+                    data-ng-class="{ 'is-active': section.area === 'services'}"
+                    data-ng-click="section.area = 'services'"><span data-maas-controller-status="node" data-maas-services="services" aria-label="Status"></span> Services</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="isController"
+                    data-ng-class="{ 'is-active': section.area === 'vlans'}"
+                    data-ng-click="section.area = 'vlans'">VLANs</button>
+                <button role="tab" class="page-navigation__link"
+                    data-ng-class="{ 'is-active': section.area === 'interfaces'}"
+                    data-ng-click="section.area = 'interfaces'">Interfaces</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
+                    data-ng-class="{ 'is-active': section.area === 'storage'}"
+                    data-ng-click="section.area = 'storage'">Storage</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="node.commissioning_results.length > 0"
+                    data-ng-class="{ 'is-active': section.area === 'commissioning'}"
+                    data-ng-click="section.area = 'commissioning'">Commissioning</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="node.testing_results.length > 0"
+                    data-ng-class="{ 'is-active': section.area === 'testing'}"
+                    data-ng-click="section.area = 'testing'">Hardware tests</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="!isDevice"
+                    data-ng-class="{ 'is-active': section.area === 'events'}"
+                    data-ng-click="section.area = 'events'">Events</button>
+                <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice && isSuperUser()"
+                    data-ng-class="{ 'is-active': section.area === 'power'}"
+                    data-ng-click="section.area = 'power'">Power</button>
+            </nav>
         </div>
     </div>
-    <section class="row u-padding--top-none" data-ng-if="section.area === 'summary'">
+    <section class="row" data-ng-if="section.area === 'summary'">
         <div class="wrapper--inner">
             <div class="twelve-col" data-ng-if="isSuperUser()">
                 <div class="p-notification--error"
@@ -436,11 +434,6 @@
     <section class="row" data-ng-if="section.area === 'power'">
         <div class="wrapper--inner">
             <h2 class="eight-col">Power</h2>
-            <div class="four-col last-col u-align--right" data-ng-hide="power.editing">
-                <button class="button--secondary button--inline"
-                    data-ng-show="canEdit() && power_types.length"
-                    data-ng-click="editPower()">Edit</button>
-            </div>
             <div class="twelve-col">
                 <div class="p-notification--error" data-ng-if="!isRackControllerConnected()">
                     <p class="p-notification__response">
@@ -483,6 +476,11 @@
                     data-maas-power-parameters="power_types"
                     data-ng-model="power">
                 </fieldset>
+                <div class="twelve-col u-align--right" data-ng-hide="power.editing">
+                    <button class="button--secondary button--inline"
+                        data-ng-show="canEdit() && power_types.length"
+                        data-ng-click="editPower()">Edit</button>
+                </div>
                 <div class="twelve-col u-align--right ng-hide" data-ng-show="power.editing">
                     <button class="button--base button--inline"
                         data-ng-click="cancelEditPower()">Cancel</button>

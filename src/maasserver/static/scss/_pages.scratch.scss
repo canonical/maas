@@ -1,9 +1,5 @@
 @mixin maas-pages {
 
-  body {
-    height: calc(100% - 202px);
-  }
-
   table thead {
     display: table-header-group !important;
   }
@@ -26,6 +22,11 @@
         float: none;
       }
     }
+  }
+
+  .wrapper {
+    min-height: initial;
+    height: initial !important;
   }
 
   @media only screen and (max-width: 768px) {
@@ -100,6 +101,10 @@
       &:hover {
         background-color: $transparent;
       }
+  }
+
+  .page-navigation {
+    margin: 0;
   }
 
   .tabs .tabs__tab .tabs__tab-link {

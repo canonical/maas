@@ -1,26 +1,24 @@
-<div sticky media-query="min-width: 769px">
-    <header class="page-header u-margin--bottom-none">
-        <div class="wrapper--inner">
-            <h1 class="page-header__title">Settings</h1>
-            <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading">
-                <i class="icon icon--loading u-animation--spin"></i> Loading...</span>
-            </p>
-        </div>
-    </header>
-    <div class="page-navigation">
-        <div class="wrapper--inner">
-            <nav class="page-navigation__links">
-                <a role="tab" class="page-navigation__link" href="settings/">General</a>
-                <a role="tab" class="page-navigation__link" href="#/settings/dhcp"
-                    data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP snippets</a>
-                <a role="tab" class="page-navigation__link" href="#/settings/repositories"
-                    data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</a>
-            </nav>
-        </div>
+<header class="page-header u-margin--bottom-none" sticky media-query="min-width: 769px">
+    <div class="wrapper--inner">
+        <h1 class="page-header__title">Settings</h1>
+        <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading">
+            <i class="icon icon--loading u-animation--spin"></i> Loading...</span>
+        </p>
+    </div>
+</header>
+<div class="page-navigation" sticky media-query="min-width: 769px" offset="89">
+    <div class="wrapper--inner">
+        <nav class="page-navigation__links">
+            <a role="tab" class="page-navigation__link" href="settings/">General</a>
+            <a role="tab" class="page-navigation__link" href="#/settings/dhcp"
+                data-ng-class="{ 'is-active': currentpage === 'dhcp'}">DHCP snippets</a>
+            <a role="tab" class="page-navigation__link" href="#/settings/repositories"
+                data-ng-class="{ 'is-active': currentpage === 'repositories'}">Package repositories</a>
+        </nav>
     </div>
 </div>
 <div data-ng-show="!loading && currentpage === 'dhcp'" width-width>
-    <section class="row u-padding--top-none">
+    <section class="row">
         <div class="wrapper--inner">
             <div>
                 <!-- XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
@@ -320,7 +318,7 @@
     </section>
 </div>
 <div data-ng-show="!loading && currentpage === 'repositories'" window-width>
-    <section class="row u-padding--top-none">
+    <section class="row">
         <div class="wrapper--inner">
             <div>
                 <div class="twelve-col">

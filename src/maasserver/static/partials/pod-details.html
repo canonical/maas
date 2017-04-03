@@ -6,7 +6,7 @@
     </header>
 </div>
 <div class="ng-hide" data-ng-show="loaded" data-window-width>
-    <header class="page-header u-margin--bottom-none" sticky>
+    <header class="page-header u-margin--bottom-none" sticky media-query="min-width: 769px">
         <div class="wrapper--inner">
             <h1 class="page-header__title">{$ pod.name $}</h1>
             <div class="page-header__controls" data-ng-if="isSuperUser()">
@@ -40,7 +40,7 @@
             </div>
         </div>
     </header>
-    <div class="page-navigation" sticky offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
+    <div class="page-navigation" sticky media-query="min-width: 769px" offset="89" data-ng-class="{ 'u-visibility--hidden': action.option }">
         <div class="wrapper--inner">
             <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
                 <button role="tab" class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</button>
@@ -49,7 +49,7 @@
             </nav>
         </div>
     </div>
-    <section class="row u-padding--top-none" data-ng-if="section.area === 'summary'">
+    <section class="row u-padding--top" data-ng-if="section.area === 'summary'">
         <div class="wrapper--inner u-align--flex">
             <aside class="three-col u-align--top">
                 <div class="three-col">
@@ -96,7 +96,7 @@
             </div>
         </div>
     </section>
-    <section class="row u-padding--top-none" data-ng-if="pod && section.area === 'power'">
+    <section class="row u-padding--top" data-ng-if="pod && section.area === 'power'">
         <div class="wrapper--inner">
             <maas-obj-form obj="pod" manager="podManager" manager-method="updateItem"
                 table-form="true" save-on-blur="true">
@@ -115,7 +115,7 @@
             </maas-obj-form>
         </div>
     </section>
-    <section class="row u-padding--top-none" data-ng-if="section.area === 'storage'">
+    <section class="row u-padding--top" data-ng-if="section.area === 'storage'">
         <div class="wrapper--inner">
             <div class="six-col">
                 <h3>Total storage ({$ pod.total.local_storage_gb $} GiB)</h3>

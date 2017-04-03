@@ -1,4 +1,4 @@
-<header class="page-header" sticky media-query="min-width: 769px">
+<header class="page-header u-margin--bottom-none" sticky media-query="min-width: 769px">
     <div class="wrapper--inner">
         <h1 class="page-header__title">{$ $parent.site $} MAAS</h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
@@ -71,12 +71,10 @@
         </div>
     </div>
 </header>
-<div class="wrapper--inner">
-    <maas-notifications></maas-notifications>
-</div>
-<div class="u-padding--top-none">
+<div class="row u-padding--top">
     <div class="wrapper--inner">
-    <div class="twelve-col last-col">
+        <maas-notifications></maas-notifications>
+        <div class="twelve-col last-col">
         <div class="table">
             <header class="table__head">
                 <div class="table__row">
@@ -152,5 +150,5 @@
             </main>
         </div>
     </div>
-</div>
+    </div>
 </div>
