@@ -303,11 +303,11 @@ class Factory:
             these, but it won't be identical.
         :param disjoint_from: Optional iterable of `IPNetwork` objects whose
             IP ranges the new network must not overlap.
-        :return: A network spanning at least 8 IP addresses (at most 29 bits).
+        :return: A network spanning at least 16 IP addresses (at most 28 bits).
         :rtype: :class:`IPNetwork`
         """
         if slash is None:
-            slash = random.randint(16, 29)
+            slash = random.randint(16, 28)
         return self._make_random_network(
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv4_address)
