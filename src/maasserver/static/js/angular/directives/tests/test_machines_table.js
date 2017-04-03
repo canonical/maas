@@ -293,6 +293,15 @@ describe("maasMachinesTable", function() {
             expect(scope.getReleaseTitle('ubuntu/xenial')).toBe(
                 'ubuntu/xenial');
         });
+
+        it("returns release name when osinfo.releases undefined", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.osinfo = {
+            };
+            expect(scope.getReleaseTitle('ubuntu/xenial')).toBe(
+                'ubuntu/xenial');
+        });
     });
 
     describe("getStatusText", function() {

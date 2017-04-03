@@ -118,10 +118,12 @@ angular.module('MAAS').directive('maasMachinesTable', [
 
         // Returns the release title from osinfo.
         scope.getReleaseTitle = function(os_release) {
-          for(i = 0; i < scope.osinfo.releases.length; i++) {
-            var release = scope.osinfo.releases[i];
-            if(release[0] === os_release) {
-              return release[1];
+          if(angular.isArray(scope.osinfo.releases)) {
+            for(i = 0; i < scope.osinfo.releases.length; i++) {
+              var release = scope.osinfo.releases[i];
+              if(release[0] === os_release) {
+                return release[1];
+              }
             }
           }
           return os_release;
