@@ -50,7 +50,7 @@
             <td class="u-align--left" aria-label="FQDN" data-ng-if="table.column === 'fqdn'" colspan="2">
                 <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
             </td>
-            <td class="ng-hide u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'" colspan="2">
+            <td class="u-align--left" aria-label="MAC" data-ng-if="table.column === 'pxe_mac'" colspan="2">
                 <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                 <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
