@@ -16,7 +16,6 @@ from datetime import (
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
 )
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
@@ -27,7 +26,7 @@ from maasserver.node_status import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import ScriptResult
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous
 from twisted.application.internet import TimerService
 
@@ -36,64 +35,27 @@ def mark_nodes_failed_after_expiring():
     """Mark all nodes in that database as failed where the status did not
     transition in time. `status_expires` is checked on the node to see if the
     current time is newer than the expired time.
-
-    Status monitors are only available for Machines that are Commissioning,
-    Deploying or Releasing.
     """
     current_db_time = now()
     expired_nodes = Node.objects.filter(
-        node_type=NODE_TYPE.MACHINE,
         status__in=NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys(),
         status_expires__isnull=False,
         status_expires__lte=current_db_time)
     for node in expired_nodes:
-        comment = "Machine operation '%s' timed out after %s minutes." % (
+        comment = "Node operation '%s' timed out after %s minutes." % (
             NODE_STATUS_CHOICES_DICT[node.status],
             NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
             )
-        node.mark_failed(commit=False, comment=comment)
-        node.status_expires = None
-        node.save(update_fields=['status_expires', 'status'])
-
-        qs = ScriptResult.objects.filter(
-            script_set__in=[
-                node.current_commissioning_script_set,
-                node.current_testing_script_set,
-                node.current_installation_script_set,
-            ],
-            status__in=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING])
-        for script_result in qs:
-            script_result.status = SCRIPT_STATUS.TIMEDOUT
-            script_result.save(update_fields=['status'])
+        node.mark_failed(
+            comment=comment, script_result_status=SCRIPT_STATUS.TIMEDOUT)
 
 
-def fail_testing(node, reason):
-    """Fail testing on a node due to a timeout.
+def mark_nodes_failed_after_missing_script_timeout():
+    """Check on the status of commissioning or testing nodes.
 
-    Set a node's status to FAILED_TESTING and log the reason for failing. If
-    enable_ssh is False stop the node as well. Any tests currently pending or
-    running are set to a TIMEDOUT status.
-    """
-    if not node.enable_ssh:
-        node.stop(node.owner, comment=reason)
-
-    node.status = NODE_STATUS.FAILED_TESTING
-    node.error_description = reason
-    node.save(update_fields=['status', 'error_description'])
-
-    qs = node.current_testing_script_set.scriptresult_set.filter(
-        status__in={SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING})
-    for script_result in qs:
-        script_result.status = SCRIPT_STATUS.TIMEDOUT
-        script_result.save(update_fields=['status'])
-
-
-def mark_testing_nodes_failed_after_missing_timeout():
-    """Check on the status of testing nodes.
-
-    For any node currently testing check that a region is still receiving its
-    heartbeat and no running script has gone past its run limit. If the node
-    fails either condition its put into FAILED_TESTING status.
+    For any node currently commissioning or testing check that a region is
+    still receiving its heartbeat and no running script has gone past its
+    run limit. If the node fails either condition its put into a failed status.
     """
     now = datetime.now()
     # maas-run-remote-scripts sends a heartbeat every two minutes. We allow
@@ -103,37 +65,62 @@ def mark_testing_nodes_failed_after_missing_timeout():
     # while the node is booting. Once MAAS receives the signal that testing
     # has begun it resets status_expires and checks for the heartbeat instead.
     qs = Node.objects.filter(
-        status=NODE_STATUS.TESTING, status_expires=None).prefetch_related(
-            'current_testing_script_set')
+        status__in=[NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING],
+        status_expires=None).prefetch_related(
+            'current_commissioning_script_set', 'current_testing_script_set')
     for node in qs:
-        if node.current_testing_script_set.last_ping < heartbeat_expired:
-            fail_testing(node, 'Node has missed the last 5 heartbeats')
+        if node.status == NODE_STATUS.COMMISSIONING:
+            script_set = node.current_commissioning_script_set
+        elif node.status == NODE_STATUS.TESTING:
+            script_set = node.current_testing_script_set
+        if script_set.last_ping < heartbeat_expired:
+            node.mark_failed(
+                comment='Node has missed the last 5 heartbeats',
+                script_result_status=SCRIPT_STATUS.TIMEDOUT,
+            )
+            if not node.enable_ssh:
+                node.stop(
+                    comment=(
+                        'Node stopped due to missing the last 5 heartbeats'),
+                )
             continue
 
         # Check for scripts which have gone past their timeout.
-        script_qs = node.current_testing_script_set.scriptresult_set.filter(
+        script_qs = script_set.scriptresult_set.filter(
             status=SCRIPT_STATUS.RUNNING).prefetch_related('script')
         for script_result in script_qs:
-            if (script_result.script is not None and
-                    script_result.script.timeout.seconds == 0):
+            if script_result.name in NODE_INFO_SCRIPTS:
+                timeout = NODE_INFO_SCRIPTS[script_result.name]['timeout']
+            elif (script_result.script is not None and
+                    script_result.script.timeout.seconds > 0):
+                timeout = script_result.script.timeout
+            else:
                 continue
             # Give tests an extra minute for cleanup and signaling done.
+            # Most NODE_INFO_SCRIPTS have a 10s timeout with the assumption
+            # that they'll get an extra minute here.
             script_expires = (
-                script_result.started + script_result.script.timeout +
-                timedelta(minutes=1))
+                script_result.started + timeout + timedelta(minutes=1))
             if script_expires < now:
-                fail_testing(
-                    node, "%s has run past it's timeout(%s)" % (
-                        script_result.name, str(script_result.script.timeout)))
+                node.mark_failed(
+                    comment="%s has run past it's timeout(%s)" % (
+                        script_result.name, str(timeout)),
+                    script_result_status=SCRIPT_STATUS.TIMEDOUT)
+                if not node.enable_ssh:
+                    node.stop(
+                        comment=(
+                            "Node stopped due to %s running past it's "
+                            "timeout(%s)" % (script_result.name, str(timeout)))
+                    )
                 break
 
 
 @synchronous
 @transactional
 def check_status():
-    """Check the status_expires and test status on all nodes."""
+    """Check the status_expires and script timeout on all nodes."""
     mark_nodes_failed_after_expiring()
-    mark_testing_nodes_failed_after_missing_timeout()
+    mark_nodes_failed_after_missing_script_timeout()
 
 
 class StatusMonitorService(TimerService, object):

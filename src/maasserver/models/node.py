@@ -2813,7 +2813,9 @@ class Node(CleanSave, TimestampedModel):
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 
-    def mark_failed(self, user=None, comment=None, commit=True):
+    def mark_failed(
+            self, user=None, comment=None, commit=True,
+            script_result_status=SCRIPT_STATUS.FAILED):
         """Mark this node as failed.
 
         The actual 'failed' state depends on the current status of the
@@ -2828,6 +2830,19 @@ class Node(CleanSave, TimestampedModel):
         self._register_request_event(
             user, event_type, action='mark_failed',
             comment=comment)
+
+        # Avoid circular dependencies
+        from metadataserver.models import ScriptResult
+        qs = ScriptResult.objects.filter(
+            script_set__in=[
+                self.current_commissioning_script_set,
+                self.current_testing_script_set,
+                self.current_installation_script_set,
+            ],
+            status__in=[SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING])
+        for script_result in qs:
+            script_result.status = script_result_status
+            script_result.save(update_fields=['status'])
 
         new_status = get_failed_status(self.status)
         if new_status is not None:
@@ -3568,8 +3583,8 @@ class Node(CleanSave, TimestampedModel):
         return d
 
     @transactional
-    def stop(self, user, stop_mode='hard', comment=None):
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+    def stop(self, user=None, stop_mode='hard', comment=None):
+        if user is not None and not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
         self._register_request_event(
@@ -3578,7 +3593,7 @@ class Node(CleanSave, TimestampedModel):
         return self._stop(user, stop_mode)
 
     @transactional
-    def _stop(self, user, stop_mode='hard'):
+    def _stop(self, user=None, stop_mode='hard'):
         """Request that the node be powered down.
 
         :param user: Requesting user.
@@ -3596,7 +3611,7 @@ class Node(CleanSave, TimestampedModel):
             does not support it, `None` will be returned. The node must be
             powered off manually.
         """
-        if not user.has_perm(NODE_PERMISSION.EDIT, self):
+        if user is not None and not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an admin.
             raise PermissionDenied()
 

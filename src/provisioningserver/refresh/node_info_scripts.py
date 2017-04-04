@@ -11,6 +11,7 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+from datetime import timedelta
 from inspect import getsource
 import json
 import os
@@ -559,73 +560,89 @@ def null_hook(node, output, exit_status):
 #
 # Post-processing hooks can't exist on the rack controller as the rack
 # controller isn't running django. On the region controller we set the hooks in
-# metadataserver/models/commissioningscript.py
+# metadataserver/builtin_scripts/hooks.py
+#
+# maasserver/status_monitor.py adds 1 minute to the timeout of all scripts for
+# cleanup and signaling.
 NODE_INFO_SCRIPTS = OrderedDict([
     ('00-maas-00-support-info', {
         'content': SUPPORT_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(minutes=5),
         'run_on_controller': True,
     }),
     (LSHW_OUTPUT_NAME, {
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(minutes=5),
         'run_on_controller': True,
     }),
     ('00-maas-01-cpuinfo', {
         'content': CPUINFO_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
     ('00-maas-02-virtuality', {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
     ('00-maas-03-install-lldpd', {
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
+        'timeout': timedelta(minutes=5),
         'run_on_controller': False,
     }),
     (LIST_MODALIASES_OUTPUT_NAME, {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
     ('00-maas-06-dhcp-unconfigured-ifaces', {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
+        'timeout': timedelta(minutes=5),
         'run_on_controller': False,
     }),
     ('00-maas-07-block-devices', {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': null_hook,
+        'timeout': timedelta(minutes=5),
         'run_on_controller': True,
     }),
     ('00-maas-08-serial-ports', {
         'content': SERIAL_PORTS_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
     ('99-maas-01-wait-for-lldpd', {
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
+        'timeout': timedelta(minutes=1),
         'run_on_controller': False,
     }),
     (LLDP_OUTPUT_NAME, {
         'content': make_function_call_script(lldpd_capture),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
     ('99-maas-03-network-interfaces', {
         'content': IPADDR_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
     ('99-maas-04-network-interfaces-with-sriov', {
         'content': SRIOV_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
 ])

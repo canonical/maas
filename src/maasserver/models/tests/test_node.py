@@ -102,6 +102,7 @@ from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
+    NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TESTING_RESET_READY_TRANSITIONS,
     NODE_TRANSITIONS,
@@ -145,7 +146,10 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.enum import (
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
@@ -3176,6 +3180,40 @@ class TestNode(MAASServerTestCase):
             owner, EVENT_TYPES.REQUEST_NODE_MARK_FAILED, action='mark_failed',
             comment=description))
 
+    def test_mark_failed_updates_all_pending_and_running_script_statuses(self):
+        self.disable_node_query()
+        node = factory.make_Node(
+            status=random.choice(
+                list(NODE_FAILURE_MONITORED_STATUS_TRANSITIONS)))
+        node.current_commissioning_script_set = factory.make_ScriptSet(
+            node=node)
+        node.current_testing_script_set = factory.make_ScriptSet(node=node)
+        node.current_installation_script_set = factory.make_ScriptSet(
+            node=node)
+        updated_script_results = []
+        untouched_script_results = []
+        for script_set in (
+                node.current_commissioning_script_set,
+                node.current_testing_script_set,
+                node.current_installation_script_set):
+            script_result = factory.make_ScriptResult(script_set)
+            if script_result.status in {
+                    SCRIPT_STATUS.PENDING, SCRIPT_STATUS.RUNNING}:
+                updated_script_results.append(script_result)
+            else:
+                untouched_script_results.append(script_result)
+        script_result_status = random.choice(
+            [SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.FAILED])
+
+        node.mark_failed(script_result_status=script_result_status)
+
+        for script_result in updated_script_results:
+            self.assertEquals(
+                script_result_status, reload_object(script_result).status)
+        for script_result in untouched_script_results:
+            self.assertEquals(
+                script_result.status, reload_object(script_result).status)
+
     def test_mark_failed_updates_error_description(self):
         self.disable_node_query()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -5911,6 +5949,20 @@ class TestNode_Stop(MAASServerTestCase):
         mock_power_control = self.patch_autospec(
             node, "_power_control_node")
         node.stop(admin, stop_mode=stop_mode)
+        expected_power_info = node.get_effective_power_info()
+        expected_power_info.power_parameters['power_off_mode'] = stop_mode
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(d, power_off_node, expected_power_info))
+
+    def test__stop_allows_no_user(self):
+        d = self.patch_post_commit()
+        admin = factory.make_admin()
+        stop_mode = factory.make_name("stop")
+        node = self.make_acquired_node_with_interface(admin)
+        mock_power_control = self.patch_autospec(
+            node, "_power_control_node")
+        node.stop(stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = stop_mode
         self.assertThat(

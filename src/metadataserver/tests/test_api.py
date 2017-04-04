@@ -1425,16 +1425,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signalling_commissioning_success_clears_status_expires(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now(),
-            with_empty_script_sets=True)
-        client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertIsNone(reload_object(node).status_expires)
-
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
@@ -1463,12 +1453,12 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
-    def test_signalling_commissioning_clears_status_expires(self):
+    def test_signaling_commissioning_clears_status_expires(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status='WORKING')
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertIsNone(reload_object(node).status_expires)

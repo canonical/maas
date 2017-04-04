@@ -453,6 +453,13 @@ class VersionIndexHandler(MetadataViewHandler):
             return None
 
     def _process_commissioning(self, node, request, status):
+        # node.status_expires is only used to ensure the node boots into
+        # commissioning. After commissioning has started the script_reaper
+        # makes sure the node is still operating.
+        if node.status_expires is not None:
+            node.status_expires = None
+            node.save(update_fields=['status_expires'])
+
         self._store_results(
             node, node.current_commissioning_script_set, request, status)
 
