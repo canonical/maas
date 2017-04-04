@@ -13,6 +13,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import make_setting_field
 from provisioningserver.drivers.pod import (
+    BlockDeviceType,
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
@@ -29,12 +30,9 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
-from provisioningserver.drivers.storage import (
-    DiscoveredStorage,
-    DiscoveredVolume,
-)
 from testtools.matchers import (
     Equals,
+    Is,
     IsInstance,
     MatchesAll,
     MatchesDict,
@@ -44,6 +42,10 @@ from testtools.matchers import (
 
 
 class TestDiscoveredClasses(MAASTestCase):
+
+    def make_iscsi_target(self):
+        return '%s:6:3260:0:iqn.maas.io:%s' % (
+            factory.make_ipv4_address(), factory.make_name('target'))
 
     def test_interface_mac(self):
         mac = factory.make_mac_address()
@@ -122,6 +124,26 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEquals(block_size, device.block_size)
         self.assertEquals(tags, device.tags)
 
+    def test_block_device_iscsi(self):
+        size = random.randint(512, 512 * 1024)
+        block_size = random.randint(512, 4096)
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        iscsi_target = '%s:6:3260:0:iqn.maas.io:%s' % (
+            factory.make_ipv4_address(), factory.make_name('target'))
+        device = DiscoveredMachineBlockDevice(
+            model=None, serial=None, size=size, block_size=block_size,
+            tags=tags, type=BlockDeviceType.ISCSI, iscsi_target=iscsi_target)
+        self.assertIsNone(device.model)
+        self.assertIsNone(device.serial)
+        self.assertEquals(size, device.size)
+        self.assertEquals(block_size, device.block_size)
+        self.assertEquals(tags, device.tags)
+        self.assertEquals(BlockDeviceType.ISCSI, device.type)
+        self.assertEquals(iscsi_target, device.iscsi_target)
+
     def test_machine(self):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
@@ -159,24 +181,30 @@ class TestDiscoveredClasses(MAASTestCase):
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
+        local_disks = random.randint(1, 8)
+        iscsi_storage = random.randint(4096, 8192)
         hints = DiscoveredPodHints(
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            local_storage=local_storage)
+            local_storage=local_storage, local_disks=local_disks,
+            iscsi_storage=iscsi_storage)
         self.assertEquals(cores, hints.cores)
         self.assertEquals(cpu_speed, hints.cpu_speed)
         self.assertEquals(memory, hints.memory)
         self.assertEquals(local_storage, hints.local_storage)
+        self.assertEquals(iscsi_storage, hints.iscsi_storage)
 
     def test_pod(self):
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
+        iscsi_storage = random.randint(4096, 8192)
         hints = DiscoveredPodHints(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
             memory=random.randint(4096, 8192),
-            local_storage=random.randint(4096, 8192))
+            local_storage=random.randint(4096, 8192),
+            iscsi_storage=random.randint(4096, 8192))
         machines = []
         for _ in range(3):
             cores = random.randint(1, 8)
@@ -198,6 +226,13 @@ class TestDiscoveredClasses(MAASTestCase):
                     size=random.randint(512, 1024))
                 for _ in range(3)
             ]
+            for _ in range(3):
+                block_devices.append(
+                    DiscoveredMachineBlockDevice(
+                        model=None, serial=None,
+                        size=random.randint(512, 1024),
+                        type=BlockDeviceType.ISCSI,
+                        iscsi_target=self.make_iscsi_target()))
             tags = [
                 factory.make_name("tag")
                 for _ in range(3)
@@ -209,26 +244,17 @@ class TestDiscoveredClasses(MAASTestCase):
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
-        storage = []
-        for _ in range(3):
-            volumes = [
-                DiscoveredVolume(size=random.randint(1024, 4096))
-                for _ in range(3)
-            ]
-            storage.append(
-                DiscoveredStorage(
-                    size=random.randint(8192, 8192 ** 2), volumes=volumes))
         pod = DiscoveredPod(
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            local_storage=local_storage, hints=hints, machines=machines,
-            storage=storage)
+            local_storage=local_storage, iscsi_storage=iscsi_storage,
+            hints=hints, machines=machines)
         self.assertEquals(cores, pod.cores)
         self.assertEquals(cpu_speed, pod.cpu_speed)
         self.assertEquals(memory, pod.memory)
         self.assertEquals(local_storage, pod.local_storage)
+        self.assertEquals(iscsi_storage, pod.iscsi_storage)
         self.assertEquals(machines, pod.machines)
-        self.assertEquals(storage, pod.storage)
 
     def test_pod_asdict(self):
         cores = random.randint(1, 8)
@@ -236,12 +262,14 @@ class TestDiscoveredClasses(MAASTestCase):
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
         local_disks = random.randint(1, 8)
+        iscsi_storage = random.randint(4096, 8192)
         hints = DiscoveredPodHints(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
             memory=random.randint(4096, 8192),
             local_storage=random.randint(4096, 8192),
-            local_disks=random.randint(1, 8))
+            local_disks=random.randint(1, 8),
+            iscsi_storage=random.randint(4096, 8192))
         machines = []
         for _ in range(3):
             cores = random.randint(1, 8)
@@ -264,6 +292,13 @@ class TestDiscoveredClasses(MAASTestCase):
                     id_path=factory.make_name("/dev/vda"))
                 for _ in range(3)
             ]
+            for _ in range(3):
+                block_devices.append(
+                    DiscoveredMachineBlockDevice(
+                        model=None, serial=None,
+                        size=random.randint(512, 1024),
+                        type=BlockDeviceType.ISCSI,
+                        iscsi_target=self.make_iscsi_target()))
             tags = [
                 factory.make_name("tag")
                 for _ in range(3)
@@ -275,20 +310,11 @@ class TestDiscoveredClasses(MAASTestCase):
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
                     tags=tags))
-        storage = []
-        for _ in range(3):
-            volumes = [
-                DiscoveredVolume(size=random.randint(1024, 4096))
-                for _ in range(3)
-            ]
-            storage.append(
-                DiscoveredStorage(
-                    size=random.randint(8192, 8192 ** 2), volumes=volumes))
         pod = DiscoveredPod(
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             local_storage=local_storage, local_disks=local_disks,
-            hints=hints, machines=machines, storage=storage)
+            iscsi_storage=iscsi_storage, hints=hints, machines=machines)
         self.assertThat(pod.asdict(), MatchesDict({
             "architectures": Equals(["amd64/generic"]),
             "cores": Equals(cores),
@@ -296,6 +322,7 @@ class TestDiscoveredClasses(MAASTestCase):
             "memory": Equals(memory),
             "local_storage": Equals(local_storage),
             "local_disks": Equals(local_disks),
+            "iscsi_storage": Equals(iscsi_storage),
             "capabilities": Equals(pod.capabilities),
             "hints": MatchesDict({
                 "cores": Equals(hints.cores),
@@ -303,6 +330,7 @@ class TestDiscoveredClasses(MAASTestCase):
                 "memory": Equals(hints.memory),
                 "local_storage": Equals(hints.local_storage),
                 "local_disks": Equals(hints.local_disks),
+                "iscsi_storage": Equals(hints.iscsi_storage),
             }),
             "machines": MatchesListwise([
                 MatchesDict({
@@ -329,28 +357,14 @@ class TestDiscoveredClasses(MAASTestCase):
                             "block_size": Equals(block_device.block_size),
                             "tags": Equals(block_device.tags),
                             "id_path": Equals(block_device.id_path),
+                            "type": Equals(block_device.type),
+                            "iscsi_target": Equals(block_device.iscsi_target)
                         })
                         for block_device in machine.block_devices
                     ]),
                     "tags": Equals(machine.tags),
                 })
                 for machine in machines
-            ]),
-            "storage": MatchesListwise([
-                MatchesDict({
-                    "size": Equals(stor.size),
-                    "driver_type": Equals(None),
-                    "parameters": Equals({}),
-                    "volumes": MatchesListwise([
-                        MatchesDict({
-                            "size": Equals(volume.size),
-                            "block_size": Equals(volume.block_size),
-                            "tags": Equals(volume.tags),
-                        })
-                        for volume in stor.volumes
-                    ]),
-                })
-                for stor in storage
             ]),
         }))
 
@@ -359,11 +373,13 @@ class TestDiscoveredClasses(MAASTestCase):
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
+        iscsi_storage = random.randint(4096, 8192)
         hints = dict(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
             memory=random.randint(4096, 8192),
-            local_storage=random.randint(4096, 8192))
+            local_storage=random.randint(4096, 8192),
+            iscsi_storage=random.randint(4096, 8192))
         machines_data = []
         for _ in range(3):
             cores = random.randint(1, 8)
@@ -381,6 +397,13 @@ class TestDiscoveredClasses(MAASTestCase):
                     size=random.randint(512, 1024))
                 for _ in range(3)
             ]
+            for _ in range(3):
+                block_devices.append(
+                    dict(
+                        model=None, serial=None,
+                        size=random.randint(512, 1024),
+                        type=BlockDeviceType.ISCSI,
+                        iscsi_target=self.make_iscsi_target()))
             machines_data.append(
                 dict(
                     architecture='amd64/generic',
@@ -389,7 +412,8 @@ class TestDiscoveredClasses(MAASTestCase):
         pod_data = dict(
             architectures=['amd64/generic'],
             cores=cores, cpu_speed=cpu_speed, memory=memory,
-            local_storage=local_storage, hints=hints, machines=machines_data)
+            local_storage=local_storage, iscsi_storage=iscsi_storage,
+            hints=hints, machines=machines_data)
         pod = DiscoveredPod.fromdict(pod_data)
         self.assertThat(pod, IsInstance(DiscoveredPod))
         self.assertThat(pod, MatchesStructure(
@@ -398,6 +422,7 @@ class TestDiscoveredClasses(MAASTestCase):
             cpu_speed=Equals(cpu_speed),
             memory=Equals(memory),
             local_storage=Equals(local_storage),
+            iscsi_storage=Equals(iscsi_storage),
             hints=MatchesAll(
                 IsInstance(DiscoveredPodHints),
                 MatchesStructure(
@@ -405,6 +430,7 @@ class TestDiscoveredClasses(MAASTestCase):
                     cpu_speed=Equals(hints['cpu_speed']),
                     memory=Equals(hints['memory']),
                     local_storage=Equals(hints['local_storage']),
+                    iscsi_storage=Equals(hints['iscsi_storage']),
                 ),
             ),
             machines=MatchesListwise([
@@ -436,9 +462,27 @@ class TestDiscoveredClasses(MAASTestCase):
                                     size=Equals(block_device['size']),
                                     block_size=Equals(512),
                                     tags=Equals([]),
+                                    type=Equals(BlockDeviceType.PHYSICAL),
                                 ),
                             )
                             for block_device in machine['block_devices']
+                            if 'type' not in block_device
+                        ] + [
+                            MatchesAll(
+                                IsInstance(DiscoveredMachineBlockDevice),
+                                MatchesStructure(
+                                    model=Is(None),
+                                    serial=Is(None),
+                                    size=Equals(block_device['size']),
+                                    block_size=Equals(512),
+                                    tags=Equals([]),
+                                    type=Equals(BlockDeviceType.ISCSI),
+                                    iscsi_target=Equals(
+                                        block_device['iscsi_target']),
+                                ),
+                            )
+                            for block_device in machine['block_devices']
+                            if 'type' in block_device
                         ]),
                     ),
                 )

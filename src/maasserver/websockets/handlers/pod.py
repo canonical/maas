@@ -47,6 +47,7 @@ class PodHandler(TimestampedModelHandler):
             'cores',
             'local_disks',
             'local_storage',
+            'iscsi_storage',
             'memory',
             'power_type',
             'power_parameters',

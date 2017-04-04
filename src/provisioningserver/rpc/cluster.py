@@ -112,19 +112,6 @@ class DescribePowerTypes(amp.Command):
     errors = []
 
 
-class DescribeStorageTypes(amp.Command):
-    """Get a JSON Schema describing this rack's storage types.
-
-    :since: 2.2
-    """
-
-    arguments = []
-    response = [
-        (b"storage_types", StructureAsJSON()),
-    ]
-    errors = []
-
-
 class ListSupportedArchitectures(amp.Command):
     """Report the cluster's supported architectures.
 

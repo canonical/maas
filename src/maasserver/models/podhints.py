@@ -30,6 +30,12 @@ class PodHints(CleanSave, Model):
 
     memory = IntegerField(default=0)
 
-    local_storage = BigIntegerField(blank=False, null=False, default=0)
+    cpu_speed = IntegerField(default=0)  # MHz
+
+    local_storage = BigIntegerField(  # Bytes
+        blank=False, null=False, default=0)
 
     local_disks = IntegerField(blank=False, null=False, default=-1)
+
+    iscsi_storage = BigIntegerField(  # Bytes
+        blank=False, null=False, default=-1)

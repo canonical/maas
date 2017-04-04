@@ -109,6 +109,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
@@ -1575,6 +1576,15 @@ class Node(CleanSave, TimestampedModel):
         return '%.1f' % (self.memory / 1024.0)
 
     @property
+    def iscsiblockdevice_set(self):
+        """Return `QuerySet` for all `ISCSIBlockDevice` assigned to node.
+
+        This is need as Django doesn't add this attribute to the `Node` model,
+        it only adds blockdevice_set.
+        """
+        return ISCSIBlockDevice.objects.filter(node=self)
+
+    @property
     def physicalblockdevice_set(self):
         """Return `QuerySet` for all `PhysicalBlockDevice` assigned to node.
 
@@ -1603,6 +1613,7 @@ class Node(CleanSave, TimestampedModel):
         size = (
             PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
                 self))
+        size += ISCSIBlockDevice.objects.total_size_of_iscsi_devices_for(self)
         return size / 1000 / 1000
 
     def display_storage(self):
@@ -2969,18 +2980,22 @@ class Node(CleanSave, TimestampedModel):
     def _clear_full_storage_configuration(self):
         """Clear's the full storage configuration for this node.
 
-        This will remove all related models to `PhysicalBlockDevice`'s on
-        this node and all `VirtualBlockDevice`'s.
+        This will remove all related models to `PhysicalBlockDevice`'s and
+        `ISCSIBlockDevice`'s' on this node and all `VirtualBlockDevice`'s.
 
         This is used before commissioning to clear the entire storage model
-        except for the `PhysicalBlockDevice`'s. Commissioing will update the
-        `PhysicalBlockDevice` information on this node.
+        except for the `PhysicalBlockDevice`'s and `ISCSIBlockDevice`'s.
+        Commissioning will update the `PhysicalBlockDevice` information
+        on this node.
         """
-        physical_block_devices = self.physicalblockdevice_set.all()
+        block_device_ids = list(
+            self.physicalblockdevice_set.values_list('id', flat=True))
+        block_device_ids += list(
+            self.iscsiblockdevice_set.values_list('id', flat=True))
         PartitionTable.objects.filter(
-            block_device__in=physical_block_devices).delete()
+            block_device__id__in=block_device_ids).delete()
         Filesystem.objects.filter(
-            block_device__in=physical_block_devices).delete()
+            block_device__id__in=block_device_ids).delete()
         for block_device in self.virtualblockdevice_set.all():
             try:
                 block_device.filesystem_group.delete(force=True)

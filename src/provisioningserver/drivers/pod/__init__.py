@@ -17,9 +17,6 @@ from abc import abstractmethod
 
 import attr
 from provisioningserver.drivers import (
-    AttrHelperMixin,
-    convert_list,
-    convert_obj,
     IP_EXTRACTOR_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
@@ -27,7 +24,6 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerDriverBase,
 )
-from provisioningserver.drivers.storage import DiscoveredStorage
 
 # JSON schema for what a pod driver definition should look like.
 JSON_POD_DRIVER_SCHEMA = {
@@ -100,6 +96,44 @@ class PodActionError(PodError):
     or `discover`."""
 
 
+def convert_obj(expected, optional=False):
+    """Convert the given value to an object of type `expected`."""
+    def convert(value):
+        if optional and value is None:
+            return None
+        if isinstance(value, expected):
+            return value
+        elif isinstance(value, dict):
+            return expected(**value)
+        else:
+            raise TypeError(
+                "%r is not of type %s or dict" % (value, expected))
+    return convert
+
+
+def convert_list(expected):
+    """Convert the given value to a list of objects of type `expected`."""
+    def convert(value):
+        if isinstance(value, list):
+            if len(value) == 0:
+                return value
+            else:
+                new_list = []
+                for item in value:
+                    if isinstance(item, expected):
+                        new_list.append(item)
+                    elif isinstance(item, dict):
+                        new_list.append(expected(**item))
+                    else:
+                        raise TypeError(
+                            "Item %r is not of type %s or dict" % (
+                                item, expected))
+                return new_list
+        else:
+            raise TypeError("%r is not of type list" % value)
+    return convert
+
+
 class Capabilities:
     """Capabilities that a pod supports."""
 
@@ -124,6 +158,29 @@ class Capabilities:
     OVER_COMMIT = 'over_commit'
 
 
+class BlockDeviceType:
+    """Different types of block devices."""
+
+    # Block device is connected physically to the discovered machine.
+    PHYSICAL = 'physical'
+
+    # Block device is connected to the discovered device over iSCSI.
+    ISCSI = 'iscsi'
+
+
+class AttrHelperMixin:
+    """Mixin to add the `fromdict` and `asdict` to the classes."""
+
+    @classmethod
+    def fromdict(cls, data):
+        """Convert from a dictionary."""
+        return cls(**data)
+
+    def asdict(self):
+        """Convert to a dictionary."""
+        return attr.asdict(self)
+
+
 @attr.s
 class DiscoveredMachineInterface(AttrHelperMixin):
     """Discovered machine interface."""
@@ -142,6 +199,13 @@ class DiscoveredMachineBlockDevice(AttrHelperMixin):
     block_size = attr.ib(convert=int, default=512)
     tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
     id_path = attr.ib(convert=convert_obj(str, optional=True), default=None)
+    type = attr.ib(convert=str, default=BlockDeviceType.PHYSICAL)
+
+    # Used when `type` is set to `BlockDeviceType.ISCSI`. The pod driver must
+    # define an `iscsi_target` or it will not create the device for the
+    # discovered machine.
+    iscsi_target = attr.ib(
+        convert=convert_obj(str, optional=True), default=None)
 
 
 @attr.s
@@ -172,6 +236,7 @@ class DiscoveredPodHints(AttrHelperMixin):
     memory = attr.ib(convert=int)
     local_storage = attr.ib(convert=int)
     local_disks = attr.ib(convert=int, default=-1)
+    iscsi_storage = attr.ib(convert=int, default=-1)
 
 
 @attr.s
@@ -184,13 +249,12 @@ class DiscoveredPod(AttrHelperMixin):
     local_storage = attr.ib(convert=int)
     hints = attr.ib(convert=convert_obj(DiscoveredPodHints))
     local_disks = attr.ib(convert=int, default=-1)
+    iscsi_storage = attr.ib(convert=int, default=-1)
     capabilities = attr.ib(
         convert=convert_list(str), default=attr.Factory(
             lambda: [Capabilities.FIXED_LOCAL_STORAGE]))
     machines = attr.ib(
         convert=convert_list(DiscoveredMachine), default=attr.Factory(list))
-    storage = attr.ib(
-        convert=convert_list(DiscoveredStorage), default=attr.Factory(list))
 
 
 @attr.s

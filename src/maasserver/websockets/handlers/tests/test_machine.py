@@ -1169,7 +1169,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 12,
+            query_10_count, 13,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

@@ -49,6 +49,7 @@ def node_prefetch(queryset):
     return (
         queryset
         .select_related('boot_interface', 'owner', 'zone', 'domain')
+        .prefetch_related('blockdevice_set__iscsiblockdevice')
         .prefetch_related('blockdevice_set__physicalblockdevice')
         .prefetch_related('blockdevice_set__virtualblockdevice')
         .prefetch_related('interface_set__ip_addresses__subnet__vlan__space')

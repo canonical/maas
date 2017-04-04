@@ -916,6 +916,13 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(memory=2560)
         self.assertEqual('2.5', node.display_memory())
 
+    def test_iscsiblockdevice_set_returns_iscsiblockdevices(self):
+        node = factory.make_Node(with_boot_disk=False)
+        device = factory.make_ISCSIBlockDevice(node=node)
+        factory.make_BlockDevice(node=node)
+        factory.make_ISCSIBlockDevice()
+        self.assertItemsEqual([device], node.iscsiblockdevice_set.all())
+
     def test_physicalblockdevice_set_returns_physicalblockdevices(self):
         node = factory.make_Node(with_boot_disk=False)
         device = factory.make_PhysicalBlockDevice(node=node)
@@ -923,11 +930,13 @@ class TestNode(MAASServerTestCase):
         factory.make_PhysicalBlockDevice()
         self.assertItemsEqual([device], node.physicalblockdevice_set.all())
 
-    def test_storage_returns_size_of_physicalblockdevices_in_mb(self):
+    def test_storage_returns_size_of_physical_iscsi_blockdevices_in_mb(self):
         node = factory.make_Node(with_boot_disk=False)
         for _ in range(3):
             factory.make_PhysicalBlockDevice(node=node, size=50 * (1000 ** 2))
-        self.assertEqual(50 * 3, node.storage)
+        for _ in range(3):
+            factory.make_ISCSIBlockDevice(node=node, size=50 * (1000 ** 2))
+        self.assertEqual(50 * 6, node.storage)
 
     def test_display_storage_returns_decimal_less_than_1000(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -3539,13 +3548,26 @@ class TestNode(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
             for _ in range(3)
             ]
+        iscsi_block_devices = [
+            factory.make_ISCSIBlockDevice(node=node, size=10 * 1000 ** 3)
+            for _ in range(3)
+            ]
         filesystem = factory.make_Filesystem(
             block_device=physical_block_devices[0])
         partition_table = factory.make_PartitionTable(
             block_device=physical_block_devices[1])
         partition = factory.make_Partition(partition_table=partition_table)
+        iscsi_filesystem = factory.make_Filesystem(
+            block_device=iscsi_block_devices[0])
+        iscsi_partition_table = factory.make_PartitionTable(
+            block_device=iscsi_block_devices[1])
+        iscsi_partition = factory.make_Partition(
+            partition_table=iscsi_partition_table)
         fslvm = factory.make_Filesystem(
             block_device=physical_block_devices[2],
+            fstype=FILESYSTEM_TYPE.LVM_PV)
+        iscsi_fslvm = factory.make_Filesystem(
+            block_device=iscsi_block_devices[2],
             fstype=FILESYSTEM_TYPE.LVM_PV)
         vgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[fslvm])
@@ -3553,6 +3575,12 @@ class TestNode(MAASServerTestCase):
             filesystem_group=vgroup, size=2 * 1000 ** 3)
         vbd2 = factory.make_VirtualBlockDevice(
             filesystem_group=vgroup, size=3 * 1000 ** 3)
+        iscsi_vgroup = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[iscsi_fslvm])
+        iscsi_vbd1 = factory.make_VirtualBlockDevice(
+            filesystem_group=iscsi_vgroup, size=2 * 1000 ** 3)
+        iscsi_vbd2 = factory.make_VirtualBlockDevice(
+            filesystem_group=iscsi_vgroup, size=3 * 1000 ** 3)
         filesystem_on_vbd1 = factory.make_Filesystem(
             block_device=vbd1, fstype=FILESYSTEM_TYPE.LVM_PV)
         vgroup_on_vgroup = factory.make_FilesystemGroup(
@@ -3560,11 +3588,17 @@ class TestNode(MAASServerTestCase):
             filesystems=[filesystem_on_vbd1])
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
             filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3)
+        filesystem_on_iscsi_vbd1 = factory.make_Filesystem(
+            block_device=iscsi_vbd1, fstype=FILESYSTEM_TYPE.LVM_PV)
         node._clear_full_storage_configuration()
         for pbd in physical_block_devices:
             self.expectThat(
                 reload_object(pbd), Not(Is(None)),
                 "Physical block device should not have been deleted.")
+        for ibd in iscsi_block_devices:
+            self.expectThat(
+                reload_object(ibd), Not(Is(None)),
+                "ISCSI block device should not have been deleted.")
         self.expectThat(
             reload_object(filesystem), Is(None),
             "Filesystem should have been removed.")
@@ -3575,7 +3609,19 @@ class TestNode(MAASServerTestCase):
             reload_object(partition), Is(None),
             "Partition should have been removed.")
         self.expectThat(
+            reload_object(iscsi_filesystem), Is(None),
+            "Filesystem should have been removed.")
+        self.expectThat(
+            reload_object(iscsi_partition_table), Is(None),
+            "PartitionTable should have been removed.")
+        self.expectThat(
+            reload_object(iscsi_partition), Is(None),
+            "Partition should have been removed.")
+        self.expectThat(
             reload_object(fslvm), Is(None),
+            "LVM PV Filesystem should have been removed.")
+        self.expectThat(
+            reload_object(iscsi_fslvm), Is(None),
             "LVM PV Filesystem should have been removed.")
         self.expectThat(
             reload_object(vgroup), Is(None),
@@ -3587,6 +3633,15 @@ class TestNode(MAASServerTestCase):
             reload_object(vbd2), Is(None),
             "Virtual block device should have been removed.")
         self.expectThat(
+            reload_object(iscsi_vgroup), Is(None),
+            "Volume group should have been removed.")
+        self.expectThat(
+            reload_object(iscsi_vbd1), Is(None),
+            "Virtual block device should have been removed.")
+        self.expectThat(
+            reload_object(iscsi_vbd2), Is(None),
+            "Virtual block device should have been removed.")
+        self.expectThat(
             reload_object(filesystem_on_vbd1), Is(None),
             "Filesystem on virtual block device should have been removed.")
         self.expectThat(
@@ -3596,6 +3651,9 @@ class TestNode(MAASServerTestCase):
             reload_object(vbd3_on_vbd1), Is(None),
             "Virtual block device on another virtual block device should have "
             "been removed.")
+        self.expectThat(
+            reload_object(filesystem_on_iscsi_vbd1), Is(None),
+            "Filesystem on virtual block device should have been removed.")
 
     def test__create_acquired_filesystems(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)

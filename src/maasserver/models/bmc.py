@@ -41,6 +41,10 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import PhysicalInterface
+from maasserver.models.iscsiblockdevice import (
+    get_iscsi_target,
+    ISCSIBlockDevice,
+)
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
@@ -57,6 +61,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 import petname
 from provisioningserver.drivers import SETTING_SCOPE
+from provisioningserver.drivers.pod import BlockDeviceType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import asynchronous
@@ -149,10 +154,13 @@ class BMC(CleanSave, TimestampedModel):
     capabilities = ArrayField(
         TextField(), blank=True, null=True, default=list)
     cores = IntegerField(blank=False, null=False, default=0)
-    cpu_speed = IntegerField(blank=False, null=False, default=0)
+    cpu_speed = IntegerField(blank=False, null=False, default=0)  # MHz
     memory = IntegerField(blank=False, null=False, default=0)
-    local_storage = BigIntegerField(blank=False, null=False, default=0)
+    local_storage = BigIntegerField(  # Bytes
+        blank=False, null=False, default=0)
     local_disks = IntegerField(blank=False, null=False, default=-1)
+    iscsi_storage = BigIntegerField(  # Bytes
+        blank=False, null=False, default=-1)
 
     def __str__(self):
         return "%s (%s)" % (
@@ -441,6 +449,7 @@ class Pod(BMC):
         hints.memory = discovered_hints.memory
         hints.local_storage = discovered_hints.local_storage
         hints.local_disks = discovered_hints.local_disks
+        hints.iscsi_storage = discovered_hints.iscsi_storage
         hints.save()
 
     def _find_existing_machine(self, discovered_machine, mac_machine_map):
@@ -451,7 +460,7 @@ class Pod(BMC):
                 return mac_machine_map[interface.mac_address]
         return None
 
-    def _create_block_device(self, discovered_bd, machine, name=None):
+    def _create_physical_block_device(self, discovered_bd, machine, name=None):
         """Create's a new `PhysicalBlockDevice` for `machine`."""
         if name is None:
             name = machine.get_next_block_device_name()
@@ -470,6 +479,37 @@ class Pod(BMC):
             size=discovered_bd.size,
             block_size=discovered_bd.block_size,
             tags=discovered_bd.tags)
+
+    def _create_iscsi_block_device(self, discovered_bd, machine, name=None):
+        """Create's a new `ISCSIBlockDevice` for `machine`.
+
+        `ISCSIBlockDevice.target` are unique. So if one exists on another
+        machine it will be moved from that machine to this machine.
+        """
+        if name is None:
+            name = machine.get_next_block_device_name()
+        target = get_iscsi_target(discovered_bd.iscsi_target)
+        block_device, created = ISCSIBlockDevice.objects.get_or_create(
+            target=target, defaults={
+                'name': name,
+                'node': machine,
+                'size': discovered_bd.size,
+                'block_size': discovered_bd.block_size,
+                'tags': discovered_bd.tags,
+            })
+        if not created:
+            podlog.warning(
+                "%s: ISCSI block device with target %s was discovered on "
+                "machine %s and was moved from %s." % (
+                    self.name, target,
+                    machine.hostname, block_device.node.hostname))
+            block_device.name = name
+            block_device.node = machine
+            block_device.size = discovered_bd.size
+            block_device.block_size = discovered_bd.block_size
+            block_device.tags = discovered_bd.tags
+            block_device.save()
+        return block_device
 
     def _create_interface(self, discovered_nic, machine, name=None):
         """Create's a new physical `Interface` for `machine`."""
@@ -537,9 +577,17 @@ class Pod(BMC):
         # Create the discovered block devices and set the initial storage
         # layout for the machine.
         for idx, discovered_bd in enumerate(discovered_machine.block_devices):
-            self._create_block_device(
-                discovered_bd, machine,
-                name=BlockDevice._get_block_name_from_idx(idx))
+            if discovered_bd.type == BlockDeviceType.PHYSICAL:
+                self._create_physical_block_device(
+                    discovered_bd, machine,
+                    name=BlockDevice._get_block_name_from_idx(idx))
+            elif discovered_bd.type == BlockDeviceType.ISCSI:
+                self._create_iscsi_block_device(
+                    discovered_bd, machine,
+                    name=BlockDevice._get_block_name_from_idx(idx))
+            else:
+                raise ValueError(
+                    "Unknown block device type: %s" % discovered_bd.type)
         if skip_commissioning:
             machine.set_default_storage_layout()
 
@@ -611,48 +659,62 @@ class Pod(BMC):
         model_mapping = {
             '%s/%s' % (block_device.model, block_device.serial): block_device
             for block_device in block_devices
-            if block_device.model and block_device.serial
+            if (block_device.type == BlockDeviceType.PHYSICAL and
+                block_device.model and block_device.serial)
         }
         path_mapping = {
             block_device.id_path: block_device
             for block_device in block_devices
-            if not block_device.model or not block_device.serial
+            if (block_device.type == BlockDeviceType.PHYSICAL and
+                (not block_device.model or not block_device.serial))
+        }
+        iscsi_mapping = {
+            block_device.iscsi_target: block_device
+            for block_device in block_devices
+            if block_device.type == BlockDeviceType.ISCSI
         }
         existing_block_devices = map(
             lambda bd: bd.actual_instance,
             existing_machine.blockdevice_set.all())
-        existing_block_devices = [
-            block_device
-            for block_device in existing_block_devices
-            if isinstance(block_device, PhysicalBlockDevice)
-        ]
         for block_device in existing_block_devices:
-            if block_device.model and block_device.serial:
-                key = '%s/%s' % (block_device.model, block_device.serial)
-                if key in model_mapping:
-                    self._sync_block_device(
-                        model_mapping.pop(key), block_device)
+            if isinstance(block_device, PhysicalBlockDevice):
+                if block_device.model and block_device.serial:
+                    key = '%s/%s' % (block_device.model, block_device.serial)
+                    if key in model_mapping:
+                        self._sync_block_device(
+                            model_mapping.pop(key), block_device)
+                    else:
+                        block_device.delete()
                 else:
-                    block_device.delete()
-            else:
-                if block_device.id_path in path_mapping:
+                    if block_device.id_path in path_mapping:
+                        self._sync_block_device(
+                            path_mapping.pop(block_device.id_path),
+                            block_device)
+                    else:
+                        block_device.delete()
+            elif isinstance(block_device, ISCSIBlockDevice):
+                target = get_iscsi_target(block_device.target)
+                if target in iscsi_mapping:
                     self._sync_block_device(
-                        path_mapping.pop(block_device.id_path), block_device)
+                        iscsi_mapping.pop(target), block_device)
                 else:
                     block_device.delete()
         for _, discovered_block_device in model_mapping.items():
-            self._create_block_device(
+            self._create_physical_block_device(
                 discovered_block_device, existing_machine)
         for _, discovered_block_device in path_mapping.items():
-            self._create_block_device(
+            self._create_physical_block_device(
+                discovered_block_device, existing_machine)
+        for _, discovered_block_device in iscsi_mapping.items():
+            self._create_iscsi_block_device(
                 discovered_block_device, existing_machine)
 
     def _sync_block_device(self, discovered_bd, existing_bd):
         """Sync the `discovered_bd` with the `existing_bd`.
 
-        The model, serial, and id_path is not handled here because if either
-        changed then no way of matching between an existing block device is
-        possible.
+        The model, serial, id_path, and target is not handled here because if
+        either changed then no way of matching between an existing block
+        device is possible.
         """
         existing_bd.size = discovered_bd.size
         existing_bd.block_size = discovered_bd.block_size
@@ -758,6 +820,7 @@ class Pod(BMC):
         self.memory = discovered_pod.memory
         self.local_storage = discovered_pod.local_storage
         self.local_disks = discovered_pod.local_disks
+        self.iscsi_storage = discovered_pod.iscsi_storage
         self.save()
         self.sync_hints(discovered_pod.hints)
         self.sync_machines(discovered_pod.machines, commissioning_user)

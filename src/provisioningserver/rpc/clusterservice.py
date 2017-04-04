@@ -37,7 +37,6 @@ from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from provisioningserver.drivers.storage.registry import StorageDriverRegistry
 from provisioningserver.logger import (
     get_maas_logger,
     LegacyLogger,
@@ -303,17 +302,6 @@ class Cluster(RPCProtocol):
         """
         return {
             'power_types': list(PowerDriverRegistry.get_schema()),
-        }
-
-    @cluster.DescribeStorageTypes.responder
-    def describe_storage_types(self):
-        """describe_storage_types()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribeStorageTypes`.
-        """
-        return {
-            'storage_types': list(StorageDriverRegistry.get_schema()),
         }
 
     @cluster.ListSupportedArchitectures.responder

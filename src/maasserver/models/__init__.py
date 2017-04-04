@@ -35,6 +35,7 @@ __all__ = [
     'FilesystemGroup',
     'Interface',
     'IPRange',
+    'ISCSIBlockDevice',
     'KeySource',
     'LargeFile',
     'LicenseKey',
@@ -135,6 +136,7 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.models.iprange import IPRange
+from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.keysource import KeySource
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey

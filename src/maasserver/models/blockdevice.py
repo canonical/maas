@@ -157,42 +157,51 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     @property
     def type(self):
-        # Circular imports, since PhysicalBlockDevice and VirtualBlockDevice
-        # extend from this calss.
+        # Circular imports, since ISCSIBlockDevice, PhysicalBlockDevice and
+        # VirtualBlockDevice extend from this calss.
+        from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
         actual_instance = self.actual_instance
-        if isinstance(actual_instance, PhysicalBlockDevice):
+        if isinstance(actual_instance, ISCSIBlockDevice):
+            return "iscsi"
+        elif isinstance(actual_instance, PhysicalBlockDevice):
             return "physical"
         elif isinstance(actual_instance, VirtualBlockDevice):
             return "virtual"
         else:
             raise ValueError(
                 "BlockDevice is not a subclass of "
-                "PhysicalBlockDevice or VirtualBlockDevice")
+                "ISCSIBlockDevice, PhysicalBlockDevice or VirtualBlockDevice")
 
     @property
     def actual_instance(self):
         """Return the instance as its correct type.
 
         By default all references from Django will be to `BlockDevice`, when
-        the native type `PhysicalBlockDevice` or `VirtualBlockDevice` is needed
-        use this property to get its actual instance.
+        the native type `ISCSIBlockDevice`, `PhysicalBlockDevice` or
+        `VirtualBlockDevice` is needed use this property to get its actual
+        instance.
         """
-        # Circular imports, since PhysicalBlockDevice and VirtualBlockDevice
-        # extend from this calss.
+        # Circular imports, since ISCSIBlockDevice, PhysicalBlockDevice and
+        # VirtualBlockDevice extend from this calss.
+        from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
-        if (isinstance(self, PhysicalBlockDevice) or
+        if (isinstance(self, ISCSIBlockDevice) or
+                isinstance(self, PhysicalBlockDevice) or
                 isinstance(self, VirtualBlockDevice)):
             return self
         try:
-            return self.physicalblockdevice
-        except PhysicalBlockDevice.DoesNotExist:
+            return self.iscsiblockdevice
+        except:
             try:
-                return self.virtualblockdevice
-            except VirtualBlockDevice.DoesNotExist:
-                pass
+                return self.physicalblockdevice
+            except PhysicalBlockDevice.DoesNotExist:
+                try:
+                    return self.virtualblockdevice
+                except VirtualBlockDevice.DoesNotExist:
+                    pass
         return self
 
     def get_effective_filesystem(self):
