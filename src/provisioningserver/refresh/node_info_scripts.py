@@ -366,26 +366,20 @@ def lldpd_install(config_file):
 
 # This function must be entirely self-contained. It must not use
 # variables or imports from the surrounding scope.
-def lldpd_wait(reference_file, time_delay):
+def lldpd_capture(reference_file, time_delay):
     """Wait until `lldpd` has been running for `time_delay` seconds.
 
     On an Ubuntu system, `reference_file` is typically `lldpd`'s UNIX
-    socket in `/var/run`.
+    socket in `/var/run`. After waiting capture any output.
 
     """
     from os.path import getmtime
-    time_ref = getmtime(reference_file)
     from time import sleep, time
+    from subprocess import check_call
+    time_ref = getmtime(reference_file)
     time_remaining = time_ref + time_delay - time()
     if time_remaining > 0:
         sleep(time_remaining)
-
-
-# This function must be entirely self-contained. It must not use
-# variables or imports from the surrounding scope.
-def lldpd_capture():
-    """Capture LLDP information from `lldpd` in XML form."""
-    from subprocess import check_call
     check_call(("lldpctl", "-f", "xml"))
 
 
@@ -620,17 +614,11 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(seconds=10),
         'run_on_controller': True,
     }),
-    ('99-maas-01-wait-for-lldpd', {
+    (LLDP_OUTPUT_NAME, {
         'content': make_function_call_script(
-            lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
+            lldpd_capture, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
         'timeout': timedelta(minutes=1),
-        'run_on_controller': False,
-    }),
-    (LLDP_OUTPUT_NAME, {
-        'content': make_function_call_script(lldpd_capture),
-        'hook': null_hook,
-        'timeout': timedelta(seconds=10),
         'run_on_controller': False,
     }),
     ('99-maas-03-network-interfaces', {

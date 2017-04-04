@@ -176,18 +176,19 @@ class TestLLDPScripts(MAASTestCase):
             config_observed = fd.read()
         self.assertEqual(config_expected, config_observed)
 
-    def test_wait_script_waits_for_lldpd(self):
+    def test_capture_lldpd_script_waits_for_lldpd(self):
         reference_file = self.make_file("reference")
         time_delay = 8.98  # seconds
-        lldpd_wait = isolate_function(node_info_module.lldpd_wait)
+        lldpd_capture = isolate_function(node_info_module.lldpd_capture)
         # Do the patching as late as possible, because the setup may call
         # one of the patched functions somewhere in the plumbing.  We've had
         # spurious test failures over this: bug 1283918.
         self.patch(os.path, "getmtime").return_value = 10.65
         self.patch(time, "time").return_value = 14.12
         self.patch(time, "sleep")
+        self.patch(subprocess, "check_call")
 
-        lldpd_wait(reference_file, time_delay)
+        lldpd_capture(reference_file, time_delay)
 
         # lldpd_wait checks the mtime of the reference file,
         self.assertThat(os.path.getmtime, MockCalledOnceWith(reference_file))
@@ -199,10 +200,11 @@ class TestLLDPScripts(MAASTestCase):
             os.path.getmtime.return_value + time_delay -
             time.time.return_value))
 
-    def test_capture_calls_lldpdctl(self):
+    def test_capture_lldpd_calls_lldpdctl(self):
+        reference_file = self.make_file("reference")
         check_call = self.patch(subprocess, "check_call")
         lldpd_capture = isolate_function(node_info_module.lldpd_capture)
-        lldpd_capture()
+        lldpd_capture(reference_file, 0.0)
         self.assertEqual(
             check_call.call_args_list,
             [call(("lldpctl", "-f", "xml"))])
