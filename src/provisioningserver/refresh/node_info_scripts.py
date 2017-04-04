@@ -135,7 +135,10 @@ SUPPORT_SCRIPT = dedent("""\
     if [ "$URL" != "" ]; then
         echo ""
         echo "-----BEGIN CLOUD CONFIG QUERY-----"
-        curl -v "$URL" 2>&1
+        # Filter out any base64 strings having to do with secrets or keys.
+        curl -v "$URL" 2>&1 | \
+            sed '/_key: \|_secret: /'`
+               `'s/: [a-zA-Z0-9/+=]\{12,128\}/: (withheld)/g'
         echo "-----END CLOUD CONFIG QUERY-----"
     fi
     echo ""
@@ -145,7 +148,7 @@ SUPPORT_SCRIPT = dedent("""\
     if [ -x "$(which lspci)" ]; then
         echo ""
         echo "-----BEGIN PCI INFO-----"
-        lspci -nnv
+        lspci -nn
         echo "-----END PCI INFO-----"
     fi
     if [ -x "$(which lsusb)" ]; then
@@ -163,7 +166,7 @@ SUPPORT_SCRIPT = dedent("""\
     echo "-----BEGIN SERIAL PORTS-----"
     find /sys/class/tty/ ! -type d -print0 2> /dev/null \
         | xargs -0 readlink -f \
-        | sort -u
+        | sort -u | egrep -v 'devices/virtual|devices/platform'
     echo "-----END SERIAL PORTS-----"
     echo ""
     echo "-----BEGIN NETWORK INTERFACES-----"
@@ -208,10 +211,6 @@ SUPPORT_SCRIPT = dedent("""\
             base64 $DMI_OUTFILE
             echo "-----END DMI DATA-----"
         ) || (echo "Unable to read DMI information."; exit 0)
-        echo ""
-        echo "-----BEGIN FULL DMI DECODE-----"
-        dmidecode -u --from-dump $DMI_OUTFILE
-        echo "-----END FULL DMI DECODE-----"
         # via http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmiopt.c
         DMI_STRINGS="
             bios-vendor
