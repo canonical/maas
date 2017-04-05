@@ -26,11 +26,13 @@ from maasserver.forms import (
 )
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
+    BlockDevice,
     Interface,
     PhysicalBlockDevice,
     Pod,
     Subnet,
     Tag,
+    VirtualBlockDevice,
     VLAN,
     Zone,
 )
@@ -291,7 +293,7 @@ def get_storage_constraints_from_string(storage):
     return head + tail
 
 
-def nodes_by_storage(storage):
+def nodes_by_storage(storage, node_ids=None):
     """Return list of dicts describing matching nodes and matched block devices
 
     For a constraint string like "root:30(ssd),data:1000(rotary,5400rpm)", we'd
@@ -320,8 +322,10 @@ def nodes_by_storage(storage):
             # Sort the `PhysicalBlockDevice`s by id because we consider the
             # first device as the root device.
             root_device = False
-            matched_devices = PhysicalBlockDevice.objects.all().order_by('id')
-            matched_devices = matched_devices.values(
+            matched_devices = PhysicalBlockDevice.objects.all()
+            if node_ids is not None:
+                matched_devices = matched_devices.filter(node_id__in=node_ids)
+            matched_devices = matched_devices.order_by('id').values(
                 'id', 'node_id', 'size', 'tags')
 
             # Only keep the first device for every node. This is done to make
@@ -352,17 +356,27 @@ def nodes_by_storage(storage):
                     ]
             matched_devices = devices
         else:
-            # Query for the `PhysicalBlockDevice`s that have the closest size
-            # and, if specified, the given tags.
+            # Query for the `PhysicalBlockDevice`s and `ISCSIBlockDevice`'s
+            # that have the closest size and, if specified, the given tags.
             if tags is None:
-                matched_devices = PhysicalBlockDevice.objects.filter(
+                matched_devices = BlockDevice.objects.filter(
                     size__gte=size).order_by('size')
             else:
-                matched_devices = PhysicalBlockDevice.objects.filter_by_tags(
+                matched_devices = BlockDevice.objects.filter_by_tags(
                     tags).filter(size__gte=size)
-            matched_devices = matched_devices.order_by('size')
-            matched_devices = matched_devices.values(
-                'id', 'node_id', 'size', 'tags')
+            if node_ids is not None:
+                matched_devices = matched_devices.filter(
+                    node_id__in=node_ids)
+            matched_devices = [
+                {
+                    'id': device.id,
+                    'node_id': device.node_id,
+                    'size': device.size,
+                    'tags': device.tags,
+                }
+                for device in matched_devices.order_by('size')
+                if not isinstance(device.actual_instance, VirtualBlockDevice)
+            ]
 
         # Loop through all the returned devices. Insert only the first
         # device from each node into `matches`.

@@ -500,8 +500,13 @@ class TestRequestClasses(MAASTestCase):
 
     def test_block_device_size(self):
         size = random.randint(512, 512 * 1024)
-        device = RequestedMachineBlockDevice(size=size)
+        tags = [
+            factory.make_name('tag')
+            for _ in range(3)
+        ]
+        device = RequestedMachineBlockDevice(size=size, tags=tags)
         self.assertEquals(size, device.size)
+        self.assertEquals(tags, device.tags)
 
     def test_machine(self):
         hostname = factory.make_name('hostname')
@@ -514,7 +519,10 @@ class TestRequestClasses(MAASTestCase):
         ]
         block_devices = [
             RequestedMachineBlockDevice(
-                size=random.randint(512, 1024))
+                size=random.randint(512, 1024), tags=[
+                    factory.make_name('tag')
+                    for _ in range(3)
+                ])
             for _ in range(3)
         ]
         machine = RequestedMachine(
@@ -564,7 +572,11 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         block_devices = [
-            RequestedMachineBlockDevice(size=random.randint(512, 1024))
+            RequestedMachineBlockDevice(
+                size=random.randint(512, 1024), tags=[
+                    factory.make_name('tag')
+                    for _ in range(3)
+                ])
             for _ in range(3)
         ]
         machine = RequestedMachine(
@@ -584,6 +596,7 @@ class TestRequestClasses(MAASTestCase):
             "block_devices": MatchesListwise([
                 MatchesDict({
                     "size": Equals(block_device.size),
+                    "tags": Equals(block_device.tags),
                 })
                 for block_device in block_devices
             ]),
@@ -599,7 +612,10 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         block_devices = [
-            dict(size=random.randint(512, 1024))
+            dict(size=random.randint(512, 1024), tags=[
+                factory.make_name('tag')
+                for _ in range(3)
+            ])
             for _ in range(3)
         ]
         machine_data = dict(
@@ -623,6 +639,7 @@ class TestRequestClasses(MAASTestCase):
                     IsInstance(RequestedMachineBlockDevice),
                     MatchesStructure(
                         size=Equals(block_device['size']),
+                        tags=Equals(block_device['tags']),
                     ),
                 )
                 for block_device in block_devices

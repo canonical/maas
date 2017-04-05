@@ -164,6 +164,9 @@ class PodHandler(OperationsHandler):
         :param cpu_speed: Minimum amount of CPU speed (MHz).
         :param architecture: Architecture for the machine. Must be an
             architecture that the pod supports.
+        :param storage: A list of storage constraint identifiers, in the form:
+            <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
+        :type storage: unicode
 
         Returns 404 if the pod is not found.
         Returns 403 if the user does not have permission to compose machine.

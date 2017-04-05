@@ -77,7 +77,10 @@ from maasserver.models import (
     RackController,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.node_constraint_filter_forms import AcquireNodeForm
+from maasserver.node_constraint_filter_forms import (
+    AcquireNodeForm,
+    nodes_by_storage,
+)
 from maasserver.preseed import get_curtin_merged_config
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -1357,10 +1360,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     architecture = (
                         None if len(architectures) == 0
                         else min(architectures))
+                storage = form.cleaned_data.get('storage')
                 data = {
                     "cores": cores,
                     "memory": memory,
                     "architecture": architecture,
+                    "storage": storage,
                 }
                 pods = Pod.objects.all()
                 if pods:
@@ -1373,6 +1378,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
                         request=request, data=data, pods=pods)
                     if compose_form.is_valid():
                         machine = compose_form.compose()
+                        # Set the storage variable so the constraint_map is
+                        # set correct for the composed machine.
+                        storage = nodes_by_storage(
+                            storage, node_ids=[machine.id])
+                        if storage is None:
+                            storage = {}
             if machine is None:
                 constraints = form.describe_constraints()
                 if constraints == '':

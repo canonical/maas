@@ -77,11 +77,10 @@ def make_pod_with_hints():
         "amd64/generic", "i386/generic", "arm64/generic",
         "armhf/generic"
     ]
-    cpu_speed = random.randint(2000, 3000)
-    pod = factory.make_Pod(
-        architectures=architectures, cpu_speed=cpu_speed)
+    pod = factory.make_Pod(architectures=architectures)
     pod.hints.cores = random.randint(8, 16)
     pod.hints.memory = random.randint(4096, 8192)
+    pod.hints.cpu_speed = random.randint(2000, 3000)
     pod.hints.save()
     return pod
 
@@ -602,7 +601,7 @@ class TestComposeMachineForm(MAASServerTestCase):
             validators=MatchesSetwise(
                 MatchesAll(
                     IsInstance(MaxValueValidator),
-                    MatchesStructure(limit_value=Equals(pod.cpu_speed))),
+                    MatchesStructure(limit_value=Equals(pod.hints.cpu_speed))),
                 MatchesAll(
                     IsInstance(MinValueValidator),
                     MatchesStructure(limit_value=Equals(300))))))
@@ -610,7 +609,7 @@ class TestComposeMachineForm(MAASServerTestCase):
     def test__sets_up_fields_based_on_pod_no_max_cpu_speed(self):
         request = MagicMock()
         pod = make_pod_with_hints()
-        pod.cpu_speed = 0
+        pod.hints.cpu_speed = 0
         pod.save()
         form = ComposeMachineForm(request=request, pod=pod)
         self.assertThat(form.fields['cpu_speed'], MatchesStructure(
@@ -636,7 +635,7 @@ class TestComposeMachineForm(MAASServerTestCase):
                 block_devices=MatchesListwise([
                     MatchesAll(
                         IsInstance(RequestedMachineBlockDevice),
-                        MatchesStructure(size=Equals(8 * (1024 ** 3))))]),
+                        MatchesStructure(size=Equals(8 * (1000 ** 3))))]),
                 interfaces=MatchesListwise([
                     IsInstance(RequestedMachineInterface)]))))
 
@@ -646,14 +645,28 @@ class TestComposeMachineForm(MAASServerTestCase):
         architecture = random.choice(pod.architectures)
         cores = random.randint(1, pod.hints.cores)
         memory = random.randint(1024, pod.hints.memory)
-        cpu_speed = random.randint(300, pod.cpu_speed)
+        cpu_speed = random.randint(300, pod.hints.cpu_speed)
+        disk_1 = random.randint(8, 16) * (1000 ** 3)
+        disk_1_tags = [
+            factory.make_name('tag')
+            for _ in range(3)
+        ]
+        disk_2 = random.randint(8, 16) * (1000 ** 3)
+        disk_2_tags = [
+            factory.make_name('tag')
+            for _ in range(3)
+        ]
+        storage = 'root:%d(%s),extra:%d(%s)' % (
+            disk_1 // (1000 ** 3), ','.join(disk_1_tags),
+            disk_2 // (1000 ** 3), ','.join(disk_2_tags))
         form = ComposeMachineForm(data={
             'architecture': architecture,
             'cores': cores,
             'memory': memory,
             'cpu_speed': cpu_speed,
+            'storage': storage,
         }, request=request, pod=pod)
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         request_machine = form.get_requested_machine()
         self.assertThat(request_machine, MatchesAll(
             IsInstance(RequestedMachine),
@@ -665,7 +678,13 @@ class TestComposeMachineForm(MAASServerTestCase):
                 block_devices=MatchesListwise([
                     MatchesAll(
                         IsInstance(RequestedMachineBlockDevice),
-                        MatchesStructure(size=Equals(8 * (1024 ** 3))))]),
+                        MatchesStructure(
+                            size=Equals(disk_1), tags=Equals(disk_1_tags))),
+                    MatchesAll(
+                        IsInstance(RequestedMachineBlockDevice),
+                        MatchesStructure(
+                            size=Equals(disk_2), tags=Equals(disk_2_tags))),
+                    ]),
                 interfaces=MatchesListwise([
                     IsInstance(RequestedMachineInterface)]))))
 

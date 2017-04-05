@@ -39,6 +39,10 @@ from maasserver.models import (
     Pod,
     RackController,
 )
+from maasserver.node_constraint_filter_forms import (
+    get_storage_constraints_from_string,
+    storage_validator,
+)
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
@@ -59,8 +63,7 @@ def make_unique_hostname():
     """Returns a unique machine hostname."""
     while True:
         hostname = petname.Generate(2, "-")
-        machines = Machine.objects.filter(hostname=hostname)
-        if len(machines) > 0:
+        if Machine.objects.filter(hostname=hostname).exists():
             continue
         else:
             return hostname
@@ -293,14 +296,18 @@ class ComposeMachineForm(forms.Form):
                 for arch in self.pod.architectures
             ], required=False)
         self.initial['architecture'] = self.pod.architectures[0]
-        if self.pod.cpu_speed > 0:
+        if self.pod.hints.cpu_speed > 0:
             self.fields['cpu_speed'] = IntegerField(
-                min_value=300, max_value=self.pod.cpu_speed, required=False)
+                min_value=300, max_value=self.pod.hints.cpu_speed,
+                required=False)
         else:
             self.fields['cpu_speed'] = IntegerField(
                 min_value=300, required=False)
         self.fields['hostname'] = CharField(required=False)
         self.initial['hostname'] = make_unique_hostname()
+        self.fields['storage'] = CharField(
+            validators=[storage_validator], required=False)
+        self.initial['storage'] = 'root:8(local)'
 
     def get_value_for(self, field):
         """Get the value for `field`. Use initial data if missing or set to
@@ -315,16 +322,21 @@ class ComposeMachineForm(forms.Form):
 
     def get_requested_machine(self):
         """Return the `RequestedMachine`."""
-        # XXX blake_r 2017-01-31: Disks and interfaces are hard coded at the
+        # XXX blake_r 2017-04-04: Interfaces are hard coded at the
         # moment. Will be extended later.
+        block_devices = []
+        constraints = get_storage_constraints_from_string(
+            self.get_value_for('storage'))
+        for _, size, tags in constraints:
+            block_devices.append(
+                RequestedMachineBlockDevice(size=size, tags=tags))
         return RequestedMachine(
             hostname=self.get_value_for('hostname'),
             architecture=self.get_value_for('architecture'),
             cores=self.get_value_for('cores'),
             memory=self.get_value_for('memory'),
             cpu_speed=self.get_value_for('cpu_speed'),
-            block_devices=[
-                RequestedMachineBlockDevice(size=(8 * (1024 ** 3)))],
+            block_devices=block_devices,
             interfaces=[RequestedMachineInterface()])
 
     def save(self):

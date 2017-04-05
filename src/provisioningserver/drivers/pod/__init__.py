@@ -262,6 +262,7 @@ class DiscoveredPod(AttrHelperMixin):
 class RequestedMachineBlockDevice(AttrHelperMixin):
     """Requested machine block device information."""
     size = attr.ib(convert=int)
+    tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
 
 
 @attr.s
