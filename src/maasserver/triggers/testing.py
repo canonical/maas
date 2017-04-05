@@ -412,7 +412,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def delete_scriptset(self, script_set):
-        script_set.delete()
+        script_set.delete(force=True)
 
     @transactional
     def create_scriptresult(self, script_set, params=None):

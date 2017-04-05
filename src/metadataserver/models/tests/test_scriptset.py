@@ -5,12 +5,14 @@ __all__ = []
 
 import random
 
+from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
 from maasserver.models import Config
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_TYPE,
@@ -145,6 +147,22 @@ class TestScriptSetManager(MAASServerTestCase):
                 node=node,
                 result_type=RESULT_TYPE.COMMISSIONING).count())
 
+    def test_create_commissioning_script_set_cleans_up_current(self):
+        Config.objects.set_config('max_node_commissioning_results', 1)
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING)
+        node.current_commissioning_script_set = script_set
+        node.save()
+
+        ScriptSet.objects.create_commissioning_script_set(node)
+
+        self.assertEquals(
+            1,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.COMMISSIONING).count())
+
     def test_create_testing_script_set(self):
         node = factory.make_Node()
         expected_scripts = [
@@ -215,6 +233,24 @@ class TestScriptSetManager(MAASServerTestCase):
                 node=node,
                 result_type=RESULT_TYPE.TESTING).count())
 
+    def test_create_testing_script_set_cleans_up_current(self):
+        Config.objects.set_config('max_node_testing_results', 1)
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_testing_script_set = script_set
+        node.save()
+
+        script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
+        ScriptSet.objects.create_testing_script_set(
+            node, scripts=[script.name])
+
+        self.assertEquals(
+            1,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.TESTING).count())
+
     def test_create_installation_script_set(self):
         node = factory.make_Node()
 
@@ -238,6 +274,22 @@ class TestScriptSetManager(MAASServerTestCase):
 
         self.assertEquals(
             script_set_limit,
+            ScriptSet.objects.filter(
+                node=node,
+                result_type=RESULT_TYPE.INSTALLATION).count())
+
+    def test_create_installation_script_set_cleans_up_current(self):
+        Config.objects.get_config('max_node_installation_results', 1)
+        node = factory.make_Node()
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
+        node.current_installation_script_set = script_set
+        node.save()
+
+        ScriptSet.objects.create_installation_script_set(node)
+
+        self.assertEquals(
+            1,
             ScriptSet.objects.filter(
                 node=node,
                 result_type=RESULT_TYPE.INSTALLATION).count())
@@ -271,3 +323,45 @@ class TestScriptSet(MAASServerTestCase):
     def test_find_script_result_returns_none_when_not_found(self):
         script_set = factory.make_ScriptSet()
         self.assertIsNone(script_set.find_script_result())
+
+    def test_delete(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        orig_commissioning_script_set = node.current_commissioning_script_set
+        orig_testing_script_set = node.current_testing_script_set
+        orig_installation_script_set = node.current_installation_script_set
+        script_set = factory.make_ScriptSet(node=node)
+
+        script_set.delete()
+
+        node = reload_object(node)
+        self.assertIsNone(reload_object(script_set))
+        self.assertEquals(
+            orig_commissioning_script_set,
+            node.current_commissioning_script_set)
+        self.assertEquals(
+            orig_testing_script_set, node.current_testing_script_set)
+        self.assertEquals(
+            orig_installation_script_set, node.current_installation_script_set)
+
+    def test_delete_prevents_del_of_current_commissioning_script_set(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        self.assertRaises(
+            ValidationError, node.current_commissioning_script_set.delete)
+
+    def test_delete_prevents_del_of_current_installation_script_set(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        self.assertRaises(
+            ValidationError, node.current_installation_script_set.delete)
+
+    def test_delete_sets_current_testing_script_set_to_older_version(self):
+        node = factory.make_Node(with_empty_script_sets=True)
+        previous_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.current_testing_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.TESTING)
+        node.save()
+
+        node.current_testing_script_set.delete()
+        self.assertEquals(
+            previous_script_set,
+            reload_object(node).current_testing_script_set)

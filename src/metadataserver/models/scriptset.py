@@ -5,7 +5,10 @@ __all__ = [
     "ScriptSet",
 ]
 
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.db.models import (
     CASCADE,
     CharField,
@@ -57,7 +60,7 @@ class ScriptSetManager(Manager):
         script_set_limit -= 1
         if script_sets.count() > script_set_limit:
             for script_set in script_sets[script_set_limit:]:
-                script_set.delete()
+                script_set.delete(force=True)
 
     def create_commissioning_script_set(self, node, scripts=[]):
         """Create a new commissioning ScriptSet with ScriptResults
@@ -184,12 +187,15 @@ class ScriptSet(CleanSave, Model):
         editable=False)
 
     def __str__(self):
-        return "%s/%s" % (
-            self.node.system_id, RESULT_TYPE_CHOICES[self.result_type][1])
+        return "%s/%s" % (self.node.system_id, self.result_type_name)
 
     def __iter__(self):
         for script_result in self.scriptresult_set.all():
             yield script_result
+
+    @property
+    def result_type_name(self):
+        return RESULT_TYPE_CHOICES[self.result_type][1]
 
     def find_script_result(self, script_result_id=None, script_name=None):
         """Find a script result in the current set."""
@@ -203,3 +209,31 @@ class ScriptSet(CleanSave, Model):
                 if script_result.name == script_name:
                     return script_result
         return None
+
+    def delete(self, force=False, *args, **kwargs):
+        if not force and self in {
+                self.node.current_commissioning_script_set,
+                self.node.current_installation_script_set}:
+            # Don't allow deleting current_commissioing_script_set as it is
+            # the data set MAAS used to gather hardware information about the
+            # node. The current_installation_script_set is only set when a node
+            # is deployed. Don't allow it to be deleted as it contains info
+            # about the OS deployed.
+            raise ValidationError(
+                'Unable to delete the current %s script set for node: %s' % (
+                    self.result_type_name.lower(), self.node.fqdn))
+        elif self == self.node.current_testing_script_set:
+            # MAAS uses the current_testing_script_set to know what testing
+            # script set should be shown by default in the UI. If an older
+            # version exists set the current_testing_script_set to it.
+            try:
+                previous_script_set = self.node.scriptset_set.filter(
+                    result_type=RESULT_TYPE.TESTING)
+                previous_script_set = previous_script_set.exclude(id=self.id)
+                previous_script_set = previous_script_set.latest('id')
+            except ScriptSet.DoesNotExist:
+                pass
+            else:
+                self.node.current_testing_script_set = previous_script_set
+                self.node.save(update_fields=['current_testing_script_set'])
+        return super().delete(*args, **kwargs)
