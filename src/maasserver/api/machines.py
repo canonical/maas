@@ -1378,12 +1378,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
                         request=request, data=data, pods=pods)
                     if compose_form.is_valid():
                         machine = compose_form.compose()
-                        # Set the storage variable so the constraint_map is
-                        # set correct for the composed machine.
-                        storage = nodes_by_storage(
-                            storage, node_ids=[machine.id])
-                        if storage is None:
-                            storage = {}
+                        if machine is not None:
+                            # Set the storage variable so the constraint_map is
+                            # set correct for the composed machine.
+                            storage = nodes_by_storage(
+                                storage, node_ids=[machine.id])
+                            if storage is None:
+                                storage = {}
             if machine is None:
                 constraints = form.describe_constraints()
                 if constraints == '':

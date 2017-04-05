@@ -688,6 +688,33 @@ class TestComposeMachineForm(MAASServerTestCase):
                 interfaces=MatchesListwise([
                     IsInstance(RequestedMachineInterface)]))))
 
+    def test__get_requested_machine_handles_no_tags_in_storage(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        disk_1 = random.randint(8, 16) * (1000 ** 3)
+        disk_2 = random.randint(8, 16) * (1000 ** 3)
+        storage = 'root:%d,extra:%d' % (
+            disk_1 // (1000 ** 3),
+            disk_2 // (1000 ** 3))
+        form = ComposeMachineForm(data={
+            'storage': storage,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid(), form.errors)
+        request_machine = form.get_requested_machine()
+        self.assertThat(request_machine, MatchesAll(
+            IsInstance(RequestedMachine),
+            MatchesStructure(
+                block_devices=MatchesListwise([
+                    MatchesAll(
+                        IsInstance(RequestedMachineBlockDevice),
+                        MatchesStructure(
+                            size=Equals(disk_1), tags=Equals([]))),
+                    MatchesAll(
+                        IsInstance(RequestedMachineBlockDevice),
+                        MatchesStructure(
+                            size=Equals(disk_2), tags=Equals([]))),
+                    ]))))
+
     def test__save_raises_AttributeError(self):
         request = MagicMock()
         pod = make_pod_with_hints()

@@ -328,6 +328,8 @@ class ComposeMachineForm(forms.Form):
         constraints = get_storage_constraints_from_string(
             self.get_value_for('storage'))
         for _, size, tags in constraints:
+            if tags is None:
+                tags = []
             block_devices.append(
                 RequestedMachineBlockDevice(size=size, tags=tags))
         return RequestedMachine(

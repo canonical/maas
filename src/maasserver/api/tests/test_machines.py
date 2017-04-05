@@ -718,6 +718,36 @@ class TestMachinesAPI(APITestCase.ForUser):
         }, parsed_result['constraints_by_type']['storage'])
         self.assertThat(mock_compose, MockCalledOnceWith())
 
+    def test_POST_allocate_returns_conflict_when_compose_fails(self):
+        # The "allocate" operation returns a composed machine.
+        architectures = [
+            "amd64/generic", "i386/generic",
+            "armhf/generic", "arm64/generic"
+        ]
+        pod = factory.make_Pod(architectures=architectures)
+        pod.hints.cores = random.randint(8, 16)
+        pod.hints.memory = random.randint(4096, 8192)
+        pod.hints.save()
+        storage = "root:%d(local),remote:%d(iscsi)" % (
+            random.randint(8, 16), random.randint(8, 16))
+        mock_list_all_usable_architectures = self.patch(
+            forms_module, 'list_all_usable_architectures')
+        mock_list_all_usable_architectures.return_value = sorted(
+            pod.architectures)
+        mock_filter_nodes = self.patch(AcquireNodeForm, 'filter_nodes')
+        mock_filter_nodes.return_value = [], {}, {}
+        mock_compose = self.patch(ComposeMachineForPodsForm, 'compose')
+        mock_compose.return_value = None
+        response = self.client.post(
+            reverse('machines_handler'), {
+                'op': 'allocate',
+                'cpu_count': pod.hints.cores,
+                'mem': pod.hints.memory,
+                'arch': pod.architectures[0],
+                'storage': storage,
+                })
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+
     def test_POST_allocate_allocates_machine(self):
         # The "allocate" operation allocates the machine it returns.
         available_status = NODE_STATUS.READY
