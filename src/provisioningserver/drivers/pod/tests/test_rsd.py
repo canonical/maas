@@ -267,9 +267,15 @@ SAMPLE_JSON_NODE = {
             "@odata.id": "/redfish/v1/Systems/1/EthernetInterfaces/4"
         }, {
             "@odata.id": "/redfish/v1/Systems/1/EthernetInterfaces/5"
+        }, {
+            "@odata.id": "/redfish/v1/Systems/1/EthernetInterfaces/6"
+        }, {
+            "@odata.id": "/redfish/v1/Systems/1/EthernetInterfaces/7"
         }],
         "LocalDrives": [{
             "@odata.id": "/redfish/v1/Systems/1/Adapters/3/Devices/2"
+        }, {
+            "@odata.id": "/redfish/v1/Systems/1/Adapters/3/Devices/3"
         }],
         "RemoteDrives": [],
         "ManagedBy": [{
@@ -835,173 +841,6 @@ class TestRSDPodDriver(MAASTestCase):
             [111.7587089538574, 111.7587089538574], storages)
 
     @inlineCallbacks
-    def test__scan_machine_memories(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        headers = driver.make_auth_headers(**context)
-        system = b"redfish/v1/Systems/1"
-        machine = DiscoveredMachine(
-            hostname=factory.make_name('hostname'),
-            architecture="amd64/generic", cores=0, cpu_speed=0,
-            memory=0, interfaces=[], block_devices=[],
-            power_state="unknown",
-            power_parameters={})
-        mock_list_resources = self.patch(driver, 'list_resources')
-        mock_list_resources.return_value = [
-            b"redfish/v1/Systems/1/Memory/1",
-            b"redfish/v1/Systems/1/Memory/2",
-        ]
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-        NO_MEMORY = deepcopy(SAMPLE_JSON_MEMORY)
-        NO_MEMORY['CapacityMiB'] = None
-        mock_redfish_request.side_effect = [
-            (SAMPLE_JSON_MEMORY, None),
-            (NO_MEMORY, None),
-        ]
-
-        yield driver.scan_machine_memories(url, headers, system, machine)
-        self.assertEquals(7812, machine.memory)
-
-    @inlineCallbacks
-    def test__scan_machine_processors(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        headers = driver.make_auth_headers(**context)
-        system = b"redfish/v1/Systems/1"
-        machine = DiscoveredMachine(
-            hostname=factory.make_name('hostname'),
-            architecture="amd64/generic", cores=0, cpu_speed=0,
-            memory=0, interfaces=[], block_devices=[],
-            power_state="unknown",
-            power_parameters={})
-        machine.cpu_speeds = []
-        mock_list_resources = self.patch(driver, 'list_resources')
-        mock_list_resources.return_value = [
-            b"redfish/v1/Systems/1/Processors/1",
-            b"redfish/v1/Systems/1/Processors/2",
-        ]
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-        NO_THREADS = deepcopy(SAMPLE_JSON_PROCESSOR)
-        NO_THREADS['TotalThreads'] = None
-        mock_redfish_request.side_effect = [
-            (SAMPLE_JSON_PROCESSOR, None),
-            (NO_THREADS, None),
-        ]
-
-        yield driver.scan_machine_processors(url, headers, system, machine)
-        self.assertEquals(28, machine.cores)
-        self.assertEquals([2300, 2300], machine.cpu_speeds)
-        self.assertEquals("amd64/generic", machine.architecture)
-
-    @inlineCallbacks
-    def test__scan_machine_local_storage(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        headers = driver.make_auth_headers(**context)
-        system = b"redfish/v1/Systems/1"
-        device = b"redfish/v1/Systems/1/Adapters/3/Devices/%s"
-        machine = DiscoveredMachine(
-            hostname=factory.make_name('hostname'),
-            architecture="amd64/generic", cores=0, cpu_speed=0,
-            memory=0, interfaces=[], block_devices=[],
-            power_state="unknown",
-            power_parameters={})
-        mock_list_resources = self.patch(driver, 'list_resources')
-        mock_list_resources.side_effect = [
-            [b"redfish/v1/Systems/1/Adapters/3"],
-            [device % b"2", device % b"3"],
-        ]
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_redfish_request.side_effect = [
-            (SAMPLE_JSON_DEVICE, None),
-            (SAMPLE_JSON_DEVICE, None),
-        ]
-
-        yield driver.scan_machine_local_storage(
-            url, headers, system, machine)
-        for block_device in machine.block_devices:
-            self.assertEquals("INTEL_SSDMCEAC120B3", block_device.model)
-            self.assertEquals("CVLI310601PY120E", block_device.serial)
-            self.assertEquals(119999999999.99997, block_device.size)
-            self.assertEquals(['ssd'], block_device.tags)
-        self.assertThat(mock_redfish_request, MockCallsMatch(
-            call(b"GET", join(url, device % b"2"), headers),
-            call(b"GET", join(url, device % b"3"), headers)))
-
-    @inlineCallbacks
-    def test__scan_machine_interfaces(self):
-        driver = RSDPodDriver()
-        context = make_context()
-        url = driver.get_url(context)
-        headers = driver.make_auth_headers(**context)
-        system = b"redfish/v1/Systems/1"
-        interface = b"redfish/v1/Systems/1/EthernetInterfaces/%s"
-        machine = DiscoveredMachine(
-            hostname=factory.make_name('hostname'),
-            architecture="amd64/generic", cores=0, cpu_speed=0,
-            memory=0, interfaces=[], block_devices=[],
-            power_state="unknown",
-            power_parameters={})
-        mock_list_resources = self.patch(driver, 'list_resources')
-        mock_list_resources.return_value = [
-            interface % b"%s" % bytes(resource_id)
-            for resource_id in range(4)
-        ]
-        mock_redfish_request = self.patch(driver, 'redfish_request')
-        nic1_data = deepcopy(SAMPLE_JSON_INTERFACE)
-        nic1_data['SpeedMbps'] = 900
-        nic2_data = deepcopy(SAMPLE_JSON_INTERFACE)
-        nic2_data['SpeedMbps'] = 1000
-        nic3_data = deepcopy(SAMPLE_JSON_INTERFACE)
-        nic3_data['SpeedMbps'] = 2000
-        nic4_data = deepcopy(SAMPLE_JSON_INTERFACE)
-        nic4_data['Links']['Oem'] = None
-        mock_redfish_request.side_effect = [
-            (nic1_data, None),
-            (SAMPLE_JSON_PORT, None),
-            (SAMPLE_JSON_VLAN, None),
-            (nic2_data, None),
-            (SAMPLE_JSON_PORT, None),
-            (SAMPLE_JSON_VLAN, None),
-            (nic3_data, None),
-            (SAMPLE_JSON_PORT, None),
-            (SAMPLE_JSON_VLAN, None),
-            (nic4_data, None),
-        ]
-
-        yield driver.scan_machine_interfaces(
-            url, headers, system, machine)
-        self.assertThat(machine.interfaces, MatchesListwise([
-            MatchesStructure(
-                mac_address=Equals('54:ab:3a:36:af:45'),
-                vid=Equals(4088),
-                tags=Equals(['e900']),
-                boot=Equals(False),
-            ),
-            MatchesStructure(
-                mac_address=Equals('54:ab:3a:36:af:45'),
-                vid=Equals(4088),
-                tags=Equals(['1.0']),
-                boot=Equals(False),
-            ),
-            MatchesStructure(
-                mac_address=Equals('54:ab:3a:36:af:45'),
-                vid=Equals(4088),
-                tags=Equals(['2.0']),
-                boot=Equals(False),
-            ),
-            MatchesStructure(
-                mac_address=Equals('54:ab:3a:36:af:45'),
-                vid=Equals(-1),
-                tags=Equals([]),
-                boot=Equals(True),
-            ),
-        ]))
-
-    @inlineCallbacks
     def test__get_pod_resources(self):
         driver = RSDPodDriver()
         context = make_context()
@@ -1075,33 +914,49 @@ class TestRSDPodDriver(MAASTestCase):
         context = make_context()
         url = driver.get_url(context)
         headers = driver.make_auth_headers(**context)
-        mock_list_resources = self.patch(driver, 'list_resources')
-        mock_list_resources.side_effect = [
-            [b"redfish/v1/Systems/1/Memory/1"],
-            [b"redfish/v1/Systems/1/Processors/1"],
-            [b"redfish/v1/Systems/1/Adapters/3"],
-            [b"redfish/v1/Systems/1/Adapters/3/Devices/2"],
-            [b"redfish/v1/Systems/1/EthernetInterfaces/5"],
-            ]
         mock_redfish_request = self.patch(driver, 'redfish_request')
+        NO_MEMORY = deepcopy(SAMPLE_JSON_MEMORY)
+        NO_MEMORY['CapacityMiB'] = None
+        NO_THREADS = deepcopy(SAMPLE_JSON_PROCESSOR)
+        NO_THREADS['TotalThreads'] = None
+        NIC1_DATA = deepcopy(SAMPLE_JSON_INTERFACE)
+        NIC1_DATA['SpeedMbps'] = 900
+        NIC2_DATA = deepcopy(SAMPLE_JSON_INTERFACE)
+        NIC2_DATA['SpeedMbps'] = 1000
+        NIC3_DATA = deepcopy(SAMPLE_JSON_INTERFACE)
+        NIC3_DATA['SpeedMbps'] = 2000
+        NIC4_DATA = deepcopy(SAMPLE_JSON_INTERFACE)
+        NIC4_DATA['Links']['Oem'] = None
         mock_redfish_request.side_effect = [
             (SAMPLE_JSON_NODE, None),
             (SAMPLE_JSON_MEMORY, None),
+            (NO_MEMORY, None),
+            (SAMPLE_JSON_MEMORY, None),
+            (SAMPLE_JSON_MEMORY, None),
+            (NO_THREADS, None),
             (SAMPLE_JSON_PROCESSOR, None),
             (SAMPLE_JSON_DEVICE, None),
-            (SAMPLE_JSON_INTERFACE, None),
+            (SAMPLE_JSON_DEVICE, None),
+            (NIC1_DATA, None),
             (SAMPLE_JSON_PORT, None),
             (SAMPLE_JSON_VLAN, None),
-            ]
+            (NIC2_DATA, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            (NIC3_DATA, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+            (NIC4_DATA, None),
+            (SAMPLE_JSON_PORT, None),
+            (SAMPLE_JSON_VLAN, None),
+        ]
 
         machine = yield driver.get_pod_machine(
             b"redfish/v1/Nodes/1", url, headers)
         self.assertEquals("amd64/generic", machine.architecture)
         self.assertEquals(28, machine.cores)
         self.assertEquals(2300, machine.cpu_speed)
-        self.assertEquals(7812, machine.memory)
-        self.assertEquals(
-            "54:ab:3a:36:af:45", machine.interfaces[0].mac_address)
+        self.assertEquals(23436, machine.memory)
         self.assertEquals(
             "INTEL_SSDMCEAC120B3", machine.block_devices[0].model)
         self.assertEquals("CVLI310601PY120E", machine.block_devices[0].serial)
@@ -1109,7 +964,32 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertEquals(['ssd'], machine.block_devices[0].tags)
         self.assertEquals("off", machine.power_state)
         self.assertEquals({'node_id': '1'}, machine.power_parameters)
-        self.assertTrue(machine.interfaces[0].boot)
+        self.assertThat(machine.interfaces, MatchesListwise([
+            MatchesStructure(
+                mac_address=Equals('54:ab:3a:36:af:45'),
+                vid=Equals(4088),
+                tags=Equals(['e900']),
+                boot=Equals(False),
+            ),
+            MatchesStructure(
+                mac_address=Equals('54:ab:3a:36:af:45'),
+                vid=Equals(4088),
+                tags=Equals(['1.0']),
+                boot=Equals(False),
+            ),
+            MatchesStructure(
+                mac_address=Equals('54:ab:3a:36:af:45'),
+                vid=Equals(4088),
+                tags=Equals(['2.0']),
+                boot=Equals(False),
+            ),
+            MatchesStructure(
+                mac_address=Equals('54:ab:3a:36:af:45'),
+                vid=Equals(-1),
+                tags=Equals([]),
+                boot=Equals(True),
+            ),
+        ]))
 
     @inlineCallbacks
     def test__get_pod_machines(self):

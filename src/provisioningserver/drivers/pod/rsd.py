@@ -72,12 +72,6 @@ RSD_NODE_POWER_STATE = {
     }
 
 
-RSD_RESOURCE_NOT_FOUND = (
-    "Required RSD resource not available.  "
-    "Unable to retrieve '%s' for endpoint: %s"
-)
-
-
 class WebClientContextFactory(BrowserLikePolicyForHTTPS):
 
     def creatorForNetloc(self, hostname, port):
@@ -251,140 +245,6 @@ class RSDPodDriver(PodDriver):
         return storages
 
     @inlineCallbacks
-    def scan_machine_memories(
-            self, url, headers, system, discovered_machine):
-        """Scan machine's memory for the given system."""
-        # Get list of all memories for this specific system.
-        memories_uri = join(url, system, b"Memory")
-        memories = yield self.list_resources(memories_uri, headers)
-        # Iterate over all the memories for this specific system.
-        for memory in memories:
-            memory_data, _ = yield self.redfish_request(
-                b"GET", join(url, memory), headers)
-            mem = memory_data.get('CapacityMiB')
-            if mem is not None:
-                discovered_machine.memory += mem
-
-    @inlineCallbacks
-    def scan_machine_processors(
-            self, url, headers, system, discovered_machine):
-        """Scan machine's processors for the given system."""
-        # Get list of all processors for this specific system.
-        processors_uri = join(
-            url, system, b"Processors")
-        processors = yield self.list_resources(
-            processors_uri, headers)
-        # Iterate over all processors for this specific system.
-        for processor in processors:
-            # Get the data for this specific processor.
-            processor_data, _ = yield self.redfish_request(
-                b"GET", join(url, processor), headers)
-            # Using 'TotalThreads' instead of 'TotalCores'
-            # as this is what MAAS finds when commissioning.
-            total_threads = processor_data.get('TotalThreads')
-            if total_threads is not None:
-                discovered_machine.cores += total_threads
-            discovered_machine.cpu_speeds.append(
-                processor_data.get('MaxSpeedMHz'))
-            # Set architecture to first processor
-            # architecture type found.
-            if not discovered_machine.architecture:
-                arch = processor_data.get('InstructionSet')
-                discovered_machine.architecture = (
-                    RSD_ARCH.get(arch, arch))
-
-    @inlineCallbacks
-    def scan_machine_local_storage(
-            self, url, headers, system, discovered_machine):
-        """Scan machine's local storage for the given system."""
-        # Get list of all adapters for this specific system.
-        adapters_uri = join(url, system, b"Adapters")
-        adapters = yield self.list_resources(
-            adapters_uri, headers)
-        # Iterate over all the adapters for this specific system.
-        for adapter in adapters:
-            # Get list of all the devices for this specific adapter.
-            devices_uri = join(url, adapter, b"Devices")
-            devices = yield self.list_resources(
-                devices_uri, headers)
-            # Iterate over all the devices for this specific adapter.
-            for device in devices:
-                discovered_machine_block_device = (
-                    DiscoveredMachineBlockDevice(
-                        model='', serial='', size=0))
-                device_data, _ = yield self.redfish_request(
-                    b"GET", join(url, device), headers)
-                model = device_data.get('Model')
-                if model is not None:
-                    discovered_machine_block_device.model = model
-                serial_number = device_data.get('SerialNumber')
-                if serial_number is not None:
-                    discovered_machine_block_device.serial = (
-                        serial_number)
-                storage = device_data.get('CapacityGiB')
-                if storage is not None:
-                    # GiB to Bytes.
-                    discovered_machine_block_device.size = float(
-                        storage) * 1073741824
-                if device_data.get('Type') == 'SSD':
-                    discovered_machine_block_device.tags = ['ssd']
-                discovered_machine.block_devices.append(
-                    discovered_machine_block_device)
-
-    @inlineCallbacks
-    def scan_machine_interfaces(
-            self, url, headers, system, discovered_machine):
-        """Scan the machine's interfaces for the given system."""
-        # Get list of all Ethernet Interfaces for this specific system.
-        interfaces_uri = join(url, system, b"EthernetInterfaces")
-        interfaces = yield self.list_resources(
-            interfaces_uri, headers)
-        # Iterate over all the interfaces for this specific system.
-        for interface in interfaces:
-            discovered_machine_interface = DiscoveredMachineInterface(
-                mac_address='')
-            # Get the data for this specific interface.
-            interface_data, _ = yield self.redfish_request(
-                b"GET", join(url, interface), headers)
-            mac_address = interface_data.get('MACAddress')
-            if mac_address is not None:
-                discovered_machine_interface.mac_address = mac_address
-            nic_speed = interface_data.get('SpeedMbps')
-            if nic_speed is not None:
-                if nic_speed < 1000:
-                    discovered_machine_interface.tags = ["e%s" % nic_speed]
-                elif nic_speed == "1000":
-                    discovered_machine_interface.tags = ["1g", "e1000"]
-                else:
-                    # We know that the Mbps > 1000
-                    discovered_machine_interface.tags = [
-                        "%s" % (nic_speed / 1000)]
-            # Oem can be empty sometimes, so let's check this.
-            oem = interface_data.get('Links', {}).get('Oem')
-            if oem:
-                ports = oem.get('Intel_RackScale', {}).get('NeighborPort')
-                if ports is not None:
-                    for port in ports.values():
-                        port = port.lstrip('/').encode('utf-8')
-                        port_data, _ = yield self.redfish_request(
-                            b"GET", join(url, port), headers)
-                        vlans = port_data.get('Links', {}).get('PrimaryVLAN')
-                        if vlans is not None:
-                            for vlan in vlans.values():
-                                vlan = vlan.lstrip('/').encode('utf-8')
-                                vlan_data, _ = yield self.redfish_request(
-                                    b"GET", join(url, vlan), headers)
-                                vlan_id = vlan_data.get('VLANId')
-                                if vlan_id is not None:
-                                    discovered_machine_interface.vid = vlan_id
-            else:
-                # If no NeighborPort, this interface is on
-                # the management network.
-                discovered_machine_interface.boot = True
-
-            discovered_machine.interfaces.append(discovered_machine_interface)
-
-    @inlineCallbacks
     def get_pod_resources(self, url, headers):
         """Get the POD resources."""
         discovered_pod = DiscoveredPod(
@@ -454,35 +314,121 @@ class RSDPodDriver(PodDriver):
         discovered_machine.cpu_speeds = []
         node_data, _ = yield self.redfish_request(
             b"GET", join(url, node), headers)
+        # Get hostname.
         hostname = node_data.get('Name')
         if hostname is not None:
             discovered_machine.hostname = hostname
+        # Get power state.
         power_state = node_data.get('PowerState')
         if power_state is not None:
             discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
                 power_state)
-        # Find specific system that this composed node is linked too.
-        systems = node_data.get(
-            'Links', {}).get('ComputerSystem')
-        if systems is not None:
-            for system in systems.values():
-                system = system.lstrip('/').encode('utf-8')
-                yield self.scan_machine_memories(
-                    url, headers, system, discovered_machine)
-                yield self.scan_machine_processors(
-                    url, headers, system, discovered_machine)
-                yield self.scan_machine_local_storage(
-                    url, headers, system, discovered_machine)
-                yield self.scan_machine_interfaces(
-                    url, headers, system, discovered_machine)
-                # Set one interface to boot if none are set.
-                boot_flags = [
-                    interface.boot
-                    for interface in discovered_machine.interfaces
-                ]
-                if len(boot_flags) > 0 and True not in boot_flags:
-                    # Just set first interface too boot.
-                    discovered_machine.interfaces[0].boot = True
+        # Get memories.
+        memories = node_data.get('Links', {}).get('Memory')
+        for memory in memories:
+            memory_data, _ = yield self.redfish_request(
+                b"GET", join(url, memory[
+                    '@odata.id'].lstrip('/').encode('utf-8')), headers)
+            mem = memory_data.get('CapacityMiB')
+            if mem is not None:
+                discovered_machine.memory += mem
+        # Get processors.
+        processors = node_data.get('Links', {}).get('Processors')
+        for processor in processors:
+            processor_data, _ = yield self.redfish_request(
+                b"GET", join(url, processor[
+                    '@odata.id'].lstrip('/').encode('utf-8')), headers)
+            # Using 'TotalThreads' instead of 'TotalCores'
+            # as this is what MAAS finds when commissioning.
+            total_threads = processor_data.get('TotalThreads')
+            if total_threads is not None:
+                discovered_machine.cores += total_threads
+            discovered_machine.cpu_speeds.append(
+                processor_data.get('MaxSpeedMHz'))
+            # Set architecture to first processor
+            # architecture type found.
+            if not discovered_machine.architecture:
+                arch = processor_data.get('InstructionSet')
+                discovered_machine.architecture = (
+                    RSD_ARCH.get(arch, arch))
+        # Get local storages.
+        local_drives = node_data.get('Links', {}).get('LocalDrives')
+        for local_drive in local_drives:
+            discovered_machine_block_device = (
+                DiscoveredMachineBlockDevice(
+                    model='', serial='', size=0))
+            drive_data, _ = yield self.redfish_request(
+                b"GET", join(url, local_drive[
+                    '@odata.id'].lstrip('/').encode('utf-8')), headers)
+            model = drive_data.get('Model')
+            if model is not None:
+                discovered_machine_block_device.model = model
+            serial_number = drive_data.get('SerialNumber')
+            if serial_number is not None:
+                discovered_machine_block_device.serial = (
+                    serial_number)
+            capacity = drive_data.get('CapacityGiB')
+            if capacity is not None:
+                # GiB to Bytes.
+                discovered_machine_block_device.size = float(
+                    capacity) * 1073741824
+            if drive_data.get('Type') == 'SSD':
+                discovered_machine_block_device.tags = ['ssd']
+            discovered_machine.block_devices.append(
+                discovered_machine_block_device)
+        # Get interfaces.
+        interfaces = node_data.get('Links', {}).get('EthernetInterfaces')
+        for interface in interfaces:
+            discovered_machine_interface = DiscoveredMachineInterface(
+                mac_address='')
+            interface_data, _ = yield self.redfish_request(
+                b"GET", join(url, interface[
+                    '@odata.id'].lstrip('/').encode('utf-8')), headers)
+            mac_address = interface_data.get('MACAddress')
+            if mac_address is not None:
+                discovered_machine_interface.mac_address = mac_address
+            nic_speed = interface_data.get('SpeedMbps')
+            if nic_speed is not None:
+                if nic_speed < 1000:
+                    discovered_machine_interface.tags = ["e%s" % nic_speed]
+                elif nic_speed == "1000":
+                    discovered_machine_interface.tags = ["1g", "e1000"]
+                else:
+                    # We know that the Mbps > 1000
+                    discovered_machine_interface.tags = [
+                        "%s" % (nic_speed / 1000)]
+            # Oem can be empty sometimes, so let's check this.
+            oem = interface_data.get('Links', {}).get('Oem')
+            if oem:
+                ports = oem.get('Intel_RackScale', {}).get('NeighborPort')
+                if ports is not None:
+                    for port in ports.values():
+                        port = port.lstrip('/').encode('utf-8')
+                        port_data, _ = yield self.redfish_request(
+                            b"GET", join(url, port), headers)
+                        vlans = port_data.get('Links', {}).get('PrimaryVLAN')
+                        if vlans is not None:
+                            for vlan in vlans.values():
+                                vlan = vlan.lstrip('/').encode('utf-8')
+                                vlan_data, _ = yield self.redfish_request(
+                                    b"GET", join(url, vlan), headers)
+                                vlan_id = vlan_data.get('VLANId')
+                                if vlan_id is not None:
+                                    discovered_machine_interface.vid = vlan_id
+            else:
+                # If no NeighborPort, this interface is on
+                # the management network.
+                discovered_machine_interface.boot = True
+
+            discovered_machine.interfaces.append(discovered_machine_interface)
+
+        boot_flags = [
+            interface.boot
+            for interface in discovered_machine.interfaces
+        ]
+        if len(boot_flags) > 0 and True not in boot_flags:
+            # Just set first interface too boot.
+            discovered_machine.interfaces[0].boot = True
 
         # Set cpu_speed to max of all found cpu_speeds.
         if len(discovered_machine.cpu_speeds):
