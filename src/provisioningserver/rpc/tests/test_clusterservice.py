@@ -2920,6 +2920,7 @@ class TestClusterProtocol_ComposeMachine(MAASTestCase):
             pods, 'compose_machine')
         mock_compose_machine.return_value = succeed({
             "machine": DiscoveredMachine(
+                hostname=factory.make_name('hostname'),
                 architecture='amd64/generic',
                 cores=random.randint(1, 8),
                 cpu_speed=random.randint(1000, 3000),
@@ -2935,6 +2936,7 @@ class TestClusterProtocol_ComposeMachine(MAASTestCase):
             "data": factory.make_name("data"),
         }
         request = RequestedMachine(
+            hostname=factory.make_name('hostname'),
             architecture='amd64/generic',
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),

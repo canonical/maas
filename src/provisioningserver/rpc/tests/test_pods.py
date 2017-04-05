@@ -140,6 +140,7 @@ class TestComposeMachine(MAASTestCase):
 
     def make_requested_machine(self):
         return RequestedMachine(
+            hostname=factory.make_name('hostname'),
             architecture='amd64/generic',
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),
@@ -239,6 +240,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture='amd64/generic',
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 3000),

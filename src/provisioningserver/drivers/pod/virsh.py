@@ -466,6 +466,7 @@ class VirshSSH(pexpect.spawn):
         discovered_machine = DiscoveredMachine(
             architecture="", cores=0, cpu_speed=0, memory=0,
             interfaces=[], block_devices=[], tags=['virtual'])
+        discovered_machine.hostname = machine
         discovered_machine.architecture = self.get_machine_arch(machine)
         discovered_machine.cores = self.get_machine_cpu_count(machine)
         discovered_machine.memory = self.get_machine_memory(machine)
@@ -665,7 +666,7 @@ class VirshSSH(pexpect.spawn):
         return "vd" + name
 
     def create_domain(self, request):
-        """Create a domain based on the `request`.
+        """Create a domain based on the `request` with hostname.
 
         For now this just uses `get_best_network` to connect the interfaces
         of the domain to the network.
@@ -687,9 +688,9 @@ class VirshSSH(pexpect.spawn):
                     created_disks.append(disk_info)
 
         # Construct the domain XML.
-        domain_name = str(uuid.uuid4())
         domain_params = self.get_domain_capabilites()
-        domain_params['name'] = domain_params['uuid'] = domain_name
+        domain_params['name'] = request.hostname
+        domain_params['uuid'] = str(uuid.uuid4())
         domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
         domain_params['cores'] = str(request.cores)
         domain_params['memory'] = str(request.memory)
@@ -705,18 +706,19 @@ class VirshSSH(pexpect.spawn):
         # Attach the created disks in order.
         for idx, (pool, volume) in enumerate(created_disks):
             block_name = self.get_block_name_from_idx(idx)
-            self.attach_local_volume(domain_name, pool, volume, block_name)
+            self.attach_local_volume(
+                request.hostname, pool, volume, block_name)
 
         # Attach new interfaces to the best possible network.
         best_network = self.get_best_network()
         for _ in request.interfaces:
-            self.attach_interface(domain_name, best_network)
+            self.attach_interface(request.hostname, best_network)
 
         # Setup the domain to PXE boot.
-        self.configure_pxe_boot(domain_name)
+        self.configure_pxe_boot(request.hostname)
 
         # Return the result as a discovered machine.
-        return self.get_discovered_machine(domain_name)
+        return self.get_discovered_machine(request.hostname)
 
     def delete_domain(self, domain):
         """Delete `domain` and its volumes."""
@@ -912,7 +914,7 @@ def probe_virsh_and_enlist(
         if password is not None:
             params['power_pass'] = password
         system_id = create_node(
-            macs, arch, 'virsh', params, domain, machine).wait(30)
+            macs, arch, 'virsh', params, domain, hostname=machine).wait(30)
 
         # If the system_id is None an error occured when creating the machine.
         # Most likely the error is the node already exists.

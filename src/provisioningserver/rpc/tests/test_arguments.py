@@ -248,6 +248,7 @@ class TestDiscoveredPodHints(MAASTestCase):
 class TestDiscoveredMachine(MAASTestCase):
 
     example = DiscoveredMachine(
+        hostname=factory.make_name('hostname'),
         architecture='amd64/generic',
         cores=random.randint(1, 8),
         cpu_speed=random.randint(1000, 2000),
@@ -285,6 +286,7 @@ class TestDiscoveredMachine(MAASTestCase):
 class TestRequestedMachine(MAASTestCase):
 
     example = RequestedMachine(
+        hostname=factory.make_name('hostname'),
         architecture='amd64/generic',
         cores=random.randint(1, 8),
         cpu_speed=random.randint(1000, 2000),

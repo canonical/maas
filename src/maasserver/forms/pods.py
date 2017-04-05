@@ -13,6 +13,7 @@ import crochet
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.fields import (
+    CharField,
     ChoiceField,
     IntegerField,
 )
@@ -34,6 +35,7 @@ from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    Machine,
     Pod,
     RackController,
 )
@@ -41,6 +43,7 @@ from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+import petname
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -50,6 +53,17 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.utils.twisted import asynchronous
 from twisted.python.threadable import isInIOThread
+
+
+def make_unique_hostname():
+    """Returns a unique machine hostname."""
+    while True:
+        hostname = petname.Generate(2, "-")
+        machines = Machine.objects.filter(hostname=hostname)
+        if len(machines) > 0:
+            continue
+        else:
+            return hostname
 
 
 class PodForm(MAASModelForm):
@@ -285,6 +299,8 @@ class ComposeMachineForm(forms.Form):
         else:
             self.fields['cpu_speed'] = IntegerField(
                 min_value=300, required=False)
+        self.fields['hostname'] = CharField(required=False)
+        self.initial['hostname'] = make_unique_hostname()
 
     def get_value_for(self, field):
         """Get the value for `field`. Use initial data if missing or set to
@@ -302,6 +318,7 @@ class ComposeMachineForm(forms.Form):
         # XXX blake_r 2017-01-31: Disks and interfaces are hard coded at the
         # moment. Will be extended later.
         return RequestedMachine(
+            hostname=self.get_value_for('hostname'),
             architecture=self.get_value_for('architecture'),
             cores=self.get_value_for('cores'),
             memory=self.get_value_for('memory'),

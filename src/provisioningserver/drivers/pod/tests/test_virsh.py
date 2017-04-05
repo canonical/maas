@@ -298,6 +298,7 @@ def make_requested_machine():
         for _ in range(3)
     ]
     return RequestedMachine(
+        hostname=factory.make_name('hostname'),
         architecture="amd64/generic",
         cores=random.randint(2, 4), memory=random.randint(1024, 4096),
         cpu_speed=random.randint(2000, 3000), block_devices=block_devices,
@@ -610,6 +611,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test__get_discovered_machine(self):
         conn = self.configure_virshssh('')
+        hostname = factory.make_name('hostname')
         architecture = factory.make_name('arch')
         cores = random.randint(1, 8)
         memory = random.randint(4096, 8192)
@@ -644,8 +646,8 @@ class TestVirshSSH(MAASTestCase):
         mock_get_machine_local_storage.side_effect = local_storage
         mock_list_machine_mac_addresses.return_value = mac_addresses
 
-        discovered_machine = conn.get_discovered_machine(
-            factory.make_name('machine'))
+        discovered_machine = conn.get_discovered_machine(hostname)
+        self.assertEquals(hostname, discovered_machine.hostname)
         self.assertEquals(architecture, discovered_machine.architecture)
         self.assertEquals(cores, discovered_machine.cores)
         self.assertEquals(memory, discovered_machine.memory)
@@ -884,7 +886,7 @@ class TestVirshSSH(MAASTestCase):
         request = make_requested_machine()
         self.patch(virsh.VirshSSH, "create_local_volume").return_value = None
         error = self.assertRaises(
-            PodInvalidResources, conn.create_domain, request)
+            PodInvalidResources, conn.create_domain, request, )
         self.assertEqual("not enough space for disk 0.", str(error))
 
     def test_create_domain_calls_correct_methods(self):
@@ -1041,19 +1043,19 @@ class TestVirsh(MAASTestCase):
             mock_create_node, MockCallsMatch(
                 call(
                     fake_macs[0], fake_arch, 'virsh', called_params[0],
-                    domain, machines[0]),
+                    domain, hostname=machines[0]),
                 call(
                     fake_macs[1], fake_arch, 'virsh', called_params[1],
-                    domain, machines[1]),
+                    domain, hostname=machines[1]),
                 call(
                     fake_macs[2], fake_arch, 'virsh', called_params[2],
-                    domain, machines[2]),
+                    domain, hostname=machines[2]),
                 call(
                     fake_macs[3], fake_arch, 'virsh', called_params[3],
-                    domain, machines[3]),
+                    domain, hostname=machines[3]),
                 call(
                     fake_macs[4], fake_arch, 'virsh', called_params[4],
-                    domain, machines[4]),
+                    domain, hostname=machines[4]),
             ))
 
         # The first and last machine should have poweroff called on it, as it
@@ -1062,11 +1064,13 @@ class TestVirsh(MAASTestCase):
             mock_poweroff, MockCallsMatch(
                 call(machines[0]),
                 call(machines[3]),
+                call(machines[4]),
             ))
 
         self.assertThat(mock_logout, MockCalledOnceWith())
         self.expectThat(
             mock_commission_node, MockCallsMatch(
+                call(system_id, user),
                 call(system_id, user),
                 call(system_id, user),
                 call(system_id, user),

@@ -145,6 +145,7 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEquals(iscsi_target, device.iscsi_target)
 
     def test_machine(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -165,7 +166,7 @@ class TestDiscoveredClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine = DiscoveredMachine(
-            architecture='amd64/generic',
+            hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             power_state=power_state, interfaces=interfaces,
             block_devices=block_devices, tags=tags)
@@ -194,6 +195,7 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEquals(iscsi_storage, hints.iscsi_storage)
 
     def test_pod(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -239,7 +241,7 @@ class TestDiscoveredClasses(MAASTestCase):
             ]
             machines.append(
                 DiscoveredMachine(
-                    architecture='amd64/generic',
+                    hostname=hostname, architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
@@ -257,6 +259,7 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEquals(machines, pod.machines)
 
     def test_pod_asdict(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -305,7 +308,7 @@ class TestDiscoveredClasses(MAASTestCase):
             ]
             machines.append(
                 DiscoveredMachine(
-                    architecture='amd64/generic',
+                    hostname=hostname, architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     power_state=power_state, power_parameters=power_parameters,
                     interfaces=interfaces, block_devices=block_devices,
@@ -334,6 +337,7 @@ class TestDiscoveredClasses(MAASTestCase):
             }),
             "machines": MatchesListwise([
                 MatchesDict({
+                    "hostname": Equals(machine.hostname),
                     "architecture": Equals("amd64/generic"),
                     "cores": Equals(machine.cores),
                     "cpu_speed": Equals(machine.cpu_speed),
@@ -369,6 +373,7 @@ class TestDiscoveredClasses(MAASTestCase):
         }))
 
     def test_pod_fromdict(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -406,7 +411,7 @@ class TestDiscoveredClasses(MAASTestCase):
                         iscsi_target=self.make_iscsi_target()))
             machines_data.append(
                 dict(
-                    architecture='amd64/generic',
+                    hostname=hostname, architecture='amd64/generic',
                     cores=cores, cpu_speed=cpu_speed, memory=memory,
                     interfaces=interfaces, block_devices=block_devices))
         pod_data = dict(
@@ -499,6 +504,7 @@ class TestRequestClasses(MAASTestCase):
         self.assertEquals(size, device.size)
 
     def test_machine(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -512,10 +518,11 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine = RequestedMachine(
-            architecture='amd64/generic',
+            hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             interfaces=interfaces,
             block_devices=block_devices)
+        self.assertEquals(hostname, machine.hostname)
         self.assertEquals(cores, machine.cores)
         self.assertEquals(cpu_speed, machine.cpu_speed)
         self.assertEquals(memory, machine.memory)
@@ -523,6 +530,7 @@ class TestRequestClasses(MAASTestCase):
         self.assertEquals(block_devices, machine.block_devices)
 
     def test_machine_without_cpu_speed(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         memory = random.randint(4096, 8192)
         interfaces = [
@@ -535,10 +543,11 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine = RequestedMachine(
-            architecture='amd64/generic',
+            hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=None, memory=memory,
             interfaces=interfaces,
             block_devices=block_devices)
+        self.assertEquals(hostname, machine.hostname)
         self.assertEquals(cores, machine.cores)
         self.assertIsNone(machine.cpu_speed)
         self.assertEquals(memory, machine.memory)
@@ -546,6 +555,7 @@ class TestRequestClasses(MAASTestCase):
         self.assertEquals(block_devices, machine.block_devices)
 
     def test_machine_asdict(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -558,10 +568,11 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine = RequestedMachine(
-            architecture='amd64/generic',
+            hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             interfaces=interfaces, block_devices=block_devices)
         self.assertThat(machine.asdict(), MatchesDict({
+            "hostname": Equals(hostname),
             "architecture": Equals("amd64/generic"),
             "cores": Equals(cores),
             "cpu_speed": Equals(cpu_speed),
@@ -579,6 +590,7 @@ class TestRequestClasses(MAASTestCase):
         }))
 
     def test_machine_fromdict(self):
+        hostname = factory.make_name('hostname')
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -591,12 +603,13 @@ class TestRequestClasses(MAASTestCase):
             for _ in range(3)
         ]
         machine_data = dict(
-            architecture='amd64/generic',
+            hostname=hostname, architecture='amd64/generic',
             cores=cores, cpu_speed=cpu_speed, memory=memory,
             interfaces=interfaces, block_devices=block_devices)
         machine = RequestedMachine.fromdict(machine_data)
         self.assertThat(machine, IsInstance(RequestedMachine))
         self.assertThat(machine, MatchesStructure(
+            hostname=Equals(hostname),
             architecture=Equals('amd64/generic'),
             cores=Equals(cores),
             cpu_speed=Equals(cpu_speed),

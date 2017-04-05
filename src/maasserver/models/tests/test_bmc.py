@@ -622,6 +622,7 @@ class TestPod(MAASServerTestCase):
             ]
             interfaces[0].boot = True
         return DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture='amd64/generic',
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
@@ -683,6 +684,9 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
         discovered = self.make_discovered_pod()
+        # Set one of the discovered machine's hostnames to something illegal.
+        machine = discovered.machines[0]
+        machine.hostname = "This is not legal #$%*^@!"
         mock_set_default_storage_layout = self.patch(
             Machine, "set_default_storage_layout")
         mock_set_initial_networking_configuration = self.patch(

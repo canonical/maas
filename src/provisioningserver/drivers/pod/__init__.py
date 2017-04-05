@@ -222,6 +222,7 @@ class DiscoveredMachine(AttrHelperMixin):
     power_parameters = attr.ib(
         convert=convert_obj(dict), default=attr.Factory(dict))
     tags = attr.ib(convert=convert_list(str), default=attr.Factory(list))
+    hostname = attr.ib(convert=str, default=None)
 
 
 @attr.s
@@ -272,6 +273,7 @@ class RequestedMachineInterface(AttrHelperMixin):
 @attr.s
 class RequestedMachine(AttrHelperMixin):
     """Requested machine information."""
+    hostname = attr.ib(convert=str)
     architecture = attr.ib(convert=str)
     cores = attr.ib(convert=int)
     memory = attr.ib(convert=int)

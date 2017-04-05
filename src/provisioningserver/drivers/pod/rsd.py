@@ -445,16 +445,18 @@ class RSDPodDriver(PodDriver):
         composed machine will not be returned to the region.
         """
         discovered_machine = DiscoveredMachine(
-            architecture="amd64/generic", cores=0, cpu_speed=0,
-            memory=0, interfaces=[], block_devices=[],
-            power_state="unknown",
-            power_parameters={
+            architecture="amd64/generic",
+            cores=0, cpu_speed=0, memory=0, interfaces=[],
+            block_devices=[], power_parameters={
                 'node_id': node.decode('utf-8').rsplit('/')[-1]})
         # Save list of all cpu_speeds being used by composed nodes
         # that we will use later in our pod hints calculations.
         discovered_machine.cpu_speeds = []
         node_data, _ = yield self.redfish_request(
             b"GET", join(url, node), headers)
+        hostname = node_data.get('Name')
+        if hostname is not None:
+            discovered_machine.hostname = hostname
         power_state = node_data.get('PowerState')
         if power_state is not None:
             discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
@@ -590,6 +592,7 @@ class RSDPodDriver(PodDriver):
             "PrimaryVLAN": None,
         }
         data = {
+            "Name": request.hostname,
             "Processors": [],
             "Memory": [],
             "LocalDrives": [],

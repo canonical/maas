@@ -9,6 +9,7 @@ __all__ = [
 
 from functools import partial
 import re
+import string
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -555,8 +556,16 @@ class Pod(BMC):
         else:
             status = NODE_STATUS.NEW
 
+        # Check to see if discovered machine's hostname is legal.
+        if discovered_machine.hostname:
+            for char in discovered_machine.hostname:
+                if char not in (string.ascii_letters + string.digits + '-'):
+                    discovered_machine.hostname = None
+                    break
+
         # Create the machine.
         machine = Machine(
+            hostname=discovered_machine.hostname,
             architecture=discovered_machine.architecture,
             status=status,
             cpu_count=discovered_machine.cores,
@@ -566,7 +575,8 @@ class Pod(BMC):
             creation_type=creation_type)
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters
-        machine.set_random_hostname()
+        if not machine.hostname:
+            machine.set_random_hostname()
         machine.save()
 
         # Assign the discovered tags.
@@ -629,6 +639,8 @@ class Pod(BMC):
             existing_machine.bmc = self
 
         # Sync machine instance values.
+        # We are skipping hostname syncing so that any changes to the
+        # hostname in MAAS are not overwritten.
         existing_machine.architecture = discovered_machine.architecture
         existing_machine.cpu_count = discovered_machine.cores
         existing_machine.cpu_speed = discovered_machine.cpu_speed

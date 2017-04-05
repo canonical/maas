@@ -555,6 +555,7 @@ def make_requested_machine(cores=None, memory=None, cpu_speed=None):
         for _ in range(3)
     ]
     return RequestedMachine(
+        hostname=factory.make_name('hostname'),
         architecture="amd64/generic",
         cores=cores, memory=memory, cpu_speed=cpu_speed,
         block_devices=block_devices, interfaces=interfaces)
@@ -574,6 +575,7 @@ def make_discovered_machine():
         for _ in range(3)
     ]
     return DiscoveredMachine(
+        hostname=factory.make_name('hostname'),
         architecture="amd64/generic", cores=random.randint(2, 4),
         cpu_speed=random.randint(2000, 3000),
         memory=random.randint(1024, 4096),
@@ -840,6 +842,7 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
         machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture="amd64/generic", cores=0, cpu_speed=0,
             memory=0, interfaces=[], block_devices=[],
             power_state="unknown",
@@ -868,6 +871,7 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         system = b"redfish/v1/Systems/1"
         machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture="amd64/generic", cores=0, cpu_speed=0,
             memory=0, interfaces=[], block_devices=[],
             power_state="unknown",
@@ -900,6 +904,7 @@ class TestRSDPodDriver(MAASTestCase):
         system = b"redfish/v1/Systems/1"
         device = b"redfish/v1/Systems/1/Adapters/3/Devices/%s"
         machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture="amd64/generic", cores=0, cpu_speed=0,
             memory=0, interfaces=[], block_devices=[],
             power_state="unknown",
@@ -935,6 +940,7 @@ class TestRSDPodDriver(MAASTestCase):
         system = b"redfish/v1/Systems/1"
         interface = b"redfish/v1/Systems/1/EthernetInterfaces/%s"
         machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture="amd64/generic", cores=0, cpu_speed=0,
             memory=0, interfaces=[], block_devices=[],
             power_state="unknown",
@@ -1188,6 +1194,7 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertThat(
             json.loads(payload.decode('utf-8')),
             MatchesDict({
+                "Name": Equals(request.hostname),
                 "Processors": MatchesListwise([
                     MatchesDict({
                         "Model": Equals(None),

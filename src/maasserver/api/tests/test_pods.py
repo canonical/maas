@@ -191,6 +191,7 @@ class TestPodAPI(APITestCase.ForUser, PodMixin):
 
     def make_compose_machine_result(self, pod):
         composed_machine = DiscoveredMachine(
+            hostname=factory.make_name('hostname'),
             architecture=pod.architectures[0],
             cores=1, memory=1024, cpu_speed=300,
             block_devices=[], interfaces=[])
