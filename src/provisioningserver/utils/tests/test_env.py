@@ -10,7 +10,7 @@ import string
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from provisioningserver.utils import env
 from provisioningserver.utils.fs import atomic_delete
 from testtools import ExpectedException
@@ -94,7 +94,7 @@ class TestMAASID(MAASTestCase):
 
     def setUp(self):
         super(TestMAASID, self).setUp()
-        self.maas_id_path = get_path('/var/lib/maas/maas_id')
+        self.maas_id_path = get_data_path('/var/lib/maas/maas_id')
         self.addCleanup(env.set_maas_id, None)
         env.set_maas_id(None)
 

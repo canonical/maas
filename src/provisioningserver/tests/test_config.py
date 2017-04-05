@@ -37,7 +37,7 @@ from provisioningserver.config import (
     ConfigurationOption,
     is_dev_environment,
 )
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.fs import RunLock
 from testtools import ExpectedException
@@ -58,7 +58,7 @@ import yaml
 
 class ExampleConfigurationMeta(ConfigurationMeta):
     envvar = "MAAS_TESTING_SETTINGS"
-    default = get_path("example.db")
+    default = get_data_path("example.db")
     backend = None  # Define this in sub-classes.
 
 
@@ -107,7 +107,7 @@ class TestConfigurationMeta(MAASTestCase):
     def test_falls_back_to_default(self):
         self.set_envvar(None)
         self.assertEqual(
-            get_path(self.example_configuration.default),
+            get_data_path(self.example_configuration.default),
             self.example_configuration.DEFAULT_FILENAME)
 
     def test_set(self):
@@ -122,7 +122,7 @@ class TestConfigurationMeta(MAASTestCase):
         self.example_configuration.DEFAULT_FILENAME = example_file
         del self.example_configuration.DEFAULT_FILENAME
         self.assertEqual(
-            get_path(self.example_configuration.default),
+            get_data_path(self.example_configuration.default),
             self.example_configuration.DEFAULT_FILENAME)
         # The delete does not fail when called multiple times.
         del self.example_configuration.DEFAULT_FILENAME

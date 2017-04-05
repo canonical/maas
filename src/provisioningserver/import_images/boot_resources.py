@@ -36,6 +36,7 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
+from provisioningserver.path import get_path
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
@@ -216,7 +217,7 @@ def update_targets_conf(snapshot):
 
     try:
         call_and_check(sudo([
-            '/usr/sbin/tgt-admin',
+            get_path('/usr/sbin/tgt-admin'),
             '--conf', targets_conf,
             '--update', 'ALL',
             ]))

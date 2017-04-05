@@ -15,7 +15,7 @@ from maastesting.fixtures import MAASRootFixture
 from maastesting.testcase import MAASTestCase
 from netaddr import IPAddress
 from provisioningserver.ntp import config
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from testtools.matchers import (
     Equals,
     Is,
@@ -82,8 +82,8 @@ class TestConfigure(MAASTestCase):
         ]
         offset = randrange(0, 5)
         config.configure(servers, peers, offset)
-        ntp_conf_path = get_path("etc", config._ntp_conf_name)
-        ntp_maas_conf_path = get_path("etc", config._ntp_maas_conf_name)
+        ntp_conf_path = get_data_path("etc", config._ntp_conf_name)
+        ntp_maas_conf_path = get_data_path("etc", config._ntp_maas_conf_name)
         ntp_conf = read_configuration(ntp_conf_path)
         self.assertThat(
             extract_servers_and_pools(ntp_conf), Equals([]))

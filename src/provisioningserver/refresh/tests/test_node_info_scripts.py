@@ -22,6 +22,7 @@ from textwrap import dedent
 import time
 from unittest.mock import call
 
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
@@ -451,6 +452,29 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             call(("udevadm", "info", "-q", "all", "-n", name)),
             call(("sudo", "-n", "blockdev", "--getsize64", "/dev/%s" % name)),
             call(("sudo", "-n", "blockdev", "--getbsz", "/dev/%s" % name))))
+
+    def test__calls_lsblk_udevadm_then_blockdev_snap_without_sudo(self):
+        self.useFixture(EnvironmentVariableFixture('SNAP', ''))
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model),
+            self.make_udevadm_output(name, serial=serial),
+            b'%d' % size,
+            b'%d' % block_size,
+            ]
+        self.call_gather_physical_block_devices()
+        self.assertThat(check_output, MockCallsMatch(
+            call((
+                "lsblk", "--exclude", "1,2,7", "-d", "-P",
+                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN")),
+            call(("udevadm", "info", "-q", "all", "-n", name)),
+            call(("blockdev", "--getsize64", "/dev/%s" % name)),
+            call(("blockdev", "--getbsz", "/dev/%s" % name))))
 
     def test__returns_block_device(self):
         name = factory.make_name('name')

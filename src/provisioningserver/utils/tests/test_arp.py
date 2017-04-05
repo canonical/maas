@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 import io
 import json
+import subprocess
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 import time
@@ -439,7 +440,11 @@ class TestObserveARPCommand(MAASTestCase):
         popen.return_value.stdout = io.BytesIO(test_input)
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(popen.call_count, Equals(1))
+        self.assertThat(
+            popen,
+            MockCalledOnceWith(
+                ['/usr/lib/maas/maas-network-monitor', 'eth0'],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
 
     def test__checks_for_pipe(self):
         parser = ArgumentParser()

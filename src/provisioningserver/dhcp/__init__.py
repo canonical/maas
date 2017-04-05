@@ -13,7 +13,7 @@ from abc import (
     abstractproperty,
 )
 
-from provisioningserver.path import get_tentative_path
+from provisioningserver.path import get_tentative_data_path
 
 # Location of the DHCPv4 configuration file.
 DHCPv4_CONFIG_FILE = '/var/lib/maas/dhcpd.conf'
@@ -65,8 +65,8 @@ class DHCPv4Server(DHCPServer):
 
     descriptive_name = "DHCPv4"
     template_basename = 'dhcpd.conf.template'
-    interfaces_filename = get_tentative_path(DHCPv4_INTERFACES_FILE)
-    config_filename = get_tentative_path(DHCPv4_CONFIG_FILE)
+    interfaces_filename = get_tentative_data_path(DHCPv4_INTERFACES_FILE)
+    config_filename = get_tentative_data_path(DHCPv4_CONFIG_FILE)
     dhcp_service = "dhcpd"
     ipv6 = False
 
@@ -79,7 +79,7 @@ class DHCPv6Server(DHCPServer):
 
     descriptive_name = "DHCPv6"
     template_basename = 'dhcpd6.conf.template'
-    interfaces_filename = get_tentative_path(DHCPv6_INTERFACES_FILE)
-    config_filename = get_tentative_path(DHCPv6_CONFIG_FILE)
+    interfaces_filename = get_tentative_data_path(DHCPv6_INTERFACES_FILE)
+    config_filename = get_tentative_data_path(DHCPv6_CONFIG_FILE)
     dhcp_service = "dhcpd6"
     ipv6 = True

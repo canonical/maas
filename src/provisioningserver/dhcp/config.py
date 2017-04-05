@@ -23,6 +23,10 @@ from netaddr import (
     IPRange,
 )
 from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.path import (
+    get_data_path,
+    get_path,
+)
 from provisioningserver.utils import (
     locate_template,
     typed,
@@ -249,14 +253,28 @@ def get_config_v4(
     platform_codename = linux_distribution()[2]
     template_file = locate_template('dhcp', template_name)
     template = tempita.Template.from_filename(template_file, encoding="UTF-8")
+    dhcp_socket = get_data_path('/var/lib/maas/dhcpd.sock')
+
     # Helper functions to stuff into the template namespace.
     helpers = {
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
     }
 
+    rack_addrs = [
+        IPAddress(addr)
+        for addr in net_utils.get_all_interface_addresses()]
+
     for shared_network in shared_networks:
         for subnet in shared_network["subnets"]:
+            cidr = IPNetwork(subnet['subnet_cidr'])
+            rack_ips = [
+                str(rack_addr)
+                for rack_addr in rack_addrs
+                if rack_addr in cidr
+            ]
+            if len(rack_ips) > 0:
+                subnet["next_server"] = rack_ips[0]
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
             subnet["ntp_servers_ipv4"] = ", ".join(ntp_servers_ipv4)
@@ -267,7 +285,9 @@ def get_config_v4(
             global_dhcp_snippets=global_dhcp_snippets, hosts=hosts,
             failover_peers=failover_peers, shared_networks=shared_networks,
             bootloader=bootloader, platform_codename=platform_codename,
-            omapi_key=omapi_key, **helpers)
+            omapi_key=omapi_key, dhcp_helper=(
+                get_path('/usr/sbin/maas-dhcp-helper')),
+            dhcp_socket=dhcp_socket, **helpers)
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
             "Failed to render DHCP configuration.") from error

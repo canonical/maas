@@ -41,8 +41,8 @@ from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
 from provisioningserver.path import (
-    get_path,
-    get_tentative_path,
+    get_data_path,
+    get_tentative_data_path,
 )
 from provisioningserver.utils.fs import (
     atomic_copy,
@@ -451,7 +451,7 @@ class TestSudoWriteFile(MAASTestCase):
             sudo_write_file, self.make_file(), factory.make_bytes())
 
     def test_can_write_file_in_development(self):
-        filename = get_path("/var/lib/maas/dhcpd.conf")
+        filename = get_data_path("/var/lib/maas/dhcpd.conf")
         contents = factory.make_bytes()  # Binary safe.
         mode = random.randint(0o000, 0o777) | 0o400  # Always u+r.
         sudo_write_file(filename, contents, mode)
@@ -480,7 +480,7 @@ class TestSudoDeleteFile(MAASTestCase):
             sudo_delete_file, self.make_file())
 
     def test_can_delete_file_in_development(self):
-        filename = get_path("/var/lib/maas/dhcpd.conf")
+        filename = get_data_path("/var/lib/maas/dhcpd.conf")
         with open(filename, "wb") as fd:
             fd.write(factory.make_bytes())
         sudo_delete_file(filename)
@@ -944,13 +944,15 @@ class TestRunLock(MAASTestCase):
 
     def test__string_path(self):
         filename = '/foo/bar/123:456.txt'
-        expected = get_tentative_path('/run/lock/maas@foo:bar:123::456.txt')
+        expected = get_tentative_data_path(
+            '/run/lock/maas@foo:bar:123::456.txt')
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
     def test__byte_path(self):
         filename = b'/foo/bar/123:456.txt'
-        expected = get_tentative_path('/run/lock/maas@foo:bar:123::456.txt')
+        expected = get_tentative_data_path(
+            '/run/lock/maas@foo:bar:123::456.txt')
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
@@ -960,7 +962,7 @@ class TestNamedLock(MAASTestCase):
 
     def test__string_name(self):
         name = factory.make_name("lock")
-        expected = get_tentative_path('/run/lock/maas:' + name)
+        expected = get_tentative_data_path('/run/lock/maas:' + name)
         observed = NamedLock(name).path
         self.assertEqual(expected, observed)
 

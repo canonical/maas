@@ -59,10 +59,16 @@ def make_function_call_script(function, *args, **kwargs):
     return script.encode("utf-8")
 
 
-# Built-in script to run lshw.
+# Built-in script to run lshw. This script runs both on the controller and
+# on a commissioning machine. So the script must check itself if its running
+# within a snap.
 LSHW_SCRIPT = dedent("""\
     #!/bin/bash
-    sudo -n /usr/bin/lshw -xml
+    if [ -z "$SNAP" ]; then
+        sudo -n /usr/bin/lshw -xml
+    else
+        $SNAP/usr/bin/lshw -xml
+    fi
     """)
 
 # Built-in script to run `ip addr`
@@ -518,10 +524,18 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         id_path = _path_to_idpath(block_path)
         if id_path is not None:
             block_info["ID_PATH"] = id_path
-        device_size = check_output(
-            ("sudo", "-n", "blockdev", "--getsize64", block_path))
-        device_block_size = check_output(
-            ("sudo", "-n", "blockdev", "--getbsz", block_path))
+        # This code runs on a commissioning machine and on a controller. So
+        # the code must check itself if its being ran inside of a snap.
+        if 'SNAP' in os.environ:
+            device_size = check_output(
+                ("blockdev", "--getsize64", block_path))
+            device_block_size = check_output(
+                ("blockdev", "--getbsz", block_path))
+        else:
+            device_size = check_output(
+                ("sudo", "-n", "blockdev", "--getsize64", block_path))
+            device_block_size = check_output(
+                ("sudo", "-n", "blockdev", "--getbsz", block_path))
         block_info["SIZE"] = device_size.decode("utf-8").strip()
         block_info["BLOCK_SIZE"] = device_block_size.decode("utf-8").strip()
 

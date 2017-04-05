@@ -605,9 +605,16 @@ class TestMain(MAASTestCase):
         self.patch(boot_resources, 'call_and_check').side_effect = (
             ExternalProcessError(
                 returncode=2, cmd=('tgt-admin',), output='error'))
-        boot_resources.update_targets_conf(factory.make_name("snapshot"))
+        snapshot = factory.make_name("snapshot")
+        boot_resources.update_targets_conf(snapshot)
         self.assertThat(mock_try_send_rack_event, MockCalledOnce())
         self.assertThat(mock_maaslog, MockCalledOnce())
+        self.assertThat(
+            boot_resources.call_and_check,
+            MockCalledOnceWith([
+                '/usr/sbin/tgt-admin',
+                '--conf', os.path.join(snapshot, 'maas.tgt'),
+                '--update', 'ALL']))
 
     def test_update_targets_only_runs_when_conf_exists(self):
         # Regression test for LP:1655721

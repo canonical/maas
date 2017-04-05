@@ -7,7 +7,7 @@ __all__ = [
     'get_maas_user_gpghome',
     ]
 
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 
 
 def get_maas_user_gpghome():
@@ -15,7 +15,7 @@ def get_maas_user_gpghome():
 
     Set $GPGHOME to this value ad-hoc when needed.
     """
-    return get_path('/var/lib/maas/gnupg')
+    return get_data_path('/var/lib/maas/gnupg')
 
 
 cache = {}

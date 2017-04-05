@@ -27,7 +27,7 @@ from sys import (
     stdin,
 )
 
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from provisioningserver.utils.fs import (
     FileLock,
     read_text_file,
@@ -50,7 +50,7 @@ def to_bin(u):
 
 def get_shared_secret_filesystem_path():
     """Return the path to shared-secret on the filesystem."""
-    return get_path("var", "lib", "maas", "secret")
+    return get_data_path("var", "lib", "maas", "secret")
 
 
 def get_shared_secret_from_filesystem():

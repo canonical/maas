@@ -12,7 +12,7 @@ import json
 import os
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.utils.twisted import (
@@ -33,7 +33,7 @@ maaslog = get_maas_logger("lease_socket_service")
 
 def get_socket_path():
     """Return path to dhcpd.sock."""
-    return os.path.join(get_path("/var/lib/maas"), "dhcpd.sock")
+    return os.path.join(get_data_path("/var/lib/maas"), "dhcpd.sock")
 
 
 class LeaseSocketService(Service, DatagramProtocol):

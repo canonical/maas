@@ -141,7 +141,7 @@ from formencode.validators import (
     Number,
     Set,
 )
-from provisioningserver.path import get_tentative_path
+from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     DirectoryString,
@@ -619,7 +619,7 @@ class ConfigurationMeta(type):
         # look for the configuration in its default locations.
         filename = environ.get(cls.envvar)
         if filename is None or len(filename) == 0:
-            return get_tentative_path(cls.default)
+            return get_tentative_data_path(cls.default)
         else:
             return filename
 
@@ -773,7 +773,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "tftp_root", "The root directory for TFTP resources.",
         DirectoryString(
             # Don't validate values that are already stored.
-            accept_python=True, if_missing=get_tentative_path(
+            accept_python=True, if_missing=get_tentative_data_path(
                 "/var/lib/maas/boot-resources/current")))
 
     # GRUB options.

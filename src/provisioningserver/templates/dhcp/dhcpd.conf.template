@@ -59,6 +59,9 @@ shared-network {{shared_network["name"]}} {
     {{for dhcp_subnet in shared_network["subnets"]}}
     subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
            ignore-client-uids true;
+           {{if dhcp_subnet.get('next_server')}}
+           next-server {{dhcp_subnet['next_server']}};
+           {{endif}}
            option subnet-mask {{dhcp_subnet['subnet_mask']}};
            option broadcast-address {{dhcp_subnet['broadcast_ip']}};
            {{if dhcp_subnet.get('dns_servers')}}
@@ -143,26 +146,29 @@ on commit {
    set cllt = binary-to-ascii(10, 32, "", encode-int(lease-time, 32));
    set clht = pick-first-value(option host-name, "(none)");
    execute(
-       "/usr/sbin/maas-dhcp-helper", "notify",
+       "{{dhcp_helper}}", "notify",
        "--action", "commit", "--mac", clhw,
        "--ip-family", "ipv4", "--ip", clip,
-       "--lease-time", cllt, "--hostname", clht);
+       "--lease-time", cllt, "--hostname", clht,
+       "--socket", "{{dhcp_socket}}");
 }
 on expiry {
    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
    set clip = binary-to-ascii(10, 8, ".", leased-address);
    execute(
-       "/usr/sbin/maas-dhcp-helper", "notify",
+       "{{dhcp_helper}}", "notify",
        "--action", "expiry", "--mac", clhw,
-       "--ip-family", "ipv4", "--ip", clip);
+       "--ip-family", "ipv4", "--ip", clip,
+       "--socket", "{{dhcp_socket}}");
 }
 on release {
    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
    set clip = binary-to-ascii(10, 8, ".", leased-address);
    execute(
-       "/usr/sbin/maas-dhcp-helper", "notify",
+       "{{dhcp_helper}}", "notify",
        "--action", "release", "--mac", clhw,
-       "--ip-family", "ipv4", "--ip", clip);
+       "--ip-family", "ipv4", "--ip", clip,
+       "--socket", "{{dhcp_socket}}");
 }
 
 omapi-port 7911;

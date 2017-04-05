@@ -70,7 +70,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from provisioningserver.path import get_path
+from provisioningserver.path import get_data_path
 from provisioningserver.rpc import (
     boot_images,
     cluster,
@@ -1383,7 +1383,7 @@ class TestClusterClient(MAASTestCase):
     @inlineCallbacks
     def test_registerRackWithRegion_doesnt_read_maas_id_from_cache(self):
         set_maas_id(factory.make_string())
-        os.unlink(get_path('/var/lib/maas/maas_id'))
+        os.unlink(get_data_path('/var/lib/maas/maas_id'))
 
         maas_url = factory.make_simple_http_url()
         hostname = platform.node().split('.')[0]

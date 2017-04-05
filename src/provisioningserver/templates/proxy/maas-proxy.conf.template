@@ -24,7 +24,6 @@ http_access allow localhost
 http_access deny all
 http_port 3128 transparent
 http_port 8000
-coredump_dir /var/spool/maas-proxy
 refresh_pattern ^ftp:           1440    20%     10080
 refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
 refresh_pattern \/Release(|\.gpg)$                        0    0%    0 refresh-ims
@@ -38,8 +37,8 @@ cache_mem 512 MB
 minimum_object_size 0 MB
 maximum_object_size 1024 MB
 maximum_object_size_in_memory 100 MB
+coredump_dir /var/spool/maas-proxy
 cache_dir aufs /var/spool/maas-proxy 40000 16 256
-# use different logs
 cache_access_log /var/log/maas/proxy/access.log
 cache_log /var/log/maas/proxy/cache.log
 cache_store_log /var/log/maas/proxy/store.log

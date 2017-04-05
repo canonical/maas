@@ -46,8 +46,14 @@ import tempfile
 import threading
 from time import sleep
 
-from provisioningserver.path import get_path
-from provisioningserver.utils import sudo
+from provisioningserver.path import (
+    get_data_path,
+    get_path,
+)
+from provisioningserver.utils import (
+    snappy,
+    sudo,
+)
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor
@@ -90,7 +96,7 @@ def get_library_script_path(name):
         from maastesting import root
         return os.path.join(root, "scripts", name)
     else:
-        return os.path.join("/usr/lib/maas", name)
+        return os.path.join(get_path("/usr/lib/maas"), name)
 
 
 def _write_temp_file(content, filename):
@@ -300,16 +306,21 @@ def sudo_write_file(filename, contents, mode=0o644):
     Runs an atomic update using non-interactive `sudo`.  This will fail if
     it needs to prompt for a password.
 
+    When running in a snap this function calls `atomic_write` directly.
+
     :type contents: `bytes`.
     """
     if not isinstance(contents, bytes):
         raise TypeError("Content must be bytes, got: %r" % (contents, ))
-    maas_write_file = get_library_script_path("maas-write-file")
-    command = _with_dev_python(maas_write_file, filename, "%.4o" % mode)
-    proc = Popen(sudo(command), stdin=PIPE)
-    stdout, stderr = proc.communicate(contents)
-    if proc.returncode != 0:
-        raise ExternalProcessError(proc.returncode, command, stderr)
+    if snappy.running_in_snap():
+        atomic_write(contents, filename, mode=mode)
+    else:
+        maas_write_file = get_library_script_path("maas-write-file")
+        command = _with_dev_python(maas_write_file, filename, "%.4o" % mode)
+        proc = Popen(sudo(command), stdin=PIPE)
+        stdout, stderr = proc.communicate(contents)
+        if proc.returncode != 0:
+            raise ExternalProcessError(proc.returncode, command, stderr)
 
 
 def sudo_delete_file(filename):
@@ -317,13 +328,18 @@ def sudo_delete_file(filename):
 
     Runs an atomic update using non-interactive `sudo`.  This will fail if
     it needs to prompt for a password.
+
+    When running in a snap this function calls `atomic_write` directly.
     """
-    maas_delete_file = get_library_script_path("maas-delete-file")
-    command = _with_dev_python(maas_delete_file, filename)
-    proc = Popen(sudo(command))
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        raise ExternalProcessError(proc.returncode, command, stderr)
+    if snappy.running_in_snap():
+        atomic_delete(filename)
+    else:
+        maas_delete_file = get_library_script_path("maas-delete-file")
+        command = _with_dev_python(maas_delete_file, filename)
+        proc = Popen(sudo(command))
+        stdout, stderr = proc.communicate()
+        if proc.returncode != 0:
+            raise ExternalProcessError(proc.returncode, command, stderr)
 
 
 @contextmanager
@@ -523,7 +539,7 @@ class RunLock(SystemLock):
     def __init__(self, path):
         abspath = FilePath(path).asTextMode().path.lstrip("/")
         discriminator = abspath.replace(":", "::").replace("/", ":")
-        lockpath = get_path("run", "lock", "maas@%s" % discriminator)
+        lockpath = get_data_path("run", "lock", "maas@%s" % discriminator)
         super(RunLock, self).__init__(lockpath)
 
 
@@ -549,5 +565,5 @@ class NamedLock(SystemLock):
                 "Lock name contains illegal characters: %s"
                 % "".join(sorted(illegal)))
         else:
-            lockpath = get_path("run", "lock", "maas:%s" % name)
+            lockpath = get_data_path("run", "lock", "maas:%s" % name)
             super(NamedLock, self).__init__(lockpath)

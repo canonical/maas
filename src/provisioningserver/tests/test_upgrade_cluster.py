@@ -22,6 +22,7 @@ from maastesting.utils import sample_binary_data
 from provisioningserver import upgrade_cluster
 from provisioningserver.boot.tftppath import list_subdirs
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils import snappy
 from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
     DirExists,
@@ -136,6 +137,17 @@ class TestCreateGNUPGHome(MAASTestCase):
         upgrade_cluster.create_gnupg_home()
         self.assertThat(
             call, MockCalledOnceWith(['chown', 'maas:maas', new_home]))
+
+    def test__doesnt_set_ownership_to_maas_when_in_snap(self):
+        parent = self.make_dir()
+        new_home = self.make_nonexistent_path(parent)
+        self.patch_gnupg_home(new_home)
+        call = self.patch_call()
+        self.patch(os, 'geteuid').return_value = 0
+        self.patch(snappy, 'running_in_snap').return_value = True
+        upgrade_cluster.create_gnupg_home()
+        self.assertThat(
+            call, MockNotCalled())
 
     def test__does_not_set_ownership_if_not_running_as_root(self):
         parent = self.make_dir()

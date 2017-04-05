@@ -400,6 +400,23 @@ class TestGetConfig(MAASTestCase):
                     Contains(expected))
 
 
+class TestGetConfigIPv4(MAASTestCase):
+    """Tests for `get_config`."""
+
+    def test__includes_next_server_in_config(self):
+        params = make_sample_params(self, ipv6=False)
+        subnet = params['shared_networks'][0]['subnets'][0]
+        next_server_ip = factory.pick_ip_in_network(
+            netaddr.IPNetwork(subnet['subnet_cidr']))
+        self.patch(net_utils, 'get_all_interface_addresses').return_value = [
+            next_server_ip
+        ]
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        validate_dhcpd_configuration(self, config_output, False)
+        self.assertThat(
+            config_output, Contains('next-server %s;' % next_server_ip))
+
+
 class Test_process_shared_network_v6(MAASTestCase):
     """Tests for `_process_network_parameters_v6`."""
 

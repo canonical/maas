@@ -46,6 +46,8 @@ from textwrap import dedent
 import time
 from typing import Iterable
 
+from provisioningserver.path import get_path
+
 
 def _rstrip(s: str, suffix: str) -> str:
     """Strips the specified suffix from the end of the string, if it exists."""
@@ -230,9 +232,10 @@ def _reader_from_avahi():
 
     :raises SystemExit: If `avahi-browse` exits non-zero.
     """
-    avahi_browse = subprocess.Popen(
-        ["/usr/bin/avahi-browse", "--all", "--resolve", "--no-db-lookup",
-         "--parsable", "--no-fail"], stdin=subprocess.DEVNULL,
+    avahi_browse = subprocess.Popen([
+        get_path("/usr/bin/avahi-browse"),
+        "--all", "--resolve", "--no-db-lookup",
+        "--parsable", "--no-fail"], stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE)
     try:
         # Avahi says "All strings used in DNS-SD are UTF-8 strings".

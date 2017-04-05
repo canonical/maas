@@ -14,7 +14,8 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.path
 from provisioningserver.path import (
     get_path,
-    get_tentative_path,
+    get_data_path,
+    get_tentative_data_path,
 )
 from testtools.matchers import (
     DirExists,
@@ -24,22 +25,32 @@ from testtools.matchers import (
 
 
 class TestGetPathFunctions(MAASTestCase):
-    """Tests for `get_path` and `get_tentative_path`."""
+    """Tests for `get_path`, `get_data_path` and `get_tentative_data_path`."""
 
     scenarios = (
         ("get_path", {
             "get_path_function": get_path,
-            "ensures_directory": True,
-        }),
-        ("get_tentative_path", {
-            "get_path_function": get_tentative_path,
             "ensures_directory": False,
+            "fixture": lambda path: EnvironmentVariableFixture(
+                'MAAS_PATH', path),
+        }),
+        ("get_data_path", {
+            "get_path_function": get_data_path,
+            "ensures_directory": True,
+            "fixture": lambda path: EnvironmentVariableFixture(
+                'MAAS_ROOT', path),
+        }),
+        ("get_tentative_data_path", {
+            "get_path_function": get_tentative_data_path,
+            "ensures_directory": False,
+            "fixture": lambda path: EnvironmentVariableFixture(
+                'MAAS_ROOT', path),
         }),
     )
 
     def set_root(self, root_path=None):
         """For the duration of this test, set the `MAAS_ROOT` variable`."""
-        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', root_path))
+        self.useFixture(self.fixture(root_path))
 
     def test__defaults_to_root(self):
         self.set_root()

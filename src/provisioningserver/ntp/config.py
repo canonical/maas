@@ -20,7 +20,7 @@ from netaddr import (
     AddrFormatError,
     IPAddress,
 )
-from provisioningserver.path import get_tentative_path
+from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import sudo_write_file
 
 
@@ -42,13 +42,13 @@ def configure(servers, peers, offset):
         would be 0 and a rack controller would be 1.
     """
     ntp_maas_conf = _render_ntp_maas_conf(servers, peers, offset)
-    ntp_maas_conf_path = get_tentative_path("etc", _ntp_maas_conf_name)
+    ntp_maas_conf_path = get_tentative_data_path("etc", _ntp_maas_conf_name)
     sudo_write_file(
         ntp_maas_conf_path,
         ntp_maas_conf.encode("ascii"),
         mode=0o644)
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
-    ntp_conf_path = get_tentative_path("etc", _ntp_conf_name)
+    ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
     sudo_write_file(
         ntp_conf_path,
         ntp_conf.encode("ascii"),
@@ -81,7 +81,7 @@ def _render_ntp_conf(includefile):
 
     This configuration includes the file named by `includefile`.
     """
-    ntp_conf_path = get_tentative_path("etc", _ntp_conf_name)
+    ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
     with open(ntp_conf_path, "r", encoding="ascii") as fd:
         lines = _render_ntp_conf_from_source(fd, includefile)
         return "".join(lines)

@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 import io
 import json
+import subprocess
 from tempfile import NamedTemporaryFile
 import time
 
@@ -250,7 +251,12 @@ class TestObserveMDNSCommand(MAASTestCase):
         popen.return_value.returncode = 0
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(popen.call_count, Equals(1))
+        self.assertThat(
+            popen, MockCalledOnceWith(
+                [
+                    '/usr/bin/avahi-browse', '--all', '--resolve',
+                    '--no-db-lookup', '--parsable', '--no-fail',
+                ], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
 
     def test__allows_pipe_input(self):
         parser = ArgumentParser()

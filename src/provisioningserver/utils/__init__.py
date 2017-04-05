@@ -22,6 +22,7 @@ import os
 from pipes import quote
 from typing import Tuple
 
+from provisioningserver.utils import snappy
 import tempita
 
 # Use typecheck-decorator if it's available.
@@ -43,8 +44,8 @@ def locate_config(*path: Tuple[str]):
         return path
     else:
         # Avoid circular imports.
-        from provisioningserver.path import get_tentative_path
-        return get_tentative_path("etc", "maas", path)
+        from provisioningserver.path import get_tentative_data_path
+        return get_tentative_data_path("etc", "maas", path)
 
 
 def locate_template(*path: Tuple[str]):
@@ -188,7 +189,7 @@ def is_true(value):
 def sudo(command_args):
     """Wrap the command arguments in a sudo command, if not in debug mode."""
     from provisioningserver.config import is_dev_environment  # Circular.
-    if is_dev_environment():
+    if is_dev_environment() or snappy.running_in_snap():
         return command_args
     else:
         return ['sudo', '-n', *command_args]
