@@ -632,7 +632,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'content': make_function_call_script(
             lldpd_capture, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
-        'timeout': timedelta(minutes=1),
+        'timeout': timedelta(minutes=3),
         'run_on_controller': False,
     }),
     ('99-maas-03-network-interfaces', {
