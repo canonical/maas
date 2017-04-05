@@ -618,6 +618,13 @@ class TestVirshSSH(MAASTestCase):
         devices = [
             factory.make_name('device') for _ in range(3)
         ]
+        device_tags = [
+            [
+                factory.make_name('tag')
+                for _ in range(3)
+            ]
+            for _ in range(3)
+        ]
         local_storage = [
             random.randint(4096, 8192) for _ in range(3)
         ]
@@ -646,7 +653,18 @@ class TestVirshSSH(MAASTestCase):
         mock_get_machine_local_storage.side_effect = local_storage
         mock_list_machine_mac_addresses.return_value = mac_addresses
 
-        discovered_machine = conn.get_discovered_machine(hostname)
+        block_devices = [
+            RequestedMachineBlockDevice(
+                size=local_storage[idx], tags=device_tags[idx])
+            for idx in range(3)
+        ]
+        # None of the parameters matter in the RequestedMachine except for
+        # block_device. All other paramters are ignored by this method.
+        request = RequestedMachine(
+            hostname=None, architecture='', cores=0, memory=0, interfaces=[],
+            block_devices=block_devices)
+        discovered_machine = conn.get_discovered_machine(
+            hostname, request=request)
         self.assertEquals(hostname, discovered_machine.hostname)
         self.assertEquals(architecture, discovered_machine.architecture)
         self.assertEquals(cores, discovered_machine.cores)
@@ -654,6 +672,9 @@ class TestVirshSSH(MAASTestCase):
         self.assertItemsEqual(
             local_storage,
             [bd.size for bd in discovered_machine.block_devices])
+        self.assertItemsEqual(
+            device_tags,
+            [bd.tags for bd in discovered_machine.block_devices])
         self.assertItemsEqual(
             mac_addresses,
             [m.mac_address for m in discovered_machine.interfaces])
@@ -918,7 +939,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_configure_pxe, MockCalledOnceWith(ANY))
         self.assertThat(
-            mock_discovered, MockCalledOnceWith(ANY))
+            mock_discovered, MockCalledOnceWith(ANY, request=request))
         self.assertEquals(sentinel.discovered, observed)
 
     def test_delete_domain_calls_correct_methods(self):

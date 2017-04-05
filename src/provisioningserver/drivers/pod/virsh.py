@@ -460,7 +460,7 @@ class VirshSSH(pexpect.spawn):
             self.get_pod_available_local_storage())
         return discovered_pod_hints
 
-    def get_discovered_machine(self, machine):
+    def get_discovered_machine(self, machine, request=None):
         """Gets the discovered machine."""
         # Discovered machine.
         discovered_machine = DiscoveredMachine(
@@ -479,13 +479,19 @@ class VirshSSH(pexpect.spawn):
         # Discover block devices.
         block_devices = []
         devices = self.list_machine_block_devices(machine)
-        for device in devices:
+        for idx, device in enumerate(devices):
             # Block device.
+            # When request is provided map the tags from the request block
+            # devices to the discovered block devices. This ensures that
+            # composed machine has the requested tags on the block device.
+            tags = []
+            if request is not None:
+                tags = request.block_devices[idx].tags
             block_devices.append(
                 DiscoveredMachineBlockDevice(
                     model=None, serial=None,
                     size=self.get_machine_local_storage(machine, device),
-                    id_path="/dev/%s" % device))
+                    id_path="/dev/%s" % device, tags=tags))
         discovered_machine.block_devices = block_devices
 
         # Discover interfaces.
@@ -672,7 +678,8 @@ class VirshSSH(pexpect.spawn):
         of the domain to the network.
         """
         # Create all the block devices first. If cannot complete successfully
-        # then fail early.
+        # then fail early. The driver currently doesn't do any tag matching
+        # for block devices, and is not really required for Virsh.
         created_disks = []
         for idx, disk in enumerate(request.block_devices):
             try:
@@ -718,7 +725,7 @@ class VirshSSH(pexpect.spawn):
         self.configure_pxe_boot(request.hostname)
 
         # Return the result as a discovered machine.
-        return self.get_discovered_machine(request.hostname)
+        return self.get_discovered_machine(request.hostname, request=request)
 
     def delete_domain(self, domain):
         """Delete `domain` and its volumes."""
