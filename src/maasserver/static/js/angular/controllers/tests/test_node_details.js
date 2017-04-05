@@ -2121,7 +2121,7 @@ describe("NodeDetailsController", function() {
             var summary_xml = {};
             $scope.node.summary_xml = summary_xml;
             $scope.machine_output.summaryType = "xml";
-            expect($scope.getSummaryData()).toBe("\n" + summary_xml);
+            expect($scope.getSummaryData()).toBe(summary_xml);
         });
 
         it("returns summary_yaml when summaryType equal yaml", function() {
@@ -2130,7 +2130,7 @@ describe("NodeDetailsController", function() {
             var summary_yaml = {};
             $scope.node.summary_yaml = summary_yaml;
             $scope.machine_output.summaryType = "yaml";
-            expect($scope.getSummaryData()).toBe("\n" + summary_yaml);
+            expect($scope.getSummaryData()).toBe(summary_yaml);
         });
     });
 

@@ -494,4 +494,13 @@
   .u-visibility--hidden {
     visibility: hidden !important;
   }
+
+  /*
+   * Writespace pre-wrapping for terminal output. This is important in order
+   * to preserve the original indentation when viewing commissioning script
+   * or testing results.
+   */
+  .u-whitespace--prewrap {
+    white-space: pre-wrap !important;
+  }
 }

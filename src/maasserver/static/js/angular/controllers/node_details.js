@@ -954,10 +954,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if(!angular.isObject($scope.node)) {
                 return "";
             }
-            // Prepend a newline before the summary output, because the code
-            // tag requires that the content start on a newline.
-            return "\n" +
-                $scope.node["summary_" + $scope.machine_output.summaryType];
+            return $scope.node["summary_" + $scope.machine_output.summaryType];
         };
 
         // Return the installation log data.

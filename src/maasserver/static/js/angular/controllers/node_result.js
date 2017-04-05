@@ -37,28 +37,18 @@ angular.module('MAAS').controller('NodeResultController', [
                 return "";
             }
 
-            var i, output, result;
-            for(i = 0; i < $scope.node.commissioning_results.length; i++) {
-                result = $scope.node.commissioning_results[i];
-                if(result.name === $scope.filename) {
+            var i, output, result, results;
+            results = $scope.node.commissioning_results;
+            results = results.concat($scope.node.testing_results);
+            for(i = 0; i < results.length; i++) {
+                result = results[i];
+                if (result.name === $scope.filename) {
                     // <code> tags require the content to start on a newline.
                     output = result.output.trim();
-                    if(output.length === 0) {
-                        return "\nEmpty file";
+                    if (output.length === 0) {
+                        return "Empty file.";
                     } else {
-                        return "\n" + result.output;
-                    }
-                }
-            }
-            for(i = 0; i < $scope.node.testing_results.length; i++) {
-                result = $scope.node.testing_results[i];
-                if(result.name === $scope.filename) {
-                    // <code> tags require the content to start on a newline.
-                    output = result.output.trim();
-                    if(output.length === 0) {
-                        return "\nEmpty file";
-                    } else {
-                        return "\n" + result.output;
+                        return output;
                     }
                 }
             }

@@ -202,19 +202,18 @@ describe("NodeResultController", function() {
             expect($scope.getResultData()).toBe("");
         });
 
-        it("returns data from result with newline prepended", function() {
+        it("returns data from result as stripped string", function() {
             var controller = makeController();
             $scope.node = node;
-            expect($scope.getResultData()).toBe(
-                "\n" + node.commissioning_results[0].output);
+            node.commissioning_results[0].output = " \n\nMAAS rocks. \n\n ";
+            expect($scope.getResultData()).toBe("MAAS rocks.");
         });
 
-        it("returns 'Empty file` for empty data from result", function() {
+        it("returns 'Empty file.` for empty data from result", function() {
             var controller = makeController();
             $scope.node = node;
             node.commissioning_results[0].output = "";
-            expect($scope.getResultData()).toBe(
-                "\nEmpty file");
+            expect($scope.getResultData()).toBe("Empty file.");
         });
 
         it("calls $location.path back to node details if result missing",

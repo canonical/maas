@@ -143,7 +143,7 @@ SUPPORT_SCRIPT = dedent("""\
         echo ""
         echo "-----BEGIN CLOUD CONFIG QUERY-----"
         # Filter out any base64 strings having to do with secrets or keys.
-        curl -v "$URL" 2>&1 | \
+        curl -LSsv "$URL" 2>&1 | \
             sed '/_key: \|_secret: /'`
                `'s/: [a-zA-Z0-9/+=]\{12,128\}/: (withheld)/g'
         echo "-----END CLOUD CONFIG QUERY-----"
