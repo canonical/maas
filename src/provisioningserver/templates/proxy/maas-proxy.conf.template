@@ -37,8 +37,22 @@ cache_mem 512 MB
 minimum_object_size 0 MB
 maximum_object_size 1024 MB
 maximum_object_size_in_memory 100 MB
+{{if running_in_snap}}
+pid_filename {{snap_data_path}}/proxy/squid.pid
+mime_table {{snap_path}}/etc/mime.conf
+unlinkd_program {{snap_path}}/libexec/unlinkd
+logfile_daemon {{snap_path}}/libexec/log_file_daemon
+icon_directory {{snap_path}}/share/icons
+error_directory {{snap_path}}/share/errors/en-uk
+coredump_dir {{snap_common_path}}/proxy/spool
+cache_dir aufs {{snap_common_path}}/proxy/cache 40000 16 256
+cache_access_log {{snap_common_path}}/log/proxy/access.log
+cache_log {{snap_common_path}}/log/proxy/cache.log
+cache_store_log {{snap_common_path}}/log/proxy/store.log
+{{else}}
 coredump_dir /var/spool/maas-proxy
 cache_dir aufs /var/spool/maas-proxy 40000 16 256
 cache_access_log /var/log/maas/proxy/access.log
 cache_log /var/log/maas/proxy/cache.log
 cache_store_log /var/log/maas/proxy/store.log
+{{endif}}

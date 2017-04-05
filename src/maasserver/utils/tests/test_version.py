@@ -18,7 +18,10 @@ from maasserver.utils import version
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils import shell
+from provisioningserver.utils import (
+    shell,
+    snappy,
+)
 from testtools.matchers import (
     GreaterThan,
     Is,
@@ -122,15 +125,20 @@ class TestVersionTestCase(MAASTestCase):
                 attribute.cache_clear()
 
 
-class TestGetMAASPackageVersion(TestVersionTestCase):
+class TestGetMAASVersion(TestVersionTestCase):
 
     def test__calls_get_version_from_apt(self):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = sentinel.version
         self.expectThat(
-            version.get_maas_package_version(), Is(sentinel.version))
+            version.get_maas_version(), Is(sentinel.version))
         self.expectThat(
             mock_apt, MockCalledOnceWith(version.REGION_PACKAGE_NAME))
+
+    def test__uses_snappy_get_snap_version(self):
+        self.patch(snappy, 'running_in_snap').return_value = True
+        self.patch(snappy, 'get_snap_version').return_value = sentinel.version
+        self.assertEqual(sentinel.version, version.get_maas_version())
 
 
 class TestGetMAASVersionSubversion(TestVersionTestCase):
@@ -240,7 +248,7 @@ class TestGetMAASDocVersion(TestVersionTestCase):
 class TestVersionMethodsCached(TestVersionTestCase):
 
     scenarios = [
-        ("get_maas_package_version", dict(method="get_maas_package_version")),
+        ("get_maas_version", dict(method="get_maas_version")),
         ("get_maas_version_subversion", dict(
             method="get_maas_version_subversion")),
         ("get_maas_version_ui", dict(method="get_maas_version_ui")),

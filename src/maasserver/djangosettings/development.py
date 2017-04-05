@@ -43,6 +43,8 @@ DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
+STATIC_ROOT = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "static")
 
 DATABASES = {
     'default': {

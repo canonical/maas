@@ -20,7 +20,10 @@ from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import locate_template
+from provisioningserver.utils import (
+    locate_template,
+    snappy,
+)
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import asynchronous
 import tempita
@@ -69,6 +72,10 @@ def proxy_update_config(reload_proxy=True):
             'modified': str(datetime.date.today()),
             'fqdn': socket.getfqdn(),
             'cidrs': cidrs,
+            'running_in_snap': snappy.running_in_snap(),
+            'snap_path': snappy.get_snap_path(),
+            'snap_data_path': snappy.get_snap_data_path(),
+            'snap_common_path': snappy.get_snap_common_path(),
         }
         template_path = locate_template('proxy', MAAS_PROXY_CONF_TEMPLATE)
         template = tempita.Template.from_filename(

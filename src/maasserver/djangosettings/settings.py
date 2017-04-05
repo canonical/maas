@@ -171,6 +171,9 @@ STATIC_URL_PATTERN = '/static/'
 # is not empty), so we have to hack this.
 STATIC_URL = "/MAAS" + STATIC_URL_PATTERN
 
+# Path to the root of the static files.
+STATIC_ROOT = "/usr/share/maas/web/static"
+
 # Additional locations of static files
 STATICFILES_DIRS = (
     # Put strings here, like "/home/html/static" or "C:/www/django/static".

@@ -11,7 +11,7 @@ from maasserver.models import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maasserver.utils.version import get_maas_package_version
+from maasserver.utils.version import get_maas_version
 from metadataserver.builtin_scripts import (
     BUILTIN_SCRIPTS,
     load_builtin_scripts,
@@ -31,7 +31,7 @@ class TestBuiltinScripts(MAASServerTestCase):
             self.assertEquals(script.title, script_in_db.title)
             self.assertEquals(script.description, script_in_db.description)
             self.assertEquals(
-                "Created by maas-%s" % get_maas_package_version(),
+                "Created by maas-%s" % get_maas_version(),
                 script_in_db.script.comment)
             self.assertItemsEqual(script.tags, script_in_db.tags)
             self.assertEquals(script.script_type, script_in_db.script_type)
@@ -66,7 +66,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertEquals(
             update_script_values.description, script.description)
         self.assertEquals(
-            "Updated by maas-%s" % get_maas_package_version(),
+            "Updated by maas-%s" % get_maas_version(),
             script.script.comment)
         self.assertEquals(
             update_script_values.script_type, script.script_type)

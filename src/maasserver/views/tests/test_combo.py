@@ -12,9 +12,7 @@ import os
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
-from maasserver import config
 from maasserver.testing import extract_redirect
-from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.combo import (
@@ -33,10 +31,9 @@ class TestUtilities(MAASServerTestCase):
             abs_location, get_absolute_location(location=abs_location))
 
     def test_get_abs_location_returns_rel_loc_if_not_in_dev_environment(self):
-        self.useFixture(RegionConfigurationFixture())
         self.useFixture(ImportErrorFixture('maastesting', 'root'))
         static_root = factory.make_string()
-        self.patch(config.RegionConfiguration, 'static_root', static_root)
+        self.patch(settings, 'STATIC_ROOT', static_root)
         rel_location = os.path.join(
             factory.make_string(), factory.make_string())
         expected_location = os.path.join(static_root, rel_location)

@@ -12,13 +12,17 @@ __all__ = [
 from functools import lru_cache
 import re
 
-import apt_pkg
 from maasserver import __version__ as old_version
 from maasserver.api.logger import maaslog
-from provisioningserver.utils import shell
+from provisioningserver.utils import (
+    shell,
+    snappy,
+)
 
-# Initialize apt_pkg.
-apt_pkg.init()
+# Only import apt_pkg and initialize when not running in a snap.
+if not snappy.running_in_snap():
+    import apt_pkg
+    apt_pkg.init()
 
 # Name of maas package to get version from.
 REGION_PACKAGE_NAME = "maas-region-api"
@@ -77,17 +81,20 @@ def get_maas_branch_version():
 
 
 @lru_cache(maxsize=1)
-def get_maas_package_version():
-    """Return the apt version for the main MAAS package."""
-    return get_version_from_apt(REGION_PACKAGE_NAME)
+def get_maas_version():
+    """Return the apt or snap version for the main MAAS package."""
+    if snappy.running_in_snap():
+        return snappy.get_snap_version()
+    else:
+        return get_version_from_apt(REGION_PACKAGE_NAME)
 
 
 @lru_cache(maxsize=1)
 def get_maas_version_subversion():
     """Return a tuple with the MAAS version and the MAAS subversion."""
-    apt_version = get_maas_package_version()
-    if apt_version:
-        return extract_version_subversion(apt_version)
+    version = get_maas_version()
+    if version:
+        return extract_version_subversion(version)
     else:
         # Get the branch information
         branch_version = get_maas_branch_version()
@@ -123,7 +130,7 @@ def get_maas_version_user_agent():
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
     doc_prefix = 'docs'
-    apt_version = get_maas_package_version()
+    apt_version = get_maas_version()
     if apt_version:
         version, _ = extract_version_subversion(apt_version)
         return doc_prefix + '.'.join(version.split('~')[0].split('.')[:2])

@@ -15,7 +15,7 @@ from attr.validators import (
     instance_of,
     optional,
 )
-from maasserver.utils.version import get_maas_package_version
+from maasserver.utils.version import get_maas_version
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
 from provisioningserver.utils.fs import read_text_file
@@ -188,7 +188,7 @@ def load_builtin_scripts():
                 name=script.name, title=script.title,
                 description=script.description, tags=script.tags,
                 script_type=script.script_type, script=script_content,
-                comment="Created by maas-%s" % get_maas_package_version(),
+                comment="Created by maas-%s" % get_maas_version(),
                 timeout=script.timeout, destructive=script.destructive,
                 default=True)
         else:
@@ -207,7 +207,7 @@ def load_builtin_scripts():
                     continue
                 script_in_db.script = script_in_db.script.update(
                     script_content,
-                    "Updated by maas-%s" % get_maas_package_version())
+                    "Updated by maas-%s" % get_maas_version())
             script_in_db.title = script.title
             script_in_db.description = script.description
             script_in_db.script_type = script.script_type

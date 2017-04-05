@@ -12,9 +12,9 @@ from functools import partial
 from http.client import SERVICE_UNAVAILABLE
 import re
 
+from django.conf import settings
 from lxml import html
 from maasserver import concurrency
-from maasserver.config import RegionConfiguration
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
 from maasserver.websockets.websockets import (
@@ -214,16 +214,13 @@ class WebApplicationService(StreamServerEndpointService):
         front-end configuration (i.e. Apache) so that there's no need to force
         script names.
         """
-        with RegionConfiguration.open() as config:
-            static_root = File(config.static_root)
-
         # Setup resources to process paths that twisted handles.
         metadata = Resource()
         metadata.putChild(b'status', StatusHandlerResource(self.status_worker))
 
         maas = Resource()
         maas.putChild(b'metadata', metadata)
-        maas.putChild(b'static', static_root)
+        maas.putChild(b'static', File(settings.STATIC_ROOT))
         maas.putChild(
             b'ws',
             WebSocketsResource(lookupProtocolForFactory(self.websocket)))

@@ -21,7 +21,6 @@ from django.http import (
     HttpResponseNotFound,
     HttpResponseRedirect,
 )
-from maasserver.config import RegionConfiguration
 
 
 MERGE_VIEWS = {
@@ -200,8 +199,7 @@ def get_absolute_location(location=''):
     if location.startswith(os.path.sep):
         return location
     else:
-        with RegionConfiguration.open() as config:
-            return os.path.join(config.static_root, location)
+        return os.path.join(settings.STATIC_ROOT, location)
 
 
 def get_combo_view(location='', default_redirect=None):
