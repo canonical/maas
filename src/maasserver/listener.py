@@ -17,6 +17,7 @@ from django.db.utils import load_backend
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.twisted import (
     callOut,
+    suppress,
     synchronous,
 )
 from twisted.application.service import Service
@@ -332,7 +333,7 @@ class PostgresListenerService(Service, object):
                 self.disconnecting.callback(None)
             else:
                 # Still connecting: cancel before disconnect.
-                self.connecting.addErrback(Failure.trap, CancelledError)
+                self.connecting.addErrback(suppress, CancelledError)
                 self.connecting.chainDeferred(self.disconnecting)
                 self.connecting.cancel()
 

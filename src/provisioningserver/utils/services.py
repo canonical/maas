@@ -32,6 +32,7 @@ from provisioningserver.utils.shell import select_c_utf8_bytes_locale
 from provisioningserver.utils.twisted import (
     callOut,
     deferred,
+    suppress,
     terminateProcess,
 )
 from twisted.application.internet import TimerService
@@ -48,7 +49,6 @@ from twisted.internet.error import (
 )
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.threads import deferToThread
-from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("networks.monitor")
@@ -349,7 +349,7 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         # During the update, we might fail to get the interface monitoring
         # state from the region. We can safely ignore this, as it will be
         # retried shortly.
-        d.addErrback(Failure.trap, NoConnectionsAvailable)
+        d.addErrback(suppress, NoConnectionsAvailable)
         d.addErrback(failed)
         return d
 

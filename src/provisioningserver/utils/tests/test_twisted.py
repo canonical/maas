@@ -66,6 +66,7 @@ from provisioningserver.utils.twisted import (
     reducedWebLogFormatter,
     retries,
     RPCFetcher,
+    suppress,
     synchronous,
     terminateProcess,
     ThreadPool,
@@ -302,6 +303,27 @@ class TestSynchronousDecoratorSychronously(MAASTestCase):
         self.assertThat(str(error), Equals(
             "Synchronous call returned a Deferred: %s(%r, b=%r)"
             % (Something.__qualname__, a, b)))
+
+
+class TestSuppress(MAASTestCase):
+    """Tests for `suppress`."""
+
+    def test__suppresses_given_exception(self):
+        error_type = factory.make_exception_type()
+        failure = Failure(error_type())
+        self.assertThat(suppress(failure, error_type), Is(None))
+
+    def test__does_not_suppress_other_exceptions(self):
+        error_type = factory.make_exception_type()
+        failure = Failure(factory.make_exception())
+        self.assertThat(suppress(failure, error_type), Is(failure))
+
+    def test__returns_instead_value_when_suppressing(self):
+        error_type = factory.make_exception_type()
+        failure = Failure(error_type())
+        self.assertThat(
+            suppress(failure, error_type, instead=sentinel.instead),
+            Is(sentinel.instead))
 
 
 class TestRetries(MAASTestCase):
@@ -1857,7 +1879,7 @@ class TestTerminateProcess(MAASTestCase):
         pid = process.pid
         # Terminate and wait for it to exit.
         self.terminateSignalPrinter(process, protocol)
-        yield protocol.done.addErrback(Failure.trap, ProcessTerminated)
+        yield protocol.done.addErrback(suppress, ProcessTerminated)
         # os.kill was called once then os.killpg was called twice because the
         # subprocess made itself a process group leader.
         self.assertThat(
@@ -1878,7 +1900,7 @@ class TestTerminateProcess(MAASTestCase):
         pid = process.pid
         # Terminate and wait for it to exit.
         self.terminateSignalPrinter(process, protocol)
-        yield protocol.done.addErrback(Failure.trap, ProcessTerminated)
+        yield protocol.done.addErrback(suppress, ProcessTerminated)
         # os.kill was called 3 times because the subprocess did not make
         # itself a process group leader.
         self.assertThat(

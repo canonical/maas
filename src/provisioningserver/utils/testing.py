@@ -4,6 +4,7 @@
 """Testing helpers for provisioningserver.utils."""
 
 __all__ = [
+    "callWithServiceRunning",
     "MAASIDFixture",
     "RegistryFixture",
 ]
@@ -11,6 +12,11 @@ __all__ = [
 from fixtures import Fixture
 from provisioningserver.utils import env
 from provisioningserver.utils.registry import _registry
+from provisioningserver.utils.twisted import (
+    call,
+    callOut,
+)
+from twisted.internet import defer
 
 
 class RegistryFixture(Fixture):
@@ -34,3 +40,17 @@ class MAASIDFixture(Fixture):
         super(MAASIDFixture, self)._setUp()
         self.addCleanup(env.set_maas_id, env.get_maas_id())
         env.set_maas_id(self.system_id)
+
+
+def callWithServiceRunning(service, f, *args, **kwargs):
+    """Call `f` with `service` running.
+
+    The given service is a Twisted service. It is started, the given function
+    called with the given arguments, then the service is stopped.
+
+    Returns a `Deferred`, firing with the result of the call to `f`.
+    """
+    d = defer.maybeDeferred(service.startService)
+    d.addCallback(call, f, *args, **kwargs)
+    d.addBoth(callOut, service.stopService)
+    return d

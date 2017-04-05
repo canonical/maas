@@ -22,6 +22,7 @@ __all__ = [
     'pause',
     'reducedWebLogFormatter',
     'retries',
+    'suppress',
     'synchronous',
     'ThreadPool',
     'ThreadPoolLimiter',
@@ -244,6 +245,17 @@ def synchronous(func):
     interface.directlyProvides(wrapper, ISynchronous)
 
     return wrapper
+
+
+def suppress(failure, *exceptions, instead=None):
+    """Used as a errback, suppress the given exceptions.
+
+    Returns the given `instead` value... instead.
+    """
+    if failure.check(*exceptions) is None:
+        return failure
+    else:
+        return instead
 
 
 def retries(timeout=30, intervals=1, clock=reactor):

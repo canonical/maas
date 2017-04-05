@@ -100,6 +100,7 @@ from provisioningserver.utils.twisted import (
     deferred,
     DeferredValue,
     makeDeferredWithProcessProtocol,
+    suppress,
 )
 from twisted import web
 from twisted.application.internet import TimerService
@@ -120,7 +121,6 @@ from twisted.internet.error import (
 )
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
 import twisted.web.client
@@ -651,7 +651,7 @@ class Cluster(RPCProtocol):
                 executeScanNetworksSubprocess, scan_all=scan_all,
                 force_ping=force_ping, slow=slow, cidrs=cidrs, threads=threads,
                 interface=interface)
-            d.addErrback(Failure.trap, ProcessDone)  # Exited normally.
+            d.addErrback(suppress, ProcessDone)  # Exited normally.
             d.addErrback(log.err, 'Failed to scan all networks.')
             d.addBoth(callOut, lock.release)
         return {}

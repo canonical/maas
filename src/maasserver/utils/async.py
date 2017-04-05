@@ -20,6 +20,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
     LONGTIME,
+    suppress,
     synchronous,
 )
 from twisted.internet import reactor
@@ -158,11 +159,6 @@ def gatherCallResults(calls, timeout=10.0):
     # Return an iterator to the invoking thread that will stop at the
     # first sign of the `done` sentinel.
     return UseOnceIterator(queue.get, done)
-
-
-def suppress(failure, *exceptions):
-    """Used as a errback, suppress the given exceptions."""
-    failure.trap(*exceptions)
 
 
 class DeferredHooks(threading.local):

@@ -15,6 +15,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.utils.testing import callWithServiceRunning
 from provisioningserver.utils.tests.test_network import (
     TestReverseResolveMixIn,
 )
@@ -22,6 +23,7 @@ from testtools.matchers import (
     Equals,
     Is,
 )
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 
 
@@ -109,3 +111,17 @@ class TestReverseDNSService(
         self.assertThat(listener.unregister, MockCalledOnceWith(
             'neighbour', service.consumeNeighbourEvent
         ))
+
+    @wait_for(30)
+    @inlineCallbacks
+    def test__ignores_timeouts_when_consuming_neighbour_event(self):
+        reverseResolve = self.patch(reverse_dns_module, "reverseResolve")
+        reverseResolve.return_value = defer.fail(defer.TimeoutError())
+        ip = factory.make_ip_address(ipv6=False)
+        service = ReverseDNSService()
+        yield callWithServiceRunning(
+            service, service.consumeNeighbourEvent,
+            "create", "%s/32" % ip)
+        self.assertThat(reverseResolve, MockCalledOnceWith(ip))
+        result = yield deferToDatabase(RDNS.objects.first)
+        self.assertThat(result, Is(None))

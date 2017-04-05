@@ -17,8 +17,9 @@ from maasserver.models import (
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import reverseResolve
+from provisioningserver.utils.twisted import suppress
 from twisted.application.service import Service
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet import defer
 
 
 log = LegacyLogger()
@@ -34,7 +35,7 @@ class ReverseDNSService(Service):
         # need to look it up every time a DNS entry changes.
         self.region = None
 
-    @inlineCallbacks
+    @defer.inlineCallbacks
     def startService(self):
         super().startService()
         self.region = yield deferToDatabase(
@@ -67,7 +68,7 @@ class ReverseDNSService(Service):
         """
         RDNS.objects.delete_current_entry(ip, self.region)
 
-    @inlineCallbacks
+    @defer.inlineCallbacks
     def consumeNeighbourEvent(self, action: str=None, cidr: str=None):
         """Given an event from the postgresListener, resolve RDNS for an IP.
 
@@ -85,7 +86,8 @@ class ReverseDNSService(Service):
             # the same IP address, and because an IP address might repeatedly
             # go back-and-forth between two MACs in the case of a duplicate IP
             # address.
-            results = yield reverseResolve(ip)
+            results = yield reverseResolve(ip).addErrback(
+                suppress, defer.TimeoutError, instead=None)
             if results is not None:
                 if len(results) > 0:
                     yield deferToDatabase(self.set_rdns_entry, ip, results)

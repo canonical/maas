@@ -1975,11 +1975,8 @@ class TestReverseResolveMixIn:
         data = (rrset,)
         for hostname in hostnames:
             rr = Mock()
-            rr.payload = Mock()
-            rr.payload.name = Mock()
-            rr.payload.name.name = Mock()
-            rr.payload.name.name.decode = Mock()
-            rr.payload.name.name.decode.return_value = hostname
+            decode = rr.payload.name.name.decode
+            decode.return_value = hostname
             rrset.append(rr)
         self.reply = data
 

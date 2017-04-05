@@ -39,12 +39,12 @@ from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,
     FOREVER,
+    suppress,
 )
 from twisted.internet.defer import (
     maybeDeferred,
     succeed,
 )
-from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("events")
@@ -464,7 +464,7 @@ class NodeEventHub:
         # tracebacks telling us about it is not useful. Perhaps the region
         # should store these logs anyway. Then, if and when the node is
         # enlisted, logs prior to enlistment can be seen.
-        d.addErrback(Failure.trap, NoSuchNode)
+        d.addErrback(suppress, NoSuchNode)
 
         return d
 
