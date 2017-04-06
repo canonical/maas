@@ -12,7 +12,6 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                     'class="form__group-label two-col">Power type</label>',
             '<div class="form__group-input three-col">',
                 '<select name="power-type" id="power-type" ',
-                    'placeholder="Choose a power type" ',
                     'data-ng-disabled="ngDisabled" ',
                     'data-ng-class="{ invalid: !ngModel.type }" ',
                     'data-ng-model="ngModel.type" ',

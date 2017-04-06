@@ -11,11 +11,9 @@
         </div>
       </div>
 </header>
-<div class="wrapper--inner">
-    <maas-notifications></maas-notifications>
-</div>
-<section class="row">
+<div class="row u-padding--top-none">
     <div class="wrapper--inner">
+        <maas-notifications></maas-notifications>
         <div class="p-notification--warning" data-ng-if="networkDiscovery.value === 'disabled'">
             <p class="p-notification__response">
               <span class="p-notification__status">Warning:</span>List of devices will not update as discovery is turned off</p>
@@ -68,7 +66,7 @@
                                 {$ discovery.observer_hostname $}
                             </div>
                             <div class="table__data table-col--17" aria-label="Last seen">
-                                <time>{$ discovery.last_seen $}</time>
+                                {$ discovery.last_seen $}
                             </div>
                             <div class="table__data table--mobile-controls  table-col--3">
                                 <div class="u-align--right">
@@ -107,7 +105,7 @@
                                                 <dt class="two-col">Rack</dt>
                                                     <dd class="four-col last-col">{$ discovery.observer_hostname $}</dd>
                                                 <dt class="two-col">Last seen</dt>
-                                                    <dd class="four-col last-col"><time>{$ discovery.last_seen $}</time></dd>
+                                                    <dd class="four-col last-col">{$ discovery.last_seen $}</dd>
                                             </dl>
                                         </div>
                                         <div class="six-col last-col">
@@ -135,7 +133,7 @@
                                             <div class="form__group">
                                                 <label class="form__group-label two-col u-margin--bottom-small">Type</label>
                                                 <div class="form__group-input three-col">
-                                                    <select name="type" ng-model="convertTo.type">
+                                                    <select name="type" data-ng-model="convertTo.type">
                                                         <option value="" disabled>Choose type</option>
                                                         <option value="device">Device</option>
                                                         <option value="interface">Interface</option>
@@ -185,4 +183,4 @@
             </div>
         </div>
     </div>
-</section>
+</div>

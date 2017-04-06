@@ -209,7 +209,7 @@ describe("maasObjForm", function() {
         it("creates select", function() {
             var select = angular.element(directive.find("#key"));
             expect(select.prop("nodeName")).toBe("SELECT");
-            expect(select.attr("ng-options")).toBe(options);
+            expect(select.attr("data-ng-options")).toBe(options);
         });
 
         it("adds placeholder option", function() {
@@ -726,7 +726,7 @@ describe("maasObjForm", function() {
             var options = "option.id as option.text for option in options";
             var html = [
                 '<maas-obj-form obj="obj" manager="manager" ' +
-                    'ng-disabled="disabled">',
+                    'data-ng-disabled="disabled">',
                     '<maas-obj-field type="text" key="key" label="Key" ',
                         'placeholder="Placeholder" label-width="two" ',
                         'input-width="three"></maas-obj-field>',
@@ -1055,7 +1055,7 @@ describe("maasObjForm", function() {
             $scope.show = true;
             var html = [
                 '<maas-obj-form obj="obj" manager="manager">',
-                    '<div ng-if="show">',
+                    '<div data-ng-if="show">',
                       '<maas-obj-field type="text" key="key" ' +
                           'input-class="new-class"></maas-obj-field>',
                       '</maas-obj-field>',
@@ -1105,7 +1105,7 @@ describe("maasObjForm", function() {
             spinner = directive.find("maas-obj-saving").find("i");
             expect(spinner.length).toBe(1);
             var text = directive.find(
-                "maas-obj-saving").find("span[ng-transclude]");
+                "maas-obj-saving").find("span[data-ng-transclude]");
             expect(text.text()).toBe("Test saving");
 
             defer.resolve({});

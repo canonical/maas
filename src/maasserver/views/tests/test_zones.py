@@ -56,7 +56,7 @@ class ZoneListingViewTest(MAASServerTestCase):
         zone_list_link = reverse('zone-list')
         self.assertIn(
             zone_list_link,
-            get_content_links(response, element='#main-nav'))
+            get_content_links(response, element='#menu'))
 
     def test_zone_list_displays_zone_details(self):
         # Zone listing displays the zone name and the zone description.

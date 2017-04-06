@@ -38,7 +38,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the double_click_overlay.html into the template cache.
     $templateCache.put('directive/templates/double_click_overlay.html', [
         '<div class="maas-dbl-overlay">',
-            '<span ng-transclude></span>',
+            '<span data-ng-transclude></span>',
             '<div class="maas-dbl-overlay--overlay"></div>',
         '</div>'
     ].join(''));
@@ -60,7 +60,7 @@ angular.module('MAAS').directive('maasDblClickOverlay', ['BrowserService',
                 // is transcluded into this directive.
                 var overlay = element.find(".maas-dbl-overlay--overlay");
                 var transclude = element.find(
-                    "span[ng-transclude]").children()[0];
+                    "span[data-ng-transclude]").children()[0];
                 var clickElement;
                 if(transclude.tagName === "SELECT") {
                     clickElement = function() {

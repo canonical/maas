@@ -74,15 +74,15 @@
                          </fieldset>
                          <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
                              <div class="form__group">
-                                 <label for="image" class="form__group-label">Choose your image</label>
+                                 <label class="form__group-label">Choose your image</label>
                                  <div class="form__group-input">
-                                     <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
+                                     <div data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
                                  </div>
                              </div>
                          </fieldset>
                          <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">
                              <div class="form__group">
-                                 <span data-maas-release-options="releaseOptions"></span>
+                                 <div data-maas-release-options="releaseOptions"></div>
                              </div>
                          </fieldset>
                          <div class="page-header__controls" data-ng-if="action.option.name !== 'commission' && action.option.name !== 'test'">
@@ -119,7 +119,7 @@
                      <form class="form form--stack">
                          <fieldset class="form__fieldset eight-col u-margin--bottom-small">
                              <div class="form__group">
-                                 <label for="testing-scripts">Hardware tests</label>
+                                 <label>Hardware tests</label>
                                  <span id="testing-scripts" data-maas-script-select="script" data-script-type="2" data-ng-model="testSelection" class="tags--inline"></span>
                              </div>
                          </fieldset>
@@ -181,8 +181,8 @@
           </div>
     </header>
     <div sticky use-placeholder="true" media-query="min-width: 769px" offset="89" class="page-navigation" data-ng-class="{ 'u-visibility--hidden': action.option }">
-        <div class="wrapper--inner">
-            <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
+        <div class="wrapper--inner" role="tablist">
+            <nav class="page-navigation__links">
                 <button role="tab" class="page-navigation__link" data-ng-if="!isController && !isDevice"
                     data-ng-class="{ 'is-active': section.area === 'summary'}"
                     data-ng-click="section.area = 'summary'">Machine summary</button>
@@ -246,7 +246,7 @@
                     <div class="form__group">
                         <label for="zone" class="form__group-label two-col">Zone</label>
                         <div class="form__group-input three-col">
-                            <select name="zone" id="zone" placeholder="Choose a zone"
+                            <select name="zone" id="zone"
                                 data-ng-disabled="!summary.editing"
                                 data-ng-model="summary.zone.selected"
                                 data-ng-options="zone as zone.name for zone in summary.zone.options">
@@ -269,7 +269,7 @@
                     <div class="form__group" data-ng-if="!isDevice">
                         <label for="min_hwe_kernel" class="form__group-label two-col">Minimum Kernel</label>
                         <div class="form__group-input three-col">
-                            <select name="min_hwe_kernel" id="min_hwe_kernel" placeholder="No minimum kernel"
+                            <select name="min_hwe_kernel" id="min_hwe_kernel"
                                 data-ng-disabled="!summary.editing"
                                 data-ng-model="summary.min_hwe_kernel.selected"
                                 data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in summary.min_hwe_kernel.options">
@@ -282,17 +282,19 @@
                             <dd class="four-col last-col">
                                 {$ node.owner || "Unassigned" $}
                             </dd>
-                        <dt class="two-col">Tags</dt>
-                            <dd class="three-col last-col">
-                                <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
-                                    <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
-                                </span>
-                                <tags-input ng-model="summary.tags"
-                                    data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
-                                    <auto-complete source="tagsAutocomplete($query)"></auto-complete>
-                                </tags-input>
-                            </dd>
                     </dl>
+                    <div class="form__group">
+                        <label class="form__group-label two-col">Tags</label>
+                        <div class="form__group three-col">
+                            <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
+                                <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
+                            </span>
+                            <tags-input data-ng-model="summary.tags"
+                                data-ng-show="summary.editing" allowed-tags-pattern="[\w-]+">
+                                <auto-complete source="tagsAutocomplete($query)"></auto-complete>
+                            </tags-input>
+                        </div>
+                    </div>
                 </fieldset>
                 <div data-ng-hide="isSuperUser() || isController">
                     <dl>
@@ -368,7 +370,7 @@
                     </dl>
                 </div>
                 <div data-ng-if="!isController">
-                    <div class="twelve-col u-align--right u-align--right" data-ng-hide="summary.editing">
+                    <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
                         <button class="button--secondary button--inline"
                             data-ng-if="canEdit()"
                             data-ng-click="editSummary()">Edit</button>
@@ -822,7 +824,7 @@
                                                       <div class="form__group" data-ng-if="newInterface.type !== 'alias'">
                                                           <label class="two-col">Tags</label>
                                                           <div class="form__group-input three-col last-col">
-                                                              <tags-input ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                              <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                           </div>
                                                       </div>
                                                   </fieldset>
@@ -854,7 +856,7 @@
                                                       <div class="form__group">
                                                           <label for="subnet" class="two-col">Subnet</label>
                                                           <select name="subnet" class="three-col"
-                                                              ng-model="newInterface.subnet"
+                                                              data-ng-model="newInterface.subnet"
                                                               data-ng-change="subnetChanged(newInterface)"
                                                               data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
                                                               <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
@@ -872,7 +874,7 @@
                                                           <label for="ip-address" class="two-col">IP address</label>
                                                           <input name="ip-address" type="text" class="three-col"
                                                               placeholder="IP address"
-                                                              ng-model="newInterface.ip_address"
+                                                              data-ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                       </div>
                                                   </fieldset>
@@ -921,7 +923,7 @@
                                                               options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:editInterface.$maasForm.getValue('vlan')">
                                                               </maas-obj-field>
                                                           <maas-obj-field type="options" key="subnet" label="Subnet" placeholder="Unconfigured" placeholder-enabled="true"
-                                                              ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="two" input-width="three"
+                                                              data-ng-init="editInterface.subnet = editInterface.defaultSubnet" label-width="two" input-width="three"
                                                               data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'"
                                                               on-change="subnetChangedForm"
                                                               disable-label="false" input-class="table__input u-margin--none"
@@ -1030,7 +1032,7 @@
                                                   <div class="form__group">
                                                       <label class="two-col">Tags</label>
                                                       <div class="form__Group-input three-col last-col">
-                                                          <tags-input ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                          <tags-input data-ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                       </div>
                                                   </div>
                                             </div>
@@ -1126,7 +1128,7 @@
                                                   <div class="form__group">
                                                       <label class="two-col">Tags</label>
                                                       <div class="form__group-input three-col last-col">
-                                                          <tags-input ng-model="newBridgeInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                          <tags-input data-ng-model="newBridgeInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                       </div>
                                                   </div>
                                             </div>
@@ -1201,7 +1203,7 @@
                                                   <div class="form__group">
                                                       <label class="two-col">Tags</label>
                                                       <div class="form__group-input three-col last-col">
-                                                          <tags-input ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                          <tags-input data-ng-model="newInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                       </div>
                                                   </div>
                                               </div>
@@ -1225,7 +1227,7 @@
                                                   <div class="form__group">
                                                       <label for="subnet" class="two-col">Subnet</label>
                                                       <select name="subnet" class="three-col"
-                                                          ng-model="newInterface.subnet"
+                                                          data-ng-model="newInterface.subnet"
                                                           data-ng-change="subnetChanged(newInterface)"
                                                           data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets | filterByVLAN:newInterface.vlan">
                                                           <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
@@ -1243,7 +1245,7 @@
                                                       <label for="ip-address" class="two-col">IP address</label>
                                                       <input name="ip-address" type="text" class="three-col"
                                                           placeholder="IP address (optional)"
-                                                          ng-model="newInterface.ip_address"
+                                                          data-ng-model="newInterface.ip_address"
                                                           data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                   </div>
                                               </div>
@@ -1264,15 +1266,15 @@
                                                   <div class="form__group">
                                                       <label for="ip-assignment" class="two-col">IP Assignment</label>
                                                       <select name="ip-assignment" class="three-col"
-                                                          ng-model="newInterface.ip_assignment"
+                                                          data-ng-model="newInterface.ip_assignment"
                                                           data-ng-options="assignment.name as assignment.text for assignment in ipAssignments">
                                                       </select>
                                                   </div>
                                                   <div class="form__group" data-ng-if="newInterface.ip_assignment === 'static'">
                                                       <label for="subnet" class="two-col">Subnet</label>
                                                       <select name="subnet" class="three-col"
-                                                          ng-init="newInterface.subnet = subnets[0]"
-                                                          ng-model="newInterface.subnet"
+                                                          data-ng-init="newInterface.subnet = subnets[0]"
+                                                          data-ng-model="newInterface.subnet"
                                                           data-ng-change="subnetChanged(newInterface)"
                                                           data-ng-options="subnet as getSubnetText(subnet) for subnet in subnets">
                                                       </select>
@@ -1283,12 +1285,12 @@
                                                           <input name="ip-address" type="text"
                                                               data-ng-if="newInterface.ip_assignment === 'static'"
                                                               placeholder="IP address (optional)"
-                                                              ng-model="newInterface.ip_address"
+                                                              data-ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                           <input name="ip-address" type="text"
                                                               data-ng-if="newInterface.ip_assignment !== 'static'"
                                                               placeholder="IP address"
-                                                              ng-model="newInterface.ip_address"
+                                                              data-ng-model="newInterface.ip_address"
                                                               data-ng-class="{ 'has-error': isIPAddressInvalid(newInterface) }">
                                                           <ul class="errors u-margin--bottom-none form__group--errors" data-ng-if="getInterfaceError(newInterface)">
                                                               <li>{$ getInterfaceError(newInterface) $}</li>
@@ -1335,7 +1337,7 @@
         </div>
     </section>
     <section class="row" data-ng-if="section.area === 'storage'">
-        <div class="wrapper--inner" ng-controller="NodeStorageController">
+        <div class="wrapper--inner" data-ng-controller="NodeStorageController">
             <form>
                 <div class="p-notification--error ng-hide" data-ng-hide="has_disks">
                     <p class="p-notification__response">
@@ -1355,7 +1357,7 @@
                       <span class="p-notification__status">Error:</span>{$ issue $}
                     </p>
                 </div>
-                <div class="twelve-col padding-bottom" ng-controller="NodeFilesystemsController">
+                <div class="twelve-col padding-bottom" data-ng-controller="NodeFilesystemsController">
                     <h3>File systems</h3>
                     <section class="table">
                         <header class="table__head">
@@ -1425,9 +1427,9 @@
                                 </div>
                             </div>
 
-                            <div class="table__row is-active" tabindex="1" data-ng-if="dropdown" ng-switch="dropdown">
+                            <div class="table__row is-active" tabindex="1" data-ng-if="dropdown" data-ng-switch="dropdown">
                                 <!-- Adding a new TMPFS or RAMFPS file system -->
-                                <div class="table__dropdown" ng-controller="NodeAddSpecialFilesystemController" ng-switch-when="special">
+                                <div class="table__dropdown" data-ng-controller="NodeAddSpecialFilesystemController" data-ng-switch-when="special">
                                     <div class="table__dropdown-title">
                                         <h2 data-ng-click="cancel()" class="u-float--left">Adding filesystem</h2>
                                         <i data-ng-click="cancel()" class="icon icon--remove u-float--right u-margin--top-small u-margin--right-small"></i>
@@ -1437,12 +1439,12 @@
                                             <fieldset class="form__fieldset six-col">
                                                 <dl>
                                                     <dt class="two-col">Description</dt>
-                                                    <dd class="three-col" ng-bind="description"></dd>
+                                                    <dd class="three-col" data-ng-bind="description"></dd>
                                                 </dl>
                                                 <div class="form__group">
                                                     <label for="file-sys" class="two-col">Filesystem</label>
                                                     <select name="type" id="type" class="table__input three-col no-margin"
-                                                            ng-model="filesystem.fstype">
+                                                            data-ng-model="filesystem.fstype">
                                                         <option value="" disabled="disabled">Select type</option>
                                                         <option value="tmpfs">tmpfs</option>
                                                         <option value="ramfs">ramfs</option>
@@ -1453,13 +1455,13 @@
                                                 <div class="form__group">
                                                     <label class="two-col" for="mount-point">Mount point</label>
                                                     <input type="text" id="mount-point" class="table__input three-col"
-                                                           placeholder="Absolute path" ng-model="filesystem.mountPoint"
-                                                           ng-class="{ 'has-error': isMountPointInvalid(filesystem.mountPoint) }">
+                                                           placeholder="Absolute path" data-ng-model="filesystem.mountPoint"
+                                                          data-ng-class="{ 'has-error': isMountPointInvalid(filesystem.mountPoint) }">
                                                 </div>
                                                 <div class="form__group">
                                                     <label for="mount-options" class="two-col">Mount options</label>
                                                     <input type="text" id="mount-options" class="table__input three-col"
-                                                           placeholder="Separated by commas, no spaces" ng-model="filesystem.mountOptions">
+                                                           placeholder="Separated by commas, no spaces" data-ng-model="filesystem.mountOptions">
                                                 </div>
                                             </fieldset>
                                         </div>
@@ -1467,10 +1469,10 @@
                                     <div class="table__row is-active">
                                       <div class="table__data u-float--right">
                                           <button class="button--base button--inline"
-                                              ng-click="cancel()">Cancel</button>
+                                              data-ng-click="cancel()">Cancel</button>
                                           <button class="button--secondary button--inline ng-binding"
                                              data-ng-disabled="!canMount()"
-                                              ng-click="mount()">Mount</button>
+                                             data-ng-click="mount()">Mount</button>
                                       </div>
                                     </div>
                                 </div>
@@ -1705,7 +1707,7 @@
                                                     <div class="form__group" data-ng-if="item.$options.editingTags">
                                                         <label for="tags" class="form__group-label two-col">Tags</label>
                                                         <div class="form__group-input three-col">
-                                                            <tags-input ng-model="item.$options.tags" data-ng-if="item.$options.editingTags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                            <tags-input data-ng-model="item.$options.tags" data-ng-if="item.$options.editingTags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1713,7 +1715,7 @@
                                                     <div class="form__group">
                                                         <label for="filesys" class="two-col">Filesystem</label>
                                                         <select name="filesys" class="three-col"
-                                                            ng-model="item.$options.fstype"
+                                                            data-ng-model="item.$options.fstype"
                                                             data-ng-change="fstypeChanged(item.$options)"
                                                             data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                             <option value="" selected="selected">Unformatted</option>
@@ -1723,9 +1725,9 @@
                                                         <label for="mount-point" class="two-col">Mount point</label>
                                                         <input type="text" id="mount-point" class="three-col"
                                                             placeholder="Absolute path"
-                                                            ng-model="item.$options.mountPoint"
+                                                            data-ng-model="item.$options.mountPoint"
                                                            data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                            ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                                            data-ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
                                                     </div>
                                                     <div class="form__group">
                                                         <label for="mount-options" class="two-col">Mount options</label>
@@ -1760,7 +1762,7 @@
                                                         <div class="form__group">
                                                             <label for="filesys" class="two-col">Filesystem</label>
                                                             <select name="filesys" class="three-col"
-                                                                ng-model="item.$options.fstype"
+                                                                data-ng-model="item.$options.fstype"
                                                                 data-ng-change="fstypeChanged(item.$options)"
                                                                 data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                                 <option value="">Unformatted</option>
@@ -1770,9 +1772,9 @@
                                                             <label for="mount-point" class="two-col">Mount point</label>
                                                             <input type="text" id="mount-point" class="three-col"
                                                                 placeholder="Absolute path"
-                                                                ng-model="item.$options.mountPoint"
+                                                                data-ng-model="item.$options.mountPoint"
                                                                data-ng-disabled="!usesMountPoint(item.$options.fstype)"
-                                                                ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
+                                                                data-ng-class="{ 'has-error': isMountPointInvalid(item.$options.mountPoint) }">
                                                         </div>
                                                         <div class="form__group">
                                                             <label for="mount-options" class="two-col">Mount options</label>
@@ -1801,11 +1803,11 @@
                                                         <label class="two-col form__group-label" for="filesys">Size</label>
                                                         <div class="form__group-input three-col">
                                                             <input type="text" class="u-width--half u-display--inline-block"
-                                                                ng-model="item.$options.size"
-                                                                ng-class="{ 'has-error': isAddPartitionSizeInvalid(item) }">
+                                                                data-ng-model="item.$options.size"
+                                                                data-ng-class="{ 'has-error': isAddPartitionSizeInvalid(item) }">
                                                             <select name="size-units" class="u-width--third u-display--inline-block"
-                                                                ng-model="item.$options.sizeUnits"
-                                                                ng-class="{ 'has-error': isAddPartitionSizeInvalid(item) }">
+                                                                data-ng-model="item.$options.sizeUnits"
+                                                                data-ng-class="{ 'has-error': isAddPartitionSizeInvalid(item) }">
                                                                 <option value="MB">MB</option>
                                                                 <option value="GB">GB</option>
                                                                 <option value="TB">TB</option>
@@ -1860,11 +1862,11 @@
                                                         <label for="size" class="two-col form__group-label">Size</label>
                                                         <div class="three-col form__group-input">
                                                             <input type="text" id="size" class="u-width--half u-display--inline-block"
-                                                                ng-model="item.$options.size"
-                                                                ng-class="{ 'has-error': isAddLogicalVolumeSizeInvalid(item) }">
+                                                                data-ng-model="item.$options.size"
+                                                                data-ng-class="{ 'has-error': isAddLogicalVolumeSizeInvalid(item) }">
                                                             <select name="size-units" class="u-width--third u-display--inline-block"
-                                                                ng-model="item.$options.sizeUnits"
-                                                                ng-class="{ 'has-error': isAddLogicalVolumeSizeInvalid(item) }">
+                                                                data-ng-model="item.$options.sizeUnits"
+                                                                data-ng-class="{ 'has-error': isAddLogicalVolumeSizeInvalid(item) }">
                                                                 <option value="MB">MB</option>
                                                                 <option value="GB">GB</option>
                                                                 <option value="TB">TB</option>
@@ -1878,7 +1880,7 @@
                                                     <div class="form__group">
                                                         <label for="tags" class="form__group-label two-col">Tags</label>
                                                         <div class="form__group-input three-col">
-                                                            <tags-input ng-model="item.$options.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                            <tags-input data-ng-model="item.$options.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1990,7 +1992,7 @@
                                                 <div class="form__group">
                                                     <label class="two-col">Tags</label>
                                                     <div class="form__group-input three-col last-col">
-                                                        <tags-input ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                        <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                     </div>
                                                 </div>
                                                 <div class="form__group">
@@ -2104,7 +2106,7 @@
                                                 <div class="form__group">
                                                     <label class="two-col">Tags</label>
                                                     <div class="form__group-input three-col last-col">
-                                                        <tags-input ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
+                                                        <tags-input data-ng-model="availableNew.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                     </div>
                                                 </div>
                                             </div>

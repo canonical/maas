@@ -1,4 +1,4 @@
-<section class="table">
+<div class="table">
     <header class="table__head">
         <div class="table__row">
             <div class="table__header table-col--25">Source</div>
@@ -7,7 +7,7 @@
             <div class="table__header table-col--10"></div>
         </div>
     </header>
-    <main class="table__body">
+    <div class="table__body">
         <div class="table__row" data-ng-repeat="group in groupedKeys | orderBy:['source', 'authId']"
             data-ng-class="{ 'is-active': group.id === openRow }">
             <div class="table__data table-col--25" aria-label="Source">{$ sourceTitles[group.source] $}</div>
@@ -90,5 +90,5 @@
                 </div>
             </form>
         </div>
-    </main>
-</section>
+    </div>
+</div>

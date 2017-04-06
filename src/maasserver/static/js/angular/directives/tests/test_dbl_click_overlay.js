@@ -24,7 +24,7 @@ describe("maasDblClickOverlay", function() {
     // Return the compiled directive with the osinfo from the scope.
     function compileDirective(type, dblClickHandler) {
         var directive;
-        var html = '<div><div data-maas-dbl-click-overlay="' +
+        var html = '<div><div maas-dbl-click-overlay="' +
             dblClickHandler + '">';
         if(type === "select") {
             html += '<select id="test-element"></select>';
@@ -44,7 +44,7 @@ describe("maasDblClickOverlay", function() {
 
         // Perform the digest cycle to finish the compile.
         $scope.$digest();
-        return directive.find("div[data-maas-dbl-click-overlay]");
+        return directive.find("div[maas-dbl-click-overlay]");
     }
 
     it("creates directive with class maas-dbl-overlay", function() {

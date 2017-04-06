@@ -336,7 +336,7 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             },
             transclude: true,
             template: (
-                '<form class="form" ng-class="{saving: saving, ' +
+                '<form class="form" data-ng-class="{saving: saving, ' +
                 '\'form--inline\': inline, ' +
                 '\'form--stack\': tableForm}" ' +
                 'ng-transclude></form>'),
@@ -490,8 +490,8 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
             transclude: true,
             template: (
                 '<div class="form__siblings" ' +
-                'ng-class="{\'is-active\': isEditing()}" ' +
-                'ng-transclude></div>'),
+                'data-ng-class="{\'is-active\': isEditing()}" ' +
+                'data-ng-transclude></div>'),
             controller: ['$scope', '$timeout', MAASGroupController],
             link: {
                 pre: function(scope, element, attrs, controllers) {
@@ -521,7 +521,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
             scope: { onChange: "="},
             transclude: true,
             template: (
-                '<div ng-transclude></div>'),
+                '<div data-ng-transclude></div>'),
             link: function(scope, element, attrs, controllers) {
                 // Select the controller based on which is available.
                 var controller = controllers[1];
@@ -610,12 +610,13 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         inputElement = $compile(
                             '<input type="text" id="' + attrs.key +
                             '" placeholder="' + placeholder + '"' +
-                            'ng-disabled="ngDisabled()">')(scope);
+                            'data-ng-disabled="ngDisabled()">')(scope);
                     } else if(attrs.type === "textarea") {
                         inputElement = $compile(
                             '<textarea id="' + attrs.key +
                             '" placeholder="' + placeholder + '"' +
-                            'ng-disabled="ngDisabled()"></textarea>')(scope);
+                            'data-ng-disabled="ngDisabled()">' +
+                            '</textarea>')(scope);
                     }
 
                     // Allow enter on blur, by default.
@@ -703,10 +704,10 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     // Construct the select.
                     inputElement = $compile(
                         '<select id="' + attrs.key + '" ' +
-                        'ng-model="_selectValue" ' +
-                        'ng-options="' + options + '"' +
-                        'ng-change="_selectNgChange()"' +
-                        'ng-disabled="_ngDisabled()">' +
+                        'data-ng-model="_selectValue" ' +
+                        'data-ng-options="' + options + '"' +
+                        'data-ng-change="_selectNgChange()"' +
+                        'data-ng-disabled="_ngDisabled()">' +
                         '<option value="" ' + disabled + '>' + placeholder +
                         '</option></select>')(childScope);
 
@@ -752,12 +753,12 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     // Construct the checkbox list.
                     inputElement = angular.element([
                         '<div class="width--full" ',
-                            'ng-repeat="val in ' + values +'">',
+                            'data-ng-repeat="val in ' + values +'">',
                             '<input id="' + attrs.key + '_' + '{$ val $}',
                                 '" type="checkbox" value="{$ val $}" ',
                                 'class="checkbox" ',
-                                'ng-checked="_checked(val)" ',
-                                'ng-click="_toggleChecked(val)">',
+                                'data-ng-checked="_checked(val)" ',
+                                'data-ng-click="_toggleChecked(val)">',
                             '<label for="' + attrs.key + '_',
                                 '{$ val $}' + '" ',
                                 'class="checkbox-label">{$ val $}</label>',
@@ -785,9 +786,9 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     // Construct the tags input.
                     inputElement = angular.element([
                         '<tags-input id="' + attrs.key + '" ',
-                            'ng-model="_tags" ',
+                            'data-ng-model="_tags" ',
                             'placeholder="' + placeholder + '" ',
-                            'ng-change="_change()" ',
+                            'data-ng-change="_change()" ',
                             'allow-tags-pattern="[\\w-]+"></tags-input>'
                     ].join(''));
                     inputElement = $compile(inputElement)(tagsScope);
@@ -824,8 +825,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             '<input type="checkbox" name="' + attrs.key + '" ',
                                 'class="onoffswitch-checkbox" ',
                                 'id="' + attrs.key + '" ',
-                                'ng-model="_toggle" ',
-                                'ng-change="_changed()">',
+                                'data-ng-model="_toggle" ',
+                                'data-ng-change="_changed()">',
                             '<label class="onoffswitch-label" ',
                                 'for="' + attrs.key + '">',
                                 '<span class="onoffswitch-inner"></span>',
@@ -1035,9 +1036,9 @@ angular.module('MAAS').directive('maasObjSaving', function() {
             scope: {},
             transclude: true,
             template: [
-              '<span ng-if="saving">',
+              '<span data-ng-if="saving">',
                 '<i class="icon icon--loading u-animation--spin"></i>',
-                '<span ng-transclude></span>',
+                '<span data-ng-transclude></span>',
               '</span>'].join(''),
             link: function(scope, element, attrs, controller) {
                 scope.saving = false;

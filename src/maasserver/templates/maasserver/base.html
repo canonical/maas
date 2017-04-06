@@ -96,16 +96,17 @@
         {% block page-navigation %}{% endblock %}
         {% endblock %}
         {% if user.is_authenticated %}
+        {% if messages %}
         <div class="row u-padding--top-none u-padding--bottom-none {% block notifications-class %}{% endblock %}">
             <div class="wrapper--inner">
-            {% if messages %}
                 {% for message in messages %}
-                    <div{% if message.tags %} class="p-notification p-notification--{{ message.tags }}" {% endif %}>
+                    <div {% if message.tags %} class="p-notification p-notification--{{ message.tags }}" {% endif %}>
                       <p class="p-notification__response">{{ message }}</p>
                     </div>
                 {% endfor %}
-            {% endif %}
+            </div>
         </div>
+        {% endif %}
         {% endif %}
         <div class="row u-border--none" id="content">
             <div class="wrapper--inner">

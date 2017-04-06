@@ -29,6 +29,10 @@
     height: initial !important;
   }
 
+  .form--inline {
+    display: inline-block;
+  }
+
   @media only screen and (max-width: 768px) {
     .nav {
 

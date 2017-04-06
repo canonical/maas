@@ -36,7 +36,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '</div>',
         '</header>',
         '<div class="ng-hide" data-ng-hide="show()">',
-            '<div ng-transclude></div>',
+            '<div data-ng-transclude></div>',
         '</div>'
     ].join(''));
 
