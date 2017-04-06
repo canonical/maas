@@ -82,7 +82,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': new_vlan.id,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -98,7 +98,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': None,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -119,7 +119,7 @@ class DeployedInterfaceFormTest(MAASServerTestCase):
                 'name': new_name,
                 'mac_address': new_mac,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -147,7 +147,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'tags': ",".join(tags),
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -174,7 +174,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'tags': ",".join(tags),
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -198,7 +198,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'mac_address': mac_address,
                 'tags': ",".join(tags),
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -225,7 +225,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'tags': ",".join(tags),
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY))
@@ -240,7 +240,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'vlan': vlan.id,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['mac_address'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -259,7 +259,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'mac_address': mac_address,
                 'vlan': interface.vlan.id,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['name'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -279,7 +279,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'mac_address': mac_address,
                 'vlan': vlan.id,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['vlan'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -301,7 +301,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'mac_address': mac_address,
                 'vlan': vlan.id,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEquals(vlan, interface.vlan)
 
@@ -317,7 +317,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['parents'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -338,7 +338,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'enabled': False,
                 'tags': "",
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -358,7 +358,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'enabled': False,
                 'tags': "",
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -378,7 +378,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'enabled': False,
                 'tags': "",
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -410,7 +410,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'accept_ra': accept_ra,
                 'autoconf': autoconf,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "mtu": mtu,
@@ -440,7 +440,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 'enabled': False,
                 'tags': "",
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "mtu": mtu,
@@ -469,7 +469,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 "accept_ra": new_accept_ra,
                 "autoconf": new_autoconf,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "mtu": new_mtu,
@@ -495,7 +495,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
                 "accept_ra": "",
                 "autoconf": "",
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({}, interface.params)
 
@@ -511,7 +511,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         interface_name = build_vlan_interface_name(parent, vlan)
         self.assertThat(
@@ -529,7 +529,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertIsNotNone(
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY))
@@ -541,7 +541,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             data={
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['vlan'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -559,7 +559,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['name'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -575,7 +575,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(
             ['vlan'], form.errors.keys(), form.errors)
         self.assertIn(
@@ -589,7 +589,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': vlan.id,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents'], form.errors.keys())
         self.assertIn(
             "A VLAN interface must have exactly one parent.",
@@ -607,7 +607,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': other_vlan.id,
                 'parents': [vlan_parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents'], form.errors.keys())
         self.assertIn(
             "VLAN interface can't have another VLAN interface as parent.",
@@ -621,7 +621,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': None,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['vlan'], form.errors.keys())
         self.assertIn(
             "A VLAN interface must be connected to a tagged VLAN.",
@@ -637,7 +637,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': other_vlan.id,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['vlan'], form.errors.keys())
         self.assertIn(
             "A VLAN interface can only belong to a tagged VLAN on "
@@ -654,7 +654,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents'], form.errors.keys())
         self.assertIn(
             "A VLAN interface can't have a parent that is already in a bond.",
@@ -671,7 +671,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
                 'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents'], form.errors.keys())
         self.assertIn(
             "A VLAN interface must have exactly one parent.",
@@ -688,7 +688,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': new_vlan.id
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -713,7 +713,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'parents': [parent1.id, parent2.id],
                 'bond_mode': bond_mode,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual({
             "bond_mode": [
                 compose_invalid_choice_text(
@@ -731,7 +731,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -755,7 +755,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
             0,
@@ -780,7 +780,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'parents': [parent1.id, parent2.id],
                 'mac_address': parent1.mac_address,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -800,7 +800,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bond_mode": "balance-rr",
@@ -835,7 +835,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'bond_lacp_rate': bond_lacp_rate,
                 'bond_xmit_hash_policy': bond_xmit_hash_policy,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bond_mode": bond_mode,
@@ -853,7 +853,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             data={
                 'name': interface_name,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
         self.assertIn(
             "A bond interface must have one or more parents.",
@@ -871,7 +871,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'mac_address': parent.mac_address,
                 'vlan': vlan.id,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['vlan'], form.errors.keys())
         self.assertIn(
             "A bond interface can only belong to an untagged VLAN.",
@@ -892,7 +892,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id, parent2.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "Interfaces already in-use: eth0, eth1.",
             form.errors['parents'][0])
@@ -910,7 +910,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id, parent2.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEquals(
             "All parents must belong to the same VLAN.",
             form.errors['parents'][0])
@@ -934,7 +934,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': new_name,
                 'parents': [parent1.id, parent2.id, new_parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -959,7 +959,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': None,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -983,7 +983,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': new_name,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1009,7 +1009,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'name': new_name,
                 'parents': [parent1.id, parent2.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1049,7 +1049,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             data={
                 'name': new_name,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bond_mode": bond_mode,
@@ -1102,7 +1102,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'bond_lacp_rate': new_bond_lacp_rate,
                 'bond_xmit_hash_policy': new_bond_xmit_hash_policy,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bond_mode": new_bond_mode,
@@ -1155,7 +1155,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'bond_lacp_rate': new_bond_lacp_rate,
                 'bond_xmit_hash_policy': new_bond_xmit_hash_policy,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bond_mode": new_bond_mode,
@@ -1178,7 +1178,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1186,6 +1186,54 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 name=interface_name, type=INTERFACE_TYPE.BRIDGE))
         self.assertEqual(interface.mac_address, parent.mac_address)
         self.assertItemsEqual([parent], interface.parents.all())
+
+    def test__allows_bridge_on_parent_with_vlan_bridges(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan1 = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
+        factory.make_Interface(INTERFACE_TYPE.BRIDGE, parents=[vlan1])
+        vlan2 = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
+        factory.make_Interface(INTERFACE_TYPE.BRIDGE, parents=[vlan2])
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=parent.node,
+            data={
+                'name': interface_name,
+                'parents': [parent.id],
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface_name, type=INTERFACE_TYPE.BRIDGE))
+        self.assertEqual(interface.mac_address, parent.mac_address)
+        self.assertItemsEqual([parent], interface.parents.all())
+
+    def test__allows_bridge_on_bond_with_vlan_bridges(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[eth0, eth1])
+        vlan1 = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond0])
+        factory.make_Interface(INTERFACE_TYPE.BRIDGE, parents=[vlan1])
+        vlan2 = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond0])
+        factory.make_Interface(INTERFACE_TYPE.BRIDGE, parents=[vlan2])
+        interface_name = factory.make_name()
+        form = BridgeInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'parents': [bond0.id],
+            })
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface_name, type=INTERFACE_TYPE.BRIDGE))
+        self.assertEqual(interface.mac_address, bond0.mac_address)
+        self.assertItemsEqual([bond0], interface.parents.all())
 
     def test__create_removes_parent_links_and_sets_link_up_on_bridge(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1197,7 +1245,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
             0,
@@ -1216,7 +1264,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'parents': [parent.id],
                 'mac_address': parent.mac_address,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1232,7 +1280,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             data={
                 'name': interface_name,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
         self.assertIn(
             "A bridge interface must have exactly one parent.",
@@ -1240,17 +1288,24 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
 
     def test__rejects_when_parent_already_have_children(self):
         node = factory.make_Node()
-        parent = factory.make_Interface(
+        eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
-        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+        invalid0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[eth0, eth1])
+        # This should never happen, but in order to validate the case we're
+        # trying to validate, we need a child that isn't a bond or bridge.
+        invalid0.type = INTERFACE_TYPE.UNKNOWN
+        invalid0.save()
         interface_name = factory.make_name()
         form = BridgeInterfaceForm(
             node=node,
             data={
                 'name': interface_name,
-                'parents': [parent.id]
+                'parents': [eth0.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "Interfaces already in-use: eth0.",
             form.errors['parents'][0])
@@ -1265,7 +1320,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [bridge.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have another bridge interface as "
             "parent.",
@@ -1283,7 +1338,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have a parent that is already "
             "in a bond or a bridge.",
@@ -1302,7 +1357,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have a parent that is already "
             "in a bond or a bridge.",
@@ -1325,7 +1380,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'name': new_name,
                 'parents': [new_parent.id],
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1345,7 +1400,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             data={
                 'vlan': None,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1372,7 +1427,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
             data={
                 'name': new_name,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bridge_stp": bridge_stp,
@@ -1400,7 +1455,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'bridge_stp': new_bridge_stp,
                 'bridge_fd': new_bridge_fd,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             "bridge_stp": new_bridge_stp,
@@ -1426,7 +1481,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
                 'bridge_stp': new_bridge_stp,
                 'bridge_fd': new_bridge_fd,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual({
             'bridge_stp': new_bridge_stp,
@@ -1459,7 +1514,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
                 'parents': [parent.id],
                 'tags': tags,
             })
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertThat(
             interface,
@@ -1478,25 +1533,30 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
             data={
                 'name': interface_name,
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
         self.assertIn(
             "A bridge interface must have exactly one parent.",
             form.errors['parents'][0])
 
-    def test__rejects_when_parent_already_have_children(self):
+    def test__rejects_when_parent_already_have_non_vlan_children(self):
         node = factory.make_Node()
-        parent = factory.make_Interface(
+        eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
-        factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent])
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[eth0, eth1])
+        bond0.type = INTERFACE_TYPE.UNKNOWN
+        bond0.save()
         interface_name = factory.make_name()
         form = AcquiredBridgeInterfaceForm(
             node=node,
             data={
                 'name': interface_name,
-                'parents': [parent.id]
+                'parents': [eth0.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "Interfaces already in-use: eth0.",
             form.errors['parents'][0])
@@ -1511,7 +1571,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [bridge.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have another bridge interface as "
             "parent.",
@@ -1529,7 +1589,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have a parent that is already "
             "in a bond or a bridge.",
@@ -1548,7 +1608,7 @@ class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
                 'name': interface_name,
                 'parents': [parent1.id]
             })
-        self.assertFalse(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertIn(
             "A bridge interface can't have a parent that is already "
             "in a bond or a bridge.",

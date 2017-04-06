@@ -397,21 +397,25 @@ class ChildInterfaceForm(InterfaceForm):
                 vlan = parents[0].vlan
                 self.cleaned_data['vlan'] = vlan
 
-    def _validate_parental_fidelity(self, parents):
-        """Check that all of the parent interfaces are not already in a
-        relationship before committing them to this child.
-        """
-        parents_with_other_children = {
-            parent.name
-            for parent in parents
+    def get_delinquent_children(self, parents):
+        """Returns either an empty set, or a set of children whose presence
+        would deter the parent from adopting this new child."""
+        return {
+            parent.name for parent in parents
             for rel in parent.children_relationships.all()
             if rel.child.id != self.instance.id
         }
-        if parents_with_other_children:
+
+    def validate_parental_fidelity(self, parents):
+        """Check that all of the parent interfaces are not already in a
+        relationship before committing them to this child.
+        """
+        dilinquents = self.get_delinquent_children(parents)
+        if len(dilinquents) != 0:
             set_form_error(
                 self, 'parents',
                 "Interfaces already in-use: %s." % (
-                    ', '.join(sorted(parents_with_other_children))))
+                    ', '.join(sorted(dilinquents))))
 
 
 class BondInterfaceForm(ChildInterfaceForm):
@@ -466,7 +470,7 @@ class BondInterfaceForm(ChildInterfaceForm):
             # created.
             if parents:
                 self._set_default_child_mac(parents)
-                self._validate_parental_fidelity(parents)
+                self.validate_parental_fidelity(parents)
                 self._set_default_vlan(parents)
                 self._validate_parent_vlans_match(parents)
         return cleaned_data
@@ -544,6 +548,19 @@ class BridgeInterfaceForm(ChildInterfaceForm):
                 "in a bond or a bridge.")
         return parents
 
+    def get_delinquent_children(self, parents):
+        """Returns a set of children who would prevent the creation of this
+        bridge interface. The only difference between this method and the
+        method it overrides is that it allows VLAN interface children, whom
+        bridges may get along with.
+        """
+        return {
+            parent.name for parent in parents
+            for rel in parent.children_relationships.all()
+            if (rel.child.id != self.instance.id and
+                rel.child.type != INTERFACE_TYPE.VLAN)
+        }
+
     def clean(self):
         cleaned_data = super().clean()
         if self.fields_ok(['vlan', 'parents']):
@@ -552,7 +569,7 @@ class BridgeInterfaceForm(ChildInterfaceForm):
             # created.
             if parents:
                 self._set_default_child_mac(parents)
-                self._validate_parental_fidelity(parents)
+                self.validate_parental_fidelity(parents)
                 self._set_default_vlan(parents)
         return cleaned_data
 
