@@ -341,8 +341,71 @@ class TestZoneGenerator(MAASServerTestCase):
                 reverse_zone(default_domain, "10/29"),
                 reverse_zone(default_domain, "10/24")))
         expected_map = {'john': HostnameRRsetMapping(
-            None, {(30, 'A', '127.0.0.1'), (30, 'NS', 'john')})}
+            None, {(30, 'NS', default_domain)})}
         self.assertEqual(expected_map, zones[0]._other_mapping)
+
+    def test_with_child_domain_yields_glue_when_needed(self):
+        default_domain = Domain.objects.get_default_domain().name
+        domain = factory.make_Domain(name='henry')
+        john = factory.make_Domain(name="john.henry")
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        sip = factory.make_StaticIPAddress(subnet=subnet)
+        factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric)
+        factory.make_DNSResource(
+            name='ns', domain=john, ip_addresses=[sip])
+        factory.make_DNSData(
+            name='@', domain=john, rrtype='NS', rrdata='ns')
+        # We have a subdomain (john.henry) which as an NS RR of
+        # 'ns.john.henry', and we should see glue records for it in the parent
+        # zone, as well as the A RR in the child.
+        zones = ZoneGenerator(
+            domain, subnet, serial=random.randint(0, 65535)).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone("henry"),
+                reverse_zone(default_domain, "10/29"),
+                reverse_zone(default_domain, "10/24")))
+        expected_map = {
+            'john': HostnameRRsetMapping(
+                None, {(30, 'NS', default_domain), (30, 'NS', 'ns')}),
+            'ns': HostnameRRsetMapping(None, {(30, 'A', sip.ip)})}
+        self.assertEqual(expected_map, zones[0]._other_mapping)
+
+    def test_parent_of_default_domain_gets_glue(self):
+        default_domain = Domain.objects.get_default_domain()
+        default_domain.name = 'maas.example.com'
+        default_domain.save()
+        domains = [
+            default_domain,
+            factory.make_Domain('example.com')]
+        self.patch(
+            zonegenerator,
+            'get_dns_server_addresses').return_value = [
+                IPAddress('5.5.5.5')]
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        factory.make_StaticIPAddress(subnet=subnet)
+        factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric)
+        zones = ZoneGenerator(
+            domains, subnet, serial=random.randint(0, 65535)).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone(domains[0].name),
+                forward_zone(domains[1].name),
+                reverse_zone(domains[0].name, "10/29"),
+                reverse_zone(domains[0].name, "10/24")))
+        # maas.example.com is the default zone, and has an A RR for its NS RR.
+        # example.com has NS maas.example.com., and a glue record for that.
+        expected_map_0 = {
+            '@': HostnameRRsetMapping(None, {(30, 'A', '5.5.5.5')}, None)}
+        expected_map_1 = {
+            'maas': HostnameRRsetMapping(
+                None, {
+                    (30, 'A', IPAddress('5.5.5.5')),
+                    (30, 'NS', 'maas.example.com')}, None)}
+        self.assertEqual(expected_map_0, zones[0]._other_mapping)
+        self.assertEqual(expected_map_1, zones[1]._other_mapping)
 
     def test_returns_interface_ips_but_no_nulls(self):
         default_domain = Domain.objects.get_default_domain().name

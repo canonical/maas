@@ -181,6 +181,7 @@ class ZoneGenerator:
             self.default_ttl = Config.objects.get_config('default_dns_ttl')
         else:
             self.default_ttl = default_ttl
+        self.default_domain = Domain.objects.get_default_domain()
         self.serial = serial
 
     @staticmethod
@@ -195,7 +196,8 @@ class ZoneGenerator:
 
     @staticmethod
     def _gen_forward_zones(
-            domains, serial, mappings, rrset_mappings, default_ttl):
+            domains, serial, ns_host_name, mappings,
+            rrset_mappings, default_ttl):
         """Generator of forward zones, collated by domain name."""
         dns_ip_list = get_dns_server_addresses()
         domains = set(domains)
@@ -220,12 +222,14 @@ class ZoneGenerator:
             other_mapping = rrset_mappings[domain]
 
             # 2b. Capture NS RRsets for anything that is a child of this domain
-            domain.add_delegations(other_mapping, dns_ip_list, default_ttl)
+            domain.add_delegations(
+                other_mapping, ns_host_name, dns_ip_list, default_ttl)
 
-            # 3. All forward entries for the managed and unmanaged dynamic
-            # ranges go into the default domain.
+            # 3. All of the special handling for the default domain.
             dynamic_ranges = []
             if domain.is_default():
+                # 3a. All forward entries for the managed and unmanaged dynamic
+                # ranges go into the default domain.
                 subnets = Subnet.objects.all().prefetch_related("iprange_set")
                 for subnet in subnets:
                     # We loop through the whole set so the prefetch above works
@@ -233,20 +237,31 @@ class ZoneGenerator:
                     for ip_range in subnet.iprange_set.all():
                         if ip_range.type == IPRANGE_TYPE.DYNAMIC:
                             dynamic_ranges.append(ip_range.get_MAASIPRange())
+                # 3b. Add A/AAAA RRset for @.  If glue is needed for any other
+                # domain, adding the glue is the responsibility of the admin.
+                ttl = domain.get_base_ttl('A', default_ttl)
+                for dns_ip in dns_ip_list:
+                    if dns_ip.version == 4:
+                        other_mapping['@'].rrset.add(
+                            (ttl, 'A', dns_ip.format()))
+                    else:
+                        other_mapping['@'].rrset.add(
+                            (ttl, 'AAAA', dns_ip.format()))
 
             yield DNSForwardZoneConfig(
-                domain.name, serial=serial, dns_ip_list=dns_ip_list,
-                default_ttl=default_ttl,
+                domain.name, serial=serial, default_ttl=default_ttl,
                 ns_ttl=domain.get_base_ttl('NS', default_ttl),
                 ipv4_ttl=domain.get_base_ttl('A', default_ttl),
                 ipv6_ttl=domain.get_base_ttl('AAAA', default_ttl),
                 mapping=mapping,
+                ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=dynamic_ranges,
                 )
 
     @staticmethod
-    def _gen_reverse_zones(subnets, serial, mappings, default_ttl):
+    def _gen_reverse_zones(
+            subnets, serial, ns_host_name, mappings, default_ttl):
         """Generator of reverse zones, sorted by network."""
 
         subnets = set(subnets)
@@ -332,8 +347,9 @@ class ZoneGenerator:
             else:
                 glue = set()
             yield DNSReverseZoneConfig(
-                Domain.objects.get_default_domain().name, serial=serial,
+                ns_host_name, serial=serial,
                 default_ttl=default_ttl,
+                ns_host_name=ns_host_name,
                 mapping=mapping, network=IPNetwork(subnet.cidr),
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
@@ -341,9 +357,10 @@ class ZoneGenerator:
         # Now provide any remaining rfc2317 glue networks.
         for network, ranges in rfc2317_glue.items():
             yield DNSReverseZoneConfig(
-                Domain.objects.get_default_domain().name, serial=serial,
+                ns_host_name, serial=serial,
                 default_ttl=default_ttl,
                 network=network,
+                ns_host_name=ns_host_name,
                 rfc2317_ranges=ranges,
             )
 
@@ -357,14 +374,16 @@ class ZoneGenerator:
         assert not (self.serial is None), ("No serial number specified.")
 
         mappings = self._get_mappings()
+        ns_host_name = self.default_domain.name
         rrset_mappings = self._get_rrset_mappings()
         serial = self.serial
         default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(
-                self.domains, serial, mappings, rrset_mappings, default_ttl),
+                self.domains, serial, ns_host_name, mappings,
+                rrset_mappings, default_ttl),
             self._gen_reverse_zones(
-                self.subnets, serial, mappings, default_ttl),
+                self.subnets, serial, ns_host_name, mappings, default_ttl),
             )
 
     def as_list(self):

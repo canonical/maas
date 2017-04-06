@@ -229,7 +229,7 @@ class Domain(CleanSave, TimestampedModel):
             dnsresource__domain_id=self.id).count()
         return ip_count + rr_count
 
-    def add_delegations(self, mapping, dns_ip_list, default_ttl):
+    def add_delegations(self, mapping, ns_host_name, dns_ip_list, default_ttl):
         """Find any subdomains that need to be added to this domain, and add
         them.
 
@@ -254,14 +254,21 @@ class Domain(CleanSave, TimestampedModel):
             ttl = subdomain.get_base_ttl('A', default_ttl)
             # Strip off this domain name from the end of the resource name.
             name = subdomain.name[:-len(self.name) - 1]
-            # Generate the NS and glue record that will automatically be in the
+            # If we are authoritative for the subdomain, then generate the NS
+            # and any needed glue records.  These will automatically be in the
             # child zone.
-            mapping[name].rrset.add((nsttl, 'NS', name))
-            for dns_ip in dns_ip_list:
-                if dns_ip.version == 4:
-                    mapping[name].rrset.add((ttl, 'A', dns_ip.format()))
-                else:
-                    mapping[name].rrset.add((ttl, 'AAAA', dns_ip.format()))
+            if subdomain.authoritative:
+                mapping[name].rrset.add((nsttl, 'NS', ns_host_name))
+                if ns_host_name.endswith("." + self.name):
+                    # The ns_host_name lives in a subdomain of this subdomain,
+                    # and we are authoritative for that.  We need to add glue
+                    # to this subdomain.
+                    ns_name = separate_fqdn(ns_host_name, 'NS', self.name)[0]
+                    for addr in dns_ip_list:
+                        if IPAddress(addr).version == 4:
+                            mapping[ns_name].rrset.add((ttl, 'A', addr))
+                        else:
+                            mapping[ns_name].rrset.add((ttl, 'AAAA', addr))
             # Also return any NS RRset from the dnsdata for the '@' label in
             # that zone.  Add glue records for NS hosts as needed.
             for lhs in subdomain.dnsresource_set.filter(name='@'):
@@ -270,7 +277,7 @@ class Domain(CleanSave, TimestampedModel):
                     # Figure out if we need to add glue, and generate it if
                     # needed.
                     if data.rrdata == '@':
-                        # We already generated this glue.
+                        # This glue is the responsibility of the admin.
                         continue
                     if not data.rrdata.endswith("."):
                         # Non-qualified NSRR, append the domain.

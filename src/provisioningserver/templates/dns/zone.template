@@ -8,7 +8,7 @@ $TTL {{ttl}}
               {{ttl}} ; NXTTL
               )
 
-@   {{ns_ttl}} IN NS {{domain}}.
+@   {{ns_ttl}} IN NS {{ns_host_name}}.
 {{for type, directive in generate_directives.items()}}
 {{for iterator_values, rdns, hostname in directive}}
 $GENERATE {{iterator_values}} {{rdns}} IN {{type}} {{hostname}}

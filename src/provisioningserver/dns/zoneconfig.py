@@ -137,6 +137,7 @@ class DomainConfigBase:
         """
         :param domain: An iterable list of domain names for the
             forward zone.
+        :param ns_host_name: The name of the primary nameserver.
         :param zone_info: list of DomainInfo entries.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
@@ -144,6 +145,7 @@ class DomainConfigBase:
         :param default_ttl: The default TTL for the zone.
         """
         self.domain = domain
+        self.ns_host_name = kwargs.pop('ns_host_name', None)
         self.serial = serial
         self.zone_info = zone_info
         self.target_base = compose_config_path('zone')
@@ -158,6 +160,7 @@ class DomainConfigBase:
             'modified': str(datetime.today()),
             'ttl': self.default_ttl,
             'ns_ttl': self.ns_ttl,
+            'ns_host_name': self.ns_host_name,
         }
 
     @classmethod
@@ -197,13 +200,11 @@ class DNSForwardZoneConfig(DomainConfigBase):
         :param mapping: A hostname:ip-addresses mapping for all known hosts in
             the zone.  They will be mapped as A records.
         :param default_ttl: The default TTL for the zone.
-        :param dns_ip_list: List of IP addresses to use for the NS RR host.
         """
         self._mapping = kwargs.pop('mapping', {})
         self._network = kwargs.pop('network', None)
         self._dynamic_ranges = kwargs.pop('dynamic_ranges', [])
         self._other_mapping = kwargs.pop('other_mapping', {})
-        self._dns_ip_list = kwargs.pop('dns_ip_list', None)
         self._ipv4_ttl = kwargs.pop('ipv4_ttl', None)
         self._ipv6_ttl = kwargs.pop('ipv6_ttl', None)
         super(DNSForwardZoneConfig, self).__init__(
@@ -212,22 +213,18 @@ class DNSForwardZoneConfig(DomainConfigBase):
             **kwargs)
 
     @classmethod
-    def get_mapping(cls, mapping, addr_ttl, dns_ip_list):
+    def get_mapping(cls, mapping, addr_ttl):
         """Return a generator mapping hostnames to IP addresses.
 
         This includes the record for the name server's IP.
         :param mapping: A dict mapping host names to lists of IP addresses.
         :param addr_ttl: The TTL for the @ address RRset.
-        :param dns_ip_list: List of IP addresses for the zone's authoritative
-            DNS server.
         :return: A generator of tuples: (host name, IP address).
         """
-        return chain(
-            [('@', addr_ttl, dns_ip) for dns_ip in dns_ip_list],
-            enumerate_ip_mapping(mapping))
+        return enumerate_ip_mapping(mapping)
 
     @classmethod
-    def get_A_mapping(cls, mapping, addr_ttl, dns_ip_list):
+    def get_A_mapping(cls, mapping, addr_ttl):
         """Return a generator mapping hostnames to IP addresses for all
         the IPv4 addresses in `mapping`.
 
@@ -237,17 +234,15 @@ class DNSForwardZoneConfig(DomainConfigBase):
         This includes the A record for the name server's IP.
         :param mapping: A dict mapping host names to lists of IP addresses.
         :param addr_ttl: The TTL for the @ address RRset.
-        :param dns_ip_list: List of IP addresses for the zone's authoritative
-            DNS server.
         :return: A generator of tuples: (host name, IP address).
         """
-        mapping = cls.get_mapping(mapping, addr_ttl, dns_ip_list)
+        mapping = cls.get_mapping(mapping, addr_ttl)
         if mapping is None:
             return ()
         return (item for item in mapping if IPAddress(item[2]).version == 4)
 
     @classmethod
-    def get_AAAA_mapping(cls, mapping, addr_ttl, dns_ip_list):
+    def get_AAAA_mapping(cls, mapping, addr_ttl):
         """Return a generator mapping hostnames to IP addresses for all
         the IPv6 addresses in `mapping`.
 
@@ -256,11 +251,9 @@ class DNSForwardZoneConfig(DomainConfigBase):
 
         :param mapping: A dict mapping host names to lists of IP addresses.
         :param addr_ttl: The TTL for the @ address RRset.
-        :param dns_ip_list: List of IP addresses for the zone's authoritative
-            DNS server.
         :return: A generator of tuples: (host name, IP address).
         """
-        mapping = cls.get_mapping(mapping, addr_ttl, dns_ip_list)
+        mapping = cls.get_mapping(mapping, addr_ttl)
         if mapping is None:
             return ()
         return (item for item in mapping if IPAddress(item[2]).version == 6)
@@ -314,9 +307,9 @@ class DNSForwardZoneConfig(DomainConfigBase):
                 {
                     'mappings': {
                         'A': self.get_A_mapping(
-                            self._mapping, self._ipv4_ttl, self._dns_ip_list),
+                            self._mapping, self._ipv4_ttl),
                         'AAAA': self.get_AAAA_mapping(
-                            self._mapping, self._ipv6_ttl, self._dns_ip_list),
+                            self._mapping, self._ipv6_ttl),
                     },
                     'other_mapping': enumerate_rrset_mapping(
                         self._other_mapping),

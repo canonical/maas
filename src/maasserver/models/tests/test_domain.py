@@ -194,23 +194,29 @@ class DomainTest(MAASServerTestCase):
     def test_add_delegations_may_do_nothing(self):
         domain = factory.make_Domain()
         mapping = {}
-        domain.add_delegations(mapping, [IPAddress("::1")], 30)
+        domain.add_delegations(
+            mapping,
+            Domain.objects.get_default_domain().name,
+            [IPAddress("::1")], 30)
+        self.assertEqual({}, mapping)
 
     def test_add_delegations_adds_delegation(self):
         parent = factory.make_Domain()
         name = factory.make_name()
+        default_name = Domain.objects.get_default_domain().name
         factory.make_Domain(name="%s.%s" % (name, parent.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, [IPAddress("::1")], 30)
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
-            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+            rrset={(30, 'NS', default_name)})
         self.assertEqual(expected_map, mapping[name])
 
     def test_add_delegations_adds_nsrrset_and_glue(self):
         parent = factory.make_Domain()
         name = factory.make_name()
         child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        default_name = Domain.objects.get_default_domain().name
         dnsrr = factory.make_DNSResource(name='@', domain=child)
         nsname = factory.make_name()
         factory.make_DNSData(
@@ -224,12 +230,11 @@ class DomainTest(MAASServerTestCase):
             rrdata="%s.%s." % (other_name, parent.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, [IPAddress("::1")], 30)
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = {
             name: HostnameRRsetMapping(
                 rrset={
-                    (30, 'AAAA', '::1'),
-                    (30, 'NS', name),
+                    (30, 'NS', default_name),
                     (30, 'NS', "%s.%s." % (nsname, child.name)),
                     (30, 'NS', "%s.%s." % (other_name, parent.name)),
                 }
@@ -248,6 +253,7 @@ class DomainTest(MAASServerTestCase):
         parent = factory.make_Domain()
         name = factory.make_name()
         child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        default_name = Domain.objects.get_default_domain().name
         g_name = factory.make_name()
         grandchild = factory.make_Domain(name="%s.%s" % (g_name, child.name))
         dnsrr = factory.make_DNSResource(name='@', domain=child)
@@ -266,8 +272,7 @@ class DomainTest(MAASServerTestCase):
         expected_map = {
             name: HostnameRRsetMapping(
                 rrset={
-                    (30, 'AAAA', '::1'),
-                    (30, 'NS', name),
+                    (30, 'NS', default_name),
                     (30, 'NS', "%s.%s." % (nsname, grandchild.name)),
                     (30, 'NS', "%s.%s." % (other_name, parent.name)),
                 }
@@ -281,30 +286,48 @@ class DomainTest(MAASServerTestCase):
             else:
                 expected_map[ns_part] = HostnameRRsetMapping(
                     rrset={(30, 'A', sip.ip)})
-        parent.add_delegations(mapping, [IPAddress("::1")], 30)
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         self.assertEqual(expected_map, mapping)
 
     def test_add_delegations_allows_dots(self):
         parent = factory.make_Domain()
         name = "%s.%s" % (factory.make_name(), factory.make_name())
         factory.make_Domain(name="%s.%s" % (name, parent.name))
+        default_name = Domain.objects.get_default_domain().name
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, [IPAddress("::1")], 30)
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
-            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+            rrset={(30, 'NS', default_name)})
         self.assertEqual(expected_map, mapping[name])
 
     def test_add_delegations_stops_at_one_deep(self):
         parent = factory.make_Domain()
         name = factory.make_name()
         child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        default_name = Domain.objects.get_default_domain().name
         factory.make_Domain(name="%s.%s" % (factory.make_name(), child.name))
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
-        parent.add_delegations(mapping, [IPAddress("::1")], 30)
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
         expected_map = HostnameRRsetMapping(
-            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+            rrset={(30, 'NS', default_name)})
+        self.assertEqual(expected_map, mapping[name])
+
+    def test_add_delegations_does_not_list_region_for_non_auth(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        child = factory.make_Domain(
+            name="%s.%s" % (name, parent.name), authoritative=False)
+        default_name = Domain.objects.get_default_domain().name
+        ns_name = "%s.%s." % (factory.make_name('h'), factory.make_name('d'))
+        factory.make_DNSData(
+            name='@', domain=child, rrtype='NS', rrdata=ns_name)
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
+        expected_map = HostnameRRsetMapping(
+            rrset={(30, 'NS', ns_name)})
         self.assertEqual(expected_map, mapping[name])
 
     def test_save_migrates_dnsresource(self):
