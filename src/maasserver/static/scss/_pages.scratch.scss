@@ -399,7 +399,7 @@
     .autocomplete {
 
       .suggestion-list {
-        border-radius: 3px;
+        border-radius: 0 0 3px 3px;
         left: 0;
         margin: 0;
         list-style: none;
@@ -407,13 +407,15 @@
         border: 1px solid #d2d2d2;
         border-top: 0;
         z-index: 20;
-        max-height: 1000px;
+        max-height: 300px;
         transition: max-height .3s ease-in;
         position: absolute;
         top: 34px;
         clear: both;
         min-width: 160px;
         width: 100%;
+        overflow-y: scroll;
+        box-sizing: border-box;
 
         .suggestion-item {
           float: left;
