@@ -250,6 +250,7 @@ class RSDPodDriver(PodDriver):
         for lvg, lvg_data in lvgs.items():
             total = 0
             available = 0
+            master_id = 0
             master = None
 
             # Find size of LVG and get LVs for this LVG.
@@ -280,13 +281,15 @@ class RSDPodDriver(PodDriver):
                     # If all of the targets are unused, we count it as unused.
                     if not (lv_target_links & remote_drives):
                         lvs_capacity_unused += lv_capacity
-                        master_id = lv_info['Id']
-                        if master is None or master > master_id:
-                            master = master_id
+                        new_master_id = int(lv_info['Id'])
+                        if (master is None or master_id > new_master_id):
+                            master = lv_link
+                            master_id = new_master_id
 
             total = (
                 lvg_capacity - lvs_capacity_no_targets - lvs_capacity_unused)
-            available = lvg_capacity - lvs_total_capacity
+            total *= 1024 ** 3
+            available = (lvg_capacity - lvs_total_capacity) * (1024 ** 3)
             remote_storage[lvg] = {
                 'total': total,
                 'available': available,

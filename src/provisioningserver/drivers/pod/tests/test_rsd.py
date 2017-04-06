@@ -994,9 +994,9 @@ class TestRSDPodDriver(MAASTestCase):
             remote_storage,
             {
                 b'redfish/v1/Services/1/LogicalDrives/2': {
-                    'total': 11018.140625,
-                    'available': 11018.140625,
-                    'master': '139'
+                    'total': 11830638411776.0,
+                    'available': 11830638411776.0,
+                    'master': b'redfish/v1/Services/1/LogicalDrives/1'
                 }
             })
 
