@@ -182,6 +182,7 @@ parts:
     source: .
     requirements: requirements.txt
     build-packages:
+      - git
       - libffi-dev
       - libpq-dev
       - libxml2-dev
