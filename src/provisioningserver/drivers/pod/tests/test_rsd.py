@@ -277,7 +277,9 @@ SAMPLE_JSON_NODE = {
         }, {
             "@odata.id": "/redfish/v1/Systems/1/Adapters/3/Devices/3"
         }],
-        "RemoteDrives": [],
+        "RemoteDrives": [{
+            "@odata.id": "/redfish/v1/Services/1/Targets/1"
+        }],
         "ManagedBy": [{
             "@odata.id": "/redfish/v1/Managers/1"
         }],
@@ -535,6 +537,139 @@ SAMPLE_JSON_MEMORY = {
 }
 
 
+SAMPLE_JSON_LVG = {
+    "@odata.id": "/redfish/v1/Services/1/LogicalDrives/2",
+    "@odata.type": "#LogicalDrive.1.0.0.LogicalDrive",
+    "Id": "115",
+    "Name": "Logical Drive",
+    "Description": "Logical Drive description",
+    "Status": {
+        "State": "Enabled",
+        "Health": "OK",
+        "HealthRollup": "OK"
+    },
+    "Type": "LVM",
+    "Mode": "LVG",
+    "Protected": False,
+    "CapacityGiB": 11178.140625,
+    "Image": None,
+    "Bootable": False,
+    "Snapshot": False,
+    "Links": {
+        "LogicalDrives": [{
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/1"
+        }, {
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/3"
+        }, {
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/4"
+        }, {
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/5"
+        }],
+        "PhysicalDrives": [],
+        "UsedBy": [],
+        "Targets": []
+    }
+}
+
+SAMPLE_JSON_LV = {
+    "@odata.id": "/redfish/v1/Services/1/LogicalDrives/1",
+    "@odata.type": "#LogicalDrive.1.0.0.LogicalDrive",
+    "Id": "139",
+    "Name": "Logical Drive",
+    "Description": "Logical Drive description",
+    "Status": {
+        "State": "Enabled",
+        "Health": "OK",
+        "HealthRollup": "OK"
+    },
+    "Type": "LVM",
+    "Mode": "LV",
+    "Protected": False,
+    "CapacityGiB": 80,
+    "Image": None,
+    "Bootable": True,
+    "Snapshot": False,
+    "Links": {
+        "LogicalDrives": [],
+        "PhysicalDrives": [],
+        "MasterDrive": {
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/3"
+        },
+        "UsedBy": [{
+            "@odata.id": "/redfish/v1/Services/1/LogicalDrives/2"
+        }],
+        "Targets": [{
+            "@odata.id": "/redfish/v1/Services/1/Targets/1"
+        }]
+    }
+}
+
+
+SAMPLE_JSON_PV = {
+    "@odata.id": "/redfish/v1/Services/8/LogicalDrives/126",
+    "@odata.type": "#LogicalDrive.1.0.0.LogicalDrive",
+    "Id": "126",
+    "Name": "Logical Drive",
+    "Description": "Logical Drive description",
+    "Status": {
+        "State": "Enabled",
+        "Health": "OK",
+        "HealthRollup": "OK"
+    },
+    "Type": "LVM",
+    "Mode": "PV",
+    "Protected": False,
+    "CapacityGiB": 931.51171875,
+    "Image": None,
+    "Bootable": False,
+    "Snapshot": False,
+    "Links": {
+        "LogicalDrives": [],
+        "PhysicalDrives": [{
+            "@odata.id": "/redfish/v1/Services/8/Drives/99"
+        }, {
+            "@odata.id": "/redfish/v1/Services/8/Drives/103"
+        }],
+        "UsedBy": [{
+            "@odata.id": "/redfish/v1/Services/8/LogicalDrives/115"
+        }],
+        "Targets": []
+    }
+}
+
+
+SAMPLE_JSON_TARGET = {
+    "@odata.id": "/redfish/v1/Services/1/Targets/1",
+    "@odata.type": "#RemoteTarget.1.0.0.RemoteTarget",
+    "Id": "19",
+    "Name": "iSCSI Remote Target",
+    "Description": "iSCSI Remote Target description",
+    "Status": {
+        "State": "Enabled",
+        "Health": "OK",
+        "HealthRollup": "OK"
+    },
+    "Type": None,
+    "Addresses": [{
+        "iSCSI": {
+            "TargetLUN": [],
+            "TargetIQN": "iqn.maas.io:test",
+            "TargetPortalIP": "10.1.0.100",
+            "TargetPortalPort": 3260
+        }
+    }],
+    "Initiator": [{
+        "iSCSI": {
+            "InitiatorIQN": ""
+        }
+    }],
+    "Oem": {},
+    "Links": {
+        "Oem": {}
+    }
+}
+
+
 def make_context():
     return {
         'power_address': factory.make_ipv4_address(),
@@ -767,6 +902,103 @@ class TestRSDPodDriver(MAASTestCase):
                 resource['@odata.id'].lstrip('/').encode('utf-8'))
         resources = yield driver.list_resources(endpoint, headers)
         self.assertItemsEqual(resources, resource_ids)
+
+    @inlineCallbacks
+    def test__scrape_logical_drives_and_targets(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        lv_link = b"redfish/v1/Services/1/LogicalDrives/%s"
+        target_link = b"redfish/v1/Services/1/Targets/%s"
+        mock_list_resources = self.patch(driver, 'list_resources')
+        mock_list_resources.side_effect = [
+            [b"redfish/v1/Services/1"],
+            [
+                lv_link % b'1',
+                lv_link % b'3'
+            ],
+            [
+                target_link % b'1',
+                target_link % b'2',
+            ]
+        ]
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.side_effect = [
+            (SAMPLE_JSON_LV, None),
+            (SAMPLE_JSON_PV, None),
+            (SAMPLE_JSON_TARGET, None),
+            (SAMPLE_JSON_TARGET, None),
+        ]
+
+        logical_drives, targets = (
+            yield driver.scrape_logical_drives_and_targets(url, headers))
+        self.assertDictEqual(
+            logical_drives,
+            {
+                lv_link % b'1': SAMPLE_JSON_LV,
+                lv_link % b'3': SAMPLE_JSON_PV,
+            })
+        self.assertDictEqual(
+            targets,
+            {
+                target_link % b'1': SAMPLE_JSON_TARGET,
+                target_link % b'2': SAMPLE_JSON_TARGET,
+            })
+
+    @inlineCallbacks
+    def test__scrape_remote_drives(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        mock_list_resources = self.patch(driver, 'list_resources')
+        mock_list_resources.return_value = [b"redfish/v1/Nodes/1"]
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.return_value = (SAMPLE_JSON_NODE, None)
+
+        remote_drives = yield driver.scrape_remote_drives(url, headers)
+        self.assertEquals({'/redfish/v1/Services/1/Targets/1'}, remote_drives)
+
+    @inlineCallbacks
+    def test__calculate_remote_storage(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        headers = driver.make_auth_headers(**context)
+        LV_NO_TARGETS = deepcopy(SAMPLE_JSON_LV)
+        LV_NO_TARGETS['Links']['Targets'] = []
+        logical_drives = {
+            b"redfish/v1/Services/1/LogicalDrives/1": SAMPLE_JSON_LV,
+            b"redfish/v1/Services/1/LogicalDrives/2": SAMPLE_JSON_LVG,
+            b"redfish/v1/Services/1/LogicalDrives/3": LV_NO_TARGETS,
+            b"redfish/v1/Services/1/LogicalDrives/4": SAMPLE_JSON_PV,
+            b"redfish/v1/Services/1/LogicalDrives/5": SAMPLE_JSON_PV,
+        }
+        target_links = {
+            b"redfish/v1/Services/1/Targets/1": SAMPLE_JSON_TARGET,
+            b"redfish/v1/Services/1/Targets/2": SAMPLE_JSON_TARGET,
+            b"redfish/v1/Services/1/Targets/3": SAMPLE_JSON_TARGET,
+        }
+        remote_drives = set(
+            "redfish/v1/Services/1/Targets/1")
+        mock_scrape_logical_drives_and_targets = self.patch(
+            driver, 'scrape_logical_drives_and_targets')
+        mock_scrape_logical_drives_and_targets.return_value = (
+            logical_drives, target_links)
+        mock_scrape_remote_drives = self.patch(driver, 'scrape_remote_drives')
+        mock_scrape_remote_drives.return_value = remote_drives
+
+        remote_storage = yield driver.calculate_remote_storage(url, headers)
+        self.assertDictEqual(
+            remote_storage,
+            {
+                b'redfish/v1/Services/1/LogicalDrives/2': {
+                    'total': 11018.140625,
+                    'available': 11018.140625,
+                    'master': '139'
+                }
+            })
 
     @inlineCallbacks
     def test__get_pod_memory_resources(self):

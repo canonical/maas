@@ -188,6 +188,113 @@ class RSDPodDriver(PodDriver):
         return resource_ids
 
     @inlineCallbacks
+    def scrape_logical_drives_and_targets(self, url, headers):
+        """ Scrape the logical drive and targets data from storage services."""
+        logical_drives = {}
+        target_links = {}
+        # Get list of all services in the pod.
+        services_uri = join(url, b"redfish/v1/Services")
+        services = yield self.list_resources(services_uri, headers)
+        # Iterate over all services in the pod.
+        for service in services:
+            # Get list of all the logical volumes for this service.
+            logical_volumes_uri = join(url, service, b"LogicalDrives")
+            logical_volumes = yield self.list_resources(
+                logical_volumes_uri, headers)
+            for logical_volume in logical_volumes:
+                lv_data, _ = yield self.redfish_request(
+                    b"GET", join(url, logical_volume), headers)
+                logical_drives[logical_volume] = lv_data
+            # Get list of all the targets for this service.
+            targets_uri = join(url, service, b"Targets")
+            targets = yield self.list_resources(
+                targets_uri, headers)
+            for target in targets:
+                target_data, _ = yield self.redfish_request(
+                    b"GET", join(url, target), headers)
+                target_links[target] = target_data
+        return logical_drives, target_links
+
+    @inlineCallbacks
+    def scrape_remote_drives(self, url, headers):
+        """Scrape remote drives (targets) from composed nodes."""
+        targets = []
+        nodes_uri = join(url, b"redfish/v1/Nodes")
+        nodes = yield self.list_resources(nodes_uri, headers)
+        for node in nodes:
+            node_data, _ = yield self.redfish_request(
+                b"GET", join(url, node), headers)
+            remote_drives = node_data.get('Links', {}).get('RemoteDrives', [])
+            for remote_drive in remote_drives:
+                targets.append(remote_drive['@odata.id'])
+        return set(targets)
+
+    @inlineCallbacks
+    def calculate_remote_storage(self, url, headers):
+        logical_drives, target_links = (
+            yield self.scrape_logical_drives_and_targets(url, headers))
+        remote_drives = yield self.scrape_remote_drives(url, headers)
+
+        # Find LVGs and LVs out of all logical drives.
+        lvgs = {}
+        lvs = {}
+        for lv, lv_data in logical_drives.items():
+            if lv_data['Mode'] == "LVG":
+                lvgs[lv] = lv_data
+            elif lv_data['Mode'] == "LV":
+                lvs[lv] = lv_data
+
+        # For each LVG, calculate total amount of usable space,
+        # total amount of available space, and find the master volume to clone.
+        remote_storage = {}
+        for lvg, lvg_data in lvgs.items():
+            total = 0
+            available = 0
+            master = None
+
+            # Find size of LVG and get LVs for this LVG.
+            lvg_capacity = lvg_data['CapacityGiB']
+            lvg_lvs = lvg_data.get('Links', {}).get('LogicalDrives', [])
+
+            # Find total capacity, capacity with no targets, and capacity
+            # with unused targets for all LVs in this LVG.
+            lvs_total_capacity = 0
+            lvs_capacity_no_targets = 0
+            lvs_capacity_unused = 0
+            for lvg_lv in lvg_lvs:
+                lv_link = lvg_lv['@odata.id'].lstrip('/').encode('utf-8')
+                # Extract JSON data from stored LV.
+                if lv_link in lvs:
+                    lv_info = lvs[lv_link]
+                else:
+                    # Continue on to next lv.
+                    continue
+                lv_capacity = lv_info['CapacityGiB']
+                lvs_total_capacity += lv_capacity
+                lv_targets = lv_info.get('Links', {}).get('Targets', [])
+                if not lv_targets:
+                    lvs_capacity_no_targets += lv_capacity
+                else:
+                    lv_target_links = {
+                        lv['@odata.id'] for lv in lv_targets}
+                    # If all of the targets are unused, we count it as unused.
+                    if not (lv_target_links & remote_drives):
+                        lvs_capacity_unused += lv_capacity
+                        master_id = lv_info['Id']
+                        if master is None or master > master_id:
+                            master = master_id
+
+            total = (
+                lvg_capacity - lvs_capacity_no_targets - lvs_capacity_unused)
+            available = lvg_capacity - lvs_total_capacity
+            remote_storage[lvg] = {
+                'total': total,
+                'available': available,
+                'master': master
+            }
+        return remote_storage
+
+    @inlineCallbacks
     def get_pod_memory_resources(self, url, headers, system):
         """Get all the memory resources for the given system."""
         system_memory = []
