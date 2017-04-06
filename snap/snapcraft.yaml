@@ -229,9 +229,16 @@ parts:
       conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
     stage:
       - -conf
+      - -plugins
       - -snapcraft.yaml
-      - -snapcraft.yaml.template
     prime:
       - -conf
+      - -plugins
       - -snapcraft.yaml
-      - -snapcraft.yaml.template
+  version:
+    plugin: bzr-version
+    source: .
+    stage:
+      - -*
+    prime:
+      - -*

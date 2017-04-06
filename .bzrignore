@@ -42,7 +42,6 @@
 ./parts
 ./prime
 ./services/*/supervise
-./snap/snapcraft.yaml
 ./src/maasserver/static/js/enums.js
 ./stage
 ./TAGS

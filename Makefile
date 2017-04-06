@@ -694,23 +694,17 @@ endef
 
 snap-clean:
 	snapcraft clean
-	rm -rf snap/snapcraft.yaml
 
-snapcraft:
-	@sed '/^version:/s/$$/+bzr$(shell bzr revno)/' \
-		snap/snapcraft.yaml.template > snap/snapcraft.yaml
-
-snap: snapcraft
+snap:
 	snapcraft
 
-snap-cleanbuild: snapcraft
+snap-cleanbuild:
 	snapcraft cleanbuild
 
 define phony_snap_targets
 	snap
 	snap-clean
 	snap-cleanbuild
-	snapcraft
 endef
 
 #
