@@ -154,6 +154,9 @@ def compose_purpose_opts(params):
             "cc:{'datasource_list': ['MAAS']}end_cc",
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
+            # Disable apparmor in the ephemeral environment. This addresses
+            # MAAS bug LP: #1677336 due to LP: #1408106
+            "apparmor=0",
             ]
         return kernel_params
     else:

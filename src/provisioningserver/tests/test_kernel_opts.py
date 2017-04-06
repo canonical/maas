@@ -310,6 +310,26 @@ class TestKernelOpts(MAASTestCase):
                 "cc:{'datasource_list': ['MAAS']}end_cc",
                 "cloud-config-url=%s" % params.preseed_url]))
 
+    def test_enlist_compose_kernel_command_line_apparmor_disabled(self):
+        # The result of compose_kernel_command_line includes the
+        # options for apparmor. See LP: #1677336 and LP: #1408106
+        params = self.make_kernel_parameters(
+            purpose="enlist", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll(["apparmor=0"]))
+
+    def test_commissioning_compose_kernel_command_line_apparmor_disabled(self):
+        # The result of compose_kernel_command_line includes the
+        # options for apparmor. See LP: #1677336 and LP: #1408106
+        params = self.make_kernel_parameters(
+            purpose="commissioning", fs_host=factory.make_ipv4_address())
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll(["apparmor=0"]))
+
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(
             kernel_opts, 'get_curtin_kernel_cmdline_sep')
