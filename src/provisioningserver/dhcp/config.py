@@ -29,6 +29,7 @@ from provisioningserver.path import (
 )
 from provisioningserver.utils import (
     locate_template,
+    snappy,
     typed,
 )
 import provisioningserver.utils.network as net_utils
@@ -259,6 +260,7 @@ def get_config_v4(
     helpers = {
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
+        "running_in_snap": snappy.running_in_snap(),
     }
 
     rack_addrs = [
@@ -311,6 +313,7 @@ def get_config_v6(
     helpers = {
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
+        "running_in_snap": snappy.running_in_snap(),
     }
 
     rack_addrs = [

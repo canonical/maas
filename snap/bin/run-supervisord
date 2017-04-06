@@ -1,0 +1,38 @@
+#!/bin/sh
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+set -e
+
+# Set the initial snap mode if its not already set.
+if [ ! -e "$SNAP_COMMON/snap_mode" ]
+then
+    echo "all" > "$SNAP_COMMON/snap_mode"
+fi
+
+# Create the log directory where all services will be logged to.
+mkdir -p "$SNAP_COMMON/log"
+
+# Initialize the db directory if not existing.
+if [ ! -d "$SNAP_COMMON/db" ]
+then
+    # Create the directory for the database.
+    mkdir -p "$SNAP_COMMON/db"
+    chown nobody "$SNAP_COMMON/db"
+
+    # Initialize the database.
+    sudo -E -n -u nobody LD_LIBRARY_PATH="$LD_LIBRARY_PATH" "$SNAP/bin/initdb" \
+        -D "$SNAP_COMMON/db" -U postgres -E UTF8 --locale=C
+fi
+
+# Create the supervisord directory to control supervisord.
+mkdir -p "$SNAP_DATA/supervisord"
+
+# Don't allow all regiond workers to start by default.
+rm -f "$SNAP_DATA/run-all-workers"
+
+# Render the supervisord.conf based on the current mode.
+$SNAP/bin/snap-ctl --render
+
+# Run the supervisor for the snap.
+exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor.log" 2>&1

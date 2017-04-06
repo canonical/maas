@@ -664,6 +664,7 @@ source-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 source-package-clean:
 	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
 
+
 # Debugging target. Allows printing of any variable.
 # As an example, try:
 #     make print-js_enums
@@ -688,12 +689,38 @@ define phony_package_targets
 endef
 
 #
+# Snap building
+#
+
+snap-clean:
+	snapcraft clean
+	rm -rf snap/snapcraft.yaml
+
+snapcraft:
+	@sed '/^version:/s/$$/+bzr$(shell bzr revno)/' \
+		snap/snapcraft.yaml.template > snap/snapcraft.yaml
+
+snap: snapcraft
+	snapcraft
+
+snap-cleanbuild: snapcraft
+	snapcraft cleanbuild
+
+define phony_snap_targets
+	snap
+	snap-clean
+	snap-cleanbuild
+	snapcraft
+endef
+
+#
 # Phony stuff.
 #
 
 define phony
   $(phony_package_targets)
   $(phony_services_targets)
+  $(phony_snap_targets)
   $(phony_targets)
 endef
 

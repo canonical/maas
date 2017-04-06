@@ -1,0 +1,18 @@
+#!/bin/bash
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+set -e
+
+# Copy the needed files from share.
+mkdir -p $SNAP_DATA/bind/
+cp -f $SNAP/usr/share/maas/bind/* $SNAP_DATA/bind/
+
+# Ensure the cache directory exists.
+mkdir -p $SNAP_DATA/bind/cache
+
+# MAAS finalize bind configuration.
+MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" $SNAP/bin/maas-region set_up_dns
+
+# Run named.
+exec $SNAP/sbin/named -c "$SNAP_DATA/bind/named.conf" -g

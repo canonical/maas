@@ -1,0 +1,17 @@
+#!/bin/bash
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+set -e
+
+# Create the required directories.
+mkdir -p $SNAP_DATA/etc/ntp
+mkdir -p $SNAP_COMMON/log/ntpstats
+
+# Copy the initial ntp.conf if it doesn't exist.
+if [ ! -e "$SNAP_DATA/etc/ntp.conf" ]; then
+    cp "$SNAP/usr/share/maas/ntp.conf" "$SNAP_DATA/etc/ntp.conf"
+fi
+
+# Run ntpd.
+exec $SNAP/bin/ntpd -n -d -c "$SNAP_DATA/etc/ntp.conf"

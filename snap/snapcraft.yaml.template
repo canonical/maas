@@ -1,0 +1,237 @@
+name: maas
+version: 2.2.0rc1
+summary: Metal as a Service
+description: |
+  Total automation of you physical servers for amazing data center
+  operational efficiency.
+grade: devel
+confinement: devmode
+
+apps:
+  supervisor:
+    daemon: simple
+    command: bin/run-supervisord
+  snap:
+    command: bin/snap-ctl
+  maas:
+    command: bin/maas
+  region:
+    command: bin/maas-region
+  rack:
+    command: bin/maas-rack
+
+parts:
+  packages:
+    plugin: nil
+    filesets:
+      keep:
+        - bin/archdetect
+        - bin/ip
+        - etc/iproute2/*
+        - etc/ssh/*
+        - etc/ssl/*
+        - usr/*
+        - var/*
+      remove:
+        - -lib/systemd
+        - -usr/include
+        - -usr/share/apport
+        - -usr/share/doc
+        - -usr/share/man
+        - -usr/share/upstart
+    stage-packages:
+      - archdetect-deb
+      - avahi-utils
+      - lshw
+      - openssh-client
+      - iproute2
+      - libconfig-general-perl
+      - libjs-angularjs
+      - libjs-jquery
+      - libjs-yui3-full
+      - libjs-yui3-min
+      - gpgv
+      - tcpdump
+      - ubuntu-cloudimage-keyring
+    stage:
+      - $keep
+      - $remove
+    prime:
+      - $keep
+      - $remove
+  power-drivers:
+    plugin: nil
+    stage-packages:
+      - amtterm        # AMT
+      - wsmancli       # AMT
+      - snmp           # APC
+      - wget           # DLI
+      - fence-agents   # Fence CDU
+      - freeipmi-tools # IPMI
+      - ipmitool       # Moonshot
+      - libvirt-bin    # Virsh
+    filesets:
+      remove:
+        - -lib/systemd
+    stage:
+      - $remove
+    prime:
+      - $remove
+  tgtd:
+    plugin: make
+    disable-parallel: true
+    source: https://github.com/fujita/tgt/archive/v1.0.68.tar.gz
+    build-packages:
+      - xsltproc
+    filesets:
+      keep:
+        - usr/sbin/*
+      remove:
+        - -usr/share
+    stage:
+      - $keep
+      - $remove
+    prime:
+      - $keep
+      - $remove
+  bind:
+    plugin: autotools
+    source: https://ftp.isc.org/isc/bind9/9.11.0/bind-9.11.0.tar.gz
+    filesets:
+      remove:
+        - -include
+        - -share
+    stage:
+      - $remove
+    prime:
+      - $remove
+  dhcpd:
+    plugin: autotools
+    disable-parallel: true
+    source: https://ftp.isc.org/isc/dhcp/4.1-ESV-R14/dhcp-4.1-ESV-R14.tar.gz
+    filesets:
+      remove:
+        - -include
+        - -share
+    stage:
+      - $remove
+    prime:
+      - $remove
+  squid:
+    plugin: autotools
+    source: http://www.squid-cache.org/Versions/v3/3.5/squid-3.5.24.tar.bz2
+    build-packages:
+      - build-essential
+    filesets:
+      remove:
+        - -share/man
+    stage:
+      - $remove
+    prime:
+      - $remove
+  postgresql:
+    plugin: autotools
+    source: https://ftp.postgresql.org/pub/source/v9.6.2/postgresql-9.6.2.tar.bz2
+    build-packages:
+      - libreadline-dev
+    filesets:
+      remove:
+        - -include
+    stage:
+      - $remove
+    prime:
+      - $remove
+  ntp:
+    plugin: autotools
+    source: https://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p10.tar.gz
+    filesets:
+      remove:
+        - -share
+    stage:
+      - $remove
+    prime:
+      - $remove
+  distro-info:
+    plugin: dump
+    source: lp:ubuntu/wily/distro-info
+    filesets:
+      keep:
+        - lib/python3.5/site-packages/distro_info.py
+    organize:
+      python/distro_info.py: lib/python3.5/site-packages/distro_info.py
+    stage:
+      - $keep
+    prime:
+      - $keep
+  distro-info-data:
+    plugin: dump
+    source: lp:ubuntu/wily/distro-info-data
+    filesets:
+      keep:
+        - usr/share/distro-info/debian.csv
+        - usr/share/distro-info/ubuntu.csv
+    organize:
+      debian.csv: usr/share/distro-info/debian.csv
+      ubuntu.csv: usr/share/distro-info/ubuntu.csv
+    stage:
+      - $keep
+    prime:
+      - $keep
+  maas:
+    plugin: python
+    source: .
+    requirements: requirements.txt
+    build-packages:
+      - libffi-dev
+      - libpq-dev
+      - libxml2-dev
+      - libxslt1-dev
+    filesets:
+      remove:
+        - -lib/python3.5/site-packages/maastesting
+        - -share
+        - -usr/include/libjs-angularjs
+        - -usr/share/applications
+        - -usr/share/bug
+        - -usr/share/debhelper
+        - -usr/share/dh-python
+        - -usr/share/doc
+        - -usr/share/doc-base
+        - -usr/share/lintian
+        - -usr/share/man
+        - -usr/share/perl5
+    organize:
+      lib/python3.5/site-packages/etc: etc
+      lib/python3.5/site-packages/usr: usr
+      usr/lib/curtin/helpers: lib/python3.5/site-packages/helpers
+    stage:
+      - $remove
+    prime:
+      - $remove
+  region-static:
+    plugin: dump
+    source: src/maasserver/static
+    organize:
+      '*': usr/share/maas/web/static/
+  twisted-plugins:
+    plugin: dump
+    source: twisted/plugins
+    organize:
+      maasrackd.py: lib/python3.5/site-packages/twisted/plugins/maasrackd.py
+      maasregiond.py: lib/python3.5/site-packages/twisted/plugins/maasregiond.py
+  snap:
+    plugin: dump
+    source: snap
+    organize:
+      bind: usr/share/maas/bind
+      conf/empty.tgt: usr/share/maas/empty.tgt
+      conf/ntp.conf: usr/share/maas/ntp.conf
+      conf/supervisord.conf.template: usr/share/maas/supervisord.conf.template
+    stage:
+      - -conf
+      - -snapcraft.yaml
+      - -snapcraft.yaml.template
+    prime:
+      - -conf
+      - -snapcraft.yaml
+      - -snapcraft.yaml.template
