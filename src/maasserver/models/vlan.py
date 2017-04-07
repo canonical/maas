@@ -27,6 +27,7 @@ from maasserver import DefaultMeta
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import VLANInterface
+from maasserver.models.notification import Notification
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 from netaddr import AddrFormatError
@@ -248,3 +249,20 @@ class VLAN(CleanSave, TimestampedModel):
         self.manage_connected_interfaces()
         self.manage_connected_subnets()
         super(VLAN, self).delete()
+
+    def save(self, *args, **kwargs):
+        # Bug 1555759: Raise a Notification if there are no VLANs with DHCP
+        # enabled.  Clear it when one gets enabled.
+        notifications = Notification.objects.filter(
+            ident="dhcp_disabled_all_vlans")
+        if self.dhcp_on:
+            # No longer true.  Delete the notification.
+            notifications.delete()
+        elif (not notifications.exists() and
+                not VLAN.objects.filter(dhcp_on=True).exists()):
+            Notification.objects.create_warning_for_admins(
+                "DHCP is not enabled on any VLAN.  This will prevent "
+                "machines from being able to PXE boot, unless an external "
+                "DHCP server is being used.",
+                ident="dhcp_disabled_all_vlans")
+        super().save(*args, **kwargs)

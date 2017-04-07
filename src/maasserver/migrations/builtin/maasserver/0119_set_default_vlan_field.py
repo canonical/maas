@@ -12,13 +12,13 @@ import maasserver.models.subnet
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0098_add_space_to_vlan'),
+        ('maasserver', '0118_add_iscsi_storage_pod'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='subnet',
             name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.subnet.get_default_vlan),
         ),
     ]

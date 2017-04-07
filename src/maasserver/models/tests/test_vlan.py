@@ -14,6 +14,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.models.notification import Notification
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -205,6 +206,24 @@ class TestVLAN(MAASServerTestCase):
         vlan.delete()
         self.assertEqual(
             reload_object(subnet).vlan, fabric.get_default_vlan())
+
+    def tests_creates_notification_when_no_dhcp(self):
+        Notification.objects.filter(
+            ident="dhcp_disabled_all_vlans").delete()
+        factory.make_VLAN(dhcp_on=False)
+        self.assertTrue(Notification.objects.filter(
+            ident="dhcp_disabled_all_vlans").exists())
+
+    def tests_deletes_notification_once_there_is_dhcp(self):
+        Notification.objects.filter(
+            ident="dhcp_disabled_all_vlans").delete()
+        # Force the notification to exist
+        vlan = factory.make_VLAN(dhcp_on=False)
+        # Now clear it.
+        vlan.dhcp_on = True
+        vlan.save()
+        self.assertFalse(Notification.objects.filter(
+            ident="dhcp_disabled_all_vlans").exists())
 
 
 class TestVLANVidValidation(MAASServerTestCase):
