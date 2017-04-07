@@ -36,7 +36,7 @@ angular.module('MAAS').controller('ImagesController', [
             $scope.$watch("bootResources.resources", function() {
                 if(angular.isArray($scope.bootResources.resources)) {
                     $scope.loading = false;
-                    $rootScope.title = "Boot Images";
+                    $rootScope.title = "Images";
                 }
             });
     }]);

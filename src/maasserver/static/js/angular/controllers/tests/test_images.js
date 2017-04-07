@@ -75,7 +75,7 @@ describe("ImagesController", function() {
         BootResourcesManager._data.resources = [];
         $scope.$digest();
         expect($scope.loading).toBe(false);
-        expect($scope.title).toBe("Boot Images");
+        expect($scope.title).toBe("Images");
     });
 
     it("sets autoImport object", function() {

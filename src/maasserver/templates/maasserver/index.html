@@ -87,6 +87,9 @@
                     </li>
                 </ul>
                 {% endif %}
+                <p class="nav__name">
+                  {% include "maasserver/site_title.html" %}
+                </p>
             </div>
         </nav>
     </header>
@@ -113,14 +116,13 @@
                 <div class="eight-col">
                     {% block footer-copyright %}
                     <p>
-                        <small>
-                            <strong class="u-margin--right">MAAS Version {{version}}</strong>&nbsp;<a href="http://maas.ubuntu.com/{{doc_version}}/changelog.html#id1">View release notes</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://maas.ubuntu.com/{{doc_version}}/">View documentation</a>
-                        </small>
+                      <small>MAAS name: <strong>{% include "maasserver/site_title.html" %}</strong></small>
                     </p>
                     <p>
-                        <small>
-                            &copy; 2017 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.
-                        </small>
+                        <small>MAAS version: <strong>{{version}}</strong></small><small class="u-margin--left"><a href="http://maas.ubuntu.com/{{doc_version}}/changelog.html#id1">View release notes</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://maas.ubuntu.com/{{doc_version}}/">View documentation</a></small>
+                    </p>
+                    <p>
+                        <small>&copy; 2017 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</small>
                     </p>
                     {% endblock %}
                 </div>

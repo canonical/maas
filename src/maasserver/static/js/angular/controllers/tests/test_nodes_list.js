@@ -157,7 +157,7 @@ describe("NodesListController", function() {
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
-        expect($rootScope.title).toBe("Machines");
+        expect($rootScope.title).toBe("Nodes");
         expect($rootScope.page).toBe("nodes");
     });
 

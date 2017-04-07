@@ -22,7 +22,7 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Set title and page.
-        $rootScope.title = "Machines";
+        $rootScope.title = "Nodes";
         $rootScope.page = "nodes";
 
         // Set initial values.

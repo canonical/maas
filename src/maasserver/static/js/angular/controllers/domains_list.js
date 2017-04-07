@@ -13,7 +13,7 @@ angular.module('MAAS').controller('DomainsListController', [
         // Load the filters that are used inside the controller.
 
         // Set title and page.
-        $rootScope.title = "Domains";
+        $rootScope.title = "DNS";
         $rootScope.page = "domains";
 
         // Set initial values.

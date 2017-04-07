@@ -51,7 +51,7 @@ describe("DomainsListController", function() {
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
-        expect($rootScope.title).toBe("Domains");
+        expect($rootScope.title).toBe("DNS");
         expect($rootScope.page).toBe("domains");
     });
 

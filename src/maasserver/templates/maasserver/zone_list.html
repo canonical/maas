@@ -1,8 +1,9 @@
 {% extends "maasserver/base.html" %}
 
 {% block nav-active-zone-list %}active{% endblock %}
-{% block title %}Physical zones{% endblock %}
-{% block page-title %}{{ paginator.count }}{% if input_query %} matching{% endif %} zone{{ paginator.count|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
+{% block title %}Zones{% endblock %}
+{% block page-title %}Zones{% endblock %}
+{% block page-status %}{{ paginator.count }}{% if input_query %} matching{% endif %} zone{{ paginator.count|pluralize }} available{% endblock %}
 
 {% block content %}
 <div id="zones">

@@ -14,8 +14,8 @@
                     data-ng-click="selectColumnOrSort('pxe_mac')"
                     data-ng-class="{'is-active': table.column === 'pxe_mac', 'is-sorted': table.predicate === 'pxe_mac', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}"><span title="Media Access Control addresses">MAC</span></a>
             </th>
-            <th class="u-align--center">
-                <a href="" class="u-align--center" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</a>
+            <th>
+                <a href="" data-ng-click="sortTable('power_state')" data-ng-class="{'is-sorted': table.predicate === 'power_state', 'sort-asc': table.reverse === false, 'sort-desc': table.reverse === true}">Power</a>
             </th>
             <th>
             </th>
@@ -54,9 +54,8 @@
                 <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                 <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
             </td>
-            <td class="powerstate u-align--center" aria-label="Power state">
-                <span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $} u-display--desktop"></span>
-                <span class="u-display--mobile u-text--{$ node.power_state $}"><span title="{$ node.power_state $}" class="icon icon--power-{$ node.power_state $}"></span> {$ node.power_state $}</span>
+            <td class="powerstate u-upper-case--first" aria-label="Power state">
+                <span title="{$ node.power_state $}" data-ng-if="node.power_state != 'unknown'" class="icon icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
             </td>
             <td class="table-col--3"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i></td>
             <td class="status u-text--truncate" aria-label="Status">{$ getStatusText(node) $} <span class="u-display--mobile"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i></span></td>

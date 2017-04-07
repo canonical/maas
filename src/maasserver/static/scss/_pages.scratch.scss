@@ -24,6 +24,17 @@
     }
   }
 
+  .u-upper-case {
+
+    &--first {
+      text-transform: capitalize;
+    }
+  }
+
+  .icon.icon--power-error {
+    background-image: url(../assets/images/d730daea-error.svg);
+  }
+
   .wrapper {
     min-height: initial;
     height: initial !important;
@@ -33,8 +44,9 @@
     display: inline-block;
   }
 
-  @media only screen and (max-width: 768px) {
-    .nav {
+  .nav {
+
+    @media only screen and (max-width: 768px) {
 
       .nav-toggle {
         background-color: $transparent;
@@ -52,6 +64,22 @@
             display: block;
           }
         }
+      }
+    }
+
+    &__name {
+      color: $white;
+      display: inline-block;
+      line-height: 48px;
+      float: right;
+      margin: 0 54px;
+
+      @media only screen and (min-width: 769px) and (max-width: 1024px) {
+        display: none;
+      }
+
+      @media only screen and (min-width: 1025px) {
+        margin: 0 20px 0 0;
       }
     }
   }
