@@ -12,6 +12,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     Contains,
+    ContainsDict,
     Equals,
 )
 
@@ -99,3 +100,18 @@ class TestFactory(MAASServerTestCase):
         self.assertThat(
             {iface.vlan for iface in sip.interface_set.all()},
             Contains(iface.vlan))
+
+
+class TestFactoryForNodes(MAASServerTestCase):
+
+    def test_make_Node_uses_power_parameters_when_connecting_to_BMC(self):
+        p_key = factory.make_name("key")
+        p_value = factory.make_name("value")
+        node = factory.make_Node(
+            bmc_connected_to=factory.make_RackController(),
+            power_parameters={p_key: p_value},
+        )
+        self.assertThat(
+            node.get_effective_power_parameters(),
+            ContainsDict({p_key: Equals(p_value)}),
+        )

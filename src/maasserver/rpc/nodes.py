@@ -11,7 +11,10 @@ __all__ = [
 ]
 
 from datetime import timedelta
-from itertools import chain
+from itertools import (
+    chain,
+    islice,
+)
 import json
 
 from django.contrib.auth.models import User
@@ -135,11 +138,15 @@ def _gen_up_to_json_limit(things, limit):
 
 @synchronous
 @transactional
-def list_cluster_nodes_power_parameters(system_id):
+def list_cluster_nodes_power_parameters(system_id, limit=10):
     """Return power parameters that a rack controller should power check,
     in priority order.
 
     For :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
+
+    :param limit: Limit the number of nodes for which to return power
+        parameters. Pass `None` to remove this numerical limit; there is still
+        a limit on the quantity of power information that will be returned.
     """
     try:
         rack = RackController.objects.get(system_id=system_id)
@@ -149,6 +156,7 @@ def list_cluster_nodes_power_parameters(system_id):
     # Generate all the the power queries that will fit into the response.
     nodes = rack.get_bmc_accessible_nodes()
     details = _gen_cluster_nodes_power_parameters(nodes)
+    details = islice(details, limit)  # ... but never more than `limit`.
     details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
     details = list(details)
 

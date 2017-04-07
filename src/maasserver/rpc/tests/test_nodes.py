@@ -61,6 +61,7 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     GreaterThan,
+    HasLength,
     Is,
     LessThan,
     Not,
@@ -469,7 +470,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
             system_ids)
 
     def test__returns_at_most_60kiB_of_JSON(self):
-        # Configure the rack controller subnt to be very large so it
+        # Configure the rack controller subnet to be very large so it
         # can hold that many BMC connected to the interface for the rack
         # controller.
         rack = factory.make_RackController(power_type='')
@@ -482,14 +483,15 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         # Ensure that there are at least 64kiB of power parameters (when
         # converted to JSON) in the database.
-        example_parameters = {"key%d" % i: "value%d" % i for i in range(100)}
+        example_parameters = {"key%d" % i: "value%d" % i for i in range(250)}
         remaining = 2 ** 16
         while remaining > 0:
             node = self.make_Node(
                 bmc_connected_to=rack, power_parameters=example_parameters)
             remaining -= len(json.dumps(node.get_effective_power_parameters()))
 
-        nodes = list_cluster_nodes_power_parameters(rack.system_id)
+        nodes = list_cluster_nodes_power_parameters(
+            rack.system_id, limit=None)  # Remove numeric limit.
 
         # The total size of the JSON is less than 60kiB, but only a bit.
         nodes_json = map(json.dumps, nodes)
@@ -499,6 +501,25 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))
         expected_minimum = 50 * (2 ** 10)  # 50kiB
         self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))
+
+    def test__limited_to_10_nodes_at_a_time_by_default(self):
+        # Configure the rack controller subnet to be large enough.
+        rack = factory.make_RackController(power_type='')
+        rack_interface = rack.get_boot_interface()
+        subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network(slash=8)))
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet), subnet=subnet,
+            interface=rack_interface)
+
+        # Create at least 11 nodes connected to the rack.
+        for _ in range(11):
+            self.make_Node(bmc_connected_to=rack)
+
+        # Only 10 nodes' power parameters are returned.
+        self.assertThat(
+            list_cluster_nodes_power_parameters(rack.system_id),
+            HasLength(10))
 
 
 class TestUpdateNodePowerState(MAASServerTestCase):

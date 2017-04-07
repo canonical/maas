@@ -456,6 +456,7 @@ class Factory(maastesting.factory.Factory):
                 ip_address = existing_static_ips[0]
             bmc_ip_address = self.pick_ip_in_Subnet(ip_address.subnet)
             node.power_parameters = {
+                **node.power_parameters,
                 "power_address": "qemu+ssh://user@%s/system" % (
                     factory.ip_to_url_format(bmc_ip_address)),
                 "power_id": factory.make_name("power_id"),
