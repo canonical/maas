@@ -422,13 +422,13 @@
                             <div class="table__header table-col--40">IP Address</div>
                         </div>
                     </header>
-                    <main class="table__body" data-selected-rows>
+                    <div class="table__body" data-selected-rows>
                         <div class="table__row" data-ng-repeat="device in devices">
                             <div class="table__data table-col--30">{$ device.name $}</div>
                             <div class="table__data table-col--30">{$ device.mac_address $}</div>
                             <div class="table__data table-col--40">{$ device.ip_address $}</div>
                         </div>
-                    </main>
+                    </div>
                 </div>
             </div>
         </div>
@@ -612,7 +612,7 @@
                                     <div class="table__header table-col--20">Secondary rack</div>
                                 </div>
                             </header>
-                            <main class="table__body">
+                            <div class="table__body">
                                 <div class="table__row" data-ng-repeat="vlanRow in vlanTable">
                                     <div class="table__data table-col--15">
                                         <a href="#/fabric/{$ vlanRow['fabric'].id $}">{$ vlanRow['fabric'].name $}</a>
@@ -634,7 +634,7 @@
                                         <a href="#/node/controller/{$ vlanRow['secondary_rack'].system_id $}">{$ vlanRow['secondary_rack'].fqdn $}</a>
                                     </div>
                                 </div>
-                            </main>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -694,7 +694,7 @@
                                   <div class="table__header table-col--27">IP Address</div>
                               </div>
                           </header>
-                          <main class="table__body" data-selected-rows>
+                          <div class="table__body" data-selected-rows>
                               <div class="table__row"
                                   data-ng-class="{ disabled: isDisabled(), 'is-active': isInterfaceSelected(interface) && (isNodeEditingAllowed() || isLimitedEditingAllowed(interface)), noEdit: cannotEditInterface(interface) }"
                                   data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface:!isNodeEditingAllowed() | removeInterfaceParents:newBridgeInterface:!isNodeEditingAllowed()">
@@ -752,32 +752,23 @@
                                           {$ interface.discovered[0].ip_address $} (DHCP)
                                       </span>
                                   </div>
-                                  <div class="table__data table--mobile-controls  table-col--8">
-                                      <div class="table__controls u-align--right" data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
-                                          <button class="u-display--desktop icon icon--add tooltip"
-                                              aria-label="Add Alias or VLAN"
-                                              data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
-                                              data-ng-click="quickAdd(interface)"></button>
-                                          <button class="u-display--desktop icon icon--edit tooltip"
-                                              data-ng-if="!cannotEditInterface(interface)"
-                                              aria-label="Edit"
-                                              data-ng-click="edit(interface)"></button>
-                                          <button class="u-display--desktop icon icon--delete tooltip u-margin--left"
-                                              data-ng-if="canBeRemoved()"
-                                              aria-label="Remove"
-                                              data-ng-click="quickRemove(interface)"></button>
-                                          <button class="button--secondary u-display--mobile"
-                                              aria-label="Add Alias or VLAN"
-                                              data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
-                                              data-ng-click="quickAdd(interface)">Add alias or VLAN</button>
-                                          <button class="button--secondary u-display--mobile"
-                                              data-ng-if="!cannotEditInterface(interface)"
-                                              aria-label="Edit"
-                                              data-ng-click="edit(interface)">Edit interface</button>
-                                          <button class="button--secondary u-display--mobile"
-                                              data-ng-if="canBeRemoved()"
-                                              aria-label="Remove"
-                                              data-ng-click="quickRemove(interface)">Remove interface</button>
+                                  <div class="table__data table--mobile-controls table-col--8">
+                                      <div class="table__controls" toggle-ctrl data-ng-if="isNodeEditingAllowed() || isLimitedEditingAllowed(interface)">
+                                          <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                          <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                              <button class="table__controls-action"
+                                                  aria-label="Add Alias or VLAN"
+                                                  data-ng-if="!isDevice && canAddAliasOrVLAN(interface)"
+                                                  data-ng-click="toggleMenu(); quickAdd(interface)">Add alias or VLAN</button>
+                                              <button class="table__controls-action"
+                                                  data-ng-if="!cannotEditInterface(interface)"
+                                                  aria-label="Edit"
+                                                  data-ng-click="toggleMenu(); edit(interface)">Edit interface</button>
+                                              <button class="table__controls-action u-text--error"
+                                                  data-ng-if="canBeRemoved()"
+                                                  aria-label="Remove"
+                                                  data-ng-click="toggleMenu(); quickRemove(interface)">Remove interface&hellip;</button>
+                                          </div>
                                       </div>
                                   </div>
                                   <div class="table__dropdown table__dropdown--info" data-ng-if="isShowingMembers(interface)">
@@ -1313,7 +1304,7 @@
                                       </div>
                                   </div>
                               </div>
-                          </main>
+                          </div>
                       </div>
                       <div data-ng-if="!isController && !isDevice" data-ng-hide="isAllNetworkingDisabled() || isShowingCreateBond() || isShowingCreatePhysical()">
                           <button class="button--secondary button--inline"
@@ -1369,7 +1360,7 @@
                                 <div class="table__header table-col--20">Mount options</div>
                             </div>
                         </header>
-                        <main class="table__body">
+                        <div class="table__body">
                             <div class="table__row" data-ng-hide="filesystems.length">
                                 <div class="table__header table-col--100">
                                     No filesystems defined.
@@ -1384,15 +1375,14 @@
                                     <div class="table__data table-col--32" aria-label="Mount point">{$ filesystem.mount_point $}</div>
                                     <div class="table__data table-col--20" aria-label="Mount options">{$ filesystem.mount_options $}</div>
                                     <div class="table__data table-col--10 table--mobile-controls">
-                                        <div class="table__controls">
-                                            <button class="u-display--desktop icon icon--unmount tooltip" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
-                                               data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</button>
-                                            <button class="u-display--desktop icon icon--delete tooltip" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
-                                               data-ng-show="!isAllStorageDisabled()">Remove</button>
-                                           <button class="button--secondary u-display--mobile" aria-label="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
-                                              data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount filesystem</button>
-                                           <button class="button--secondary u-display--mobile" aria-label="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
-                                              data-ng-show="!isAllStorageDisabled()">Remove filesystem</button>
+                                        <div class="table__controls" toggle-ctrl data-ng-if="!isAllStorageDisabled()">
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action" aria-label="Unmount" data-ng-click="toggleMenu(); quickFilesystemUnmount(filesystem)"
+                                                   data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</button>
+                                                <button class="table__controls-action u-text--error" aria-label="Remove" data-ng-click="toggleMenu(); quickFilesystemDelete(filesystem)"
+                                                   data-ng-show="!isAllStorageDisabled()">Remove&hellip;</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="table__dropdown" data-ng-if="filesystemMode === 'unmount' || filesystemMode === 'delete'">
@@ -1477,7 +1467,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </main>
+                        </div>
                     </section>
                     <button class="button--secondary button--inline tooltip"
                        aria-label="Create a tmpfs or ramfs filesystem"
@@ -1499,7 +1489,7 @@
                                 <div class="table__header table-col--55">Used by</div>
                             </div>
                         </header>
-                        <main class="table__body">
+                        <div class="table__body">
                             <div data-ng-repeat="cacheset in cachesets">
                                 <div class="table__row"
                                     data-ng-class="{ 'is-active': cacheset.$selected }">
@@ -1508,13 +1498,13 @@
                                     <div class="table__data table-col--27" aria-label="Size">{$ cacheset.size_human $}</div>
                                     <div class="table__data table-col--45" aria-label="Used by">{$ cacheset.used_by $}</div>
                                     <div class="table__data table-col--10 table--mobile-controls">
-                                        <div class="table__controls">
-                                            <button class="u-display--desktop icon icon--delete tooltip" aria-label="Remove"
-                                                data-ng-show="canDeleteCacheSet(cacheset)"
-                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove</button>
-                                            <button class="button--secondary u-display--mobile" aria-label="Remove"
-                                                data-ng-show="canDeleteCacheSet(cacheset)"
-                                                data-ng-click="quickCacheSetDelete(cacheset)">Remove cacheset</button>
+                                        <div class="table__controls" toggle-ctrl data-ng-if="canDeleteCacheSet(cacheset)">
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action u-text--error" aria-label="Remove"
+                                                    data-ng-show="canDeleteCacheSet(cacheset)"
+                                                    data-ng-click="toggleMenu(); quickCacheSetDelete(cacheset)">Remove cacheset</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="table__dropdown" data-ng-if="cachesetsMode === 'delete'">
@@ -1545,7 +1535,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </main>
+                        </div>
                     </section>
                     </div>
                 </div>
@@ -1579,7 +1569,7 @@
                                 <div class="table__header table-col--12"></div>
                             </div>
                         </header>
-                        <main class="table__body">
+                        <div class="table__body">
                             <div class="table__row" data-ng-hide="available.length">
                                 <div class="table__header table-col--100">
                                     No available disks or partitions.
@@ -1633,42 +1623,27 @@
                                         </span>
                                     </div>
                                     <div class="table__data table-col--12 table--mobile-controls">
-                                        <div class="table__controls">
-                                            <div class="u-display--mobile">
-                                                <button class="button--secondary ng-hide"
+                                        <div class="table__controls" toggle-ctrl
+                                          data-ng-if="canAddLogicalVolume(item) || canAddPartition(item) || canEdit(item) || canDelete(item)">
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action"
                                                     aria-label="Add logical volume"
                                                     data-ng-show="canAddLogicalVolume(item)"
-                                                    data-ng-click="availableLogicalVolume(item)">Add logical volume</button>
-                                                <button class="button--secondary ng-hide"
+                                                    data-ng-click="toggleMenu(); availableLogicalVolume(item)">Add logical volume</button>
+                                                <button class="table__controls-action"
                                                     aria-label="Partition"
                                                     data-ng-show="canAddPartition(item)"
-                                                    data-ng-click="availableQuickPartition(item)">Add partition</button>
-                                                <button class="button--secondary ng-hide"
+                                                    data-ng-click="toggleMenu(); availableQuickPartition(item)">Add partition</button>
+                                                <button class="table__controls-action"
                                                     aria-label="Edit"
                                                     data-ng-show="canEdit(item)"
-                                                    data-ng-click="availableQuickEdit(item)">Edit disk</button>
-                                                <button class="button--secondary ng-hide"
+                                                    data-ng-click="toggleMenu(); availableQuickEdit(item)">Edit disk</button>
+                                                <button class="table__controls-action u-text--error"
                                                     aria-label="Remove"
                                                     data-ng-show="canDelete(item)"
-                                                    data-ng-click="availableQuickDelete(item)">Remove disk</button>
+                                                    data-ng-click="toggleMenu(); availableQuickDelete(item)">Remove disk&hellip;</button>
                                             </div>
-                                            <button class="icon u-display--desktop icon--logical-volume tooltip ng-hide"
-                                                aria-label="Add logical volume"
-                                                data-ng-show="canAddLogicalVolume(item)"
-                                                data-ng-click="availableLogicalVolume(item)"></button>
-                                            <button class="icon u-display--desktop icon--partition tooltip ng-hide"
-                                                aria-label="Partition"
-                                                data-ng-show="canAddPartition(item)"
-                                                data-ng-click="availableQuickPartition(item)">Partition</button>
-                                            <button class="icon u-display--desktop icon--edit tooltip ng-hide"
-                                                aria-label="Edit"
-                                                data-ng-show="canEdit(item)"
-                                                data-ng-click="availableQuickEdit(item)">Edit</button>
-                                            <button class="icon u-display--desktop icon--delete tooltip ng-hide u-margin--left"
-                                                aria-label="Remove"
-                                                data-ng-show="canDelete(item)"
-                                                data-ng-click="availableQuickDelete(item)">Remove</button>
-
                                         </div>
                                     </div>
                                     <div class="table__dropdown" data-ng-if="availableMode === 'edit' || availableMode === 'format-mount' || availableMode === 'partition' || availableMode === 'logical-volume' || availableMode === 'delete'">
@@ -2245,7 +2220,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </main>
+                        </div>
                     </section>
                     <button class="button--secondary button--inline tooltip"
                         aria-label="Select two or more physical devices to create a RAID"
@@ -2289,7 +2264,7 @@
                                 <div class="table__header table-col--52">Used for</div>
                             </div>
                         </header>
-                        <main class="table-body">
+                        <div class="table-body">
                             <div class="table__row" data-ng-hide="used.length">
                                 <div class="table__header table-col--100">
                                     No disk or partition has been fully utilized.
@@ -2313,7 +2288,7 @@
                                     <div class="table__data table-col--52" aria-label="Used for">{$ item.used_for $}</div>
                                 </div>
                             </div>
-                        </main>
+                        </div>
                     </section>
                 </div>
             </form>

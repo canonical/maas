@@ -141,9 +141,12 @@
                             <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
                             <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
                             <div class="table__data table-col--3 table--mobile-controls">
-                                <div class="table__controls" data-ng-if="isSuperUser() && canBeRemoved(image)">
-                                    <a class="icon icon--delete tooltip" aria-label="Remove"
-                                        data-ng-click="deleteImage(image)">Remove</a>
+                                <div class="table__controls" toggle-ctrl data-ng-if="isSuperUser() && canBeRemoved(image)">
+                                    <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                    <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                      <button class="table__controls-action u-text--error" aria-label="Remove"
+                                          data-ng-click="deleteImage(image)">Remove&hellip;</button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table__dropdown" data-ng-if="canBeRemoved(image) && ubuntuDeleteId === image.resourceId">
@@ -255,13 +258,12 @@
                     <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
                     <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
                     <div class="table__data table--mobile-controls  table-col--3">
-                        <div class="table__controls u-align--right">
-                            <a class="u-display--desktop icon icon--delete tooltip"
-                                aria-label="Remove"
-                                data-ng-click="quickRemove(image)"></a>
-                            <a class="button--secondary u-display--mobile"
-                                aria-label="Remove"
-                                data-ng-click="quickRemove(image)">Remove image</a>
+                        <div class="table__controls" toggle-ctrl>
+                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                <button class="table__controls-action u-text--error"
+                                    aria-label="Remove"
+                                    data-ng-click="toggleMenu(); quickRemove(image)">Remove image</button>
                         </div>
                     </div>
                     <div class="table__row is-active" data-ng-if="isShowingDeleteConfirm(image)">
@@ -307,13 +309,13 @@
                     <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
                     <div class="table__data table-col--37" aria-label="Status">{$ image.status $}</div>
                     <div class="table__data table--mobile-controls  table-col--3">
-                        <div class="table__controls u-align--right">
-                            <a class="u-display--desktop icon icon--delete tooltip"
-                                aria-label="Remove"
-                                data-ng-click="quickRemove(image)"></a>
-                            <a class="button--secondary u-display--mobile"
-                                aria-label="Remove"
-                                data-ng-click="quickRemove(image)">Remove image</a>
+                        <div class="table__controls" toggle-ctrl>
+                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                <a class="table__controls-action u-text--error"
+                                    aria-label="Remove"
+                                    data-ng-click="toggleMenu(); quickRemove(image)">Remove image</a>
+                            </div>
                         </div>
                     </div>
                     <div class="table__row is-active" data-ng-if="isShowingDeleteConfirm(image)">

@@ -52,7 +52,7 @@
                         <td aria-label="MAAS Admin">
                             {% if user_item.is_superuser %} Yes {% endif %}
                         </td>
-                        <td class="u-align--right table--mobile-controls">
+                        <td class="table--mobile-controls">
                             <a href="{% url 'accounts-edit' user_item.username %}" title="Edit user {{ user_item.username }}" class="icon icon--edit u-display--desktop">
                                 Edit
                             </a>

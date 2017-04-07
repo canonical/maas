@@ -122,6 +122,7 @@ MERGE_VIEWS = {
             "js/angular/directives/ipranges.js",
             "js/angular/directives/window_width.js",
             "js/angular/directives/notifications.js",
+            "js/angular/directives/toggle_control.js",
             "js/angular/filters/nodes.js",
             "js/angular/filters/by_fabric.js",
             "js/angular/filters/by_vlan.js",

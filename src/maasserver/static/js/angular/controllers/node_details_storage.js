@@ -704,6 +704,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Cancel the current filesystem operation.
         $scope.filesystemCancel = function() {
+            deselectAll($scope.filesystems);
             $scope.updateFilesystemSelection(true);
         };
 

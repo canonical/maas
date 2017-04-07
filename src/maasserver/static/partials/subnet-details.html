@@ -140,15 +140,14 @@
                                 <div class="table__data table-col--50" aria-label="Destination">{$ getSubnetCIDR(staticRoute.destination) $}</div>
                                 <div class="table__data table-col--11" aria-label="Metric">{$ staticRoute.metric $}</div>
                                 <div class="table__data table-col--9 table--mobile-controls">
-                                    <div class="table__controls" data-ng-if="isSuperUser()">
-                                      <a class="icon icon--edit tooltip u-margin--right" aria-label="Edit row" data-ng-if="windowWidth >= 769"
-                                          data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
-                                      <a class="icon icon--delete tooltip" aria-label="Remove" data-ng-if="windowWidth >= 769"
-                                          data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
-                                      <button class="button--secondary" data-ng-if="windowWidth <= 768" aria-label="Edit row"
-                                          data-ng-click="staticRouteToggleEditMode(staticRoute)">Edit</a>
-                                      <button class="button--secondary" data-ng-if="windowWidth <= 768" aria-label="Remove"
-                                          data-ng-click="staticRouteEnterDeleteMode(staticRoute)">Remove</a>
+                                    <div class="table__controls" toggle-ctrl data-ng-if="isSuperUser()">
+                                        <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                        <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                            <button class="table__controls-action" aria-label="Edit row"
+                                                data-ng-click="toggleMenu(); staticRouteToggleEditMode(staticRoute)">Edit</a>
+                                            <button class="table__controls-action u-text--error" aria-label="Remove"
+                                                data-ng-click="toggleMenu(); staticRouteEnterDeleteMode(staticRoute)">Remove</a>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="table__dropdown" data-ng-if="isStaticRouteInDeleteMode(staticRoute)">

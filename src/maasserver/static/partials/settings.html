@@ -64,18 +64,13 @@
                                         </div>
                                     </div>
                                     <div class="table__data table--mobile-controls table-col--20">
-                                        <div class="table__controls">
-                                            <div data-ng-if="windowWidth >= 769">
-                                                <button class="icon icon--edit tooltip" aria-label="Edit"
-                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</button>
-                                                <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</button>
-                                            </div>
-                                            <div data-ng-if="windowWidth <= 786">
-                                                <button class="button--secondary" aria-label="Edit"
-                                                    data-ng-click="snippetEnterEdit(snippet)">Edit</button>
-                                                <button class="button--secondary" aria-label="Remove"
-                                                    data-ng-click="snippetEnterRemove(snippet)">Remove</button>
+                                        <div class="table__controls" toggle-ctrl>
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action" aria-label="Edit"
+                                                    data-ng-click="toggleMenu(); snippetEnterEdit(snippet)">Edit</button>
+                                                <button class="table__controls-action u-text--error" aria-label="Remove"
+                                                    data-ng-click="toggleMenu(); snippetEnterRemove(snippet)">Remove</button>
                                             </div>
                                         </div>
                                     </div>
@@ -103,11 +98,14 @@
                                             data-ng-if="editSnippet.$maasForm.getValue('type') === 'Node'"></maas-obj-field>
                                     </div>
                                     <div class="table__data table-col--10"></div>
-                                    <div class="table__data table-col--20">
-                                        <div class="table__controls">
-                                            <button class="icon icon--edit tooltip" aria-label="Edit">Edit</button>
-                                            <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                data-ng-click="snippetEnterRemove(snippet)">Remove</button>
+                                    <div class="table__data table-col--20 table--mobile-controls">
+                                        <div class="table__controls" toggle-ctrl>
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action" data-ng-click="toggleMenu(); snippetEnterEdit(snippet)" aria-label="Edit">Edit</button>
+                                                <button class="table__controls-action u-text--error" data-ng-click="toggleMenu()" aria-label="Remove"
+                                                    data-ng-click="toggleMenu(); snippetEnterRemove(snippet)">Remove</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -376,20 +374,14 @@
                                         </div>
                                     </div>
                                     <div class="table__data table--mobile-controls table-col--15">
-                                        <div class="table__controls">
-                                            <div data-ng-if="windowWidth >= 769">
-                                                <button class="icon icon--edit tooltip" aria-label="Edit"
-                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</button>
-                                                <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
+                                        <div class="table__controls" toggle-ctrl>
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action" aria-label="Edit"
+                                                    data-ng-click="toggleMenu(); repositoryEnterEdit(repository)">Edit</button>
+                                                <button class="table__controls-action u-text--error" aria-label="Remove"
                                                     data-ng-if="!isMirror(repository)"
-                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</button>
-                                            </div>
-                                            <div data-ng-if="windowWidth <= 786">
-                                                <button class="button--secondary" aria-label="Edit"
-                                                    data-ng-click="repositoryEnterEdit(repository)">Edit</button>
-                                                <button class="button--secondary" aria-label="Remove"
-                                                    data-ng-if="!isMirror(repository)"
-                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</button>
+                                                    data-ng-click="toggleMenu(); repositoryEnterRemove(repository)">Remove</button>
                                             </div>
                                         </div>
                                     </div>
@@ -420,12 +412,15 @@
                                         </div>
                                     </div>
                                     <div class="table__data table-col--10"></div>
-                                    <div class="table__data table-col--15">
-                                        <div class="table__controls">
-                                            <button class="icon icon--edit tooltip" aria-label="Edit">Edit</button>
-                                            <button class="icon icon--delete tooltip u-margin--left" aria-label="Remove"
-                                                data-ng-if="!isMirror(repository)"
-                                                data-ng-click="repositoryEnterRemove(repository)">Remove</button>
+                                    <div class="table__data table-col--15 table--mobile-controls">
+                                        <div class="table__controls" toggle-ctrl>
+                                            <button class="table__controls-toggle" data-ng-click="toggleMenu()">View actions</button>
+                                            <div class="table__controls-menu" role="menu" data-ng-show="isToggled">
+                                                <button class="table__controls-action" data-ng-click="toggleMenu()" aria-label="Edit">Edit</button>
+                                                <button class="table__controls-action u-text--eror" data-ng-click="toggleMenu()" aria-label="Remove"
+                                                    data-ng-if="!isMirror(repository)"
+                                                    data-ng-click="repositoryEnterRemove(repository)">Remove</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="table__dropdown form">

@@ -846,10 +846,14 @@ describe("NodeStorageController", function() {
 
         it("calls updateFilesystemSelection with force true", function() {
             var controller = makeController();
+            var filesystems = [{ $selected: true }, { $selected: false }];
+            $scope.filesystems = filesystems;
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemCancel();
 
+            expect(filesystems[0].$selected).toBe(false);
+            expect(filesystems[1].$selected).toBe(false);
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith(
                 true);
         });

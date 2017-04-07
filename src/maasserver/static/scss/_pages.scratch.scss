@@ -178,15 +178,101 @@
 
     .table__row {
 
-      .table__controls {
-        display: none;
+      &:hover {
+        background-color: $transparent;
       }
 
-      &.is-active,
-      &:hover {
+      &.is-active {
 
-        .table__controls {
-          display: block;
+        &:hover {
+          background-color: $white;
+        }
+      }
+
+      .table__controls {
+        display: inline-block;
+        opacity: 1;
+        z-index: 0;
+
+        @media screen and (max-width: $breakpoint-medium) {
+          width: 100%;
+        }
+
+        &-toggle {
+          display: inline-block;
+          padding: 0;
+          background-color: $transparent;
+          background-image: url('#{$asset-path}images/b0b97dfc-contextual-menu.svg');
+          background-position: center;
+          background-repeat: no-repeat;
+          text-indent: -9999px;
+          width: 30px;
+          height: 21px;
+          border-radius: 2px;
+          overflow: hidden;
+
+          @media screen and (max-width: $breakpoint-medium) {
+            display: none;
+          }
+        }
+
+        &-menu {
+          border-radius: 3px;
+          margin: 0;
+          list-style: none;
+          background: #fff;
+          border: 1px solid #d2d2d2;
+          z-index: 20;
+          max-height: 1000px;
+          transition: max-height .3s ease-in;
+          position: absolute;
+          right: 0;
+          top: 33px;
+          clear: both;
+          min-width: 160px;
+
+          @media screen and (max-width: $breakpoint-medium) {
+            display: block !important;
+            position: relative;
+            z-index: 0;
+            max-height: initial;
+            top: initial;
+            min-width: 100%;
+            border: 0;
+          }
+        }
+
+        &-action {
+          background: $transparent;
+          color: $text-color;
+          border-radius: 0;
+          text-align: left;
+
+          &:hover {
+            color: $link-hover;
+          }
+
+          @media screen and (min-width: $breakpoint-medium + 1) {
+            &.u-text--error {
+              border-top: 1px dotted #cdcdcd;
+              margin-top: 5px;
+            }
+          }
+
+          @media screen and (max-width: $breakpoint-medium) {
+            border: 1px solid #cdcdcd;
+            width: 100%;
+            text-align: center;
+
+            + * {
+              margin-top: 10px;
+            }
+
+            &:hover {
+              background-color: #efefef;
+              color: $text-color;
+            }
+          }
         }
       }
     }
