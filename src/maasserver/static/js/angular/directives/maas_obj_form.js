@@ -518,7 +518,10 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
         return {
             restrict: "E",
             require: ["^^maasObjForm", "?^^maasObjFieldGroup"],
-            scope: { onChange: "="},
+            scope: {
+                onChange: "=",
+                subtleText: "@"
+            },
             transclude: true,
             template: (
                 '<div data-ng-transclude></div>'),
@@ -906,7 +909,6 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     errorsElement.addClass("form__error");
                 }
                 inputWrapper.append(errorsElement);
-                element.append(inputWrapper);
 
                 // Called by controller to clear all errors.
                 scope.clearErrors = function() {
@@ -937,6 +939,16 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 scope.hasErrors = function() {
                     return inputElement.hasClass("has-error");
                 };
+
+                // Subtle text element.
+                if(attrs.subtleText) {
+                    var subtleTextElement = $compile(
+                        angular.element(
+                            '<span class="u-text--subtle" ' +
+                            'data-ng-bind="subtleText"></span>'))(scope);
+                    inputWrapper.append(subtleTextElement);
+                }
+                element.append(inputWrapper);
 
                 // Watch the showing of saving spinner. Update the elements
                 // correctly to show the saving.

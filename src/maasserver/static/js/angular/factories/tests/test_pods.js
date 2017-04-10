@@ -56,4 +56,23 @@ describe("PodsManager", function() {
           });
       });
     });
+
+    describe("compose", function() {
+
+      it("calls pod.compose with params", function(done) {
+          var pod = makePod();
+          var params = {
+            id: pod.id,
+            cores: makeInteger(0, 10)
+          };
+          webSocket.returnData.push(makeFakeResponse("created"));
+          PodsManager.compose(params).then(function() {
+              var sentObject = angular.fromJson(webSocket.sentData[0]);
+              expect(sentObject.method).toBe("pod.compose");
+              expect(sentObject.params.id).toBe(params.id);
+              expect(sentObject.params.cores).toBe(params.cores);
+              done();
+          });
+      });
+    });
 });

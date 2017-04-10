@@ -39,5 +39,15 @@ angular.module('MAAS').service(
                 });
         };
 
+        // Compose a machine in the pod.
+        PodsManager.prototype.compose = function(params) {
+            var self = this;
+            return RegionConnection.callMethod("pod.compose", params).then(
+                function(pod) {
+                    self._replaceItem(pod);
+                    return pod;
+                });
+        };
+
         return new PodsManager();
     }]);

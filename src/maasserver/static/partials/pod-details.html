@@ -15,7 +15,89 @@
                     data-ng-change="actionOptionChanged()">
                 </div>
             </div>
-            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option }">
+            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option.name === 'compose' }">
+                <maas-obj-form obj="compose.obj" manager="podManager" manager-method="compose"
+                    table-form="true" save-on-blur="false" pre-process="composePreProcess" after-save="cancelCompose" data-ng-if="action.option.name === 'compose'">
+                    <section class="page-header__section twelve-col u-margin--bottom-none">
+                        <h3 class="page-header__dropdown-title">Compose machine</h3>
+                        <div class="form__fieldset six-col">
+                            <maas-obj-field type="text" key="hostname" label="Hostname" label-width="two" input-width="three" subtle="false" placeholder="Hostname (optional)"></maas-obj-field>
+                            <maas-obj-field type="options" key="domain" label="Domain" label-width="two" input-width="three" subtle="false" placeholder="Choose a domain"
+                                options="domain.id as domain.name for domain in domains"></maas-obj-field>
+                            <maas-obj-field type="options" key="zone" label="Zone" label-width="two" input-width="three" subtle="false" placeholder="Choose a zone"
+                                options="zone.id as zone.name for zone in zones"></maas-obj-field>
+                        </div>
+                        <div class="form__fieldset six-col last-col">
+                            <maas-obj-field type="options" key="architecture" label="Architecture" label-width="two" input-width="three" subtle="false" placeholder="Any architecture" placeholder-enabled="true"
+                                options="arch for arch in pod.architectures" data-ng-if="pod.architectures.length > 1"></maas-obj-field>
+                            <maas-obj-field type="text" key="cores" label="Minimum Cores" label-width="two" input-width="three" subtle="false" placeholder="Number of cores (optional)" subtle-text="{$ pod.hints.cores $} cores available"></maas-obj-field>
+                            <maas-obj-field type="text" key="cpu_speed" label="Minimum Speed (MHz)" label-width="two" input-width="three" subtle="false" placeholder="CPU speed (optional)" subtle-text="{$ pod.hints.cpu_speed $}MHz maximum"></maas-obj-field>
+                            <maas-obj-field type="text" key="memory" label="Minimum RAM (MiB)" label-width="two" input-width="three" subtle="false" placeholder="Memory amount (optional)" subtle-text="{$ pod.hints.memory $}MiB available"></maas-obj-field>
+                        </div>
+                    </section>
+                    <section class="page-header__section twelve-col u-margin--bottom-none">
+                        <h3 class="page-header__dropdown-title">Storage configuration</h3>
+                        <div class="table">
+                            <div class="table__head">
+                                <div class="table__row">
+                                    <div class="table__header table-col--20">Location</div>
+                                    <div class="table__header table-col--20">Capacity (GB)</div>
+                                    <div class="table__header table-col--40">Tags</div>
+                                    <div class="table__header table-col--20">Boot</div>
+                                </div>
+                            </div>
+                            <div class="table__body">
+                                <div class="table__row" data-ng-repeat="storage in compose.obj.storage">
+                                    <div class="table__data table-col--20">
+                                        <div class="form__group-input">
+                                            <select data-ng-model="storage.type">
+                                              <option value="local">Local</option>
+                                              <option value="iscsi"
+                                                  data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0"
+                                                  data-ng-disabled="storage.boot">iSCSI</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="table__data table-col--20">
+                                        <div class="form__group-input">
+                                            <input type="text" placeholder="Enter capacity" data-ng-model="storage.size">
+                                        </div>
+                                    </div>
+                                    <div class="table__data table-col--40">
+                                        <div class="form__group-input">
+                                            <tags-input data-ng-model="storage.tags" allow-tags-pattern="[\\w-]+"></tags-input>
+                                        </div>
+                                    </div>
+                                    <div class="table__data table-col--5">
+                                        <input type="radio" id="{$ $index $}-boot"
+                                            data-ng-click="composeSetBootDisk(storage)"
+                                            data-ng-checked="storage.boot"
+                                            data-ng-if="storage.type === 'local'">
+                                        <label for="{$ $index $}-boot"></label>
+                                    </div>
+                                    <div class="table__data table-col--15">
+                                        <div class="table__controls" data-ng-if="!storage.boot">
+                                            <button class="icon icon--delete u-display--desktop tooltip"
+                                                aria-label="Remove"
+                                                data-ng-click="composeRemoveDisk(storage)">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="button button--inline button--secondary" data-ng-click="composeAddStorage()">Add another device</button>
+                    </section>
+                    <section class="page-header__section twelve-col u-margin--bottom-none ">
+                        <p class="page-header__message page-header__message--error" maas-obj-hide-saving><maas-obj-errors></maas-obj-errors></p>
+                        <p class="page-header__message" maas-obj-show-saving><maas-obj-saving>Composing machine</maas-obj-saving></p>
+                        <div class="page-header__controls" maas-obj-hide-saving>
+                            <button class="button--base button--inline" data-ng-click="cancelCompose()">Cancel</button>
+                            <button class="button--positive button--inline" maas-obj-save>Compose machine</button>
+                        </div>
+                    </section>
+                </maas-obj-form>
+            </div>
+            <div class="page-header__dropdown" data-ng-class="{ 'is-open': action.option && action.option.name !== 'compose' }">
                 <section class="page-header__section twelve-col u-margin--bottom-none" data-ng-if="action.inProgress">
                     <p class="page-header__message">
                         <i class="icon icon--loading u-animation--spin"></i>
@@ -44,7 +126,6 @@
         <div class="wrapper--inner">
             <nav class="page-navigation__links" role="tablist" aria-multiselectable="true">
                 <button role="tab" class="page-navigation__link" data-ng-class="{ 'is-active': section.area === 'summary'}" data-ng-click="section.area = 'summary'">{$ pod.composed_machines_count $} composed machines</button>
-                <!-- <button role="tab" class="page-navigation__link">Storage</button> -->
                 <button role="tab" class="page-navigation__link" data-ng-if="isSuperUser()" data-ng-class="{ 'is-active': section.area === 'power'}" data-ng-click="section.area= 'power'">Power</button>
             </nav>
         </div>
@@ -77,10 +158,13 @@
                             <span class="u-float--right">{$ pod.available.local_storage_gb $} GiB available</span>
                         </p>
                     </div>
-                    <div class="action-card u-margin--bottom">
-                        <h3 class="action-card__title">Remote storage</h3>
-                        <p>No remote storage systems haven't been connected yet.</p>
-                        <p>When you connect a remote system to your pod it will be automatically detacted and displayed here.</p>
+                    <div class="action-card u-margin--bottom" data-ng-if="pod.capabilities.indexOf('iscsi_storage') >= 0">
+                        <h3 class="action-card__title">iSCSI storage ({$ pod.total.iscsi_storage_gb $} GiB)</h3>
+                        <meter max="{$ pod.total.iscsi_storage $}" value="{$ pod.used.iscsi_storage $}"></meter>
+                        <p>
+                            <span data-ng-if="windowWidth >= 1180">{$ pod.used.iscsi_storage_gb $} GiB used</span>
+                            <span class="u-float--right">{$ pod.available.iscsi_storage_gb $} GiB available</span>
+                        </p>
                     </div>
                 </div>
             </aside>
@@ -91,7 +175,7 @@
                 <div class="u-align--center u-vertical--align u-align--center">
                     <i class="icon icon--compose-machine icon--huge" style="width: 128px; height: 128px;"></i>
                     <h3>You have not composed any machines yet.</h3>
-                    <button class="button--positive button--inline ng-hide">Compose machine</button>
+                    <button class="button--positive button--inline" data-ng-if="canCompose()" data-ng-click="composeMachine()">Compose machine</button>
                 </div>
             </div>
         </div>

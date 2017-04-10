@@ -6,11 +6,11 @@
 
 angular.module('MAAS').controller('PodDetailsController', [
     '$scope', '$rootScope', '$location', '$routeParams',
-    'PodsManager', 'GeneralManager', 'UsersManager',
-    'ManagerHelperService', 'ErrorService', function(
+    'PodsManager', 'GeneralManager', 'UsersManager', 'DomainsManager',
+    'ZonesManager', 'ManagerHelperService', 'ErrorService', function(
         $scope, $rootScope, $location, $routeParams,
-        PodsManager, GeneralManager, UsersManager,
-        ManagerHelperService, ErrorService) {
+        PodsManager, GeneralManager, UsersManager, DomainsManager,
+        ZonesManager, ManagerHelperService, ErrorService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -39,7 +39,24 @@ angular.module('MAAS').controller('PodDetailsController', [
           inProgress: false,
           error: null
         };
+        $scope.compose = {
+          action: {
+            name: 'compose',
+            title: 'Compose',
+            sentence: 'compose'
+          },
+          obj: {
+            storage: [{
+              type: 'local',
+              size: 8,
+              tags: [],
+              boot: true
+            }]
+          }
+        };
         $scope.powerTypes = GeneralManager.getData("power_types");
+        $scope.domains = DomainsManager.getItems();
+        $scope.zones = ZonesManager.getItems();
         $scope.section = {
           area: 'summary'
         };
@@ -96,16 +113,134 @@ angular.module('MAAS').controller('PodDetailsController', [
             return $scope.pod.type;
         };
 
+        // Returns true if the pod is composable.
+        $scope.canCompose = function() {
+            if(angular.isObject($scope.pod)) {
+                return ($scope.isSuperUser() &&
+                    $scope.pod.capabilities.indexOf('composable') >= 0);
+            } else {
+                return false;
+            }
+        };
+
+        // Opens the compose action menu.
+        $scope.composeMachine = function() {
+            $scope.action.option = $scope.compose.action;
+        };
+
+        // Called before the compose params is sent over the websocket.
+        $scope.composePreProcess = function(params) {
+            params = angular.copy(params);
+            params.id = $scope.pod.id;
+            // Sort boot disk first.
+            var sorted = $scope.compose.obj.storage.sort(function(a, b) {
+              if(a.boot === b.boot) {
+                return 0;
+              } else if(a.boot && !b.boot) {
+                return -1;
+              } else {
+                return 1;
+              }
+            });
+            // Create the storage constraint.
+            var storage = [];
+            angular.forEach(sorted, function(disk, idx) {
+              var constraint = idx + ':' + disk.size;
+              var tags = disk.tags.map(function(tag) {
+                return tag.text;
+              });
+              tags.splice(0, 0, disk.type);
+              constraint += '(' + tags.join(',') + ')';
+              storage.push(constraint);
+            });
+            params.storage = storage.join(',');
+            return params;
+        };
+
+        // Called to cancel composition.
+        $scope.cancelCompose = function() {
+          $scope.compose.obj = {
+            storage: [{
+              type: 'local',
+              size: 8,
+              tags: [],
+              boot: true
+            }]
+          };
+          $scope.action.option = null;
+        };
+
+        // Add another storage device.
+        $scope.composeAddStorage = function() {
+          var storage = {
+            type: 'local',
+            size: 8,
+            tags: [],
+            boot: false
+          };
+          if($scope.pod.capabilities.indexOf('iscsi_storage') >= 0) {
+            storage.type = 'iscsi';
+          }
+          $scope.compose.obj.storage.push(storage);
+        };
+
+        // Change which disk is the boot disk.
+        $scope.composeSetBootDisk = function(storage) {
+          angular.forEach($scope.compose.obj.storage, function(disk) {
+            disk.boot = false;
+          });
+          storage.boot = true;
+        };
+
+        // Remove a disk from storage config.
+        $scope.composeRemoveDisk = function(storage) {
+          var idx = $scope.compose.obj.storage.indexOf(storage);
+          if(idx >= 0) {
+            $scope.compose.obj.storage.splice(idx, 1);
+          }
+        };
+
         // Start watching key fields.
         $scope.startWatching = function() {
             $scope.$watch("pod.name", function() {
                 $rootScope.title = 'Pod ' + $scope.pod.name;
             });
+            $scope.$watch("pod.capabilities", function() {
+                // Show the composable action if the pod supports composition.
+                var idx = $scope.action.options.indexOf(
+                    $scope.compose.action);
+                if(!$scope.canCompose()) {
+                    if(idx >= 0) {
+                        $scope.action.options.splice(idx, 1);
+                    }
+                } else {
+                    if(idx === -1) {
+                        $scope.action.options.splice(
+                            0, 0, $scope.compose.action);
+                    }
+                }
+            });
+            $scope.$watch("action.option", function(now, then) {
+                // When the compose action is selected set the default
+                // parameters.
+                if(now && now.name === 'compose') {
+                    if(!then || then.name !== 'compose') {
+                        $scope.compose.obj.domain = (
+                            DomainsManager.getDefaultDomain().id);
+                        $scope.compose.obj.zone = (
+                            ZonesManager.getDefaultZone().id);
+                    }
+                }
+            });
         };
 
         // Load all the required managers.
         ManagerHelperService.loadManagers($scope, [
-            PodsManager, GeneralManager, UsersManager]).then(function() {
+            PodsManager, GeneralManager, UsersManager,
+            DomainsManager, ZonesManager]).then(function() {
+            // Start polling from the general manager.
+            GeneralManager.startPolling($scope, "power_types");
+
             // Possibly redirected from another controller that already had
             // this pod set to active. Only call setActiveItem if not already
             // the activeItem.

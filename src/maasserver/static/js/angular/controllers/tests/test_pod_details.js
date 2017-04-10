@@ -34,12 +34,14 @@ describe("PodDetailsController", function() {
     }));
 
     // Load the required managers.
-    var PodsManager, UsersManager, GeneralManager, ManagerHelperService;
-    var ErrorService;
+    var PodsManager, UsersManager, GeneralManager, DomainsManager;
+    var ZonesManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
         PodsManager = $injector.get("PodsManager");
         UsersManager = $injector.get("UsersManager");
         GeneralManager = $injector.get("GeneralManager");
+        DomainsManager = $injector.get("DomainsManager");
+        ZonesManager = $injector.get("ZonesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
@@ -58,7 +60,8 @@ describe("PodDetailsController", function() {
     function makePod() {
         var pod = {
             id: podId++,
-            $selected: false
+            $selected: false,
+            capabilities: []
         };
         PodsManager._items.push(pod);
         return pod;
@@ -94,6 +97,8 @@ describe("PodDetailsController", function() {
             $routeParams: $routeParams,
             PodsManager: PodsManager,
             UsersManager: UsersManager,
+            DomainsManager: DomainsManager,
+            ZonesManager: ZonesManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -131,14 +136,38 @@ describe("PodDetailsController", function() {
         expect($scope.action.option).toBeNull();
         expect($scope.action.inProgress).toBe(false);
         expect($scope.action.error).toBeNull();
+        expect($scope.compose).toEqual({
+          action: {
+            name: 'compose',
+            title: 'Compose',
+            sentence: 'compose'
+          },
+          obj: {
+            storage: [{
+              type: 'local',
+              size: 8,
+              tags: [],
+              boot: true
+            }]
+          }
+        });
         expect($scope.powerTypes).toBe(GeneralManager.getData('power_types'));
+        expect($scope.domains).toBe(DomainsManager.getItems());
+        expect($scope.zones).toBe(ZonesManager.getItems());
     });
 
     it("calls loadManagers with PodsManager, UsersManager, GeneralManager",
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                $scope, [PodsManager, GeneralManager, UsersManager]);
+                $scope,
+                [
+                    PodsManager,
+                    GeneralManager,
+                    UsersManager,
+                    DomainsManager,
+                    ZonesManager
+                ]);
         });
 
     it("sets loaded and title when loadManagers resolves", function() {
@@ -256,6 +285,171 @@ describe("PodDetailsController", function() {
             defer.resolve();
             $rootScope.$digest();
             expect($location.path).toHaveBeenCalledWith("/pods");
+        });
+    });
+
+    describe("canCompose", function() {
+
+        it("returns false when no pod", function() {
+            var controller = makeController();
+            expect($scope.canCompose()).toBe(false);
+        });
+
+        it("returns false when not users", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            spyOn($scope, 'isSuperUser').and.returnValue(false);
+            expect($scope.canCompose()).toBe(false);
+        });
+
+        it("returns false when not composable", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            spyOn($scope, 'isSuperUser').and.returnValue(true);
+            expect($scope.canCompose()).toBe(false);
+        });
+
+        it("returns true when composable", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            spyOn($scope, 'isSuperUser').and.returnValue(true);
+            $scope.pod.capabilities.push('composable');
+            expect($scope.canCompose()).toBe(true);
+        });
+    });
+
+    describe("composeMachine", function() {
+
+        it("sets action.options to compose.action", function() {
+            var controller = makeController();
+            $scope.composeMachine();
+            expect($scope.action.option).toBe($scope.compose.action);
+        });
+    });
+
+    describe("composePreProcess", function() {
+
+        it("sets id to pod id", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: '0:8(local)'
+            });
+        });
+
+        it("sets storage based on compose.obj.storage", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.compose.obj.storage = [
+              {
+                type: 'iscsi',
+                size: 20,
+                tags: [{
+                    text: 'one'
+                }, {
+                    text: 'two'
+                }],
+                boot: false
+              },
+              {
+                type: 'local',
+                size: 50,
+                tags: [{
+                  text: 'happy'
+                }, {
+                  text: 'days'
+                }],
+                boot: true
+              },
+              {
+                type: 'local',
+                size: 60,
+                tags: [{
+                  text: 'other'
+                }],
+                boot: false
+              }
+            ];
+            expect($scope.composePreProcess({})).toEqual({
+              id: $scope.pod.id,
+              storage: (
+                '0:50(local,happy,days),' +
+                '1:20(iscsi,one,two),2:60(local,other)')
+            });
+        });
+    });
+
+    describe("cancelCompose", function() {
+
+        it("resets obj and action.option", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            var otherObj = {};
+            $scope.compose.obj = otherObj;
+            $scope.action.option = {};
+            $scope.cancelCompose();
+            expect($scope.compose.obj).not.toBe(otherObj);
+            expect($scope.compose.obj).toEqual({
+              storage: [{
+                type: 'local',
+                size: 8,
+                tags: [],
+                boot: true
+              }]
+            });
+            expect($scope.action.option).toBeNull();
+        });
+    });
+
+    describe("composeAddStorage", function() {
+
+        it("adds a new local storage item", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.compose.obj.storage.length).toBe(1);
+            $scope.composeAddStorage();
+            expect($scope.compose.obj.storage.length).toBe(2);
+            expect($scope.compose.obj.storage[1]).toEqual({
+              type: 'local',
+              size: 8,
+              tags: [],
+              boot: false
+            });
+        });
+
+        it("adds a new iscsi storage item", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.pod.capabilities.push('iscsi_storage');
+            expect($scope.compose.obj.storage.length).toBe(1);
+            $scope.composeAddStorage();
+            expect($scope.compose.obj.storage.length).toBe(2);
+            expect($scope.compose.obj.storage[1]).toEqual({
+              type: 'iscsi',
+              size: 8,
+              tags: [],
+              boot: false
+            });
+        });
+    });
+
+    describe("composeSetBootDisk", function() {
+
+        it("sets a new boot disk", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.composeAddStorage();
+            $scope.composeAddStorage();
+            $scope.composeAddStorage();
+            var newBoot = $scope.compose.obj.storage[3];
+            $scope.composeSetBootDisk(newBoot);
+            expect($scope.compose.obj.storage[0].boot).toBe(false);
+            expect(newBoot.boot).toBe(true);
+        });
+    });
+
+    describe("composeRemoveDisk", function() {
+
+        it("removes disk from storage", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.composeAddStorage();
+            $scope.composeAddStorage();
+            $scope.composeAddStorage();
+            var deleteStorage = $scope.compose.obj.storage[3];
+            $scope.composeRemoveDisk(deleteStorage);
+            expect($scope.compose.obj.storage.indexOf(deleteStorage)).toBe(-1);
         });
     });
 });
