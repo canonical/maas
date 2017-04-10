@@ -61,6 +61,8 @@ class PodHandler(OperationsHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             result['local_disks'] = pod.local_disks
+        if Capabilities.ISCSI_STORAGE in pod.capabilities:
+            result['iscsi_storage'] = pod.iscsi_storage
         return result
 
     @classmethod
@@ -72,6 +74,8 @@ class PodHandler(OperationsHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             result['local_disks'] = pod.get_used_local_disks()
+        if Capabilities.ISCSI_STORAGE in pod.capabilities:
+            result['iscsi_storage'] = pod.get_used_iscsi_storage()
         return result
 
     @classmethod
@@ -167,6 +171,8 @@ class PodHandler(OperationsHandler):
         :param storage: A list of storage constraint identifiers, in the form:
             <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
         :type storage: unicode
+        :param domain: ID of domain to place the newly composed machine in.
+        :param zone: ID of zone place the newly composed machine in.
 
         Returns 404 if the pod is not found.
         Returns 403 if the user does not have permission to compose machine.

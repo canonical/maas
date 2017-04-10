@@ -549,7 +549,7 @@ class Pod(BMC):
     def create_machine(
             self, discovered_machine, commissioning_user,
             skip_commissioning=False,
-            creation_type=NODE_CREATION_TYPE.PRE_EXISTING):
+            creation_type=NODE_CREATION_TYPE.PRE_EXISTING, **kwargs):
         """Create's a `Machine` from `discovered_machines` for this pod."""
         if skip_commissioning:
             status = NODE_STATUS.READY
@@ -572,7 +572,7 @@ class Pod(BMC):
             cpu_speed=discovered_machine.cpu_speed,
             memory=discovered_machine.memory,
             power_state=discovered_machine.power_state,
-            creation_type=creation_type)
+            creation_type=creation_type, **kwargs)
         machine.bmc = self
         machine.instance_power_parameters = discovered_machine.power_parameters
         if not machine.hostname:
@@ -877,6 +877,7 @@ class Pod(BMC):
         if machines is None:
             machines = (
                 Machine.objects.filter(bmc__id=self.id)
+                .prefetch_related('blockdevice_set__iscsiblockdevice')
                 .prefetch_related('blockdevice_set__virtualblockdevice')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         return sum(
@@ -896,6 +897,7 @@ class Pod(BMC):
         if machines is None:
             machines = (
                 Machine.objects.filter(bmc__id=self.id)
+                .prefetch_related('blockdevice_set__iscsiblockdevice')
                 .prefetch_related('blockdevice_set__virtualblockdevice')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         return len([
@@ -904,6 +906,26 @@ class Pod(BMC):
             for blockdevice in machine.blockdevice_set.all()
             if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
         ])
+
+    def get_used_iscsi_storage(self, machines=None):
+        """Get the amount of used iSCSI storage in the pod.
+
+        :param machines: Deployed machines on this clusted. Only used when
+            the deployed machines have already been pulled from the database
+            and no extra query needs to be performed.
+        """
+        if machines is None:
+            machines = (
+                Machine.objects.filter(bmc__id=self.id)
+                .prefetch_related('blockdevice_set__iscsiblockdevice')
+                .prefetch_related('blockdevice_set__virtualblockdevice')
+                .prefetch_related('blockdevice_set__physicalblockdevice'))
+        return sum(
+            blockdevice.size
+            for machine in machines
+            for blockdevice in machine.blockdevice_set.all()
+            if isinstance(blockdevice.actual_instance, ISCSIBlockDevice)
+        )
 
     def delete(self, *args, **kwargs):
         raise AttributeError(

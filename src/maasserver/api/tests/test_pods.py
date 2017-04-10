@@ -91,7 +91,8 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
             [pod.get('id') for pod in parsed_result])
 
     def test_read_returns_limited_fields(self):
-        factory.make_Pod(capabilities=[Capabilities.FIXED_LOCAL_STORAGE])
+        factory.make_Pod(capabilities=[
+            Capabilities.FIXED_LOCAL_STORAGE, Capabilities.ISCSI_STORAGE])
         response = self.client.get(reverse('pods_handler'))
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
@@ -113,6 +114,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory',
                 'local_storage',
                 'local_disks',
+                'iscsi_storage',
             ],
             list(parsed_result[0]['total']))
         self.assertItemsEqual(
@@ -121,6 +123,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory',
                 'local_storage',
                 'local_disks',
+                'iscsi_storage',
             ],
             list(parsed_result[0]['used']))
         self.assertItemsEqual(
@@ -129,6 +132,7 @@ class TestPodsAPI(APITestCase.ForUser, PodMixin):
                 'memory',
                 'local_storage',
                 'local_disks',
+                'iscsi_storage',
             ],
             list(parsed_result[0]['available']))
 

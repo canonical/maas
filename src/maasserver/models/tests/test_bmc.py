@@ -1155,6 +1155,52 @@ class TestPod(MAASServerTestCase):
                 ])))
         self.assertEqual(new_interface, machine.boot_interface)
 
+    def test_get_used_cores(self):
+        pod = factory.make_Pod()
+        total_cores = 0
+        for _ in range(3):
+            cores = random.randint(1, 4)
+            total_cores += cores
+            factory.make_Node(bmc=pod, cpu_count=cores)
+        self.assertEquals(total_cores, pod.get_used_cores())
+
+    def test_get_used_memory(self):
+        pod = factory.make_Pod()
+        total_memory = 0
+        for _ in range(3):
+            memory = random.randint(1, 4)
+            total_memory += memory
+            factory.make_Node(bmc=pod, memory=memory)
+        self.assertEquals(total_memory, pod.get_used_memory())
+
+    def test_get_used_local_storage(self):
+        pod = factory.make_Pod()
+        total_storage = 0
+        for _ in range(3):
+            storage = random.randint(1024 ** 3, 4 * (1024 ** 3))
+            total_storage += storage
+            node = factory.make_Node(bmc=pod, with_boot_disk=False)
+            factory.make_PhysicalBlockDevice(node=node, size=storage)
+        self.assertEquals(total_storage, pod.get_used_local_storage())
+
+    def test_get_used_local_disks(self):
+        pod = factory.make_Pod()
+        for _ in range(3):
+            node = factory.make_Node(bmc=pod, with_boot_disk=False)
+            for _ in range(3):
+                factory.make_PhysicalBlockDevice(node=node)
+        self.assertEquals(9, pod.get_used_local_disks())
+
+    def test_get_used_iscsi_storage(self):
+        pod = factory.make_Pod()
+        total_storage = 0
+        for _ in range(3):
+            storage = random.randint(1024 ** 3, 4 * (1024 ** 3))
+            total_storage += storage
+            node = factory.make_Node(bmc=pod, with_boot_disk=False)
+            factory.make_ISCSIBlockDevice(node=node, size=storage)
+        self.assertEquals(total_storage, pod.get_used_iscsi_storage())
+
 
 class TestPodDelete(MAASTransactionServerTestCase):
 

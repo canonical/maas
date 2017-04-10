@@ -545,7 +545,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         yield d
 
 
-class TestComposeMachineForm(MAASServerTestCase):
+class TestComposeMachineForm(MAASTransactionServerTestCase):
 
     def make_compose_machine_result(self, pod):
         composed_machine = DiscoveredMachine(
@@ -780,6 +780,35 @@ class TestComposeMachineForm(MAASServerTestCase):
                 cpu_speed=Equals(300))))
         self.assertThat(mock_commissioning, MockNotCalled())
 
+    def test__compose_sets_domain_and_zone(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        domain = factory.make_Domain()
+        zone = factory.make_Zone()
+        form = ComposeMachineForm(data={
+            "domain": domain.id,
+            "zone": zone.id,
+        }, request=request, pod=pod)
+        self.assertTrue(form.is_valid())
+        created_machine = form.compose(skip_commissioning=True)
+        self.assertThat(created_machine, MatchesAll(
+            IsInstance(Machine),
+            MatchesStructure(
+                domain=Equals(domain),
+                zone=Equals(zone))))
+
     def test__compose_handles_timeout_error(self):
         request = MagicMock()
         pod = make_pod_with_hints()
@@ -796,6 +825,39 @@ class TestComposeMachineForm(MAASServerTestCase):
         self.assertEquals(
             "Unable to compose a machine because '%s' driver timed out "
             "after 120 seconds." % pod.power_type, str(error))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__compose_with_commissioning_in_reactor(self):
+        request = MagicMock()
+        pod = yield deferToDatabase(make_pod_with_hints)
+
+        # Mock the RPC client.
+        client = MagicMock()
+        mock_getClient = self.patch(pods_module, "getClientFromIdentifiers")
+        mock_getClient.return_value = succeed(client)
+
+        # Mock the result of the composed machine.
+        composed_machine, pod_hints = self.make_compose_machine_result(pod)
+        mock_compose_machine = self.patch(pods_module, "compose_machine")
+        mock_compose_machine.return_value = succeed(
+            (composed_machine, pod_hints))
+
+        # Mock start_commissioning so it doesn't use post commit hooks.
+        mock_commissioning = self.patch(Machine, "start_commissioning")
+
+        form = yield deferToDatabase(
+            ComposeMachineForm, data={}, request=request, pod=pod)
+        is_valid = yield deferToDatabase(form.is_valid)
+        self.assertTrue(is_valid)
+        created_machine = yield form.compose()
+        self.assertThat(created_machine, MatchesAll(
+            IsInstance(Machine),
+            MatchesStructure(
+                cpu_count=Equals(1),
+                memory=Equals(1024),
+                cpu_speed=Equals(300))))
+        self.assertThat(mock_commissioning, MockCalledOnce())
 
 
 class TestComposeMachineForPodsForm(MAASServerTestCase):

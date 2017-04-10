@@ -11,7 +11,10 @@ from functools import partial
 
 from django.http import HttpRequest
 from maasserver.enum import NODE_TYPE
-from maasserver.forms.pods import PodForm
+from maasserver.forms.pods import (
+    ComposeMachineForm,
+    PodForm,
+)
 from maasserver.models.bmc import Pod
 from maasserver.utils.orm import (
     reload_object,
@@ -29,7 +32,7 @@ from provisioningserver.utils.twisted import asynchronous
 class PodHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = Pod.objects.all()
+        queryset = Pod.objects.all().select_related('hints')
         pk = 'id'
         form = PodForm
         form_requires_request = True
@@ -41,6 +44,7 @@ class PodHandler(TimestampedModelHandler):
             'delete',
             'set_active',
             'refresh',
+            'compose',
         ]
         exclude = [
             'bmc_type',
@@ -66,6 +70,7 @@ class PodHandler(TimestampedModelHandler):
         data["available"] = self.dehydrate_available(obj)
         data["composed_machines_count"] = obj.node_set.filter(
             node_type=NODE_TYPE.MACHINE).count()
+        data["hints"] = self.dehydrate_hints(obj.hints)
         return data
 
     def dehydrate_total(self, obj):
@@ -79,6 +84,10 @@ class PodHandler(TimestampedModelHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
             result['local_disks'] = obj.local_disks
+        if Capabilities.ISCSI_STORAGE in obj.capabilities:
+            result['iscsi_storage'] = obj.iscsi_storage
+            result['iscsi_storage_gb'] = '%.1f' % (
+                obj.iscsi_storage / (1024 ** 3))
         return result
 
     def dehydrate_used(self, obj):
@@ -94,6 +103,11 @@ class PodHandler(TimestampedModelHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
             result['local_disks'] = obj.get_used_local_disks()
+        if Capabilities.ISCSI_STORAGE in obj.capabilities:
+            used_iscsi_storage = obj.get_used_iscsi_storage()
+            result['iscsi_storage'] = used_iscsi_storage
+            result['iscsi_storage_gb'] = '%.1f' % (
+                used_iscsi_storage / (1024 ** 3))
         return result
 
     def dehydrate_available(self, obj):
@@ -111,7 +125,28 @@ class PodHandler(TimestampedModelHandler):
         if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
             result['local_disks'] = (
                 obj.local_disks - obj.get_used_local_disks())
+        if Capabilities.ISCSI_STORAGE in obj.capabilities:
+            used_iscsi_storage = obj.get_used_iscsi_storage()
+            result['iscsi_storage'] = obj.iscsi_storage - used_iscsi_storage
+            result['iscsi_storage_gb'] = '%.1f' % (
+                (obj.iscsi_storage - used_iscsi_storage) / (1024 ** 3))
         return result
+
+    def dehydrate_hints(self, hints):
+        """Dehydrate Pod hints."""
+        return {
+            'cores': hints.cores,
+            'cpu_speed': hints.cpu_speed,
+            'memory': hints.memory,
+            'memory_gb': '%.1f' % (hints.memory / 1024.0),
+            'local_storage': hints.local_storage,
+            'local_storage_gb': '%.1f' % (
+                hints.local_storage / (1024 ** 3)),
+            'local_disks': hints.local_disks,
+            'iscsi_storage': hints.iscsi_storage,
+            'iscsi_storage_gb': '%.1f' % (
+                hints.iscsi_storage / (1024 ** 3)),
+        }
 
     @asynchronous
     def create(self, params):
@@ -193,5 +228,43 @@ class PodHandler(TimestampedModelHandler):
         d = deferToDatabase(transactional(self.get_object), params)
         d.addCallback(partial(deferToDatabase, get_form), params)
         d.addCallback(lambda form: form.discover_and_sync_pod())
+        d.addCallback(partial(deferToDatabase, render_obj))
+        return d
+
+    @asynchronous
+    def compose(self, params):
+        """Compose a machine in a Pod."""
+        assert self.user.is_superuser, "Permission denied."
+
+        def composable(obj):
+            if Capabilities.COMPOSABLE not in obj.capabilities:
+                raise HandlerValidationError(
+                    "Pod does not support composability.")
+            return obj
+
+        @transactional
+        def get_form(obj, params):
+            request = HttpRequest()
+            request.user = self.user
+            form = ComposeMachineForm(pod=obj, data=params, request=request)
+            if not form.is_valid():
+                raise HandlerValidationError(form.errors)
+            return form, obj
+
+        def compose(result, params):
+            form, obj = result
+            machine = form.compose(
+                skip_commissioning=params.get('skip_commissioning', False))
+            return machine, obj
+
+        @transactional
+        def render_obj(result):
+            _, obj = result
+            return self.full_dehydrate(reload_object(obj))
+
+        d = deferToDatabase(transactional(self.get_object), params)
+        d.addCallback(composable)
+        d.addCallback(partial(deferToDatabase, get_form), params)
+        d.addCallback(compose, params)
         d.addCallback(partial(deferToDatabase, render_obj))
         return d

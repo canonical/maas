@@ -12,10 +12,11 @@ from functools import partial
 import crochet
 from django import forms
 from django.core.exceptions import ValidationError
-from django.forms.fields import (
+from django.forms import (
     CharField,
     ChoiceField,
     IntegerField,
+    ModelChoiceField,
 )
 from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
@@ -35,9 +36,11 @@ from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    Domain,
     Machine,
     Pod,
     RackController,
+    Zone,
 )
 from maasserver.node_constraint_filter_forms import (
     get_storage_constraints_from_string,
@@ -305,6 +308,12 @@ class ComposeMachineForm(forms.Form):
                 min_value=300, required=False)
         self.fields['hostname'] = CharField(required=False)
         self.initial['hostname'] = make_unique_hostname()
+        self.fields['domain'] = ModelChoiceField(
+            required=False, queryset=Domain.objects.all())
+        self.initial['domain'] = Domain.objects.get_default_domain()
+        self.fields['zone'] = ModelChoiceField(
+            required=False, queryset=Zone.objects.all())
+        self.initial['zone'] = Zone.objects.get_default_zone()
         self.fields['storage'] = CharField(
             validators=[storage_validator], required=False)
         self.initial['storage'] = 'root:8(local)'
@@ -355,35 +364,56 @@ class ComposeMachineForm(forms.Form):
         `timeout` to minimize the maximum wait for the asynchronous operation.
         """
 
-        @asynchronous
-        def wrap_compose_machine(
-                client_idents, pod_type, parameters, request, pod_id, name):
-            """Wrapper to get the client."""
-            d = getClientFromIdentifiers(client_idents)
+        def create_and_sync(result):
+            discovered_machine, pod_hints = result
+            created_machine = self.pod.create_machine(
+                discovered_machine, self.request.user,
+                skip_commissioning=skip_commissioning,
+                creation_type=creation_type,
+                domain=self.get_value_for('domain'),
+                zone=self.get_value_for('zone'))
+            self.pod.sync_hints(pod_hints)
+            return created_machine
+
+        if isInIOThread():
+            # Running under the twisted reactor, before the work from inside.
+            d = deferToDatabase(transactional(self.pod.get_client_identifiers))
+            d.addCallback(getClientFromIdentifiers)
             d.addCallback(
-                compose_machine, pod_type, parameters, request,
-                pod_id=pod_id, name=name)
+                compose_machine, self.pod.power_type,
+                self.pod.power_parameters, self.get_requested_machine(),
+                pod_id=self.pod.id, name=self.pod.name)
+            d.addCallback(
+                partial(deferToDatabase, transactional(create_and_sync)))
             return d
+        else:
+            # Running outside of reactor. Do the work inside and then finish
+            # the work outside.
+            @asynchronous
+            def wrap_compose_machine(
+                    client_idents, pod_type, parameters, request,
+                    pod_id, name):
+                """Wrapper to get the client."""
+                d = getClientFromIdentifiers(client_idents)
+                d.addCallback(
+                    compose_machine, pod_type, parameters, request,
+                    pod_id=pod_id, name=name)
+                return d
 
-        try:
-            discovered_machine, pod_hints = wrap_compose_machine(
-                self.pod.get_client_identifiers(),
-                self.pod.power_type,
-                self.pod.power_parameters,
-                self.get_requested_machine(),
-                pod_id=self.pod.id,
-                name=self.pod.name).wait(timeout)
-        except crochet.TimeoutError:
-            raise PodProblem(
-                "Unable to compose a machine because '%s' driver timed out "
-                "after %d seconds." % (self.pod.power_type, timeout))
-
-        created_machine = self.pod.create_machine(
-            discovered_machine, self.request.user,
-            skip_commissioning=skip_commissioning,
-            creation_type=creation_type)
-        self.pod.sync_hints(pod_hints)
-        return created_machine
+            try:
+                result = wrap_compose_machine(
+                    self.pod.get_client_identifiers(),
+                    self.pod.power_type,
+                    self.pod.power_parameters,
+                    self.get_requested_machine(),
+                    pod_id=self.pod.id,
+                    name=self.pod.name).wait(timeout)
+            except crochet.TimeoutError:
+                raise PodProblem(
+                    "Unable to compose a machine because '%s' driver "
+                    "timed out after %d seconds." % (
+                        self.pod.power_type, timeout))
+            return create_and_sync(result)
 
 
 class ComposeMachineForPodsForm(forms.Form):
