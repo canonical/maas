@@ -224,6 +224,15 @@ class TestEventHandler(MAASServerTestCase):
             handler.on_listen(sentinel.channel, action, pk)
             self.assertThat(mock_listen, MockNotCalled())
 
+    def test_on_listen_returns_None_if_obj_no_longer_exists(self):
+        user = factory.make_User()
+        handler = EventHandler(user, {})
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.return_value = HandlerDoesNotExistError()
+        self.assertIsNone(
+            handler.on_listen(
+                sentinel.channel, sentinel.action, random.randint(1, 1000)))
+
     def test_on_listen_returns_None_if_listen_returns_None(self):
         user = factory.make_User()
         handler = EventHandler(user, {})

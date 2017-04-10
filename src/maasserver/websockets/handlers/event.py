@@ -109,7 +109,10 @@ class EventHandler(TimestampedModelHandler):
         # Only care about create everything else is ignored.
         if action != "create":
             return None
-        obj = self.listen(channel, action, pk)
+        try:
+            obj = self.listen(channel, action, pk)
+        except HandlerDoesNotExistError:
+            return None
         if obj is None:
             return None
         if obj.node_id not in self.cache["node_ids"]:
