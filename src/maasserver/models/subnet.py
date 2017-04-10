@@ -736,15 +736,23 @@ class Subnet(CleanSave, TimestampedModel):
         return str(IPAddress(free_range.first))
 
     def render_json_for_related_ips(
-            self, with_username=True, with_node_summary=True):
+            self, with_username=True, with_summary=True):
         """Render a representation of this subnet's related IP addresses,
         suitable for converting to JSON. Optionally exclude user and node
         information."""
         ip_addresses = self.staticipaddress_set.all()
+        if with_username:
+            ip_addresses = ip_addresses.prefetch_related('user')
+        if with_summary:
+            ip_addresses = ip_addresses.prefetch_related(
+                'interface_set', 'interface_set__node',
+                'bmc_set', 'bmc_set__node_set',
+                'dnsresource_set', 'dnsresource_set__domain',
+            )
         return sorted([
             ip.render_json(
                 with_username=with_username,
-                with_node_summary=with_node_summary)
+                with_summary=with_summary)
             for ip in ip_addresses
             if ip.ip
             ], key=lambda json: IPAddress(json['ip']))

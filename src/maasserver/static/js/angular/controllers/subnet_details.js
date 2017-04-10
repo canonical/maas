@@ -137,11 +137,20 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             return $scope.getAllocType(ipAddress.alloc_type);
         };
 
-        // Return the name of the node type.
-        $scope.getNodeType = function(nodeType) {
-            var str = NODE_TYPES[nodeType];
-            if(angular.isString(str)) {
-                return str;
+        // Return the name of the node type for the given IP.
+        $scope.getUsageForIP = function(ip) {
+            if(angular.isObject(ip.node_summary)) {
+                var nodeType = ip.node_summary.node_type;
+                var str = NODE_TYPES[nodeType];
+                if(angular.isString(str)) {
+                    return str;
+                } else {
+                    return "Unknown";
+                }
+            } else if(angular.isObject(ip.bmcs)) {
+                return "BMC";
+            } else if(angular.isObject(ip.dns_records)) {
+                return "DNS";
             } else {
                 return "Unknown";
             }
@@ -149,7 +158,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         // Sort based on the node type string.
         $scope.nodeTypeSort = function(ipAddress) {
-            return $scope.getNodeType(ipAddress.node_summary.node_type);
+            return $scope.getUsageForIP(ipAddress);
         };
 
         // Sort based on the owner name.

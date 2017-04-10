@@ -294,7 +294,7 @@ describe("SubnetDetailsController", function() {
         });
     });
 
-    describe("getNodeType", function() {
+    describe("getUsageForIP", function() {
 
         var scenarios = {
             0: 'Machine',
@@ -309,26 +309,50 @@ describe("SubnetDetailsController", function() {
 
         angular.forEach(scenarios, function(expected, nodeType) {
             it("nodeType( " + nodeType + ") = " + expected, function() {
-                var controller = makeControllerResolveSetActiveItem();
-                expect($scope.getNodeType(nodeType)).toBe(expected);
+                makeControllerResolveSetActiveItem();
+                var ip = {};
+                ip.node_summary = {};
+                ip.node_summary.node_type = nodeType;
+                expect($scope.getUsageForIP(ip)).toBe(expected);
             });
+        });
+
+        it("handles BMCs", function() {
+            makeControllerResolveSetActiveItem();
+            var ipAddress = {
+                bmcs: []
+            };
+            expect($scope.getUsageForIP(ipAddress)).toBe('BMC');
+        });
+
+        it("handles DNS records", function() {
+            makeControllerResolveSetActiveItem();
+            var ipAddress = {
+                dns_records: []
+            };
+            expect($scope.getUsageForIP(ipAddress)).toBe('DNS');
+        });
+
+        it("handles the unknown", function() {
+            makeControllerResolveSetActiveItem();
+            var ipAddress = {};
+            expect($scope.getUsageForIP(ipAddress)).toBe('Unknown');
         });
     });
 
     describe("nodeTypeSort", function() {
 
-        it("calls getNodeType", function() {
+        it("calls getUsageForIP", function() {
             var controller = makeControllerResolveSetActiveItem();
             var expected = {};
-            spyOn($scope, "getNodeType").and.returnValue(expected);
+            spyOn($scope, "getUsageForIP").and.returnValue(expected);
             var ipAddress = {
                 node_summary: {
                     node_type: {}
                 }
             };
             var observed = $scope.nodeTypeSort(ipAddress);
-            expect($scope.getNodeType).toHaveBeenCalledWith(
-                ipAddress.node_summary.node_type);
+            expect($scope.getUsageForIP).toHaveBeenCalledWith(ipAddress);
             expect(observed).toBe(expected);
         });
     });

@@ -23,6 +23,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
     NODE_PERMISSION,
+    NODE_STATUS,
     RDNS_MODE,
     RDNS_MODE_CHOICES,
 )
@@ -838,10 +839,83 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             subnet=subnet)
         json = subnet.render_json_for_related_ips(
-            with_username=True, with_node_summary=True)
+            with_username=True, with_summary=True)
         self.assertThat(type(json), Equals(list))
         self.assertThat(json[0], Equals(ip.render_json(
-            with_username=True, with_node_summary=True)))
+            with_username=True, with_summary=True)))
+
+    def test__includes_node_summary(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY)
+        iface = node.interface_set.first()
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=iface)
+        json = subnet.render_json_for_related_ips(
+            with_username=True, with_summary=True)
+        self.assertThat(type(json), Equals(list))
+        for result in json:
+            if result['ip'] == ip.ip:
+                self.assertThat(type(result['node_summary']), Equals(dict))
+                node_summary = result['node_summary']
+                self.assertThat(node_summary['fqdn'], Equals(node.fqdn))
+                self.assertThat(node_summary['via'], Equals(iface.name))
+                self.assertThat(
+                    node_summary['system_id'], Equals(node.system_id))
+                self.assertThat(
+                    node_summary['node_type'], Equals(node.node_type))
+                self.assertThat(
+                    node_summary['hostname'], Equals(node.hostname))
+                return
+        self.assertFalse(True, "Could not find IP address in output.")
+
+    def test__includes_bmcs(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, interface=None)
+        bmc = factory.make_BMC(ip_address=ip)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY, bmc=bmc)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=node.interface_set.first())
+        subnet = reload_object(subnet)
+        json = subnet.render_json_for_related_ips(
+            with_username=True, with_summary=True)
+        self.assertThat(type(json), Equals(list))
+        for result in json:
+            if result['ip'] == ip.ip:
+                self.assertThat(type(result['bmcs']), Equals(list))
+                bmc_json = result['bmcs'][0]
+                self.assertThat(bmc_json['id'], Equals(bmc.id))
+                self.assertThat(bmc_json['power_type'], Equals(bmc.power_type))
+                self.assertThat(
+                    bmc_json['nodes'][0]['hostname'], Equals(node.hostname))
+                self.assertThat(
+                    bmc_json['nodes'][0]['system_id'], Equals(node.system_id))
+                return
+        self.assertFalse(True, "Could not find IP address in output.")
+
+    def test__includes_dns_records(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, interface=None)
+        dnsresource = factory.make_DNSResource(
+            ip_addresses=[ip], subnet=subnet)
+        json = subnet.render_json_for_related_ips(
+            with_username=True, with_summary=True)
+        self.assertThat(type(json), Equals(list))
+        for result in json:
+            if result['ip'] == ip.ip:
+                self.assertThat(type(result['dns_records']), Equals(list))
+                dns_json = result['dns_records'][0]
+                self.assertThat(dns_json['id'], Equals(dnsresource.id))
+                self.assertThat(dns_json['name'], Equals(dnsresource.name))
+                self.assertThat(
+                    dns_json['domain'], Equals(dnsresource.domain.name))
+                return
+        self.assertFalse(True, "Could not find IP address in output.")
 
     def test__excludes_blank_addresses(self):
         subnet = factory.make_Subnet(cidr='10.0.0.0/24')

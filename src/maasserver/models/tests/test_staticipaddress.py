@@ -1305,7 +1305,7 @@ class TestRenderJSON(MAASServerTestCase):
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
-        json = ip.render_json(with_node_summary=True)
+        json = ip.render_json(with_summary=True)
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Contains("node_summary"))
 
@@ -1318,7 +1318,7 @@ class TestRenderJSON(MAASServerTestCase):
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
-        json = ip.render_json(with_node_summary=True)
+        json = ip.render_json(with_summary=True)
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Contains("node_summary"))
         self.expectThat(json['node_summary']['via'], Equals(iface.name))
@@ -1332,7 +1332,7 @@ class TestRenderJSON(MAASServerTestCase):
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
-        json = ip.render_json(with_username=True, with_node_summary=True)
+        json = ip.render_json(with_username=True, with_summary=True)
         self.expectThat(
             json["created"], Equals(dehydrate_datetime(ip.created)))
         self.expectThat(

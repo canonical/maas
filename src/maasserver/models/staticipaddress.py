@@ -874,7 +874,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     iface.vlan = subnet.vlan
                     iface.save()
 
-    def render_json(self, with_username=False, with_node_summary=False):
+    def render_json(self, with_username=False, with_summary=False):
         """Render a representation of this `StaticIPAddress` object suitable
         for converting to JSON. Includes optional parameters wherever a join
         would be implied by including a specific piece of information."""
@@ -889,7 +889,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         }
         if with_username and self.user is not None:
             data["user"] = self.user.username
-        if with_node_summary:
+        if with_summary:
             iface = self.get_interface()
             node = self.get_node()
             if node is not None:
@@ -907,6 +907,33 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     # earlier. A node's owner takes precedence.
                     if node.owner and node.owner.username:
                         data["user"] = node.owner.username
+            if len(self.dnsresource_set.all()) > 0:
+                # This IP address is used as DNS resource.
+                dns_records = [
+                    {
+                        "id": resource.id,
+                        "name": resource.name,
+                        "domain": resource.domain.name,
+                    }
+                    for resource in self.dnsresource_set.all()
+                ]
+                data["dns_records"] = dns_records
+            if self.bmc_set.exists():
+                # This IP address is used as a BMC.
+                bmcs = [
+                    {
+                        'id': bmc.id,
+                        'power_type': bmc.power_type,
+                        'nodes': [
+                            {
+                                'system_id': node.system_id,
+                                'hostname': node.hostname,
+                            }
+                            for node in bmc.node_set.all()
+                        ],
+                    } for bmc in self.bmc_set.all()
+                ]
+                data["bmcs"] = bmcs
         return data
 
     def set_ip_address(self, ipaddr, iface=None):

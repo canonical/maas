@@ -297,15 +297,23 @@ class SubnetHandler(OperationsHandler):
           If False, suppresses the display of usernames associated with each
           address. (Default: True)
 
+        with_summary
+          If False, suppresses the display of nodes, BMCs, and and DNS records
+          associated with each address. (Default: True)
+
         with_node_summary
-          If False, suppresses the display of any node associated with each
-          address. (Default: True)
+          Deprecated form of with_summary.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NODE_PERMISSION.VIEW)
         with_username = get_optional_param(
             request.GET, 'with_username', default=True, validator=StringBool)
+        with_summary = get_optional_param(
+            request.GET, 'with_summary', True, validator=StringBool)
         with_node_summary = get_optional_param(
             request.GET, 'with_node_summary', True, validator=StringBool)
+        # Handle deprecated with_node_summary parameter.
+        if with_node_summary is False:
+            with_summary = False
         return subnet.render_json_for_related_ips(
-            with_username=with_username, with_node_summary=with_node_summary)
+            with_username=with_username, with_summary=with_summary)

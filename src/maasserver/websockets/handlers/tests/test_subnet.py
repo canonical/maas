@@ -55,7 +55,7 @@ class TestSubnetHandler(MAASServerTestCase):
         data['version'] = IPNetwork(subnet.cidr).version
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(
-                with_username=True, with_node_summary=True)
+                with_username=True, with_summary=True)
         return data
 
     def test_get(self):

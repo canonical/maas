@@ -336,7 +336,7 @@
                                 <span data-ng-switch-when="4">{$ ip.node_summary.via $}</span>
                                 <span data-ng-switch-default>Unknown</span>
                             </td>
-                            <td class="table-col--10" aria-label="Usage">{$ getNodeType(ip.node_summary.node_type) $}</td>
+                            <td class="table-col--10" aria-label="Usage">{$ getUsageForIP(ip) $}</td>
                             <td class="table-col--10" aria-label="Owner">{$ ip.user ? ip.user : "MAAS" $}</td>
                             <td class="table-col--25" aria-label="Last seen">
                                 <time>{$ ip.updated $}</time>

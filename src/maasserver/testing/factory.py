@@ -373,7 +373,7 @@ class Factory(maastesting.factory.Factory):
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, with_boot_disk=True, vlan=None,
             fabric=None, bmc_connected_to=None, owner_data={},
-            with_empty_script_sets=False, **kwargs):
+            with_empty_script_sets=False, bmc=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -408,9 +408,12 @@ class Factory(maastesting.factory.Factory):
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, zone=zone,
             power_state=power_state, power_state_updated=power_state_updated,
-            domain=domain, **kwargs)
-        node.power_type = power_type
-        node.power_parameters = power_parameters
+            domain=domain, bmc=bmc, **kwargs)
+        if bmc is None:
+            # These setters will overwrite the BMC, so don't use them if the
+            # BMC was specified.
+            node.power_type = power_type
+            node.power_parameters = power_parameters
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to
@@ -521,6 +524,15 @@ class Factory(maastesting.factory.Factory):
             self, power_type=None, power_parameters=None, ip_address=None,
             **kwargs):
         """Make a :class:`BMC`. """
+        # If an IP address was specified, we need to present it in the BMC
+        # power_parameters, or it will be overwritten.
+        if ip_address is not None:
+            if power_type is None:
+                power_type = 'ipmi'
+            if power_parameters is None:
+                power_parameters = {
+                    'power_address': ip_address.ip
+                }
         if power_type is None:
             power_type = 'manual'
         if power_parameters is None:

@@ -610,7 +610,7 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.OK, response))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
-            with_username=True, with_node_summary=True)
+            with_username=True, with_summary=True)
         self.assertThat(result, Equals(expected_result))
 
     def test__with_username_false(self):
@@ -633,10 +633,33 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.OK, response))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
-            with_username=False, with_node_summary=True)
+            with_username=False, with_summary=True)
         self.assertThat(result, Equals(expected_result))
 
-    def test__with_node_summary_false(self):
+    def test__with_summary_false(self):
+        subnet = factory.make_Subnet()
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, status=NODE_STATUS.READY)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet, user=user)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, user=user,
+            interface=node.get_boot_interface())
+        response = self.client.get(
+            get_subnet_uri(subnet), {
+                'op': 'ip_addresses',
+                'with_summary': 'false',
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        expected_result = subnet.render_json_for_related_ips(
+            with_username=True, with_summary=False)
+        self.assertThat(result, Equals(expected_result))
+
+    def test__with_deprecated_node_summary_false(self):
         subnet = factory.make_Subnet()
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -656,5 +679,5 @@ class TestSubnetIPAddressesAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.OK, response))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
-            with_username=True, with_node_summary=False)
+            with_username=True, with_summary=False)
         self.assertThat(result, Equals(expected_result))
