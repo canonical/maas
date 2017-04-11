@@ -285,7 +285,7 @@
                     </dl>
                     <div class="form__group">
                         <label class="form__group-label two-col">Tags</label>
-                        <div class="form__group three-col">
+                        <div class="form__group-input three-col">
                             <span class="tag-link" data-ng-repeat="tag in node.tags" data-ng-hide="summary.editing">
                                 <a href="#/nodes/?query=tags:({$ tag $})">{$ tag $}</a>
                             </span>
@@ -1022,7 +1022,7 @@
                                                   </div>
                                                   <div class="form__group">
                                                       <label class="two-col">Tags</label>
-                                                      <div class="form__Group-input three-col last-col">
+                                                      <div class="form__group-input three-col last-col">
                                                           <tags-input data-ng-model="newBondInterface.tags" allow-tags-pattern="[\w-]+"></tags-input>
                                                       </div>
                                                   </div>
