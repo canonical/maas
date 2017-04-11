@@ -3629,3 +3629,60 @@ class TestNotificationDismissalListener(
                 dv.value)
         finally:
             yield listener.stopService()
+
+
+class TestScriptListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("script", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            script = yield deferToDatabase(self.create_script)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % script.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("script", lambda *args: dv.set(args))
+        script = yield deferToDatabase(self.create_script)
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_script,
+                script.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % script.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("script", lambda *args: dv.set(args))
+        script = yield deferToDatabase(self.create_script)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_script, script.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % script.id), dv.value)
+        finally:
+            yield listener.stopService()

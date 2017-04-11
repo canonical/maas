@@ -63,7 +63,10 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import ScriptSet
+from metadataserver.models import (
+    Script,
+    ScriptSet,
+)
 from testtools.matchers import (
     GreaterThan,
     Is,
@@ -726,6 +729,21 @@ class TransactionalHelpersMixin:
     def delete_region_rack_rpc_connection(self, id):
         process = RegionRackRPCConnection.objects.get(id=id)
         process.delete()
+
+    @transactional
+    def create_script(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Script(**params)
+
+    @transactional
+    def update_script(self, id, params):
+        return apply_update_to_model(Script, id, params)
+
+    @transactional
+    def delete_script(self, id):
+        script = Script.objects.get(id=id)
+        script.delete()
 
     @transactional
     def reload_object(self, obj):

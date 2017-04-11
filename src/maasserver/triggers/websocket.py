@@ -1991,3 +1991,17 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_notificationdismissal",
         "notificationdismissal_create_notify", "insert")
+
+    # Script table
+    register_procedure(
+        render_notification_procedure(
+            'script_create_notify', 'script_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'script_update_notify', 'script_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'script_delete_notify', 'script_delete', 'OLD.id'))
+    register_trigger('metadataserver_script', 'script_create_notify', 'insert')
+    register_trigger('metadataserver_script', 'script_update_notify', 'update')
+    register_trigger('metadataserver_script', 'script_delete_notify', 'delete')
