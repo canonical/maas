@@ -686,7 +686,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             status=available_status, owner=None, with_boot_disk=False)
         disk_1 = factory.make_PhysicalBlockDevice(
             node=machine, size=(random.randint(8, 16) * (1000 ** 3)),
-            tags=['local'])
+            tags=['local'], formatted_root=True)
         disk_2 = factory.make_ISCSIBlockDevice(
             node=machine, size=(random.randint(8, 16) * (1000 ** 3)),
             tags=['iscsi'])
@@ -1146,11 +1146,9 @@ class TestMachinesAPI(APITestCase.ForUser):
         """Storage label is returned alongside machine data"""
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=False)
-        # The ID may always be '1', which won't be interesting for testing.
-        for _ in range(1, random.choice([1, 3, 5])):
-            factory.make_PhysicalBlockDevice()
         factory.make_PhysicalBlockDevice(
-            node=machine, size=11 * (1000 ** 3), tags=['ssd'])
+            node=machine, size=11 * (1000 ** 3), tags=['ssd'],
+            formatted_root=True)
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
             'storage': 'needed:10(ssd)',
@@ -1169,11 +1167,9 @@ class TestMachinesAPI(APITestCase.ForUser):
         """Storage label is returned alongside machine data"""
         machine = factory.make_Node(
             status=NODE_STATUS.READY, with_boot_disk=False)
-        # The ID may always be '1', which won't be interesting for testing.
-        for _ in range(1, random.choice([1, 3, 5])):
-            factory.make_PhysicalBlockDevice()
         factory.make_PhysicalBlockDevice(
-            node=machine, size=11 * (1000 ** 3), tags=['ssd'])
+            node=machine, size=11 * (1000 ** 3), tags=['ssd'],
+            formatted_root=True)
         response = self.client.post(reverse('machines_handler'), {
             'op': 'allocate',
             'storage': 'needed:10(ssd)',

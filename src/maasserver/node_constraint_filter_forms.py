@@ -27,12 +27,11 @@ from maasserver.forms import (
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
     BlockDevice,
+    Filesystem,
     Interface,
-    PhysicalBlockDevice,
     Pod,
     Subnet,
     Tag,
-    VirtualBlockDevice,
     VLAN,
     Zone,
 )
@@ -319,71 +318,70 @@ def nodes_by_storage(storage, node_ids=None):
     root_device = True  # The 1st constraint refers to the node's 1st device
     for constraint_name, size, tags in constraints:
         if root_device:
-            # Sort the `PhysicalBlockDevice`s by id because we consider the
-            # first device as the root device.
+            # This branch of the if is only used on first iteration.
             root_device = False
-            matched_devices = PhysicalBlockDevice.objects.all()
+
+            # Use only block devices that are mounted as '/'. Either the
+            # block device has root sitting on it or its on a partition on
+            # that block device.
+            filesystems = Filesystem.objects.filter(
+                mount_point='/', acquired=False)
+            filesystems = filesystems.filter(
+                Q(block_device__size__gte=size) |
+                Q(partition__partition_table__block_device__size__gte=size))
+            if tags is not None:
+                filesystems = filesystems.filter(
+                    Q(block_device__tags__contains=tags) |
+                    Q(**{
+                        'partition__partition_table__block_device'
+                        '__tags__contains': tags
+                    }))
             if node_ids is not None:
-                matched_devices = matched_devices.filter(node_id__in=node_ids)
-            matched_devices = matched_devices.order_by('id').values(
-                'id', 'node_id', 'size', 'tags')
+                filesystems = filesystems.filter(
+                    Q(block_device__node_id__in=node_ids) |
+                    Q(**{
+                        'partition__partition_table__block_device'
+                        '__node_id__in': node_ids
+                    }))
+            filesystems = filesystems.prefetch_related(
+                'block_device', 'partition__partition_table__block_device')
 
             # Only keep the first device for every node. This is done to make
             # sure filtering out the size and tags is not done to all the
             # block devices. This should only be done to the first block
             # device.
             found_nodes = set()
-            devices = []
-            for device in matched_devices:
-                if device['node_id'] in found_nodes:
+            matched_devices = []
+            for filesystem in filesystems:
+                if filesystem.block_device is not None:
+                    device = filesystem.block_device
+                else:
+                    device = (
+                        filesystem.partition.partition_table.block_device)
+                if device.node_id in found_nodes:
                     continue
-                devices.append(device)
-                found_nodes.add(device['node_id'])
-
-            # Remove the devices that are not of correct size and the devices
-            # that are missing the correct tags or label.
-            devices = [
-                device
-                for device in devices
-                if device['size'] >= size
-                ]
-            if tags is not None:
-                tags = set(tags)
-                devices = [
-                    device
-                    for device in devices
-                    if tags.issubset(set(device['tags']))
-                    ]
-            matched_devices = devices
+                matched_devices.append(device)
+                found_nodes.add(device.node_id)
         else:
-            # Query for the `PhysicalBlockDevice`s and `ISCSIBlockDevice`'s
-            # that have the closest size and, if specified, the given tags.
-            if tags is None:
-                matched_devices = BlockDevice.objects.filter(
-                    size__gte=size).order_by('size')
-            else:
-                matched_devices = BlockDevice.objects.filter_by_tags(
-                    tags).filter(size__gte=size)
+            # Query for any block device the closest size and, if specified,
+            # the given tags. # The block device must also be unused in the
+            # storage model.
+            matched_devices = BlockDevice.objects.filter(size__gte=size)
+            matched_devices = matched_devices.filter(
+                filesystem__isnull=True, partitiontable__isnull=True)
+            if tags is not None:
+                matched_devices = matched_devices.filter(tags__contains=tags)
             if node_ids is not None:
                 matched_devices = matched_devices.filter(
                     node_id__in=node_ids)
-            matched_devices = [
-                {
-                    'id': device.id,
-                    'node_id': device.node_id,
-                    'size': device.size,
-                    'tags': device.tags,
-                }
-                for device in matched_devices.order_by('size')
-                if not isinstance(device.actual_instance, VirtualBlockDevice)
-            ]
+            matched_devices = list(matched_devices.order_by('size'))
 
         # Loop through all the returned devices. Insert only the first
         # device from each node into `matches`.
         matched_in_loop = []
         for device in matched_devices:
-            device_id = device['id']
-            device_node_id = device['node_id']
+            device_id = device.id
+            device_node_id = device.node_id
 
             if device_node_id in matched_in_loop:
                 continue

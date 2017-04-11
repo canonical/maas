@@ -1793,7 +1793,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_PhysicalBlockDevice(
             self, node=None, name=None, size=None, block_size=None,
-            tags=None, model=None, serial=None, id_path=None):
+            tags=None, model=None, serial=None, id_path=None,
+            formatted_root=False):
         if node is None:
             node = self.make_Node()
         if name is None:
@@ -1819,9 +1820,15 @@ class Factory(maastesting.factory.Factory):
         else:
             model = ""
             serial = ""
-        return PhysicalBlockDevice.objects.create(
+        block_device = PhysicalBlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial, id_path=id_path)
+        if formatted_root:
+            partition = self.make_Partition(
+                partition_table=(
+                    self.make_PartitionTable(block_device=block_device)))
+            self.make_Filesystem(mount_point='/', partition=partition)
+        return block_device
 
     def make_PartitionTable(
             self, table_type=None, block_device=None, node=None,

@@ -6,11 +6,12 @@
 __all__ = []
 
 from random import randint
-from unittest import skip
 
 from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -835,34 +836,50 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 ['Malformed storage constraint, "abc".']}),
             (form.is_valid(), form.errors))
 
-    def test_storage_single_contraint_only_matches_physical_devices(self):
+    def test_storage_matches_disk_with_root_mount_on_disk(self):
         node1 = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(node=node1)
+        block_device = factory.make_PhysicalBlockDevice(node=node1)
+        factory.make_Filesystem(mount_point='/', block_device=block_device)
         node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_BlockDevice(node=node2)
+        factory.make_PhysicalBlockDevice(node=node2)
+        self.assertConstrainedNodes([node1], {'storage': '0'})
+
+    def test_storage_matches_disk_with_root_mount_on_partition(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node1, formatted_root=True)
+        node2 = factory.make_Node(with_boot_disk=False)
+        block_device = factory.make_PhysicalBlockDevice(node=node2)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        partition = factory.make_Partition(partition_table=partition_table)
+        factory.make_Filesystem(mount_point='/srv', partition=partition)
         self.assertConstrainedNodes([node1], {'storage': '0'})
 
     def test_storage_single_contraint_matches_all_sizes_larger(self):
         node1 = factory.make_Node(with_boot_disk=False)
         # 1gb block device
         factory.make_PhysicalBlockDevice(
-            node=node1, size=1 * (1000 ** 3))
+            node=node1, size=1 * (1000 ** 3), formatted_root=True)
         node2 = factory.make_Node(with_boot_disk=False)
         # 4gb block device
         factory.make_PhysicalBlockDevice(
-            node=node2, size=4 * (1000 ** 3))
+            node=node2, size=4 * (1000 ** 3), formatted_root=True)
         node3 = factory.make_Node(with_boot_disk=False)
         # 8gb block device
         factory.make_PhysicalBlockDevice(
-            node=node3, size=8 * (1000 ** 3))
+            node=node3, size=8 * (1000 ** 3), formatted_root=True)
         # all nodes with physical devices larger than 2gb
         self.assertConstrainedNodes([node2, node3], {'storage': '2'})
 
     def test_storage_single_contraint_matches_on_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, tags=['ssd'], formatted_root=True)
         node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node2, tags=['rotary'])
+        factory.make_PhysicalBlockDevice(
+            node=node2, tags=['rotary'], formatted_root=True)
         self.assertConstrainedNodes([node1], {'storage': '0(ssd)'})
 
     def test_storage_single_contraint_matches_decimal_size(self):
@@ -871,24 +888,47 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node1, size=2 * (1000 ** 3))
         factory.make_PhysicalBlockDevice(
-            node=node1, size=4 * (1000 ** 3))
+            node=node1, size=4 * (1000 ** 3), formatted_root=True)
         node2 = factory.make_Node(with_boot_disk=False)
         # 1gb block device
         factory.make_PhysicalBlockDevice(
-            node=node2, size=1 * (1000 ** 3))
+            node=node2, size=1 * (1000 ** 3), formatted_root=True)
         self.assertConstrainedNodes([node1], {'storage': '1.5'})
 
-    def test_storage_multi_contraint_only_matches_physical_devices(self):
+    def test_storage_single_contraint_allows_root_on_virtual(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1)
-        factory.make_PhysicalBlockDevice(node=node1)
-        node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_BlockDevice(node=node2)
-        factory.make_BlockDevice(node=node2)
-        self.assertConstrainedNodes([node1], {'storage': '0,0'})
+        physical = factory.make_PhysicalBlockDevice(node=node1)
+        partition_table = factory.make_PartitionTable(block_device=physical)
+        partition = factory.make_Partition(partition_table=partition_table)
+        pv = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
+        vg = factory.make_FilesystemGroup(
+            filesystems=[pv], group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        virtual = factory.make_VirtualBlockDevice(
+            filesystem_group=vg, node=node1)
+        factory.make_Filesystem(mount_point='/', block_device=virtual)
+        self.assertConstrainedNodes([node1], {'storage': '0'})
 
-    def test_storage_multi_contraint_matches_all_sizes_larger(self):
+    def test_storage_single_contraint_size_on_virtual(self):
         node1 = factory.make_Node(with_boot_disk=False)
+        physical = factory.make_PhysicalBlockDevice(
+            node=node1, size=(6 * (1000 ** 3)))
+        partition_table = factory.make_PartitionTable(block_device=physical)
+        partition = factory.make_Partition(
+            partition_table=partition_table, size=(5.5 * (1000 ** 3)))
+        pv = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
+        vg = factory.make_FilesystemGroup(
+            filesystems=[pv], group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        virtual = factory.make_VirtualBlockDevice(
+            filesystem_group=vg, node=node1, size=(5 * (1000 ** 3)))
+        factory.make_Filesystem(mount_point='/', block_device=virtual)
+        self.assertConstrainedNodes([node1], {'storage': '4'})
+
+    def test_storage_multi_contraint_matches_physical_and_unused(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node1, formatted_root=True)
         # 1gb, 2gb, 3gb block device
         factory.make_PhysicalBlockDevice(
             node=node1, size=1 * (1000 ** 3))
@@ -897,6 +937,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node1, size=3 * (1000 ** 3))
         node2 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node2, formatted_root=True)
         # 5gb, 6gb, 7gb block device
         factory.make_PhysicalBlockDevice(
             node=node2, size=5 * (1000 ** 3))
@@ -905,6 +947,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node2, size=7 * (1000 ** 3))
         node3 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node3, formatted_root=True)
         # 8gb, 9gb, 10gb block device
         factory.make_PhysicalBlockDevice(
             node=node3, size=8 * (1000 ** 3))
@@ -913,14 +957,84 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node3, size=10 * (1000 ** 3))
         # all nodes with physical devices larger than 2gb
-        self.assertConstrainedNodes([node2, node3], {'storage': '4,4,4'})
+        self.assertConstrainedNodes([node2, node3], {'storage': '0,4,4,4'})
+
+    def test_storage_multi_contraint_matches_virtual_and_unused(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node1, formatted_root=True)
+        # 1gb, 2gb, 3gb block device
+        factory.make_VirtualBlockDevice(
+            node=node1, size=1 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node1, size=2 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node1, size=3 * (1000 ** 3))
+        node2 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node2, formatted_root=True)
+        # 5gb, 6gb, 7gb block device
+        factory.make_VirtualBlockDevice(
+            node=node2, size=5 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node2, size=6 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node2, size=7 * (1000 ** 3))
+        node3 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node3, formatted_root=True)
+        # 8gb, 9gb, 10gb block device
+        factory.make_VirtualBlockDevice(
+            node=node3, size=8 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node3, size=9 * (1000 ** 3))
+        factory.make_VirtualBlockDevice(
+            node=node3, size=10 * (1000 ** 3))
+        # all nodes with physical devices larger than 2gb
+        self.assertConstrainedNodes([node2, node3], {'storage': '0,4,4,4'})
+
+    def test_storage_multi_contraint_matches_iscsi_and_unused(self):
+        node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node1, formatted_root=True)
+        # 1gb, 2gb, 3gb block device
+        factory.make_ISCSIBlockDevice(
+            node=node1, size=1 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node1, size=2 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node1, size=3 * (1000 ** 3))
+        node2 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node2, formatted_root=True)
+        # 5gb, 6gb, 7gb block device
+        factory.make_ISCSIBlockDevice(
+            node=node2, size=5 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node2, size=6 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node2, size=7 * (1000 ** 3))
+        node3 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node3, formatted_root=True)
+        # 8gb, 9gb, 10gb block device
+        factory.make_ISCSIBlockDevice(
+            node=node3, size=8 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node3, size=9 * (1000 ** 3))
+        factory.make_ISCSIBlockDevice(
+            node=node3, size=10 * (1000 ** 3))
+        # all nodes with physical devices larger than 2gb
+        self.assertConstrainedNodes([node2, node3], {'storage': '0,4,4,4'})
 
     def test_storage_multi_contraint_matches_on_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, tags=['ssd'], formatted_root=True)
         factory.make_PhysicalBlockDevice(node=node1, tags=['ssd', 'removable'])
         node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node2, tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node2, tags=['ssd'], formatted_root=True)
         factory.make_PhysicalBlockDevice(node=node2, tags=['ssd', 'sata'])
         self.assertConstrainedNodes(
             [node1], {'storage': '0(ssd),0(ssd,removable)'})
@@ -930,7 +1044,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         # 1gb, 2gb block device
         factory.make_PhysicalBlockDevice(
             node=node1, size=1 * (1000 ** 3),
-            tags=['ssd'])
+            tags=['ssd'], formatted_root=True)
         factory.make_PhysicalBlockDevice(
             node=node1, size=2 * (1000 ** 3),
             tags=['ssd'])
@@ -938,65 +1052,81 @@ class TestAcquireNodeForm(MAASServerTestCase):
         # 4gb, 5gb block device
         factory.make_PhysicalBlockDevice(
             node=node2, size=4 * (1000 ** 3),
-            tags=['ssd'])
+            tags=['ssd'], formatted_root=True)
         factory.make_PhysicalBlockDevice(
             node=node2, size=5 * (1000 ** 3),
             tags=['ssd'])
         self.assertConstrainedNodes(
             [node2], {'storage': '3(ssd),3(ssd)'})
 
-    def test_storage_first_constraint_matches_first_blockdevice(self):
+    def test_storage_first_constraint_matches_blockdevice_with_root(self):
         """
         Make sure a constraint like 10(ssd),5,20 will match a node with a
         11(ssd) first device, a 21 second device and a 10 third device,
         but not a 5/20/10(ssd) node
         """
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, size=6 * (1000 ** 3))
         factory.make_PhysicalBlockDevice(node=node1, size=21 * (1000 ** 3))
-        factory.make_PhysicalBlockDevice(node=node1, size=11 * (1000 ** 3),
-                                         tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=11 * (1000 ** 3), tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=6 * (1000 ** 3), formatted_root=True)
         node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node2, size=11 * (1000 ** 3),
-                                         tags=['ssd'])
         factory.make_PhysicalBlockDevice(node=node2, size=6 * (1000 ** 3))
         factory.make_PhysicalBlockDevice(node=node2, size=21 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=11 * (1000 ** 3),
+            tags=['ssd'], formatted_root=True)
         self.assertConstrainedNodes(
             [node2], {'storage': '10(ssd),5,20'})
 
     def test_storage_multi_contraint_matches_large_disk_count(self):
         node1 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node1, formatted_root=True)
         for _ in range(10):
             factory.make_PhysicalBlockDevice(node=node1)
         node2 = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(node=node2, formatted_root=True)
         for _ in range(5):
             factory.make_PhysicalBlockDevice(node=node2)
         self.assertConstrainedNodes(
             [node1], {'storage': '0,0,0,0,0,0,0,0,0,0'})
 
-    @skip(
-        "XXX: allenap 2015-03-17 bug=1433012: This test keeps failing when "
-        "landing unrelated branches, so has been disabled.")
     def test_storage_with_named_constraints(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, size=11 * (1000 ** 3),
-                                         tags=['ssd'])
-        factory.make_PhysicalBlockDevice(node=node1, size=6 * (1000 ** 3),
-                                         tags=['rotary', '5400rpm'])
-        factory.make_PhysicalBlockDevice(node=node1, size=21 * (1000 ** 3))
-        form = AcquireNodeForm({'storage':
-                                'root:10(ssd),data:5(rotary,5400rpm),20'})
+        physical = factory.make_PhysicalBlockDevice(
+            node=node1, size=11 * (1000 ** 3))
+        partition_table = factory.make_PartitionTable(block_device=physical)
+        partition = factory.make_Partition(
+            partition_table=partition_table, size=10 * (1000 ** 3))
+        pv = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition)
+        vg = factory.make_FilesystemGroup(
+            filesystems=[pv], group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
+        virtual = factory.make_VirtualBlockDevice(
+            filesystem_group=vg, node=node1, size=9 * (1000 ** 3),
+            tags=['lvm'])
+        factory.make_Filesystem(mount_point='/', block_device=virtual)
+        physical = factory.make_PhysicalBlockDevice(
+            node=node1, size=6 * (1000 ** 3), tags=['rotary', '5400rpm'])
+        iscsi = factory.make_ISCSIBlockDevice(
+            node=node1, size=21 * (1000 ** 3))
+        form = AcquireNodeForm({
+            'storage': 'root:8(lvm),physical:5(rotary,5400rpm),iscsi:20'})
         self.assertTrue(form.is_valid(), form.errors)
-        filtered_nodes, constraint_map = form.filter_nodes(
+        filtered_nodes, constraint_map, _ = form.filter_nodes(
             Machine.objects.all())
         node = filtered_nodes[0]
-        constraints = list(constraint_map[node.id])
-        disk0 = node.physicalblockdevice_set.get(
-            id=constraints[0])  # 1st constraint with name
-        self.assertGreaterEqual(disk0.size, 10 * 1000 ** 3)
-        disk1 = node.physicalblockdevice_set.get(
-            id=constraints[1])  # 2nd constraint with name
-        self.assertGreaterEqual(disk1.size, 5 * 1000 ** 3)
+        constraints = {
+            value: key
+            for key, value in constraint_map[node.id].items()
+        }
+        disk0 = node.blockdevice_set.get(id=constraints['root'])
+        self.assertEquals(virtual.id, disk0.id)
+        disk1 = node.blockdevice_set.get(id=constraints['physical'])
+        self.assertEquals(physical.id, disk1.id)
+        disk2 = node.blockdevice_set.get(id=constraints['iscsi'])
+        self.assertEquals(iscsi.id, disk2.id)
 
     def test_fabrics_constraint(self):
         fabric1 = factory.make_Fabric(name="fabric1")
