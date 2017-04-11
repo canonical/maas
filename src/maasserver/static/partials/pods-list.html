@@ -3,7 +3,7 @@
         <h1 class="page-header__title">Pods</h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls u-float--right">
-            <div data-ng-if="!selectedItems.length">
+            <div data-ng-if="pods.length > 0">
                 <button class="button--secondary button--inline"
                     data-ng-click="add.open = true"
                     data-ng-if="!add.open">Add pod</button>
@@ -75,80 +75,87 @@
     <div class="wrapper--inner">
         <maas-notifications></maas-notifications>
         <div class="twelve-col last-col">
-        <div class="table">
-            <header class="table__head">
-                <div class="table__row">
-                    <div data-ng-if="isSuperUser()">
-                      <div class="table__header table-col--2">
-                          <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
-                          <label for="check-all-pods" class="checkbox-label"></label>
-                      </div>
-                      <div class="table__header table-col--18">
-                          <a href=""  class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
-                              <span title="Name">Name</span>
-                          </a>
-                      </div>
-                    </div>
-                    <div data-ng-if="!isSuperUser()">
-                      <div class="table__header table-col--20">
-                          <a href="" class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
-                              <span title="Name">Name</span>
-                          </a>
-                      </div>
-                    </div>
-                    <div class="table__header table-col--15">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
-                    </div>
-                    <div class="table__header table-col--15 u-align--right">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
-                    </div>
-                    <div class="table__header table-col--15 u-align--right">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</a>
-                    </div>
-                    <div class="table__header table-col--10 u-align--right">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
-                    </div>
-                    <div class="table__header table-col--15 u-align--right">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
-                    </div>
-                    <div class="table__header table-col--10 u-align--right">
-                        <a href="" class="table__header-link" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
-                    </div>
+            <div data-ng-if="pods.length == 0">
+                <div class="u-align--center u-vertical--align u-align--center u-padding--top-large">
+                    <i class="icon icon--add-pod icon--huge" style="width: 96px; height: 96px;"></i>
+                    <h3>You have not added any pods yet.</h3>
+                    <button class="button--positive button--inline ng-scope" data-ng-click="add.open = true" data-ng-if="!add.open">Add pod</button>
                 </div>
-            </header>
-            <main class="table__body">
-                <div class="table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id"
-                    data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
-                    <div data-ng-if="isSuperUser()">
-                      <div class="table__data table-col--2" aria-label="Select pod">
-                          <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
-                          <label for="{$ pod.id $}" class="checkbox-label"></label>
-                      </div>
-                      <div class="table__data table-col--18" aria-label="Name">
-                          <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
-                      </div>
-                    </div>
-                    <div data-ng-if="!isSuperUser()">
-                      <div class="table__data table-col--20" aria-label="Name">
-                          <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
-                      </div>
-                    </div>
-                    <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.type) $}</div>
-                    <div class="table__data table-col--15 u-align--right" aria-label="Local storage (GiB)">{$ pod.available.local_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.local_storage_gb $}</div></div>
-                    <div class="table__data table-col--15 u-align--right" aria-label="iSCSI storage (GiB)">{$ pod.available.iscsi_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.iscsi_storage_gb $}</div></div>
-                    <div class="table__data table-col--10 u-align--right" aria-label="Cores">{$ pod.available.cores $} free <div class="u-text--subtle">of {$ pod.total.cores $}</div></div>
-                    <div class="table__data table-col--15 u-align--right" aria-label="RAM (GiB)">{$ pod.available.memory_gb $} free <div class="u-text--subtle">of {$ pod.total.memory_gb $}</div></div>
-                    <div class="table__data table-col--10 u-align--right" aria-label="Composed machines">{$ pod.composed_machines_count $}</div>
-                    <div class="table__dropdown" data-ng-if="pod.$selected && pod.action_failed">
-                      <div class="table__row is-active u-border--none">
-                          <div aria-label="label" class="table__data">
-                              <i class="icon icon--error"></i> {$ pod.action_error $}
+            </div>
+            <div class="table" data-ng-if="pods.length > 0">
+                <header class="table__head">
+                    <div class="table__row">
+                        <div data-ng-if="isSuperUser()">
+                          <div class="table__header table-col--2">
+                              <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll()" data-ng-checked="allViewableChecked" id="check-all-pods" data-ng-disabled="add.open || hasActionsInProgress()" />
+                              <label for="check-all-pods" class="checkbox-label"></label>
                           </div>
-                      </div>
+                          <div class="table__header table-col--18">
+                              <a href=""  class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                                  <span title="Name">Name</span>
+                              </a>
+                          </div>
+                        </div>
+                        <div data-ng-if="!isSuperUser()">
+                          <div class="table__header table-col--20">
+                              <a href="" class="table__header-link" data-ng-click="sortTable('name')" data-ng-class="{'is-sorted': predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">
+                                  <span title="Name">Name</span>
+                              </a>
+                          </div>
+                        </div>
+                        <div class="table__header table-col--15">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('type')" data-ng-class="{'is-sorted': predicate === 'type', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</a>
+                        </div>
+                        <div class="table__header table-col--15 u-align--right">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('available.local_storage')" data-ng-class="{'is-sorted': predicate === 'available.local_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Local storage (GiB)</a>
+                        </div>
+                        <div class="table__header table-col--15 u-align--right">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('available.iscsi_storage')" data-ng-class="{'is-sorted': predicate === 'available.iscsi_storage', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">iSCSI storage (GiB)</a>
+                        </div>
+                        <div class="table__header table-col--10 u-align--right">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('available.cores')" data-ng-class="{'is-sorted': predicate === 'available.cores', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Cores</a>
+                        </div>
+                        <div class="table__header table-col--15 u-align--right">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('available.memory')" data-ng-class="{'is-sorted': predicate === 'available.memory', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">RAM (GiB)</a>
+                        </div>
+                        <div class="table__header table-col--10 u-align--right">
+                            <a href="" class="table__header-link" data-ng-click="sortTable('composed_machines')" data-ng-class="{'is-sorted': predicate === 'composed_machines', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Composed machines</a>
+                        </div>
+                    </div>
+                </header>
+                <div class="table__body">
+                    <div class="table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id"
+                        data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
+                        <div data-ng-if="isSuperUser()">
+                          <div class="table__data table-col--2" aria-label="Select pod">
+                              <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(pod)" data-ng-checked="pod.$selected" id="{$ pod.id $}" data-ng-disabled="add.open || hasActionsInProgress()"/>
+                              <label for="{$ pod.id $}" class="checkbox-label"></label>
+                          </div>
+                          <div class="table__data table-col--18" aria-label="Name">
+                              <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
+                          </div>
+                        </div>
+                        <div data-ng-if="!isSuperUser()">
+                          <div class="table__data table-col--20" aria-label="Name">
+                              <a href="#/pod/{$ pod.id $}">{$ pod.name $}</a>
+                          </div>
+                        </div>
+                        <div class="table__data table-col--15" aria-label="Type">{$ getPowerTypeTitle(pod.type) $}</div>
+                        <div class="table__data table-col--15 u-align--right" aria-label="Local storage (GiB)">{$ pod.available.local_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.local_storage_gb $}</div></div>
+                        <div class="table__data table-col--15 u-align--right" aria-label="iSCSI storage (GiB)">{$ pod.available.iscsi_storage_gb $} free <div class="u-text--subtle">of {$ pod.total.iscsi_storage_gb $}</div></div>
+                        <div class="table__data table-col--10 u-align--right" aria-label="Cores">{$ pod.available.cores $} free <div class="u-text--subtle">of {$ pod.total.cores $}</div></div>
+                        <div class="table__data table-col--15 u-align--right" aria-label="RAM (GiB)">{$ pod.available.memory_gb $} free <div class="u-text--subtle">of {$ pod.total.memory_gb $}</div></div>
+                        <div class="table__data table-col--10 u-align--right" aria-label="Composed machines">{$ pod.composed_machines_count $}</div>
+                        <div class="table__dropdown" data-ng-if="pod.$selected && pod.action_failed">
+                          <div class="table__row is-active u-border--none">
+                              <div aria-label="label" class="table__data">
+                                  <i class="icon icon--error"></i> {$ pod.action_error $}
+                              </div>
+                          </div>
+                        </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
-    </div>
     </div>
 </div>
