@@ -2297,7 +2297,7 @@
     <section class="row" data-ng-if="section.area === 'events'">
         <div class="wrapper--inner">
             <div class="twelve-col u-align--right" data-ng-if="node.events.length">
-                <a class="button--secondary button--inline" href="#/node/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
+                <a href="#/node/{$ type_name $}/{$ node.system_id $}/events">View full history</a>
             </div>
             <div class="twelve-col">
                 <p data-ng-if="!node.events.length">No events.</p>
@@ -2323,9 +2323,7 @@
             </div>
             <div class="twelve-col u-align--center">
                 <p>
-                    <span data-ng-show="allowShowMoreEvents()">
-                        <button class="button--base button--inline" data-ng-click="showMoreEvents()">Load next 10 events</button>
-                    </span>
+                    <button class="button--secondary button--inline" data-ng-show="allowShowMoreEvents()" data-ng-click="showMoreEvents()">Load next 10 events</button>
                 </p>
             </div>
         </div>
