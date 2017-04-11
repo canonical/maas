@@ -79,10 +79,15 @@ parts:
       - $remove
   tgtd:
     plugin: make
-    disable-parallel: true
     source: https://github.com/fujita/tgt/archive/v1.0.68.tar.gz
-    build-packages:
-      - xsltproc
+    build: |
+      make programs
+      make conf
+      make scripts
+    install: |
+      make install-programs DESTDIR=$SNAPCRAFT_PART_INSTALL
+      make install-conf DESTDIR=$SNAPCRAFT_PART_INSTALL
+      make install-scripts DESTDIR=$SNAPCRAFT_PART_INSTALL
     filesets:
       keep:
         - usr/sbin/*
@@ -238,7 +243,6 @@ parts:
       - -snapcraft.yaml
   version:
     plugin: bzr-version
-    source: .
     stage:
       - -*
     prime:

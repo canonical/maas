@@ -18,10 +18,16 @@ class BZRVersionPlugin(snapcraft.BasePlugin):
         create_packaging = snapcraft.internal.meta.create_snap_packaging
 
         def wrap_create_packaging(config_data, project_options):
-            revno = self.run_output(
-                ['bzr', 'revno'],
-                cwd=os.path.dirname(self.project.parts_dir))
-            config_data['version'] += '+bzr%s' % revno
+            try:
+                revno = subprocess.check_output([
+                    'bzr', 'revno',
+                    os.path.abspath(os.path.dirname(self.project.parts_dir))])
+            except subprocess.CalledProcessError:
+                # This can fail when using 'cleanbuild'. This is because the
+                # bazaar branch can depend on a parent that is not copied into
+                # the container.
+                revno = b'UNKNOWN'
+            config_data['version'] += '+bzr%s' % revno.decode('utf-8')
             return create_packaging(config_data, project_options)
 
         snapcraft.internal.meta.create_snap_packaging = wrap_create_packaging
