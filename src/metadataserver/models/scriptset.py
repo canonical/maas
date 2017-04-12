@@ -4,6 +4,7 @@
 __all__ = [
     "ScriptSet",
 ]
+from datetime import timedelta
 
 from django.core.exceptions import (
     ObjectDoesNotExist,
@@ -32,6 +33,7 @@ from metadataserver.enum import (
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
 from metadataserver.models.script import Script
@@ -196,6 +198,54 @@ class ScriptSet(CleanSave, Model):
     @property
     def result_type_name(self):
         return RESULT_TYPE_CHOICES[self.result_type][1]
+
+    @property
+    def status(self):
+        qs = self.scriptresult_set.all()
+        # The status order below represents the order of precedence.
+        for status in (
+                SCRIPT_STATUS.RUNNING, SCRIPT_STATUS.PENDING,
+                SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.FAILED,
+                SCRIPT_STATUS.TIMEDOUT):
+            for script_result in qs:
+                if (script_result.status == status and
+                        status == SCRIPT_STATUS.TIMEDOUT):
+                    # A timeout causes the node to go into a failed status
+                    # so show the scriptset as failed.
+                    return SCRIPT_STATUS.FAILED
+                elif script_result.status == status:
+                    return status
+        return SCRIPT_STATUS.PASSED
+
+    @property
+    def status_name(self):
+        return SCRIPT_STATUS_CHOICES[self.status][1]
+
+    @property
+    def started(self):
+        qs = self.scriptresult_set.all()
+        if qs.exists():
+            return qs.earliest('started').started
+        else:
+            return None
+
+    @property
+    def ended(self):
+        qs = self.scriptresult_set.all()
+        if not qs.exists():
+            return None
+        elif qs.filter(ended=None).exists():
+            return None
+        else:
+            return qs.latest('ended').ended
+
+    @property
+    def runtime(self):
+        if None not in (self.ended, self.started):
+            runtime = self.ended - self.started
+            return str(runtime - timedelta(microseconds=runtime.microseconds))
+        else:
+            return ''
 
     def find_script_result(self, script_result_id=None, script_name=None):
         """Find a script result in the current set."""

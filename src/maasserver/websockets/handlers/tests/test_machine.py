@@ -162,6 +162,17 @@ class TestMachineHandler(MAASServerTestCase):
                 node.current_commissioning_script_set),
             "testing_results": handler.dehydrate_script_set(
                 node.current_testing_script_set),
+            "installation_results": handler.dehydrate_script_set(
+                node.current_installation_script_set),
+            "commissioning_script_set_status": (
+                handler.dehydrate_script_set_status(
+                    node.current_commissioning_script_set)),
+            "testing_script_set_status": (
+                handler.dehydrate_script_set_status(
+                    node.current_testing_script_set)),
+            "installation_script_set_status": (
+                handler.dehydrate_script_set_status(
+                    node.current_installation_script_set)),
             "cpu_count": node.cpu_count,
             "cpu_speed": node.cpu_speed,
             "created": dehydrate_datetime(node.created),
@@ -199,8 +210,6 @@ class TestMachineHandler(MAASServerTestCase):
             "hwe_kernel": make_hwe_kernel_ui_text(node.hwe_kernel),
             "hostname": node.hostname,
             "id": node.id,
-            "installation_results": handler.dehydrate_script_set(
-                node.current_installation_script_set),
             "interfaces": [
                 handler.dehydrate_interface(interface, node)
                 for interface in node.interface_set.all().order_by('name')
@@ -947,6 +956,19 @@ class TestMachineHandler(MAASServerTestCase):
             status=SCRIPT_STATUS.PASSED, script_set=script_set)
         self.assertItemsEqual(
             [], handler.dehydrate_script_set(script_result.script_set))
+
+    def test_dehydrate_script_set_status(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        script_result = factory.make_ScriptResult()
+        self.assertEquals(
+            script_result.status,
+            handler.dehydrate_script_set_status(script_result.script_set))
+
+    def test_dehydrate_script_set_status_returns_neg_when_none(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        self.assertEquals(-1, handler.dehydrate_script_set_status(None))
 
     def test_dehydrate_events_only_includes_lastest_50(self):
         owner = factory.make_User()

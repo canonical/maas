@@ -132,6 +132,11 @@ class NodeScriptResultHandler(OperationsHandler):
         'type',
         'type_name',
         'last_ping',
+        'status',
+        'status_name',
+        'started',
+        'ended',
+        'runtime',
         'results',
     )
 
@@ -165,6 +170,14 @@ class NodeScriptResultHandler(OperationsHandler):
     @classmethod
     def last_ping(cls, script_set):
         return fmt_time(script_set.last_ping)
+
+    @classmethod
+    def started(cls, script_set):
+        return fmt_time(script_set.started)
+
+    @classmethod
+    def ended(cls, script_set):
+        return fmt_time(script_set.ended)
 
     @classmethod
     def results(cls, script_set):

@@ -237,6 +237,11 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'type': script_set.result_type,
             'type_name': script_set.result_type_name,
             'last_ping': fmt_time(script_set.last_ping),
+            'status': script_set.status,
+            'status_name': script_set.status_name,
+            'started': fmt_time(script_set.started),
+            'ended': fmt_time(script_set.ended),
+            'runtime': script_set.runtime,
             'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)
@@ -277,6 +282,11 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'type': script_set.result_type,
             'type_name': script_set.result_type_name,
             'last_ping': fmt_time(script_set.last_ping),
+            'status': script_set.status,
+            'status_name': script_set.status_name,
+            'started': fmt_time(script_set.started),
+            'ended': fmt_time(script_set.ended),
+            'runtime': script_set.runtime,
             'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)
@@ -327,6 +337,11 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             'type': script_set.result_type,
             'type_name': script_set.result_type_name,
             'last_ping': fmt_time(script_set.last_ping),
+            'status': script_set.status,
+            'status_name': script_set.status_name,
+            'started': fmt_time(script_set.started),
+            'ended': fmt_time(script_set.ended),
+            'runtime': script_set.runtime,
             'resource_uri': '/api/2.0/nodes/%s/results/%d/' % (
                 script_set.node.system_id, script_set.id),
             }, parsed_result)

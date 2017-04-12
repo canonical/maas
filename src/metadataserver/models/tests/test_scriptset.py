@@ -3,6 +3,10 @@
 
 __all__ = []
 
+from datetime import (
+    datetime,
+    timedelta,
+)
 import random
 
 from django.core.exceptions import ValidationError
@@ -15,6 +19,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
     RESULT_TYPE,
+    SCRIPT_STATUS,
     SCRIPT_TYPE,
 )
 from metadataserver.models import ScriptSet
@@ -323,6 +328,81 @@ class TestScriptSet(MAASServerTestCase):
     def test_find_script_result_returns_none_when_not_found(self):
         script_set = factory.make_ScriptSet()
         self.assertIsNone(script_set.find_script_result())
+
+    def test_status(self):
+        statuses = {
+            SCRIPT_STATUS.RUNNING: (
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.ABORTED,
+                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                SCRIPT_STATUS.PENDING, SCRIPT_STATUS.PASSED),
+            SCRIPT_STATUS.PENDING: (
+                SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.FAILED,
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.PENDING,
+                SCRIPT_STATUS.PASSED),
+            SCRIPT_STATUS.ABORTED: (
+                SCRIPT_STATUS.FAILED, SCRIPT_STATUS.TIMEDOUT,
+                SCRIPT_STATUS.PASSED),
+            SCRIPT_STATUS.FAILED: (
+                SCRIPT_STATUS.TIMEDOUT, SCRIPT_STATUS.PASSED),
+            SCRIPT_STATUS.TIMEDOUT: (SCRIPT_STATUS.PASSED,),
+            SCRIPT_STATUS.FAILED: (SCRIPT_STATUS.PASSED,),
+            SCRIPT_STATUS.PASSED: (SCRIPT_STATUS.PASSED,),
+        }
+        for status, other_statuses in statuses.items():
+            script_set = factory.make_ScriptSet()
+            factory.make_ScriptResult(
+                script_set=script_set, status=status)
+            for _ in range(3):
+                factory.make_ScriptResult(
+                    script_set=script_set,
+                    status=random.choice(other_statuses))
+            if status == SCRIPT_STATUS.TIMEDOUT:
+                status = SCRIPT_STATUS.FAILED
+            self.assertEquals(status, script_set.status)
+
+    def test_started(self):
+        script_set = factory.make_ScriptSet()
+        now = datetime.now()
+        started = now - timedelta(seconds=random.randint(1, 500))
+        factory.make_ScriptResult(script_set=script_set, started=now)
+        factory.make_ScriptResult(script_set=script_set, started=started)
+        self.assertEquals(started, script_set.started)
+
+    def test_ended(self):
+        script_set = factory.make_ScriptSet()
+        ended = datetime.now() + timedelta(seconds=random.randint(1, 500))
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED)
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED, ended=ended)
+        self.assertEquals(ended, script_set.ended)
+
+    def test_ended_returns_none_when_not_all_results_finished(self):
+        script_set = factory.make_ScriptSet()
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED)
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING)
+        self.assertIsNone(script_set.ended)
+
+    def test_get_runtime(self):
+        script_set = factory.make_ScriptSet()
+        runtime_seconds = random.randint(1, 59)
+        now = datetime.now()
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PASSED,
+            started=now - timedelta(seconds=runtime_seconds), ended=now)
+        if runtime_seconds < 10:
+            text_seconds = '0%d' % runtime_seconds
+        else:
+            text_seconds = '%d' % runtime_seconds
+        self.assertEquals('0:00:%s' % text_seconds, script_set.runtime)
+
+    def test_get_runtime_blank_when_missing(self):
+        script_set = factory.make_ScriptSet()
+        factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING)
+        self.assertEquals('', script_set.runtime)
 
     def test_delete(self):
         node = factory.make_Node(with_empty_script_sets=True)

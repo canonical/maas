@@ -194,10 +194,19 @@ class NodeHandler(TimestampedModelHandler):
                 data = self.dehydrate_summary_output(obj, data)
                 data["commissioning_results"] = self.dehydrate_script_set(
                     obj.current_commissioning_script_set)
+                data["commissioning_script_set_status"] = (
+                    self.dehydrate_script_set_status(
+                        obj.current_commissioning_script_set))
                 data["testing_results"] = self.dehydrate_script_set(
                     obj.current_testing_script_set)
+                data["testing_script_set_status"] = (
+                    self.dehydrate_script_set_status(
+                        obj.current_testing_script_set))
                 data["installation_results"] = self.dehydrate_script_set(
                     obj.current_installation_script_set)
+                data["installation_script_set_status"] = (
+                    self.dehydrate_script_set_status(
+                        obj.current_installation_script_set))
 
                 # Third party drivers
                 if Config.objects.get_config('enable_third_party_drivers'):
@@ -488,6 +497,13 @@ class NodeHandler(TimestampedModelHandler):
                     'runtime': script_result.runtime,
                 })
         return sorted(ret, key=lambda i: i['name'])
+
+    def dehydrate_script_set_status(self, obj):
+        """Dehydrate the script set status."""
+        if obj is None:
+            return -1
+        else:
+            return obj.status
 
     def dehydrate_events(self, obj):
         """Dehydrate the node events.
