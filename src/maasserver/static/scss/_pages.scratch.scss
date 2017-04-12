@@ -42,6 +42,13 @@
   .wrapper {
     min-height: initial;
     height: initial !important;
+
+    &--sticky {
+      display: block !important;
+      overflow: visible;
+      float: left;
+      width: 100% !important;
+    }
   }
 
   .nav {
