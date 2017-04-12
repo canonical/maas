@@ -27,7 +27,7 @@ class BZRVersionPlugin(snapcraft.BasePlugin):
                 # bazaar branch can depend on a parent that is not copied into
                 # the container.
                 revno = b'UNKNOWN'
-            config_data['version'] += '+bzr%s' % revno.decode('utf-8')
+            config_data['version'] += '+bzr%s' % revno.decode('utf-8').strip()
             return create_packaging(config_data, project_options)
 
         snapcraft.internal.meta.create_snap_packaging = wrap_create_packaging
