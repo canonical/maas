@@ -150,6 +150,8 @@ def compose_purpose_opts(params):
                 params.fs_host, "3260", tname),
             # Read by overlayroot package.
             "overlayroot=tmpfs",
+            # LP:1533822 - Disable reading overlay data from disk.
+            "overlayroot_cfgdisk=disabled",
             # Select the MAAS datasource by default.
             "cc:{'datasource_list': ['MAAS']}end_cc",
             # Read by cloud-init.

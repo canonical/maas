@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 import os
+import random
 from unittest.mock import sentinel
 
 from maastesting.factory import factory
@@ -130,6 +131,12 @@ class TestKernelOpts(MAASTestCase):
 
     def make_kernel_parameters(self, *args, **kwargs):
         return make_kernel_parameters(self, *args, **kwargs)
+
+    def test_compose_kernel_command_line_includes_disable_overlay_cfg(self):
+        params = self.make_kernel_parameters(
+            purpose=random.choice(["commissioning", "xinstall", "enlist"]))
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(cmdline, Contains("overlayroot_cfgdisk=disabled"))
 
     def test_compose_kernel_command_line_includes_preseed_url(self):
         params = self.make_kernel_parameters()
