@@ -137,6 +137,15 @@ def filtered_nodes_list_from_request(request, model=None):
     return nodes.order_by('id')
 
 
+def is_registered(request):
+    """Used by both `NodesHandler` and `AnonNodesHandler`."""
+    mac_address = get_mandatory_param(request.GET, 'mac_address')
+    interfaces = Interface.objects.filter(mac_address=mac_address)
+    interfaces = interfaces.exclude(node__isnull=True)
+    interfaces = interfaces.exclude(node__status=NODE_STATUS.RETIRED)
+    return interfaces.exists()
+
+
 class NodeHandler(OperationsHandler):
     """Manage an individual Node.
 
@@ -283,11 +292,7 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
         Returns 400 if any mandatory parameters are missing.
         """
-        mac_address = get_mandatory_param(request.GET, 'mac_address')
-        interfaces = Interface.objects.filter(mac_address=mac_address)
-        interfaces = interfaces.exclude(node__isnull=True)
-        interfaces = interfaces.exclude(node__status=NODE_STATUS.RETIRED)
-        return interfaces.exists()
+        return is_registered(request)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -359,6 +364,20 @@ class NodesHandler(OperationsHandler):
             nodes = nodes.prefetch_related('tags')
             nodes = nodes.prefetch_related('zone')
             return nodes.order_by('id')
+
+    @operation(idempotent=True)
+    def is_registered(self, request):
+        """Returns whether or not the given MAC address is registered within
+        this MAAS (and attached to a non-retired node).
+
+        :param mac_address: The mac address to be checked.
+        :type mac_address: unicode
+        :return: 'true' or 'false'.
+        :rtype: unicode
+
+        Returns 400 if any mandatory parameters are missing.
+        """
+        return is_registered(request)
 
     @admin_method
     @operation(idempotent=False)

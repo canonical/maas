@@ -28,7 +28,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 
 
-class AnonymousIsRegisteredAPITest(APITestCase.ForAnonymous):
+class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.make_mac_address()
