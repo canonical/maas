@@ -517,54 +517,6 @@ class Region(RPCProtocol):
         return deferToDatabase(nodes.get_time_configuration, system_id)
 
 
-@transactional
-def registerConnection(region_id, rack_controller, host):
-    """Register the connection into the database.
-
-    :param region_id: The region ID (aka MAAS ID, or system ID for the host on
-        which regiond is running).
-    """
-    region = RegionController.objects.get(system_id=region_id)
-    process = RegionControllerProcess.objects.get(
-        region=region, pid=os.getpid())
-    # We need to handle the incoming name being an IPv6-form IPv4 address.
-    # Assume that's the case, and ignore the error if it is not.
-    try:
-        # Convert the hostname to an IPAddress, and then coerce that to dotted
-        # quad form, and from thence to a string.  If it works, we had an IPv4
-        # address.  We want the dotted quad form, since that is what the region
-        # advertises.
-        host.host = str(IPAddress(host.host).ipv4())
-    except AddrConversionError:
-        # If we got an AddressConversionError, it's not one we need to convert.
-        pass
-    endpoint = RegionControllerProcessEndpoint.objects.get(
-        process=process, address=host.host, port=host.port)
-    connection, created = RegionRackRPCConnection.objects.get_or_create(
-        endpoint=endpoint, rack_controller=rack_controller)
-    if not created:
-        # Force the save so that signals connected to the
-        # RegionRackRPCConnection are performed.
-        connection.save()
-
-
-@transactional
-def unregisterConnection(region_id, ident, host):
-    """Unregister the connection into the database.
-
-    :param region_id: The region ID (aka MAAS ID, or system ID for the host on
-        which regiond is running).
-    """
-    region = RegionController.objects.get(system_id=region_id)
-    process = RegionControllerProcess.objects.get(
-        region=region, pid=os.getpid())
-    endpoint = RegionControllerProcessEndpoint.objects.get(
-        process=process, address=host.host, port=host.port)
-    rack_controller = RackController.objects.get(system_id=ident)
-    RegionRackRPCConnection.objects.filter(
-        endpoint=endpoint, rack_controller=rack_controller).delete()
-
-
 def getRegionID():
     """Obtain the region ID from the advertising service.
 
@@ -653,9 +605,12 @@ class RegionServer(Region):
             # IPv4 or IPv6. Only time it is not an IPv4 or IPv6 address is
             # when mocking a connection.
             if self.hostIsRemote:
-                region_id = yield getRegionID()
+                advertising = yield (
+                    self.factory.service.advertiser.advertising.get())
+                process = yield deferToDatabase(advertising.getRegionProcess)
                 yield deferToDatabase(
-                    registerConnection, region_id, rack_controller, self.host)
+                    advertising.registerConnection,
+                    process, rack_controller, self.host)
 
             # Rack controller is now registered. Log this status.
             log.msg(
@@ -717,9 +672,24 @@ class RegionServer(Region):
 
     def connectionLost(self, reason):
         if self.hostIsRemote:
-            getRegionID().addCallback(
-                lambda region_id: deferToDatabase(
-                    unregisterConnection, region_id, self.ident, self.host))
+
+            def get_process(service):
+                d = deferToDatabase(service.getRegionProcess)
+                d.addCallback(lambda process: (service, process))
+                return d
+
+            def unregister(result):
+                service, process = result
+                return deferToDatabase(
+                    service.unregisterConnection,
+                    process, self.ident, self.host)
+
+            advertising = self.factory.service.advertiser.advertising.get()
+            advertising.addCallback(get_process)
+            advertising.addCallback(unregister)
+            advertising.addErrback(
+                log.err,
+                "Failed to unregister the rack controller connection.")
         self.factory.service._removeConnectionFor(self.ident, self)
         log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
@@ -746,8 +716,9 @@ class RegionService(service.Service, object):
     connections = None
     starting = None
 
-    def __init__(self):
+    def __init__(self, advertiser):
         super(RegionService, self).__init__()
+        self.advertiser = advertiser
         self.endpoints = [
             [TCP6ServerEndpoint(reactor, port)
              for port in range(5250, 5260)],
@@ -1271,7 +1242,6 @@ class RegionAdvertising:
         # records from the database.
         process, _ = RegionControllerProcess.objects.get_or_create(
             region=region_obj, pid=os.getpid())
-
         return cls(region_obj.system_id, process.id)
 
     def __init__(self, region_id, process_id):
@@ -1279,6 +1249,70 @@ class RegionAdvertising:
         super(RegionAdvertising, self).__init__()
         self.region_id = region_id
         self.process_id = process_id
+
+    @transactional
+    def getRegionProcess(self, process_id=None):
+        # Update the updated time for this process. This prevents other
+        # region process from removing this process.
+        try:
+            process = RegionControllerProcess.objects.get(id=self.process_id)
+        except RegionControllerProcess.DoesNotExist:
+            # Possible that another regiond process deleted this process
+            # because the updated field was not updated in time. Re-create the
+            # process with the same ID so its the same across the running of
+            # this regiond process.
+            process = RegionControllerProcess(
+                region=RegionController.objects.get_running_controller(),
+                pid=os.getpid(), created=now())
+            process.id = self.process_id
+            process.save(force_insert=True)
+        else:
+            process.save(update_fields=["updated"])
+        return process
+
+    @transactional
+    def registerConnection(self, process, rack_controller, host):
+        """Register a connection into the database."""
+        # We need to handle the incoming name being an IPv6-form IPv4 address.
+        # Assume that's the case, and ignore the error if it is not.
+        try:
+            # Convert the hostname to an IPAddress, and then coerce that to
+            # dotted quad form, and from thence to a string.  If it works, we
+            # had an IPv4 address.  We want the dotted quad form, since that
+            # is what the region advertises.
+            host.host = str(IPAddress(host.host).ipv4())
+        except AddrConversionError:
+            # If we got an AddressConversionError, it's not one we need to
+            # convert.
+            pass
+        endpoint = RegionControllerProcessEndpoint.objects.get(
+            process=process, address=host.host, port=host.port)
+        connection, created = RegionRackRPCConnection.objects.get_or_create(
+            endpoint=endpoint, rack_controller=rack_controller)
+        if not created:
+            # Force the save so that signals connected to the
+            # RegionRackRPCConnection are performed.
+            connection.save()
+
+    @transactional
+    def unregisterConnection(self, process, ident, host):
+        """Unregister the connection into the database."""
+        try:
+            endpoint = RegionControllerProcessEndpoint.objects.get(
+                process=process, address=host.host, port=host.port)
+        except RegionControllerProcessEndpoint.DoesNotExist:
+            # Endpoint no longer exists, nothing to do.
+            pass
+        else:
+            try:
+                rack_controller = RackController.objects.get(system_id=ident)
+            except RackController.DoesNotExist:
+                # No rack controller, nothing to do.
+                pass
+            else:
+                RegionRackRPCConnection.objects.filter(
+                    endpoint=endpoint,
+                    rack_controller=rack_controller).delete()
 
     @synchronous
     @synchronised(lock)
@@ -1303,21 +1337,8 @@ class RegionAdvertising:
             update_fields.append("hostname")
         region_obj.save(update_fields=update_fields)
 
-        # Update the updated time for this process. This prevents other
-        # region process from removing this process.
-        try:
-            process = RegionControllerProcess.objects.get(id=self.process_id)
-        except RegionControllerProcess.DoesNotExist:
-            # Possible that another regiond process deleted this process
-            # because the updated field was not updated in time. Re-create the
-            # process with the same ID so its the same across the running of
-            # this regiond process.
-            process = RegionControllerProcess(
-                region=region_obj, pid=os.getpid(), created=now())
-            process.id = self.process_id
-            process.save()
-        else:
-            process.save(update_fields=["updated"])
+        # Get the updated region controller process.
+        process = self.getRegionProcess()
 
         # Remove any old processes that are older than 90 seconds.
         remove_before_time = now() - timedelta(seconds=90)

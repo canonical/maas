@@ -9,7 +9,6 @@ __all__ = [
 
 from datetime import timedelta
 
-from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.service import Service as ServiceModel
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
@@ -56,14 +55,14 @@ class ServiceMonitorService(TimerService, object):
         """Update database about services status."""
         advertising = yield self.advertisingService.advertising.get()
         services = yield self._buildServices(services)
+        process = yield deferToDatabase(advertising.getRegionProcess)
         yield deferToDatabase(
-            self._saveIntoDatabase, advertising.process_id, services)
+            self._saveIntoDatabase, process, services)
 
     @transactional
-    def _saveIntoDatabase(self, processId, services):
+    def _saveIntoDatabase(self, process, services):
         """Save the `services` in the the database for process by `processId`.
         """
-        process = RegionControllerProcess.objects.get(id=processId)
         for service in services:
             ServiceModel.objects.update_service_for(
                 process.region, service["name"],

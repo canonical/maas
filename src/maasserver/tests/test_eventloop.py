@@ -200,7 +200,7 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["region-controller"]["only_on_master"])
 
     def test_make_RegionService(self):
-        service = eventloop.make_RegionService()
+        service = eventloop.make_RegionService(sentinel.advertiser)
         self.assertThat(service, IsInstance(regionservice.RegionService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
@@ -208,6 +208,9 @@ class TestFactories(MAASTestCase):
             eventloop.loop.factories["rpc"]["factory"])
         self.assertFalse(
             eventloop.loop.factories["rpc"]["only_on_master"])
+        self.assertEquals(
+            ["rpc-advertise"],
+            eventloop.loop.factories["rpc"]["requires"])
 
     def test_make_RegionAdvertisingService(self):
         service = eventloop.make_RegionAdvertisingService()

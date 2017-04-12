@@ -73,10 +73,10 @@ def make_RegionControllerService(postgresListener):
     return RegionControllerService(postgresListener)
 
 
-def make_RegionService():
+def make_RegionService(advertiser):
     # Import here to avoid a circular import.
     from maasserver.rpc import regionservice
-    return regionservice.RegionService()
+    return regionservice.RegionService(advertiser)
 
 
 def make_RegionAdvertisingService():
@@ -211,7 +211,7 @@ class RegionEventLoop:
         "rpc": {
             "only_on_master": False,
             "factory": make_RegionService,
-            "requires": [],
+            "requires": ["rpc-advertise"],
         },
         "rpc-advertise": {
             "only_on_master": False,

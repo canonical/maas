@@ -925,8 +925,8 @@ class ClusterClientService(TimerService, object):
         or `None` if it hasn't yet.
     """
 
-    INTERVAL_LOW = 2  # seconds.
-    INTERVAL_MID = 10  # seconds.
+    INTERVAL_LOW = 1  # seconds.
+    INTERVAL_MID = 5  # seconds.
     INTERVAL_HIGH = 30  # seconds.
 
     time_started = None
