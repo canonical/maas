@@ -412,7 +412,8 @@ class VersionIndexHandler(MetadataViewHandler):
 
         # Commit results to the database.
         for script_result, args in results.items():
-            script_result.store_result(**args)
+            script_result.store_result(
+                **args, timedout=(status == SIGNAL_STATUS.TIMEDOUT))
 
         script_set.last_ping = datetime.now()
         script_set.save()
@@ -858,6 +859,7 @@ class MAASScriptsHandler(OperationsHandler):
                     'path': path,
                     'script_result_id': script_result.id,
                     'script_version_id': script_result.script.script.id,
+                    'timeout_seconds': script_result.script.timeout.seconds,
                 })
         return meta_data
 

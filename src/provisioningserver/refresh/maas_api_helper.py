@@ -10,6 +10,10 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+from datetime import (
+    datetime,
+    timedelta,
+)
 from email.utils import parsedate
 import json
 import mimetypes
@@ -17,6 +21,7 @@ import random
 import selectors
 import socket
 import string
+from subprocess import TimeoutExpired
 import sys
 import time
 import urllib.error
@@ -266,7 +271,8 @@ def signal(
         raise SignalException("Unexpected error [%s]" % exc)
 
 
-def capture_script_output(proc, combined_path, stdout_path, stderr_path):
+def capture_script_output(
+        proc, combined_path, stdout_path, stderr_path, timeout_seconds=None):
     """Capture stdout and stderr from `proc`.
 
     Standard output is written to a file named by `stdout_path`, and standard
@@ -277,8 +283,19 @@ def capture_script_output(proc, combined_path, stdout_path, stderr_path):
     same stdout and stderr, their output will be captured only as long as
     `proc` is running.
 
+    Optionally a timeout can be given in seconds. This time is padded by 60
+    seconds to allow for script cleanup. If the script runs past the timeout
+    the process is killed and an exception is raised. Forked processes are not
+    subject to the timeout.
+
     :return: The exit code of `proc`.
     """
+    if timeout_seconds in (None, 0):
+        timeout = None
+    else:
+        # Pad the timeout by 60 seconds to allow for cleanup.
+        timeout = datetime.now() + timedelta(seconds=(timeout_seconds + 60))
+
     with open(stdout_path, 'wb') as out, open(stderr_path, 'wb') as err:
         with open(combined_path, 'wb') as combined:
             with selectors.DefaultSelector() as selector:
@@ -287,13 +304,31 @@ def capture_script_output(proc, combined_path, stdout_path, stderr_path):
                 while selector.get_map() and proc.poll() is None:
                     # Select with a short timeout so that we don't tight loop.
                     _select_script_output(selector, combined, 0.1)
+                    if timeout is not None and datetime.now() > timeout:
+                        break
                 else:
                     # Process has finished or has closed stdout and stderr.
                     # Process anything still sitting in the latter's buffers.
                     _select_script_output(selector, combined, 0.0)
 
-    # Always wait for the process to finish.
-    return proc.wait()
+    now = datetime.now()
+    # Wait for the process to finish.
+    if timeout is None:
+        # No timeout just wait until the process finishes.
+        return proc.wait()
+    elif now >= timeout:
+        # Loop above detected time out execeed, kill the process.
+        proc.kill()
+        raise TimeoutExpired(proc.args, timeout_seconds)
+    else:
+        # stdout and stderr have been closed but the timeout has not been
+        # exceeded. Run with the remaining amount of time.
+        try:
+            return proc.wait(timeout=(timeout - now).seconds)
+        except TimeoutExpired:
+            # Make sure the process was killed
+            proc.kill()
+            raise
 
 
 def _select_script_output(selector, combined, timeout):

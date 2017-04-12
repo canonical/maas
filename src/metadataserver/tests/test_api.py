@@ -80,6 +80,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
+    SIGNAL_STATUS,
 )
 from metadataserver.models import (
     NodeKey,
@@ -464,7 +465,7 @@ def make_node_client(node=None):
 
 def call_signal(
         client=None, version='latest', files: dict=None, headers: dict=None,
-        **kwargs):
+        status=None, **kwargs):
     """Call the API's signal method.
 
     :param client: Optional client to POST with.  If omitted, will create
@@ -482,9 +483,11 @@ def call_signal(
     if client is None:
         client = make_node_client(factory.make_Node(
             status=NODE_STATUS.COMMISSIONING))
+    if status is None:
+        status = SIGNAL_STATUS.OK
     params = {
         'op': 'signal',
-        'status': 'OK',
+        'status': status,
     }
     params.update(kwargs)
     params.update({
@@ -889,7 +892,7 @@ class TestInstallingAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(other_node).status)
@@ -899,7 +902,7 @@ class TestInstallingAPI(MAASServerTestCase):
             interface=True, status=NODE_STATUS.DEPLOYING,
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -910,7 +913,7 @@ class TestInstallingAPI(MAASServerTestCase):
             interface=True, status=NODE_STATUS.DEPLOYING,
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
@@ -919,8 +922,8 @@ class TestInstallingAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        call_signal(client, status='OK')
-        response = call_signal(client, status='OK')
+        call_signal(client, status=SIGNAL_STATUS.OK)
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -929,7 +932,7 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(node.owner, reload_object(node).owner)
 
@@ -938,7 +941,7 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
@@ -948,8 +951,8 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        call_signal(client, status='FAILED')
-        response = call_signal(client, status='FAILED')
+        call_signal(client, status=SIGNAL_STATUS.FAILED)
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
@@ -960,7 +963,7 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertThat(response, HasStatusCode(http.client.OK))
         end_time = ceil(time.time())
         script_set = node.current_installation_script_set
@@ -976,7 +979,8 @@ class TestInstallingAPI(MAASServerTestCase):
             node.current_installation_script_set.scriptresult_set.first())
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
@@ -993,7 +997,8 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(script_status, script_result.status)
@@ -1013,10 +1018,6 @@ class TestMAASScripts(MAASServerTestCase):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
-        # XXX ltrager 2017-01-23 - Needed until builtin tests are added
-        factory.make_ScriptResult(
-            script_set=node.current_testing_script_set,
-            status=SCRIPT_STATUS.PENDING)
 
         response = make_node_client(node=node).get(
             reverse('maas-scripts', args=['latest']))
@@ -1061,6 +1062,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'path': path,
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
+                'timeout_seconds': script_result.script.timeout.seconds,
             })
 
         meta_data = json.loads(
@@ -1079,10 +1081,6 @@ class TestMAASScripts(MAASServerTestCase):
         start_time = floor(time.time())
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
-        # XXX ltrager 2017-01-23 - Needed until builtin tests are added
-        factory.make_ScriptResult(
-            script_set=node.current_testing_script_set,
-            status=SCRIPT_STATUS.PENDING)
 
         response = make_node_client(node=node).get(
             reverse('maas-scripts', args=['latest']))
@@ -1109,6 +1107,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'path': path,
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
+                'timeout_seconds': script_result.script.timeout.seconds,
             })
 
         meta_data = json.loads(
@@ -1204,6 +1203,7 @@ class TestMAASScripts(MAASServerTestCase):
                 'path': path,
                 'script_result_id': script_result.id,
                 'script_version_id': script_result.script.script.id,
+                'timeout_seconds': script_result.script.timeout.seconds,
             }
             content = script_result.script.script.data.encode()
             self.extract_and_validate_file(
@@ -1301,7 +1301,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(other_node).status)
@@ -1312,7 +1312,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1368,7 +1369,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
@@ -1413,7 +1414,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node.owner = user
         node.save()
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(user, reload_object(node).owner)
 
@@ -1421,7 +1422,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
@@ -1429,8 +1430,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        call_signal(client, status='OK')
-        response = call_signal(client, status='OK')
+        call_signal(client, status=SIGNAL_STATUS.OK)
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
@@ -1438,7 +1439,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
@@ -1449,7 +1450,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
@@ -1458,7 +1459,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertIsNone(reload_object(node).status_expires)
@@ -1467,8 +1468,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        call_signal(client, status='FAILED')
-        response = call_signal(client, status='FAILED')
+        call_signal(client, status=SIGNAL_STATUS.FAILED)
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
@@ -1478,7 +1479,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
         error_text = factory.make_string()
-        response = call_signal(client, status='FAILED', error=error_text)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.FAILED, error=error_text)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
 
@@ -1596,6 +1598,26 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(size_limit, len(script_result.output))
+
+    def test_signal_stores_timeout(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
+        script_result = (
+            node.current_commissioning_script_set.scriptresult_set.first())
+        script_result.status = SCRIPT_STATUS.RUNNING
+        script_result.save()
+        client = make_node_client(node=node)
+        text = factory.make_string().encode('ascii')
+        exit_status = random.randint(0, 255)
+        response = call_signal(
+            client, script_result=exit_status,
+            files={script_result.name: text}, status=SIGNAL_STATUS.TIMEDOUT)
+        script_result = reload_object(script_result)
+        self.assertEqual(http.client.OK, response.status_code)
+        script_result = reload_object(script_result)
+        self.assertEqual(text, script_result.output)
+        self.assertEqual(SCRIPT_STATUS.TIMEDOUT, script_result.status)
+        self.assertIsNone(script_result.exit_status)
 
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_Node(
@@ -1737,7 +1759,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1749,7 +1772,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='TESTING', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.TESTING, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
         self.assertThat(
@@ -1760,7 +1784,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_RackController(with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1771,7 +1796,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='WORKING', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.WORKING, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1782,7 +1808,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='FAILED', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.FAILED, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1795,7 +1822,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
@@ -1809,7 +1837,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='TESTING', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.TESTING, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
         self.assertThat(
@@ -1821,7 +1850,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node, "set_initial_networking_configuration")
         node = factory.make_RackController(with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.OK, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1833,7 +1863,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='WORKING', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.WORKING, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1845,7 +1876,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='FAILED', script_result=0)
+        response = call_signal(
+            client, status=SIGNAL_STATUS.FAILED, script_result=0)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1857,7 +1889,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertThat(response, HasStatusCode(http.client.OK))
         end_time = ceil(time.time())
         script_set = node.current_commissioning_script_set
@@ -1873,7 +1905,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             node.current_commissioning_script_set.scriptresult_set.first())
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
@@ -1890,7 +1923,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(script_status, script_result.status)
@@ -1916,7 +1950,7 @@ class TestTestingAPI(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
             with_empty_script_sets=True)
         client = make_node_client(node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.TESTING, reload_object(other_node).status)
 
@@ -1925,7 +1959,7 @@ class TestTestingAPI(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
@@ -1934,7 +1968,7 @@ class TestTestingAPI(MAASServerTestCase):
             previous_status=NODE_STATUS.COMMISSIONING,
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
@@ -1943,7 +1977,7 @@ class TestTestingAPI(MAASServerTestCase):
             previous_status=NODE_STATUS.FAILED_COMMISSIONING,
             status=NODE_STATUS.TESTING, with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.NEW, reload_object(node).status)
 
@@ -1952,7 +1986,7 @@ class TestTestingAPI(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED, status=NODE_STATUS.TESTING,
             owner=factory.make_User(), with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(node.owner, reload_object(node).owner)
 
@@ -1961,7 +1995,7 @@ class TestTestingAPI(MAASServerTestCase):
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(
             NODE_STATUS.FAILED_TESTING, reload_object(node).status)
@@ -1971,7 +2005,7 @@ class TestTestingAPI(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='TESTING')
+        response = call_signal(client, status=SIGNAL_STATUS.TESTING)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertEqual(NODE_STATUS.TESTING, reload_object(node).status)
 
@@ -1981,7 +2015,7 @@ class TestTestingAPI(MAASServerTestCase):
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
             with_empty_script_sets=True)
         client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
+        response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertThat(response, HasStatusCode(http.client.OK))
         end_time = ceil(time.time())
         script_set = node.current_testing_script_set
@@ -1990,9 +2024,6 @@ class TestTestingAPI(MAASServerTestCase):
         self.assertLessEqual(floor(script_set.last_ping.timestamp()), end_time)
 
     def test_signaling_testing_with_script_id_sets_script_to_run(self):
-        # XXX 2017-01-24 ltrager - Needed until builtin testing scripts are
-        # added.
-        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
             with_empty_script_sets=True)
@@ -2000,15 +2031,13 @@ class TestTestingAPI(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.first())
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_testing_with_script_id_ignores_not_pending(self):
-        # XXX 2017-01-24 ltrager - Needed until builtin testing scripts are
-        # added.
-        factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, owner=factory.make_User(),
             with_empty_script_sets=True)
@@ -2020,7 +2049,8 @@ class TestTestingAPI(MAASServerTestCase):
         script_result.save()
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
         self.assertEquals(script_status, script_result.status)
@@ -2036,7 +2066,8 @@ class TestTestingAPI(MAASServerTestCase):
             node.current_testing_script_set.scriptresult_set.first())
         client = make_node_client(node=node)
         response = call_signal(
-            client, status='WORKING', script_result_id=script_result.id)
+            client, status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id)
         self.assertThat(response, HasStatusCode(http.client.OK))
         node = reload_object(node)
         self.assertIsNone(node.status_expires)
@@ -2052,7 +2083,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
@@ -2063,7 +2094,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             status=NODE_STATUS.DISK_ERASING, owner=factory.make_User(),
             power_state=POWER_STATE.ON, power_type="virsh")
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RELEASING, reload_object(node).status)
@@ -2079,7 +2110,7 @@ class TestRescueModeAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
         client = make_node_client(node=node)
-        response = call_signal(client, status='FAILED')
+        response = call_signal(client, status=SIGNAL_STATUS.FAILED)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
@@ -2090,7 +2121,7 @@ class TestRescueModeAPI(MAASServerTestCase):
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User(),
             power_state=POWER_STATE.ON, power_type="virsh")
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RESCUE_MODE, reload_object(node).status)
@@ -2099,7 +2130,7 @@ class TestRescueModeAPI(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ENTERING_RESCUE_MODE, owner=factory.make_User())
         client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
+        response = call_signal(client, status=SIGNAL_STATUS.OK)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNotNone(reload_object(node).owner)
 

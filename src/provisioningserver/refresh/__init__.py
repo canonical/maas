@@ -8,6 +8,7 @@ import stat
 from subprocess import (
     PIPE,
     Popen,
+    TimeoutExpired,
 )
 import tempfile
 
@@ -142,18 +143,22 @@ def runscripts(scripts, url, creds, tmpdir):
         st = os.stat(script_path)
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
 
-        # If we pipe the output of the subprocess and the subprocess also
-        # creates a subprocess we end up dead locking. Spawn a shell process
-        # and capture the output to the filesystem to avoid that and help with
-        # debugging.
         combined_path = os.path.join(out_dir, script_name)
         stdout_name = '%s.out' % script_name
         stdout_path = os.path.join(out_dir, stdout_name)
         stderr_name = '%s.err' % script_name
         stderr_path = os.path.join(out_dir, stderr_name)
 
+        timeout = builtin_script.get('timeout')
+        if timeout is None:
+            timeout_seconds = None
+        else:
+            timeout_seconds = timeout.seconds
+
         try:
             proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+            capture_script_output(
+                proc, combined_path, stdout_path, stderr_path, timeout_seconds)
         except OSError as e:
             if isinstance(e.errno, int) and e.errno != 0:
                 exit_status = e.errno
@@ -167,23 +172,37 @@ def runscripts(scripts, url, creds, tmpdir):
                 script_name: result,
                 stderr_name: result,
             }
-        else:
-            capture_script_output(
-                proc, combined_path, stdout_path, stderr_path)
-
-            exit_status = proc.returncode
+            signal_wrapper(
+                url, creds, 'WORKING', files=files, exit_status=exit_status,
+                error='Failed to execute %s [%d/%d]: %d' % (
+                    script_name, current_script, total_scripts, exit_status))
+            failed_scripts.append(script_name)
+        except TimeoutExpired:
             files = {
                 script_name: open(combined_path, 'rb').read(),
                 stdout_name: open(stdout_path, 'rb').read(),
                 stderr_name: open(stderr_path, 'rb').read(),
             }
-
-        signal_wrapper(
-            url, creds,
-            "WORKING", "Finished %s [%d/%d]: %d" %
-            (script_name, current_script, total_scripts, exit_status),
-            files=files, exit_status=exit_status)
-        if exit_status != 0:
+            signal_wrapper(
+                url, creds, 'TIMEDOUT', files=files,
+                error='Timeout(%s) expired on %s [%d/%d]' % (
+                    str(timeout), script_name, current_script, total_scripts))
             failed_scripts.append(script_name)
+        else:
+            files = {
+                script_name: open(combined_path, 'rb').read(),
+                stdout_name: open(stdout_path, 'rb').read(),
+                stderr_name: open(stderr_path, 'rb').read(),
+            }
+            signal_wrapper(
+                url, creds, 'WORKING', files=files,
+                exit_status=proc.returncode,
+                error='Finished %s [%d/%d]: %d' % (
+                    script_name, current_script, total_scripts,
+                    proc.returncode))
+            if proc.returncode != 0:
+                failed_scripts.append(script_name)
+
         current_script += 1
+
     return failed_scripts

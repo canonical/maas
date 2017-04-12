@@ -106,6 +106,12 @@ class TestScriptResult(MAASServerTestCase):
         self.assertEquals(stderr, script_result.stderr)
         self.assertEquals(result, script_result.result)
 
+    def test_store_result_sets_status_to_timedout_with_timedout_true(self):
+        script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
+        script_result.store_result(random.randint(0, 255), timedout=True)
+        self.assertEquals(SCRIPT_STATUS.TIMEDOUT, script_result.status)
+        self.assertIsNone(script_result.exit_status)
+
     def test_store_result_sets_status_to_passed_with_exit_code_zero(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         script_result.store_result(0)

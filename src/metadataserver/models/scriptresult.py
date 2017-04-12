@@ -109,8 +109,8 @@ class ScriptResult(CleanSave, TimestampedModel):
         return "%s/%s" % (self.script_set.node.system_id, self.name)
 
     def store_result(
-            self, exit_status, output=None, stdout=None, stderr=None,
-            result=None, script_version_id=None):
+            self, exit_status=None, output=None, stdout=None, stderr=None,
+            result=None, script_version_id=None, timedout=False):
         # Don't allow ScriptResults to be overwritten unless the node is a
         # controller. Controllers are allowed to overwrite their results to
         # prevent new ScriptSets being created everytime a controller starts.
@@ -127,11 +127,14 @@ class ScriptResult(CleanSave, TimestampedModel):
             assert self.result == ''
             assert self.script_version is None
 
-        self.exit_status = exit_status
-        if exit_status == 0:
-            self.status = SCRIPT_STATUS.PASSED
-        else:
-            self.status = SCRIPT_STATUS.FAILED
+        if timedout:
+            self.status = SCRIPT_STATUS.TIMEDOUT
+        elif exit_status is not None:
+            self.exit_status = exit_status
+            if exit_status == 0:
+                self.status = SCRIPT_STATUS.PASSED
+            else:
+                self.status = SCRIPT_STATUS.FAILED
         if output is not None:
             self.output = Bin(output)
         if stdout is not None:

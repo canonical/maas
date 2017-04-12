@@ -47,7 +47,7 @@ def mark_nodes_failed_after_expiring():
             NODE_FAILURE_MONITORED_STATUS_TIMEOUTS[node.status],
             )
         node.mark_failed(
-            comment=comment, script_result_status=SCRIPT_STATUS.TIMEDOUT)
+            comment=comment, script_result_status=SCRIPT_STATUS.ABORTED)
 
 
 def mark_nodes_failed_after_missing_script_timeout():
@@ -96,16 +96,19 @@ def mark_nodes_failed_after_missing_script_timeout():
                 timeout = script_result.script.timeout
             else:
                 continue
-            # Give tests an extra minute for cleanup and signaling done.
-            # Most NODE_INFO_SCRIPTS have a 10s timeout with the assumption
-            # that they'll get an extra minute here.
+            # The node running the scripts checks if the script has run past
+            # its time limit. The node will try to kill the script and move on
+            # by signaling the region. If after 5 minutes past the timeout the
+            # region hasn't recieved the signal mark_failed and stop the node.
             script_expires = (
-                script_result.started + timeout + timedelta(minutes=1))
+                script_result.started + timeout + timedelta(minutes=5))
             if script_expires < now:
+                script_result.status = SCRIPT_STATUS.TIMEDOUT
+                script_result.save(update_fields=['status'])
                 node.mark_failed(
                     comment="%s has run past it's timeout(%s)" % (
                         script_result.name, str(timeout)),
-                    script_result_status=SCRIPT_STATUS.TIMEDOUT)
+                    script_result_status=SCRIPT_STATUS.ABORTED)
                 if not node.enable_ssh:
                     node.stop(
                         comment=(

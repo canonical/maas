@@ -6,6 +6,7 @@
 __all__ = []
 
 from collections import OrderedDict
+from datetime import timedelta
 from email.utils import formatdate
 from io import StringIO
 import json
@@ -15,6 +16,7 @@ import re
 from subprocess import (
     PIPE,
     Popen,
+    TimeoutExpired,
 )
 import time
 import urllib
@@ -500,14 +502,15 @@ class TestCaptureScriptOutput(MAASTestCase):
         for iteration in range(1, 21)
     ]
 
-    def capture(self, proc):
+    def capture(self, proc, timeout=None):
         scripts_dir = Path(self.useFixture(TempDirectory()).path)
         combined_path = scripts_dir.joinpath("combined")
         stdout_path = scripts_dir.joinpath("stdout")
         stderr_path = scripts_dir.joinpath("stderr")
 
         returncode = maas_api_helper.capture_script_output(
-            proc, str(combined_path), str(stdout_path), str(stderr_path))
+            proc, str(combined_path), str(stdout_path), str(stderr_path),
+            timeout)
 
         return (
             returncode,
@@ -592,3 +595,13 @@ class TestCaptureScriptOutput(MAASTestCase):
         self.assertThat(returncode, Equals(0), stderr)
         # This is a complete XML document; we've captured all output.
         self.assertThat(etree.fromstring(stdout).tag, Equals("list"))
+
+    def test__timeout(self):
+        # The timeout is padded by 60 seconds, override it so the test can
+        # run quickly.
+        self.patch(maas_api_helper, 'timedelta').return_value = timedelta(
+            microseconds=1)
+        proc = Popen(
+            'echo "test"', stdout=PIPE, stderr=PIPE, shell=True)
+        self.assertRaises(
+            TimeoutExpired, self.capture, proc, random.randint(1, 500))

@@ -5,10 +5,12 @@
 
 __all__ = []
 
+from datetime import timedelta
 from io import BytesIO
 import json
 import os
 import random
+from subprocess import TimeoutExpired
 import tarfile
 from unittest.mock import ANY
 
@@ -39,6 +41,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
                 'path': '%s/%s' % (factory.make_name('dir'), name),
                 'script_result_id': random.randint(1, 1000),
                 'script_version_id': random.randint(1, 1000),
+                'timeout_seconds': random.randint(1, 500),
             })
         return scripts
 
@@ -208,7 +211,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             mock_signal,
             MockAnyCall(
                 creds=None, url=None, status='WORKING', exit_status=8,
-                error='Finished %s [1/1]: 8' % script['name'],
+                error='Failed to execute %s [1/1]: 8' % script['name'],
                 script_result_id=script['script_result_id'],
                 script_version_id=script['script_version_id'],
                 files={
@@ -243,7 +246,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             mock_signal,
             MockAnyCall(
                 creds=None, url=None, status='WORKING', exit_status=2,
-                error='Finished %s [1/1]: 2' % script['name'],
+                error='Failed to execute %s [1/1]: 2' % script['name'],
                 script_result_id=script['script_result_id'],
                 script_version_id=script['script_version_id'],
                 files={
@@ -278,12 +281,48 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             mock_signal,
             MockAnyCall(
                 creds=None, url=None, status='WORKING', exit_status=2,
-                error='Finished %s [1/1]: 2' % script['name'],
+                error='Failed to execute %s [1/1]: 2' % script['name'],
                 script_result_id=script['script_result_id'],
                 script_version_id=script['script_version_id'],
                 files={
                     script['name']: b'[Errno 0] Exec format error',
                     '%s.err' % script['name']: b'[Errno 0] Exec format error',
+                }))
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                None, None, 'FAILED', '1 scripts failed to run'))
+
+    def test_run_scripts_signals_timeout(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        self.patch(maas_run_remote_scripts, 'Popen')
+        scripts = self.make_scripts()
+        self.make_script_output(scripts, scripts_dir)
+        mock_cap = self.patch(maas_run_remote_scripts, 'capture_script_output')
+        mock_cap.side_effect = TimeoutExpired(
+            [factory.make_name('arg') for _ in range(3)],
+            scripts[0]['timeout_seconds'])
+
+        # Don't need to give the url or creds as we're not running the scripts
+        # and sending the result. The scripts_dir and out_dir are the same as
+        # in the test environment there isn't anything in the scripts_dir.
+        self.assertEquals(
+            1, run_scripts(None, None, scripts_dir, scripts_dir, scripts))
+
+        self.assertThat(
+            mock_signal,
+            MockAnyCall(
+                creds=None, url=None, status='TIMEDOUT',
+                error='Timeout(%s) expired on %s [1/1]' % (
+                    str(timedelta(seconds=scripts[0]['timeout_seconds'])),
+                    scripts[0]['name']),
+                script_result_id=scripts[0]['script_result_id'],
+                script_version_id=scripts[0]['script_version_id'],
+                files={
+                    scripts[0]['name']: scripts[0]['output'],
+                    '%s.out' % scripts[0]['name']: scripts[0]['stdout'],
+                    '%s.err' % scripts[0]['name']: scripts[0]['stderr'],
                 }))
         self.assertThat(
             mock_signal,

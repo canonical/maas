@@ -144,7 +144,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         script = factory.make_Script(timeout=timedelta(seconds=60))
         running_script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.RUNNING, script=script,
-            started=now - timedelta(minutes=3))
+            started=now - timedelta(minutes=10))
 
         mark_nodes_failed_after_missing_script_timeout()
         node = reload_object(node)
@@ -164,7 +164,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         self.assertEquals(
             SCRIPT_STATUS.FAILED, reload_object(failed_script_result).status)
         self.assertEquals(
-            SCRIPT_STATUS.TIMEDOUT,
+            SCRIPT_STATUS.ABORTED,
             reload_object(pending_script_result).status)
         self.assertEquals(
             SCRIPT_STATUS.TIMEDOUT,
@@ -188,7 +188,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         failed_script_result.save()
         running_script_result = pending_script_results.pop()
         running_script_result.status = SCRIPT_STATUS.RUNNING
-        running_script_result.started = now - timedelta(minutes=3)
+        running_script_result.started = now - timedelta(minutes=10)
         running_script_result.save()
 
         mark_nodes_failed_after_missing_script_timeout()
@@ -213,7 +213,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             reload_object(running_script_result).status)
         for script_result in pending_script_results:
             self.assertEquals(
-                SCRIPT_STATUS.TIMEDOUT, reload_object(script_result).status)
+                SCRIPT_STATUS.ABORTED, reload_object(script_result).status)
 
     def test_mark_nodes_failed_after_missing_timeout_prefetches(self):
         self.patch(Node, 'mark_failed')

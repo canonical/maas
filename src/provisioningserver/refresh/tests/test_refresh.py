@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test refresh functions."""
@@ -6,6 +6,7 @@
 __all__ = []
 
 from collections import OrderedDict
+from datetime import timedelta
 import os
 from pathlib import Path
 import random
@@ -133,9 +134,11 @@ class TestHelpers(MAASTestCase):
 
 
 class TestRefresh(MAASTestCase):
-    def patch_scripts_success(self, script_name=None):
+    def patch_scripts_success(self, script_name=None, timeout=None):
         if script_name is None:
             script_name = factory.make_name('script_name')
+        if timeout is None:
+            timeout = timedelta(seconds=random.randint(1, 500))
         TEST_SCRIPT = dedent("""\
             #!/bin/bash
             echo 'test script'
@@ -145,11 +148,14 @@ class TestRefresh(MAASTestCase):
                 'content': TEST_SCRIPT.encode('ascii'),
                 'name': script_name,
                 'run_on_controller': True,
+                'timeout': timeout,
             })])
 
-    def patch_scripts_failure(self, script_name=None):
+    def patch_scripts_failure(self, script_name=None, timeout=None):
         if script_name is None:
             script_name = factory.make_name('script_name')
+        if timeout is None:
+            timeout = timedelta(seconds=random.randint(1, 500))
         TEST_SCRIPT = dedent("""\
             #!/bin/bash
             echo 'test failed'
@@ -160,6 +166,7 @@ class TestRefresh(MAASTestCase):
                 'content': TEST_SCRIPT.encode('ascii'),
                 'name': script_name,
                 'run_on_controller': True,
+                'timeout': timeout,
             })])
 
     def test_refresh_accepts_defined_url(self):
@@ -232,13 +239,13 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Finished %s [1/1]: 0' % script_name,
-            exit_status=0,
             files={
                 script_name: b'test script\n',
                 '%s.out' % script_name: b'test script\n',
                 '%s.err' % script_name: b'',
             },
+            exit_status=0,
+            error='Finished %s [1/1]: 0' % script_name,
         ))
 
     def test_refresh_signals_failure_on_unexecutable_script(self):
@@ -264,12 +271,12 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Finished %s [1/1]: 8' % script_name,
-            exit_status=8,
             files={
                 script_name: b'[Errno 8] Exec format error',
                 '%s.err' % script_name: b'[Errno 8] Exec format error',
             },
+            exit_status=8,
+            error='Failed to execute %s [1/1]: 8' % script_name,
         ))
 
     def test_refresh_signals_failure_on_unexecutable_script_no_errno(self):
@@ -295,12 +302,12 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Finished %s [1/1]: 2' % script_name,
-            exit_status=2,
             files={
                 script_name: b'Unable to execute script',
                 '%s.err' % script_name: b'Unable to execute script',
             },
+            exit_status=2,
+            error='Failed to execute %s [1/1]: 2' % script_name,
         ))
 
     def test_refresh_signals_failure_on_unexecutable_script_baderrno(self):
@@ -326,12 +333,45 @@ class TestRefresh(MAASTestCase):
                 'token_secret': token_secret,
             },
             'WORKING',
-            'Finished %s [1/1]: 2' % script_name,
-            exit_status=2,
             files={
                 script_name: b'[Errno 0] Exec format error',
                 '%s.err' % script_name: b'[Errno 0] Exec format error',
             },
+            exit_status=2,
+            error='Failed to execute %s [1/1]: 2' % script_name,
+        ))
+
+    def test_refresh_signals_failure_on_timeout(self):
+        signal = self.patch(refresh, 'signal')
+        script_name = factory.make_name('script_name')
+        timeout = timedelta(seconds=random.randint(1, 500))
+        self.patch_scripts_failure(script_name, timeout)
+        self.patch(refresh.maas_api_helper, 'timedelta').return_value = (
+            timedelta(microseconds=1))
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        url = factory.make_url()
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        self.assertThat(signal, MockAnyCall(
+            "%s/metadata/%s/" % (url, MD_VERSION),
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'TIMEDOUT',
+            files={
+                script_name: b'test failed\n',
+                '%s.out' % script_name: b'test failed\n',
+                '%s.err' % script_name: b'',
+            },
+            error='Timeout(%s) expired on %s [1/1]' % (
+                str(timeout), script_name),
         ))
 
     def test_refresh_signals_finished(self):

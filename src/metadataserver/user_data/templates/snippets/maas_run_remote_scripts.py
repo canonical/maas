@@ -1,12 +1,34 @@
 #!/usr/bin/env python3
+#
+# maas-run-remote-scripts - Download a set of scripts from the MAAS region,
+#                           execute them, and send the results back.
+#
+# Author: Lee Trager <lee.trager@canonical.com>
+#
+# Copyright (C) 2017 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import copy
+from datetime import timedelta
 from io import BytesIO
 import json
 import os
 from subprocess import (
     PIPE,
     Popen,
+    TimeoutExpired,
 )
 import sys
 import tarfile
@@ -64,6 +86,7 @@ def download_and_extract_tar(url, creds, scripts_dir):
 
 def run_scripts(url, creds, scripts_dir, out_dir, scripts):
     """Run and report results for the given scripts."""
+    total_scripts = len(scripts)
     fail_count = 0
     base_args = {
         'url': url,
@@ -77,15 +100,12 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         script_version_id = script.get('script_version_id')
         if script_version_id is not None:
             args['script_version_id'] = script_version_id
+        timeout_seconds = script.get('timeout_seconds')
 
         signal_wrapper(
             **args, error='Starting %s [%d/%d]' % (
                 script['name'], i, len(scripts)))
 
-        # If we pipe the output of the subprocess and the subprocess also
-        # creates a subprocess we end up dead locking. Spawn a shell process
-        # and capture the output to the filesystem to avoid that and help with
-        # debugging.
         script_path = os.path.join(scripts_dir, script['path'])
         combined_path = os.path.join(out_dir, script['name'])
         stdout_name = '%s.out' % script['name']
@@ -95,6 +115,8 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
 
         try:
             proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+            capture_script_output(
+                proc, combined_path, stdout_path, stderr_path, timeout_seconds)
         except OSError as e:
             fail_count += 1
             if isinstance(e.errno, int) and e.errno != 0:
@@ -109,10 +131,22 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 script['name']: result,
                 stderr_name: result,
             }
+            signal_wrapper(
+                **args, error='Failed to execute %s [%d/%d]: %d' % (
+                    script['name'], i, total_scripts, args['exit_status']))
+        except TimeoutExpired:
+            fail_count += 1
+            args['status'] = 'TIMEDOUT'
+            args['files'] = {
+                script['name']: open(combined_path, 'rb').read(),
+                stdout_name: open(stdout_path, 'rb').read(),
+                stderr_name: open(stderr_path, 'rb').read(),
+            }
+            signal_wrapper(
+                **args, error='Timeout(%s) expired on %s [%d/%d]' % (
+                    str(timedelta(seconds=timeout_seconds)), script['name'], i,
+                    total_scripts))
         else:
-            capture_script_output(
-                proc, combined_path, stdout_path, stderr_path)
-
             if proc.returncode != 0:
                 fail_count += 1
             args['exit_status'] = proc.returncode
@@ -121,9 +155,9 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stdout_name: open(stdout_path, 'rb').read(),
                 stderr_name: open(stderr_path, 'rb').read(),
             }
-
-        signal_wrapper(**args, error='Finished %s [%d/%d]: %d' % (
-            script['name'], i, len(scripts), args['exit_status']))
+            signal_wrapper(
+                **args, error='Finished %s [%d/%d]: %d' % (
+                    script['name'], i, len(scripts), args['exit_status']))
 
     # Signal failure after running commissioning or testing scripts so MAAS
     # transisitions the node into FAILED_COMMISSIONING or FAILED_TESTING.
