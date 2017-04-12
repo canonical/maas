@@ -124,6 +124,30 @@ enlist_node() {
 
 }
 
+check_node() {
+	serverurl="${1}"
+
+	local exists="false" mac="${2}"
+	OIFS=$IFS; IFS=","; set -- $mac; IFS=$OIFS
+	for i in "$@";
+	do
+		exists=$(\
+			curl \
+				--fail \
+				--silent \
+				--get \
+				--header "Accept: application/json" \
+				--data-urlencode "op=is_registered" \
+				--data-urlencode "mac_address=${i}" \
+				"${serverurl}")
+		if [ "$exists" = "true" ];
+		then
+			return 1
+		fi
+	done
+	return 0
+}
+
 Error () {
 	echo "ERROR: $1"
 	exit 1
@@ -143,6 +167,7 @@ Usage: ${0##*/} [ options ]
       -t | --power-type       power type (ipmi, virsh, moonshot, virsh)
       -p | --power-params     power parameters (In JSON format, between single quotes)
                               e.g. --power-params '{"power_address":"192.168.1.10"}'
+      -e | --exists           checks if the machine already exists in MAAS
       --subarch               subarchitecture of the node to register
 
    Example:
@@ -153,8 +178,8 @@ EOF
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || Error "$@"; exit 1; }
 
-short_opts="hs:n:i:a:t:p:"
-long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:"
+short_opts="hs:n:i:a:t:p:e"
+long_opts="help,serverurl:,hostname:,interface:,arch:,subarch:,power-type:,power-params:,exists"
 getopt_out=$(getopt --name "${0##*/}" \
 	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
 	eval set -- "${getopt_out}" ||
@@ -171,6 +196,7 @@ while [ $# -ne 0 ]; do
 		--subarch) subarch=${2}; shift;;
 		-t|--power-type) power_type=${2}; shift;;
 		-p|--power-params) power_parameters=${2}; shift;;
+		-e|--exists) check_exists=true;;
 		--) shift; break;;
 	esac
 	shift;
@@ -232,4 +258,9 @@ if [ -n "$power_type" ]; then
 	esac
 fi
 
-enlist_node "$protocol://$servername/$api_url" "${mac_addrs}" "$arch" "$subarch" "$hostname" "$power_type" "$power_parameters"
+if [ "$check_exists" = true ]; then
+  check_node "$protocol://$servername/$api_url" "${mac_addrs}"
+  exit $?
+else
+  enlist_node "$protocol://$servername/$api_url" "${mac_addrs}" "$arch" "$subarch" "$hostname" "$power_type" "$power_parameters"
+fi

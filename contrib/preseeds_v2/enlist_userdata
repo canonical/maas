@@ -95,6 +95,19 @@ misc_bucket:
    # we could obtain the interface that booted from the kernel cmdline
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
+
+   # Early check to see if this machine already exists in MAAS. Already
+   # existing machines just stop running and power off. We do not want to
+   # update the power parameters of an existing machine.
+   maas-enlist --serverurl "$url" --exists
+   if [ $? -eq 1 ]; then
+      msg="already registered on '$url'; skipping enlistment"
+      echo
+      echo "== $(date -R): $msg"
+      sleep 10
+      exit 0
+   fi
+
    # load ipmi modules
    load_modules
    pargs=""
@@ -119,6 +132,7 @@ misc_bucket:
            power_params=$(maas-wedge-autodetect --get-enlist-creds) || power_params=""
            ;;
    esac
+
    # Try maas-enlist without power parameters on failure for older versions of
    # maas-enlist without power parameter support
    maas-enlist --serverurl "$url" ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out ||\

@@ -69,6 +69,16 @@ class AnonymousIsRegisteredAPITest(APITestCase.ForAnonymous):
             (response.status_code,
              response.content.decode(settings.DEFAULT_CHARSET)))
 
+    def test_is_registered_returns_False_if_interface_has_no_node(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {'op': 'is_registered', 'mac_address': interface.mac_address})
+        self.assertEqual(
+            (http.client.OK.value, "false"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
+
 
 def extract_system_ids(parsed_result):
     """List the system_ids of the nodes in `parsed_result`."""

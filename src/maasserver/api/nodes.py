@@ -285,6 +285,7 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
         interfaces = Interface.objects.filter(mac_address=mac_address)
+        interfaces = interfaces.exclude(node__isnull=True)
         interfaces = interfaces.exclude(node__status=NODE_STATUS.RETIRED)
         return interfaces.exists()
 
