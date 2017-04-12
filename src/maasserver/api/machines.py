@@ -134,6 +134,9 @@ DISPLAYED_MACHINE_FIELDS = (
     'special_filesystems',
     'pod',
     'default_gateways',
+    'current_commissioning_result_id',
+    'current_testing_result_id',
+    'current_installation_result_id',
 )
 
 # Limited set of machine fields exposed on the anonymous API.

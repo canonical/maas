@@ -137,6 +137,10 @@ from maasserver.api.regioncontrollers import (
     RegionControllersHandler,
 )
 from maasserver.api.results import NodeResultsHandler
+from maasserver.api.scriptresults import (
+    NodeScriptResultHandler,
+    NodeScriptResultsHandler,
+)
 from maasserver.api.scripts import (
     NodeScriptHandler,
     NodeScriptsHandler,
@@ -308,6 +312,11 @@ notifications_handler = RestrictedResource(
 script_handler = RestrictedResource(NodeScriptHandler, authentication=api_auth)
 scripts_handler = RestrictedResource(
     NodeScriptsHandler, authentication=api_auth)
+script_result_handler = RestrictedResource(
+    NodeScriptResultHandler, authentication=api_auth)
+script_results_handler = RestrictedResource(
+    NodeScriptResultsHandler, authentication=api_auth)
+
 
 # Admin handlers.
 commissioning_script_handler = AdminRestrictedResource(
@@ -372,6 +381,12 @@ urlpatterns += patterns(
         interface_handler, name='interface_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/$',
         interfaces_handler, name='interfaces_handler'),
+    url(
+        r'^nodes/(?P<system_id>[^/]+)/results/$', script_results_handler,
+        name='script_results_handler'),
+    url(
+        r'^nodes/(?P<system_id>[^/]+)/results/(?P<id>[^/]+)/$',
+        script_result_handler, name='script_result_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

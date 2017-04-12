@@ -169,6 +169,18 @@ class NodeHandler(OperationsHandler):
     def node_type_name(handler, node):
         return NODE_TYPE_CHOICES[node.node_type][1]
 
+    @classmethod
+    def current_commissioning_result_id(handler, node):
+        return node.current_commissioning_script_set_id
+
+    @classmethod
+    def current_testing_result_id(handler, node):
+        return node.current_testing_script_set_id
+
+    @classmethod
+    def current_installation_result_id(handler, node):
+        return node.current_installation_script_set_id
+
     def read(self, request, system_id):
         """Read a specific Node.
 

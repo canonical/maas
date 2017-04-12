@@ -37,6 +37,9 @@ DISPLAYED_REGION_CONTROLLER_FIELDS = (
     'status_action',
     'node_type',
     'node_type_name',
+    'current_commissioning_result_id',
+    'current_testing_result_id',
+    'current_installation_result_id',
 )
 
 

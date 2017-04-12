@@ -531,6 +531,9 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 'status_message',
                 'status_name',
                 'special_filesystems',
+                'current_commissioning_result_id',
+                'current_testing_result_id',
+                'current_installation_result_id',
             ],
             list(parsed_result))
 
@@ -692,6 +695,9 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 'status_message',
                 'status_action',
                 'special_filesystems',
+                'current_commissioning_result_id',
+                'current_testing_result_id',
+                'current_installation_result_id',
             ],
             list(parsed_result))
 

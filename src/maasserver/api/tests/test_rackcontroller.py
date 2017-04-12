@@ -131,6 +131,9 @@ class TestRackControllersAPI(APITestCase.ForUser):
                 'node_type',
                 'node_type_name',
                 'service_set',
+                'current_commissioning_result_id',
+                'current_testing_result_id',
+                'current_installation_result_id',
             ],
             list(parsed_result[0]))
 

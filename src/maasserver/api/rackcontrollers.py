@@ -54,6 +54,9 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
         'status',
         'status_info',
         )),
+    'current_commissioning_result_id',
+    'current_testing_result_id',
+    'current_installation_result_id',
 )
 
 
