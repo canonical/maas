@@ -1097,7 +1097,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             MachinesManager.updateFilesystem(
                 $scope.node, disk.block_id, disk.partition_id,
                 disk.$options.fstype, disk.$options.mountPoint,
-                disk.$options.mountOptions);
+                disk.$options.mountOptions, disk.$options.tags);
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.

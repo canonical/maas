@@ -431,7 +431,8 @@ describe("NodesManager", function() {
             MachinesManager.updateFilesystem(
                     fakemachine.system_id, makeName("block_id"),
                     makeName("partition_id"), makeName("fstype"),
-                    makeName("mount_point")).then(function() {
+                    makeName("mount_point"), makeName("mount_options"),
+                    [makeName("tag")]).then(function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
                 expect(sentObject.method).toBe("machine.update_filesystem");
                 done();
@@ -444,10 +445,12 @@ describe("NodesManager", function() {
             var partition_id = makeName("partition_id");
             var fstype = makeName("fstype");
             var mount_point = makeName("mount_point");
+            var mount_options = makeName("mount_options");
+            var tags = [makeName("tag")];
             webSocket.returnData.push(makeFakeResponse(null));
             MachinesManager.updateFilesystem(
                     fakemachine, block_id, partition_id,
-                    fstype, mount_point).then(
+                    fstype, mount_point, mount_options, tags).then(
                         function() {
                 var sentObject = angular.fromJson(webSocket.sentData[0]);
                 expect(sentObject.method).toBe("machine.update_filesystem");
@@ -456,6 +459,8 @@ describe("NodesManager", function() {
                 expect(sentObject.params.partition_id).toBe(partition_id);
                 expect(sentObject.params.fstype).toBe(fstype);
                 expect(sentObject.params.mount_point).toBe(mount_point);
+                expect(sentObject.params.mount_options).toBe(mount_options);
+                expect(sentObject.params.tags).toEqual(tags);
                 done();
             });
         });

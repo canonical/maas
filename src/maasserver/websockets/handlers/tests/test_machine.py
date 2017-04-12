@@ -1429,215 +1429,6 @@ class TestMachineHandler(MAASServerTestCase):
         updated_node = handler.update(node_data)
         self.assertItemsEqual([tag_name], updated_node["tags"])
 
-    def test_unmount_blockdevice_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        fs = factory.make_Filesystem(block_device=block_device)
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'fstype': fs.fstype,
-            'mount_point': None,
-            'mount_options': None,
-            })
-        efs = block_device.get_effective_filesystem()
-        self.assertThat(efs, MatchesStructure.byEquality(
-            mount_point=None, mount_options=None))
-
-    def test_unmount_partition_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        partition = factory.make_Partition(node=node)
-        fs = factory.make_Filesystem(partition=partition)
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': partition.partition_table.block_device.id,
-            'partition_id': partition.id,
-            'fstype': fs.fstype,
-            'mount_point': None,
-            'mount_options': None,
-            })
-        efs = partition.get_effective_filesystem()
-        self.assertThat(efs, MatchesStructure.byEquality(
-            mount_point=None, mount_options=None))
-
-    def test_mount_blockdevice_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        fs = factory.make_Filesystem(block_device=block_device)
-        mount_point = factory.make_absolute_path()
-        mount_options = factory.make_name("options")
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'fstype': fs.fstype,
-            'mount_point': mount_point,
-            'mount_options': mount_options,
-            })
-        efs = block_device.get_effective_filesystem()
-        self.assertThat(efs, MatchesStructure.byEquality(
-            mount_point=mount_point, mount_options=mount_options))
-
-    def test_mount_partition_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        partition = factory.make_Partition(node=node)
-        fs = factory.make_Filesystem(partition=partition)
-        mount_point = factory.make_absolute_path()
-        mount_options = factory.make_name("options")
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': partition.partition_table.block_device.id,
-            'partition_id': partition.id,
-            'fstype': fs.fstype,
-            'mount_point': mount_point,
-            'mount_options': mount_options,
-            })
-        efs = partition.get_effective_filesystem()
-        self.assertThat(efs, MatchesStructure.byEquality(
-            mount_point=mount_point, mount_options=mount_options))
-
-    def test_change_blockdevice_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        fs = factory.make_Filesystem(block_device=block_device)
-        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'fstype': new_fstype,
-            'mount_point': None
-            })
-        self.assertEqual(
-            new_fstype, block_device.get_effective_filesystem().fstype)
-
-    def test_change_partition_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        partition = factory.make_Partition(node=node)
-        fs = factory.make_Filesystem(partition=partition)
-        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': partition.partition_table.block_device.id,
-            'partition_id': partition.id,
-            'fstype': new_fstype,
-            'mount_point': None
-            })
-        self.assertEqual(
-            new_fstype, partition.get_effective_filesystem().fstype)
-
-    def test_new_blockdevice_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        fstype = factory.pick_filesystem_type()
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'fstype': fstype,
-            'mount_point': None
-            })
-        self.assertEqual(
-            fstype, block_device.get_effective_filesystem().fstype)
-
-    def test_new_partition_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.ALLOCATED)
-        partition = factory.make_Partition(node=node)
-        fstype = factory.pick_filesystem_type()
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': partition.partition_table.block_device.id,
-            'partition_id': partition.id,
-            'fstype': fstype,
-            'mount_point': None
-            })
-        self.assertEqual(
-            fstype, partition.get_effective_filesystem().fstype)
-
-    def test_delete_blockdevice_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.READY)
-        block_device = factory.make_PhysicalBlockDevice(node=node)
-        factory.make_Filesystem(block_device=block_device)
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': block_device.id,
-            'fstype': '',
-            'mount_point': None
-            })
-        self.assertEqual(
-            None, block_device.get_effective_filesystem())
-
-    def test_delete_partition_filesystem(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {})
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True,
-            architecture=architecture,
-            status=NODE_STATUS.READY)
-        partition = factory.make_Partition(node=node)
-        factory.make_Filesystem(partition=partition)
-        handler.update_filesystem({
-            'system_id': node.system_id,
-            'block_id': partition.partition_table.block_device.id,
-            'partition_id': partition.id,
-            'fstype': '',
-            'mount_point': None
-            })
-        self.assertEqual(
-            None, partition.get_effective_filesystem())
-
     def test_update_disk_for_physical_block_device(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
@@ -2953,3 +2744,297 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
                 partial(handler.unmount_special, params),
                 raises_node_state_violation,
                 "using status %d on %s" % (status, self.fstype))
+
+
+class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
+
+    def test_unmount_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        fs = factory.make_Filesystem(block_device=block_device)
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': fs.fstype,
+            'mount_point': None,
+            'mount_options': None,
+            })
+        efs = block_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=None, mount_options=None))
+
+    def test_unmount_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition = factory.make_Partition(node=node)
+        fs = factory.make_Filesystem(partition=partition)
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': partition.partition_table.block_device.id,
+            'partition_id': partition.id,
+            'fstype': fs.fstype,
+            'mount_point': None,
+            'mount_options': None,
+            })
+        efs = partition.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=None, mount_options=None))
+
+    def test_mount_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        fs = factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': fs.fstype,
+            'mount_point': mount_point,
+            'mount_options': mount_options,
+            })
+        efs = block_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=mount_point, mount_options=mount_options))
+
+    def test_mount_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition = factory.make_Partition(node=node)
+        fs = factory.make_Filesystem(partition=partition)
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': partition.partition_table.block_device.id,
+            'partition_id': partition.id,
+            'fstype': fs.fstype,
+            'mount_point': mount_point,
+            'mount_options': mount_options,
+            })
+        efs = partition.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=mount_point, mount_options=mount_options))
+
+    def test_change_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        fs = factory.make_Filesystem(block_device=block_device)
+        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': new_fstype,
+            'mount_point': None
+            })
+        self.assertEqual(
+            new_fstype, block_device.get_effective_filesystem().fstype)
+
+    def test_change_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition = factory.make_Partition(node=node)
+        fs = factory.make_Filesystem(partition=partition)
+        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': partition.partition_table.block_device.id,
+            'partition_id': partition.id,
+            'fstype': new_fstype,
+            'mount_point': None
+            })
+        self.assertEqual(
+            new_fstype, partition.get_effective_filesystem().fstype)
+
+    def test_new_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        fstype = factory.pick_filesystem_type()
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': fstype,
+            'mount_point': None
+            })
+        self.assertEqual(
+            fstype, block_device.get_effective_filesystem().fstype)
+
+    def test_new_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.ALLOCATED)
+        partition = factory.make_Partition(node=node)
+        fstype = factory.pick_filesystem_type()
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': partition.partition_table.block_device.id,
+            'partition_id': partition.id,
+            'fstype': fstype,
+            'mount_point': None
+            })
+        self.assertEqual(
+            fstype, partition.get_effective_filesystem().fstype)
+
+    def test_delete_blockdevice_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_Filesystem(block_device=block_device)
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': block_device.id,
+            'fstype': '',
+            'mount_point': None
+            })
+        self.assertEqual(
+            None, block_device.get_effective_filesystem())
+
+    def test_delete_partition_filesystem(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        partition = factory.make_Partition(node=node)
+        factory.make_Filesystem(partition=partition)
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': partition.partition_table.block_device.id,
+            'partition_id': partition.id,
+            'fstype': '',
+            'mount_point': None
+            })
+        self.assertEqual(
+            None, partition.get_effective_filesystem())
+
+    def test_sets_tags(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        blockdevice = factory.make_BlockDevice(node, tags=None)
+        tag1 = factory.make_name()
+        tag2 = factory.make_name()
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': blockdevice.id,
+            'tags': [
+                {"text": tag1},
+                {"text": tag2},
+            ]})
+        blockdevice = reload_object(blockdevice)
+        self.assertEqual(blockdevice.tags, [tag1, tag2])
+
+    def test_skips_updating_tags_if_tags_match(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        tag1 = factory.make_name()
+        tag2 = factory.make_name()
+        blockdevice = factory.make_BlockDevice(node, tags=[tag1, tag2])
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': blockdevice.id,
+            'tags': [
+                # Just change the order. The tags are backed by an arary.
+                {"text": tag2},
+                {"text": tag1},
+            ]})
+        blockdevice = reload_object(blockdevice)
+        self.assertEqual(blockdevice.tags, [tag1, tag2])
+
+    def test_skips_updating_tags_if_tags_missing_from_parameters(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        tag1 = factory.make_name()
+        tag2 = factory.make_name()
+        blockdevice = factory.make_BlockDevice(node, tags=[tag1, tag2])
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'block_id': blockdevice.id,
+        })
+        blockdevice = reload_object(blockdevice)
+        self.assertEqual(blockdevice.tags, [tag1, tag2])
+
+    def test_skips_updating_tags_if_blockdevice_id_missing(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True,
+            architecture=architecture,
+            status=NODE_STATUS.READY)
+        tag1 = factory.make_name()
+        tag2 = factory.make_name()
+        blockdevice = factory.make_BlockDevice(node, tags=[])
+        handler.update_filesystem({
+            'system_id': node.system_id,
+            'tags': [
+                {"text": tag1},
+                {"text": tag2},
+            ]
+        })
+        blockdevice = reload_object(blockdevice)
+        self.assertEqual(blockdevice.tags, [])

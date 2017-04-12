@@ -356,16 +356,28 @@ class MachineHandler(NodeHandler):
                 node.owner_id != self.user.id):
             raise HandlerPermissionError()
 
+        # If this is on a block device, check if the tags need to be updated.
+        # (The client sends them in from the same form.)
+        blockdevice = None
+        if block_id is not None:
+            blockdevice = BlockDevice.objects.get(id=block_id, node=node)
+            tags = params.get('tags', None)
+            # If the tags parameter was left out, that means "don't touch the
+            # tags". (An empty list means "clear the tags".)
+            if tags is not None:
+                tags = [tag['text'] for tag in tags]
+                if set(blockdevice.tags) != set(tags):
+                    blockdevice.tags = tags
+                    blockdevice.save()
         if partition_id:
             self.update_partition_filesystem(
-                node, block_id, partition_id, fstype, mount_point,
-                mount_options)
-        else:
+                node, partition_id, fstype, mount_point, mount_options)
+        elif blockdevice is not None:
             self.update_blockdevice_filesystem(
-                node, block_id, fstype, mount_point, mount_options)
+                blockdevice, fstype, mount_point, mount_options)
 
     def update_partition_filesystem(
-            self, node, block_id, partition_id, fstype, mount_point,
+            self, node, partition_id, fstype, mount_point,
             mount_options):
         partition = Partition.objects.get(
             id=partition_id,
@@ -401,8 +413,7 @@ class MachineHandler(NodeHandler):
                     form.save()
 
     def update_blockdevice_filesystem(
-            self, node, block_id, fstype, mount_point, mount_options):
-        blockdevice = BlockDevice.objects.get(id=block_id, node=node)
+            self, blockdevice, fstype, mount_point, mount_options):
         fs = blockdevice.get_effective_filesystem()
         if not fstype:
             if fs:
@@ -485,7 +496,7 @@ class MachineHandler(NodeHandler):
             self._update_obj_tags(disk_obj, params)
             if 'fstype' in params:
                 self.update_blockdevice_filesystem(
-                    node, disk_obj.id, params['fstype'],
+                    disk_obj, params['fstype'],
                     params.get('mount_point', ''),
                     params.get('mount_options', ''))
 
@@ -574,7 +585,7 @@ class MachineHandler(NodeHandler):
 
         if 'fstype' in params:
             self.update_partition_filesystem(
-                node, disk_obj.id, partition.id, params.get("fstype"),
+                node, partition.id, params.get("fstype"),
                 params.get("mount_point"), params.get("mount_options"))
 
     def create_cache_set(self, params):
@@ -635,7 +646,7 @@ class MachineHandler(NodeHandler):
         self._update_obj_tags(bcache.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, bcache.virtual_device.id, params.get("fstype"),
+                bcache.virtual_device, params.get("fstype"),
                 params.get("mount_point"), params.get("mount_options"))
 
     def create_raid(self, params):
@@ -654,7 +665,7 @@ class MachineHandler(NodeHandler):
         self._update_obj_tags(raid.virtual_device, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, raid.virtual_device.id, params.get("fstype"),
+                raid.virtual_device, params.get("fstype"),
                 params.get("mount_point"), params.get("mount_options"))
 
     def create_volume_group(self, params):
@@ -693,7 +704,7 @@ class MachineHandler(NodeHandler):
         self._update_obj_tags(logical_volume, params)
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, logical_volume.id, params.get("fstype"),
+                logical_volume, params.get("fstype"),
                 params.get("mount_point"), params.get("mount_options"))
 
     def set_boot_disk(self, params):
