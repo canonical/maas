@@ -241,6 +241,13 @@
                           <span class="p-notification__status">Error:</span>No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.</p>
                 </div>
             </div>
+            <div data-ng-if="!isController">
+                <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
+                    <button class="button--secondary button--inline"
+                        data-ng-if="canEdit()"
+                        data-ng-click="editSummary()">Edit</button>
+                </div>
+            </div>
             <form class="form form--stack twelve-col">
                 <fieldset class="form__fieldset six-col ng-hide" data-ng-show="isSuperUser() && !isController">
                     <div class="form__group">
@@ -369,13 +376,6 @@
                             </dd>
                     </dl>
                 </div>
-                <div data-ng-if="!isController">
-                    <div class="twelve-col u-align--right" data-ng-hide="summary.editing">
-                        <button class="button--secondary button--inline"
-                            data-ng-if="canEdit()"
-                            data-ng-click="editSummary()">Edit</button>
-                    </div>
-                </div>
                 <div class="twelve-col u-align--right ng-hide" data-ng-show="summary.editing">
                     <button class="button--base button--inline"
                        data-ng-click="cancelEditSummary()">Cancel</button>
@@ -471,6 +471,11 @@
                     Changing power parameters will affect these nodes.</p>
                 </div>
             </div>
+            <div class="twelve-col u-align--right" data-ng-hide="power.editing">
+                <button class="button--secondary button--inline"
+                    data-ng-show="canEdit() && power_types.length"
+                    data-ng-click="editPower()">Edit</button>
+            </div>
             <form class="form form--stack twelve-col" class="disabled">
                 <fieldset class="form__fieldset six-col ng-hide"
                     data-ng-show="power_types.length"
@@ -478,11 +483,6 @@
                     data-maas-power-parameters="power_types"
                     data-ng-model="power">
                 </fieldset>
-                <div class="twelve-col u-align--right" data-ng-hide="power.editing">
-                    <button class="button--secondary button--inline"
-                        data-ng-show="canEdit() && power_types.length"
-                        data-ng-click="editPower()">Edit</button>
-                </div>
                 <div class="twelve-col u-align--right ng-hide" data-ng-show="power.editing">
                     <button class="button--base button--inline"
                         data-ng-click="cancelEditPower()">Cancel</button>
