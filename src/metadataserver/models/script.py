@@ -80,6 +80,13 @@ class Script(CleanSave, TimestampedModel):
 
     script = OneToOneField(VersionedTextFile, on_delete=CASCADE)
 
+    @property
+    def script_type_name(self):
+        for script_type, script_type_name in SCRIPT_TYPE_CHOICES:
+            if self.script_type == script_type:
+                return script_type_name
+        return 'unknown'
+
     def __str__(self):
         return self.name
 

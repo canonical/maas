@@ -8,11 +8,13 @@ __all__ = [
     'NodeScriptsHandler',
     ]
 
+from base64 import b64encode
 from email.utils import format_datetime
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode.validators import (
+    Bool,
     Int,
     String,
 )
@@ -27,10 +29,7 @@ from maasserver.api.utils import (
 )
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
-from metadataserver.enum import (
-    SCRIPT_TYPE,
-    SCRIPT_TYPE_CHOICES,
-)
+from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
 from piston3.utils import rc
 
@@ -64,8 +63,8 @@ class NodeScriptsHandler(OperationsHandler):
         :param tags: A comma seperated list of tags for this script.
         :type tags: unicode
 
-        :param script_type: The script_type defines when the script should
-            be used. Can be testing or commissioning, defaults to testing.
+        :param type: The script_type defines when the script should be used.
+            Can be testing or commissioning, defaults to testing.
         :type script_type: unicode
 
         :param timeout: How long the script is allowed to run before failing.
@@ -101,17 +100,20 @@ class NodeScriptsHandler(OperationsHandler):
     def read(self, request):
         """Return a list of stored scripts.
 
-        :param script_type: Only return scripts with the given type. This can
-            be testing or commissioning. Defaults to showing both.
+        :param type: Only return scripts with the given type. This can be
+            testing or commissioning. Defaults to showing both.
         :type script_type: unicode
 
-        :param tags: A comma seperated list of tags. Only scripts with the
-            given tags will be returned.
-        :type tags: unicode
+        :param include_script: Include the base64 encoded script content.
+        :type include_script: bool
+
+        :param filters: A comma seperated list to show only results
+                        with a script name or tag.
+        :type filters: unicode
         """
         qs = Script.objects.all()
 
-        script_type = get_optional_param(request.GET, 'script_type')
+        script_type = get_optional_param(request.GET, 'type')
         if script_type is not None:
             if script_type.isdigit():
                 script_type = int(script_type)
@@ -123,11 +125,22 @@ class NodeScriptsHandler(OperationsHandler):
                 raise MAASAPIValidationError('Unknown script type')
             qs = qs.filter(script_type=script_type)
 
-        tags = get_optional_param(request.GET, 'tags', None, String)
-        if tags is not None:
-            qs = qs.filter(tags__overlap=tags.split(','))
+        include_script = get_optional_param(
+            request.GET, 'include_script', False, Bool)
+        filters = get_optional_param(request.GET, 'filters', None, String)
+        if filters is not None:
+            filters = set(filters.split(','))
 
-        return qs
+        ret = []
+        for script in qs:
+            if (filters is not None and script.name not in filters and
+                    filters.isdisjoint(script.tags)):
+                continue
+            else:
+                script.include_script = include_script
+                ret.append(script)
+
+        return ret
 
 
 class NodeScriptHandler(OperationsHandler):
@@ -141,8 +154,8 @@ class NodeScriptHandler(OperationsHandler):
         'title',
         'description',
         'tags',
-        'script_type',
-        'script_type_name',
+        'type',
+        'type_name',
         'timeout',
         'destructive',
         'history',
@@ -161,29 +174,40 @@ class NodeScriptHandler(OperationsHandler):
         return ('script_handler', (script_name, ))
 
     @classmethod
-    def script_type_name(handler, script):
-        for script_type, script_type_name in SCRIPT_TYPE_CHOICES:
-            if script.script_type == script_type:
-                return script_type_name
-        return 'unknown'
+    def type(handler, script):
+        return script.script_type
+
+    @classmethod
+    def type_name(handler, script):
+        return script.script_type_name
 
     @classmethod
     def history(handler, script):
-        return [
-            {
-                'id': script.id,
-                'comment': script.comment,
-                'created': format_datetime(script.created),
+        results = []
+        for script_ver in script.script.previous_versions():
+            version = {
+                'id': script_ver.id,
+                'comment': script_ver.comment,
+                'created': format_datetime(script_ver.created),
             }
-            for script in script.script.previous_versions()
-        ]
+            if getattr(script, 'include_script', False):
+                version['data'] = b64encode(script_ver.data.encode())
+            results.append(version)
+        return results
 
     def read(self, request, name):
-        """Return a script's metadata."""
+        """Return a script's metadata.
+
+        :param include_script: Include the base64 encoded script content.
+        :type include_script: bool
+        """
         if name.isdigit():
-            return get_object_or_404(Script, id=int(name))
+            script = get_object_or_404(Script, id=int(name))
         else:
-            return get_object_or_404(Script, name=name)
+            script = get_object_or_404(Script, name=name)
+        script.include_script = get_optional_param(
+            request.GET, 'include_script', False, Bool)
+        return script
 
     @admin_method
     def delete(self, request, name):
@@ -215,8 +239,8 @@ class NodeScriptHandler(OperationsHandler):
         :param tags: A comma seperated list of tags for this script.
         :type tags: unicode
 
-        :param script_type: The script_type defines when the script should
-            be used. Can be testing or commissioning, defaults to testing.
+        :param type: The type defines when the script should be used. Can be
+            testing or commissioning, defaults to testing.
         :type script_type: unicode
 
         :param timeout: How long the script is allowed to run before failing.

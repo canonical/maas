@@ -64,7 +64,7 @@ class TestScriptForm(MAASServerTestCase):
             'title': title,
             'description': description,
             'tags': ','.join(tags),
-            'script_type': script_type,
+            'type': script_type,
             'timeout': str(timeout),
             'destructive': destructive,
             'script': script_content,
@@ -114,7 +114,7 @@ class TestScriptForm(MAASServerTestCase):
             'title': title,
             'description': description,
             'tags': ','.join(tags),
-            'script_type': script_type,
+            'type': script_type,
             'timeout': str(timeout),
             'destructive': destructive,
             'script': script_content,
@@ -158,7 +158,7 @@ class TestScriptForm(MAASServerTestCase):
         for name, field in ScriptForm.base_fields.items():
             if name in ['tags', 'timeout']:
                 continue
-            elif name == 'script_type':
+            elif name == 'type':
                 value = factory.pick_choice(SCRIPT_TYPE_CHOICES)
             elif name == 'destructive':
                 value = factory.pick_bool()
@@ -235,7 +235,7 @@ class TestScriptForm(MAASServerTestCase):
         form = ScriptForm(data={
             'name': factory.make_name('name'),
             'script': factory.make_string(),
-            'script_type': script_type_name,
+            'type': script_type_name,
         })
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
@@ -246,7 +246,7 @@ class TestScriptForm(MAASServerTestCase):
         form = ScriptForm(data={
             'name': factory.make_name('name'),
             'script': factory.make_string(),
-            'script_type': factory.make_string(),
+            'type': factory.make_string(),
         })
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
@@ -274,3 +274,14 @@ class TestScriptForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
             {'name': ['Cannot be a number.']}, form.errors)
+
+    def test__type_aliased_to_script_type(self):
+        script_type = factory.pick_choice(SCRIPT_TYPE_CHOICES)
+        form = ScriptForm(data={
+            'name': factory.make_name('name'),
+            'script': factory.make_string(),
+            'type': script_type,
+        })
+        self.assertTrue(form.is_valid())
+        script = form.save()
+        self.assertEquals(script_type, script.script_type)

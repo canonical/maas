@@ -5,6 +5,10 @@
 
 __all__ = []
 
+from base64 import (
+    b64decode,
+    b64encode,
+)
 from email.utils import format_datetime
 import http.client
 import random
@@ -53,7 +57,7 @@ class TestScriptsAPI(APITestCase.ForUser):
                 'title': title,
                 'description': description,
                 'tags': ','.join(tags),
-                'script_type': script_type,
+                'type': script_type,
                 'timeout': timeout,
                 'destructive': destructive,
                 'script': factory.make_file_upload(
@@ -94,7 +98,7 @@ class TestScriptsAPI(APITestCase.ForUser):
                 'title': title,
                 'description': description,
                 'tags': ','.join(tags),
-                'script_type': script_type,
+                'type': script_type,
                 'timeout': timeout,
                 'destructive': destructive,
                 'comment': comment,
@@ -142,7 +146,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
 
         response = self.client.get(
-            self.get_scripts_uri(), {'script_type': 'testing'})
+            self.get_scripts_uri(), {'type': 'testing'})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
@@ -159,7 +163,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
 
         response = self.client.get(
-            self.get_scripts_uri(), {'script_type': 'commissioning'})
+            self.get_scripts_uri(), {'type': 'commissioning'})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
@@ -167,20 +171,40 @@ class TestScriptsAPI(APITestCase.ForUser):
             [script.id for script in scripts],
             [parsed_result['id'] for parsed_result in parsed_results])
 
-    def test_GET_filters_by_tag(self):
+    def test_GET_filters(self):
         tags = [factory.make_name('tag') for _ in range(3)]
         scripts = [factory.make_Script(tags=tags) for _ in range(3)]
+        name_script = factory.make_Script()
+        scripts.append(name_script)
         for _ in range(3):
             factory.make_Script()
 
         response = self.client.get(
-            self.get_scripts_uri(), {'tags': ','.join(tags)})
+            self.get_scripts_uri(), {
+                'filters': '%s,%s' % (random.choice(tags), name_script),
+            })
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
         self.assertItemsEqual(
             [script.id for script in scripts],
             [parsed_result['id'] for parsed_result in parsed_results])
+
+    def test_GET_include_script(self):
+        scripts = {}
+        for _ in range(3):
+            script = factory.make_Script()
+            scripts[script.name] = script
+
+        response = self.client.get(
+            self.get_scripts_uri(), {'include_script': True})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_results = json_load_bytes(response.content)
+
+        for result in parsed_results:
+            self.assertEquals(
+                scripts[result['name']].script.data.encode(),
+                b64decode(result['history'][0]['data'].encode()))
 
 
 class TestScriptAPI(APITestCase.ForUser):
@@ -216,22 +240,69 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.get(self.get_script_uri(script))
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_result = json_load_bytes(response.content)
+        history = parsed_result.pop('history')
 
-        self.assertEquals(script.id, parsed_result['id'])
-        self.assertEquals(script.name, parsed_result['name'])
-        self.assertEquals(script.title, parsed_result['title'])
-        self.assertEquals(script.description, parsed_result['description'])
-        self.assertItemsEqual(script.tags, parsed_result['tags'])
-        self.assertEquals(script.script_type, parsed_result['script_type'])
-        self.assertEquals(str(script.timeout), parsed_result['timeout'])
-        self.assertEquals(script.destructive, parsed_result['destructive'])
+        self.assertDictEqual({
+            'id': script.id,
+            'name': script.name,
+            'title': script.title,
+            'description': script.description,
+            'tags': script.tags,
+            'type': script.script_type,
+            'type_name': script.script_type_name,
+            'timeout': str(script.timeout),
+            'destructive': script.destructive,
+            'default': script.default,
+            'resource_uri': '/api/2.0/scripts/%s' % script.name,
+            }, parsed_result)
         self.assertItemsEqual(
-            [{
-                'id': script.id,
-                'comment': script.comment,
-                'created': format_datetime(script.created),
-            } for script in script.script.previous_versions()],
-            parsed_result['history'])
+            [rev.id for rev in script.script.previous_versions()],
+            [rev['id'] for rev in history])
+        for result_rev in history:
+            for rev in script.script.previous_versions():
+                if rev.id == result_rev['id']:
+                    self.assertEquals({
+                        'id': rev.id,
+                        'comment': rev.comment,
+                        'created': format_datetime(rev.created),
+                        }, result_rev)
+
+    def test_GET_include_script(self):
+        script = factory.make_Script()
+        script.script = script.script.update(
+            new_data=factory.make_string(), comment=factory.make_string())
+        script.save()
+        response = self.client.get(
+            self.get_script_uri(script), {'include_script': True})
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        parsed_result = json_load_bytes(response.content)
+        history = parsed_result.pop('history')
+
+        self.assertDictEqual({
+            'id': script.id,
+            'name': script.name,
+            'title': script.title,
+            'description': script.description,
+            'tags': script.tags,
+            'type': script.script_type,
+            'type_name': script.script_type_name,
+            'timeout': str(script.timeout),
+            'destructive': script.destructive,
+            'default': script.default,
+            'resource_uri': '/api/2.0/scripts/%s' % script.name,
+            }, parsed_result)
+        self.assertItemsEqual(
+            [rev.id for rev in script.script.previous_versions()],
+            [rev['id'] for rev in history])
+        for result_rev in history:
+            for rev in script.script.previous_versions():
+                if rev.id == result_rev['id']:
+                    self.assertEquals({
+                        'id': rev.id,
+                        'comment': rev.comment,
+                        'created': format_datetime(rev.created),
+                        'data': b64encode(rev.data.encode()).decode(),
+                        }, result_rev)
 
     def test_DELETE(self):
         self.become_admin()
@@ -273,7 +344,7 @@ class TestScriptAPI(APITestCase.ForUser):
                 'title': title,
                 'description': description,
                 'tags': ','.join(tags),
-                'script_type': script_type,
+                'type': script_type,
                 'timeout': timeout,
                 'destructive': destructive,
                 'script': factory.make_file_upload(
@@ -315,7 +386,7 @@ class TestScriptAPI(APITestCase.ForUser):
                 'title': title,
                 'description': description,
                 'tags': ','.join(tags),
-                'script_type': script_type,
+                'type': script_type,
                 'timeout': timeout,
                 'destructive': destructive,
                 'comment': comment,
