@@ -10,6 +10,7 @@ __all__ = [
 from collections import Iterable
 
 from django import forms
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.forms import (
     APIEditMixin,
     MAASModelForm,
@@ -17,6 +18,7 @@ from maasserver.forms import (
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
 
@@ -44,6 +46,13 @@ class DNSResourceForm(MAASModelForm):
             'address_ttl',
             'ip_addresses',
             )
+
+    def __init__(
+            self, data=None, instance=None, request=None, *args, **kwargs):
+        # Always save the user, in case we create a StaticIPAddress in save().
+        if request is not None:
+            self.user = request.user
+        super().__init__(data=data, instance=instance, *args, **kwargs)
 
     def clean_ip(self, ipaddr):
         """Process one IP address (id or address) and return the id."""
@@ -85,3 +94,22 @@ class DNSResourceForm(MAASModelForm):
             if value is not None or key == 'address_ttl'
         }
         super(APIEditMixin, self)._post_clean()
+
+    def save(self, *args, **kwargs):
+        ip_addresses = self.cleaned_data.get('ip_addresses')
+        new_list = []
+        for ipaddr in ip_addresses:
+            if isinstance(ipaddr, int):
+                new_list.append(ipaddr)
+                continue
+            subnet = Subnet.objects.get_best_subnet_for_ip(ipaddr)
+            static_ip, _ = StaticIPAddress.objects.get_or_create(
+                ip="%s" % ipaddr,
+                defaults={
+                    'alloc_type': IPADDRESS_TYPE.USER_RESERVED,
+                    'subnet': subnet,
+                    'user': self.user,
+                })
+            new_list.append(static_ip.id)
+        self.cleaned_data['ip_addresses'] = new_list
+        return super().save(self, *args, **kwargs)
