@@ -11,6 +11,7 @@ from datetime import datetime
 from io import BytesIO
 import json
 from unittest.mock import (
+    call,
     Mock,
     sentinel,
 )
@@ -35,6 +36,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
@@ -229,20 +231,37 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__processMessages_calls_processMessage(self):
+    def test__processMessageNow_fails_when_in_transaction(self):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        with ExpectedException(TransactionManagementError):
+            yield deferToDatabase(
+                transactional(worker._processMessageNow),
+                sentinel.node, sentinel.message)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__processMessages_calls_processMessage_and_updateLastPing(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
+        mock_updateLastPing = self.patch(worker, "_updateLastPing")
         yield deferToDatabase(
-            worker._processMessages, sentinel.node, [sentinel.message])
+            worker._processMessages, sentinel.node,
+            [sentinel.message1, sentinel.message2])
         self.assertThat(
             mock_processMessage,
-            MockCalledOnceWith(sentinel.node, sentinel.message))
+            MockCallsMatch(
+                call(sentinel.node, sentinel.message1),
+                call(sentinel.node, sentinel.message2)))
+        self.assertThat(
+            mock_updateLastPing,
+            MockCalledOnceWith(sentinel.node, sentinel.message2))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_queueMessages_processes_top_level_message_instantly(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
+        mock_updateLastPing = self.patch(worker, "_updateLastPing")
         message = self.make_message()
         message['event_type'] = 'finish'
         nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
@@ -250,6 +269,9 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         yield worker.queueMessage(token.key, message)
         self.assertThat(
             mock_processMessage,
+            MockCalledOnceWith(node, message))
+        self.assertThat(
+            mock_updateLastPing,
             MockCalledOnceWith(node, message))
 
     @wait_for_reactor
@@ -312,6 +334,10 @@ class TestStatusWorkerService(MAASServerTestCase):
     def processMessage(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)
         worker._processMessage(node, payload)
+
+    def updateLastPing(self, node, payload):
+        worker = StatusWorkerService(sentinel.dbtasks)
+        worker._updateLastPing(node, payload)
 
     def test_status_installation_result_does_not_affect_other_node(self):
         node1 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
@@ -792,7 +818,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 break
         self.assertEqual(content, script_result.stdout)
 
-    def test_status_updates_script_status_last_ping(self):
+    def test_updateLastPing_updates_script_status_last_ping(self):
         nodes = {
             status: factory.make_Node(
                 status=status, with_empty_script_sets=True)
@@ -810,7 +836,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 'description': 'testing',
                 'timestamp': datetime.utcnow(),
             }
-            self.processMessage(node, payload)
+            self.updateLastPing(node, payload)
             script_set_statuses = {
                 NODE_STATUS.COMMISSIONING: (
                     node.current_commissioning_script_set),

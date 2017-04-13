@@ -9,13 +9,16 @@ from collections import defaultdict
 from datetime import datetime
 import json
 
+from django.db import DatabaseError
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
+from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import (
     in_transaction,
+    make_serialization_failure,
     transactional,
     TransactionManagementError,
 )
@@ -25,7 +28,10 @@ from metadataserver.api import (
     add_event_to_node_event_log,
     process_file,
 )
-from metadataserver.models import NodeKey
+from metadataserver.models import (
+    NodeKey,
+    ScriptSet,
+)
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.twisted import deferred
 from twisted.application.internet import TimerService
@@ -225,7 +231,10 @@ class StatusWorkerService(TimerService, object):
                 "outside of a transaction.")
         else:
             # Here we're in a database thread, with a database connection.
-            for message in messages:
+            # We only save the last_ping off the last message in the
+            # list of messages. This removes the number of database saves
+            # required.
+            for idx, message in enumerate(messages):
                 try:
                     self._processMessage(node, message)
                 except:
@@ -233,6 +242,47 @@ class StatusWorkerService(TimerService, object):
                         None,
                         "Failed to process message "
                         "for node: %s" % node.hostname)
+                if idx == len(messages) - 1:
+                    try:
+                        self._updateLastPing(node, message)
+                    except:
+                        log.err(
+                            None,
+                            "Failed to update last ping "
+                            "for node: %s" % node.hostname)
+
+    @transactional
+    def _updateLastPing(self, node, message):
+        """
+        Update the last ping in any status which uses a script_set whenever a
+        node in that status contacts us.
+        """
+        script_set_statuses = {
+            NODE_STATUS.COMMISSIONING: 'current_commissioning_script_set_id',
+            NODE_STATUS.TESTING: 'current_testing_script_set_id',
+            NODE_STATUS.DEPLOYING: 'current_installation_script_set_id',
+        }
+        script_set_property = script_set_statuses.get(node.status)
+        if script_set_property is not None:
+            script_set_id = getattr(node, script_set_property)
+            if script_set_id is not None:
+                try:
+                    script_set = ScriptSet.objects.select_for_update(
+                        nowait=True).get(id=script_set_id)
+                except ScriptSet.DoesNotExist:
+                    # Wierd that it would be deleted, but let not cause a
+                    # stack trace for this error.
+                    pass
+                except DatabaseError:
+                    # select_for_update(nowait=True) failed instantly. Raise
+                    # error so @transactional will retry the whole operation.
+                    raise make_serialization_failure()
+                else:
+                    current_time = now()
+                    if (script_set.last_ping is None or
+                            current_time > script_set.last_ping):
+                        script_set.last_ping = current_time
+                        script_set.save(update_fields=['last_ping'])
 
     @transactional
     def _processMessage(self, node, message):
@@ -277,18 +327,6 @@ class StatusWorkerService(TimerService, object):
         # Commit results to the database.
         for script_result, args in results.items():
             script_result.store_result(**args)
-
-        # Update the last ping in any status which uses a script_set whenever a
-        # node in that status contacts us.
-        script_set_statuses = {
-            NODE_STATUS.COMMISSIONING: node.current_commissioning_script_set,
-            NODE_STATUS.TESTING: node.current_testing_script_set,
-            NODE_STATUS.DEPLOYING: node.current_installation_script_set,
-        }
-        script_set = script_set_statuses.get(node.status)
-        if script_set is not None:
-            script_set.last_ping = message['timestamp']
-            script_set.save()
 
         # At the end of a top-level event, we change the node status.
         save_node = False
@@ -342,16 +380,24 @@ class StatusWorkerService(TimerService, object):
         """Top-level events do not have slashes in their names."""
         return '/' not in activity_name
 
-    @transactional
     def _processMessageNow(self, authorization, message):
-        try:
-            node = NodeKey.objects.get_node_for_key(authorization)
-        except NodeKey.DoesNotExist:
-            # The node that should get this message has already had its owner
-            # cleared or changed and this message cannot be saved.
-            return None
+        # This should be called in a non-reactor thread with a pre-existing
+        # connection (e.g. via deferToDatabase).
+        if in_transaction():
+            raise TransactionManagementError(
+                "_processMessageNow must be called from "
+                "outside of a transaction.")
         else:
-            return self._processMessage(node, message)
+            try:
+                node = transactional(NodeKey.objects.get_node_for_key)(
+                    authorization)
+            except NodeKey.DoesNotExist:
+                # The node that should get this message has already had its
+                # owner cleared or changed and this message cannot be saved.
+                return None
+            else:
+                self._processMessage(node, message)
+                self._updateLastPing(node, message)
 
     @deferred
     def queueMessage(self, authorization, message):
