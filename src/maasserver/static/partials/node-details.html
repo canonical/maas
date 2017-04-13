@@ -52,7 +52,7 @@
 
                  <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                  <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(action.option.name)">
-                     <form class="form form--inline">
+                     <form class="form form--inline u-display--inline">
                          <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'commission' || action.option.name === 'test'">
                              <div class="form__group">
                                  <input class="checkbox" id="enableSSH" type="checkbox"
@@ -75,9 +75,7 @@
                          <fieldset class="form__fieldset ng-hide" data-ng-show="action.option.name === 'deploy'">
                              <div class="form__group">
                                  <label class="form__group-label">Choose your image</label>
-                                 <div class="form__group-input">
-                                     <div data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
-                                 </div>
+                                 <div class="form__group-input" data-maas-os-select="osinfo" data-ng-model="osSelection"></div>
                              </div>
                          </fieldset>
                          <fieldset class="form__fieldset" data-ng-if="action.option.name === 'release'">

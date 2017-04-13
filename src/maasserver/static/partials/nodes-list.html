@@ -92,7 +92,7 @@
                     <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'deploy'">
                         <div class="form__group">
                             <label for="image" class="form__group-label">Choose your image</label>
-                            <div data-maas-os-select="osinfo" data-ng-model="tabs.nodes.osSelection"></div>
+                            <div class="form__group-input" data-maas-os-select="osinfo" data-ng-model="tabs.nodes.osSelection"></div>
                         </div>
                     </fieldset>
                     <fieldset class="form__fieldset" data-ng-if="tabs.nodes.actionOption.name === 'release'">
@@ -362,7 +362,7 @@
             <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
             <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError('devices') || hasActionsInProgress('devices')">
                  <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-                <form class="form form--inline">
+                <form class="form form--inline u-display--inline">
                     <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.devices.actionOption.name === 'set-zone'">
                         <div class="form__group">
                             <label class="form__group-label" for="zone1">Set zone</label>
@@ -516,7 +516,7 @@
             <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
             <div class="page-header__section twelve-col u-margin--bottom-none ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')">
                  <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
-                <form class="form form--inline">
+                <form class="form form--inline u-display--inline">
                     <fieldset class="form__fieldset ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'set-zone'">
                         <div class="form__group">
                             <label for="zone2" class="form__group-label">Select Zone</label>
