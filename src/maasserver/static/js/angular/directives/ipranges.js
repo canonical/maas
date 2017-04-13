@@ -6,8 +6,9 @@
 
 angular.module('MAAS').directive('maasIpRanges', [
     '$filter', 'IPRangesManager', 'UsersManager',
-    'ManagerHelperService', function(
-        $filter, IPRangesManager, UsersManager, ManagerHelperService) {
+    'ManagerHelperService', 'ConverterService', function(
+        $filter, IPRangesManager, UsersManager, ManagerHelperService,
+        ConverterService) {
         return {
             restrict: "E",
             scope: {
@@ -103,6 +104,15 @@ angular.module('MAAS').directive('maasIpRanges', [
                         $scope.deleteIPRange).then(function() {
                             $scope.deleteIPRange = null;
                     });
+                };
+
+                // Sort ranges by starting IP address.
+                $scope.ipRangeSort = function(range) {
+                    if(range.start_ip.indexOf(':') !== -1) {
+                        return ConverterService.ipv6Expand(range.start_ip);
+                    } else {
+                        return ConverterService.ipv4ToInteger(range.start_ip);
+                    }
                 };
 
                 // Load the reqiured managers.

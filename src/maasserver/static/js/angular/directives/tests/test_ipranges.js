@@ -299,4 +299,24 @@ describe("maasIPRanges", function() {
             expect(scope.deleteIPRange).toBeNull();
         });
     });
+
+    describe("ipRangeSort", function() {
+
+        it("returns sortable numeric IPv4 value", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var smaller = scope.ipRangeSort({ 'start_ip': '10.0.0.21'});
+            var larger = scope.ipRangeSort({ 'start_ip': '10.0.0.200'});
+            expect(smaller < larger).toBe(true);
+        });
+
+        it("returns sortable numeric IPv6 value", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var smaller = scope.ipRangeSort({ 'start_ip': '2001::21'});
+            var larger = scope.ipRangeSort({ 'start_ip': '2001::200'});
+            expect(smaller < larger).toBe(true);
+        });
+    });
+
 });
