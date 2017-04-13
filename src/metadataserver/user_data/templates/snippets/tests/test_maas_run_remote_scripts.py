@@ -12,6 +12,7 @@ import os
 import random
 from subprocess import TimeoutExpired
 import tarfile
+import time
 from unittest.mock import ANY
 
 from maastesting.factory import factory
@@ -328,3 +329,30 @@ class TestMaasRunRemoteScripts(MAASTestCase):
             mock_signal,
             MockAnyCall(
                 None, None, 'FAILED', '1 scripts failed to run'))
+
+    def test_heartbeat(self):
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        url = factory.make_url()
+        creds = factory.make_name('creds')
+        heart_beat = maas_run_remote_scripts.HeartBeat(url, creds)
+        start_time = time.time()
+        heart_beat.start()
+        heart_beat.stop()
+        self.assertLess(time.time() - start_time, 1)
+        self.assertThat(mock_signal, MockCalledOnceWith(url, creds, 'WORKING'))
+
+    def test_heartbeat_with_long_sleep(self):
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        self.patch(maas_run_remote_scripts.time, 'monotonic').side_effect = [
+            time.monotonic(),
+            time.monotonic(),
+            time.monotonic() + 500,
+        ]
+        url = factory.make_url()
+        creds = factory.make_name('creds')
+        heart_beat = maas_run_remote_scripts.HeartBeat(url, creds)
+        start_time = time.time()
+        heart_beat.start()
+        heart_beat.stop()
+        self.assertLess(time.time() - start_time, 1)
+        self.assertThat(mock_signal, MockCalledOnceWith(url, creds, 'WORKING'))

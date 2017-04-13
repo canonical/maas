@@ -114,7 +114,17 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         stderr_path = os.path.join(out_dir, stderr_name)
 
         try:
-            proc = Popen(script_path, stdout=PIPE, stderr=PIPE)
+            # This script sets its own niceness value to the highest(-20) below
+            # to help ensure the heartbeat keeps running. When launching the
+            # script we need to lower the nice value as a child process
+            # inherits the parent processes niceness value. preexec_fn is
+            # executed in the child process before the command is run. When
+            # setting the nice value the kernel adds the current nice value
+            # to the provided value. Since the runner uses a nice value of -20
+            # setting it to 40 gives the actual nice value of 20.
+            proc = Popen(
+                script_path, stdout=PIPE, stderr=PIPE,
+                preexec_fn=lambda: os.nice(40))
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout_seconds)
         except OSError as e:
@@ -210,13 +220,31 @@ class HeartBeat(Thread):
         self._run.clear()
 
     def run(self):
+        # Record the relative start time of the entire run.
+        start = time.monotonic()
+        tenths = 0
         while self._run.is_set():
-            signal_wrapper(self._url, self._creds, 'WORKING')
-            # Check every second if we should still be working. This ensures
-            # we don't keep the process running unnecessarily for too long.
-            for _ in range(120):
-                if self._run.is_set():
-                    time.sleep(1)
+            # Record the start of this heartbeat interval.
+            heartbeat_start = time.monotonic()
+            heartbeat_elapsed = 0
+            total_elapsed = heartbeat_start - start
+            args = [self._url, self._creds, 'WORKING']
+            # Log the elapsed time plus the measured clock skew, if this
+            # is the second run through the loop.
+            if tenths > 0:
+                args.append(
+                    'Elapsed time (real): %d.%ds; Python: %d.%ds' % (
+                        total_elapsed, total_elapsed % 1 * 10,
+                        tenths // 10, tenths % 10))
+            signal_wrapper(*args)
+            # Spin for 2 minutes before sending another heartbeat.
+            while heartbeat_elapsed < 120 and self._run.is_set():
+                heartbeat_end = time.monotonic()
+                heartbeat_elapsed = heartbeat_end - heartbeat_start
+                # Wake up every tenth of a second to record clock skew and
+                # ensure delayed scheduling doesn't impact the heartbeat.
+                time.sleep(0.1)
+                tenths += 1
 
 
 def main():
@@ -272,6 +300,9 @@ def main():
     oom_score_adj_path = os.path.join(
         '/proc', str(os.getpid()), 'oom_score_adj')
     open(oom_score_adj_path, 'w').write('-1000')
+    # Give the runner the highest nice value to ensure the heartbeat keeps
+    # running.
+    os.nice(-20)
 
     heart_beat = HeartBeat(url, creds)
     heart_beat.start()
