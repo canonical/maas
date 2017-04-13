@@ -29,7 +29,7 @@ class TestUbuntuCoreOS(MAASTestCase):
         label = factory.make_name('label')
         current_dir = os.path.join(tmpdir, 'current')
         dirpath = os.path.join(
-            current_dir, 'ubuntucore', arch, subarch, release, label)
+            current_dir, 'ubuntu-core', arch, subarch, release, label)
         os.makedirs(dirpath)
         factory.make_file(dirpath, filename)
         with ClusterConfiguration.open_for_update() as config:

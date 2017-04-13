@@ -19,7 +19,7 @@ from provisioningserver.drivers.osystem import (
 class UbuntuCoreOS(OperatingSystem):
     """Ubuntu Core operating system."""
 
-    name = "ubuntucore"
+    name = "ubuntu-core"
     title = "Ubuntu Core"
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
@@ -58,7 +58,7 @@ class UbuntuCoreOS(OperatingSystem):
         }
         with ClusterConfiguration.open() as config:
             dd_path = os.path.join(
-                config.tftp_root, 'ubuntucore', arch,
+                config.tftp_root, 'ubuntu-core', arch,
                 subarch, release, label)
         try:
             filename, filetype = "", ""
