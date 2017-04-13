@@ -56,10 +56,15 @@ angular.module('MAAS').directive(
                   var html = '<maas-obj-field-group>';
                   angular.forEach(type.fields, function(field) {
                       if(field.scope === 'bmc') {
-                          html += (
-                            '<maas-obj-field type="text" key="' + field.name +
-                            '" label="' + field.label + '" ' +
-                            'label-width="two" input-width="three">' +
+                          if(field.name === 'power_pass') {
+                              html += (
+                                  '<maas-obj-field type="password" key="');
+                          } else {
+                              html += (
+                                  '<maas-obj-field type="text" key="');
+                          }
+                          html += (field.name + '" label="' + field.label +
+                            '" ' + 'label-width="two" input-width="three">' +
                             '</maas-obj-field>');
                       }
                   });

@@ -184,6 +184,73 @@ describe("maasObjForm", function() {
         });
     });
 
+    describe("input type=password", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {
+                updateItem: jasmine.createSpy().and.returnValue(
+                    $q.defer().promise)
+            };
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="password" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("creates input with type 'password'", function() {
+            var inputField = angular.element(directive.find("#key"));
+            expect(inputField.prop("nodeName")).toBe("INPUT");
+            expect(inputField.attr("type")).toBe("password");
+        });
+
+        it("sets placeholder", function() {
+            var inputField = angular.element(directive.find("#key"));
+            expect(inputField.attr("placeholder")).toBe("Placeholder");
+        });
+
+        it("adds label with width", function() {
+            var labelField = angular.element(directive.find("label"));
+            expect(labelField.text()).toBe("Key");
+            expect(labelField.hasClass("two-col")).toBe(true);
+        });
+
+        it("adds inputWrapper with width", function() {
+            var labelField = angular.element(directive.find("label "));
+            var inputWrapper = angular.element(labelField.next("div"));
+            expect(inputWrapper.hasClass("three-col")).toBe(true);
+            expect(inputWrapper.hasClass("last-col")).toBe(true);
+        });
+
+        it("reverts value on esc", function() {
+            var inputField = angular.element(directive.find("#key"));
+            inputField.triggerHandler("focus");
+            inputField.val(makeName("newValue"));
+
+            // Send esc.
+            var evt = angular.element.Event("keydown");
+            evt.which = 27;
+            inputField.trigger(evt);
+
+            expect(inputField.val()).toBe("");
+        });
+
+        it("sets $maasForm on obj", function() {
+            expect($scope.obj.$maasForm).toBeDefined();
+        });
+
+        it("hasErrors returns true if has-error class exists", function() {
+            var inputField = angular.element(directive.find("#key"));
+            inputField.addClass('has-error');
+            expect($scope.obj.$maasForm.hasErrors()).toBe(true);
+        });
+    });
+
     describe("select", function() {
 
         var directive, options;

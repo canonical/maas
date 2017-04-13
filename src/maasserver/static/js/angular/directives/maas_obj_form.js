@@ -608,7 +608,8 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Render the input based on the type.
                 var placeholder = attrs.placeholder || label;
                 var inputElement = null;
-                if(attrs.type === "text" || attrs.type === "textarea") {
+                if(attrs.type === "text" || attrs.type === "textarea" ||
+                   attrs.type === "password") {
                     if(attrs.type === "text") {
                         inputElement = $compile(
                             '<input type="text" id="' + attrs.key +
@@ -619,7 +620,12 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                             '<textarea id="' + attrs.key +
                             '" placeholder="' + placeholder + '"' +
                             'data-ng-disabled="ngDisabled()">' +
-                            '</textarea>')(scope);
+                                '</textarea>')(scope);
+                    } else if(attrs.type === "password") {
+                        inputElement = $compile(
+                            '<input type="password" id="' + attrs.key +
+                            '" placeholder="' + placeholder + '"' +
+                            'data-ng-disabled="ngDisabled()">')(scope);
                     }
 
                     // Allow enter on blur, by default.
