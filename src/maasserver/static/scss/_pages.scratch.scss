@@ -324,6 +324,12 @@
     text-overflow: ellipsis;
   }
 
+  .u-width--two-thirds {
+    box-sizing: border-box;
+    float: left;
+    width: 66.66666%!important;
+  }
+
   .hidden {
     display: none;
   }

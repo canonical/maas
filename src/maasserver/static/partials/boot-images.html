@@ -22,12 +22,12 @@
                     <div data-ng-if="showMirrorPath()">
                         <h3>Mirror URL</h3>
                         <p>Add the URL you want to use to select your images from.</p>
-                        <div class="u-width--half u-display--inline-block u-float--left">
+                        <div class="u-width--two-thirds u-display--inline-block u-float--left">
                             <div class="form__group eight-col">
                                 <input type="text" name="mirrorUrl" placeholder="e.g. http:// or https://"
                                     data-ng-model="source.url" data-ng-change="sourceChanged()">
                             </div>
-                            <div class="u-display--inline-block u-float--left">
+                            <div class="u-display--inline-block u-float--left four-col last-col">
                                 <button class="button--base button--inline" aria-label="Toggle advanced URL controls" data-ng-click="toggleAdvancedOptions()" >
                                     <i class="icon" data-ng-class="{ 'icon--close': !isShowingAdvancedOptions(), 'icon--open': isShowingAdvancedOptions() }"></i>
                                     <span data-ng-if="!isShowingAdvancedOptions()">Show advanced options</span>
@@ -55,7 +55,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="u-width--half u-display--inline-block u-float--left">
+                        <div class="u-width--third u-display--inline-block u-float--left">
                             <button class="button--secondary button--inline u-float--right"
                                 data-ng-if="showConnectButton()"
                                 data-ng-disabled="isConnectButtonDisabled()"
