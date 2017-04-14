@@ -748,17 +748,23 @@ class BootResourceHandler(Handler):
         # An image in UI is a set of resource each with different subarches
         # and kflavor.
         resource = BootResource.objects.get(id=params['id'])
-        os, release = resource.name.split('/')
-        arch, subarch = resource.architecture.split('/')
-        resources = BootResource.objects.filter(
-            name=resource.name, architecture__startswith=arch)
-        # Remove the selection that provides the initial resource. All other
-        # resources will come from the same selection.
-        for selection in BootSourceSelection.objects.all():
-            if image_passes_filter(
-                    [selection.to_dict()], os, arch, subarch, release, '*'):
-                # This selection provided this image, remove it.
-                selection.delete()
-        # Remove the whole set of resources.
-        resources.delete()
+        if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
+            os, release = resource.name.split('/')
+            arch, subarch = resource.architecture.split('/')
+            resources = BootResource.objects.filter(
+                name=resource.name, architecture__startswith=arch)
+            # Remove the selection that provides the initial resource. All
+            # other resources will come from the same selection.
+            for selection in BootSourceSelection.objects.all():
+                if image_passes_filter(
+                        [selection.to_dict()],
+                        os, arch, subarch, release, '*'):
+                    # This selection provided this image, remove it.
+                    selection.delete()
+
+            # Remove the whole set of resources.
+            resources.delete()
+        else:
+            # Delete just this resource.
+            resource.delete()
         return self.poll({})
