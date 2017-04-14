@@ -62,7 +62,21 @@ def list_osystem_choices(osystems, include_default=True):
 def list_all_usable_releases(osystems):
     """Return dictionary of usable `releases` for each operating system."""
     distro_series = {}
+    titles = {}
+    # Look up any titles stored with the BootResource, use those over the title
+    # the rack gives us.
+    for resource in BootResource.objects.exclude(extra={}):
+        if 'title' in resource.extra and resource.extra['title'] != '':
+            osystem, release = resource.name.split('/')
+            if osystem not in titles:
+                titles[osystem] = {}
+            titles[osystem][release] = resource.extra['title']
     for osystem in osystems:
+        for release in osystem['releases']:
+            osystem_name = osystem['name']
+            release_name = release['name']
+            if osystem_name in titles and release_name in titles[osystem_name]:
+                release['title'] = titles[osystem_name][release_name]
         distro_series[osystem['name']] = sorted(
             [release for release in osystem['releases']],
             key=itemgetter('title'))

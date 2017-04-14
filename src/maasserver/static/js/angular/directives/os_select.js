@@ -54,7 +54,8 @@ angular.module('MAAS').directive('maasOsSelect', function() {
                     var choice, choices = [];
                     for(i = 0; i < allChoices.length; i++) {
                         choice = allChoices[i];
-                        if(choice[0].indexOf($scope.ngModel.osystem) > -1) {
+                        if(choice[0].indexOf($scope.ngModel.osystem + '/') > -1)
+                        {
                             choices.push(choice);
                         }
                     }

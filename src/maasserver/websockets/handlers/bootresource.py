@@ -393,7 +393,9 @@ class BootResourceHandler(Handler):
             BOOT_RESOURCE_TYPE.SYNCED,
             BOOT_RESOURCE_TYPE.GENERATED,
             ]
-        if resource.rtype in rtypes_with_split_names:
+        if 'title' in resource.extra and len(resource.extra['title']) > 0:
+            return resource.extra['title']
+        elif resource.rtype in rtypes_with_split_names:
             os, series = resource.name.split('/')
             if resource.name.startswith('ubuntu/'):
                 return format_ubuntu_distro_series(series)
@@ -404,10 +406,7 @@ class BootResourceHandler(Handler):
                 else:
                     return title
         else:
-            if 'title' in resource.extra and len(resource.extra['title']) > 0:
-                return resource.extra['title']
-            else:
-                return resource.name
+            return resource.name
 
     def resource_group_to_resource(self, group):
         """Convert the list of resources into one resource to be used in

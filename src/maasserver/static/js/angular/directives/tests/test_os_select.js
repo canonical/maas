@@ -225,4 +225,25 @@ describe("maasOsSelect", function() {
                 $scope.osinfo.osystems[1][0], $scope.osinfo.releases);
         expect($scope.selected.release).toEqual(releases[0][0]);
     });
+
+    it("releases match os name", function() {
+        var directive = compileDirective("osinfo", "selected");
+        $scope.osinfo = {
+            osystems: [['ubuntu', 'ubuntu'], ['ubuntu-core', 'ubuntu-core']],
+            releases: [
+                ['ubuntu/xenial', 'xenial'],
+                ['ubuntu-core/16-pc', '16-pc']
+            ],
+            default_osystem: 'ubuntu',
+            default_release: 'xenial'
+        };
+        $scope.selected = {
+            osystem: 'ubuntu',
+            release: ""
+        };
+        $scope.$digest();
+        expect(directive.isolateScope().releases).toEqual(
+            [['ubuntu/xenial', 'xenial']]);
+    });
+
 });

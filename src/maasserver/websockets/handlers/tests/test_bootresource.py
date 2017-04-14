@@ -84,8 +84,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
 
-    def make_other_resource(self, os=None, arch=None, subarch=None,
-                            release=None):
+    def make_other_resource(
+            self, os=None, arch=None, subarch=None, release=None, extra=None):
         if os is None:
             os = factory.make_name('os')
         if arch is None:
@@ -98,7 +98,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         architecture = '%s/%s' % (arch, subarch)
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name, architecture=architecture)
+            name=name, architecture=architecture, extra=extra)
         resource_set = factory.make_BootResourceSet(resource)
         factory.make_boot_resource_file_with_content(resource_set)
         return resource
@@ -645,6 +645,15 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         self.assertEquals([], json_obj['other_images'])
+
+    def test_prefers_title_from_boot_resource_extra(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        title = factory.make_name('title')
+        self.make_other_resource(extra={'title': title})
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertEquals(title, json_obj['resources'][0]['title'])
 
 
 class TestBootResourceStopImport(MAASTransactionServerTestCase):
