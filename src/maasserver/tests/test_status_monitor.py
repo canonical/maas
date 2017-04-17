@@ -106,6 +106,19 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             script_set = node.current_testing_script_set
         return node, script_set
 
+    def test_mark_nodes_handled_last_ping_None(self):
+        node, script_set = self.make_node()
+        script_set.last_ping = None
+        script_set.save()
+        for _ in range(3):
+            factory.make_ScriptResult(
+                script_set=script_set, status=SCRIPT_STATUS.PENDING)
+
+        # No exception should be raised.
+        mark_nodes_failed_after_missing_script_timeout()
+        node = reload_object(node)
+        self.assertEquals(self.status, node.status)
+
     def test_mark_nodes_failed_after_missing_timeout_heartbeat(self):
         node, script_set = self.make_node()
         script_set.last_ping = datetime.now() - timedelta(minutes=11)

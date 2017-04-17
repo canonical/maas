@@ -73,7 +73,8 @@ def mark_nodes_failed_after_missing_script_timeout():
             script_set = node.current_commissioning_script_set
         elif node.status == NODE_STATUS.TESTING:
             script_set = node.current_testing_script_set
-        if script_set.last_ping < heartbeat_expired:
+        if (script_set.last_ping is not None and
+                script_set.last_ping < heartbeat_expired):
             node.mark_failed(
                 comment='Node has missed the last 5 heartbeats',
                 script_result_status=SCRIPT_STATUS.TIMEDOUT,
