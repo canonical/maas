@@ -352,19 +352,18 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 "Can't start machine: it hasn't been allocated.")
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
-        if None in (series, license_key, hwe_kernel):
-            Form = get_machine_edit_form(request.user)
-            form = Form(instance=machine)
-            if series is not None:
-                form.set_distro_series(series=series)
-            if license_key is not None:
-                form.set_license_key(license_key=license_key)
-            if hwe_kernel is not None:
-                form.set_hwe_kernel(hwe_kernel=hwe_kernel)
-            if form.is_valid():
-                form.save()
-            else:
-                raise MAASAPIValidationError(form.errors)
+        Form = get_machine_edit_form(request.user)
+        form = Form(instance=machine, data={})
+        if series is not None:
+            form.set_distro_series(series=series)
+        if license_key is not None:
+            form.set_license_key(license_key=license_key)
+        if hwe_kernel is not None:
+            form.set_hwe_kernel(hwe_kernel=hwe_kernel)
+        if form.is_valid():
+            form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
         return self.power_on(request, system_id)
 
     @operation(idempotent=False)

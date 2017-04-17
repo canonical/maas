@@ -430,6 +430,26 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
 
+    def test_POST_deploy_works_if_series_already_set(self):
+        self.patch(node_module.Node, "_start")
+        osystem = Config.objects.get_config('default_osystem')
+        distro_series = Config.objects.get_config('default_distro_series')
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series])
+        machine = factory.make_Node(
+            owner=self.user, interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type='manual',
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self))
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'deploy'})
+        response_info = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(response_info['osystem'], osystem)
+        self.assertEqual(response_info['distro_series'], distro_series)
+
     def test_POST_deploy_fails_with_no_boot_source(self):
         machine = factory.make_Node(
             owner=self.user, interface=True,
