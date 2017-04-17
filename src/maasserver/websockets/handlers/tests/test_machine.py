@@ -961,8 +961,13 @@ class TestMachineHandler(MAASServerTestCase):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})
         script_result = factory.make_ScriptResult()
+        # See ScriptSet.status
+        if script_result.status == SCRIPT_STATUS.TIMEDOUT:
+            expected_script_status = SCRIPT_STATUS.FAILED
+        else:
+            expected_script_status = script_result.status
         self.assertEquals(
-            script_result.status,
+            expected_script_status,
             handler.dehydrate_script_set_status(script_result.script_set))
 
     def test_dehydrate_script_set_status_returns_neg_when_none(self):
