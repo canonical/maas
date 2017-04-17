@@ -267,6 +267,8 @@ class IPRangeStatistics:
         suggested_gateway = None
         first_address = self.first_address_value
         last_address = self.last_address_value
+        if self.ip_version == 6 and self.total_addresses <= 2:
+            return None
         if self.ip_version == 6:
             # For IPv6 addresses, always return the subnet-router anycast
             # address. (See RFC 4291 section 2.6.1 for more information.)
@@ -315,20 +317,23 @@ class IPRangeStatistics:
                         candidate.first, candidate.last - 1,
                         purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
         if candidate is not None:
+            first = candidate.first
             one_fourth_range = self.total_addresses >> 2
             half_remaining_space = self.num_available >> 1
             if candidate.size > one_fourth_range:
                 # Prevent the proposed range from taking up too much available
                 # space in the subnet.
-                candidate = MAASIPRange(
-                    candidate.last - one_fourth_range, candidate.last,
-                    purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+                first = candidate.last - one_fourth_range
             elif candidate.size >= half_remaining_space:
                 # Prevent the proposed range from taking up the remainder of
                 # the available IP addresses. (take at most half.)
-                candidate = MAASIPRange(
-                    candidate.last - half_remaining_space + 1, candidate.last,
-                    purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
+                first = candidate.last - half_remaining_space + 1
+            if first >= candidate.last:
+                # Calculated an impossible range.
+                return None
+            candidate = MAASIPRange(
+                first, candidate.last,
+                purpose=IPRANGE_TYPE.PROPOSED_DYNAMIC)
         return candidate
 
     @property

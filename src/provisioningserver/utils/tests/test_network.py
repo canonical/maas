@@ -825,6 +825,12 @@ class TestMAASIPSet(MAASTestCase):
         self.assertThat(u['10.0.0.2'].purpose, Not(Contains('unused')))
         self.assertThat(u['10.0.0.254'].purpose, Contains('unused'))
 
+    def test__calculates_full_range_for_small_ipv6(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/127')
+        self.assertThat(u['2001:db8::'].purpose, Contains('unused'))
+        self.assertThat(u['2001:db8::1'].purpose, Contains('unused'))
+
     def test__supports_ior(self):
         s1 = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
         s2 = MAASIPSet(['10.0.0.1', '10.0.0.3', '10.0.0.5', '10.0.0.7'])
@@ -1081,6 +1087,25 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(
             stats.suggested_dynamic_range, Not(Contains(
                 "2001:db8::bfff:ffff:ffff:ffff")))
+
+    def test__no_suggestion_for_small_ipv6_slash_126(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/126')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+        self.assertThat(stats.suggested_dynamic_range, Is(None))
+
+    def test__no_suggestion_for_small_ipv6_slash_127(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/127')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals(None))
+
+    def test__no_suggestion_and_no_gateway_for_small_ipv6_slash_128(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/128')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Is(None))
 
     def test__suggests_half_available_for_ipv6(self):
         s = MAASIPSet([MAASIPRange(
