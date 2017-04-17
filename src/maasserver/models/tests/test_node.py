@@ -5718,6 +5718,28 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
+    def test__doesnt_raise_network_validation_when_all_dhcp(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
+        gethost = self.patch(server_address, "get_maas_facing_server_host")
+        ip_address = node.get_boot_interface().ip_addresses.first()
+        orig_subnet = ip_address.subnet
+        ip_address.alloc_type = IPADDRESS_TYPE.DHCP
+        ip_address.subnet = None
+        ip_address.save()
+        # Force an address family mismatch.  See Bug#1630361.
+        if IPNetwork(orig_subnet.cidr).version == 6:
+            gethost.return_value = "192.168.1.1"
+        else:
+            gethost.return_value = "2001:db8::3"
+        register_event = self.patch(node, '_register_request_event')
+        node.start(admin)
+        self.assertThat(
+            register_event, MockCalledOnceWith(
+                admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT,
+                action='start', comment=None))
+
     def test__treats_ipv4_mapped_address_as_ipv4(self):
         admin = factory.make_admin()
         network = factory.make_ipv4_network()
