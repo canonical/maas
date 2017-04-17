@@ -59,6 +59,7 @@ from netaddr import (
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
     IPRANGE_TYPE as MAASIPRANGE_TYPE,
+    IPRangeStatistics,
     MAASIPSet,
     make_ipaddress,
     make_iprange,
@@ -855,3 +856,50 @@ class Subnet(CleanSave, TimestampedModel):
         for s in Subnet.objects.raw(find_rfc2137_parent_query, (self.cidr,)):
             return s
         return None
+
+    def update_allocation_notification(self):
+        ident = "ip_exhaustion__subnet_%d" % self.id
+        # Circular imports.
+        from maasserver.models import Config, Notification
+        threshold = Config.objects.get_config(
+            'subnet_ip_exhaustion_threshold_count')
+        notification = Notification.objects.filter(ident=ident).first()
+        delete_notification = False
+        if threshold > 0:
+            full_iprange = self.get_iprange_usage()
+            statistics = IPRangeStatistics(full_iprange)
+            # Check if there are less available IPs in the subnet than the
+            # warning threshold.
+            meets_warning_threshold = statistics.num_available <= threshold
+            # Check if the warning threshold is appropriate relative to the
+            # size of the subnet. It's pointless to warn about address
+            # exhaustion on a /30, for example: the admin already knows it's
+            # small, so we would just be annoying them.
+            subnet_is_reasonably_large_relative_to_threshold = (
+                threshold * 3 <= statistics.total_addresses)
+            if (meets_warning_threshold and
+                    subnet_is_reasonably_large_relative_to_threshold):
+                notification_text = (
+                    "IP address exhaustion imminent on subnet: %s. "
+                    "There are %d free addresses out of %d "
+                    "(%s used).") % (
+                        self.label, statistics.num_available,
+                        statistics.total_addresses,
+                        statistics.usage_percentage_string)
+                if notification is None:
+                    Notification.objects.create_warning_for_admins(
+                        notification_text, ident=ident)
+                else:
+                    # Note: This will update the notification, but will not
+                    # bring it back for those who have dismissed it. Maybe we
+                    # should consider creating a new notification if the
+                    # situation is now more severe, such as raise it to an
+                    # error if it's half remaining threshold.
+                    notification.message = notification_text
+                    notification.save()
+            else:
+                delete_notification = True
+        else:
+            delete_notification = True
+        if notification is not None and delete_notification:
+            notification.delete()

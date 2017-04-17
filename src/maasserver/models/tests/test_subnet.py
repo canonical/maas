@@ -28,7 +28,11 @@ from maasserver.enum import (
     RDNS_MODE_CHOICES,
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
-from maasserver.models import Space
+from maasserver.models import (
+    Config,
+    Notification,
+    Space,
+)
 from maasserver.models.subnet import (
     create_cidr,
     Subnet,
@@ -40,7 +44,10 @@ from maasserver.testing.factory import (
 )
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from maastesting.matchers import DocTestMatches
 from netaddr import (
     AddrFormatError,
@@ -1199,3 +1206,250 @@ class TestUnmanagedSubnets(MAASServerTestCase):
                 StaticIPAddressExhaustion,
                 "No more IPs available in subnet: 10.0.0.0/29."):
             subnet.get_next_ip_for_allocation()
+
+
+class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
+    """Tests the effects of the signal handlers on the StaticIPAddress and
+    IPRange classes, which will cause the subnet notification creation or
+    deletion code to be executed.
+    """
+
+    # For reference, IPv4:
+    #     /32: 1 address
+    #     /31: 2 address (tunneling subnet, no broadcast/network)
+    #     /30: 4 addresses, 2 usable
+    #     /29: 8 addresses, 6 usable
+    #     /28: 16 addresses, 14 usable
+    #     /27: 32 addresses, 30 usable
+    #     /26: 64 addresses, 62 usable
+    #     /25: 128 addresses, 126 usable
+    #     /24: 256 addresses, 254 usable
+    #     /23: 512 addresses, 510 usable
+    #     /22: 1024 addresses, 1022 usable
+    #     /21: 2048 addresses, 2046 usable
+    #
+    # IPv6:
+    #     /128: 1 address
+    #     /127: 2 address (tunneling subnet)
+    #     /126: 4 addresses
+    #     /125: 8 addresses
+    #     /124: 16 addresses
+    #     /123: 32 addresses
+    #     /122: 64 addresses
+    #     /121: 128 addresses
+    #     /120: 256 addresses
+    #     /119: 512 addresses
+    #     /118: 1024 addresses
+    #     /117: 2048 addresses
+
+    scenarios = (
+        # Default threshold is 16.
+        ("Default threshold warns for /26", {
+            'threshold': None,
+            'cidr': '10.0.0.0/26',
+            'expected_notification': True,
+        }),
+        ("Default threshold doesn't warn for /27", {
+            'threshold': None,
+            'cidr': '10.0.0.0/27',
+            'expected_notification': False,
+        }),
+        ("threshold=1 warns for /29", {
+            'threshold': 1,
+            'cidr': '10.0.0.0/29',
+            'expected_notification': True,
+        }),
+        ("threshold=0 never warns", {
+            'threshold': 0,
+            'cidr': '10.0.0.0/29',
+            'expected_notification': False,
+        }),
+        ("Default threshold warns for /122 IPv6", {
+            'threshold': None,
+            'cidr': '2001::/26',
+            'expected_notification': True,
+        }),
+        ("Default threshold doesn't warn for /123 IPv6", {
+            'threshold': None,
+            'cidr': '2001::/123',
+            'expected_notification': False,
+        }),
+        ("Default threshold warns for /48 IPv6", {
+            'threshold': None,
+            'cidr': '2001::/48',
+            'expected_notification': True,
+        }),
+        ("Default threshold warns for /16 IPv6", {
+            'threshold': None,
+            'cidr': '2001::/16',
+            'expected_notification': True,
+        }),
+        ("threshold=1 warns for /125 IPv6", {
+            'threshold': 1,
+            'cidr': '2001::/125',
+            'expected_notification': True,
+        }),
+        ("threshold=0 never warns for IPv6", {
+            'threshold': 0,
+            'cidr': '2001::/127',
+            'expected_notification': False,
+        }),
+    )
+
+    def setUp(self):
+        super().setUp()
+        self.ipnetwork = IPNetwork(self.cidr)
+        self.subnet = factory.make_Subnet(
+            cidr=self.cidr, dns_servers=[], gateway_ip=None, space=None)
+        if self.threshold is not None:
+            Config.objects.set_config(
+                'subnet_ip_exhaustion_threshold_count', self.threshold)
+        self.threshold = Config.objects.get_config(
+            'subnet_ip_exhaustion_threshold_count')
+
+    def test__notification_when_ip_saved(self):
+        # Create an IP range to fill ip most of the subnet, but not enough
+        # to reach the threshold.
+        network_size = self.ipnetwork.size - 2
+        if self.ipnetwork.version == 6:
+            network_size += 1
+        desired_range_size = network_size - self.threshold - 1
+        if desired_range_size > 0:
+            range_start = self.ipnetwork.first + 1
+            range_end = (
+                self.ipnetwork.first + network_size - self.threshold - 1)
+            # Cover most of the threshold (except one IP address) with an IP
+            # range, so that when we allocate a single IP we go over the limit.
+            factory.make_IPRange(
+                start_ip=str(IPAddress(range_start)),
+                end_ip=str(IPAddress(range_end)),
+                subnet=self.subnet,
+                type=IPRANGE_TYPE.RESERVED)
+        else:
+            # Dummy value so we allocate an IP below.
+            range_end = self.ipnetwork.first
+        ident = 'ip_exhaustion__subnet_%d' % self.subnet.id
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        # By now, the notification should never have been created. (If so,
+        # it was created too early.)
+        self.assertThat(notification_exists, Equals(False))
+        factory.make_StaticIPAddress(
+            ip=str(IPAddress(range_end + 1)), subnet=self.subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        # ... but creating another single IP address in the subnet should push
+        # it over the edge.
+        self.assertThat(
+            notification_exists, Equals(self.expected_notification))
+
+    def test__notification_when_range_saved(self):
+        # Calculate a range size large enough to push us over the threshold.
+        network_size = self.ipnetwork.size - 2
+        if self.ipnetwork.version == 6:
+            network_size += 1
+        range_start = self.ipnetwork.first + 1
+        range_end = (self.ipnetwork.first + network_size) - (
+            min(self.threshold, network_size))
+        factory.make_IPRange(
+            start_ip=str(IPAddress(range_start)),
+            end_ip=str(IPAddress(range_end)),
+            subnet=self.subnet,
+            type=IPRANGE_TYPE.RESERVED)
+        ident = 'ip_exhaustion__subnet_%d' % self.subnet.id
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(
+            notification_exists, Equals(self.expected_notification))
+
+    def test__notification_cleared_when_range_deleted(self):
+        # Calculate a range size large enough to push us over the threshold.
+        network_size = self.ipnetwork.size - 2
+        if self.ipnetwork.version == 6:
+            network_size += 1
+        range_start = self.ipnetwork.first + 1
+        range_end = (self.ipnetwork.first + network_size) - (
+            min(self.threshold, network_size))
+        range = factory.make_IPRange(
+            start_ip=str(IPAddress(range_start)),
+            end_ip=str(IPAddress(range_end)),
+            subnet=self.subnet,
+            type=IPRANGE_TYPE.RESERVED)
+        ident = 'ip_exhaustion__subnet_%d' % self.subnet.id
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(
+            notification_exists, Equals(self.expected_notification))
+        range.delete()
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(
+            notification_exists, Equals(False))
+
+    def test__notification_cleared_on_next_save_if_threshold_changes(self):
+        # Calculate a range size large enough to push us over the threshold.
+        network_size = self.ipnetwork.size - 2
+        if self.ipnetwork.version == 6:
+            network_size += 1
+        range_start = self.ipnetwork.first + 1
+        range_end = (self.ipnetwork.first + network_size) - (
+            min(self.threshold, network_size))
+        range = factory.make_IPRange(
+            start_ip=str(IPAddress(range_start)),
+            end_ip=str(IPAddress(range_end)),
+            subnet=self.subnet,
+            type=IPRANGE_TYPE.RESERVED)
+        ident = 'ip_exhaustion__subnet_%d' % self.subnet.id
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(
+            notification_exists, Equals(self.expected_notification))
+        Config.objects.set_config(
+            'subnet_ip_exhaustion_threshold_count', 0)
+        range.save()
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(notification_exists, Equals(False))
+
+    def test__notification_cleared_when_ip_deleted(self):
+        # Create an IP range to fill ip most of the subnet, but not enough
+        # to reach the threshold.
+        network_size = self.ipnetwork.size - 2
+        if self.ipnetwork.version == 6:
+            network_size += 1
+        desired_range_size = network_size - self.threshold - 1
+        if desired_range_size > 0:
+            range_start = self.ipnetwork.first + 1
+            range_end = (
+                self.ipnetwork.first + network_size - self.threshold - 1)
+            # Cover most of the threshold (except one IP address) with an IP
+            # range, so that when we allocate a single IP we go over the limit.
+            factory.make_IPRange(
+                start_ip=str(IPAddress(range_start)),
+                end_ip=str(IPAddress(range_end)),
+                subnet=self.subnet,
+                type=IPRANGE_TYPE.RESERVED)
+        else:
+            # Dummy value so we allocate an IP below.
+            range_end = self.ipnetwork.first
+        ident = 'ip_exhaustion__subnet_%d' % self.subnet.id
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        # By now, the notification should never have been created. (If so,
+        # it was created too early.)
+        self.assertThat(notification_exists, Equals(False))
+        ip = factory.make_StaticIPAddress(
+            ip=str(IPAddress(range_end + 1)), subnet=self.subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        # ... but creating another single IP address in the subnet should push
+        # it over the edge.
+        self.assertThat(
+            notification_exists, Equals(self.expected_notification))
+        ip.delete()
+        notification = get_one(Notification.objects.filter(ident=ident))
+        notification_exists = notification is not None
+        self.assertThat(
+            notification_exists, Equals(False))

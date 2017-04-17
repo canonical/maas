@@ -121,5 +121,26 @@ def post_save_prevent_conflicts(sender, instance, created, **kwargs):
 signals.watch(
     post_save, post_save_prevent_conflicts, sender=StaticIPAddress)
 
+
+def post_save_check_range_utilization(sender, instance, created, **kwargs):
+    if instance.subnet is None:
+        # Can't find a subnet to complain about. We're done here.
+        return
+    instance.subnet.update_allocation_notification()
+
+
+def post_delete_check_range_utilization(sender, instance, **kwargs):
+    if instance.subnet is None:
+        # Can't find a subnet to complain about. We're done here.
+        return
+    instance.subnet.update_allocation_notification()
+
+
+signals.watch(
+    post_save, post_save_check_range_utilization, sender=StaticIPAddress)
+signals.watch(
+    post_delete, post_delete_check_range_utilization, sender=StaticIPAddress)
+
+
 # Enable all signals by default.
 signals.enable()

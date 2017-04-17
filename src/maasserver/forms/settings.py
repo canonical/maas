@@ -242,7 +242,7 @@ CONFIG_ITEMS = {
         'default': 30,
         'form': forms.IntegerField,
         'form_kwargs': {
-            'label': "Default Time-To-Live for the DNS.",
+            'label': "Default Time-To-Live for the DNS",
             'required': False,
             'help_text': (
                 "If no TTL value is specified at a more specific point "
@@ -414,8 +414,7 @@ CONFIG_ITEMS = {
         'form': forms.BooleanField,
         'form_kwargs': {
             'required': False,
-            'label': (
-                "Erase nodes' disks prior to releasing."),
+            'label': "Erase nodes' disks prior to releasing",
             'help_text': (
                 "Forces users to always erase disks when releasing.")
         }
@@ -425,8 +424,7 @@ CONFIG_ITEMS = {
         'form': forms.BooleanField,
         'form_kwargs': {
             'required': False,
-            'label': (
-                "Use secure erase by default when erasing disks."),
+            'label': "Use secure erase by default when erasing disks",
             'help_text': (
                 "Will only be used on devices that support secure erase.  "
                 "Other devices will fall back to full wipe or quick erase "
@@ -438,8 +436,7 @@ CONFIG_ITEMS = {
         'form': forms.BooleanField,
         'form_kwargs': {
             'required': False,
-            'label': (
-                "Use quick erase by default when erasing disks."),
+            'label': "Use quick erase by default when erasing disks.",
             'help_text': (
                 "This is not a secure erase; it wipes only the beginning and "
                 "end of each disk.")
@@ -463,7 +460,7 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "Run the fast-path installer with higher verbosity. This "
-                "provides more detail in the installation logs.")
+                "provides more detail in the installation logs")
         }
     },
     'enable_analytics': {
@@ -474,14 +471,14 @@ CONFIG_ITEMS = {
             'label': (
                 "Enable MAAS UI usage of Google Analytics. This helps the "
                 "developers of MAAS to identify usage statistics to further "
-                "development.")
+                "development")
         }
     },
     'completed_intro': {
         'default': True,
         'form': forms.BooleanField,
         'form_kwargs': {
-            'label': "Marks if the initial intro has been completed.",
+            'label': "Marks if the initial intro has been completed",
             'required': False
         }
     },
@@ -492,7 +489,7 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "The maximum number of commissioning results runs which are "
-                "stored."),
+                "stored"),
             'min_value': 1,
         },
     },
@@ -503,7 +500,7 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "The maximum number of testing results runs which are "
-                "stored."),
+                "stored"),
             'min_value': 1,
         },
     },
@@ -514,7 +511,19 @@ CONFIG_ITEMS = {
             'required': False,
             'label': (
                 "The maximum number of installation result runs which are "
-                "stored."),
+                "stored"),
+            'min_value': 1,
+        },
+    },
+    'subnet_ip_exhaustion_threshold_count': {
+        'default': 16,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "If the number of free IP addresses on a subnet becomes less "
+                "than or equal to this threshold, an IP exhaustion warning "
+                "will appear for that subnet"),
             'min_value': 1,
         },
     },

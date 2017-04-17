@@ -75,7 +75,7 @@ def get_default_config():
         'ntp_servers': 'ntp.ubuntu.com',
         'ntp_external_only': False,
         'omapi_key': '',
-        # Network discovery
+        # Network discovery.
         'network_discovery': 'enabled',
         'active_discovery_interval': int(timedelta(hours=3).total_seconds()),
         'active_discovery_last_scan': 0,
@@ -99,6 +99,8 @@ def get_default_config():
         'max_node_commissioning_results': 10,
         'max_node_testing_results': 10,
         'max_node_installation_results': 1,
+        # Notifications.
+        'subnet_ip_exhaustion_threshold_count': 16
     }
 
 
