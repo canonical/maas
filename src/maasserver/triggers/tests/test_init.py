@@ -243,6 +243,7 @@ class TestTriggersUsed(MAASServerTestCase):
         "vlan_vlan_create_notify",
         "vlan_vlan_delete_notify",
         "vlan_vlan_machine_update_notify",
+        "vlan_vlan_subnet_update_notify",
         "vlan_vlan_update_notify",
         "zone_zone_create_notify",
         "zone_zone_delete_notify",

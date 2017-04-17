@@ -677,6 +677,25 @@ VLAN_NODE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when vlan is updated.
+VLAN_SUBNET_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        subnet RECORD;
+    BEGIN
+      FOR subnet IN (
+        SELECT DISTINCT maasserver_subnet.id AS id
+        FROM maasserver_subnet, maasserver_vlan
+        WHERE maasserver_vlan.id = %s)
+      LOOP
+        PERFORM pg_notify('subnet_update',CAST(subnet.id AS text));
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 # Procedure that is called when an IP address is updated to update the related
 # node.
 STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
@@ -1367,6 +1386,13 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_vlan",
         "vlan_machine_update_notify", "update")
+
+    # VLAN subnet notifications
+    register_procedure(
+        VLAN_SUBNET_NOTIFY % ('vlan_subnet_update_notify', 'NEW.id'))
+    register_trigger(
+        "maasserver_vlan",
+        "vlan_subnet_update_notify", "update")
 
     # IP address node notifications
     register_procedure(

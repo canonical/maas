@@ -1909,6 +1909,26 @@ class TestSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__calls_handler_on_update_notification_for_vlan(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("subnet", lambda *args: dv.set(args))
+        subnet = yield deferToDatabase(self.create_subnet)
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_vlan,
+                subnet.vlan.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % subnet.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
