@@ -52,6 +52,10 @@ class NotificationHandler(TimestampedModelHandler):
         not as simply "$notification_id".
         """
         if channel == "notification":
+            if action == "update":
+                if not self.get_queryset().filter(id=pk).exists():
+                    # A notification that was already dismissed was updated.
+                    return None
             return super().on_listen(channel, action, pk)
         elif channel == "notificationdismissal":
             pk, user_id = map(int, pk.split(":"))

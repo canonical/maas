@@ -181,6 +181,19 @@ class TestNotificationHandlerListening(MAASServerTestCase):
             "notificationdismissal", sentinel.action, dismissal), Is(None))
         self.assertThat(super_on_listen, MockNotCalled())
 
+    def test_on_listen_for_edited_notification_does_nothing(self):
+        super_on_listen = self.patch(Handler, "on_listen")
+        super_on_listen.return_value = sentinel.on_listen
+
+        user = factory.make_User()
+        handler = NotificationHandler(user, {})
+        notification = factory.make_Notification(user=user)
+        notification.dismiss(user)
+
+        self.assertThat(handler.on_listen(
+            "notification", "update", notification.id), Is(None))
+        self.assertThat(super_on_listen, MockNotCalled())
+
     def test_listen_reloads_user(self):
         admin = factory.make_admin()
         handler = NotificationHandler(admin, {})
