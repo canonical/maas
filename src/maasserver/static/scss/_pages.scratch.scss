@@ -118,6 +118,11 @@
     }
   }
 
+  .button--no-padding {
+    height: initial;
+    padding: 0;
+  }
+
   .page-header .page-header__status .page-header__status-check {
     display: inline-block;
     width: initial;
