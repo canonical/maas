@@ -83,7 +83,7 @@ def used_for(model):
     elif isinstance(model, BlockDevice):
         partition_table = model.get_partitiontable()
         if partition_table is not None:
-            partitions = partition_table.partitions.count()
+            partitions = len(partition_table.partitions.all())
             if partitions > 1:
                 message = "%s partitioned with %d partitions"
             else:

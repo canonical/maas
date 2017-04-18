@@ -10,6 +10,7 @@ __all__ = [
     ]
 
 import datetime
+from operator import attrgetter
 import re
 
 from django.core.exceptions import (
@@ -176,7 +177,7 @@ class Fabric(CleanSave, TimestampedModel):
     def get_default_vlan(self):
         # This logic is replicated in the dehydrate() function of the
         # websockets handler.
-        return self.vlan_set.all().order_by('id').first()
+        return sorted(self.vlan_set.all(), key=attrgetter('id'))[0]
 
     def get_name(self):
         """Return the name of the fabric."""

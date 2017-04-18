@@ -9,10 +9,8 @@ __all__ = [
 
 import time
 
-from maasserver.monkey import add_patches_to_django
 from provisioningserver import logger
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.monkey import add_patches_to_twisted
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -99,8 +97,6 @@ class RegionServiceMaker:
         """Construct the MAAS Region service."""
         register_sigusr2_thread_dump_handler()
 
-        add_patches_to_twisted()
-        add_patches_to_django()
         self._configureThreads()
         self._configureLogging(options["verbosity"])
         self._configureDjango()

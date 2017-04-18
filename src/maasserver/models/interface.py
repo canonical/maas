@@ -622,19 +622,19 @@ class Interface(CleanSave, TimestampedModel):
         `StaticIPAddress` has an IP address and/or subnet.
         """
         links = []
-        for ip_address in self.ip_addresses.exclude(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED):
-            link_type = ip_address.get_interface_link_type()
-            link = {
-                "id": ip_address.id,
-                "mode": link_type,
-            }
-            ip, subnet = ip_address.get_ip_and_subnet()
-            if ip:
-                link["ip_address"] = "%s" % ip
-            if subnet:
-                link["subnet"] = subnet
-            links.append(link)
+        for ip_address in self.ip_addresses.all():
+            if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                link_type = ip_address.get_interface_link_type()
+                link = {
+                    "id": ip_address.id,
+                    "mode": link_type,
+                }
+                ip, subnet = ip_address.get_ip_and_subnet()
+                if ip:
+                    link["ip_address"] = "%s" % ip
+                if subnet:
+                    link["subnet"] = subnet
+                links.append(link)
         return links
 
     def get_discovered(self):
@@ -648,8 +648,11 @@ class Interface(CleanSave, TimestampedModel):
           }
 
         """
-        discovered_ips = self.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        discovered_ips = [
+            ip_address
+            for ip_address in self.ip_addresses.all()
+            if ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED
+        ]
         if len(discovered_ips) > 0:
             discovered = []
             for discovered_ip in discovered_ips:

@@ -13,11 +13,10 @@ __all__ = [
 import logging
 from os import environ
 
-from maasserver.monkey import add_patches_to_django
-from provisioningserver.monkey import add_patches_to_twisted
-
 
 __version__ = '2.2.0'
+
+default_app_config = 'maasserver.apps.MAASConfig'
 
 logger = logging.getLogger("maasserver")
 
@@ -53,9 +52,6 @@ def is_master_process():
 
 
 def execute_from_command_line():
-    # Make Twisted IPv6 ready, at least for MAAS's needs.
-    add_patches_to_twisted()
-    add_patches_to_django()
     # Limit concurrency in all thread-pools to ONE.
     from maasserver.utils import threads
     threads.install_default_pool(maxthreads=1)

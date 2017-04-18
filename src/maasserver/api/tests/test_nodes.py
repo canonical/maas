@@ -25,7 +25,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
-from maastesting.djangotestcase import count_queries
 
 
 class TestIsRegisteredAPI(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -316,33 +315,6 @@ class TestNodesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(system_ids, extract_system_ids(parsed_result))
-
-    def create_nodes(self, nodegroup, nb):
-        for _ in range(nb):
-            factory.make_Node(nodegroup=nodegroup, interface=True)
-
-    def test_GET_nodes_issues_constant_number_of_queries(self):
-        # XXX: GavinPanella 2014-10-03 bug=1377335
-        self.skipTest("Unreliable; something is causing varying counts.")
-
-        nodegroup = factory.make_NodeGroup()
-        self.create_nodes(nodegroup, 10)
-        num_queries1, response1 = count_queries(
-            self.client.get, reverse('nodes_handler'))
-        self.create_nodes(nodegroup, 10)
-        num_queries2, response2 = count_queries(
-            self.client.get, reverse('nodes_handler'))
-        # Make sure the responses are ok as it's not useful to compare the
-        # number of queries if they are not.
-        self.assertEqual(
-            [http.client.OK, http.client.OK, 10, 20],
-            [
-                response1.status_code,
-                response2.status_code,
-                len(extract_system_ids(json.loads(response1.content))),
-                len(extract_system_ids(json.loads(response2.content))),
-            ])
-        self.assertEqual(num_queries1, num_queries2)
 
     def test_GET_without_nodes_returns_empty_list(self):
         # If there are no nodes to list, the "list" op still works but

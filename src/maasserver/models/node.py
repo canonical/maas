@@ -1345,29 +1345,27 @@ class Node(CleanSave, TimestampedModel):
         """Static IP addresses allocated to this node."""
         # DHCP is included here because it is a configured type. Its not
         # just set randomly by the lease parser.
-        ip_addresses = StaticIPAddress.objects.filter(
-            interface__node=self, ip__isnull=False,
-            alloc_type__in=[
+        return [
+            ip_address.get_ip()
+            for interface in self.interface_set.all()
+            for ip_address in interface.ip_addresses.all()
+            if ip_address.ip and ip_address.alloc_type in [
                 IPADDRESS_TYPE.DHCP,
                 IPADDRESS_TYPE.AUTO,
                 IPADDRESS_TYPE.STICKY,
                 IPADDRESS_TYPE.USER_RESERVED,
-            ])
-        ips = []
-        for ip in ip_addresses:
-            ip = ip.get_ip()
-            if ip:
-                ips.append(ip)
-        return ips
+            ]
+        ]
 
     def dynamic_ip_addresses(self):
         """Dynamic IP addresses allocated to this node."""
-        ip_addresses = StaticIPAddress.objects.filter(
-            interface__node=self, alloc_type=IPADDRESS_TYPE.DISCOVERED)
         return [
-            ip
-            for ip in ip_addresses.values_list('ip', flat=True)
-            if ip
+            ip_address.ip
+            for interface in self.interface_set.all()
+            for ip_address in interface.ip_addresses.all()
+            if (
+                ip_address.ip and
+                ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED)
         ]
 
     def get_interface_names(self):
@@ -1610,10 +1608,13 @@ class Node(CleanSave, TimestampedModel):
 
         Compatility with API 1.0 this field needs to exist on the Node.
         """
-        size = (
-            PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
-                self))
-        size += ISCSIBlockDevice.objects.total_size_of_iscsi_devices_for(self)
+        size = sum(
+            block_device.size
+            for block_device in self.blockdevice_set.all()
+            if isinstance(
+                block_device.actual_instance,
+                (ISCSIBlockDevice, PhysicalBlockDevice))
+        )
         return size / 1000 / 1000
 
     def display_storage(self):
@@ -1625,11 +1626,20 @@ class Node(CleanSave, TimestampedModel):
     def get_boot_disk(self):
         """Return the boot disk for this node."""
         if self.boot_disk is not None:
-            return self.boot_disk
+            return self.boot_disk.actual_instance
         else:
             # Fallback to using the first created physical block device as
             # the boot disk.
-            return self.physicalblockdevice_set.order_by('id').first()
+            block_devices = sorted([
+                block_device.actual_instance
+                for block_device in self.blockdevice_set.all()
+                if isinstance(
+                    block_device.actual_instance, PhysicalBlockDevice)
+            ], key=attrgetter('id'))
+            if len(block_devices) > 0:
+                return block_devices[0]
+            else:
+                return None
 
     def get_bios_boot_method(self):
         """Return the boot method the node's BIOS booted."""
@@ -3420,21 +3430,37 @@ class Node(CleanSave, TimestampedModel):
         """Returns a string representation of the most recent event description
         (supplied through the status API) associated with this node, None if
         there are no events."""
-        from maasserver.models.event import Event  # Avoid circular import.
-        # Id's have a lower (non-zero under heavy load) chance of being out of
-        # order than of two timestamps colliding.
-        event = Event.objects.filter(node=self).order_by('-id').first()
-        return event.description if event is not None else None
+        if hasattr(self, '_status_event'):
+            return self._status_event.description
+        else:
+            from maasserver.models.event import Event  # Avoid circular import.
+            # Id's have a lower (non-zero under heavy load) chance of being out
+            # of order than of two timestamps colliding.
+            event = Event.objects.filter(node=self).order_by(
+                '-created', '-id').first()
+            if event is not None:
+                self._status_event = event
+                return event.description
+            else:
+                return None
 
     def status_action(self):
         """Returns a string representation of the most recent event action name
         (supplied through the status API) associated with this node, None if
         there are no events."""
-        from maasserver.models.event import Event  # Avoid circular import.
-        # Id's have a lower (non-zero under heavy load) chance of being out of
-        # order than of two timestamps colliding.
-        event = Event.objects.filter(node=self).order_by('-id').first()
-        return event.action if event is not None else None
+        if hasattr(self, '_status_event'):
+            return self._status_event.action
+        else:
+            from maasserver.models.event import Event  # Avoid circular import.
+            # Id's have a lower (non-zero under heavy load) chance of being out
+            # of order than of two timestamps colliding.
+            event = Event.objects.filter(node=self).order_by(
+                '-created', '-id').first()
+            if event is not None:
+                self._status_event = event
+                return event.action
+            else:
+                return None
 
     @property
     def status_name(self):

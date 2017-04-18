@@ -30,7 +30,6 @@ from maasserver.forms.filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
     Machine,
-    PartitionTable,
     PhysicalBlockDevice,
     VirtualBlockDevice,
 )
@@ -190,21 +189,18 @@ class BlockDeviceHandler(OperationsHandler):
 
     @classmethod
     def partition_table_type(cls, block_device):
-        try:
-            partition_table = block_device.partitiontable_set.get()
-        except PartitionTable.DoesNotExist:
-            # No partition table on the block device.
-            return None
-        return partition_table.table_type
+        partition_table = block_device.get_partitiontable()
+        if partition_table is not None:
+            return partition_table.table_type
 
     @classmethod
     def partitions(cls, block_device):
-        try:
-            partition_table = block_device.partitiontable_set.get()
-        except PartitionTable.DoesNotExist:
+        partition_table = block_device.get_partitiontable()
+        if partition_table is not None:
+            return partition_table.partitions.all()
+        else:
             # No partitions on the block device.
             return []
-        return partition_table.partitions.all()
 
     def read(self, request, system_id, id):
         """Read block device on node.

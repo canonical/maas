@@ -12,7 +12,10 @@ import random
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import RequestFactory
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    middleware,
+)
 from maasserver.api import machines as machines_module
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -295,28 +298,42 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertIsNone(parsed_result[0]['pod'])
 
     def test_GET_machines_issues_constant_number_of_queries(self):
-        # XXX: GavinPanella 2014-10-03 bug=1377335
-        self.skipTest("Unreliable; something is causing varying counts.")
+        # Patch middleware so it does not affect query counting.
+        self.patch(
+            middleware.ExternalComponentsMiddleware,
+            '_check_rack_controller_connectivity')
 
         for _ in range(10):
             factory.make_Node_with_Interface_on_Subnet()
         num_queries1, response1 = count_queries(
             self.client.get, reverse('machines_handler'))
+
         for _ in range(10):
             factory.make_Node_with_Interface_on_Subnet()
         num_queries2, response2 = count_queries(
             self.client.get, reverse('machines_handler'))
+
         # Make sure the responses are ok as it's not useful to compare the
         # number of queries if they are not.
+        parsed_result_1 = json.loads(
+            response1.content.decode(settings.DEFAULT_CHARSET))
+        parsed_result_2 = json.loads(
+            response2.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             [http.client.OK, http.client.OK, 10, 20],
             [
                 response1.status_code,
                 response2.status_code,
-                len(extract_system_ids(json.loads(response1.content))),
-                len(extract_system_ids(json.loads(response2.content))),
+                len(extract_system_ids(parsed_result_1)),
+                len(extract_system_ids(parsed_result_2)),
             ])
-        self.assertEqual(num_queries1, num_queries2)
+
+        # Because of fields `status_action`, `status_message`, and
+        # `default_gateways`. The number of queries is not the same but it is
+        # proportional to the number of machines.
+        DEFAULT_NUM = 56
+        self.assertEqual(DEFAULT_NUM + (10 * 3), num_queries1)
+        self.assertEqual(DEFAULT_NUM + (20 * 3), num_queries2)
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but

@@ -221,13 +221,11 @@ class Domain(CleanSave, TimestampedModel):
     @property
     def resource_record_count(self):
         """How many total Resource Records come from non-Nodes."""
-        from maasserver.models.dnsdata import DNSData
-        from maasserver.models.staticipaddress import StaticIPAddress
-        ip_count = StaticIPAddress.objects.filter(
-            dnsresource__domain_id=self.id).count()
-        rr_count = DNSData.objects.filter(
-            dnsresource__domain_id=self.id).count()
-        return ip_count + rr_count
+        count = 0
+        for resource in self.dnsresource_set.all():
+            count += len(resource.ip_addresses.all())
+            count += len(resource.dnsdata_set.all())
+        return count
 
     def add_delegations(self, mapping, ns_host_name, dns_ip_list, default_ttl):
         """Find any subdomains that need to be added to this domain, and add

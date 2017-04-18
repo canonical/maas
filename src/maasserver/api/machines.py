@@ -71,10 +71,12 @@ from maasserver.forms.pods import ComposeMachineForPodsForm
 from maasserver.models import (
     Config,
     Domain,
-    Filesystem,
+    ISCSIBlockDevice,
     Machine,
+    PhysicalBlockDevice,
     Pod,
     RackController,
+    VirtualBlockDevice,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import (
@@ -124,6 +126,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'constraints_by_type',
     'boot_disk',
     'blockdevice_set',
+    'iscsiblockdevice_set',
     'physicalblockdevice_set',
     'virtualblockdevice_set',
     'status_action',
@@ -193,6 +196,11 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     fields = DISPLAYED_MACHINE_FIELDS
 
     @classmethod
+    def boot_disk(handler, machine):
+        """Return the boot_disk for the machine."""
+        return machine.get_boot_disk()
+
+    @classmethod
     def boot_interface(handler, machine):
         """The network interface which is used to boot over the network."""
         return machine.get_boot_interface()
@@ -211,6 +219,33 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             }
         else:
             return None
+
+    @classmethod
+    def iscsiblockdevice_set(handler, machine):
+        """Use precached queries instead of attribute on the object."""
+        return [
+            block_device.actual_instance
+            for block_device in machine.blockdevice_set.all()
+            if isinstance(block_device.actual_instance, ISCSIBlockDevice)
+        ]
+
+    @classmethod
+    def physicalblockdevice_set(handler, machine):
+        """Use precached queries instead of attribute on the object."""
+        return [
+            block_device.actual_instance
+            for block_device in machine.blockdevice_set.all()
+            if isinstance(block_device.actual_instance, PhysicalBlockDevice)
+        ]
+
+    @classmethod
+    def virtualblockdevice_set(handler, machine):
+        """Use precached queries instead of attribute on the object."""
+        return [
+            block_device.actual_instance
+            for block_device in machine.blockdevice_set.all()
+            if isinstance(block_device.actual_instance, VirtualBlockDevice)
+        ]
 
     @classmethod
     def default_gateways(handler, machine):
@@ -536,7 +571,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 'mount_point': filesystem.mount_point,
                 'mount_options': filesystem.mount_options,
             }
-            for filesystem in Filesystem.objects.filter(node=machine)
+            for filesystem in machine.special_filesystems.all()
         ]
 
     @operation(idempotent=False)

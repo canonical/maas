@@ -318,6 +318,54 @@ class NodesHandler(OperationsHandler):
     anonymous = AnonNodesHandler
     base_model = Node
 
+    def read_prefetch(self, queryset):
+        """Prefetch the required data to limit the number of queries."""
+        queryset = queryset.select_related('bmc', 'owner', 'zone')
+        prefetch_related_fields = [
+            'domain__dnsresource_set__ip_addresses',
+            'domain__dnsresource_set__dnsdata_set',
+            'ownerdata_set',
+            'special_filesystems',
+            'gateway_link_ipv4__subnet',
+            'gateway_link_ipv6__subnet',
+            'blockdevice_set__node',
+            'blockdevice_set__filesystem_set',
+            'blockdevice_set__partitiontable_set__partitions__filesystem_set',
+            'blockdevice_set__iscsiblockdevice__node',
+            'blockdevice_set__iscsiblockdevice__filesystem_set',
+            ('blockdevice_set__iscsiblockdevice__partitiontable_set__'
+             'partitions__filesystem_set'),
+            'blockdevice_set__physicalblockdevice__node',
+            'blockdevice_set__physicalblockdevice__filesystem_set',
+            ('blockdevice_set__physicalblockdevice__partitiontable_set__'
+             'partitions__filesystem_set'),
+            'blockdevice_set__virtualblockdevice__node',
+            'blockdevice_set__virtualblockdevice__filesystem_set',
+            ('blockdevice_set__virtualblockdevice__partitiontable_set__'
+             'partitions__filesystem_set'),
+            'boot_interface__node',
+            'boot_interface__vlan__primary_rack',
+            'boot_interface__vlan__secondary_rack',
+            'boot_interface__vlan__fabric__vlan_set',
+            'boot_interface__vlan__space',
+            'boot_interface__ip_addresses__subnet',
+            'boot_interface__parents',
+            ('boot_interface__children_relationships__child__'
+             'children_relationships__child'),
+            'interface_set__vlan__primary_rack',
+            'interface_set__vlan__secondary_rack',
+            'interface_set__vlan__fabric__vlan_set',
+            'interface_set__vlan__space',
+            'interface_set__parents',
+            'interface_set__ip_addresses__subnet',
+            ('interface_set__children_relationships__child__'
+             'children_relationships__child'),
+            'tags',
+        ]
+        for prefetch in prefetch_related_fields:
+            queryset = queryset.prefetch_related(prefetch)
+        return queryset
+
     def read(self, request):
         """List Nodes visible to the user, optionally filtered by criteria.
 
@@ -369,12 +417,7 @@ class NodesHandler(OperationsHandler):
             return nodes
         else:
             nodes = filtered_nodes_list_from_request(request, self.base_model)
-            # Prefetch related objects that are needed for rendering the
-            # result.
-            nodes = nodes.prefetch_related('interface_set__node')
-            nodes = nodes.prefetch_related('interface_set__ip_addresses')
-            nodes = nodes.prefetch_related('tags')
-            nodes = nodes.prefetch_related('zone')
+            nodes = self.read_prefetch(nodes)
             return nodes.order_by('id')
 
     @operation(idempotent=True)
@@ -427,7 +470,7 @@ class OwnerDataMixin:
         """Owner data placed on machine."""
         return {
             data.key: data.value
-            for data in OwnerData.objects.filter(node=machine)
+            for data in machine.ownerdata_set.all()
         }
 
     @operation(idempotent=False)

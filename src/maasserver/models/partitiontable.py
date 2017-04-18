@@ -11,7 +11,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
-    Sum,
 )
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -108,10 +107,11 @@ class PartitionTable(CleanSave, TimestampedModel):
             for partition in ignore_partitions
             if partition.id is not None
         ]
-        used_size = self.partitions.exclude(
-            id__in=ignore_ids).aggregate(Sum('size'))['size__sum']
-        if used_size is None:
-            used_size = 0
+        used_size = sum([
+            partition.size
+            for partition in self.partitions.all()
+            if partition.id not in ignore_ids
+        ])
         # The extra space taken by the partition table header is used space.
         return used_size + self.get_overhead_size()
 
