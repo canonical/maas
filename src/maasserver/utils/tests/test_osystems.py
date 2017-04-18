@@ -120,6 +120,31 @@ class TestReleases(MAASServerTestCase):
         self.assertEqual(
             releases, list_all_usable_releases([osystem])[osystem['name']])
 
+    def test_list_all_usable_releases_finds_title_in_boot_resource_table(self):
+        release = make_rpc_release()
+        osystem = make_rpc_osystem(releases=[release])
+        title = factory.make_name('title')
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.GENERATED,
+            name='%s/%s' % (osystem['name'], release['name']),
+            extra={'title': title})
+        self.assertEquals(
+            title,
+            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
+
+    def test_list_all_usable_releases_finds_title_for_custom(self):
+        # Regression test for LP:1683440
+        release = make_rpc_release()
+        osystem = make_rpc_osystem(
+            name='custom', releases=[release])
+        title = factory.make_name('title')
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=release['name'],
+            extra={'title': title})
+        self.assertEquals(
+            title,
+            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
+
     def test_list_all_releases_requiring_keys(self):
         releases = [
             make_rpc_release(requires_license_key=True) for _ in range(3)]
@@ -142,18 +167,6 @@ class TestReleases(MAASServerTestCase):
         self.assertEqual(
             releases,
             list_all_releases_requiring_keys([osystem])[osystem['name']])
-
-    def test_list_all_releases_looks_up_title_in_boot_resource_table(self):
-        release = make_rpc_release()
-        osystem = make_rpc_osystem(releases=[release])
-        title = factory.make_name('title')
-        factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name='%s/%s' % (osystem['name'], release['name']),
-            extra={'title': title})
-        self.assertEquals(
-            title,
-            list_all_usable_releases([osystem])[osystem['name']][0]['title'])
 
     def test_get_release_requires_key_returns_asterisk_when_required(self):
         release = make_rpc_release(requires_license_key=True)
