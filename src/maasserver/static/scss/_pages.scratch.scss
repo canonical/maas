@@ -531,22 +531,26 @@
   }
 
   tags-input {
-
+    display: block;
+    
     .autocomplete {
+      margin-top: -1px;
+      position: absolute;
+      padding: 5px 0;
+      z-index: 999;
+      width: 100%;
+      background-color: #fff;
+      border-radius: 0 0 3px 3px;
+      border: 1px solid rgba(0,0,0,.2);
+      -webkit-box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      max-height: 300px;
+      transition: max-height .3s ease-in;
+      overflow: scroll;
 
       .suggestion-list {
-        border-radius: 0 0 3px 3px;
-        left: 0;
         margin: 0;
-        list-style: none;
-        background: #fff;
-        border: 1px solid #d2d2d2;
-        border-top: 0;
-        z-index: 20;
-        max-height: 300px;
-        transition: max-height .3s ease-in;
-        position: absolute;
-        top: 34px;
         clear: both;
         min-width: 160px;
         width: 100%;
