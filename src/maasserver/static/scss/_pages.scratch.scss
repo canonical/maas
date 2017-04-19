@@ -1,7 +1,10 @@
 @mixin maas-pages {
 
   table thead {
-    display: table-header-group !important;
+
+    @media screen and (min-width: $breakpoint-medium + 1) {
+      display: table-header-group !important;
+    }
   }
 
   table thead,

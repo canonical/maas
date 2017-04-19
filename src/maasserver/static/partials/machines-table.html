@@ -57,7 +57,7 @@
             <td class="powerstate u-upper-case--first" aria-label="Power state">
                 <span title="{$ node.power_state $}" data-ng-if="node.power_state != 'unknown'" class="icon icon--power-{$ node.power_state $} u-margin--right-tiny"></span> {$ node.power_state $}
             </td>
-            <td class="table-col--3"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i></td>
+            <td class="table-col--3 u-display--desktop"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-display--desktop"></i></td>
             <td class="status u-text--truncate" aria-label="Status">{$ getStatusText(node) $} <span class="u-display--mobile"><i data-ng-if="showSpinner(node)" class="icon icon--loading u-animation--spin u-margin--left-tiny"></i></span></td>
             <td class="table-col--10" aria-label="Owner">{$ node.owner $}</td>
             <td class="u-align--right u-display--desktop" aria-label="CPU">{$ node.cpu_count $}</td>
