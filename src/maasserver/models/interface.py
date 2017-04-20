@@ -13,6 +13,7 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+from zlib import crc32
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
@@ -1182,6 +1183,21 @@ class Interface(CleanSave, TimestampedModel):
         auto_ip.save()
         return subnet, auto_ip
 
+    def get_default_bridge_name(self):
+        """Returns the default name for a bridge created on this interface."""
+        # This is a fix for bug #1672327, consistent with Juju's idea of what
+        # the bridge name should be.
+        ifname = self.get_name().encode('utf-8')
+        name = b"br-%s" % ifname
+        if len(name) > 15:
+            name = b"b-%s" % ifname
+            if ifname[:2] == b'en':
+                name = b"b-%s" % ifname[2:]
+            if len(name) > 15:
+                ifname_hash = (b"%06x" % (crc32(ifname) & 0xffffffff))[-6:]
+                name = b"b-%s-%s" % (ifname_hash, ifname[len(ifname) - 6:])
+        return name.decode('utf-8')
+
     def create_acquired_bridge(self, bridge_stp=None, bridge_fd=None):
         """Create an acquired bridge on top of this interface.
 
@@ -1200,10 +1216,10 @@ class Interface(CleanSave, TimestampedModel):
         }
         if 'mtu' in self.params:
             params['mtu'] = self.params['mtu']
+        name = self.get_default_bridge_name()
         bridge = BridgeInterface(
-            name="br-%s" % self.get_name(), node=self.node,
-            mac_address=self.mac_address, vlan=self.vlan,
-            enabled=True, acquired=True, params=params)
+            name=name, node=self.node, mac_address=self.mac_address,
+            vlan=self.vlan, enabled=True, acquired=True, params=params)
         bridge.save()
         # The order in which the creating and linkage between child and parent
         # is important. The IP addresses must first be moved from this

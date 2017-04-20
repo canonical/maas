@@ -1409,7 +1409,7 @@ class InterfaceMTUTest(MAASServerTestCase):
         parent.save()
         bridge = parent.create_acquired_bridge()
         self.assertThat(bridge, MatchesStructure(
-            name=Equals("br-%s" % parent.get_name()),
+            name=Equals("%s" % parent.get_default_bridge_name()),
             mac_address=Equals(parent.mac_address),
             node=Equals(parent.node),
             vlan=Equals(parent.vlan),
@@ -2986,7 +2986,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         bridge = parent.create_acquired_bridge()
         self.assertThat(bridge, MatchesStructure(
-            name=Equals("br-%s" % parent.get_name()),
+            name=Equals("%s" % parent.get_default_bridge_name()),
             mac_address=Equals(parent.mac_address),
             node=Equals(parent.node),
             vlan=Equals(parent.vlan),
@@ -3007,7 +3007,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
         bridge = parent.create_acquired_bridge(
             bridge_stp=bridge_stp, bridge_fd=bridge_fd)
         self.assertThat(bridge, MatchesStructure(
-            name=Equals("br-%s" % parent.get_name()),
+            name=Equals("%s" % parent.get_default_bridge_name()),
             mac_address=Equals(parent.mac_address),
             node=Equals(parent.node),
             vlan=Equals(parent.vlan),
@@ -3029,7 +3029,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, interface=parent)
         bridge = parent.create_acquired_bridge()
         self.assertThat(bridge, MatchesStructure(
-            name=Equals("br-%s" % parent.get_name()),
+            name=Equals("%s" % parent.get_default_bridge_name()),
             mac_address=Equals(parent.mac_address),
             node=Equals(parent.node),
             vlan=Equals(parent.vlan),
@@ -3179,3 +3179,28 @@ class TestReportVID(MAASServerTestCase):
             "Automatically created VLAN (observed by %s)." % (
                 iface.get_log_string()),
             new_vlan.description)
+
+
+class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):
+
+    # Normally we would use scenarios for this, but this was copied and
+    # pasted from Juju code in bridgepolicy_test.go.
+    expected_bridge_names = {
+        "eno0": "br-eno0",
+        "twelvechars0": "br-twelvechars0",
+        "thirteenchars": "b-thirteenchars",
+        "enfourteenchar": "b-fourteenchar",
+        "enfifteenchars0": "b-fifteenchars0",
+        "fourteenchars1": "b-5590a4-chars1",
+        "fifteenchars.12": "b-7e0acf-ars.12",
+        "zeros0526193032": "b-000000-193032",
+        "enx00e07cc81e1d": "b-x00e07cc81e1d",
+    }
+
+    def test__returns_expected_bridge_names_consistent_with_juju(self):
+        interface = factory.make_Interface()
+        for ifname, expected_bridge_name in self.expected_bridge_names.items():
+            interface.name = ifname
+            self.assertThat(
+                interface.get_default_bridge_name(),
+                Equals(expected_bridge_name))
