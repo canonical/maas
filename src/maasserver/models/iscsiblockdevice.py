@@ -59,7 +59,7 @@ class ISCSIBlockDevice(BlockDevice):
 
     def __str__(self):
         return '{target} attached to {node}'.format(
-            model=self.target, node=self.node)
+            target=self.target, node=self.node)
 
     def save(self, *args, **kwargs):
         # Normilize the target to always include a 'iscsi:' at the start.

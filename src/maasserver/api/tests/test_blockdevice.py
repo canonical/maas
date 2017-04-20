@@ -22,6 +22,7 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
+    Contains,
     ContainsDict,
     Equals,
     Is,
@@ -75,6 +76,12 @@ class TestBlockDevices(APITestCase.ForUser):
         virtual_block_device = factory.make_VirtualBlockDevice(
             filesystem_group=filesystem_group, size=10 * 1000 ** 3)
 
+        # Add some iSCSI block devices.
+        iscsi_block_devices = [
+            factory.make_ISCSIBlockDevice(node=node, size=10 * 1000 ** 3)
+            for _ in range(3)
+            ]
+
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
@@ -83,20 +90,31 @@ class TestBlockDevices(APITestCase.ForUser):
 
         devices = json_load_bytes(response.content)
 
-        # We should have four devices, three physical, one virtual.
-        self.assertEqual(len(devices), 4)
+        # We should have seven devices, three physical, one virtual, and
+        # three iscsi.
+        self.assertEqual(len(devices), 7)
         self.assertEqual(
             len([d for d in devices if d['type'] == 'physical']), 3)
         self.assertEqual(
             len([d for d in devices if d['type'] == 'virtual']), 1)
+        self.assertEqual(
+            len([d for d in devices if d['type'] == 'iscsi']), 3)
 
         # The IDs we expect and the IDs we got through the API should match.
         expected_device_ids = [
             d.id
-            for d in physical_block_devices + [virtual_block_device]
+            for d in (
+                physical_block_devices + [virtual_block_device] +
+                iscsi_block_devices)
         ]
         result_device_ids = [d["id"] for d in devices]
         self.assertItemsEqual(expected_device_ids, result_device_ids)
+        # Validate that every one has a resource_uri.
+        for d in devices:
+            self.expectThat(
+                d, Contains("resource_uri"),
+                "Device(%s:%s) is missing a resource_uri." % (
+                    d['type'], d['id']))
 
     def test_read_returns_model(self):
         node = factory.make_Node(with_boot_disk=False)
