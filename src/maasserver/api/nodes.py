@@ -352,14 +352,20 @@ class NodesHandler(OperationsHandler):
             'boot_interface__parents',
             ('boot_interface__children_relationships__child__'
              'children_relationships__child'),
+            'interface_set__node',
             'interface_set__vlan__primary_rack',
             'interface_set__vlan__secondary_rack',
             'interface_set__vlan__fabric__vlan_set',
             'interface_set__vlan__space',
             'interface_set__parents',
             'interface_set__ip_addresses__subnet',
+            # Prefetch 3 levels deep, anything more will require extra queries.
+            'interface_set__children_relationships__child__vlan',
             ('interface_set__children_relationships__child__'
-             'children_relationships__child'),
+             'children_relationships__child__vlan'),
+            ('interface_set__children_relationships__child__'
+             'children_relationships__child__'
+             'children_relationships__child__vlan'),
             'tags',
         ]
         for prefetch in prefetch_related_fields:

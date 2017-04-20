@@ -124,7 +124,26 @@ class InterfacesHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return node.interface_set.all()
+        queryset = node.interface_set.all()
+        prefetch_related_fields = [
+            'node',
+            'vlan__primary_rack',
+            'vlan__secondary_rack',
+            'vlan__fabric__vlan_set',
+            'vlan__space',
+            'parents',
+            'ip_addresses__subnet',
+            # Prefetch 3 levels deep, anything more will require extra queries.
+            'children_relationships__child__vlan',
+            ('children_relationships__child__'
+             'children_relationships__child__vlan'),
+            ('children_relationships__child__'
+             'children_relationships__child__'
+             'children_relationships__child__vlan'),
+        ]
+        for prefetch in prefetch_related_fields:
+            queryset = queryset.prefetch_related(prefetch)
+        return queryset
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):

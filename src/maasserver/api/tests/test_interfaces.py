@@ -9,6 +9,7 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver import middleware
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -24,6 +25,7 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import count_queries
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -134,6 +136,42 @@ class TestInterfacesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content)
         self.assertEqual(
             interface.id, json_load_bytes(response.content)[0]['id'])
+
+    def test_read_uses_constant_number_of_queries(self):
+        # Patch middleware so it does not affect query counting.
+        self.patch(
+            middleware.ExternalComponentsMiddleware,
+            '_check_rack_controller_connectivity')
+
+        node = factory.make_Node()
+        bond1, parents1, children1 = make_complex_interface(node)
+        uri = get_interfaces_uri(node)
+
+        num_queries1, response1 = count_queries(self.client.get, uri)
+
+        bond2, parents2, children2 = make_complex_interface(node)
+        num_queries2, response2 = count_queries(self.client.get, uri)
+
+        # Make sure the responses are ok as it's not useful to compare the
+        # number of queries if they are not.
+        parsed_result_1 = json_load_bytes(response1.content)
+        parsed_result_2 = json_load_bytes(response2.content)
+        self.assertEqual(
+            [
+                http.client.OK, http.client.OK,
+                len([bond1] + parents1 + children1),
+                len(
+                    [bond1, bond2] +
+                    parents1 + parents2 +
+                    children1 + children2),
+            ],
+            [
+                response1.status_code,
+                response2.status_code,
+                len(parsed_result_1),
+                len(parsed_result_2),
+            ])
+        self.assertEqual(num_queries1, num_queries2)
 
     def test_create_physical(self):
         self.become_admin()
