@@ -232,17 +232,17 @@ class TestGetMAASDocVersion(TestVersionTestCase):
     def test__returns_doc_version_with_greater_than_1_decimals(self):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
-        self.assertEqual("docs1.8", version.get_maas_doc_version())
+        self.assertEqual("1.8", version.get_maas_doc_version())
 
     def test__returns_doc_version_with_equal_to_1_decimals(self):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = "1.8~alpha4+bzr356-0ubuntu1"
-        self.assertEqual("docs1.8", version.get_maas_doc_version())
+        self.assertEqual("1.8", version.get_maas_doc_version())
 
-    def test__returns_just_doc_if_version_is_empty(self):
+    def test__returns_empty_if_version_is_empty(self):
         mock_apt = self.patch(version, "get_version_from_apt")
         mock_apt.return_value = ""
-        self.assertEqual("docs", version.get_maas_doc_version())
+        self.assertEqual("", version.get_maas_doc_version())
 
 
 class TestVersionMethodsCached(TestVersionTestCase):

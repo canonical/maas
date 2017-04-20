@@ -129,10 +129,9 @@ def get_maas_version_user_agent():
 @lru_cache(maxsize=1)
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
-    doc_prefix = 'docs'
     apt_version = get_maas_version()
     if apt_version:
         version, _ = extract_version_subversion(apt_version)
-        return doc_prefix + '.'.join(version.split('~')[0].split('.')[:2])
+        return '.'.join(version.split('~')[0].split('.')[:2])
     else:
-        return doc_prefix
+        return ''
