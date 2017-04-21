@@ -946,17 +946,6 @@ class TestMachineHandler(MAASServerTestCase):
                 'runtime': script_result.runtime,
             }, handler.dehydrate_script_set(script_result.script_set)[0])
 
-    def test_dehydrate_script_set_returns_nothing_for_empty_installation(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {})
-        script_set = factory.make_ScriptSet(
-            result_type=RESULT_TYPE.INSTALLATION)
-        script_result = factory.make_ScriptResult(
-            stdout=b'', stderr=b'', output=b'',
-            status=SCRIPT_STATUS.PASSED, script_set=script_set)
-        self.assertItemsEqual(
-            [], handler.dehydrate_script_set(script_result.script_set))
-
     def test_dehydrate_script_set_status(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {})

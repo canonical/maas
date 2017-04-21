@@ -16,6 +16,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models.timestampedmodel import now
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.orm import (
     in_transaction,
     make_serialization_failure,
@@ -28,6 +29,7 @@ from metadataserver.api import (
     add_event_to_node_event_log,
     process_file,
 )
+from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import (
     NodeKey,
     ScriptSet,
@@ -354,6 +356,14 @@ class StatusWorkerService(TimerService, object):
                 node.owner = None
                 node.error = 'failed: %s' % description
                 save_node = True
+        elif self._is_top_level(activity_name) and event_type == 'start':
+            if (node.status == NODE_STATUS.DEPLOYING and
+                    activity_name == 'cmd-install' and origin == 'curtin'):
+                script_set = node.current_installation_script_set
+                script_result = script_set.find_script_result(
+                    script_name=CURTIN_INSTALL_LOG)
+                script_result.status = SCRIPT_STATUS.RUNNING
+                script_result.save(update_fields=['status'])
 
         if save_node:
             node.save()
@@ -413,11 +423,16 @@ class StatusWorkerService(TimerService, object):
             message['timestamp'] = datetime.utcnow()
 
         # Determine if this messsage needs to be processed immediately.
+        is_starting_event = (
+            self._is_top_level(message['name']) and
+            message['name'] == 'cmd-install' and
+            message['event_type'] == 'start' and
+            message['origin'] == 'curtin')
         is_final_event = (
             self._is_top_level(message['name']) and
             message['event_type'] == 'finish')
         has_files = len(message.get('files', [])) > 0
-        if is_final_event or has_files:
+        if is_starting_event or is_final_event or has_files:
             d = deferToDatabase(
                 self._processMessageNow, authorization, message)
             d.addErrback(

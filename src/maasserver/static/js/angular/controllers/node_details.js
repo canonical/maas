@@ -969,15 +969,28 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // results, but it is unused. Only one installation result will
             // exists for a node. Grab the first one in the array.
             var results = $scope.node.installation_results;
-            if(!angular.isArray(results)) {
-                return "";
-            }
-            if(results.length === 0) {
-                return "";
+            if(!angular.isArray(results) ||
+                    results.length === 0 || results[0].output === "") {
+                switch($scope.node.installation_script_set_status) {
+                    case 0:
+                        return "System is booting...";
+                    case 1:
+                        return "Installation has begun!";
+                    case 2:
+                        return ("Installation has succeeded but no " +
+                                "output was given.");
+                    case 3:
+                        return ("Installation has failed and no output was " +
+                                "given.");
+                    case 4:
+                        return "Installation failed after 40 minutes.";
+                    case 5:
+                        return "Installation was aborted.";
+                    default:
+                        return "";
+                }
             } else {
-                // Prepend a newline before the data, because the code
-                // tag requires that the content start on a newline.
-                return "\n" + results[0].output;
+                return results[0].output;
             }
         };
 

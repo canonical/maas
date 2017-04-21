@@ -23,6 +23,7 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.signals.testing import SignalsDisabled
+from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -845,3 +846,19 @@ class TestStatusWorkerService(MAASServerTestCase):
             }
             script_set = script_set_statuses.get(node.status)
             self.assertIsNotNone(script_set.last_ping)
+
+    def test_captures_installation_start(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, with_empty_script_sets=True)
+        payload = {
+            'event_type': 'start',
+            'origin': 'curtin',
+            'name': 'cmd-install',
+            'description': 'Installation has started.',
+            'timestamp': datetime.utcnow(),
+        }
+        self.processMessage(node, payload)
+        script_set = node.current_installation_script_set
+        script_result = script_set.find_script_result(
+            script_name=CURTIN_INSTALL_LOG)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)

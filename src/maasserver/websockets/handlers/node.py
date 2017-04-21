@@ -449,13 +449,6 @@ class NodeHandler(TimestampedModelHandler):
             else:
                 output = script_result.stdout
 
-            # MAAS creates an empty script result when commissioning starts for
-            # tracking. Don't show the result in the UI until we actually have
-            # something to display.
-            if (script_set.result_type == RESULT_TYPE.INSTALLATION and
-                    output == b''):
-                continue
-
             if script_result.script is not None:
                 tags = ', '.join(script_result.script.tags)
                 title = script_result.script.title
