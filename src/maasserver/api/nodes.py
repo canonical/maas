@@ -50,8 +50,56 @@ from maasserver.models import (
     OwnerData,
 )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
+
+
+NODES_PREFETCH = [
+    'domain__dnsresource_set__ip_addresses',
+    'domain__dnsresource_set__dnsdata_set',
+    'ownerdata_set',
+    'special_filesystems',
+    'gateway_link_ipv4__subnet',
+    'gateway_link_ipv6__subnet',
+    'blockdevice_set__filesystem_set',
+    'blockdevice_set__partitiontable_set__partitions__filesystem_set',
+    'blockdevice_set__iscsiblockdevice__node',
+    'blockdevice_set__iscsiblockdevice__filesystem_set',
+    ('blockdevice_set__iscsiblockdevice__partitiontable_set__'
+     'partitions__filesystem_set'),
+    'blockdevice_set__physicalblockdevice__node',
+    'blockdevice_set__physicalblockdevice__filesystem_set',
+    ('blockdevice_set__physicalblockdevice__partitiontable_set__'
+     'partitions__filesystem_set'),
+    'blockdevice_set__virtualblockdevice__node',
+    'blockdevice_set__virtualblockdevice__filesystem_set',
+    ('blockdevice_set__virtualblockdevice__partitiontable_set__'
+     'partitions__filesystem_set'),
+    'boot_interface__node',
+    'boot_interface__vlan__primary_rack',
+    'boot_interface__vlan__secondary_rack',
+    'boot_interface__vlan__fabric__vlan_set',
+    'boot_interface__vlan__space',
+    'boot_interface__ip_addresses__subnet',
+    'boot_interface__parents',
+    ('boot_interface__children_relationships__child__'
+     'children_relationships__child'),
+    'interface_set__vlan__primary_rack',
+    'interface_set__vlan__secondary_rack',
+    'interface_set__vlan__fabric__vlan_set',
+    'interface_set__vlan__space',
+    'interface_set__parents',
+    'interface_set__ip_addresses__subnet',
+    # Prefetch 3 levels deep, anything more will require extra queries.
+    'interface_set__children_relationships__child__vlan',
+    ('interface_set__children_relationships__child__'
+     'children_relationships__child__vlan'),
+    ('interface_set__children_relationships__child__'
+     'children_relationships__child__'
+     'children_relationships__child__vlan'),
+    'tags',
+]
 
 
 def store_node_power_parameters(node, request):
@@ -318,60 +366,6 @@ class NodesHandler(OperationsHandler):
     anonymous = AnonNodesHandler
     base_model = Node
 
-    def read_prefetch(self, queryset):
-        """Prefetch the required data to limit the number of queries."""
-        queryset = queryset.select_related('bmc', 'owner', 'zone')
-        prefetch_related_fields = [
-            'domain__dnsresource_set__ip_addresses',
-            'domain__dnsresource_set__dnsdata_set',
-            'ownerdata_set',
-            'special_filesystems',
-            'gateway_link_ipv4__subnet',
-            'gateway_link_ipv6__subnet',
-            'blockdevice_set__node',
-            'blockdevice_set__filesystem_set',
-            'blockdevice_set__partitiontable_set__partitions__filesystem_set',
-            'blockdevice_set__iscsiblockdevice__node',
-            'blockdevice_set__iscsiblockdevice__filesystem_set',
-            ('blockdevice_set__iscsiblockdevice__partitiontable_set__'
-             'partitions__filesystem_set'),
-            'blockdevice_set__physicalblockdevice__node',
-            'blockdevice_set__physicalblockdevice__filesystem_set',
-            ('blockdevice_set__physicalblockdevice__partitiontable_set__'
-             'partitions__filesystem_set'),
-            'blockdevice_set__virtualblockdevice__node',
-            'blockdevice_set__virtualblockdevice__filesystem_set',
-            ('blockdevice_set__virtualblockdevice__partitiontable_set__'
-             'partitions__filesystem_set'),
-            'boot_interface__node',
-            'boot_interface__vlan__primary_rack',
-            'boot_interface__vlan__secondary_rack',
-            'boot_interface__vlan__fabric__vlan_set',
-            'boot_interface__vlan__space',
-            'boot_interface__ip_addresses__subnet',
-            'boot_interface__parents',
-            ('boot_interface__children_relationships__child__'
-             'children_relationships__child'),
-            'interface_set__node',
-            'interface_set__vlan__primary_rack',
-            'interface_set__vlan__secondary_rack',
-            'interface_set__vlan__fabric__vlan_set',
-            'interface_set__vlan__space',
-            'interface_set__parents',
-            'interface_set__ip_addresses__subnet',
-            # Prefetch 3 levels deep, anything more will require extra queries.
-            'interface_set__children_relationships__child__vlan',
-            ('interface_set__children_relationships__child__'
-             'children_relationships__child__vlan'),
-            ('interface_set__children_relationships__child__'
-             'children_relationships__child__'
-             'children_relationships__child__vlan'),
-            'tags',
-        ]
-        for prefetch in prefetch_related_fields:
-            queryset = queryset.prefetch_related(prefetch)
-        return queryset
-
     def read(self, request):
         """List Nodes visible to the user, optionally filtered by criteria.
 
@@ -423,8 +417,16 @@ class NodesHandler(OperationsHandler):
             return nodes
         else:
             nodes = filtered_nodes_list_from_request(request, self.base_model)
-            nodes = self.read_prefetch(nodes)
-            return nodes.order_by('id')
+            nodes = nodes.select_related('bmc', 'owner', 'zone')
+            nodes = prefetch_queryset(
+                nodes, NODES_PREFETCH).order_by('id')
+            # Set related node parents so no extra queries are needed.
+            for node in nodes:
+                for interface in node.interface_set.all():
+                    interface.node = node
+                for block_device in node.blockdevice_set.all():
+                    block_device.node = node
+            return nodes
 
     @operation(idempotent=True)
     def is_registered(self, request):

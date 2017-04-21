@@ -11,6 +11,7 @@ from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.fabric import FabricForm
 from maasserver.models import Fabric
+from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 
 
@@ -20,6 +21,17 @@ DISPLAYED_FABRIC_FIELDS = (
     'class_type',
     'vlans',
 )
+
+
+FABRIC_PREFETCH = [
+    'vlan_set__primary_rack',
+    'vlan_set__secondary_rack',
+    'vlan_set__space',
+    'vlan_set__relay_vlan__fabric__vlan_set',
+    'vlan_set__relay_vlan__primary_rack',
+    'vlan_set__relay_vlan__secondary_rack',
+    'vlan_set__relay_vlan__space',
+]
 
 
 class FabricsHandler(OperationsHandler):
@@ -35,7 +47,13 @@ class FabricsHandler(OperationsHandler):
 
     def read(self, request):
         """List all fabrics."""
-        return Fabric.objects.all()
+        fabrics = prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
+        # Preload the fabric on each vlan as that is already known, another
+        # query is not required.
+        for fabric in fabrics:
+            for vlan in fabric.vlan_set.all():
+                vlan.fabric = fabric
+        return fabrics
 
     @admin_method
     def create(self, request):

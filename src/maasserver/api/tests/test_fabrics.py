@@ -9,11 +9,13 @@ import http.client
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver import middleware
 from maasserver.models.fabric import Fabric
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import count_queries
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -29,6 +31,22 @@ def get_fabric_uri(fabric):
     """Return a Fabric URI on the API."""
     return reverse(
         'fabric_handler', args=[fabric.id])
+
+
+def make_complex_fabric():
+    fabric = factory.make_Fabric()
+    vlans = [fabric.get_default_vlan()]
+    for _ in range(3):
+        vlan = factory.make_VLAN(fabric=fabric)
+        rack_controller = factory.make_RackController(vlan=vlan)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack_controller
+        vlan.save()
+        vlans.append(vlan)
+    for vlan in vlans:
+        factory.make_VLAN(
+            fabric=fabric, relay_vlan=vlan)
+    return fabric
 
 
 class TestFabricsAPI(APITestCase.ForUser):
@@ -54,6 +72,39 @@ class TestFabricsAPI(APITestCase.ForUser):
             for fabric in json_load_bytes(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_read_has_constant_number_of_queries(self):
+        # Patch middleware so it does not affect query counting.
+        self.patch(
+            middleware.ExternalComponentsMiddleware,
+            '_check_rack_controller_connectivity')
+
+        for _ in range(3):
+            make_complex_fabric()
+
+        uri = get_fabrics_uri()
+        num_queries1, response1 = count_queries(
+            self.client.get, uri)
+
+        for _ in range(3):
+            make_complex_fabric()
+
+        num_queries2, response2 = count_queries(
+            self.client.get, uri)
+
+        # Make sure the responses are ok as it's not useful to compare the
+        # number of queries if they are not.
+        parsed_result_1 = json_load_bytes(response1.content)
+        parsed_result_2 = json_load_bytes(response2.content)
+        self.assertEqual(
+            [http.client.OK, http.client.OK, 4, 7],
+            [
+                response1.status_code,
+                response2.status_code,
+                len(parsed_result_1),
+                len(parsed_result_2),
+            ])
+        self.assertEqual(num_queries1, num_queries2)
 
     def test_create(self):
         self.become_admin()

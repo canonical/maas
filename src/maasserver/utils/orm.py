@@ -1284,3 +1284,10 @@ def reload_object(model_object):
     """
     model_class = model_object.__class__
     return get_one(model_class.objects.filter(id=model_object.id))
+
+
+def prefetch_queryset(queryset, prefetches):
+    """Perform prefetching on the `queryset`."""
+    for prefetch in prefetches:
+        queryset = queryset.prefetch_related(prefetch)
+    return queryset

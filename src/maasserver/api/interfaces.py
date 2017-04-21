@@ -51,6 +51,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.utils.orm import prefetch_queryset
 from piston3.utils import rc
 
 
@@ -74,6 +75,22 @@ DISPLAYED_INTERFACE_FIELDS = (
     'discovered',
     'effective_mtu',
 )
+
+INTERFACES_PREFETCH = [
+    'vlan__primary_rack',
+    'vlan__secondary_rack',
+    'vlan__fabric__vlan_set',
+    'vlan__space',
+    'parents',
+    'ip_addresses__subnet',
+    # Prefetch 3 levels deep, anything more will require extra queries.
+    'children_relationships__child__vlan',
+    ('children_relationships__child__'
+     'children_relationships__child__vlan'),
+    ('children_relationships__child__'
+     'children_relationships__child__'
+     'children_relationships__child__vlan'),
+]
 
 ALLOWED_STATES = (NODE_STATUS.READY, NODE_STATUS.BROKEN)
 
@@ -124,26 +141,12 @@ class InterfacesHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        queryset = node.interface_set.all()
-        prefetch_related_fields = [
-            'node',
-            'vlan__primary_rack',
-            'vlan__secondary_rack',
-            'vlan__fabric__vlan_set',
-            'vlan__space',
-            'parents',
-            'ip_addresses__subnet',
-            # Prefetch 3 levels deep, anything more will require extra queries.
-            'children_relationships__child__vlan',
-            ('children_relationships__child__'
-             'children_relationships__child__vlan'),
-            ('children_relationships__child__'
-             'children_relationships__child__'
-             'children_relationships__child__vlan'),
-        ]
-        for prefetch in prefetch_related_fields:
-            queryset = queryset.prefetch_related(prefetch)
-        return queryset
+        interfaces = prefetch_queryset(
+            node.interface_set.all(), INTERFACES_PREFETCH)
+        # Preload the node on the interface, no need for another query.
+        for interface in interfaces:
+            interface.node = node
+        return interfaces
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
