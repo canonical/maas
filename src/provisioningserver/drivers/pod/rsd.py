@@ -19,6 +19,7 @@ from provisioningserver.drivers import (
     SETTING_SCOPE,
 )
 from provisioningserver.drivers.pod import (
+    BlockDeviceType,
     Capabilities,
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -31,7 +32,10 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import PodInvalidResources
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    pause,
+)
 from twisted.internet import reactor
 from twisted.internet._sslverify import (
     ClientTLSOptions,
@@ -229,12 +233,10 @@ class RSDPodDriver(PodDriver):
                 targets.append(remote_drive['@odata.id'])
         return set(targets)
 
-    @inlineCallbacks
-    def calculate_remote_storage(self, url, headers):
-        logical_drives, target_links = (
-            yield self.scrape_logical_drives_and_targets(url, headers))
-        remote_drives = yield self.scrape_remote_drives(url, headers)
-
+    def calculate_remote_storage(self, remote_drives, logical_drives, targets):
+        """Find and calculate the total, available, and master logical volume for each
+        logical volume group in the pod.
+        """
         # Find LVGs and LVs out of all logical drives.
         lvgs = {}
         lvs = {}
@@ -246,12 +248,14 @@ class RSDPodDriver(PodDriver):
 
         # For each LVG, calculate total amount of usable space,
         # total amount of available space, and find the master volume to clone.
+        # The master volume is the LV with the lowest ID.
         remote_storage = {}
         for lvg, lvg_data in lvgs.items():
             total = 0
             available = 0
             master_id = 0
-            master = None
+            master_size = 0
+            master_path = None
 
             # Find size of LVG and get LVs for this LVG.
             lvg_capacity = lvg_data['CapacityGiB']
@@ -282,8 +286,9 @@ class RSDPodDriver(PodDriver):
                     if not (lv_target_links & remote_drives):
                         lvs_capacity_unused += lv_capacity
                         new_master_id = int(lv_info['Id'])
-                        if (master is None or master_id > new_master_id):
-                            master = lv_link
+                        if (master_path is None or master_id > new_master_id):
+                            master_path = b"/" + lv_link
+                            master_size = lv_capacity
                             master_id = new_master_id
 
             total = (
@@ -293,9 +298,33 @@ class RSDPodDriver(PodDriver):
             remote_storage[lvg] = {
                 'total': total,
                 'available': available,
-                'master': master
+                'master': {
+                    'path': master_path,
+                    'size': master_size
+                }
             }
         return remote_storage
+
+    def calculate_pod_remote_storage(
+            self, remote_drives, logical_drives, targets):
+        """Calculate the total sum of logical volume group capacities in the pod
+        and retrieve the largest LV for the hints.
+        """
+        remote_storage = self.calculate_remote_storage(
+            remote_drives, logical_drives, targets)
+
+        total_capacity = 0
+        for lvg, rs_data in remote_storage.items():
+            total_capacity += rs_data['total']
+
+        hint_capacity = 0
+        for lv, lv_data in logical_drives.items():
+            if lv_data['Mode'] == "LV":
+                if lv_data['CapacityGiB'] > hint_capacity:
+                    hint_capacity = lv_data['CapacityGiB']
+        hint_capacity *= 1024 ** 3
+
+        return total_capacity, hint_capacity
 
     @inlineCallbacks
     def get_pod_memory_resources(self, url, headers, system):
@@ -356,7 +385,7 @@ class RSDPodDriver(PodDriver):
 
     @inlineCallbacks
     def get_pod_resources(self, url, headers):
-        """Get the POD resources."""
+        """Get the pod resources."""
         discovered_pod = DiscoveredPod(
             architectures=[], cores=0, cpu_speed=0, memory=0,
             local_storage=0, local_disks=0, capabilities=[
@@ -408,61 +437,42 @@ class RSDPodDriver(PodDriver):
         return discovered_pod
 
     @inlineCallbacks
-    def get_pod_machine(self, node, url, headers):
-        """Get pod composed machine.
-
-        If required resources cannot be found, this
-        composed machine will not be returned to the region.
-        """
-        discovered_machine = DiscoveredMachine(
-            architecture="amd64/generic",
-            cores=0, cpu_speed=0, memory=0, interfaces=[],
-            block_devices=[], power_parameters={
-                'node_id': node.decode('utf-8').rsplit('/')[-1]})
-        # Save list of all cpu_speeds being used by composed nodes
-        # that we will use later in our pod hints calculations.
-        discovered_machine.cpu_speeds = []
-        node_data, _ = yield self.redfish_request(
-            b"GET", join(url, node), headers)
-        # Get hostname.
-        hostname = node_data.get('Name')
-        if hostname is not None:
-            discovered_machine.hostname = hostname
-        # Get power state.
-        power_state = node_data.get('PowerState')
-        if power_state is not None:
-            discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
-                power_state)
-        # Get memories.
-        memories = node_data.get('Links', {}).get('Memory')
+    def get_pod_machine_memories(
+            self, node_data, url, headers, discovered_machine):
+        """Get pod machine memories."""
+        memories = node_data.get('Links', {}).get('Memory', [])
         for memory in memories:
             memory_data, _ = yield self.redfish_request(
                 b"GET", join(url, memory[
                     '@odata.id'].lstrip('/').encode('utf-8')), headers)
-            mem = memory_data.get('CapacityMiB')
-            if mem is not None:
-                discovered_machine.memory += mem
-        # Get processors.
-        processors = node_data.get('Links', {}).get('Processors')
+            discovered_machine.memory += memory_data['CapacityMiB']
+
+    @inlineCallbacks
+    def get_pod_machine_processors(
+            self, node_data, url, headers, discovered_machine):
+        """Get pod machine processors."""
+        processors = node_data.get('Links', {}).get('Processors', [])
         for processor in processors:
             processor_data, _ = yield self.redfish_request(
                 b"GET", join(url, processor[
                     '@odata.id'].lstrip('/').encode('utf-8')), headers)
             # Using 'TotalThreads' instead of 'TotalCores'
             # as this is what MAAS finds when commissioning.
-            total_threads = processor_data.get('TotalThreads')
-            if total_threads is not None:
-                discovered_machine.cores += total_threads
+            discovered_machine.cores += processor_data['TotalThreads']
             discovered_machine.cpu_speeds.append(
-                processor_data.get('MaxSpeedMHz'))
+                processor_data['MaxSpeedMHz'])
             # Set architecture to first processor
             # architecture type found.
             if not discovered_machine.architecture:
-                arch = processor_data.get('InstructionSet')
+                arch = processor_data['InstructionSet']
                 discovered_machine.architecture = (
                     RSD_ARCH.get(arch, arch))
-        # Get local storages.
-        local_drives = node_data.get('Links', {}).get('LocalDrives')
+
+    @inlineCallbacks
+    def get_pod_machine_local_storages(
+            self, node_data, url, headers, discovered_machine, request=None):
+        """Get pod machine local strorages."""
+        local_drives = node_data.get('Links', {}).get('LocalDrives', [])
         for local_drive in local_drives:
             discovered_machine_block_device = (
                 DiscoveredMachineBlockDevice(
@@ -470,38 +480,114 @@ class RSDPodDriver(PodDriver):
             drive_data, _ = yield self.redfish_request(
                 b"GET", join(url, local_drive[
                     '@odata.id'].lstrip('/').encode('utf-8')), headers)
-            model = drive_data.get('Model')
-            if model is not None:
-                discovered_machine_block_device.model = model
-            serial_number = drive_data.get('SerialNumber')
-            if serial_number is not None:
-                discovered_machine_block_device.serial = (
-                    serial_number)
-            capacity = drive_data.get('CapacityGiB')
-            if capacity is not None:
-                # GiB to Bytes.
-                discovered_machine_block_device.size = float(
-                    capacity) * 1073741824
-            if drive_data.get('Type') == 'SSD':
-                discovered_machine_block_device.tags = ['ssd']
+            discovered_machine_block_device.model = drive_data['Model']
+            discovered_machine_block_device.serial = drive_data['SerialNumber']
+            discovered_machine_block_device.size = float(
+                drive_data['CapacityGiB']) * (1024 ** 3)
+
+            # Map the tags from the request block devices to the discovered
+            # block devices. This ensures that the composed machine has the
+            # requested tags on the block device.
+            if request is not None:
+                # Iterate over all the request's block devices and pick first
+                # device that has 'local' flag set with smallest adequate size.
+                chosen_block_device = None
+                smallest_size = discovered_machine_block_device.size
+                for block_device in request.block_devices:
+                    if ('local' in block_device.tags and
+                            block_device.size >= smallest_size):
+                        smallest_size = block_device.size
+                        chosen_block_device = block_device
+                if chosen_block_device is not None:
+                    discovered_machine_block_device.tags = (
+                        chosen_block_device.tags)
+                    # Delete this from the request's block devices as it
+                    # is not longer needed.
+                    request.block_devices.remove(chosen_block_device)
+                else:
+                    # Log the fact that we did not find a chosen block device
+                    # to set the tags.
+                    maaslog.info(
+                        "Unable to set tags for local drive: %r" % local_drive)
+
+            if 'local' not in discovered_machine_block_device.tags:
+                discovered_machine_block_device.tags.append('local')
+            if (drive_data['Type'] == 'SSD' and
+                    'ssd' not in discovered_machine_block_device.tags):
+                discovered_machine_block_device.tags.append('ssd')
             discovered_machine.block_devices.append(
                 discovered_machine_block_device)
-        # Get interfaces.
-        interfaces = node_data.get('Links', {}).get('EthernetInterfaces')
+
+    def get_pod_machine_remote_storages(
+            self, node_data, url, headers, logical_drives,
+            targets, discovered_machine, request=None):
+        """Get pod machine remote storages."""
+        remote_drives = node_data.get('Links', {}).get('RemoteDrives', [])
+        for remote_drive in remote_drives:
+            discovered_machine_block_device = (
+                DiscoveredMachineBlockDevice(
+                    model=None, serial=None, size=0,
+                    type=BlockDeviceType.ISCSI))
+            target_data = targets[
+                remote_drive['@odata.id'].lstrip('/').encode('utf-8')]
+            addresses = target_data.get('Addresses')[0]
+            host = addresses.get('iSCSI', {}).get('TargetPortalIP')
+            proto = '6'  # curtin currently only supports TCP.
+            port = str(addresses.get('iSCSI', {}).get('TargetPortalPort'))
+            luns = addresses.get('iSCSI', {}).get('TargetLUN', [])
+            if luns:
+                lun = str(luns[0]['LUN'])
+            else:
+                # Set LUN to 0 if not available.
+                lun = '0'
+            target_name = addresses.get('iSCSI', {}).get('TargetIQN')
+            discovered_machine_block_device.iscsi_target = ':'.join(
+                [host, proto, port, lun, target_name])
+            # Loop through all the logical drives till we
+            # find which one contains this remote drive.
+            for lv, lv_data in logical_drives.items():
+                lv_targets = lv_data.get('Links', {}).get('Targets', [])
+                if remote_drive in lv_targets:
+                    discovered_machine_block_device.size = float(
+                        lv_data['CapacityGiB']) * (1024 ** 3)
+
+            # Map the tags from the request block devices to the discovered
+            # block devices. This ensures that the composed machine has the
+            # requested tags on the block device.
+            if request is not None:
+                # Iterate over all the request's block devices to match on
+                # target name to retrieve the tags.
+                for block_device in request.block_devices:
+                    if block_device.iscsi_target == target_name:
+                        discovered_machine_block_device.tags = (
+                            block_device.tags)
+                        # Delete this from the request's block devices as it
+                        # is not longer needed.
+                        request.block_devices.remove(block_device)
+
+            if 'iscsi' not in discovered_machine_block_device.tags:
+                discovered_machine_block_device.tags.append('iscsi')
+            discovered_machine.block_devices.append(
+                discovered_machine_block_device)
+
+    @inlineCallbacks
+    def get_pod_machine_interfaces(
+            self, node_data, url, headers, discovered_machine):
+        """Get pod machine interfaces."""
+        interfaces = node_data.get('Links', {}).get('EthernetInterfaces', [])
         for interface in interfaces:
             discovered_machine_interface = DiscoveredMachineInterface(
                 mac_address='')
             interface_data, _ = yield self.redfish_request(
                 b"GET", join(url, interface[
                     '@odata.id'].lstrip('/').encode('utf-8')), headers)
-            mac_address = interface_data.get('MACAddress')
-            if mac_address is not None:
-                discovered_machine_interface.mac_address = mac_address
-            nic_speed = interface_data.get('SpeedMbps')
+            discovered_machine_interface.mac_address = (
+                interface_data['MACAddress'])
+            nic_speed = interface_data['SpeedMbps']
             if nic_speed is not None:
                 if nic_speed < 1000:
                     discovered_machine_interface.tags = ["e%s" % nic_speed]
-                elif nic_speed == "1000":
+                elif nic_speed == 1000:
                     discovered_machine_interface.tags = ["1g", "e1000"]
                 else:
                     # We know that the Mbps > 1000
@@ -522,9 +608,8 @@ class RSDPodDriver(PodDriver):
                                 vlan = vlan.lstrip('/').encode('utf-8')
                                 vlan_data, _ = yield self.redfish_request(
                                     b"GET", join(url, vlan), headers)
-                                vlan_id = vlan_data.get('VLANId')
-                                if vlan_id is not None:
-                                    discovered_machine_interface.vid = vlan_id
+                                discovered_machine_interface.vid = (
+                                    vlan_data['VLANId'])
             else:
                 # If no NeighborPort, this interface is on
                 # the management network.
@@ -540,6 +625,47 @@ class RSDPodDriver(PodDriver):
             # Just set first interface too boot.
             discovered_machine.interfaces[0].boot = True
 
+    @inlineCallbacks
+    def get_pod_machine(
+            self, node, url, headers, logical_drives, targets, request=None):
+        """Get pod composed machine.
+
+        If required resources cannot be found, this
+        composed machine will not be returned to the region.
+        """
+        discovered_machine = DiscoveredMachine(
+            architecture="amd64/generic",
+            cores=0, cpu_speed=0, memory=0, interfaces=[],
+            block_devices=[], power_parameters={
+                'node_id': node.decode('utf-8').rsplit('/')[-1]})
+        # Save list of all cpu_speeds being used by composed nodes
+        # that we will use later in our pod hints calculations.
+        discovered_machine.cpu_speeds = []
+        node_data, _ = yield self.redfish_request(
+            b"GET", join(url, node), headers)
+        # Get hostname.
+        discovered_machine.hostname = node_data['Name']
+        # Get power state.
+        power_state = node_data['PowerState']
+        discovered_machine.power_state = RSD_SYSTEM_POWER_STATE.get(
+            power_state)
+
+        # Get memories.
+        yield self.get_pod_machine_memories(
+            node_data, url, headers, discovered_machine)
+        # Get processors.
+        yield self.get_pod_machine_processors(
+            node_data, url, headers, discovered_machine)
+        # Get local storages.
+        yield self.get_pod_machine_local_storages(
+            node_data, url, headers, discovered_machine, request)
+        # Get remote storages.
+        self.get_pod_machine_remote_storages(
+            node_data, url, headers, logical_drives,
+            targets, discovered_machine, request)
+        # Get interfaces.
+        yield self.get_pod_machine_interfaces(
+            node_data, url, headers, discovered_machine)
         # Set cpu_speed to max of all found cpu_speeds.
         if len(discovered_machine.cpu_speeds):
             discovered_machine.cpu_speed = max(
@@ -547,7 +673,8 @@ class RSDPodDriver(PodDriver):
         return discovered_machine
 
     @inlineCallbacks
-    def get_pod_machines(self, url, headers):
+    def get_pod_machines(
+            self, url, headers, logical_drives, targets, request=None):
         """Get pod composed machines.
 
         If required resources cannot be found, these
@@ -560,7 +687,8 @@ class RSDPodDriver(PodDriver):
         nodes = yield self.list_resources(nodes_uri, headers)
         # Iterate over all composed nodes in the pod.
         for node in nodes:
-            discovered_machine = yield self.get_pod_machine(node, url, headers)
+            discovered_machine = yield self.get_pod_machine(
+                node, url, headers, logical_drives, targets, request)
             discovered_machines.append(discovered_machine)
         return discovered_machines
 
@@ -573,8 +701,6 @@ class RSDPodDriver(PodDriver):
             for cpu_speed in machine.cpu_speeds:
                 if cpu_speed in discovered_pod.cpu_speeds:
                     discovered_pod.cpu_speeds.remove(cpu_speed)
-            # Delete cpu_speeds place holder.
-            del machine.cpu_speeds
             used_cores += machine.cores
             used_memory += machine.memory
             for blk_dev in machine.block_devices:
@@ -600,22 +726,50 @@ class RSDPodDriver(PodDriver):
         """
         url = self.get_url(context)
         headers = self.make_auth_headers(**context)
+        logical_drives, targets = yield self.scrape_logical_drives_and_targets(
+            url, headers)
+        remote_drives = yield self.scrape_remote_drives(url, headers)
+        pod_remote_storage, pod_hints_remote_storage = (
+            self.calculate_pod_remote_storage(
+                remote_drives, logical_drives, targets))
 
         # Discover pod resources.
         discovered_pod = yield self.get_pod_resources(url, headers)
 
+        # Discover pod remote storage resources.
+        discovered_pod.capabilities.append(Capabilities.ISCSI_STORAGE)
+        discovered_pod.iscsi_storage = pod_remote_storage
+
         # Discover composed machines.
         discovered_pod.machines = yield self.get_pod_machines(
-            url, headers)
+            url, headers, logical_drives, targets)
 
         # Discover pod hints.
         discovered_pod.hints = self.get_pod_hints(discovered_pod)
+        discovered_pod.hints.iscsi_storage = pod_hints_remote_storage
 
-        # Delete cpu_speeds place holder.
-        del discovered_pod.cpu_speeds
         return discovered_pod
 
-    def convert_request_to_json_payload(self, processors, cores, request):
+    def select_remote_master(self, remote_storage, size):
+        """Select the remote master drive that has enough space."""
+        for lvg, data in remote_storage.items():
+            if data['master'] and data['available'] >= size:
+                data['available'] -= size
+                return data['master']
+
+    def set_drive_type(self, drive, block_device):
+        """Set type of drive requested on `drive` based on the tags on
+        `block_device`."""
+        if 'ssd' in block_device.tags:
+            drive['Type'] = 'SSD'
+        elif 'nvme' in block_device.tags:
+            drive['Type'] = 'NVMe'
+        elif 'hdd' in block_device.tags:
+            drive['Type'] = 'HDD'
+
+    def convert_request_to_json_payload(
+            self, processors, cores, request,
+            remote_drives, logical_drives, targets):
         """Convert the RequestedMachine object to JSON."""
         # The below fields are for RSD allocation.
         # Most of these fields are nullable and could be used at
@@ -643,6 +797,14 @@ class RSDPodDriver(PodDriver):
             "SerialNumber": None,
             "Interface": None,
         }
+        remote_drive = {
+            "CapacityGiB": None,
+            "iSCSIAddress": None,
+            "Master": {
+                "Type": "Clone",
+                "Resource": None,
+            },
+        }
         interface = {
             "SpeedMbps": None,
             "PrimaryVLAN": None,
@@ -652,41 +814,109 @@ class RSDPodDriver(PodDriver):
             "Processors": [],
             "Memory": [],
             "LocalDrives": [],
+            "RemoteDrives": [],
             "EthernetInterfaces": [],
         }
-        request = request.asdict()
 
         # Processors.
         for _ in range(processors):
             proc = processor.copy()
             proc['TotalCores'] = cores
-            arch = request.get('architecture')
+            arch = request.architecture
             for key, val in RSD_ARCH.items():
                 if val == arch:
                     proc['InstructionSet'] = key
             # cpu_speed is only optional field in request.
-            cpu_speed = request.get('cpu_speed')
+            cpu_speed = request.cpu_speed
             if cpu_speed is not None:
                 proc['AchievableSpeedMHz'] = cpu_speed
             data['Processors'].append(proc)
 
+        # Determine remote storage information if more than one block_device
+        # is requested.
+        remote_storage = None
+        if len(request.block_devices) > 1:
+            remote_storage = self.calculate_remote_storage(
+                remote_drives, logical_drives, targets)
+
         # Block Devices.
-        block_devices = request.get('block_devices')
-        for block_device in block_devices:
-            drive = local_drive.copy()
-            # Convert from bytes to GiB.
-            drive['CapacityGiB'] = block_device['size'] / 1073741824
-            data['LocalDrives'].append(drive)
+        #
+        # Tags are matched on the block devices to create different types
+        # of requested storage for a block device.
+        #     local: Locally attached disk (aka. LocalDrive).
+        #     ssd: Locally attached SSD (aka. LocalDrive).
+        #     hdd: Locally attached HDD (aka. LocalDrive).
+        #     nvme: Locally attached NVMe (aka. LocalDrive).
+        #     iscsi: Remotely attached disk over ISCSI (aka. RemoteTarget)
+        #     (none): Remotely attached disk will be picked unless its the
+        #             first disk. First disk is locally attached.
+        block_devices = request.block_devices
+        boot_disk = True
+        for idx, block_device in enumerate(block_devices):
+            if boot_disk:
+                if 'iscsi' in block_device.tags:
+                    raise PodActionError(
+                        'iSCSI is not supported as being a boot disk.')
+                else:
+                    # Force 'local' into the tags if not present.
+                    if 'local' not in block_device.tags:
+                        block_device.tags.append('local')
+                    drive = local_drive.copy()
+                    # Convert from bytes to GiB.
+                    drive['CapacityGiB'] = block_device.size / (1024 ** 3)
+                    self.set_drive_type(drive, block_device)
+                    data['LocalDrives'].append(drive)
+                boot_disk = False
+            else:
+                is_local = max(
+                    tag in block_device.tags
+                    for tag in ['local', 'ssd', 'nvme', 'hdd']
+                )
+                if is_local:
+                    # Force the local tag if it wasn't provided.
+                    if 'local' not in block_device.tags:
+                        block_device.tags.append('local')
+                    drive = local_drive.copy()
+                    # Convert from bytes to GiB.
+                    drive['CapacityGiB'] = block_device.size / (1024 ** 3)
+                    self.set_drive_type(drive, block_device)
+                    data['LocalDrives'].append(drive)
+                else:
+                    # Force 'iscsi' into the tags if not present.
+                    if 'iscsi' not in block_device.tags:
+                        block_device.tags.append('iscsi')
+                    size = block_device.size / (1024 ** 3)
+
+                    # Determine the remote master that can be used.
+                    remote_master = self.select_remote_master(
+                        remote_storage, size)
+                    if remote_master is None:
+                        raise PodActionError(
+                            'iSCSI remote drive cannot be created because '
+                            'not enough space is available.')
+                    drive = remote_drive.copy()
+                    # Convert from bytes to GiB.
+                    drive['CapacityGiB'] = size
+                    drive['iSCSIAddress'] = 'iqn.2010-08.io.maas:%s-%s' % (
+                        request.hostname, idx)
+                    drive['Master']['Resource'] = {
+                        '@odata.id': remote_master['path'].decode('utf-8'),
+                    }
+                    data['RemoteDrives'].append(drive)
+                    # Save the iSCSIAddress on the RequestBlockDevice. This is
+                    # used to map the DiscoveredMachineBlockDevice tags to
+                    # the same tags used during the request.
+                    block_device.iscsi_target = drive['iSCSIAddress']
 
         # Interfaces.
-        interfaces = request.get('interfaces')
+        interfaces = request.interfaces
         for iface in interfaces:
             nic = interface.copy()
             data['EthernetInterfaces'].append(nic)
 
         # Memory.
         mem = memory.copy()
-        mem['CapacityMiB'] = request.get('memory')
+        mem['CapacityMiB'] = request.memory
         data['Memory'].append(mem)
 
         return json.dumps(data).encode('utf-8')
@@ -697,6 +927,9 @@ class RSDPodDriver(PodDriver):
         url = self.get_url(context)
         headers = self.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/Actions/Allocate"
+        logical_drives, targets = (
+            yield self.scrape_logical_drives_and_targets(url, headers))
+        remote_drives = yield self.scrape_remote_drives(url, headers)
         # Create allocate payload.
         requested_cores = request.cores
         if requested_cores % 2 != 0:
@@ -706,39 +939,54 @@ class RSDPodDriver(PodDriver):
         # is actually half of what MAAS reports.
         requested_cores //= 2
 
-        # Find the correct procesors and cores combination from RSD POD.
+        # Find the correct procesors and cores combination from the pod.
         processors = 1
         cores = requested_cores
+        response_headers = None
         while True:
             payload = self.convert_request_to_json_payload(
-                processors, cores, request)
+                processors, cores, request, remote_drives,
+                logical_drives, targets)
             try:
                 _, response_headers = yield self.redfish_request(
                     b"POST", join(url, endpoint), headers,
                     FileBodyProducer(BytesIO(payload)))
                 # Break out of loop if allocation was successful.
                 break
-            except:
-                # Continue loop if allocation didn't work.
-                processors *= 2
-                cores //= 2
-                # Loop termination condition.
-                if cores == 0:
-                    break
-                continue
+            except PartialDownloadError as error:
+                response = json.loads(error.response.decode('utf-8'))
+                if "error" in response:
+                    messages = response.get(
+                        'error').get('@Message.ExtendedInfo')
+                    message = "\n".join([
+                        message.get('Message') for message in messages])
+                    # Continue loop if allocation didn't work.
+                    if "processors: 0" in message:
+                        processors *= 2
+                        cores //= 2
+                        # Loop termination condition.
+                        if cores == 0:
+                            break
+                        continue
+                    else:
+                        raise PodActionError(message)
+            except Exception as exc:
+                raise PodActionError("RSD compose error") from exc
 
         if response_headers is not None:
             location = response_headers.getRawHeaders("location")
             node_id = location[0].rsplit('/', 1)[-1]
             node_path = location[0].split('/', 3)[-1]
 
-            # Retrieve new node.
-            discovered_machine = yield self.get_pod_machine(
-                node_path.encode('utf-8'), url, headers)
             # Assemble the node.
             yield self.assemble_node(url, node_id.encode('utf-8'), headers)
             # Set to PXE boot.
             yield self.set_pxe_boot(url, node_id.encode('utf-8'), headers)
+
+            # Retrieve new node.
+            discovered_machine = yield self.get_pod_machine(
+                node_path.encode('utf-8'), url,
+                headers, logical_drives, targets, request)
 
             # Retrieve pod resources.
             discovered_pod = yield self.get_pod_resources(url, headers)
@@ -788,7 +1036,7 @@ class RSDPodDriver(PodDriver):
                 json.dumps(
                     {
                         'Boot': {
-                            'BootSourceOverrideEnabled': "Once",
+                            'BootSourceOverrideEnabled': "Continuous",
                             'BootSourceOverrideTarget': "Pxe"
                         }
                     }).encode('utf-8')))
@@ -830,9 +1078,12 @@ class RSDPodDriver(PodDriver):
         node_state = yield self.get_composed_node_state(
             url, node_id, headers)
         while node_state == 'Assembling':
+            # Wait 2 seconds before getting updated state.
+            yield pause(2)
             node_state = yield self.get_composed_node_state(
                 url, node_id, headers)
         # Check one last time if the state has became `Failed`.
+
         if node_state == 'Failed':
             # Broken system.
             raise PodFatalError(
@@ -858,12 +1109,12 @@ class RSDPodDriver(PodDriver):
         url = self.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
         headers = self.make_auth_headers(**context)
-        # Set to PXE boot.
-        yield self.set_pxe_boot(url, node_id, headers)
         power_state = yield self.power_query(system_id, context)
         # Power off the machine if currently on.
         if power_state == 'on':
             yield self.power("ForceOff", url, node_id, headers)
+        # Set to PXE boot.
+        yield self.set_pxe_boot(url, node_id, headers)
         # Power on the machine.
         yield self.power("On", url, node_id, headers)
 
