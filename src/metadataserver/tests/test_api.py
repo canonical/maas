@@ -1443,7 +1443,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signaling_commissioning_failure_makes_node_failed_Tests(self):
+    def test_signaling_commissioning_failure_makes_node_failed_tests(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True)
         client = make_node_client(node=node)
@@ -1451,6 +1451,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+        for script_result in node.current_testing_script_set:
+            self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
 
     def test_signaling_commissioning_failure_does_not_populate_tags(self):
         populate_tags_for_single_node = self.patch(

@@ -103,8 +103,9 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
         timeout_seconds = script.get('timeout_seconds')
 
         signal_wrapper(
-            **args, error='Starting %s [%d/%d]' % (
-                script['name'], i, len(scripts)))
+            error='Starting %s [%d/%d]' % (
+                script['name'], i, len(scripts)),
+            **args)
 
         script_path = os.path.join(scripts_dir, script['path'])
         combined_path = os.path.join(out_dir, script['name'])
@@ -142,8 +143,9 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stderr_name: result,
             }
             signal_wrapper(
-                **args, error='Failed to execute %s [%d/%d]: %d' % (
-                    script['name'], i, total_scripts, args['exit_status']))
+                error='Failed to execute %s [%d/%d]: %d' % (
+                    script['name'], i, total_scripts, args['exit_status']),
+                **args)
         except TimeoutExpired:
             fail_count += 1
             args['status'] = 'TIMEDOUT'
@@ -153,9 +155,10 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stderr_name: open(stderr_path, 'rb').read(),
             }
             signal_wrapper(
-                **args, error='Timeout(%s) expired on %s [%d/%d]' % (
+                error='Timeout(%s) expired on %s [%d/%d]' % (
                     str(timedelta(seconds=timeout_seconds)), script['name'], i,
-                    total_scripts))
+                    total_scripts),
+                **args)
         else:
             if proc.returncode != 0:
                 fail_count += 1
@@ -166,8 +169,9 @@ def run_scripts(url, creds, scripts_dir, out_dir, scripts):
                 stderr_name: open(stderr_path, 'rb').read(),
             }
             signal_wrapper(
-                **args, error='Finished %s [%d/%d]: %d' % (
-                    script['name'], i, len(scripts), args['exit_status']))
+                error='Finished %s [%d/%d]: %d' % (
+                    script['name'], i, len(scripts), args['exit_status']),
+                **args)
 
     # Signal failure after running commissioning or testing scripts so MAAS
     # transisitions the node into FAILED_COMMISSIONING or FAILED_TESTING.
@@ -188,6 +192,8 @@ def run_scripts_from_metadata(url, creds, scripts_dir, out_dir):
     if commissioning_scripts is not None:
         fail_count += run_scripts(
             url, creds, scripts_dir, out_dir, commissioning_scripts)
+        if fail_count != 0:
+            return
 
     testing_scripts = scripts.get('testing_scripts')
     if testing_scripts is not None:

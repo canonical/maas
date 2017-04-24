@@ -148,11 +148,20 @@ def list_supported_drives():
                     if m is not None:
                         drives.append(drive_with_device_type)
 
-    all_drives = check_output(
-        [
-            'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
-            'NAME,MODEL,SERIAL', '-x', 'NAME',
-        ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
+    try:
+        all_drives = check_output(
+            [
+                'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+                'NAME,MODEL,SERIAL', '-x', 'NAME',
+            ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
+    except CalledProcessError:
+        # The SERIAL column and sorting(-x) are unsupported in the Trusty
+        # version of lsblk. Try again without them.
+        all_drives = check_output(
+            [
+                'lsblk', '--exclude', '1,2,7', '-d', '-l', '-o',
+                'NAME,MODEL',
+            ], timeout=TIMEOUT, stderr=DEVNULL).decode('utf-8').splitlines()
     supported_drives = iscsi_drives + [
         drive[0].split('/')[-1] for drive in drives]
     unsupported_drives = [

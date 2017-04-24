@@ -338,16 +338,19 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
     @typed
     def make_lsblk_output(
             self, name=None, read_only=False, removable=False,
-            model=None, rotary=True) -> bytes:
+            model=None, rotary=True, maj_min=None) -> bytes:
         if name is None:
             name = factory.make_name('name')
         if model is None:
             model = factory.make_name('model')
+        if maj_min is None:
+            maj_min = (random.randint(0, 255), random.randint(0, 255))
         read_only = "1" if read_only else "0"
         removable = "1" if removable else "0"
         rotary = "1" if rotary else "0"
-        output = 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
-            name, read_only, removable, model, rotary)
+        output = (
+            'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s" MAJ:MIN="%s"' % (
+                name, read_only, removable, model, rotary, '%s:%s' % maj_min))
         return output.encode("ascii")
 
     @typed
@@ -390,13 +393,37 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         gather_physical_block_devices(dev_disk_byid=dev_disk_byid)
         return json.loads(output.getvalue())
 
+    def make_output(
+            self, name, maj_min, model, serial, size, block_size,
+            drive_path=None, device_id_path=None, rotary=True,
+            removable=False, read_only=False, sata=True):
+        if drive_path is None:
+            drive_path = '/dev/%s' % name
+        ret = {
+            'NAME': name,
+            'PATH': drive_path,
+            'MAJ:MIN': '%s:%s' % maj_min,
+            'RO': '1' if read_only else '0',
+            'RM': '1' if removable else '0',
+            'MODEL': model,
+            'ROTA': '1' if rotary else '0',
+            'SATA': '1' if sata else '0',
+            'SERIAL': serial,
+            'SIZE': str(size),
+            'BLOCK_SIZE': str(block_size),
+            'RPM': '5400',
+        }
+        if device_id_path is not None:
+            ret['ID_PATH'] = device_id_path
+        return ret
+
     def test__calls_lsblk(self):
         check_output = self.patch(subprocess, "check_output")
         check_output.return_value = b""
         self.call_gather_physical_block_devices()
         self.assertThat(check_output, MockCalledOnceWith((
             "lsblk", "--exclude", "1,2,7", "-d", "-P",
-            "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN")))
+            "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN")))
 
     def test__returns_empty_list_when_no_disks(self):
         check_output = self.patch(subprocess, "check_output")
@@ -416,7 +443,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         self.assertThat(check_output, MockCallsMatch(
             call((
                 "lsblk", "--exclude", "1,2,7", "-d", "-P",
-                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN")),
+                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN")),
             call(("udevadm", "info", "-q", "all", "-n", name))))
 
     def test__returns_empty_list_when_cdrom_only(self):
@@ -448,7 +475,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         self.assertThat(check_output, MockCallsMatch(
             call((
                 "lsblk", "--exclude", "1,2,7", "-d", "-P",
-                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN")),
+                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN")),
             call(("udevadm", "info", "-q", "all", "-n", name)),
             call(("sudo", "-n", "blockdev", "--getsize64", "/dev/%s" % name)),
             call(("sudo", "-n", "blockdev", "--getbsz", "/dev/%s" % name))))
@@ -471,48 +498,52 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         self.assertThat(check_output, MockCallsMatch(
             call((
                 "lsblk", "--exclude", "1,2,7", "-d", "-P",
-                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN")),
+                "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN")),
             call(("udevadm", "info", "-q", "all", "-n", name)),
             call(("blockdev", "--getsize64", "/dev/%s" % name)),
             call(("blockdev", "--getbsz", "/dev/%s" % name))))
 
-    def test__returns_block_device(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
+    def test__returns_sorted_block_devices(self):
+        output = []
+        check_output_side_effects = []
         # Create simulated /dev tree
         devroot = self.make_dir()
         os.mkdir(os.path.join(devroot, 'disk'))
         byidroot = os.path.join(devroot, 'disk', 'by_id')
         os.mkdir(byidroot)
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
+        for _ in range(3):
+            name = factory.make_name('name')
+            model = factory.make_name('model')
+            serial = factory.make_name('serial')
+            size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+            block_size = random.choice([512, 1024, 4096])
+            maj_min = (random.randint(0, 255), random.randint(0, 255))
 
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
+            # Create simulated /dev tree
+            drive_path = os.path.join(devroot, name)
+            os.mknod(drive_path)
+            device_id_path = os.path.join(
+                byidroot, factory.make_name('deviceid'))
+            os.symlink(drive_path, device_id_path)
+
+            check_output_side_effects += [
+                self.make_lsblk_output(
+                    name=name, model=model, maj_min=maj_min),
+                self.make_udevadm_output(name, serial=serial, dev=devroot),
+                b'%d' % size,
+                b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
+            output.append(
+                self.make_output(
+                    name, maj_min, model, serial, size, block_size,
+                    drive_path, device_id_path))
+
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = check_output_side_effects
+
+        for ref, out in zip(
+                output, self.call_gather_physical_block_devices(byidroot)):
+            self.assertDictEqual(ref, out)
 
     def test__removes_duplicate_block_device_same_serial_and_model(self):
         """Multipath disks get multiple IDs, but same serial/model is same
@@ -522,6 +553,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         check_output = self.patch(subprocess, "check_output")
 
         name2 = factory.make_name('name')
@@ -532,18 +564,21 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         byidroot = os.path.join(devroot, 'disk', 'by_id')
         os.mkdir(byidroot)
 
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
+        drive_path = os.path.join(devroot, name)
+        os.mknod(drive_path)
+        device_id_path = os.path.join(byidroot, 'deviceid')
+        os.symlink(os.path.join(devroot, name), device_id_path)
 
         os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
+        device_id_path2 = os.path.join(byidroot, 'deviceid2')
+        os.symlink(os.path.join(devroot, name2), device_id_path2)
 
         check_output.side_effect = [
             b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
+                self.make_lsblk_output(
+                    name=name, model=model, maj_min=maj_min),
+                self.make_lsblk_output(
+                    name=name2, model=model, maj_min=maj_min)]),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
             self.make_udevadm_output(name2, serial=serial, dev=devroot),
             b'%d' % size,
@@ -552,77 +587,17 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             b'%d' % block_size,
         ]
 
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__removes_duplicate_block_device_same_serial_blank_model(self):
-        """Multipath disks get multiple IDs, but same serial is same device."""
-        name = factory.make_name('name')
-        model = ""
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        name2 = factory.make_name('name')
-
-        # Create simulated /dev tree.
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
-
-        check_output.side_effect = [
-            b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            b'%d' % size,
-            b'%d' % block_size,
-        ]
-
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
+        self.assertItemsEqual(
+            [self.make_output(
+                name, maj_min, model, serial, size, block_size, drive_path,
+                device_id_path)],
+            self.call_gather_physical_block_devices(byidroot))
 
     def test__keeps_block_device_same_serial_different_model(self):
         """Multipath disks get multiple IDs, but same serial is same device."""
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (0, 0)
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
@@ -630,6 +605,7 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
 
         name2 = factory.make_name('name')
         model2 = factory.make_name('model')
+        maj_min2 = (1, 1)
 
         # Create simulated /dev tree.
         devroot = self.make_dir()
@@ -637,18 +613,23 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         byidroot = os.path.join(devroot, 'disk', 'by_id')
         os.mkdir(byidroot)
 
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
+        drive_path = os.path.join(devroot, name)
+        os.mknod(drive_path)
+        device_id_path = os.path.join(byidroot, 'deviceid')
+        os.symlink(os.path.join(devroot, name), device_id_path)
 
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
+        drive_path2 = os.path.join(devroot, name2)
+        os.mknod(drive_path2)
+        device_id_path2 = os.path.join(byidroot, 'deviceid2')
+        os.symlink(os.path.join(devroot, name2), device_id_path2)
 
         check_output.side_effect = [
             b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model2)]),
+                self.make_lsblk_output(
+                    name=name, model=model, maj_min=maj_min),
+                self.make_lsblk_output(
+                    name=name2, model=model2, maj_min=maj_min2)
+                ]),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
             self.make_udevadm_output(name2, serial=serial, dev=devroot),
             b'%d' % size,
@@ -657,44 +638,29 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             b'%d' % block_size,
         ]
 
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }, {
-            "NAME": name2,
-            "PATH": os.path.join(devroot, name2),
-            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model2,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }], self.call_gather_physical_block_devices(byidroot))
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        drive_path, device_id_path),
+                    self.make_output(
+                        name2, maj_min2, model2, serial, size, block_size,
+                        drive_path2, device_id_path2),
+                ], self.call_gather_physical_block_devices(byidroot)):
+            self.assertDictEqual(ref, out)
 
     def test__keeps_block_device_blank_serial_same_model(self):
         """Multipath disks get multiple IDs, but same serial is same device."""
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (0, 0)
         serial = ''
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
 
         name2 = factory.make_name('name')
+        maj_min2 = (1, 1)
 
         # Create simulated /dev tree.
         devroot = self.make_dir()
@@ -702,18 +668,22 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         byidroot = os.path.join(devroot, 'disk', 'by_id')
         os.mkdir(byidroot)
 
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
+        drive_path = os.path.join(devroot, name)
+        os.mknod(drive_path)
+        device_id_path = os.path.join(byidroot, 'deviceid')
+        os.symlink(os.path.join(devroot, name), device_id_path)
 
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
+        drive_path2 = os.path.join(devroot, name2)
+        os.mknod(drive_path2)
+        device_id_path2 = os.path.join(byidroot, 'deviceid2')
+        os.symlink(os.path.join(devroot, name2), device_id_path2)
 
         check_output.side_effect = [
             b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
+                self.make_lsblk_output(
+                    name=name, model=model, maj_min=maj_min),
+                self.make_lsblk_output(
+                    name=name2, model=model, maj_min=maj_min2)]),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
             self.make_udevadm_output(name2, serial=serial, dev=devroot),
             b'%d' % size,
@@ -722,38 +692,22 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             b'%d' % block_size,
         ]
 
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }, {
-            "NAME": name2,
-            "PATH": os.path.join(devroot, name2),
-            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }], self.call_gather_physical_block_devices(byidroot))
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        drive_path, device_id_path),
+                    self.make_output(
+                        name2, maj_min2, model, serial, size, block_size,
+                        drive_path2, device_id_path2),
+                ], self.call_gather_physical_block_devices(byidroot)):
+            self.assertDictEqual(ref, out)
 
     def test__returns_block_device_without_id_path(self):
         """Block devices without by-id links should not have ID_PATH key"""
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
@@ -764,158 +718,113 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         os.mkdir(os.path.join(devroot, 'disk'))
         byidroot = os.path.join(devroot, 'disk', 'by_id')
         os.mkdir(byidroot)
-        os.mknod(os.path.join(devroot, name))
+        drive_path = os.path.join(devroot, name)
+        os.mknod(drive_path)
 
         check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
+            self.make_lsblk_output(name=name, model=model, maj_min=maj_min),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
             b'%d' % size,
             b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        drive_path),
+                ], self.call_gather_physical_block_devices(byidroot)):
+            self.assertDictEqual(ref, out)
 
     def test__returns_block_device_readonly(self):
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, read_only=True),
+            self.make_lsblk_output(
+                name=name, model=model, read_only=True, maj_min=maj_min),
             self.make_udevadm_output(name, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "1",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size,
+                        block_size, read_only=True),
+                ], self.call_gather_physical_block_devices()):
+            self.assertDictEqual(ref, out)
 
     def test__returns_block_device_ssd(self):
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, rotary=False),
+            self.make_lsblk_output(
+                name=name, model=model, rotary=False, maj_min=maj_min),
             self.make_udevadm_output(name, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "0",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        rotary=False),
+                ], self.call_gather_physical_block_devices()):
+            self.assertDictEqual(ref, out)
 
     def test__returns_block_device_not_sata(self):
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
+            self.make_lsblk_output(name=name, model=model, maj_min=maj_min),
             self.make_udevadm_output(name, serial=serial, sata=False),
             b'%d' % size,
             b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "0",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        sata=False),
+                ], self.call_gather_physical_block_devices()):
+            self.assertDictEqual(ref, out)
 
     def test__returns_block_device_removable(self):
         name = factory.make_name('name')
         model = factory.make_name('model')
+        maj_min = (random.randint(0, 255), random.randint(0, 255))
         serial = factory.make_name('serial')
         size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, removable=True),
+            self.make_lsblk_output(
+                name=name, model=model, removable=True, maj_min=maj_min),
             self.make_udevadm_output(name, serial=serial),
             b'%d' % size,
             b'%d' % block_size,
             ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "1",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
-
-    def test__returns_multiple_block_devices_in_order(self):
-        names = [factory.make_name('name') for _ in range(3)]
-        lsblk = [
-            self.make_lsblk_output(name=name)
-            for name in names
-            ]
-        call_outputs = []
-        call_outputs.append(b"\n".join(lsblk))
-        for name in names:
-            call_outputs.append(self.make_udevadm_output(name))
-        for name in names:
-            call_outputs.append(
-                b"%d" % random.randint(1000 * 1000, 1000 * 1000 * 1000))
-            call_outputs.append(
-                b"%d" % random.choice([512, 1024, 4096]))
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = call_outputs
-        device_names = [
-            block_info['NAME']
-            for block_info in self.call_gather_physical_block_devices()
-            ]
-        self.assertEqual(names, device_names)
+        for ref, out in zip(
+                [
+                    self.make_output(
+                        name, maj_min, model, serial, size, block_size,
+                        removable=True),
+                ], self.call_gather_physical_block_devices()):
+            self.assertDictEqual(ref, out)
 
     def test__quietly_exits_in_container(self):
         script_dir = self.useFixture(TempDirectory()).path

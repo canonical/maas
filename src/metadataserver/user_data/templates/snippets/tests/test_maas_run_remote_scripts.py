@@ -21,6 +21,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnce,
     MockCalledOnceWith,
+    MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
 from snippets import maas_run_remote_scripts
@@ -116,6 +117,24 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         self.assertThat(
             mock_signal,
             MockAnyCall(None, None, 'OK', 'All scripts successfully ran'))
+
+    def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):
+        scripts_dir = self.useFixture(TempDirectory()).path
+        mock_run_scripts = self.patch(maas_run_remote_scripts, 'run_scripts')
+        mock_run_scripts.return_value = random.randint(1, 100)
+        mock_signal = self.patch(maas_run_remote_scripts, 'signal')
+        index_json = self.make_index_json(scripts_dir)
+
+        # Don't need to give the url, creds, or out_dir as we're not running
+        # the scripts and sending the results.
+        run_scripts_from_metadata(None, None, scripts_dir, None)
+
+        self.assertThat(
+            mock_run_scripts,
+            MockCalledOnceWith(
+                None, None, scripts_dir, None,
+                index_json['commissioning_scripts']))
+        self.assertThat(mock_signal, MockNotCalled())
 
     def test_run_scripts_from_metadata_does_nothing_on_empty(self):
         scripts_dir = self.useFixture(TempDirectory()).path

@@ -77,11 +77,20 @@ def list_drives():
         iscsi_drives = re.findall(
             'Attached scsi disk (?P<disk>\w+)', output.decode('utf-8'))
 
-    lsblk_output = check_output(
-        [
-            'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
-            'NAME,RO,MODEL,SERIAL',
-        ], timeout=TIMEOUT).decode('utf-8')
+    try:
+        lsblk_output = check_output(
+            [
+                'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
+                'NAME,RO,MODEL,SERIAL',
+            ], timeout=TIMEOUT).decode('utf-8')
+    except CalledProcessError:
+        # The SERIAL column is unsupported in the Trusty version of lsblk. Try
+        # again without it.
+        lsblk_output = check_output(
+            [
+                'lsblk', '--exclude', '1,2,7', '-d', '-P', '-o',
+                'NAME,RO,MODEL',
+            ], timeout=TIMEOUT).decode('utf-8')
     drives = []
     for line in lsblk_output.splitlines():
         drive = {}
@@ -115,7 +124,10 @@ def run_badblocks(destructive=False):
         dashes = '-' * int((80.0 - (2 + len(thread.drive['PATH']))) / 2)
         print('%s %s %s' % (dashes, thread.drive['PATH'], dashes))
         print('Model:  %s' % thread.drive['MODEL'])
-        print('Serial: %s' % thread.drive['SERIAL'])
+        # The SERIAL column is only available in newer versions of lsblk. This
+        # can be removed with Trusty support.
+        if 'SERIAL' in thread.drive:
+            print('Serial: %s' % thread.drive['SERIAL'])
         print()
 
         if thread.returncode != 0:

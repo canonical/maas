@@ -457,7 +457,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     blockdevs = []
     block_list = check_output((
         "lsblk", "--exclude", "1,2,7", "-d", "-P",
-        "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN", "-x", "MAJ:MIN"))
+        "-o", "NAME,RO,RM,MODEL,ROTA,MAJ:MIN"))
     block_list = block_list.decode("utf-8")
     for blockdev in block_list.splitlines():
         tokens = shlex.split(blockdev)
@@ -466,6 +466,13 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
             k, v = token.split("=", 1)
             current_block[k] = v.strip()
         blockdevs.append(current_block)
+
+    # Sort drives by MAJ:MIN so MAAS picks the correct boot drive.
+    # lsblk -x MAJ:MIN can't be used as the -x flag only appears in
+    # lsblk 2.71.1 or newer which is unavailable on Trusty. See LP:1673724
+    blockdevs = sorted(
+        blockdevs,
+        key=lambda blockdev: [int(i) for i in blockdev['MAJ:MIN'].split(':')])
 
     # Grab the device path, serial number, and sata connection.
     UDEV_MAPPINGS = {

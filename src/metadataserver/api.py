@@ -495,12 +495,18 @@ class VersionIndexHandler(MetadataViewHandler):
         }
         target_status = signaling_statuses.get(status)
 
-        if target_status is not None:
-            node.status_expires = None
-
-        # Recalculate tags when commissioning ends.
         if target_status in [NODE_STATUS.READY, NODE_STATUS.TESTING]:
+            # Recalculate tags when commissioning ends.
             populate_tags_for_single_node(Tag.objects.all(), node)
+        elif (target_status == NODE_STATUS.FAILED_COMMISSIONING and
+                node.current_testing_script_set is not None):
+            # If commissioning failed testing doesn't run, mark any pending
+            # scripts as aborted.
+            qs = node.current_testing_script_set.scriptresult_set.filter(
+                status=SCRIPT_STATUS.PENDING)
+            for script_result in qs:
+                script_result.status = SCRIPT_STATUS.ABORTED
+                script_result.save(update_fields=['status'])
 
         return target_status
 
