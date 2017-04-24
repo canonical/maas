@@ -469,9 +469,8 @@ CONFIG_ITEMS = {
         'form_kwargs': {
             'required': False,
             'label': (
-                "Enable MAAS UI usage of Google Analytics. This helps the "
-                "developers of MAAS to identify usage statistics to further "
-                "development")
+                "Enable Google Analytics in MAAS UI to shape improvements "
+                "in user experience")
         }
     },
     'completed_intro': {
