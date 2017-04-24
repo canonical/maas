@@ -2478,6 +2478,14 @@ class Node(CleanSave, TimestampedModel):
     @asynchronous
     @inlineCallbacks
     def confirm_power_driver_operable(client, power_type, conn_ident):
+
+        @transactional
+        def _get_rack_controller_fqdn(system_id):
+            rack_controllers = RackController.objects.filter(
+                system_id=system_id).select_related('domain')
+            if len(rack_controllers) > 0:
+                return rack_controllers[0].fqdn
+
         missing_packages = yield power_driver_check(client, power_type)
         if len(missing_packages) > 0:
             missing_packages = sorted(missing_packages)
@@ -2485,9 +2493,13 @@ class Node(CleanSave, TimestampedModel):
                 missing_packages = [", ".join(
                     missing_packages[:-1]), missing_packages[-1]]
             package_list = " and ".join(missing_packages)
+            fqdn = yield deferToDatabase(
+                _get_rack_controller_fqdn, conn_ident)
+            if fqdn:
+                conn_ident = fqdn
             raise PowerActionFail(
                 "Power control software is missing from the rack "
-                "controller %s. To proceed, "
+                "controller '%s'. To proceed, "
                 "install the %s package%s." % (
                     conn_ident,
                     package_list,

@@ -9,6 +9,7 @@ import base64
 from datetime import datetime
 import email
 import random
+import re
 from unittest.mock import (
     ANY,
     call,
@@ -181,6 +182,7 @@ from provisioningserver.rpc.exceptions import (
     CannotDisableAndShutoffRackd,
     NoConnectionsAvailable,
     PodActionFail,
+    PowerActionFail,
     RefreshAlreadyInProgress,
     UnknownPowerType,
 )
@@ -6264,6 +6266,53 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             power_method,
             MockCalledOnceWith(
                 client, node.system_id, node.hostname, power_info))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_bmc_is_accessible_raises_PowerActionFail_for_bad_software(self):
+        d = self.patch_post_commit()
+        rack_controller = yield deferToDatabase(self.make_rack_controller)
+        rack_controller_fqdn = yield deferToDatabase(
+            lambda: rack_controller.fqdn)
+        node, power_info = yield deferToDatabase(
+            self.make_node, layer2_rack=rack_controller)
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        # Add the client to getAllClients in so that its considered a to be a
+        # valid connection.
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Mock power_driver_check to cause the PowerActionFail.
+        missing_packages = [
+            factory.make_name('package')
+            for _ in range(3)
+        ]
+        missing_packages = sorted(missing_packages)
+        if len(missing_packages) > 2:
+            missing_packages = [", ".join(
+                missing_packages[:-1]), missing_packages[-1]]
+        package_list = " and ".join(missing_packages)
+        self.patch(node_module, 'power_driver_check').return_value = (
+            defer.succeed(missing_packages))
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        power_method = Mock()
+        with ExpectedException(PowerActionFail, re.escape(
+                "Power control software is missing from the rack "
+                "controller '%s'. To proceed, "
+                "install the %s packages." % (
+                    rack_controller_fqdn, package_list))):
+            yield node._power_control_node(d, power_method, power_info)
 
     @wait_for_reactor
     @defer.inlineCallbacks
