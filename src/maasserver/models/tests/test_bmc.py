@@ -12,6 +12,7 @@ from unittest.mock import (
 )
 
 from crochet import wait_for
+from django.core.exceptions import ValidationError
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -896,6 +897,57 @@ class TestPod(MAASServerTestCase):
             mock_start_commissioning.call_count,
             Equals(len(discovered.machines)))
 
+    def test_create_machine_with_bad_physical_block_device(self):
+        block_device = self.make_discovered_block_device()
+        block_device.serial = None
+        block_device.id_path = None
+        machine = self.make_discovered_machine(block_devices=[block_device])
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        pod.create_machine(machine, factory.make_User())
+        created_machine = Machine.objects.get(
+            interface__mac_address=machine.interfaces[0].mac_address)
+        self.assertThat(
+            created_machine,
+            MatchesStructure(
+                architecture=Equals(machine.architecture),
+                bmc=Equals(pod),
+                cpu_count=Equals(machine.cores),
+                cpu_speed=Equals(machine.cpu_speed),
+                memory=Equals(machine.memory),
+                power_state=Equals(machine.power_state),
+                instance_power_parameters=Equals(machine.power_parameters),
+                creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
+                tags=MatchesSetwiseWithAll(*[
+                    MatchesStructure(name=Equals(tag))
+                    for tag in machine.tags
+                ]),
+                physicalblockdevice_set=MatchesSetwiseWithAll(),
+            ))
+
+    def test_create_machine_doesnt_allow_bad_physical_block_device(self):
+        block_device = self.make_discovered_block_device()
+        block_device.serial = None
+        block_device.id_path = None
+        machine = self.make_discovered_machine(block_devices=[block_device])
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        self.assertRaises(
+            ValidationError, pod.create_machine,
+            machine, factory.make_User(), skip_commissioning=True)
+
     def test_sync_pod_deletes_missing_machines(self):
         pod = factory.make_Pod()
         machine = factory.make_Node()
@@ -918,9 +970,10 @@ class TestPod(MAASServerTestCase):
         machine = reload_object(machine)
         self.assertThat(machine.bmc.id, Equals(pod.id))
 
-    def test_sync_updates_machine_properties(self):
+    def test_sync_updates_machine_properties_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(interface=True)
+        machine = factory.make_Node(
+            interface=True, creation_type=NODE_CREATION_TYPE.DYNAMIC)
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address)
         discovered_machine = self.make_discovered_machine(
@@ -940,6 +993,34 @@ class TestPod(MAASServerTestCase):
             tags=MatchesSetwiseWithAll(*[
                 MatchesStructure(name=Equals(tag))
                 for tag in discovered_machine.tags
+            ]),
+        ))
+
+    def test_sync_updates_machine_properties_for_not_dynamic(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Node(
+            interface=True,
+            creation_type=random.choice(
+                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]))
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine])
+        pod.sync(discovered_pod, factory.make_User())
+        machine = reload_object(machine)
+        self.assertThat(machine, MatchesStructure(
+            architecture=Equals(machine.architecture),
+            cpu_count=Equals(machine.cpu_count),
+            cpu_speed=Equals(machine.cpu_speed),
+            memory=Equals(machine.memory),
+            power_state=Equals(discovered_machine.power_state),
+            instance_power_parameters=Equals(
+                discovered_machine.power_parameters),
+            tags=MatchesSetwiseWithAll(*[
+                MatchesStructure(name=Equals(tag))
+                for tag in machine.tags.all()
             ]),
         ))
 
@@ -990,9 +1071,10 @@ class TestPod(MAASServerTestCase):
         self.assertIsNotNone(old_bmc)
         self.assertThat(machine.bmc.as_self(), Equals(pod))
 
-    def test_sync_updates_existing_machine_block_devices(self):
+    def test_sync_updates_existing_machine_block_devices_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(with_boot_disk=False)
+        machine = factory.make_Node(
+            with_boot_disk=False, creation_type=NODE_CREATION_TYPE.DYNAMIC)
         boot_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=machine)
         keep_model_bd = factory.make_PhysicalBlockDevice(node=machine)
@@ -1113,9 +1195,9 @@ class TestPod(MAASServerTestCase):
                     for tag in dnew_iscsi_bd.tags
                 ])))
 
-    def test_sync_updates_existing_machine_interfaces(self):
+    def test_sync_updates_existing_machine_interfaces_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node()
+        machine = factory.make_Node(creation_type=NODE_CREATION_TYPE.DYNAMIC)
         other_vlan = factory.make_Fabric().get_default_vlan()
         keep_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=machine, vlan=other_vlan)

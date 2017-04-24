@@ -588,10 +588,21 @@ class Pod(BMC):
         # layout for the machine.
         for idx, discovered_bd in enumerate(discovered_machine.block_devices):
             if discovered_bd.type == BlockDeviceType.PHYSICAL:
-                self._create_physical_block_device(
-                    discovered_bd, machine,
-                    name=BlockDevice._get_block_name_from_idx(idx))
+                try:
+                    self._create_physical_block_device(
+                        discovered_bd, machine,
+                        name=BlockDevice._get_block_name_from_idx(idx))
+                except:
+                    if skip_commissioning:
+                        # Commissioning is not being performed for this
+                        # machine. When not performing commissioning it is
+                        # required for all physical block devices be created,
+                        # otherwise this is allowed to fail as commissioning
+                        # will discover this information.
+                        raise
             elif discovered_bd.type == BlockDeviceType.ISCSI:
+                # iSCSI block devices cannot fail, they must provide the
+                # required information.
                 self._create_iscsi_block_device(
                     discovered_bd, machine,
                     name=BlockDevice._get_block_name_from_idx(idx))
@@ -638,6 +649,21 @@ class Pod(BMC):
                         existing_machine.bmc.name))
             existing_machine.bmc = self
 
+        # Sync power state and parameters for this machine always.
+        existing_machine.power_state = discovered_machine.power_state
+        existing_machine.instance_power_parameters = (
+            discovered_machine.power_parameters)
+
+        # If this machine is pre-existing or manually composed then we skip
+        # syncing all the remaining information because MAAS commissioning
+        # will discover this information. Any changes on the MAAS in the pod
+        # for pre-existing and manual require the machine to be
+        # re-commissioned.
+        if existing_machine.creation_type in [
+                NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]:
+            existing_machine.save()
+            return
+
         # Sync machine instance values.
         # We are skipping hostname syncing so that any changes to the
         # hostname in MAAS are not overwritten.
@@ -645,9 +671,6 @@ class Pod(BMC):
         existing_machine.cpu_count = discovered_machine.cores
         existing_machine.cpu_speed = discovered_machine.cpu_speed
         existing_machine.memory = discovered_machine.memory
-        existing_machine.power_state = discovered_machine.power_state
-        existing_machine.instance_power_parameters = (
-            discovered_machine.power_parameters)
         existing_machine.save()
 
         # Sync the tags to make sure they match the discovered machine.
