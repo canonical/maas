@@ -801,7 +801,7 @@ class RSDPodDriver(PodDriver):
             "CapacityGiB": None,
             "iSCSIAddress": None,
             "Master": {
-                "Type": "Clone",
+                "Type": "Snapshot",
                 "Resource": None,
             },
         }
@@ -885,6 +885,7 @@ class RSDPodDriver(PodDriver):
                     # Force 'iscsi' into the tags if not present.
                     if 'iscsi' not in block_device.tags:
                         block_device.tags.append('iscsi')
+                    # Convert from bytes to GiB.
                     size = block_device.size / (1024 ** 3)
 
                     # Determine the remote master that can be used.
@@ -895,8 +896,9 @@ class RSDPodDriver(PodDriver):
                             'iSCSI remote drive cannot be created because '
                             'not enough space is available.')
                     drive = remote_drive.copy()
-                    # Convert from bytes to GiB.
                     drive['CapacityGiB'] = size
+                    if remote_master['size'] > size:
+                        drive['CapacityGiB'] = remote_master['size']
                     drive['iSCSIAddress'] = 'iqn.2010-08.io.maas:%s-%s' % (
                         request.hostname, idx)
                     drive['Master']['Resource'] = {

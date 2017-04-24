@@ -1687,7 +1687,11 @@ class TestRSDPodDriver(MAASTestCase):
     def test__convert_request_to_json_payload(self):
         driver = RSDPodDriver()
         request = make_requested_machine()
+        # iSCSI disk smaller than master drive size of 10GiB.
         request.block_devices[1].tags.append('iscsi')
+        request.block_devices[1].size = 9 * (1024 ** 3)
+        # iSCSI disk larger than master drive size of 10GiB.
+        request.block_devices[2].size = 15 * (1024 ** 3)
         processors = 2
         cores = request.cores / 2
         remote_storage = {
@@ -1696,7 +1700,7 @@ class TestRSDPodDriver(MAASTestCase):
                 'available': 40 * (1024 ** 3),
                 'master': {
                     'path': b"redfish/v1/Services/1/LogicalDrives/2",
-                    'size': 10 * (1024 ** 3)
+                    'size': 10
                 }
             }
         }
@@ -1758,10 +1762,9 @@ class TestRSDPodDriver(MAASTestCase):
                                 "@odata.id": Equals(
                                     'redfish/v1/Services/1/LogicalDrives/2')
                             }),
-                            "Type": Equals('Clone')
+                            "Type": Equals('Snapshot')
                         }),
-                        "CapacityGiB": Equals(
-                            request.block_devices[1].size / (1024 ** 3)),
+                        "CapacityGiB": Equals(10),
                         "iSCSIAddress": Equals(
                             'iqn.2010-08.io.maas:' + request.hostname + '-1')
                     }),
@@ -1771,7 +1774,7 @@ class TestRSDPodDriver(MAASTestCase):
                                 "@odata.id": Equals(
                                     'redfish/v1/Services/1/LogicalDrives/2')
                             }),
-                            "Type": Equals('Clone')
+                            "Type": Equals('Snapshot')
                         }),
                         "CapacityGiB": Equals(
                             request.block_devices[2].size / (1024 ** 3)),
