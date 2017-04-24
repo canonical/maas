@@ -4,8 +4,8 @@ debconf_selections:
   {{for line in str(curtin_preseed).splitlines()}}
   {{line}}
   {{endfor}}
-{{if third_party_drivers and driver}}
 early_commands:
+{{if third_party_drivers and driver}}
   {{py: key_string = ''.join(['\\x%x' % x for x in driver['key_binary']])}}
   {{if driver['key_binary'] and driver['repository'] and driver['package']}}
   driver_00_get_key: /bin/echo -en '{{key_string}}' > /tmp/maas-{{driver['package']}}.gpg
@@ -20,6 +20,8 @@ early_commands:
   {{if driver['module']}}
   driver_04_load: ["sh", "-c", "depmod && modprobe {{driver['module']}} || echo 'Warning: Failed to load module: {{driver['module']}}'"]
   {{endif}}
+{{else}}
+  driver_00: ["sh", "-c", "echo third party drivers not installed or necessary."]
 {{endif}}
 late_commands:
   maas: [wget, '--no-proxy', {{node_disable_pxe_url|escape.json}}, '--post-data', {{node_disable_pxe_data|escape.json}}, '-O', '/dev/null']
