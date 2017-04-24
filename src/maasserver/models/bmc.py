@@ -556,12 +556,16 @@ class Pod(BMC):
         else:
             status = NODE_STATUS.NEW
 
-        # Check to see if discovered machine's hostname is legal.
+        # Check to see if discovered machine's hostname is legal and unique.
         if discovered_machine.hostname:
             for char in discovered_machine.hostname:
                 if char not in (string.ascii_letters + string.digits + '-'):
                     discovered_machine.hostname = None
                     break
+        if discovered_machine.hostname:
+            if Machine.objects.filter(
+                    hostname=discovered_machine.hostname).exists():
+                discovered_machine.hostname = None
 
         # Create the machine.
         machine = Machine(

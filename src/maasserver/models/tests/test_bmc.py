@@ -790,6 +790,22 @@ class TestPod(MAASServerTestCase):
             mock_start_commissioning.call_count,
             Equals(len(discovered.machines)))
 
+    def test_create_machine_ensures_unique_hostname(self):
+        existing_machine = factory.make_Node()
+        discovered_machine = self.make_discovered_machine()
+        discovered_machine.hostname = existing_machine.hostname
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric, dhcp_on=True,
+            primary_rack=factory.make_RackController())
+        pod = factory.make_Pod()
+        # Doesn't raise an exception ensures that the hostname is unique as
+        # that will cause a database exception.
+        pod.create_machine(discovered_machine, factory.make_User())
+
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()
         mock_set_default_storage_layout = self.patch(
