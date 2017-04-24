@@ -1043,10 +1043,14 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_result_id': script_result.id,
             }
             if script_result.script is None:
-                content = NODE_INFO_SCRIPTS[script_result.name]['content']
+                script = NODE_INFO_SCRIPTS[script_result.name]
+                content = script['content']
+                md_item['timeout_seconds'] = script['timeout'].seconds
             else:
                 content = script_result.script.script.data.encode()
                 md_item['script_version_id'] = script_result.script.script.id
+                md_item['timeout_seconds'] = (
+                    script_result.script.timeout.seconds)
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, content)
             commissioning_meta_data.append(md_item)
@@ -1185,10 +1189,14 @@ class TestMAASScripts(MAASServerTestCase):
                 'script_result_id': script_result.id,
             }
             if script_result.script is None:
-                content = NODE_INFO_SCRIPTS[script_result.name]['content']
+                script = NODE_INFO_SCRIPTS[script_result.name]
+                content = script['content']
+                md_item['timeout_seconds'] = script['timeout'].seconds
             else:
                 content = script_result.script.script.data.encode()
                 md_item['script_version_id'] = script_result.script.script.id
+                md_item['timeout_seconds'] = (
+                    script_result.script.timeout.seconds)
             self.extract_and_validate_file(
                 tar, path, start_time, end_time, content)
             commissioning_meta_data.append(md_item)

@@ -837,14 +837,13 @@ class MAASScriptsHandler(OperationsHandler):
                 # Check if its a builtin in commissioning script and pull the
                 # data from the source.
                 if script_result.name in NODE_INFO_SCRIPTS:
-                    add_file_to_tar(
-                        tar, path,
-                        NODE_INFO_SCRIPTS[script_result.name]['content'],
-                        mtime)
+                    script = NODE_INFO_SCRIPTS[script_result.name]
+                    add_file_to_tar(tar, path, script['content'], mtime)
                     meta_data.append({
                         'name': script_result.name,
                         'path': path,
                         'script_result_id': script_result.id,
+                        'timeout_seconds': script['timeout'].seconds,
                     })
                 else:
                     # Script was deleted by the user and it is not a builtin
