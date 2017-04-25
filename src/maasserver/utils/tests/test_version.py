@@ -268,3 +268,11 @@ class TestVersionMethodsCached(TestVersionTestCase):
         # Apt has only been called once.
         self.expectThat(
             mock_apt, MockCalledOnceWith(version.REGION_PACKAGE_NAME))
+
+
+class TestGetMAASVersionTuple(MAASTestCase):
+
+    def test_get_maas_version_tuple(self):
+        self.assertEquals(
+            '.'.join([str(i) for i in version.get_maas_version_tuple()]),
+            version.get_maas_version_subversion()[0])

@@ -37,7 +37,7 @@ def clean_up_repo_item(item):
     keys_to_keep = [
         'content_id', 'product_name', 'version_name', 'path', 'subarches',
         'release_codename', 'release_title', 'support_eol', 'kflavor',
-        'bootloader-type']
+        'bootloader-type', 'os_title', 'gadget_title']
     compact_item = {
         key: item[key]
         for key in keys_to_keep
@@ -91,24 +91,36 @@ class RepoDumper(BasicMirrorWriter):
         label = item['label']
         base_image = ImageSpec(os, arch, None, kflavor, release, label)
         compact_item = clean_up_repo_item(item)
-        for subarch in subarches.split(','):
+
+        if os == 'ubuntu-core':
+            # For Ubuntu Core we only want one entry per release/arch/gadget
+            gadget = item.get('gadget_snap', 'generic')
+            kflavor = item.get('kernel_snap', 'generic')
+            release = "%s-%s" % (release, gadget)
             self.boot_images_dict.setdefault(
+                base_image._replace(
+                    subarch='generic', kflavor=kflavor, release=release),
+                compact_item)
+        else:
+            for subarch in subarches.split(','):
+                self.boot_images_dict.setdefault(
+                    base_image._replace(subarch=subarch), compact_item)
+
+            # HWE resources need to map to a specfic resource, and not just to
+            # any of the supported subarchitectures for that resource.
+            subarch = item.get('subarch', 'generic')
+            self.boot_images_dict.set(
                 base_image._replace(subarch=subarch), compact_item)
 
-        # HWE resources need to map to a specfic resource, and not just to
-        # any of the supported subarchitectures for that resource.
-        subarch = item.get('subarch', 'generic')
-        self.boot_images_dict.set(
-            base_image._replace(subarch=subarch), compact_item)
-
-        if os == 'ubuntu' and item.get('version') is not None:
-            # HWE resources with generic, should map to the HWE that ships with
-            # that release. Starting with Xenial kernels changed from using the
-            # naming format hwe-<letter> to ga-<version>. Look for both.
-            hwe_archs = ["ga-%s" % item['version'], "hwe-%s" % release[0]]
-            if subarch in hwe_archs and 'generic' in subarches:
-                self.boot_images_dict.set(
-                    base_image._replace(subarch='generic'), compact_item)
+            if os == 'ubuntu' and item.get('version') is not None:
+                # HWE resources with generic, should map to the HWE that ships
+                # with that release. Starting with Xenial kernels changed from
+                # using the naming format hwe-<letter> to ga-<version>. Look
+                # for both.
+                hwe_archs = ["ga-%s" % item['version'], "hwe-%s" % release[0]]
+                if subarch in hwe_archs and 'generic' in subarches:
+                    self.boot_images_dict.set(
+                        base_image._replace(subarch='generic'), compact_item)
 
     def sync(self, reader, path):
         try:

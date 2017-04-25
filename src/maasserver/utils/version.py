@@ -135,3 +135,8 @@ def get_maas_doc_version():
         return '.'.join(version.split('~')[0].split('.')[:2])
     else:
         return ''
+
+
+def get_maas_version_tuple():
+    """Returns a tuple of the MAAS version without the svn rev."""
+    return tuple(int(x) for x in old_version.split('.'))

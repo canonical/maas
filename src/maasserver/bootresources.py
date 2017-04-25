@@ -40,6 +40,7 @@ from maasserver.bootsources import (
     cache_boot_sources,
     ensure_boot_source_definition,
     get_boot_sources,
+    get_product_title,
     set_simplestreams_env,
 )
 from maasserver.components import (
@@ -77,7 +78,10 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.utils.version import get_maas_version_user_agent
+from maasserver.utils.version import (
+    get_maas_version_tuple,
+    get_maas_version_user_agent,
+)
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
@@ -485,7 +489,13 @@ class BootResourceStore(ObjectStore):
         arch = product['arch']
         kflavor = product.get('kflavor')
         bootloader_type = product.get('bootloader-type')
-        if bootloader_type is None:
+        if os == 'ubuntu-core':
+            kflavor = product.get('kernel_snap', 'generic')
+            release = product['release']
+            gadget = product['gadget_snap']
+            architecture = '%s/generic' % arch
+            series = "%s-%s" % (release, gadget)
+        elif bootloader_type is None:
             # The rack controller assumes the subarch is the kernel. We need to
             # include the kflavor in the subarch otherwise the rack will
             # overwrite the generic kernel with each kernel flavor.
@@ -551,6 +561,10 @@ class BootResourceStore(ObjectStore):
         resource.extra = {}
         if 'subarches' in product:
             resource.extra['subarches'] = product['subarches']
+
+        title = get_product_title(product)
+        if title is not None:
+            resource.extra['title'] = title
 
         resource.save()
         return resource
@@ -1042,6 +1056,10 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         # Compile a regex to validate Ubuntu product names. This only allows
         # V2 and V3 Ubuntu products.
         self.ubuntu_regex = re.compile('.*:v[23]:.*', re.IGNORECASE)
+        # Compile a regex to validate Ubuntu Core. By having 'v4' in the
+        # product name it is prevented from being shown in older versions of
+        # MAAS which do not support Ubuntu Core.
+        self.ubuntu_core_regex = re.compile('.*:v4:.*', re.IGNORECASE)
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -1059,6 +1077,9 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         osystem = data.get('os')
         if 'ubuntu' not in osystem.lower():
             # It's not an Ubuntu product, nothing to validate.
+            return True
+        elif (osystem == 'ubuntu-core' and
+                self.ubuntu_core_regex.search(product_name) is not None):
             return True
         elif self.ubuntu_regex.search(product_name) is None:
             # Only insert v2 or v3 Ubuntu products.
@@ -1115,6 +1136,17 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         version_name = pedigree[1]
         versions = src['products'][product_name]['versions']
         items = versions[version_name]['items']
+        maas_supported = item.get('maas_supported')
+        # If the item requires a specific version of MAAS check the running
+        # version meets or exceeds that requirement.
+        if maas_supported is not None:
+            supported_version = tuple(
+                int(x) for x in maas_supported.split('.'))
+            if supported_version > get_maas_version_tuple():
+                maaslog.warning(
+                    'Ignoring %s, requires a newer version of MAAS(%s)' %
+                    (product_name, supported_version))
+                return
         if (
                 item['ftype'] == BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE and
                 BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in items.keys()):
@@ -1123,10 +1155,17 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             return
         elif item['ftype'] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
             # Skip filetypes that we don't know about.
+            maaslog.warning(
+                'Ignoring unsupported filetype(%s) from %s %s' %
+                (item['ftype'], product_name, version_name))
             return
         elif not self._validate_ubuntu(item, product_name):
+            maaslog.warning(
+                'Ignoring unsupported Ubuntu product(%s)' % product_name)
             return
         elif not self._validate_bootloader(item, product_name):
+            maaslog.warning(
+                'Ignoring unsupported bootloader(%s)' % product_name)
             return
         else:
             self.store.insert(item, contentsource)

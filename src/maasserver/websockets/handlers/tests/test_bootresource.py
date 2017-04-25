@@ -604,6 +604,39 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             "Syncing to rack controller(s)", json_resource['status'])
         self.assertEqual("in-progress", json_resource['icon'])
 
+    def test_ubuntu_core_images_returns_images_from_cache(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        cache = factory.make_BootSourceCache(os='ubuntu-core')
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        ubuntu_core_images = json_obj['ubuntu_core_images']
+        self.assertEquals([{
+            'name': '%s/%s/%s/%s' % (
+                cache.os, cache.arch, cache.subarch, cache.release),
+            'title': '%s/%s' % (cache.os, cache.release),
+            'checked': False,
+            'deleted': False,
+        }], ubuntu_core_images)
+
+    def test_ubuntu_core_images_returns_image_checked_when_synced(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        cache = factory.make_BootSourceCache(os='ubuntu-core')
+        self.make_other_resource(
+            os=cache.os, arch=cache.arch,
+            subarch=cache.subarch, release=cache.release)
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        ubuntu_core_images = json_obj['ubuntu_core_images']
+        self.assertEquals([{
+            'name': '%s/%s/%s/%s' % (
+                cache.os, cache.arch, cache.subarch, cache.release),
+            'title': '%s/%s' % (cache.os, cache.release),
+            'checked': True,
+            'deleted': False,
+        }], ubuntu_core_images)
+
     def test_other_images_returns_images_from_cache(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {})
@@ -636,6 +669,15 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             'checked': True,
             'deleted': False,
         }], other_images)
+
+    def test_other_images_filters_out_ubuntu(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        factory.make_BootSourceCache(os='ubuntu')
+        factory.make_BootSourceCache(os='ubuntu-core')
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertEquals([], json_obj['other_images'])
 
     def test_other_images_filters_out_bootloaders(self):
         owner = factory.make_admin()
@@ -779,6 +821,85 @@ class TestBootResourceSaveUbuntu(
             {'url': source.url, 'releases': [release], 'arches': []})
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
+
+
+class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
+    def make_resource(self, arch='amd64'):
+        if arch is None:
+            arch = factory.make_name('arch')
+        architecture = '%s/generic' % arch
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name='ubuntu-core/16-pc', architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
+
+    def patch_stop_import_resources(self):
+        mock_import = self.patch(bootresource, 'stop_import_resources')
+        mock_import.return_value = succeed(None)
+        return mock_import
+
+    def patch_import_resources(self):
+        mock_import = self.patch(bootresource, 'import_resources')
+        mock_import.side_effect = (
+            lambda notify: reactor.callLater(0, notify.callback, None))
+        return mock_import
+
+    def test_asserts_is_admin(self):
+        owner = factory.make_User()
+        handler = BootResourceHandler(owner, {})
+        self.assertRaises(AssertionError, handler.save_ubuntu_core, {})
+
+    def test_clears_all_ubuntu_core_selections(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        source = factory.make_BootSource()
+        ubuntu_selection = BootSourceSelection.objects.create(
+            boot_source=source, os='ubuntu')
+        ubuntu_core_selection = BootSourceSelection.objects.create(
+            boot_source=source, os='ubuntu-core')
+        self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu_core({'images': []})
+        self.assertIsNotNone(reload_object(ubuntu_selection))
+        self.assertIsNone(reload_object(ubuntu_core_selection))
+
+    def test_creates_selection_with_multiple_arches(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        source = factory.make_BootSource()
+        arches = [factory.make_name('arch') for _ in range(3)]
+        images = []
+        for arch in arches:
+            factory.make_BootSourceCache(
+                boot_source=source, os='ubuntu-core', release='16-pc',
+                arch=arch)
+            images.append('ubuntu-core/%s/subarch/16-pc' % arch)
+            self.patch_stop_import_resources()
+        self.patch_import_resources()
+        handler.save_ubuntu_core({'images': images})
+
+        selection = get_one(BootSourceSelection.objects.filter(
+            boot_source=source, os='ubuntu-core', release='16-pc'))
+        self.assertIsNotNone(selection)
+        self.assertItemsEqual(arches, selection.arches)
+
+    def test_calls_stop_and_import_resources(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        mock_stop_import = self.patch_stop_import_resources()
+        mock_import = self.patch_import_resources()
+        handler.save_ubuntu_core({'images': []})
+        self.assertThat(mock_stop_import, MockCalledOnceWith())
+        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
 
 
 class TestBootResourceSaveOther(MAASTransactionServerTestCase):

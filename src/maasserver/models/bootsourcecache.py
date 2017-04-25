@@ -15,6 +15,7 @@ from django.db.models import (
     Manager,
 )
 from maasserver import DefaultMeta
+from maasserver.fields import JSONObjectField
 from maasserver.models.bootsource import BootSource
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -70,6 +71,8 @@ class BootSourceCache(CleanSave, TimestampedModel):
     release_title = CharField(max_length=255, blank=True, null=True)
 
     support_eol = DateField(null=True, blank=True)
+
+    extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __str__(self):
         return (

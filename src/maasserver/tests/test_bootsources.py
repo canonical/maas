@@ -19,6 +19,7 @@ from maasserver.bootsources import (
     ensure_boot_source_definition,
     get_boot_sources,
     get_os_info_from_boot_sources,
+    get_product_title,
 )
 from maasserver.components import (
     get_persistent_error,
@@ -160,6 +161,31 @@ class TestHelpers(MAASServerTestCase):
             for _ in range(3)
             ]
         self.assertItemsEqual(sources, get_boot_sources())
+
+    def test_get_product_title_with_os_release_and_gadget_titles(self):
+        os_title = factory.make_name('os_title')
+        release_title = factory.make_name('release_title')
+        gadget_title = factory.make_name('gadget_title')
+        self.assertEquals(
+            '%s %s %s' % (os_title, release_title, gadget_title),
+            get_product_title({
+                'os_title': os_title,
+                'release_title': release_title,
+                'gadget_title': gadget_title,
+            }))
+
+    def test_get_product_title_with_os_and_release_titles(self):
+        os_title = factory.make_name('os_title')
+        release_title = factory.make_name('release_title')
+        self.assertEquals(
+            '%s %s' % (os_title, release_title),
+            get_product_title({
+                'os_title': os_title,
+                'release_title': release_title,
+            }))
+
+    def test_get_product_title_without_titles(self):
+        self.assertIsNone(get_product_title({}))
 
 
 class TestGetOSInfoFromBootSources(MAASServerTestCase):
@@ -304,6 +330,51 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertEqual(release_codename, cached.release_codename)
         self.assertEqual(release_title, cached.release_title)
         self.assertEqual(support_eol, cached.support_eol.strftime("%Y-%m-%d"))
+
+    def test__adds_title_to_extra(self):
+        source = factory.make_BootSource(keyring_data=b'1234')
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        os_title = factory.make_name('os_title')
+        release_title = factory.make_name('release_title')
+        image_spec = make_image_spec(os=os, release=release)
+        image_mapping = BootImageMapping()
+        image_mapping.setdefault(image_spec, {
+            'os_title': os_title,
+            'release_title': release_title,
+        })
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        mock_download.return_value = image_mapping
+
+        cache_boot_sources()
+        cached = BootSourceCache.objects.filter(boot_source=source).first()
+        self.assertDictEqual(
+            {'title': '%s %s' % (os_title, release_title)}, cached.extra)
+
+    def test__adds_title_with_gadget_to_extra(self):
+        source = factory.make_BootSource(keyring_data=b'1234')
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        os_title = factory.make_name('os_title')
+        release_title = factory.make_name('release_title')
+        gadget_title = factory.make_name('gadget_title')
+        image_spec = make_image_spec(os=os, release=release)
+        image_mapping = BootImageMapping()
+        image_mapping.setdefault(image_spec, {
+            'os_title': os_title,
+            'release_title': release_title,
+            'gadget_title': gadget_title,
+        })
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        mock_download.return_value = image_mapping
+
+        cache_boot_sources()
+        cached = BootSourceCache.objects.filter(boot_source=source).first()
+        self.assertDictEqual(
+            {'title': '%s %s %s' % (os_title, release_title, gadget_title)},
+            cached.extra)
 
 
 class TestBadConnectionHandling(MAASTransactionServerTestCase):

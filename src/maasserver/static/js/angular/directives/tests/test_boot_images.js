@@ -123,6 +123,7 @@ describe("maasBootImages", function() {
         var directive = compileDirective();
         var scope = directive.isolateScope();
         spyOn(scope, "regenerateUbuntuImages");
+        spyOn(scope, "regenerateUbuntuCoreImages");
         spyOn(scope, "regenerateOtherImages");
         spyOn(scope, "regenerateGeneratedImages");
         spyOn(scope, "regenerateCustomImages");
@@ -130,9 +131,35 @@ describe("maasBootImages", function() {
         $scope.$digest();
 
         expect(scope.regenerateUbuntuImages).toHaveBeenCalled();
+        expect(scope.regenerateUbuntuCoreImages).toHaveBeenCalled();
         expect(scope.regenerateOtherImages).toHaveBeenCalled();
         expect(scope.regenerateGeneratedImages).toHaveBeenCalled();
         expect(scope.regenerateCustomImages).toHaveBeenCalled();
+    });
+
+    it("sets ubuntu_core.images when ubuntu_core change", function() {
+        var directive = compileDirective();
+        var scope = directive.isolateScope();
+        spyOn(scope, "regenerateUbuntuCoreImages");
+        var sentinel = [];
+        scope.bootResources.ubuntu_core_images = sentinel;
+        $scope.$digest();
+
+        expect(scope.ubuntu_core.images).toBe(sentinel);
+        expect(scope.regenerateUbuntuCoreImages).toHaveBeenCalled();
+    });
+
+    it("doesnt sets ubuntu_core.images when ubuntu_core changed", function() {
+        var directive = compileDirective();
+        var scope = directive.isolateScope();
+        spyOn(scope, "regenerateUbuntuCoreImages");
+        var sentinel = [];
+        scope.bootResources.ubuntu_core_images = sentinel;
+        scope.ubuntu_core.changed = true;
+        $scope.$digest();
+
+        expect(scope.ubuntu_core.images).not.toBe(sentinel);
+        expect(scope.regenerateUbuntuCoreImages).toHaveBeenCalled();
     });
 
     it("sets other.images when other_images change", function() {
@@ -1055,6 +1082,104 @@ describe("maasBootImages", function() {
         });
     });
 
+    describe("regenerateUbuntuCoreImages", function() {
+
+        it("builds images based on selections", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.bootResources.resources = [];
+            var release = makeName("release");
+            var arch = makeName("arch");
+            var name = 'ubuntu-core/' + arch + '/generic/' + release;
+            var image = {
+                name: name,
+                title: makeName("title"),
+                checked: true
+            };
+            scope.ubuntu_core.images = [image];
+            scope.regenerateUbuntuCoreImages();
+            expect(scope.ubuntuCoreImages).toEqual([{
+                icon: 'icon--status-queued',
+                title: image.title,
+                arch: arch,
+                size: '-',
+                status: 'Selected for download',
+                beingDeleted: false
+            }]);
+        });
+
+        it("builds images based on selection and resource", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var release = makeName("release");
+            var arch = makeName("arch");
+            var name = 'ubuntu-core/' + arch + '/generic/' + release;
+            var image = {
+                name: name,
+                title: makeName("title"),
+                checked: true
+            };
+            var icon = makeName("icon");
+            var size = makeName("size");
+            var status = makeName("status");
+            scope.bootResources.resources = [{
+                rtype: 0,
+                name: 'ubuntu-core/' + release,
+                arch: arch,
+                icon: icon,
+                size: size,
+                status: status,
+                downloading: true
+            }];
+            scope.ubuntu_core.images = [image];
+            scope.regenerateUbuntuCoreImages();
+            expect(scope.ubuntuCoreImages).toEqual([{
+                icon: 'icon--status-' + icon + ' u-animation--pulse',
+                title: image.title,
+                arch: arch,
+                size: size,
+                status: status,
+                beingDeleted: false
+            }]);
+        });
+
+        it("marks resource as being deleted", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var release = makeName("release");
+            var arch = makeName("arch");
+            var name = 'ubuntu-core/' + arch + '/generic/' + release;
+            var image = {
+                name: name,
+                title: makeName("title"),
+                checked: false
+            };
+            var icon = makeName("icon");
+            var size = makeName("size");
+            var status = makeName("status");
+            scope.bootResources.resources = [{
+                rtype: 0,
+                name: 'ubuntu-core/' + release,
+                title: image.title,
+                arch: arch,
+                icon: icon,
+                size: size,
+                status: status,
+                downloading: true
+            }];
+            scope.ubuntu_core.images = [image];
+            scope.regenerateUbuntuCoreImages();
+            expect(scope.ubuntuCoreImages).toEqual([{
+                icon: 'icon--status-failed',
+                title: image.title,
+                arch: arch,
+                size: size,
+                status: 'Will be deleted',
+                beingDeleted: true
+            }]);
+        });
+    });
+
     describe("regenerateOtherImages", function() {
 
         it("builds images based on selections", function() {
@@ -1641,6 +1766,46 @@ describe("maasBootImages", function() {
             expect(scope.source.selections.releases).toEqual([releaseChecked]);
             expect(scope.source.selections.arches).toEqual([archChecked]);
             expect(scope.regenerateUbuntuImages).toHaveBeenCalled();
+        });
+    });
+
+    describe("toggleUbuntuCoreSelection", function() {
+
+        it("toggles checked and sets changed", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {
+                checked: true
+            };
+            spyOn(scope, "regenerateUbuntuCoreImages");
+            scope.toggleUbuntuCoreSelection(image);
+            expect(scope.ubuntu_core.changed).toBe(true);
+            expect(image.checked).toBe(false);
+            expect(scope.regenerateUbuntuCoreImages).toHaveBeenCalled();
+        });
+    });
+
+    describe("saveUbuntuCoreSelection", function() {
+
+        it("passes correct params and toggles saving", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            var image = {
+                name: makeName("name"),
+                checked: true
+            };
+            scope.ubuntu_core.images = [image];
+            var defer = $q.defer();
+            spyOn(BootResourcesManager, "saveUbuntuCore").and.returnValue(
+                defer.promise);
+            scope.saveUbuntuCoreSelection();
+
+            expect(scope.saving).toBe(true);
+            expect(BootResourcesManager.saveUbuntuCore).toHaveBeenCalledWith(
+                {images: [image.name]});
+            defer.resolve();
+            $scope.$digest();
+            expect(scope.saving).toBe(false);
         });
     });
 

@@ -118,6 +118,18 @@ def get_os_info_from_boot_sources(os):
     return os_sources, releases, arches
 
 
+def get_product_title(item):
+    os_title = item.get('os_title')
+    release_title = item.get('release_title')
+    gadget_title = item.get('gadget_title')
+    if None not in (os_title, release_title, gadget_title):
+        return "%s %s %s" % (os_title, release_title, gadget_title)
+    elif None not in (os_title, release_title):
+        return "%s %s" % (os_title, release_title)
+    else:
+        return None
+
+
 @asynchronous(timeout=FOREVER)
 @inlineCallbacks
 def cache_boot_sources():
@@ -167,6 +179,11 @@ def cache_boot_sources():
                 BootSourceCache.objects.filter(boot_source=bootsource).delete()
                 if not descriptions.is_empty():
                     for spec, item in descriptions.mapping.items():
+                        title = get_product_title(item)
+                        if title is None:
+                            extra = {}
+                        else:
+                            extra = {'title': title}
                         BootSourceCache.objects.create(
                             boot_source=bootsource, os=spec.os,
                             arch=spec.arch, subarch=spec.subarch,
@@ -176,6 +193,7 @@ def cache_boot_sources():
                             release_title=item.get('release_title'),
                             support_eol=item.get('support_eol'),
                             bootloader_type=item.get('bootloader-type'),
+                            extra=extra,
                             )
                 maaslog.debug(
                     "Image descriptions for %s have been updated.",

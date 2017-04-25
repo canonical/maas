@@ -38,7 +38,10 @@ from fixtures import (
     FakeLogger,
     Fixture,
 )
-from maasserver import bootresources
+from maasserver import (
+    __version__,
+    bootresources,
+)
 from maasserver.bootresources import (
     BootResourceRepoWriter,
     BootResourceStore,
@@ -817,6 +820,31 @@ class TestBootResourceStore(MAASServerTestCase):
         resource = reload_object(resource)
         self.assertEqual(architecture, resource.architecture)
         self.assertNotIn('generic', resource.architecture)
+
+    def test_get_or_create_boot_resource_handles_ubuntu_core(self):
+        product = {
+            'arch': 'amd64',
+            'gadget_snap': 'pc',
+            'gadget_title': 'PC',
+            'kernel_snap': 'pc-kernel',
+            'label': 'daily',
+            'maas_supported': '2.2',
+            'os': 'ubuntu-core',
+            'os_title': 'Ubuntu Core',
+            'release': '16',
+            'release_title': '16',
+            'item_name': 'root-dd.xz',
+            'ftype': BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ,
+            'path': '/path/to/root-dd.xz',
+        }
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        self.assertEquals(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
+        self.assertEquals('ubuntu-core/16-pc', resource.name)
+        self.assertEquals('amd64/generic', resource.architecture)
+        self.assertIsNone(resource.bootloader_type)
+        self.assertEquals('pc-kernel', resource.kflavor)
+        self.assertDictEqual({'title': 'Ubuntu Core 16 PC'}, resource.extra)
 
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
         self.useFixture(SignalsDisabled("largefiles"))
@@ -2110,12 +2138,20 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 class TestBootResourceRepoWriter(MAASServerTestCase):
     """Tests for `BootResourceRepoWriter`."""
 
-    def create_simplestream(self, ftypes, stream_version=None):
+    def create_simplestream(
+            self, ftypes, stream_version=None, osystem=None,
+            maas_supported=None):
         version = '16.04'
         arch = 'amd64'
         subarch = 'hwe-x'
-        if stream_version is None:
+        if osystem is None:
+            osystem = 'ubuntu'
+        if stream_version is None and osystem == 'ubuntu-core':
+            stream_version = 'v4'
+        elif stream_version is None:
             stream_version = random.choice(['v2', 'v3'])
+        if maas_supported is None:
+            maas_supported = __version__
         product = "com.ubuntu.maas.daily:%s:boot:%s:%s:%s" % (
             stream_version, version, arch, subarch)
         version = datetime.now().date().strftime('%Y%m%d.0')
@@ -2135,12 +2171,13 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             product: {
                 'subarch': subarch,
                 'label': 'daily',
-                'os': 'ubuntu',
+                'os': osystem,
                 'arch': arch,
                 'subarches': 'generic,%s' % subarch,
                 'kflavor': 'generic',
                 'version': version,
                 'versions': versions,
+                'maas_supported': maas_supported,
             }
         }
         src = {
@@ -2151,6 +2188,18 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             'content_id': 'com.ubuntu.maas:daily:v2:download'
         }
         return src, product, version
+
+    def test_insert_validates_maas_supported_if_available(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream(
+            [BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ], maas_supported='999.999')
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockNotCalled())
 
     def test_insert_prefers_squashfs_over_root_image(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2324,11 +2373,11 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
-        mock_validate_bootloader = self.patch(
+        mock_validate_ubuntu = self.patch(
             boot_resource_repo_writer, '_validate_ubuntu')
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockCalledOnce())
-        self.assertThat(mock_validate_bootloader, MockCalledOnce())
+        self.assertThat(mock_validate_ubuntu, MockCalledOnce())
 
     def test_validate_ubuntu_rejects_unknown_version(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2339,6 +2388,34 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         data = src['products'][product]['versions'][version]['items'][
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockNotCalled())
+
+    def test_validates_ubuntu_core(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream(
+            [BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ], osystem='ubuntu-core')
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
+        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        mock_validate_ubuntu = self.patch(
+            boot_resource_repo_writer, '_validate_ubuntu')
+        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
+        self.assertThat(mock_insert, MockCalledOnce())
+        self.assertThat(mock_validate_ubuntu, MockCalledOnce())
+
+    def test_validates_ubuntu_core_rejects_unknown_version(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        src, product, version = self.create_simplestream(
+            [BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ],
+            factory.make_name('stream_version'), 'ubuntu-core')
+        data = src['products'][product]['versions'][version]['items'][
+            BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ]
+        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
         mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockNotCalled())

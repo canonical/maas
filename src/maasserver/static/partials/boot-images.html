@@ -177,6 +177,44 @@
                     </div>
                 </div>
             </form>
+            <div data-ng-if="ubuntu_core.images.length">
+                <h2>Ubuntu Core</h2>
+                <div data-ng-if="isSuperUser() && !source.tooMany">
+                    <span class="u-margin--right" data-ng-repeat="image in ubuntu_core.images | orderBy:['-title']">
+                        <input type="checkbox" id="{$ image.name $}" data-ng-checked="image.checked" data-ng-click="toggleUbuntuCoreSelection(image)" data-ng-disabled="saving">
+                        <label for="{$ image.name $}">{$ image.title $}</label>
+                    <span>
+                </div>
+                <section class="table u-margin--top">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table-col--25">Name</div>
+                            <div class="table__header table-col--15">Architecture</div>
+                            <div class="table__header table-col--20">Size</div>
+                            <div class="table__header table-col--40">Status</div>
+                        </div>
+                    </header>
+                    <main class="table__body">
+                        <div class="table__row" data-ng-if="!ubuntuCoreImages.length">
+                            <div class="table__data table-col--100">No images have been selected for syncing.</div>
+                        </div>
+                        <div class="table__row" data-ng-repeat="image in ubuntuCoreImages | orderBy:['-title', 'arch']">
+                            <div class="table__data table-col--2">
+                                <i class="icon {$ image.icon $}"></i>
+                            </div>
+                            <div class="table__data table-col--23" aria-label="Name">{$ image.title $}</div>
+                            <div class="table__data table-col--15" aria-label="Architecture">{$ image.arch $}</div>
+                            <div class="table__data table-col--20" aria-label="Size">{$ image.size $}</div>
+                            <div class="table__data table-col--40" aria-label="Status">{$ image.status $}</div>
+                        </div>
+                    </main>
+                </section>
+                <div class="twelve-col" data-ng-if="!source.tooMany">
+                    <div class="u-align--right">
+                        <button class="button--positive button--inline" data-ng-if="isSuperUser()" data-ng-disabled="saving" data-ng-click="saveUbuntuCoreSelection()">{$ getSaveSelectionText() $}</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

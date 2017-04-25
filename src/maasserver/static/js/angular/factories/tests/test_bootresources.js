@@ -179,6 +179,35 @@ describe("BootResourcesManager", function() {
         });
     });
 
+    describe("saveUbuntuCore", function() {
+
+        it("calls bootresource.save_ubuntu_core and sets _data", function(done)
+        {
+            var data = BootResourcesManager._data;
+            var defer = $q.defer();
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                defer.promise);
+
+            var newData = {
+                key: makeName("value")
+            };
+            var sentinel = {};
+            BootResourcesManager.saveUbuntuCore(sentinel).then(function(pData)
+            {
+                expect(BootResourcesManager._loaded).toBe(true);
+                expect(BootResourcesManager._data).toBe(data);
+                expect(BootResourcesManager._data).toBe(pData);
+                expect(BootResourcesManager._data).toEqual(newData);
+                done();
+            });
+
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "bootresource.save_ubuntu_core", sentinel);
+            defer.resolve(angular.toJson(newData));
+            $rootScope.$digest();
+        });
+    });
+
     describe("saveOther", function() {
 
         it("calls bootresource.save_other and sets _data", function(done) {

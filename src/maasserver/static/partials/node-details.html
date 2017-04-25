@@ -659,7 +659,7 @@
                                   configuration cannot be modified unless the
                                   node is Ready or Broken.</p>
                             </div>
-                            <div class="p-notification" data-ng-if="!isController && !isUbuntuOS()">
+                            <div class="p-notification" data-ng-if="!isController && !isUbuntuOS() && !isUbuntuCoreOS()">
                                 <p class="p-notification__response">
                                   <span class="p-notification__status">Error:</span>Custom network configuration only supported on Ubuntu. Using OS default configuration.</p>
                             </div>

@@ -268,6 +268,9 @@ class TestRepoDumper(MAASTestCase):
             }
         if bootloader_type is not None:
             item['bootloader-type'] = bootloader_type
+        if os == 'ubuntu-core':
+            item['gadget_snap'] = factory.make_name('gadget_snap')
+            item['kernel_snap'] = factory.make_name('kernel_snap')
         return item, clean_up_repo_item(item)
 
     def test_insert_item_adds_item_per_subarch(self):
@@ -390,6 +393,24 @@ class TestRepoDumper(MAASTestCase):
                 os=item['os'], release=bootloader_type, arch=item['arch'],
                 subarch=subarch, kflavor='bootloader', label=item['label'])
             for subarch in item['subarches'].split(',')
+        ]
+        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
+
+    def test_insert_item_handles_ubuntu_core(self):
+        boot_images_dict = BootImageMapping()
+        dumper = RepoDumper(boot_images_dict)
+        item, _ = self.make_item(os='ubuntu-core')
+        self.patch(
+            download_descriptions, 'products_exdata').return_value = item
+        dumper.insert_item(
+            sentinel.data, sentinel.src, sentinel.target,
+            sentinel.pedigree, sentinel.contentsource)
+        image_specs = [
+            make_image_spec(
+                os=item['os'], arch=item['arch'], subarch='generic',
+                kflavor=item['kernel_snap'],
+                release='%s-%s' % (item['release'], item['gadget_snap']),
+                label=item['label'])
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 

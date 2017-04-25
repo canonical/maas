@@ -76,6 +76,11 @@ angular.module('MAAS').directive('maasBootImages', [
                         arches: []
                     }
                 };
+                $scope.ubuntuCoreImages = [];
+                $scope.ubuntu_core = {
+                    changed: false,
+                    images: []
+                };
                 $scope.otherImages = [];
                 $scope.other = {
                     changed: false,
@@ -415,6 +420,79 @@ angular.module('MAAS').directive('maasBootImages', [
                     }
                 };
 
+                // Regenerates the Ubuntu Core images list for the directive.
+                $scope.regenerateUbuntuCoreImages = function() {
+                    var isUbuntuCore = function(resource) {
+                        var name_split = resource.name.split('/');
+                        var resource_os = name_split[0];
+                        return (
+                            resource.rtype === 0 &&
+                            resource_os === 'ubuntu-core');
+                    };
+                    var resources = (
+                        $scope.bootResources.resources.filter(isUbuntuCore));
+                    var getResource = function(release, arch) {
+                        var i;
+                        for(i = 0; i < resources.length; i++) {
+                            // Only care about other images. Removing custom,
+                            // bootloaders, and Ubuntu images.
+                            var resource = (resources[i]);
+                            var name_split = resource.name.split('/');
+                            var resource_release = name_split[1];
+                            if(resource_release === release &&
+                                resource.arch === arch) {
+                                resources.splice(i, 1);
+                                return resource;
+                            }
+                        }
+                        return null;
+                    };
+
+                    // Create the images based on the selections.
+                    $scope.ubuntuCoreImages.length = 0;
+                    angular.forEach($scope.ubuntu_core.images,
+                        function(ubuntuCoreImage) {
+                            if(ubuntuCoreImage.checked) {
+                                var name_split = ubuntuCoreImage.name.split(
+                                    '/');
+                                var image = {
+                                    icon: 'icon--status-queued',
+                                    title: ubuntuCoreImage.title,
+                                    arch: name_split[1],
+                                    size: '-',
+                                    status: 'Selected for download',
+                                    beingDeleted: false
+                                };
+                                var resource = getResource(
+                                    name_split[3], name_split[1]);
+                                if(angular.isObject(resource)) {
+                                    image.icon = (
+                                        'icon--status-' + resource.icon);
+                                    image.size = resource.size;
+                                    image.status = resource.status;
+                                    if(resource.downloading) {
+                                        image.icon += ' u-animation--pulse';
+                                    }
+                                }
+                                $scope.ubuntuCoreImages.push(image);
+                            }
+                        });
+
+                    // If not a new source and images remain in resources, then
+                    // those are set to be deleted.
+                    angular.forEach(resources, function(resource) {
+                        var image = {
+                            icon: 'icon--status-failed',
+                            title: resource.title,
+                            arch: resource.arch,
+                            size: resource.size,
+                            status: 'Will be deleted',
+                            beingDeleted: true
+                        };
+                        $scope.ubuntuCoreImages.push(image);
+                    });
+                };
+
                 // Regenerates the other images list for the directive.
                 $scope.regenerateOtherImages = function() {
                     var isOther = function(resource) {
@@ -423,6 +501,7 @@ angular.module('MAAS').directive('maasBootImages', [
                         return (
                             resource.rtype === 0 &&
                             resource_os !== 'ubuntu' &&
+                            resource_os !== 'ubuntu-core' &&
                             resource_os !== 'custom');
                     };
                     var resources = (
@@ -734,6 +813,30 @@ angular.module('MAAS').directive('maasBootImages', [
                     }
                 };
 
+                // Toggle the selection of Ubuntu Core images.
+                $scope.toggleUbuntuCoreSelection = function(image) {
+                    $scope.ubuntu_core.changed = true;
+                    image.checked = !image.checked;
+                    $scope.regenerateUbuntuCoreImages();
+                };
+
+                // Save the Ubuntu Core image selections into boot selections.
+                $scope.saveUbuntuCoreSelection = function() {
+                    var params = {
+                        images: $scope.ubuntu_core.images.filter(function(
+                                image) {
+                            return image.checked;
+                        }).map(function(image) {
+                            return image.name;
+                        })
+                    };
+                    $scope.saving = true;
+                    BootResourcesManager.saveUbuntuCore(params).then(
+                            function() {
+                        $scope.saving = false;
+                    });
+                };
+
                 // Toggle the selection of other images.
                 $scope.toggleOtherSelection = function(image) {
                     $scope.other.changed = true;
@@ -832,9 +935,21 @@ angular.module('MAAS').directive('maasBootImages', [
                         return;
                     }
                     $scope.regenerateUbuntuImages();
+                    $scope.regenerateUbuntuCoreImages();
                     $scope.regenerateOtherImages();
                     $scope.regenerateGeneratedImages();
                     $scope.regenerateCustomImages();
+                });
+
+                $scope.$watch("bootResources.ubuntu_core_images", function() {
+                    var images = $scope.bootResources.ubuntu_core_images;
+                    if(!angular.isArray(images)) {
+                        return;
+                    }
+                    if(!$scope.ubuntu_core.changed) {
+                        $scope.ubuntu_core.images = images;
+                    }
+                    $scope.regenerateUbuntuCoreImages();
                 });
 
                 $scope.$watch("bootResources.other_images", function() {

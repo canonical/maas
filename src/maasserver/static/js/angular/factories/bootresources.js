@@ -170,6 +170,18 @@ angular.module('MAAS').factory(
                     });
         };
 
+        // Save the Ubuntu Core images and start the import process.
+        BootResourcesManager.prototype.saveUbuntuCore = function(params) {
+            var self = this;
+            return RegionConnection.callMethod(
+                "bootresource.save_ubuntu_core", params).then(
+                    function(newData) {
+                        angular.copy(angular.fromJson(newData), self._data);
+                        self._loaded = true;
+                        return self._data;
+                    });
+        };
+
         // Save the other images and start the import process.
         BootResourcesManager.prototype.saveOther = function(params) {
             var self = this;

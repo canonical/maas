@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The BootResource handler for the WebSocket connection."""
@@ -12,6 +12,7 @@ import json
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from maasserver.bootresources import (
     import_resources,
     is_import_resources_running,
@@ -95,6 +96,7 @@ class BootResourceHandler(Handler):
             'poll',
             'stop_import',
             'save_ubuntu',
+            'save_ubuntu_core',
             'save_other',
             'fetch',
             'delete_image',
@@ -270,14 +272,39 @@ class BootResourceHandler(Handler):
                         resource.downloading = False
                         resource.icon = 'waiting'
 
+    def format_ubuntu_core_images(self):
+        """Return formatted other images for selection."""
+        resources = self.get_other_synced_resources()
+        images = []
+        for image in BootSourceCache.objects.filter(os='ubuntu-core'):
+            resource = self.get_matching_resource_for_image(resources, image)
+            if 'title' in image.extra and image.extra != '':
+                title = image.extra['title']
+            else:
+                title = get_os_release_title(image.os, image.release)
+            if title is None:
+                title = '%s/%s' % (image.os, image.release)
+            images.append({
+                'name': '%s/%s/%s/%s' % (
+                    image.os, image.arch, image.subarch, image.release),
+                'title': title,
+                'checked': True if resource else False,
+                'deleted': False,
+            })
+        return images
+
     def format_other_images(self):
         """Return formatted other images for selection."""
         resources = self.get_other_synced_resources()
         images = []
-        for image in BootSourceCache.objects.exclude(os='ubuntu').filter(
-                bootloader_type=None):
+        qs = BootSourceCache.objects.exclude(
+            Q(os='ubuntu') | Q(os='ubuntu-core')).filter(bootloader_type=None)
+        for image in qs:
             resource = self.get_matching_resource_for_image(resources, image)
-            title = get_os_release_title(image.os, image.release)
+            if 'title' in image.extra and image.extra != '':
+                title = image.extra['title']
+            else:
+                title = get_os_release_title(image.os, image.release)
             if title is None:
                 title = '%s/%s' % (image.os, image.release)
             images.append({
@@ -534,6 +561,7 @@ class BootResourceHandler(Handler):
             rack_import_running=self.racks_syncing,
             resources=json_resources,
             ubuntu=json_ubuntu,
+            ubuntu_core_images=self.format_ubuntu_core_images(),
             other_images=self.format_other_images())
         return json.dumps(data)
 
@@ -633,6 +661,53 @@ class BootResourceHandler(Handler):
         return d
 
     @asynchronous(timeout=FOREVER)
+    def save_ubuntu_core(self, params):
+        """Update `BootSourceSelection`'s to only include the selected
+        images."""
+        # Must be administrator.
+        assert self.user.is_superuser, "Permission denied."
+
+        @transactional
+        def update_selections(params):
+            # Remove all Ubuntu Core selections.
+            BootSourceSelection.objects.filter(os='ubuntu-core').delete()
+
+            # Break down the images into os/release with multiple arches.
+            selections = defaultdict(list)
+            for image in params['images']:
+                os, arch, _, release = image.split('/', 4)
+                name = '%s/%s' % (os, release)
+                selections[name].append(arch)
+
+            # Create each selection for the source.
+            for name, arches in selections.items():
+                os, release = name.split('/')
+                cache = BootSourceCache.objects.filter(
+                    os=os, arch=arch, release=release).first()
+                if cache is None:
+                    # It is possible the cache changed while waiting for the
+                    # user to perform an action. Ignore the selection as its
+                    # no longer available.
+                    continue
+                # Create the selection for the source.
+                BootSourceSelection.objects.create(
+                    boot_source=cache.boot_source,
+                    os=os, release=release,
+                    arches=arches, subarches=["*"], labels=["*"])
+
+        notify = Deferred()
+        d = stop_import_resources()
+        d.addCallback(lambda _: deferToDatabase(update_selections, params))
+        d.addCallback(callOut, import_resources, notify=notify)
+        d.addCallback(lambda _: notify)
+        d.addCallback(lambda _: deferToDatabase(transactional(self.poll), {}))
+        d.addErrback(
+            log.err,
+            "Failed to start the image import. Unable to save the Ubuntu Core "
+            "image(s) source information")
+        return d
+
+    @asynchronous(timeout=FOREVER)
     def save_other(self, params):
         """Update `BootSourceSelection`'s to only include the selected
         images."""
@@ -642,7 +717,8 @@ class BootResourceHandler(Handler):
         @transactional
         def update_selections(params):
             # Remove all selections that are not Ubuntu.
-            BootSourceSelection.objects.exclude(os='ubuntu').delete()
+            BootSourceSelection.objects.exclude(
+                Q(os='ubuntu') | Q(os='ubuntu-core')).delete()
 
             # Break down the images into os/release with multiple arches.
             selections = defaultdict(list)
