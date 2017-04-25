@@ -35,6 +35,7 @@ from maasserver.models.node import (
 )
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
+from provisioningserver.logger import LegacyLogger
 
 
 INTERFACE_CLASSES = [
@@ -48,6 +49,8 @@ INTERFACE_CLASSES = [
 
 signals = SignalsManager()
 
+log = LegacyLogger()
+
 
 def interface_enabled_or_disabled(instance, old_values, **kwargs):
     """When an interface is enabled be sure at minimum a LINK_UP is created.
@@ -56,11 +59,15 @@ def interface_enabled_or_disabled(instance, old_values, **kwargs):
     if instance.type != INTERFACE_TYPE.PHYSICAL:
         return
     if instance.is_enabled():
+        log.msg("%s: Physical interface enabled; ensuring link-up." % (
+            instance.get_log_string()))
         # Make sure it has a LINK_UP link, and for its children.
         instance.ensure_link_up()
         for rel in instance.children_relationships.all():
             rel.child.ensure_link_up()
     else:
+        log.msg("%s: Physical interface disabled; removing links." % (
+            instance.get_log_string()))
         # Was disabled. Remove the links.
         for ip_address in instance.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED):
@@ -78,6 +85,13 @@ for klass in INTERFACE_CLASSES:
     signals.watch_fields(
         interface_enabled_or_disabled,
         klass, ['enabled'], delete=False)
+
+
+def _update_mtu(interface, mtu, instance):
+    log.msg("%s: MTU updated to %d (for consistency with %s)." % (
+        interface.get_log_string(), mtu, instance.get_log_string()))
+    interface.params['mtu'] = mtu
+    interface.save()
 
 
 def interface_mtu_params_update(instance, old_values, **kwargs):
@@ -104,7 +118,7 @@ def interface_mtu_params_update(instance, old_values, **kwargs):
     # Update the children before the parents. Because calling update on the
     # parent will call save on all the children again.
 
-    # If the children have a larger MTU than the parent, we update the childs
+    # If the children have a larger MTU than the parent, we update the child's
     # MTU to be the same size as the parents. If the child doesn't have MTU
     # set then it is ignored.
     for rel in instance.children_relationships.all():
@@ -112,11 +126,10 @@ def interface_mtu_params_update(instance, old_values, **kwargs):
         if child.params and 'mtu' in child.params:
             child_mtu = child.params['mtu']
             if child_mtu > new_mtu:
-                child.params['mtu'] = new_mtu
-                child.save()
+                _update_mtu(child, new_mtu, instance)
 
-    # Update the parents MTU to either be the same size of the childs MTU or
-    # larger than the childs MTU.
+    # Update the parents MTU to either be the same size of the child's MTU or
+    # larger than the child's MTU.
     for parent in instance.parents.all():
         if parent.params:
             parent_mtu = parent.params.get('mtu', None)
@@ -124,18 +137,16 @@ def interface_mtu_params_update(instance, old_values, **kwargs):
                 if parent_mtu < new_mtu:
                     # Parent MTU is to small, make it bigger for the
                     # child interface.
-                    parent.params['mtu'] = new_mtu
-                    parent.save()
+                    _update_mtu(parent, new_mtu, instance)
             else:
-                # Parent doesn't have MTU set. Set it to the childs
+                # Parent doesn't have MTU set. Set it to the child's
                 # MTU value.
-                parent.params['mtu'] = new_mtu
-                parent.save()
+                _update_mtu(parent, new_mtu, instance)
         else:
             # Parent has not parameters at all. Create the parameters
             # object and set the MTU to the size of the child.
-            parent.params = {'mtu': new_mtu}
-            parent.save()
+            parent.params = {}
+            _update_mtu(parent, new_mtu, instance)
 
 
 for klass in INTERFACE_CLASSES:
@@ -167,6 +178,9 @@ def update_interface_parents(sender, instance, created, **kwargs):
                 try:
                     parent.vlan = instance.vlan
                     parent.save()
+                    log.msg("%s: VLAN updated to match %s (vlan=%s)." % (
+                        parent.get_log_string(), instance.get_log_string(),
+                        parent.vlan_id))
                 finally:
                     visiting.discard(parent.id)
 
@@ -209,7 +223,11 @@ def interface_vlan_update(instance, old_values, **kwargs):
                 if ip_address.subnet is not None:
                     ip_address.subnet.vlan = new_vlan
                     ip_address.subnet.save()
-
+                    log.msg(
+                        "%s: IP address [%s] subnet %s: "
+                        "VLAN updated (vlan=%s)." % (
+                            instance.get_log_string(), ip_address.ip,
+                            ip_address.subnet.cidr, ip_address.subnet.vlan_id))
             # If any children are VLAN interfaces then we need to move those
             # VLANs into the same fabric as the parent.
             for rel in instance.children_relationships.all():
@@ -220,12 +238,16 @@ def interface_vlan_update(instance, old_values, **kwargs):
                     rel.child.save()
                     # No need to update the IP addresses here this function
                     # will be called again because the child has been saved.
-
+                    log.msg("%s: updated fabric on %s to %s (vlan=%s)" % (
+                        instance.get_log_string(), rel.child.get_log_string(),
+                        new_vlan.fabric.name, rel.child.vlan_id))
     else:
         # Interface VLAN was changed on a machine or device. Remove all its
         # links except the DISCOVERED ones.
         instance.ip_addresses.exclude(
             alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
+        log.msg("%s: deleted IP addresses due to VLAN update (%s -> %s)." % (
+            instance.get_log_string(), old_vlan_id, new_vlan_id))
 
 
 for klass in INTERFACE_CLASSES:
@@ -242,6 +264,8 @@ def delete_children_interface_handler(sender, instance, **kwargs):
         if len(rel.child.parents.all()) == 1:
             # Last parent of the child, so delete the child.
             rel.child.delete()
+            log.msg("%s has been deleted; orphaned by %s." % (
+                rel.child.get_log_string(), instance.get_log_string()))
 
 
 for klass in INTERFACE_CLASSES:
@@ -265,8 +289,7 @@ def delete_related_ip_addresses(sender, instance, **kwargs):
             # Remove its link to the interface before the interface
             # is deleted.
             if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                instance.unlink_ip_address(
-                    ip_address, clearing_config=True)
+                instance.unlink_ip_address(ip_address, clearing_config=True)
             else:
                 ip_address.delete()
 
