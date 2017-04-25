@@ -2509,7 +2509,7 @@ class Node(CleanSave, TimestampedModel):
             self, user, token=None, agent_name='', comment=None,
             bridge_all=False, bridge_stp=None, bridge_fd=None):
         """Mark commissioned node as acquired by the given user and token."""
-        assert self.owner is None
+        assert self.owner is None or self.owner == user
         assert token is None or token.user == user
 
         self._create_acquired_filesystems()

@@ -598,6 +598,103 @@ class TestMachineAPI(APITestCase.ForUser):
         response_content = json_load_bytes(response.content)
         self.assertEquals('virsh', response_content['power_type'])
 
+    def test_POST_deploy_allocates_ready_machines(self):
+        self.patch(node_module.Node, "_start")
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'deploy',
+            'distro_series': distro_series,
+        }
+        response = self.client.post(self.get_machine_uri(machine), request)
+        self.assertEqual(http.client.OK, response.status_code)
+
+    def test_POST_deploy_rejects_node_owned_by_another_user(self):
+        self.patch(node_module.Node, "_start")
+        user2 = factory.make_User()
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, owner=user2, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'deploy',
+            'distro_series': distro_series,
+        }
+        response = self.client.post(self.get_machine_uri(machine), request)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+
+    def test_POST_deploy_passes_agent_name(self):
+        self.patch(node_module.Node, "_start")
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'deploy',
+            'distro_series': distro_series,
+            'agent_name': factory.make_name(),
+            'comment': factory.make_name(),
+        }
+        response = self.client.post(self.get_machine_uri(machine), request)
+        self.assertEqual(http.client.OK, response.status_code)
+        machine = reload_object(machine)
+        self.assertThat(machine.agent_name, Equals(request['agent_name']))
+
+    def test_POST_deploy_passes_comment_on_acquire(self):
+        self.patch(node_module.Node, "_start")
+        machine_method = self.patch(node_module.Machine, 'acquire')
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, owner=self.user, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'deploy',
+            'distro_series': distro_series,
+            'agent_name': factory.make_name(),
+            'comment': factory.make_name(),
+        }
+        response = self.client.post(self.get_machine_uri(machine), request)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(
+            machine_method, MockCalledOnceWith(
+                ANY, ANY, agent_name=ANY,
+                bridge_all=False, bridge_fd=False,
+                bridge_stp=False, comment=request['comment']))
+
+    def test_POST_deploy_passes_bridge_settings(self):
+        self.patch(node_module.Node, "_start")
+        machine_method = self.patch(node_module.Machine, 'acquire')
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, owner=self.user, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        request = {
+            'op': 'deploy',
+            'distro_series': distro_series,
+            'bridge_all': True,
+            'bridge_stp': True,
+            'bridge_fd': 7,
+        }
+        response = self.client.post(self.get_machine_uri(machine), request)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertThat(
+            machine_method, MockCalledOnceWith(
+                ANY, ANY, agent_name=ANY,
+                bridge_all=True, bridge_fd=7,
+                bridge_stp=True, comment=None))
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, '_stop')
         owned_statuses = [

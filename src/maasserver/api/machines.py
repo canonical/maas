@@ -185,6 +185,21 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     return storage_layout, params
 
 
+def get_allocation_parameters(request):
+    """Returns shared parameters for deploy and allocate operations."""
+    comment = get_optional_param(request.POST, 'comment')
+    bridge_all = get_optional_param(
+        request.POST, 'bridge_all', default=False,
+        validator=StringBool)
+    bridge_stp = get_optional_param(
+        request.POST, 'bridge_stp', default=False,
+        validator=StringBool)
+    bridge_fd = get_optional_param(
+        request.POST, 'bridge_fd', default=0, validator=Int)
+    agent_name = request.data.get('agent_name', '')
+    return agent_name, bridge_all, bridge_fd, bridge_stp, comment
+
+
 class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     """Manage an individual Machine.
 
@@ -360,6 +375,21 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         :param hwe_kernel: If present, this parameter specified the kernel to
             be used on the machine
         :type hwe_kernel: unicode
+        :param agent_name: An optional agent name to attach to the
+            acquired machine.
+        :type agent_name: unicode
+        :param bridge_all: Optionally create a bridge interface for every
+            configured interface on the machine. The created bridges will be
+            removed once the machine is released.
+            (Default: False)
+        :type bridge_all: boolean
+        :param bridge_stp: Optionally turn spanning tree protocol on or off
+            for the bridges created on every configured interface.
+            (Default: off)
+        :type bridge_stp: boolean
+        :param bridge_fd: Optionally adjust the forward delay to time seconds.
+            (Default: 15)
+        :type bridge_fd: integer
         :param comment: Optional comment for the event log.
         :type comment: unicode
 
@@ -377,14 +407,28 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
-
+        # Acquiring a node requires VIEW permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
-
-        if machine.owner is None:
-            raise NodeStateViolation(
-                "Can't start machine: it hasn't been allocated.")
+            perm=NODE_PERMISSION.VIEW)
+        if machine.status == NODE_STATUS.READY:
+            with locks.node_acquire:
+                if machine.owner is not None and machine.owner != request.user:
+                    raise NodeStateViolation(
+                        "Can't allocate a machine belonging to another user.")
+                agent_name, bridge_all, bridge_fd, bridge_stp, comment = (
+                    get_allocation_parameters(request))
+                maaslog.info(
+                    "Request from user %s to acquire machine: %s (%s)",
+                    request.user.username, machine.fqdn, machine.system_id)
+                machine.acquire(
+                    request.user, get_oauth_token(request),
+                    agent_name=agent_name, comment=comment,
+                    bridge_all=bridge_all, bridge_stp=bridge_stp,
+                    bridge_fd=bridge_fd)
+        # Deploying a node requires re-checking for EDIT permissions.
+        if not request.user.has_perm(NODE_PERMISSION.EDIT, machine):
+            raise PermissionDenied()
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         Form = get_machine_edit_form(request.user)
@@ -1355,18 +1399,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # XXX AndresRodriguez 2016-10-27: If new params are added and are not
         # constraints, these need to be added to IGNORED_FIELDS in
         # src/maasserver/node_constraint_filter_forms.py.
-        comment = get_optional_param(request.POST, 'comment')
         input_constraints = str([
             param for param in request.data.lists() if param[0] != 'op'])
         maaslog.info(
             "Request from user %s to acquire a machine with constraints: %s",
             request.user.username, input_constraints)
-        bridge_all = get_optional_param(
-            request.POST, 'bridge_all', default=False, validator=StringBool)
-        bridge_stp = get_optional_param(
-            request.POST, 'bridge_stp', default=False, validator=StringBool)
-        bridge_fd = get_optional_param(
-            request.POST, 'bridge_fd', default=False, validator=Int)
+        agent_name, bridge_all, bridge_fd, bridge_stp, comment = (
+            get_allocation_parameters(request))
         verbose = get_optional_param(
             request.POST, 'verbose', default=False, validator=StringBool)
         dry_run = get_optional_param(
@@ -1434,7 +1473,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
                         '(resolved to "%s")' % (
                             input_constraints, constraints))
                 raise NodesNotAvailable(message)
-            agent_name = request.data.get('agent_name', '')
             if not dry_run:
                 machine.acquire(
                     request.user, get_oauth_token(request),
