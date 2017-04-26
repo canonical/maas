@@ -519,17 +519,36 @@ class RSDPodDriver(PodDriver):
                 discovered_machine_block_device)
 
     def get_pod_machine_remote_storages(
-            self, node_data, url, headers, logical_drives,
+            self, node_data, url, headers, remote_drives, logical_drives,
             targets, discovered_machine, request=None):
         """Get pod machine remote storages."""
-        remote_drives = node_data.get('Links', {}).get('RemoteDrives', [])
-        for remote_drive in remote_drives:
+        node_remote_drives = node_data.get('Links', {}).get('RemoteDrives', [])
+        remote_drives_to_delete = []
+        logical_drives_to_delete = []
+        for node_remote_drive in node_remote_drives:
+            target_data = targets[
+                node_remote_drive['@odata.id'].lstrip('/').encode('utf-8')]
+            initiator = target_data.get('Initiator')[0]
+            initiator_iqn = initiator.get('iSCSI', {}).get('InitiatorIQN')
+            if initiator_iqn:
+                # Since InitiatorIQN is not an empty string we will not be
+                # including this storage into MAAS.
+                # Remove this remote drive, target, and associated logical
+                # drives associated with this target.
+                for lv, lv_data in logical_drives.items():
+                    lv_targets = lv_data.get('Links', {}).get('Targets', [])
+                    for lv_target in lv_targets:
+                        if (node_remote_drive['@odata.id'] ==
+                                lv_target['@odata.id']):
+                            remote_drives_to_delete.append(
+                                node_remote_drive['@odata.id'])
+                            logical_drives_to_delete.append(lv)
+                continue
+
             discovered_machine_block_device = (
                 DiscoveredMachineBlockDevice(
                     model=None, serial=None, size=0,
                     type=BlockDeviceType.ISCSI))
-            target_data = targets[
-                remote_drive['@odata.id'].lstrip('/').encode('utf-8')]
             addresses = target_data.get('Addresses')[0]
             host = addresses.get('iSCSI', {}).get('TargetPortalIP')
             proto = '6'  # curtin currently only supports TCP.
@@ -547,9 +566,11 @@ class RSDPodDriver(PodDriver):
             # find which one contains this remote drive.
             for lv, lv_data in logical_drives.items():
                 lv_targets = lv_data.get('Links', {}).get('Targets', [])
-                if remote_drive in lv_targets:
-                    discovered_machine_block_device.size = float(
-                        lv_data['CapacityGiB']) * (1024 ** 3)
+                for lv_target in lv_targets:
+                    if (node_remote_drive['@odata.id'] ==
+                            lv_target['@odata.id']):
+                        discovered_machine_block_device.size = float(
+                            lv_data['CapacityGiB']) * (1024 ** 3)
 
             # Map the tags from the request block devices to the discovered
             # block devices. This ensures that the composed machine has the
@@ -569,6 +590,16 @@ class RSDPodDriver(PodDriver):
                 discovered_machine_block_device.tags.append('iscsi')
             discovered_machine.block_devices.append(
                 discovered_machine_block_device)
+
+        # Remove the remote drives, targests, and logical drives that
+        # are no longer needed.  These will be used in later calculations
+        # for the total usable iscsi remote storage.
+        for remote_drive in set(remote_drives_to_delete):
+            del targets[
+                remote_drive.lstrip('/').encode('utf-8')]
+            remote_drives.remove(remote_drive)
+        for logical_drive in set(logical_drives_to_delete):
+            del logical_drives[logical_drive]
 
     @inlineCallbacks
     def get_pod_machine_interfaces(
@@ -627,7 +658,8 @@ class RSDPodDriver(PodDriver):
 
     @inlineCallbacks
     def get_pod_machine(
-            self, node, url, headers, logical_drives, targets, request=None):
+            self, node, url, headers, remote_drives,
+            logical_drives, targets, request=None):
         """Get pod composed machine.
 
         If required resources cannot be found, this
@@ -661,7 +693,7 @@ class RSDPodDriver(PodDriver):
             node_data, url, headers, discovered_machine, request)
         # Get remote storages.
         self.get_pod_machine_remote_storages(
-            node_data, url, headers, logical_drives,
+            node_data, url, headers, remote_drives, logical_drives,
             targets, discovered_machine, request)
         # Get interfaces.
         yield self.get_pod_machine_interfaces(
@@ -674,7 +706,8 @@ class RSDPodDriver(PodDriver):
 
     @inlineCallbacks
     def get_pod_machines(
-            self, url, headers, logical_drives, targets, request=None):
+            self, url, headers, remote_drives,
+            logical_drives, targets, request=None):
         """Get pod composed machines.
 
         If required resources cannot be found, these
@@ -688,7 +721,8 @@ class RSDPodDriver(PodDriver):
         # Iterate over all composed nodes in the pod.
         for node in nodes:
             discovered_machine = yield self.get_pod_machine(
-                node, url, headers, logical_drives, targets, request)
+                node, url, headers, remote_drives,
+                logical_drives, targets, request)
             discovered_machines.append(discovered_machine)
         return discovered_machines
 
@@ -729,20 +763,23 @@ class RSDPodDriver(PodDriver):
         logical_drives, targets = yield self.scrape_logical_drives_and_targets(
             url, headers)
         remote_drives = yield self.scrape_remote_drives(url, headers)
+
+        # Discover composed machines.
+        pod_machines = yield self.get_pod_machines(
+            url, headers, remote_drives, logical_drives, targets)
+
+        # Discover pod resources.
         pod_remote_storage, pod_hints_remote_storage = (
             self.calculate_pod_remote_storage(
                 remote_drives, logical_drives, targets))
-
-        # Discover pod resources.
         discovered_pod = yield self.get_pod_resources(url, headers)
+
+        # Add machines to pod.
+        discovered_pod.machines = pod_machines
 
         # Discover pod remote storage resources.
         discovered_pod.capabilities.append(Capabilities.ISCSI_STORAGE)
         discovered_pod.iscsi_storage = pod_remote_storage
-
-        # Discover composed machines.
-        discovered_pod.machines = yield self.get_pod_machines(
-            url, headers, logical_drives, targets)
 
         # Discover pod hints.
         discovered_pod.hints = self.get_pod_hints(discovered_pod)
