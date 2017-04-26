@@ -56,9 +56,11 @@ class TestCentOS(MAASTestCase):
 
     def test_get_release_title(self):
         name_titles = {
-            "centos6": "CentOS 6.0",
+            "centos6": "CentOS 6",
             "centos65": "CentOS 6.5",
-            "centos7": "CentOS 7.0",
+            "centos66": "CentOS 6",  # See LP: #1654063
+            "centos7": "CentOS 7",
+            "centos70": "CentOS 7",  # See LP: #1654063
             "centos71": "CentOS 7.1",
             "cent65": None,
             "cent": None,
