@@ -489,6 +489,45 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual(
             rack_vlan, reload_object(node).get_boot_interface().vlan)
 
+    def test__doesnt_change_boot_interface_vlan_when_using_dhcp_relay(self):
+        rack_controller = factory.make_RackController()
+        rack_fabric = factory.make_Fabric()
+        rack_vlan = rack_fabric.get_default_vlan()
+        rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=rack_vlan)
+        rack_subnet = factory.make_Subnet(vlan=rack_vlan)
+        rack_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=rack_subnet,
+            interface=rack_interface)
+        relay_vlan = factory.make_VLAN(relay_vlan=rack_vlan)
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(vlan=relay_vlan)
+        mac = node.get_boot_interface().mac_address
+        get_config(
+            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
+        self.assertEqual(
+            relay_vlan, reload_object(node).get_boot_interface().vlan)
+
+    def test__changes_boot_interface_vlan_not_relayed_through_rack(self):
+        rack_controller = factory.make_RackController()
+        rack_fabric = factory.make_Fabric()
+        rack_vlan = rack_fabric.get_default_vlan()
+        rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=rack_vlan)
+        rack_subnet = factory.make_Subnet(vlan=rack_vlan)
+        rack_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=rack_subnet,
+            interface=rack_interface)
+        other_vlan = factory.make_VLAN()
+        relay_vlan = factory.make_VLAN(relay_vlan=other_vlan)
+        remote_ip = factory.make_ip_address()
+        node = self.make_node(vlan=relay_vlan)
+        mac = node.get_boot_interface().mac_address
+        get_config(
+            rack_controller.system_id, rack_ip.ip, remote_ip, mac=mac)
+        self.assertEqual(
+            rack_vlan, reload_object(node).get_boot_interface().vlan)
+
     def test__returns_commissioning_os_series_for_other_oses(self):
         osystem = Config.objects.get_config('default_osystem')
         release = Config.objects.get_config('default_distro_series')

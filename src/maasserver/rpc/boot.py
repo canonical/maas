@@ -20,6 +20,7 @@ from maasserver.models import (
     Config,
     Event,
     RackController,
+    VLAN,
 )
 from maasserver.models.interface import (
     Interface,
@@ -163,13 +164,22 @@ def get_config(
             machine.save(update_fields=update_fields)
 
         # Update the VLAN of the boot interface to be the same VLAN for the
-        # interface on the rack controller that the machine communicated with.
+        # interface on the rack controller that the machine communicated with,
+        # unless the VLAN is being relayed.
         rack_interface = rack_controller.interface_set.filter(
             ip_addresses__ip=local_ip).first()
         if (rack_interface is not None and
                 machine.boot_interface.vlan != rack_interface.vlan):
-            machine.boot_interface.vlan = rack_interface.vlan
-            machine.boot_interface.save()
+            # Rack controller and machine is not on the same VLAN, with DHCP
+            # relay this is possible. Lets ensure that the VLAN on the
+            # interface is setup to relay through the identified VLAN.
+            if not VLAN.objects.filter(
+                    id=machine.boot_interface.vlan_id,
+                    relay_vlan=rack_interface.vlan).exists():
+                # DHCP relay is not being performed for that VLAN. Set the VLAN
+                # to the VLAN of the rack controller.
+                machine.boot_interface.vlan = rack_interface.vlan
+                machine.boot_interface.save()
 
         arch, subarch = machine.split_arch()
         preseed_url = compose_preseed_url(machine, rack_controller)
