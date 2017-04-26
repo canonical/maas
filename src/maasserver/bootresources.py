@@ -18,7 +18,6 @@ __all__ = [
 from datetime import timedelta
 from operator import itemgetter
 import os
-import re
 from subprocess import CalledProcessError
 from textwrap import dedent
 import threading
@@ -87,6 +86,7 @@ from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     image_passes_filter,
+    validate_product,
 )
 from provisioningserver.import_images.helpers import (
     get_os_from_product,
@@ -1050,16 +1050,6 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             # will be downloaded from simplestreams.
             'max_items': 1,
             })
-        # Compile a regex to validate bootloader product names. This only
-        # allows V1 bootloaders.
-        self.bootloader_regex = re.compile('.*:1:.*', re.IGNORECASE)
-        # Compile a regex to validate Ubuntu product names. This only allows
-        # V2 and V3 Ubuntu products.
-        self.ubuntu_regex = re.compile('.*:v[23]:.*', re.IGNORECASE)
-        # Compile a regex to validate Ubuntu Core. By having 'v4' in the
-        # product name it is prevented from being shown in older versions of
-        # MAAS which do not support Ubuntu Core.
-        self.ubuntu_core_regex = re.compile('.*:v4:.*', re.IGNORECASE)
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""
@@ -1072,62 +1062,6 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         return self.product_mapping.contains(
             sutil.products_exdata(src, pedigree))
-
-    def _validate_ubuntu(self, data, product_name):
-        osystem = data.get('os')
-        if 'ubuntu' not in osystem.lower():
-            # It's not an Ubuntu product, nothing to validate.
-            return True
-        elif (osystem == 'ubuntu-core' and
-                self.ubuntu_core_regex.search(product_name) is not None):
-            return True
-        elif self.ubuntu_regex.search(product_name) is None:
-            # Only insert v2 or v3 Ubuntu products.
-            return False
-        else:
-            return True
-
-    def _validate_bootloader(self, data, product_name):
-        bootloader_type = data.get('bootloader-type')
-        if bootloader_type is None:
-            # It's not a bootloader, nothing to validate
-            return True
-        if self.bootloader_regex.search(product_name) is None:
-            # Only insert V1 bootloaders from the stream
-            return False
-        # Validate MAAS supports the specific bootloader_type, os, arch
-        # combination.
-        SUPPORTED_BOOTLOADERS = {
-            'pxe': [
-                {
-                    'os': 'pxelinux',
-                    'arch': 'i386',
-                }
-            ],
-            'uefi': [
-                {
-                    'os': 'grub-efi-signed',
-                    'arch': 'amd64',
-                },
-                {
-                    'os': 'grub-efi',
-                    'arch': 'arm64',
-                }
-            ],
-            'open-firmware': [
-                {
-                    'os': 'grub-ieee1275',
-                    'arch': 'ppc64el',
-                }
-            ],
-        }
-        for bootloader in SUPPORTED_BOOTLOADERS.get(bootloader_type, []):
-            if (
-                    data.get('os') == bootloader['os'] and
-                    data.get('arch') == bootloader['arch']):
-                return True
-        # Bootloader not supported, ignore
-        return False
 
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
@@ -1159,13 +1093,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
                 'Ignoring unsupported filetype(%s) from %s %s' %
                 (item['ftype'], product_name, version_name))
             return
-        elif not self._validate_ubuntu(item, product_name):
-            maaslog.warning(
-                'Ignoring unsupported Ubuntu product(%s)' % product_name)
-            return
-        elif not self._validate_bootloader(item, product_name):
-            maaslog.warning(
-                'Ignoring unsupported bootloader(%s)' % product_name)
+        elif not validate_product(item, product_name):
+            maaslog.warning('Ignoring unsupported product %s' % product_name)
             return
         else:
             self.store.insert(item, contentsource)
