@@ -10,10 +10,8 @@ synchronisation stages.
 
 __all__ = [
     'download_all_image_descriptions',
-    'validate_product',
     ]
 
-import re
 
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
@@ -33,13 +31,6 @@ from simplestreams.util import (
     products_exdata,
 )
 
-# Compile a regex to validate Ubuntu product names. This only allows V2 and V3
-# Ubuntu images.
-UBUNTU_REGEX = re.compile('.*:v[23]:.*', re.IGNORECASE)
-# Compile a regex to validate bootloader product names. This only allows V1
-# bootloaders.
-BOOTLOADER_REGEX = re.compile('.*:1:.*', re.IGNORECASE)
-
 
 def clean_up_repo_item(item):
     """Return a subset of dict `item` for storing in a boot images dict."""
@@ -53,67 +44,6 @@ def clean_up_repo_item(item):
         if key in item
     }
     return compact_item
-
-
-def validate_ubuntu(data, product_name):
-    osystem = data.get('os', '')
-    if 'ubuntu' not in osystem.lower():
-        # It's not an Ubuntu product, nothing to validate.
-        return True
-    elif UBUNTU_REGEX.search(product_name) is None:
-        # Only insert v2 or v3 Ubuntu products.
-        return False
-    else:
-        return True
-
-
-def validate_bootloader(data, product_name):
-    bootloader_type = data.get('bootloader-type')
-    if bootloader_type is None:
-        # It's not a bootloader, nothing to validate
-        return True
-    if BOOTLOADER_REGEX.search(product_name) is None:
-        # Only insert V1 bootloaders from the stream
-        return False
-    # Validate MAAS supports the specific bootloader_type, os, arch
-    # combination.
-    SUPPORTED_BOOTLOADERS = {
-        'pxe': [
-            {
-                'os': 'pxelinux',
-                'arch': 'i386',
-            }
-        ],
-        'uefi': [
-            {
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-            },
-            {
-                'os': 'grub-efi',
-                'arch': 'arm64',
-            }
-        ],
-        'open-firmware': [
-            {
-                'os': 'grub-ieee1275',
-                'arch': 'ppc64el',
-            }
-        ],
-    }
-    for bootloader in SUPPORTED_BOOTLOADERS.get(bootloader_type, []):
-        if (
-                data.get('os') == bootloader['os'] and
-                data.get('arch') == bootloader['arch']):
-            return True
-
-    # Bootloader not supported, ignore
-    return False
-
-
-def validate_product(data, product_name):
-    return (validate_ubuntu(data, product_name) and
-            validate_bootloader(data, product_name))
 
 
 class RepoDumper(BasicMirrorWriter):
@@ -149,8 +79,6 @@ class RepoDumper(BasicMirrorWriter):
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
-        if not validate_product(item, pedigree[0]):
-            return
         os = get_os_from_product(item)
         arch = item['arch']
         subarches = item.get('subarches', 'generic')

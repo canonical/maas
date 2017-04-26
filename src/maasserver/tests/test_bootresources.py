@@ -2103,7 +2103,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 class TestBootResourceRepoWriter(MAASServerTestCase):
     """Tests for `BootResourceRepoWriter`."""
 
-    def create_ubuntu_simplestream(self, ftypes, stream_version=None):
+    def create_simplestream(self, ftypes, stream_version=None):
         version = '16.04'
         arch = 'amd64'
         subarch = 'hwe-x'
@@ -2145,47 +2145,10 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         }
         return src, product, version
 
-    def create_bootloader_simplestream(self, stream_version=None):
-        if stream_version is None:
-            stream_version = '1'
-        product = (
-            'com.ubuntu.maas:daily:%s:bootloader-download' % stream_version)
-        version = datetime.now().date().strftime('%Y%m%d.0')
-        versions = {
-            version: {
-                'items': {
-                    BOOT_RESOURCE_FILE_TYPE.BOOTLOADER: {
-                        'sha256': factory.make_name('sha256'),
-                        'path': factory.make_name('path'),
-                        'ftype': BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
-                        'size': random.randint(0, 2**64),
-                    }
-                }
-            }
-        }
-        products = {
-            product: {
-                'label': 'daily',
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-                'bootloader-type': 'uefi',
-                'version': version,
-                'versions': versions,
-            }
-        }
-        src = {
-            'datatype': 'image-downloads',
-            'format': 'products:1.0',
-            'updated': format_datetime(datetime.now()),
-            'products': products,
-            'content_id': 'com.ubuntu.maas:daily:1:bootloader-download'
-        }
-        return src, product, version
-
     def test_insert_prefers_squashfs_over_root_image(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
         ])
@@ -2199,7 +2162,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
     def test_insert_allows_squashfs(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
         ])
         data = src['products'][product]['versions'][version]['items'][
@@ -2212,7 +2175,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
     def test_insert_allows_root_image(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
         ])
         data = src['products'][product]['versions'][version]['items'][
@@ -2225,7 +2188,9 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
     def test_insert_allows_bootloader(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_bootloader_simplestream()
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
+        ])
         data = src['products'][product]['versions'][version]['items'][
             BOOT_RESOURCE_FILE_TYPE.BOOTLOADER]
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
@@ -2236,7 +2201,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
     def test_insert_allows_archive_tar_xz(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
         ])
         data = src['products'][product]['versions'][version]['items'][
@@ -2250,7 +2215,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
         unknown_ftype = factory.make_name('ftype')
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             unknown_ftype,
         ])
         data = src['products'][product]['versions'][version]['items'][
@@ -2263,43 +2228,105 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
     def test_insert_validates_bootloader(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_bootloader_simplestream()
+        src, product, version = self.create_simplestream([
+            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
+        ])
         data = src['products'][product]['versions'][version]['items'][
             BOOT_RESOURCE_FILE_TYPE.BOOTLOADER]
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
         mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        mock_validate_bootloader = self.patch(
+            boot_resource_repo_writer, '_validate_bootloader')
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockCalledOnce())
+        self.assertThat(mock_validate_bootloader, MockCalledOnce())
 
-    def test_insert_validates_rejects_unknown_version(self):
+    def test_validate_bootloader_ignores_non_bootloaders(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_bootloader_simplestream(
-            factory.make_name('stream_version'))
-        data = src['products'][product]['versions'][version]['items'][
-            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER]
-        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
-        mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
-        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        self.assertTrue(
+            boot_resource_repo_writer._validate_bootloader(
+                {}, 'com.ubuntu.maas.daily:v3:boot:16.04:amd64:hwe-16.04'))
+
+    def test_validate_bootloader_checks_version(self):
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        version = random.randint(2, 100)
+        product_name = "com.ubuntu.maas.daily:%d:pxelinux:pxe:i386" % version
+        self.assertFalse(
+            boot_resource_repo_writer._validate_bootloader(
+                {'bootloader-type': factory.make_name('bootloader-type')},
+                product_name))
+
+    def test_validate_bootloader_allows_acceptable_bootloaders(self):
+        acceptable_bootloaders = [
+            {
+                'os': 'pxelinux',
+                'arch': 'i386',
+                'bootloader-type': 'pxe',
+            },
+            {
+                'os': 'grub-efi-signed',
+                'arch': 'amd64',
+                'bootloader-type': 'uefi',
+            },
+            {
+                'os': 'grub-efi',
+                'arch': 'arm64',
+                'bootloader-type': 'uefi',
+            },
+            {
+                'os': 'grub-ieee1275',
+                'arch': 'ppc64el',
+                'bootloader-type': 'open-firmware',
+            },
+        ]
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        for bootloader in acceptable_bootloaders:
+            product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+                bootloader['os'], bootloader['bootloader-type'],
+                bootloader['arch'])
+            self.assertTrue(
+                boot_resource_repo_writer._validate_bootloader(
+                    bootloader, product_name),
+                "Failed to validate %s" % product_name)
+
+    def test_validate_bootloader_denies_unacceptable_bootloader(self):
+        bootloader = {
+            'os': factory.make_name('os'),
+            'arch': factory.make_name('arch'),
+            'bootloader-type': factory.make_name('bootloader_type'),
+        }
+        product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+            bootloader['os'], bootloader['bootloader-type'],
+            bootloader['arch'])
+        boot_resource_repo_writer = BootResourceRepoWriter(
+            BootResourceStore(), None)
+        self.assertFalse(
+            boot_resource_repo_writer._validate_bootloader(
+                bootloader, product_name))
 
     def test_insert_validates_ubuntu(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream([
+        src, product, version = self.create_simplestream([
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
         ])
         data = src['products'][product]['versions'][version]['items'][
             BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE]
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, 'insert')
+        mock_validate_bootloader = self.patch(
+            boot_resource_repo_writer, '_validate_ubuntu')
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockCalledOnce())
+        self.assertThat(mock_validate_bootloader, MockCalledOnce())
 
     def test_validate_ubuntu_rejects_unknown_version(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None)
-        src, product, version = self.create_ubuntu_simplestream(
+        src, product, version = self.create_simplestream(
             [BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE],
             factory.make_name('stream_version'))
         data = src['products'][product]['versions'][version]['items'][

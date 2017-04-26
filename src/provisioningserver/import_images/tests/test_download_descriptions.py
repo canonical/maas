@@ -6,7 +6,6 @@
 __all__ = []
 
 import logging
-import random
 from unittest.mock import (
     ANY,
     call,
@@ -28,84 +27,11 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.download_descriptions import (
     clean_up_repo_item,
     RepoDumper,
-    validate_product,
 )
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
-
-
-class TestValidateProduct(MAASTestCase):
-    """Tests for `validate_product`."""
-
-    def test__ignores_random(self):
-        self.assertTrue(
-            validate_product({}, factory.make_name('product_name')))
-
-    def test__validates_ubuntu(self):
-        self.assertTrue(validate_product(
-            {'os': 'ubuntu'},
-            'com.ubuntu.maas.daily:v%d:boot:%s:%s:%s' % (
-                random.choice([2, 3]), factory.make_name('version'),
-                factory.make_name('arch'), factory.make_name('sub_arch'))))
-
-    def test__rejects_unknown_ubuntu_version(self):
-        self.assertFalse(validate_product(
-            {'os': 'ubuntu'},
-            'com.ubuntu.maas.daily:v%d:boot:%s:%s:%s' % (
-                random.randint(4, 100), factory.make_name('version'),
-                factory.make_name('arch'), factory.make_name('sub_arch'))))
-
-    def test__validates_bootloaders(self):
-        acceptable_bootloaders = [
-            {
-                'os': 'pxelinux',
-                'arch': 'i386',
-                'bootloader-type': 'pxe',
-            },
-            {
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-                'bootloader-type': 'uefi',
-            },
-            {
-                'os': 'grub-efi',
-                'arch': 'arm64',
-                'bootloader-type': 'uefi',
-            },
-            {
-                'os': 'grub-ieee1275',
-                'arch': 'ppc64el',
-                'bootloader-type': 'open-firmware',
-            },
-        ]
-        for bootloader in acceptable_bootloaders:
-            product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
-                bootloader['os'], bootloader['bootloader-type'],
-                bootloader['arch'])
-            self.assertTrue(
-                validate_product(bootloader, product_name),
-                "Failed to validate %s" % product_name)
-
-    def test__rejects_unknown_bootloader_version(self):
-        version = random.randint(2, 100)
-        product_name = "com.ubuntu.maas.daily:%d:pxelinux:pxe:i386" % version
-        self.assertFalse(
-            validate_product(
-                {'bootloader-type': factory.make_name('bootloader-type')},
-                product_name))
-
-    def test__rejects_unknown_bootloader(self):
-        bootloader = {
-            'os': factory.make_name('os'),
-            'arch': factory.make_name('arch'),
-            'bootloader-type': factory.make_name('bootloader_type'),
-        }
-        product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
-            bootloader['os'], bootloader['bootloader-type'],
-            bootloader['arch'])
-        self.assertFalse(validate_product(bootloader, product_name))
 
 
 class TestValuePassesFilterList(MAASTestCase):
@@ -354,10 +280,7 @@ class TestRepoDumper(MAASTestCase):
             download_descriptions, 'products_exdata').return_value = item
         dumper.insert_item(
             sentinel.data, sentinel.src, sentinel.target,
-            (
-                factory.make_name('product_name'),
-                factory.make_name('product_version')
-            ), sentinel.contentsource)
+            sentinel.pedigree, sentinel.contentsource)
         image_specs = [
             make_image_spec(
                 os=item['os'], release=item['release'],
@@ -383,10 +306,7 @@ class TestRepoDumper(MAASTestCase):
         for _ in range(2):
             dumper.insert_item(
                 sentinel.data, sentinel.src, sentinel.target,
-                (
-                    factory.make_name('product_name'),
-                    factory.make_name('product_version')
-                ), sentinel.contentsource)
+                sentinel.pedigree, sentinel.contentsource)
         image_spec = make_image_spec(
             os=item['os'], release=item['release'],
             arch=item['arch'], subarch=compat_subarch,
@@ -417,11 +337,8 @@ class TestRepoDumper(MAASTestCase):
             'products_exdata').side_effect = [hwep_item, hwes_item]
         for _ in range(2):
             dumper.insert_item(
-                {'os': 'ubuntu'}, sentinel.src, sentinel.target,
-                (
-                    'com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p',
-                    factory.make_name('product_version'),
-                ), sentinel.contentsource)
+                sentinel.data, sentinel.src, sentinel.target,
+                sentinel.pedigree, sentinel.contentsource)
         image_spec = make_image_spec(
             os=os, release=release, arch=arch, subarch='generic',
             label=label)
@@ -451,11 +368,8 @@ class TestRepoDumper(MAASTestCase):
             'products_exdata').side_effect = [hwep_item, hwes_item]
         for _ in range(2):
             dumper.insert_item(
-                {'os': 'ubuntu'}, sentinel.src, sentinel.target,
-                (
-                    'com.ubuntu.maas.daily:v3:boot:12.04:amd64:hwe-p',
-                    factory.make_name('product_version'),
-                ), sentinel.contentsource)
+                sentinel.data, sentinel.src, sentinel.target,
+                sentinel.pedigree, sentinel.contentsource)
         image_spec = make_image_spec(
             os=os, release=release, arch=arch, subarch='generic',
             label=label)
@@ -464,41 +378,20 @@ class TestRepoDumper(MAASTestCase):
     def test_insert_item_sets_release_to_bootloader_type(self):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
-        item, _ = self.make_item(
-            arch='amd64', bootloader_type='uefi', os='grub-efi-signed')
+        bootloader_type = factory.make_name('bootloader-type')
+        item, _ = self.make_item(bootloader_type=bootloader_type)
         self.patch(
             download_descriptions, 'products_exdata').return_value = item
         dumper.insert_item(
-            {
-                'bootloader_type': 'uefi',
-                'os': 'grub-efi-signed',
-                'arch': 'amd64',
-            }, sentinel.src, sentinel.target,
-            (
-                'com.ubuntu.maas.daily:1:grub-efi-signed:uefi:amd64',
-                factory.make_name('product_version'),
-            ), sentinel.contentsource)
+            sentinel.data, sentinel.src, sentinel.target,
+            sentinel.pedigree, sentinel.contentsource)
         image_specs = [
             make_image_spec(
-                os=item['os'], release='uefi', arch=item['arch'],
+                os=item['os'], release=bootloader_type, arch=item['arch'],
                 subarch=subarch, kflavor='bootloader', label=item['label'])
             for subarch in item['subarches'].split(',')
         ]
         self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
-
-    def test_insert_item_validates(self):
-        boot_images_dict = BootImageMapping()
-        dumper = RepoDumper(boot_images_dict)
-        item, _ = self.make_item(os='ubuntu')
-        self.patch(
-            download_descriptions, 'products_exdata').return_value = item
-        dumper.insert_item(
-            {'os': 'ubuntu'}, sentinel.src, sentinel.target,
-            (
-                factory.make_name('product_name'),
-                factory.make_name('product_version'),
-            ), sentinel.contentsource)
-        self.assertItemsEqual([], list(boot_images_dict.mapping))
 
     def test_sync_does_propagate_ioerror(self):
         io_error = factory.make_exception_type(bases=(IOError,))
