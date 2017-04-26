@@ -59,7 +59,7 @@
             </div>
         </section>
         <section id="profile" class="eight-col u-border--bottom">
-            <h2>User details</h2>
+            <h3>User details</h3>
             <div class="eight-col">
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul>
@@ -71,7 +71,7 @@
             </div>
         </section>
         <section id="password" class="eight-col">
-            <h2>Password</h2>
+            <h3>Password</h3>
             <div class="eight-col">
                 <form method="post" action="{% url 'prefs' %}">{% csrf_token %}
                     <ul>

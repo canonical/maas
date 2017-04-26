@@ -706,14 +706,15 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             Equals('datasource_list: [ MAAS ]'))
 
     def test__get_curtin_cloud_config_includes_cloudconfig(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        owner = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
         token = NodeKey.objects.get_token_for_node(node)
         base_url = node.get_boot_primary_rack_controller().url
         config = get_curtin_cloud_config(node)
         self.assertItemsEqual(
             ['cloudconfig'], list(config.keys()))
         self.assertItemsEqual(
-            ['maas-datasource', 'maas-cloud-config'],
+            ['maas-datasource', 'maas-cloud-config', 'maas-ubuntu-sso'],
             list(config['cloudconfig'].keys()))
         ds_config = {
             'datasource': {
@@ -726,6 +727,11 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                 }
             }
         }
+        snappy_config = {
+            'snappy': {
+                'email': node.owner.email
+            }
+        }
         self.assertThat(
             config['cloudconfig']['maas-cloud-config']['content'],
             Contains('#cloud-config'))
@@ -733,6 +739,13 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             yaml.safe_load(
                 config['cloudconfig']['maas-cloud-config']['content']),
             Equals(ds_config))
+        self.assertThat(
+            config['cloudconfig']['maas-ubuntu-sso']['content'],
+            Contains('#cloud-config'))
+        self.assertThat(
+            yaml.safe_load(
+                config['cloudconfig']['maas-ubuntu-sso']['content']),
+            Equals(snappy_config))
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):

@@ -1229,6 +1229,12 @@ class ProfileForm(MAASModelForm):
     last_name = forms.CharField(
         label="Full name", max_length=30, required=False)
 
+    # We use the email field for Ubuntu SSO.
+    email = forms.EmailField(
+        label="Email address (SSO)", required=False, help_text=(
+            "Ubuntu Core deployments will use this email address to register "
+            "the system with Ubuntu SSO."))
+
     class Meta:
         model = User
         fields = ('last_name', 'email')

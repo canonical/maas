@@ -237,18 +237,28 @@ def get_curtin_cloud_config(node):
             }
         }
     }
-
-    return {
-        'cloudconfig': {
-            'maas-datasource': {
-                'path': '/etc/cloud/cloud.cfg.d/90_maas_datasource.cfg',
-                'content': 'datasource_list: [ MAAS ]',
-            },
-            'maas-cloud-config': {
-                'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_config.cfg',
-                'content': "#cloud-config\n%s" % yaml.safe_dump(datasource)
-            },
+    config = {
+        'maas-datasource': {
+            'path': '/etc/cloud/cloud.cfg.d/90_maas_datasource.cfg',
+            'content': 'datasource_list: [ MAAS ]',
+        },
+        'maas-cloud-config': {
+            'path': '/etc/cloud/cloud.cfg.d/90_maas_cloud_config.cfg',
+            'content': "#cloud-config\n%s" % yaml.safe_dump(datasource)
+        },
+    }
+    # Add the Ubuntu SSO email if its set on the user.
+    if node.owner is not None and node.owner.email:
+        config['maas-ubuntu-sso'] = {
+            'path': '/etc/cloud/cloud.cfg.d/90_maas_ubuntu_sso.cfg',
+            'content': "#cloud-config\n%s" % yaml.safe_dump({
+                'snappy': {
+                    'email': node.owner.email
+                }
+            })
         }
+    return {
+        'cloudconfig': config
     }
 
 
