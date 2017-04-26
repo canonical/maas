@@ -1075,7 +1075,7 @@ class RSDPodDriver(PodDriver):
                 json.dumps(
                     {
                         'Boot': {
-                            'BootSourceOverrideEnabled': "Continuous",
+                            'BootSourceOverrideEnabled': "Once",
                             'BootSourceOverrideTarget': "Pxe"
                         }
                     }).encode('utf-8')))
@@ -1096,7 +1096,7 @@ class RSDPodDriver(PodDriver):
         """Assemble composed machine with node_id."""
         node_state = yield self.get_composed_node_state(
             url, node_id, headers)
-        if node_state in ('PoweredOn', 'PoweredOff'):
+        if node_state in RSD_NODE_POWER_STATE:
             # Already assembled.
             return
         elif node_state == 'Allocated':
@@ -1183,7 +1183,12 @@ class RSDPodDriver(PodDriver):
         node_state = yield self.get_composed_node_state(
             url, node_id, headers)
         if node_state in RSD_NODE_POWER_STATE:
-            return RSD_NODE_POWER_STATE[node_state]
+            endpoint = b"redfish/v1/Nodes/%s" % node_id
+            # Get endpoint data for node_id.
+            node_data, _ = yield self.redfish_request(
+                b"GET", join(url, endpoint), headers)
+            power_state = node_data.get('PowerState')
+            return RSD_SYSTEM_POWER_STATE.get(power_state)
         else:
             raise PodActionError(
                 "Unknown power state: %s" % node_state)

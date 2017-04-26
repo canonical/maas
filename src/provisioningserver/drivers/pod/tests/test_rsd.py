@@ -2231,6 +2231,10 @@ class TestRSDPodDriver(MAASTestCase):
         mock_get_composed_node_state = self.patch(
             driver, 'get_composed_node_state')
         mock_get_composed_node_state.return_value = power_change
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        NODE_POWERED_ON = deepcopy(SAMPLE_JSON_NODE)
+        NODE_POWERED_ON['PowerState'] = "On"
+        mock_redfish_request.return_value = (NODE_POWERED_ON, None)
 
         power_state = yield driver.power_query(system_id, context)
         self.assertThat(
@@ -2254,6 +2258,8 @@ class TestRSDPodDriver(MAASTestCase):
         mock_get_composed_node_state = self.patch(
             driver, 'get_composed_node_state')
         mock_get_composed_node_state.return_value = power_change
+        mock_redfish_request = self.patch(driver, 'redfish_request')
+        mock_redfish_request.return_value = (SAMPLE_JSON_NODE, None)
 
         power_state = yield driver.power_query(system_id, context)
         self.assertThat(
