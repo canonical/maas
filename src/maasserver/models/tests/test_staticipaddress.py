@@ -1358,3 +1358,42 @@ class TestAllocTypeName(MAASServerTestCase):
         self.assertThat(
             ip.alloc_type_name,
             Equals(""))
+
+
+class TestUniqueConstraints(MAASServerTestCase):
+
+    def test__rejects_duplicate_address_of_same_type(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/8')
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        with ExpectedException(IntegrityError):
+            factory.make_StaticIPAddress(
+                ip='10.0.0.1', alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+
+    def test__rejects_duplicate_address_for_two_different_static_types(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/8')
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', subnet=subnet, alloc_type=IPADDRESS_TYPE.STICKY)
+        with ExpectedException(IntegrityError):
+            factory.make_StaticIPAddress(
+                ip='10.0.0.1', subnet=subnet,
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+
+    def test__rejects_duplicate_discovered(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/8')
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        with ExpectedException(IntegrityError):
+            factory.make_StaticIPAddress(
+                ip='10.0.0.1', subnet=subnet,
+                alloc_type=IPADDRESS_TYPE.DISCOVERED)
+
+    def test__allows_discovered_to_coexist_with_static(self):
+        subnet = factory.make_Subnet(cidr='10.0.0.0/8')
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        factory.make_StaticIPAddress(
+            ip='10.0.0.1', subnet=subnet, alloc_type=IPADDRESS_TYPE.STICKY)
+        self.assertThat(
+            StaticIPAddress.objects.filter(ip='10.0.0.1').count(), Equals(2))

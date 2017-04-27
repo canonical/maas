@@ -668,12 +668,13 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
+        unique_together = ('alloc_type', 'ip')
 
     # IP can be none when a DHCP lease has expired: in this case the entry
     # in the StaticIPAddress only materializes the connection between an
     # interface and a subnet.
     ip = MAASIPAddressField(
-        unique=True, null=True, editable=False, blank=True,
+        unique=False, null=True, editable=False, blank=True,
         default=None, verbose_name='IP')
 
     alloc_type = IntegerField(
