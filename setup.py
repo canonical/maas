@@ -120,6 +120,7 @@ setup(
             ['scripts/maas-dhcp-monitor',
              'scripts/maas-network-monitor',
              'scripts/maas-delete-file',
+             'scripts/maas-test-enlistment',
              'scripts/maas-write-file']),
     ],
 
