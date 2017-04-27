@@ -46,11 +46,22 @@ class CustomOS(OperatingSystem):
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for given image."""
+        filetypes = {
+            "root-tgz": "tgz",
+            "root-dd": "dd-tgz",
+            "root-dd.xz": "dd-xz",
+        }
         with ClusterConfiguration.open() as config:
             dd_path = os.path.join(
-                config.tftp_root, 'custom', arch,
-                subarch, release, label, 'root-dd')
-        if os.path.exists(dd_path):
-            return "root-dd", "dd-tgz"
-        else:
-            return "root-tgz", "tgz"
+                config.tftp_root, "custom", arch,
+                subarch, release, label)
+        filename, filetype = "root-tgz", "tgz"
+        try:
+            for fname in os.listdir(dd_path):
+                if fname in filetypes.keys():
+                    filename, filetype = fname, filetypes[fname]
+                    break
+        except FileNotFoundError:
+            # In case the path does not exist
+            pass
+        return filename, filetype

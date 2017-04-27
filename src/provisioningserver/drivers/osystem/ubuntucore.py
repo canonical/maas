@@ -60,11 +60,12 @@ class UbuntuCoreOS(OperatingSystem):
             dd_path = os.path.join(
                 config.tftp_root, 'ubuntu-core', arch,
                 subarch, release, label)
+        filename, filetype = "", ""
         try:
-            filename, filetype = "", ""
             for fname in os.listdir(dd_path):
                 if fname in filetypes.keys():
                     filename, filetype = fname, filetypes[fname]
+                    break
         except FileNotFoundError:
             # In case the path does not exist
             pass

@@ -82,3 +82,10 @@ class TestCustomOS(MAASTestCase):
         self.assertItemsEqual(
             ('root-dd', 'dd-tgz'),
             osystem.get_xinstall_parameters(arch, subarch, release, label))
+
+    def test_get_xinstall_parameters_returns_root_dd_xz_dd_xz(self):
+        osystem = CustomOS()
+        arch, subarch, release, label = self.make_resource_path('root-dd.xz')
+        self.assertItemsEqual(
+            ('root-dd.xz', 'dd-xz'),
+            osystem.get_xinstall_parameters(arch, subarch, release, label))
