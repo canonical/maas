@@ -3,7 +3,7 @@
         <h1 class="page-header__title">Pods</h1>
         <p class="page-header__status" data-ng-show="loading"><span class="u-text--loading"><i class="icon icon--loading u-animation--spin"></i> Loading...</span></p>
         <div class="page-header__controls u-float--right">
-            <div data-ng-if="pods.length > 0">
+            <div data-ng-if="pods.length > 0 && !selectedItems.length">
                 <button class="button--secondary button--inline"
                     data-ng-click="add.open = true"
                     data-ng-if="!add.open">Add pod</button>
@@ -75,7 +75,7 @@
     <div class="wrapper--inner">
         <maas-notifications></maas-notifications>
         <div class="twelve-col last-col">
-            <div data-ng-if="pods.length == 0">
+            <div data-ng-if="!loading && pods.length == 0">
                 <div class="u-align--center u-vertical--align u-align--center u-padding--top-large">
                     <i class="icon icon--add-pod icon--huge" style="width: 96px; height: 96px;"></i>
                     <h3>You have not added any pods yet.</h3>
