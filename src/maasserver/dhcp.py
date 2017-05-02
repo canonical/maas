@@ -210,6 +210,7 @@ def ip_is_on_vlan(ip_address, vlan):
     """Return True if `ip_address` is on `vlan`."""
     return (
         ip_is_sticky_or_auto(ip_address) and
+        ip_address.subnet is not None and
         ip_address.subnet.vlan_id == vlan.id and
         ip_address.ip is not None and
         ip_address.ip != "")

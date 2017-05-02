@@ -542,42 +542,56 @@ class TestIPIsOnVLAN(MAASServerTestCase):
             "alloc_type": IPADDRESS_TYPE.STICKY,
             "has_ip": True,
             "on_vlan": True,
+            "on_subnet": True,
             "result": True,
         }),
         ("sticky_not_on_vlan_with_ip", {
             "alloc_type": IPADDRESS_TYPE.STICKY,
             "has_ip": True,
             "on_vlan": False,
+            "on_subnet": True,
             "result": False,
         }),
         ("auto_on_vlan_with_ip", {
             "alloc_type": IPADDRESS_TYPE.AUTO,
             "has_ip": True,
             "on_vlan": True,
+            "on_subnet": True,
             "result": True,
         }),
         ("auto_on_vlan_without_ip", {
             "alloc_type": IPADDRESS_TYPE.AUTO,
             "has_ip": False,
             "on_vlan": True,
+            "on_subnet": True,
             "result": False,
         }),
         ("auto_not_on_vlan_with_ip", {
             "alloc_type": IPADDRESS_TYPE.AUTO,
             "has_ip": True,
             "on_vlan": False,
+            "on_subnet": True,
             "result": False,
         }),
         ("discovered", {
             "alloc_type": IPADDRESS_TYPE.DISCOVERED,
             "has_ip": True,
             "on_vlan": True,
+            "on_subnet": True,
             "result": False,
         }),
         ("user_reserved", {
             "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
             "has_ip": True,
             "on_vlan": True,
+            "on_subnet": True,
+            "result": False,
+        }),
+        ("not_on_subnet", {
+            "alloc_type": IPADDRESS_TYPE.STICKY,
+            "has_ip": True,
+            "on_vlan": False,
+            "on_subnet": False,
             "result": False,
         }),
     )
@@ -593,6 +607,10 @@ class TestIPIsOnVLAN(MAASServerTestCase):
             ip = factory.pick_ip_in_Subnet(subnet)
         ip_address = factory.make_StaticIPAddress(
             alloc_type=self.alloc_type, ip=ip, subnet=subnet)
+        if not self.on_subnet:
+            # make_StaticIPAddress always creates a subnet so set it to None.
+            ip_address.subnet = None
+            ip_address.save()
         self.assertEquals(
             self.result,
             dhcp.ip_is_on_vlan(ip_address, expected_vlan))
