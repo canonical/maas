@@ -127,6 +127,8 @@ parts:
     source: http://www.squid-cache.org/Versions/v3/3.5/squid-3.5.24.tar.bz2
     build-packages:
       - build-essential
+    configflags:
+      - --disable-arch-native
     filesets:
       remove:
         - -share/man
