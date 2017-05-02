@@ -92,8 +92,17 @@ def proxy_update_config(reload_proxy=True):
     if is_proxy_enabled():
         d = deferToDatabase(write_config)
         if reload_proxy:
-            d.addCallback(
-                lambda _: service_monitor.reloadService("proxy", if_on=True))
+            # XXX: andreserl 2016-05-09 bug=1687620. When running in a snap,
+            # supervisord tracks services. It does not support reloading.
+            # Instead, we need to restart the service.
+            if snappy.running_in_snap():
+                d.addCallback(
+                    lambda _: service_monitor.restartService(
+                        "proxy", if_on=True))
+            else:
+                d.addCallback(
+                    lambda _: service_monitor.reloadService(
+                        "proxy", if_on=True))
         return d
     else:
         return succeed(None)
