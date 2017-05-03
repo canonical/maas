@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 #
 # ntp - Run ntp clock set to verify NTP connectivity.
 #
@@ -22,9 +22,26 @@
 # cloud-init configures ntp to use the rack controller or a user configured
 # external ntp server before running the test scripts. This test ensures that
 # the configured NTP server is accessible.
-e=0
-ntpq -np
-sudo -n systemctl stop ntp.service
-sudo -n timeout 10 ntpd -gq || e=$?
-sudo -n systemctl start ntp.service
-exit $e
+
+source /etc/os-release
+
+if [ $VERSION_ID == "14.04" ]; then
+    which ntpq >/dev/null
+    if [ $? -ne 0 ]; then
+	echo -en 'Warning: NTP configuration is not supported in Trusty. ' 1>&2
+	echo -en 'Running with the default NTP configuration.\n\n' 1>&2
+	sudo -n apt-get install -q -y ntp
+    fi
+    ntpq -np
+    sudo -n service ntp stop
+    sudo -n timeout 10 ntpd -gq
+    ret=$?
+    sudo -n service ntp start
+else
+    ntpq -np
+    sudo -n systemctl stop ntp.service
+    sudo -n timeout 10 ntpd -gq
+    ret=$?
+    sudo -n systemctl start ntp.service
+fi
+exit $ret

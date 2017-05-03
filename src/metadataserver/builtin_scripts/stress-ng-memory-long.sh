@@ -19,6 +19,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+source /etc/os-release
+if [ $VERSION_ID == '14.04' ]; then
+    # The version of stress-ng in 14.04 does not support required features
+    # for testing. Warn and attempt to run incase stress-ng is ever upgraded.
+    echo 'stress-ng-memory-long unsupported on 14.04, ' \
+	 'please use 16.04 or above.' 1>&2
+    exit 1
+fi
+
 sudo -n apt-get install -q -y stress-ng
 echo
 
