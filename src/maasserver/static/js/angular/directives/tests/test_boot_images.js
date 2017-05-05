@@ -1001,7 +1001,8 @@ describe("maasBootImages", function() {
                 arch: arch.title,
                 size: '-',
                 status: 'Selected for download',
-                beingDeleted: false
+                beingDeleted: false,
+                name: release.name
             }]);
         });
 
@@ -1040,6 +1041,7 @@ describe("maasBootImages", function() {
                 size: size,
                 status: status,
                 beingDeleted: false,
+                name: release.name,
                 resourceId: resourceId
             }]);
         });
@@ -1077,7 +1079,8 @@ describe("maasBootImages", function() {
                 arch: arch.name,
                 size: size,
                 status: 'Will be deleted',
-                beingDeleted: true
+                beingDeleted: true,
+                name: release.name
             }]);
         });
     });
@@ -1467,6 +1470,44 @@ describe("maasBootImages", function() {
         });
     });
 
+    describe("commissioningSeriesSelected", function() {
+
+        it("returns true when selected", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.bootResources.ubuntu = {
+                commissioning_series: makeName("series")
+            };
+            scope.ubuntuImages = [{
+                name: scope.bootResources.ubuntu.commissioning_series,
+                beingDeleted: false
+            }];
+            expect(scope.commissioningSeriesSelected()).toBe(true);
+        });
+
+        it("returns false when being deleted", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.bootResources.ubuntu = {
+                commissioning_series: makeName("series")
+            };
+            scope.ubuntuImages = [{
+                name: scope.bootResources.ubuntu.commissioning_series,
+                beingDeleted: true
+            }];
+            expect(scope.commissioningSeriesSelected()).toBe(false);
+        });
+
+        it("returns false when unselected", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.bootResources.ubuntu = {
+                commissioning_series: makeName("series")
+            };
+            expect(scope.commissioningSeriesSelected()).toBe(false);
+        });
+    });
+
     describe("showStopImportButton", function() {
 
         it("returns region_import_running", function() {
@@ -1490,6 +1531,19 @@ describe("maasBootImages", function() {
     });
 
     describe("canSaveSelection", function() {
+
+        it("returns false if deleting commissioning series", function() {
+            var directive = compileDirective();
+            var scope = directive.isolateScope();
+            scope.bootResources.ubuntu = {
+                commissioning_series: makeName("series")
+            };
+            scope.ubuntuImages = [{
+                beingDeleted: true,
+                name: scope.bootResources.ubuntu.commissioning_series
+            }];
+            expect(scope.canSaveSelection()).toBe(false);
+        });
 
         it("returns false if saving", function() {
             var directive = compileDirective();

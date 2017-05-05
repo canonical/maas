@@ -128,6 +128,11 @@
                                 <i class="icon icon--error"></i> Select at least one 14.04+ LTS release and one architecture.
                             </div>
                         </div>
+                        <div class="table__row table--error" data-ng-if="!commissioningSeriesSelected()">
+                            <div class="table__data table-col--100" aria-label="Error">
+                                <i class="icon icon--error"></i> Ubuntu {$ bootResources.ubuntu.commissioning_series $} must be selected as it is the operating system used for commissioning.
+                            </div>
+                        </div>
                         <div class="table__row" data-ng-repeat="image in ubuntuImages | orderBy:['-title', 'arch']"
                             data-ng-class="{'is-active': canBeRemoved(image) && ubuntuDeleteId === image.resourceId}">
                             <div class="table__data table-col--2">

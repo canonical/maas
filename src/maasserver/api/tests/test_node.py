@@ -21,6 +21,7 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.models import (
+    Config,
     Node,
     node as node_module,
 )
@@ -31,6 +32,7 @@ from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
+from maasserver.utils import osystems
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
@@ -413,6 +415,17 @@ class TestSetOwnerData(APITestCase.ForUser):
 
 class TestPowerMixin(APITestCase.ForUser):
     """Test the power mixin."""
+
+    def setUp(self):
+        super().setUp()
+        commissioning_osystem = Config.objects.get_config(
+            name='commissioning_osystem')
+        commissioning_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
+            'name': commissioning_osystem,
+            'releases': [{'name': commissioning_series}],
+        }]
 
     def get_node_uri(self, node):
         """Get the API URI for `node`."""

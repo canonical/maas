@@ -385,7 +385,8 @@ angular.module('MAAS').directive('maasBootImages', [
                                         arch: arch.title,
                                         size: '-',
                                         status: 'Selected for download',
-                                        beingDeleted: false
+                                        beingDeleted: false,
+                                        name: release.name
                                     };
                                     var resource = getResource(
                                         release.name, arch.name);
@@ -407,13 +408,15 @@ angular.module('MAAS').directive('maasBootImages', [
                     // those are set to be deleted.
                     if(!$scope.source.isNew) {
                         angular.forEach(resources, function(resource) {
+                            var name_split = resource.name.split('/');
                             var image = {
                                 icon: 'icon--status-failed',
                                 title: resource.title,
                                 arch: resource.arch,
                                 size: resource.size,
                                 status: 'Will be deleted',
-                                beingDeleted: true
+                                beingDeleted: true,
+                                name: name_split[1]
                             };
                             $scope.ubuntuImages.push(image);
                         });
@@ -618,6 +621,19 @@ angular.module('MAAS').directive('maasBootImages', [
                     return false;
                 };
 
+                // Returns true if the commission series is selected
+                $scope.commissioningSeriesSelected = function() {
+                    var i;
+                    for(i = 0; i < $scope.ubuntuImages.length; i++) {
+                        if(!$scope.ubuntuImages[i].beingDeleted &&
+                           $scope.ubuntuImages[i].name ===
+                           $scope.bootResources.ubuntu.commissioning_series) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
                 // Return if we are asking about deleting this image.
                 $scope.isShowingDeleteConfirm = function(image) {
                     return image === $scope.removingImage;
@@ -655,7 +671,22 @@ angular.module('MAAS').directive('maasBootImages', [
 
                 // Return true if can save the current selection.
                 $scope.canSaveSelection = function() {
+                    var commissioning_series_being_deleted = false;
+                    var i;
+                    // Only prevent the current commissioning series from
+                    // being deleted. If the current commissioning series isn't
+                    // currently selected another LTS may be choosen,
+                    // downloaded, and configured as the commissioning series.
+                    for(i = 0; i < $scope.ubuntuImages.length; i++) {
+                        if($scope.ubuntuImages[i].beingDeleted &&
+                           $scope.ubuntuImages[i].name ===
+                           $scope.bootResources.ubuntu.commissioning_series) {
+                            commissioning_series_being_deleted = true;
+                            break;
+                        }
+                    }
                     return (
+                        !commissioning_series_being_deleted &&
                         !$scope.saving &&
                         !$scope.stopping &&
                         $scope.ltsIsSelected());

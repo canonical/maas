@@ -294,6 +294,11 @@ class TestReleases(MAASServerTestCase):
     def test_list_commissioning_choices_returns_commissioning_releases(self):
         comm_releases = [
             make_rpc_release(can_commission=True) for _ in range(3)]
+        comm_releases += [
+            make_rpc_release(
+                Config.objects.get_config('commissioning_distro_series'),
+                can_commission=True)
+        ]
         no_comm_release = make_rpc_release()
         osystem = make_rpc_osystem(
             'ubuntu', releases=comm_releases + [no_comm_release])
@@ -306,6 +311,11 @@ class TestReleases(MAASServerTestCase):
     def test_list_commissioning_choices_returns_sorted(self):
         comm_releases = [
             make_rpc_release(can_commission=True) for _ in range(3)]
+        comm_releases += [
+            make_rpc_release(
+                Config.objects.get_config('commissioning_distro_series'),
+                can_commission=True)
+        ]
         osystem = make_rpc_osystem(
             'ubuntu', releases=comm_releases)
         comm_releases = sorted(
@@ -313,6 +323,27 @@ class TestReleases(MAASServerTestCase):
         choices = [
             (release['name'], release['title'])
             for release in comm_releases
+            ]
+        self.assertEqual(choices, list_commissioning_choices([osystem]))
+
+    def test_list_commissioning_choices_returns_current_selection(self):
+        comm_releases = [
+            make_rpc_release(can_commission=True) for _ in range(3)]
+        osystem = make_rpc_osystem(
+            'ubuntu', releases=comm_releases)
+        comm_releases = sorted(
+            comm_releases, key=itemgetter('title'))
+        commissioning_series, _ = Config.objects.get_or_create(
+            name='commissioning_distro_series')
+        commissioning_series.value = factory.make_name('commissioning_series')
+        commissioning_series.save()
+        choices = [
+            (
+                commissioning_series.value,
+                '%s (No image available)' % commissioning_series.value
+            )] + [
+                (release['name'], release['title'])
+                for release in comm_releases
             ]
         self.assertEqual(choices, list_commissioning_choices([osystem]))
 

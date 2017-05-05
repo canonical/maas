@@ -3586,11 +3586,36 @@ class Node(CleanSave, TimestampedModel):
             powered on manually.
         """
         # Avoid circular imports.
+        from maasserver.utils.osystems import list_all_usable_osystems
         from metadataserver.models import NodeUserData
 
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
+
+        # Whenever booting the MAAS ephemeral environment make sure the
+        # configured operating system is available before starting.
+        if self.status in COMMISSIONING_LIKE_STATUSES:
+            osystems = list_all_usable_osystems()
+            commissioning_osystem = Config.objects.get_config(
+                name='commissioning_osystem')
+            commissioning_series = Config.objects.get_config(
+                name='commissioning_distro_series')
+            releases = []
+            for osystem in osystems:
+                if osystem['name'] == commissioning_osystem:
+                    releases = osystem['releases']
+                    break
+            release_not_found = True
+            for release in releases:
+                if release['name'] == commissioning_series:
+                    release_not_found = False
+                    break
+            if release_not_found:
+                raise ValidationError(
+                    'Ephemeral operating system %s %s is unavailable.' % (
+                        commissioning_osystem, commissioning_series
+                        ))
 
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the

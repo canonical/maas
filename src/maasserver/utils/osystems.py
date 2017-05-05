@@ -245,12 +245,25 @@ def list_commissioning_choices(osystems):
     if ubuntu is None:
         return []
     else:
-        releases = sorted(ubuntu['releases'], key=itemgetter('title'))
-        return [
-            (release['name'], release['title'])
-            for release in releases
-            if release['can_commission']
-            ]
+        commissioning_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        found_commissioning_series = False
+        sorted_releases = sorted(ubuntu['releases'], key=itemgetter('title'))
+        releases = []
+        for release in sorted_releases:
+            if not release['can_commission']:
+                continue
+            if release['name'] == commissioning_series:
+                found_commissioning_series = True
+            releases.append((release['name'], release['title']))
+        if found_commissioning_series:
+            return releases
+        else:
+            return [
+                (
+                    commissioning_series,
+                    '%s (No image available)' % commissioning_series
+                )] + releases
 
 
 def validate_osystem_and_distro_series(osystem, distro_series):

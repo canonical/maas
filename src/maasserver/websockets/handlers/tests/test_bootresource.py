@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.bootresource`"""
@@ -254,6 +254,19 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 'deleted': True,
             }
         ], json_obj['ubuntu']['arches'])
+
+    def test_shows_ubuntu_commissioning_release(self):
+        commissioning_series, _ = Config.objects.get_or_create(
+            name='commissioning_distro_series')
+        commissioning_series.value = factory.make_name('commissioning_series')
+        commissioning_series.save()
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {})
+        response = handler.poll({})
+        json_obj = json.loads(response)
+        self.assertEquals(
+            commissioning_series.value,
+            json_obj['ubuntu']['commissioning_series'])
 
     def test__returns_region_import_running_True(self):
         owner = factory.make_admin()

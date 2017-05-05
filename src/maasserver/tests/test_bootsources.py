@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver.bootsources."""
@@ -31,6 +31,7 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     Config,
+    Notification,
 )
 from maasserver.models.signals.bootsources import (
     signals as bootsources_signals,
@@ -375,6 +376,13 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertDictEqual(
             {'title': '%s %s %s' % (os_title, release_title, gadget_title)},
             cached.extra)
+
+    def test__notifies_missing_commissioning_os(self):
+        cache_boot_sources()
+        self.assertTrue(Notification.objects.filter(
+            ident='commissioning_series_unselected').exists())
+        self.assertTrue(Notification.objects.filter(
+            ident='commissioning_series_unavailable').exists())
 
 
 class TestBadConnectionHandling(MAASTransactionServerTestCase):

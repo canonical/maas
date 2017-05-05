@@ -103,6 +103,7 @@ from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
+    COMMISSIONING_LIKE_STATUSES,
     NODE_FAILURE_MONITORED_STATUS_TRANSITIONS,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TESTING_RESET_READY_TRANSITIONS,
@@ -127,6 +128,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils import osystems
 from maasserver.utils.orm import (
     get_one,
     post_commit,
@@ -1541,6 +1543,12 @@ class TestNode(MAASServerTestCase):
             node.set_storage_layout(
                 unknown_layout, sentinel.params)
 
+    def test_start_ephemeral_checks_image_is_avail(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=random.choice(COMMISSIONING_LIKE_STATUSES), owner=owner)
+        self.assertRaises(ValidationError, node._start, owner)
+
     def test_start_disk_erasing_uses_global_values(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
@@ -2818,6 +2826,18 @@ class TestNode(MAASServerTestCase):
                 factory.make_admin())
 
     def test_start_commissioning_sets_owner(self):
+        commissioning_osystem, _ = Config.objects.get_or_create(
+            name='commissioning_osystem')
+        commissioning_osystem.value = factory.make_name('osystem')
+        commissioning_osystem.save()
+        commissioning_series, _ = Config.objects.get_or_create(
+            name='commissioning_distro_series')
+        commissioning_series.value = factory.make_name('series')
+        commissioning_series.save()
+        self.patch(osystems, 'list_all_usable_osystems').return_value = [{
+            'name': commissioning_osystem.value,
+            'releases': [{'name': commissioning_series.value}],
+        }]
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='manual',
             enable_ssh=True)

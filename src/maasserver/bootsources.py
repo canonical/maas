@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Sources."""
@@ -23,6 +23,7 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     Config,
+    Notification,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -203,6 +204,33 @@ def cache_boot_sources():
                     "Image descriptions for %s are outdated; discarding.",
                     source["url"])
 
+    @transactional
+    def check_commissioning_series_selected():
+        commissioning_osystem = Config.objects.get_config(
+            name='commissioning_osystem')
+        commissioning_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        qs = BootSourceSelection.objects.filter(
+            os=commissioning_osystem, release=commissioning_series)
+        if not qs.exists():
+            if not Notification.objects.filter(
+                    ident='commissioning_series_unselected').exists():
+                Notification.objects.create_error_for_users(
+                    '%s %s is configured as the commissioning release but it '
+                    'is not selected for download!' % (
+                        commissioning_osystem, commissioning_series),
+                    ident='commissioning_series_unselected')
+        qs = BootSourceCache.objects.filter(
+            os=commissioning_osystem, release=commissioning_series)
+        if not qs.exists():
+            if not Notification.objects.filter(
+                    ident='commissioning_series_unavailable').exists():
+                Notification.objects.create_error_for_users(
+                    '%s %s is configured as the commissioning release but it '
+                    'is unavailable in the configured streams!' % (
+                        commissioning_osystem, commissioning_series),
+                    ident='commissioning_series_unavailable')
+
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
     yield deferToDatabase(set_simplestreams_env)
@@ -222,6 +250,8 @@ def cache_boot_sources():
                     "%s: %s" % (source["url"], error))
             else:
                 yield deferToDatabase(update_cache, source, descriptions)
+
+    yield deferToDatabase(check_commissioning_series_selected)
 
     maaslog.info("Updated boot sources cache.")
 

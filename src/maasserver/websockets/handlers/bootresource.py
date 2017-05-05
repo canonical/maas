@@ -551,10 +551,14 @@ class BootResourceHandler(Handler):
             )
             for resource in resources
             ]
+        commissioning_series = Config.objects.get_config(
+            name='commissioning_distro_series')
         json_ubuntu = dict(
             sources=self.format_ubuntu_sources(),
             releases=self.format_ubuntu_releases(),
-            arches=self.format_ubuntu_arches())
+            arches=self.format_ubuntu_arches(),
+            commissioning_series=commissioning_series,
+        )
         data = dict(
             connection_error=self.connection_error,
             region_import_running=is_import_resources_running(),
@@ -562,7 +566,8 @@ class BootResourceHandler(Handler):
             resources=json_resources,
             ubuntu=json_ubuntu,
             ubuntu_core_images=self.format_ubuntu_core_images(),
-            other_images=self.format_other_images())
+            other_images=self.format_other_images(),
+            )
         return json.dumps(data)
 
     def get_bootsource(self, params, from_db=False):

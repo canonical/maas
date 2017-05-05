@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for filtering a selection of boot resources."""
@@ -9,6 +9,7 @@ __all__ = [
 
 
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -17,6 +18,7 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -58,3 +60,16 @@ class BootSourceSelection(CleanSave, TimestampedModel):
             "subarches": self.subarches,
             "labels": self.labels,
             }
+
+    def delete(self, *args, **kwargs):
+        commissioning_osystem = Config.objects.get_config(
+            name='commissioning_osystem')
+        commissioning_series = Config.objects.get_config(
+            name='commissioning_distro_series')
+        if (commissioning_osystem == self.os and
+                commissioning_series == self.release):
+            raise ValidationError(
+                'Unable to delete %s %s. '
+                'It is the operating system used in ephemeral environments.')
+        else:
+            return super().delete(*args, **kwargs)
