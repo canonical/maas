@@ -372,9 +372,11 @@ class TransactionalHelpersMixin:
         event.delete()
 
     @transactional
-    def create_staticipaddress(self, params=None):
+    def create_staticipaddress(self, params=None, vlan=None):
         if params is None:
             params = {}
+        if vlan is not None:
+            params['subnet'] = vlan.subnet_set.first()
         return factory.make_StaticIPAddress(**params)
 
     @transactional

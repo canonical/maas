@@ -842,6 +842,115 @@ class TestDHCPVLANListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_messages_when_ip_address_created(self):
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": vlan
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": relay_vlan,
+        })
+        yield deferToDatabase(register_system_triggers)
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_staticipaddress, vlan=relay_vlan)
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_messages_when_ip_address_updated(self):
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": vlan
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": relay_vlan,
+        })
+        yield deferToDatabase(register_system_triggers)
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        sip = yield deferToDatabase(
+            self.create_staticipaddress, vlan=relay_vlan)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticipaddress, sip.id, params={
+                    'ip': ''
+                })
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_messages_when_ip_address_deleted(self):
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, params={
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+            "secondary_rack": secondary_rack,
+        })
+        relay_vlan = yield deferToDatabase(self.create_vlan, params={
+            "relay_vlan": vlan
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": relay_vlan,
+        })
+        yield deferToDatabase(register_system_triggers)
+        primary_rack_dv = DeferredValue()
+        secondary_rack_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: primary_rack_dv.set(args))
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_rack_dv.set(args))
+        sip = yield deferToDatabase(
+            self.create_staticipaddress, vlan=relay_vlan)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_staticipaddress, sip.id)
+            yield primary_rack_dv.get(timeout=2)
+            yield secondary_rack_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_messages_when_relay_vlan_unset(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
@@ -1283,6 +1392,11 @@ class TestDHCPIPRangeListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
+    scenarios = (
+        ('with_dhcp_relay', {"dhcp_relay": True}),
+        ('without_dhcp_relay', {"dhcp_relay": False}),
+    )
+
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_new_managed_dhcp_range(self):
@@ -1294,12 +1408,16 @@ class TestDHCPIPRangeListener(
             "primary_rack": primary_rack,
             "secondary_rack": secondary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         network = factory.make_ipv4_network()
         subnet = yield deferToDatabase(self.create_subnet, {
             "cidr": str(network.cidr),
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
-
         listener = self.make_listener_without_delay()
         primary_dv = DeferredValue()
         listener.register(
@@ -1336,10 +1454,15 @@ class TestDHCPIPRangeListener(
             "primary_rack": primary_rack,
             "secondary_rack": secondary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         network = factory.make_ipv4_network()
         subnet = yield deferToDatabase(self.create_subnet, {
             "cidr": str(network.cidr),
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
@@ -1382,10 +1505,15 @@ class TestDHCPIPRangeListener(
             "primary_rack": primary_rack,
             "secondary_rack": secondary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         network = factory.make_ipv4_network()
         subnet = yield deferToDatabase(self.create_subnet, {
             "cidr": str(network.cidr),
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
@@ -1427,10 +1555,15 @@ class TestDHCPIPRangeListener(
             "primary_rack": primary_rack,
             "secondary_rack": secondary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         network = factory.make_ipv4_network()
         subnet = yield deferToDatabase(self.create_subnet, {
             "cidr": str(network.cidr),
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
@@ -1472,10 +1605,15 @@ class TestDHCPIPRangeListener(
             "primary_rack": primary_rack,
             "secondary_rack": secondary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         network = factory.make_ipv4_network()
         subnet = yield deferToDatabase(self.create_subnet, {
             "cidr": str(network.cidr),
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         network = subnet.get_ipnetwork()
         start_ip = str(IPAddress(network.first + 2))
@@ -1536,7 +1674,7 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_staticipaddress, {
+            yield deferToDatabase(self.create_staticipaddress, params={
                 "subnet": subnet,
                 "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
                 "user": user,
@@ -1987,6 +2125,11 @@ class TestDHCPSnippetListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
+    scenarios = (
+        ('with_dhcp_relay', {"dhcp_relay": True}),
+        ('without_dhcp_relay', {"dhcp_relay": False}),
+    )
+
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_global_dhcp_snippet_inserted(self):
@@ -1996,8 +2139,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -2022,8 +2170,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -2051,8 +2204,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -2078,8 +2236,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         node = yield deferToDatabase(self.create_node)
         yield deferToDatabase(self.create_interface, {
@@ -2110,8 +2273,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": True,
@@ -2140,8 +2308,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": False,
@@ -2173,8 +2346,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": False,
@@ -2202,8 +2380,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": True,
@@ -2231,8 +2414,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": True,
@@ -2260,8 +2448,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         node = yield deferToDatabase(self.create_node)
         yield deferToDatabase(self.create_interface, {
@@ -2294,8 +2487,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": True,
@@ -2321,8 +2519,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": False,
@@ -2351,8 +2554,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         subnet = yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
             "enabled": True,
@@ -2379,8 +2587,13 @@ class TestDHCPSnippetListener(
             "dhcp_on": True,
             "primary_rack": primary_rack,
         })
+        relay_vlan = None
+        if self.dhcp_relay:
+            relay_vlan = yield deferToDatabase(self.create_vlan, {
+                "relay_vlan": vlan,
+            })
         yield deferToDatabase(self.create_subnet, {
-            "vlan": vlan,
+            "vlan": relay_vlan if self.dhcp_relay else vlan,
         })
         node = yield deferToDatabase(self.create_node)
         yield deferToDatabase(self.create_interface, {

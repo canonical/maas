@@ -368,10 +368,27 @@ DHCP_VLAN_UPDATE = dedent("""\
 DHCP_ALERT = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dhcp_alert(vlan maasserver_vlan)
     RETURNS void AS $$
+    DECLARE
+      relay_vlan maasserver_vlan;
     BEGIN
-      PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
-      IF vlan.secondary_rack_id IS NOT NULL THEN
-        PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
+      IF vlan.dhcp_on THEN
+        PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
+        IF vlan.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
+        END IF;
+      END IF;
+      IF vlan.relay_vlan_id IS NOT NULL THEN
+        SELECT maasserver_vlan.* INTO relay_vlan
+        FROM maasserver_vlan
+        WHERE maasserver_vlan.id = vlan.relay_vlan_id;
+        IF relay_vlan.dhcp_on THEN
+          PERFORM pg_notify(CONCAT(
+            'sys_dhcp_', relay_vlan.primary_rack_id), '');
+          IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify(CONCAT(
+              'sys_dhcp_', relay_vlan.secondary_rack_id), '');
+          END IF;
+        END IF;
       END IF;
       RETURN;
     END;
@@ -393,15 +410,11 @@ DHCP_SUBNET_UPDATE = dedent("""\
         -- Update old VLAN if DHCP is enabled.
         SELECT * INTO vlan
         FROM maasserver_vlan WHERE id = OLD.vlan_id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
         -- Update the new VLAN if DHCP is enabled.
         SELECT * INTO vlan
         FROM maasserver_vlan WHERE id = NEW.vlan_id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       -- Related fields of subnet where changed.
       ELSIF OLD.cidr != NEW.cidr OR
         (OLD.gateway_ip IS NULL AND NEW.gateway_ip IS NOT NULL) OR
@@ -411,9 +424,7 @@ DHCP_SUBNET_UPDATE = dedent("""\
         -- Network has changed update alert DHCP if enabled.
         SELECT * INTO vlan
         FROM maasserver_vlan WHERE id = NEW.vlan_id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -431,9 +442,7 @@ DHCP_SUBNET_DELETE = dedent("""\
       -- Update VLAN if DHCP is enabled.
       SELECT * INTO vlan
       FROM maasserver_vlan WHERE id = OLD.vlan_id;
-      IF vlan.dhcp_on THEN
-        PERFORM sys_dhcp_alert(vlan);
-      END IF;
+      PERFORM sys_dhcp_alert(vlan);
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -453,9 +462,7 @@ DHCP_IPRANGE_INSERT = dedent("""\
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
           maasserver_subnet.vlan_id = maasserver_vlan.id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -476,9 +483,7 @@ DHCP_IPRANGE_UPDATE = dedent("""\
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
           maasserver_subnet.vlan_id = maasserver_vlan.id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -499,9 +504,7 @@ DHCP_IPRANGE_DELETE = dedent("""\
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = OLD.subnet_id AND
           maasserver_subnet.vlan_id = maasserver_vlan.id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -523,9 +526,7 @@ DHCP_STATICIPADDRESS_INSERT = dedent("""\
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
           maasserver_subnet.vlan_id = maasserver_vlan.id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -556,17 +557,11 @@ DHCP_STATICIPADDRESS_UPDATE = dedent("""\
             maasserver_subnet.vlan_id = maasserver_vlan.id;
           IF old_vlan.id != new_vlan.id THEN
             -- Different VLAN's; update each if DHCP enabled.
-            IF old_vlan.dhcp_on THEN
-              PERFORM sys_dhcp_alert(old_vlan);
-            END IF;
-            IF new_vlan.dhcp_on THEN
-              PERFORM sys_dhcp_alert(new_vlan);
-            END IF;
+            PERFORM sys_dhcp_alert(old_vlan);
+            PERFORM sys_dhcp_alert(new_vlan);
           ELSE
             -- Same VLAN so only need to update once.
-            IF new_vlan.dhcp_on THEN
-              PERFORM sys_dhcp_alert(new_vlan);
-            END IF;
+            PERFORM sys_dhcp_alert(new_vlan);
           END IF;
         ELSIF (OLD.ip IS NULL AND NEW.ip IS NOT NULL) OR
           (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
@@ -576,9 +571,7 @@ DHCP_STATICIPADDRESS_UPDATE = dedent("""\
           FROM maasserver_vlan, maasserver_subnet
           WHERE maasserver_subnet.id = NEW.subnet_id AND
             maasserver_subnet.vlan_id = maasserver_vlan.id;
-          IF new_vlan.dhcp_on THEN
-            PERFORM sys_dhcp_alert(new_vlan);
-          END IF;
+          PERFORM sys_dhcp_alert(new_vlan);
         END IF;
       END IF;
       RETURN NEW;
@@ -600,9 +593,7 @@ DHCP_STATICIPADDRESS_DELETE = dedent("""\
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = OLD.subnet_id AND
           maasserver_subnet.vlan_id = maasserver_vlan.id;
-        IF vlan.dhcp_on THEN
-          PERFORM sys_dhcp_alert(vlan);
-        END IF;
+        PERFORM sys_dhcp_alert(vlan);
       END IF;
       RETURN NEW;
     END;
@@ -635,8 +626,7 @@ DHCP_INTERFACE_UPDATE = dedent("""\
           AND maasserver_staticipaddress.alloc_type != 6
           AND maasserver_staticipaddress.ip IS NOT NULL
           AND host(maasserver_staticipaddress.ip) != ''
-          AND maasserver_vlan.id = maasserver_subnet.vlan_id
-          AND maasserver_vlan.dhcp_on)
+          AND maasserver_vlan.id = maasserver_subnet.vlan_id)
         LOOP
           PERFORM sys_dhcp_alert(vlan);
         END LOOP;
@@ -673,8 +663,7 @@ DHCP_NODE_UPDATE = dedent("""\
           AND maasserver_staticipaddress.alloc_type != 6
           AND maasserver_staticipaddress.ip IS NOT NULL
           AND host(maasserver_staticipaddress.ip) != ''
-          AND maasserver_vlan.id = maasserver_subnet.vlan_id
-          AND maasserver_vlan.dhcp_on)
+          AND maasserver_vlan.id = maasserver_subnet.vlan_id)
         LOOP
           PERFORM sys_dhcp_alert(vlan);
         END LOOP;
@@ -723,7 +712,8 @@ DHCP_SNIPPET_UPDATE_SUBNET = dedent("""\
           maasserver_subnet
         WHERE maasserver_subnet.id = _subnet_id
           AND maasserver_vlan.id = maasserver_subnet.vlan_id
-          AND maasserver_vlan.dhcp_on = true)
+          AND (maasserver_vlan.dhcp_on = true
+            OR maasserver_vlan.relay_vlan_id IS NOT NULL))
         LOOP
           PERFORM sys_dhcp_alert(vlan);
         END LOOP;
@@ -744,8 +734,8 @@ DHCP_SNIPPET_UPDATE_NODE = dedent("""\
           FROM maasserver_vlan, maasserver_interface
           WHERE maasserver_interface.node_id = _node_id
             AND maasserver_interface.vlan_id = maasserver_vlan.id
-            AND maasserver_vlan.dhcp_on = true
-        )
+          AND (maasserver_vlan.dhcp_on = true
+            OR maasserver_vlan.relay_vlan_id IS NOT NULL))
         SELECT primary_rack_id FROM racks
         WHERE primary_rack_id IS NOT NULL
         UNION
