@@ -171,6 +171,8 @@ class PodHandler(OperationsHandler):
         :param storage: A list of storage constraint identifiers, in the form:
             <label>:<size>(<tag>[,<tag>[,...])][,<label>:...]
         :type storage: unicode
+        :param hostname: Hostname for the newly composed machine.
+        :type hostname: unicode
         :param domain: ID of domain to place the newly composed machine in.
         :param zone: ID of zone place the newly composed machine in.
 
@@ -224,7 +226,7 @@ class PodsHandler(OperationsHandler):
     def create(self, request):
         """Create a Pod.
 
-        :param type: Type of pod to create.
+        :param type: Type of pod to create (rsd, virsh).
         :param name: Name for the pod (optional).
 
         Returns 503 if the pod could not be discovered.

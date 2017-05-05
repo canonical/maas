@@ -1252,6 +1252,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
             exclude, this parameter must be repeated in the request with each
             value.
         :type not_in_zone: unicode (accepts multiple)
+        :param pod: Pod the machine must be located in.
+        :type pod: unicode
+        :param pod_type: Pod type the machine must be located in.
+        :type pod_type: unicode
         :param subnets: Subnets that must be linked to the machine.
 
             "Linked to" means the node must be configured to acquire an address
