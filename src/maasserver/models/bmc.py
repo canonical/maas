@@ -46,7 +46,10 @@ from maasserver.models.iscsiblockdevice import (
     get_iscsi_target,
     ISCSIBlockDevice,
 )
-from maasserver.models.node import Machine
+from maasserver.models.node import (
+    Machine,
+    Node,
+)
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -563,7 +566,7 @@ class Pod(BMC):
                     discovered_machine.hostname = None
                     break
         if discovered_machine.hostname:
-            if Machine.objects.filter(
+            if Node.objects.filter(
                     hostname=discovered_machine.hostname).exists():
                 discovered_machine.hostname = None
 
