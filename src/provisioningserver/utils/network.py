@@ -22,6 +22,7 @@ __all__ = [
 import codecs
 from collections import namedtuple
 from operator import attrgetter
+import re
 import socket
 from socket import (
     AF_INET,
@@ -1305,3 +1306,18 @@ def reverseResolve(
     else:
         return results
     return None
+
+
+def coerce_to_valid_hostname(hostname):
+    """Given a server name that may contain spaces and special characters,
+    attempts to derive a valid hostname.
+
+    :param hostname: the specified (possibly invalid) hostname
+    :return: the resulting string, or None if the hostname could not be coerced
+    """
+    hostname = hostname.lower()
+    hostname = re.sub(r'[^a-z0-9-]+', '-', hostname)
+    hostname = hostname.strip('-')
+    if hostname == '' or len(hostname) > 64:
+        return None
+    return hostname

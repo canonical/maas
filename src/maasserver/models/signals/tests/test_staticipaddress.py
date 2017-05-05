@@ -4,8 +4,11 @@
 """
 Test the behaviour of staticipaddress signals.
 
-These signals are tested in src/maasserver/models/tests/test_bmc.py. They
-handle IP sharing issues between BMCs and Machines.
+Tests for sharing IP addresses between BMCs and machines are in:
+    src/maasserver/models/tests/test_bmc.py
+
+Tests related to DNS resources are in:
+    src/maasserver/models/tests/test_dnsresource.py
 """
 
 __all__ = []

@@ -14,6 +14,7 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
+from maasserver.models import DNSResource
 from maasserver.models.interface import UnknownInterface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.rpc.leases import (
@@ -22,9 +23,17 @@ from maasserver.rpc.leases import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from netaddr import IPAddress
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Contains,
+    Equals,
+    MatchesStructure,
+    Not,
+)
 
 
 class TestUpdateLease(MAASServerTestCase):
@@ -140,13 +149,14 @@ class TestUpdateLease(MAASServerTestCase):
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))
 
-    def test_creates_ignores_none_hostname(self):
+    def test_create_ignores_none_hostname(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
             with_static_range=False, dhcp_on=True)
         dynamic_range = subnet.get_dynamic_ranges()[0]
         ip = factory.pick_ip_in_IPRange(dynamic_range)
+        hostname = "(none)"
         kwargs = self.make_kwargs(
-            action="commit", ip=ip, hostname="(none)")
+            action="commit", ip=ip, hostname=hostname)
         update_lease(**kwargs)
         unknown_interface = UnknownInterface.objects.filter(
             mac_address=kwargs["mac"]).first()
@@ -162,6 +172,76 @@ class TestUpdateLease(MAASServerTestCase):
             created=datetime.fromtimestamp(kwargs["timestamp"]),
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))
+        # No DNS record should have been crated.
+        self.assertThat(DNSResource.objects.count(), Equals(0))
+
+    def test_creates_dns_record_for_hostname(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        hostname = factory.make_name().lower()
+        kwargs = self.make_kwargs(
+            action="commit", ip=ip, hostname=hostname)
+        update_lease(**kwargs)
+        unknown_interface = UnknownInterface.objects.filter(
+            mac_address=kwargs["mac"]).first()
+        self.assertIsNotNone(unknown_interface)
+        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        sip = unknown_interface.ip_addresses.first()
+        self.assertIsNotNone(sip)
+        dnsrr = get_one(DNSResource.objects.filter(name=hostname))
+        self.assertThat(sip.dnsresource_set.all(), Contains(dnsrr))
+
+    def test_mutiple_calls_reuse_existing_staticipaddress_records(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        hostname = factory.make_name().lower()
+        kwargs = self.make_kwargs(
+            action="commit", ip=ip, hostname=hostname)
+        update_lease(**kwargs)
+        sip1 = StaticIPAddress.objects.get(ip=ip)
+        update_lease(**kwargs)
+        sip2 = StaticIPAddress.objects.get(ip=ip)
+        self.assertThat(sip1.id, Equals(sip2.id))
+
+    def test_skips_dns_record_for_hostname_from_existing_node(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        hostname = factory.make_name().lower()
+        factory.make_Node(hostname=hostname)
+        kwargs = self.make_kwargs(
+            action="commit", ip=ip, hostname=hostname)
+        update_lease(**kwargs)
+        unknown_interface = UnknownInterface.objects.filter(
+            mac_address=kwargs["mac"]).first()
+        self.assertIsNotNone(unknown_interface)
+        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        sip = unknown_interface.ip_addresses.first()
+        self.assertIsNotNone(sip)
+        self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))
+
+    def test_skips_dns_record_for_coerced_hostname_from_existing_node(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        hostname = "gaming device"
+        factory.make_Node(hostname="gaming-device")
+        kwargs = self.make_kwargs(
+            action="commit", ip=ip, hostname=hostname)
+        update_lease(**kwargs)
+        unknown_interface = UnknownInterface.objects.filter(
+            mac_address=kwargs["mac"]).first()
+        self.assertIsNotNone(unknown_interface)
+        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        sip = unknown_interface.ip_addresses.first()
+        self.assertIsNotNone(sip)
+        self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))
 
     def test_creates_lease_for_physical_interface(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(

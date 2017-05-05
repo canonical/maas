@@ -13,15 +13,17 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
-from maasserver.models.dnsresource import DNSResource
-from maasserver.models.interface import (
+from maasserver.models import (
+    DNSResource,
     Interface,
+    Node,
+    StaticIPAddress,
+    Subnet,
     UnknownInterface,
 )
-from maasserver.models.staticipaddress import StaticIPAddress
-from maasserver.models.subnet import Subnet
 from maasserver.utils.orm import transactional
 from netaddr import IPAddress
+from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -102,6 +104,7 @@ def update_lease(
         # No interfaces and not commit action so nothing needs to be done.
         return {}
 
+    sip = None
     # Delete all discovered IP addresses attached to all interfaces of the same
     # IP address family.
     old_family_addresses = StaticIPAddress.objects.filter_by_ip_family(
@@ -109,7 +112,15 @@ def update_lease(
     old_family_addresses = old_family_addresses.filter(
         alloc_type=IPADDRESS_TYPE.DISCOVERED,
         interface__in=interfaces)
-    old_family_addresses.delete()
+    for address in old_family_addresses:
+        # Release old DHCP hostnames, but only for obsolete dynamic addresses.
+        if address.ip != ip:
+            if address.ip is not None:
+                DNSResource.objects.release_dynamic_hostname(address)
+            address.delete()
+        else:
+            # Avoid recreating a new StaticIPAddress later.
+            sip = address
 
     # Create the new StaticIPAddress object based on the action.
     if action == "commit":
@@ -129,21 +140,35 @@ def update_lease(
         # object. That will make sure that the lease_time is correct from
         # the created time.
         created = datetime.fromtimestamp(timestamp)
-        sip = StaticIPAddress.objects.create(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip, subnet=subnet,
-            lease_time=lease_time, created=created, updated=created)
+        sip, _ = StaticIPAddress.objects.update_or_create(
+            defaults=dict(
+                subnet=subnet, lease_time=lease_time,
+                created=created, updated=created),
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip)
         for interface in interfaces:
             interface.ip_addresses.add(sip)
         if sip_hostname is not None:
-            dnsrr, created = DNSResource.objects.get_or_create(
-                name=sip_hostname)
-            dnsrr.ip_addresses.add(sip)
+            # MAAS automatically manages DNS for node hostnames, so we cannot
+            # allow a DHCP client to override that.
+            hostname_belongs_to_a_node = (
+                Node.objects.filter(
+                    hostname=coerce_to_valid_hostname(sip_hostname)).exists()
+            )
+            if hostname_belongs_to_a_node:
+                # Ensure we don't allow a DHCP hostname to override a node
+                # hostname.
+                DNSResource.objects.release_dynamic_hostname(sip)
+            else:
+                DNSResource.objects.update_dynamic_hostname(sip, sip_hostname)
     elif action == "expiry" or action == "release":
         # Interfaces no longer holds an active lease. Create the new object
         # to show that it used to be connected to this subnet.
-        sip = StaticIPAddress.objects.create(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+        if sip is None:
+            sip = StaticIPAddress.objects.create(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+        else:
+            sip.ip = None
+            sip.save()
         for interface in interfaces:
             interface.ip_addresses.add(sip)
-
     return {}

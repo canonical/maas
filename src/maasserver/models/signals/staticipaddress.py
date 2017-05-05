@@ -16,12 +16,14 @@ from django.db.models.signals import (
 )
 from maasserver.models import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
+from provisioningserver.logger import LegacyLogger
 
 
+log = LegacyLogger()
 signals = SignalsManager()
 
 
-def pre_delete_record_bmcs_on_delete(sender, instance, **kwargs):
+def pre_delete_record_relations_on_delete(sender, instance, **kwargs):
     """Store the instance's bmc_set for use in post_delete.
 
     It is coerced to a set to force it to be evaluated here in the pre_delete
@@ -33,9 +35,10 @@ def pre_delete_record_bmcs_on_delete(sender, instance, **kwargs):
     can be called on in post_delete to make their own StaticIPAddresses.
     """
     instance.__previous_bmcs = set(instance.bmc_set.all())
+    instance.__previous_dnsresources = set(instance.dnsresource_set.all())
 
 signals.watch(
-    pre_delete, pre_delete_record_bmcs_on_delete, sender=StaticIPAddress)
+    pre_delete, pre_delete_record_relations_on_delete, sender=StaticIPAddress)
 
 
 def post_delete_remake_sip_for_bmc(sender, instance, **kwargs):
@@ -57,6 +60,21 @@ def post_delete_remake_sip_for_bmc(sender, instance, **kwargs):
 
 signals.watch(
     post_delete, post_delete_remake_sip_for_bmc, sender=StaticIPAddress)
+
+
+def post_delete_clean_up_dns(sender, instance, **kwargs):
+    """Now that the StaticIPAddress instance is gone, check if any related
+    DNS records should be deleted.
+    """
+    for dnsrr in instance.__previous_dnsresources:
+        if dnsrr.ip_addresses.count() == 0:
+            dnsrr.delete()
+            log.msg(
+                "Removed orphan DNS record '%s' for deleted IP address '%s'."
+                % (dnsrr.fqdn, instance.ip))
+
+signals.watch(
+    post_delete, post_delete_clean_up_dns, sender=StaticIPAddress)
 
 
 def post_init_store_previous_ip(sender, instance, **kwargs):

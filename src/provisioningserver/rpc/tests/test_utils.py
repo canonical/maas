@@ -24,35 +24,11 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 import provisioningserver.rpc.utils
 from provisioningserver.rpc.utils import (
-    coerce_to_valid_hostname,
     commission_node,
     create_node,
 )
 import provisioningserver.utils
 from twisted.internet import defer
-
-
-class TestCoerceHostname(MAASTestCase):
-
-    def test_replaces_international_characters(self):
-        self.assertEqual("abc-123", coerce_to_valid_hostname("abc青い空123"))
-
-    def test_removes_illegal_dashes(self):
-        self.assertEqual("abc123", coerce_to_valid_hostname("-abc123-"))
-
-    def test_replaces_whitespace_and_special_characters(self):
-        self.assertEqual(
-            "abc123-ubuntu", coerce_to_valid_hostname("abc123 (ubuntu)"))
-
-    def test_makes_hostname_lowercase(self):
-        self.assertEqual(
-            "ubunturocks", coerce_to_valid_hostname("UbuntuRocks"))
-
-    def test_returns_none_if_result_empty(self):
-        self.assertIsNone(coerce_to_valid_hostname("-人間性-"))
-
-    def test_returns_none_if_result_too_large(self):
-        self.assertIsNone(coerce_to_valid_hostname('a' * 65))
 
 
 class TestCreateNode(MAASTestCase):

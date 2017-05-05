@@ -28,12 +28,18 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
+from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.network import coerce_to_valid_hostname
+
+
+log = LegacyLogger()
 
 
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
@@ -154,6 +160,65 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
         else:
             raise PermissionDenied()
 
+    def update_dynamic_hostname(self, sip, hostname):
+        """Creates or updates the DHCP hostname for a StaticIPAddress.
+
+        The hostname will be coerced into a valid hostname before being saved,
+        since DHCP clients may report hostnames with embedded spaces, etc.
+
+        :param sip: a StaticIPAddress of alloc_type DISCOVERED
+        :param hostname: the hostname provided by the DHCP client.
+        """
+        assert sip.ip is not None
+        assert sip.alloc_type == IPADDRESS_TYPE.DISCOVERED
+        hostname = coerce_to_valid_hostname(hostname)
+        self.release_dynamic_hostname(sip, but_not_for=hostname)
+        dnsrr, created = self.get_or_create(name=hostname)
+        if created:
+            dnsrr.ip_addresses.add(sip)
+            log.msg("Added dynamic hostname '%s' for IP address '%s'." % (
+                dnsrr.fqdn, sip.ip))
+        else:
+            if dnsrr.has_static_ip():
+                log.msg(
+                    "Skipped adding dynamic hostname '%s' for IP address "
+                    "'%s': already exists in DNS with a static IP." % (
+                        dnsrr.fqdn, sip.ip))
+            else:
+                if dnsrr.ip_addresses.count() == 1:
+                    # Don't bother updating if it's already the same address.
+                    if set(dnsrr.ip_addresses.all()) == set([sip]):
+                        return
+                # One or more dynamic IPs for this hostname. Replace them.
+                dnsrr.ip_addresses.clear()
+                dnsrr.ip_addresses.add(sip)
+                log.msg(
+                    "Updated dynamic hostname '%s' for IP address '%s'." % (
+                        dnsrr.fqdn, sip.ip))
+
+    def release_dynamic_hostname(self, sip, but_not_for=None):
+        """
+        Releases the DHCP hostname for the specified StaticIPAddress.
+
+        :param sip: a StaticIPAddress of alloc_type DISCOVERED.
+        """
+        assert sip.ip is not None
+        assert sip.alloc_type == IPADDRESS_TYPE.DISCOVERED
+        resources = self.filter(
+            domain=get_default_domain(), ip_addresses__in=[sip])
+        if but_not_for is not None:
+            resources = resources.exclude(name=but_not_for)
+        for dnsrr in resources:
+            dynamic_ip = dnsrr.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=sip.ip).first()
+            if dynamic_ip is not None:
+                dnsrr.ip_addresses.remove(dynamic_ip)
+            if dnsrr.ip_addresses.count() == 0:
+                dnsrr.delete()
+                log.msg(
+                    "Deleted dynamic hostname '%s' for IP address '%s'." % (
+                        dnsrr.fqdn, sip.ip))
+
 
 class DNSResource(CleanSave, TimestampedModel):
     """A `DNSResource`.
@@ -216,6 +281,10 @@ class DNSResource(CleanSave, TimestampedModel):
             return self.domain.name
         else:
             return "%s.%s" % (self.name, self.domain.name)
+
+    def has_static_ip(self):
+        return self.ip_addresses.exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).exists()
 
     def get_addresses(self):
         """Return all addresses associated with this FQDN."""

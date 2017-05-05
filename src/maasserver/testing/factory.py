@@ -647,6 +647,14 @@ class Factory(maastesting.factory.Factory):
             name = self.make_name('label')
         if ip_addresses is None and not no_ip_addresses:
             ip_addresses = [self.make_StaticIPAddress(**kwargs)]
+        elif isinstance(ip_addresses, list):
+            ip_addresses = [
+                self.make_StaticIPAddress(
+                    ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+                if not isinstance(ip, StaticIPAddress)
+                else ip
+                for ip in ip_addresses
+            ]
         dnsrr = DNSResource(
             name=name, address_ttl=address_ttl,
             domain=domain)
@@ -857,7 +865,8 @@ class Factory(maastesting.factory.Factory):
             # that in ages past (?) MAAS did not require a network to be
             # modelled in order to add a USER_RESERVED address, and there are
             # most likely test cases that depend on this behavior.
-            if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+            if (ip is undefined and subnet is None and
+                    alloc_type != IPADDRESS_TYPE.USER_RESERVED):
                 subnet = self.make_Subnet(vlan=vlan)
         else:
             if vlan is None:
@@ -872,7 +881,7 @@ class Factory(maastesting.factory.Factory):
             # hints as to why we think this behaviour exists.
             if not subnet and alloc_type == IPADDRESS_TYPE.USER_RESERVED:
                 ip = self.make_ip_address()
-            else:
+            elif subnet is not None:
                 ip = self.pick_ip_in_network(
                     IPNetwork(subnet.cidr),
                     but_not=self._get_exclude_list(subnet))

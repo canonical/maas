@@ -9,7 +9,6 @@ __all__ = [
 ]
 
 import json
-import re
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
@@ -19,6 +18,7 @@ from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
 )
 from provisioningserver.rpc.region import CreateNode
+from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import (
     asynchronous,
     pause,
@@ -36,21 +36,6 @@ from twisted.protocols.amp import (
 
 
 maaslog = get_maas_logger("region")
-
-
-def coerce_to_valid_hostname(hostname):
-    """Given a server name that may contain spaces and special characters,
-    attempts to derive a valid hostname.
-
-    :param hostname: the specified (possibly invalid) hostname
-    :return: the resulting string, or None if the hostname could not be coerced
-    """
-    hostname = hostname.lower()
-    hostname = re.sub(r'[^a-z0-9-]+', '-', hostname)
-    hostname = hostname.strip('-')
-    if hostname == '' or len(hostname) > 64:
-        return None
-    return hostname
 
 
 @asynchronous
