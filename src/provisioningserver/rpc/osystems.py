@@ -21,10 +21,13 @@ def gen_operating_system_releases(osystem):
 
     Each dict adheres to the response specification of an operating
     system release in the ``ListOperatingSystems`` RPC call.
+
+    The releases are sorted by name to ensure deterministic results
+    across multile calls.
     """
     releases_for_commissioning = set(
         osystem.get_supported_commissioning_releases())
-    for release in osystem.get_supported_releases():
+    for release in sorted(osystem.get_supported_releases()):
         requires_license_key = osystem.requires_license_key(release)
         can_commission = release in releases_for_commissioning
         yield {

@@ -78,21 +78,34 @@ class TestListOperatingSystemHelpers(MAASTestCase):
         ])
         expected = [
             {
-                "name": "swedish-chef",
-                "title": "I Am The Swedish-Chef",
-                "requires_license_key": False,
-                "can_commission": False,
-            },
-            {
                 "name": "beaker",
                 "title": "Beaker The Phreaker",
                 "requires_license_key": True,
                 "can_commission": True,
             },
+            {
+                "name": "swedish-chef",
+                "title": "I Am The Swedish-Chef",
+                "requires_license_key": False,
+                "can_commission": False,
+            },
         ]
         observed = osystems.gen_operating_system_releases(osystem)
         self.assertIsInstance(observed, Iterable)
         self.assertEqual(expected, list(observed))
+
+    def test_gen_operating_system_releases_returns_sorted_releases(self):
+        # Use an operating system with some randomised data. See StubOS
+        # for details of the rules that are used to populate the
+        # non-random elements.
+        osystem = StubOS("fozzie", [
+            ("swedish-chef", "I Am The Swedish-Chef"),
+            ("beaker", "Beaker The Phreaker"),
+        ])
+        observed = osystems.gen_operating_system_releases(osystem)
+        self.assertEqual(
+            ["beaker", "swedish-chef"],
+            [release["name"] for release in observed])
 
 
 class TestGetOSReleaseTitle(MAASTestCase):
