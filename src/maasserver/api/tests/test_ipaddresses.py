@@ -240,7 +240,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
         else:
             return status
 
-    def post_release_request(self, ip, mac=None):
+    def post_release_request(self, ip, mac=None, discovered=None):
         params = {
             'op': 'release',
             'ip': ip,
@@ -249,6 +249,8 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
             params["mac"] = mac
         if self.force is not None:
             params["force"] = str(self.force)
+        if discovered is not None:
+            params["discovered"] = str(discovered)
         return self.client.post(reverse('ipaddresses_handler'), params)
 
     @transactional
@@ -293,6 +295,29 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
         static_ip = factory.make_StaticIPAddress(
             user=factory.make_User(), alloc_type=IPADDRESS_TYPE.STICKY)
         response = self.post_release_request(str(static_ip.ip))
+        if self.expect_forbidden:
+            self.assertEqual(http.client.FORBIDDEN, response.status_code)
+            self.assertEqual(
+                "Force-releasing an IP address requires admin privileges.",
+                response.content.decode("utf-8"))
+        elif not self.force:
+            self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+            self.assertThat(
+                response.content.decode("utf-8"),
+                DocTestMatches("...does not belong to the requesting user..."))
+        else:
+            self.assertEqual(http.client.NO_CONTENT, response.status_code)
+            self.assertThat(
+                response.content.decode("utf-8"),
+                Equals(""))
+
+    @transactional
+    def test_POST_release_allows_admin_to_release_discovered_ip(self):
+        # Make an "orphaned" IP address, like the one in bug #1630034.
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        response = self.post_release_request(
+            str(static_ip.ip), discovered=True)
         if self.expect_forbidden:
             self.assertEqual(http.client.FORBIDDEN, response.status_code)
             self.assertEqual(

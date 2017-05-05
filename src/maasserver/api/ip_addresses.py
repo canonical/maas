@@ -231,11 +231,18 @@ class IPAddressesHandler(OperationsHandler):
             caution.
         :type force: bool
 
+        :param discovered: If True, allows a MAAS administrator to release
+            a discovered address. Only valid if 'force' is specified. If not
+            specified, MAAS will attempt to release any type of address except
+            for discovered addresses.
+
         Returns 404 if the provided IP address is not found.
         """
         ip = get_mandatory_param(request.POST, "ip")
         force = get_optional_param(
             request.POST, 'force', default=False, validator=StringBool)
+        discovered = get_optional_param(
+            request.POST, 'discovered', default=False, validator=StringBool)
 
         if force is True and not request.user.is_superuser:
             return HttpResponseForbidden(
@@ -248,21 +255,24 @@ class IPAddressesHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
         if force:
-            query_args = dict(ip=ip)
+            query = StaticIPAddress.objects.filter(ip=ip)
+            if discovered:
+                query = query.filter(alloc_type=IPADDRESS_TYPE.DISCOVERED)
+            else:
+                query = query.exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED)
         else:
-            query_args = dict(
-                alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip,
+            query = StaticIPAddress.objects.filter(
+                ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 user=request.user)
 
         # Get the reserved IP address, or raise bad request.
-        try:
-            ip_address = StaticIPAddress.objects.get(**query_args)
-        except StaticIPAddress.DoesNotExist:
+        ip_address = query.first()
+        if ip_address is None:
             if force:
                 error = "IP address %s does not exist."
             else:
                 error = (
-                    "IP address %s does not exist, is not a user-reserved "
+                    "IP address %s does not exist, is not the correct type of "
                     "address, or does not belong to the requesting user.\n"
                     "If you are sure you want to release this address, use "
                     "force=true as a MAAS administrator.")
