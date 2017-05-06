@@ -18,7 +18,11 @@ from unittest.mock import (
     sentinel,
 )
 
-from crochet import wait_for
+import crochet
+from crochet import (
+    wait_for,
+    TimeoutError,
+)
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -9283,6 +9287,21 @@ class TestRackController(MAASTransactionServerTestCase):
 
         rackcontroller.delete()
         self.expectThat(protocol.DisableAndShutoffRackd, MockCalledOnce())
+
+    def test_disables_and_disconn_ignores_timeout(self):
+        rackcontroller = factory.make_RackController()
+        factory.make_VLAN(secondary_rack=rackcontroller)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
+        self.patch(
+            crochet._eventloop.EventualResult,
+            'wait').side_effect = TimeoutError()
+
+        rackcontroller.delete()
+        self.assertIsNone(reload_object(rackcontroller))
 
     def test_disables_and_disconn_when_secondary_connected_fails(self):
         rackcontroller = factory.make_RackController()

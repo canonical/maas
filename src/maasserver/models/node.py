@@ -4800,10 +4800,12 @@ class RackController(Controller):
         try:
             client = getClientFor(self.system_id, timeout=1)
             call = client(DisableAndShutoffRackd)
-            call.wait(30)
-        except NoConnectionsAvailable:
+            call.wait(10)
+        except (NoConnectionsAvailable, TimeoutError):
             # NoConnectionsAvailable is always thrown. Either because the rack
-            # is currently disconnected or rackd was killed
+            # is currently disconnected or rackd was killed.
+            # TimeoutError may occur if the rack was just powered down and the
+            # region thinks it still has a connection.
             pass
 
         RegionRackRPCConnection.objects.filter(rack_controller=self).delete()
