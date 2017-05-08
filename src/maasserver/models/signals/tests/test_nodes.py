@@ -72,6 +72,32 @@ class TestNodePreviousStatus(MAASServerTestCase):
         self.assertEquals(previous_status, node.previous_status)
 
 
+class TestNodeClearsOwnerNEWOrREADYStatus(MAASServerTestCase):
+    """Test that `owner` is cleared when the status is set to
+    NEW or READY state.
+    """
+
+    def setUp(self):
+        super(TestNodeClearsOwnerNEWOrREADYStatus, self).setUp()
+        # Disable power signals: some status transitions prompt a power check.
+        self.addCleanup(power.signals.enable)
+        power.signals.disable()
+
+    def test_changing_to_new_status_clears_owner(self):
+        node = factory.make_Node(
+            owner=factory.make_User(),
+            status=NODE_STATUS.COMMISSIONING)
+        node.status = NODE_STATUS.NEW
+        node.save()
+        self.assertIsNone(node.owner)
+
+    def test_changing_to_ready_status_clears_owner(self):
+        node = factory.make_Node(owner=factory.make_User())
+        node.status = NODE_STATUS.READY
+        node.save()
+        self.assertIsNone(node.owner)
+
+
 class TestNodeKeyPolicy(MAASServerTestCase):
     """Test that `NodeKey`s are cleared when nodes change ownership."""
 

@@ -67,6 +67,23 @@ for klass in NODE_CLASSES:
         pre_save, pre_save_update_status, sender=klass)
 
 
+def clear_owner_when_status_changes_to_new_or_ready(
+        sender, instance, **kwargs):
+    """Clear owner when the status changes to NEW or READY."""
+    # Controllers are currently stateless but do have an owner.
+    if not instance.is_controller:
+        for status in {NODE_STATUS.NEW, NODE_STATUS.READY}:
+            if (instance.__previous_status != status and
+                    instance.status == status):
+                instance.owner = None
+                break
+
+for klass in NODE_CLASSES:
+    signals.watch(
+        pre_save, clear_owner_when_status_changes_to_new_or_ready,
+        sender=klass)
+
+
 def clear_nodekey_when_owner_changes(node, old_values, deleted=False):
     """Erase related `NodeKey` when node ownership changes."""
     assert not deleted, (
