@@ -239,7 +239,7 @@ class TestComposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters, sentinel.request,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to composed machine because '%s' is an "
+            "Unable to compose machine because '%s' is an "
             "unknown pod type." % pod.power_type, str(error))
 
     def test__raises_PodProblem_for_NotImplementedError(self):
@@ -253,7 +253,7 @@ class TestComposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters, sentinel.request,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to composed machine because '%s' driver does not "
+            "Unable to compose machine because '%s' driver does not "
             "implement the 'compose' method." % pod.power_type, str(error))
 
     def test__raises_PodProblem_for_PodActionFail(self):
@@ -268,7 +268,7 @@ class TestComposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters, sentinel.request,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to composed machine because: %s" % error_msg, str(error))
+            "Unable to compose machine because: %s" % error_msg, str(error))
 
     def test__raises_same_exception(self):
         pod = factory.make_Pod()
@@ -322,7 +322,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to decomposed machine because '%s' is an "
+            "Unable to decompose machine because '%s' is an "
             "unknown pod type." % pod.power_type, str(error))
 
     def test__raises_PodProblem_for_NotImplementedError(self):
@@ -336,7 +336,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to decomposed machine because '%s' driver does not "
+            "Unable to decompose machine because '%s' driver does not "
             "implement the 'decompose' method." % pod.power_type, str(error))
 
     def test__raises_PodProblem_for_PodActionFail(self):
@@ -351,7 +351,7 @@ class TestDecomposeMachine(MAASServerTestCase):
             pod.power_type, pod.power_parameters,
             pod.id, pod.name)
         self.assertEqual(
-            "Unable to decomposed machine because: %s" % error_msg, str(error))
+            "Unable to decompose machine because: %s" % error_msg, str(error))
 
     def test__raises_same_exception(self):
         pod = factory.make_Pod()

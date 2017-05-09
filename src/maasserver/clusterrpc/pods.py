@@ -105,7 +105,7 @@ def compose_machine(
     d.addCallback(lambda result: (result['machine'], result['hints']))
 
     def wrap_failure(failure):
-        prefix = "Unable to composed machine because"
+        prefix = "Unable to compose machine because"
         if failure.check(UnknownPodType):
             raise PodProblem(
                 prefix + " '%s' is an unknown pod type." % pod_type)
@@ -142,7 +142,7 @@ def decompose_machine(
         type=pod_type, context=context, pod_id=pod_id, name=name)
 
     def wrap_failure(failure):
-        prefix = "Unable to decomposed machine because"
+        prefix = "Unable to decompose machine because"
         if failure.check(UnknownPodType):
             raise PodProblem(
                 prefix + " '%s' is an unknown pod type." % pod_type)

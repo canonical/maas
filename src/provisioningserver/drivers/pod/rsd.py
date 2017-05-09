@@ -285,11 +285,11 @@ class RSDPodDriver(PodDriver):
                     # If all of the targets are unused, we count it as unused.
                     if not (lv_target_links & remote_drives):
                         lvs_capacity_unused += lv_capacity
-                        new_master_id = int(lv_info['Id'])
-                        if (master_path is None or master_id > new_master_id):
-                            master_path = b"/" + lv_link
-                            master_size = lv_capacity
-                            master_id = new_master_id
+                new_master_id = int(lv_info['Id'])
+                if (master_path is None or master_id > new_master_id):
+                    master_path = b"/" + lv_link
+                    master_size = lv_capacity
+                    master_id = new_master_id
 
             total = (
                 lvg_capacity - lvs_capacity_no_targets - lvs_capacity_unused)

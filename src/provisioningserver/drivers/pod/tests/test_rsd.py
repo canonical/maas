@@ -1030,6 +1030,40 @@ class TestRSDPodDriver(MAASTestCase):
                 }
             })
 
+    def test__calculate_remote_storage_no_remote_drives(self):
+        driver = RSDPodDriver()
+        LV_NO_TARGETS = deepcopy(SAMPLE_JSON_LV)
+        LV_NO_TARGETS['Links']['Targets'] = []
+        logical_drives = {
+            b"redfish/v1/Services/1/LogicalDrives/1": SAMPLE_JSON_LV,
+            b"redfish/v1/Services/1/LogicalDrives/2": SAMPLE_JSON_LVG,
+            b"redfish/v1/Services/1/LogicalDrives/3": LV_NO_TARGETS,
+            b"redfish/v1/Services/1/LogicalDrives/4": SAMPLE_JSON_PV,
+            b"redfish/v1/Services/1/LogicalDrives/5": SAMPLE_JSON_PV,
+        }
+        targets = {
+            b"redfish/v1/Services/1/Targets/1": SAMPLE_JSON_TARGET,
+            b"redfish/v1/Services/1/Targets/2": SAMPLE_JSON_TARGET,
+            b"redfish/v1/Services/1/Targets/3": SAMPLE_JSON_TARGET,
+        }
+        # Test when no remote drives are in use.
+        remote_drives = set()
+
+        remote_storage = driver.calculate_remote_storage(
+            remote_drives, logical_drives, targets)
+        self.assertDictEqual(
+            remote_storage,
+            {
+                b'redfish/v1/Services/1/LogicalDrives/2': {
+                    'total': 11830638411776.0,
+                    'available': 11830638411776.0,
+                    'master': {
+                        'path': b'/redfish/v1/Services/1/LogicalDrives/1',
+                        'size': 80
+                    }
+                }
+            })
+
     def test__calculate_pod_remote_storage(self):
         driver = RSDPodDriver()
         logical_drives = {
