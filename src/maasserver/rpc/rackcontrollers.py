@@ -20,6 +20,7 @@ from maasserver import (
 )
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
+    Domain,
     Node,
     NodeGroupToRackController,
     RackController,
@@ -92,10 +93,18 @@ def register(
     if interfaces is None:
         interfaces = {}
 
+    # If hostname is actually a FQDN, split the domain off and
+    # create it as non-authoritative domain if it does not exist already.
+    domain = Domain.objects.get_default_domain()
+    if hostname.find('.') > 0:
+        hostname, domainname = hostname.split('.', 1)
+        (domain, _) = Domain.objects.get_or_create(
+            name=domainname, defaults={'authoritative': False})
+
     this_region = RegionController.objects.get_running_controller()
     node = find(system_id, hostname, interfaces)
     if node is None:
-        node = RackController.objects.create(hostname=hostname)
+        node = RackController.objects.create(hostname=hostname, domain=domain)
         maaslog.info(
             "New rack controller '%s' was created by region '%s' upon "
             "first connection.",

@@ -751,7 +751,7 @@ class ClusterClient(Cluster):
 
         # Gather the interface definition and hostname.
         interfaces = get_all_interfaces_definition()
-        hostname = gethostname().split('.')[0]
+        hostname = gethostname()
 
         def cb_register(data):
             self.localIdent = data["system_id"]

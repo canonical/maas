@@ -323,6 +323,49 @@ class TestRegisterRackController(MAASServerTestCase):
             url=urlparse('http://localhost/MAAS/'), is_loopback=True)
         self.assertEqual('', rack_registered.url)
 
+    def test_creates_rackcontroller_domain(self):
+        # Create a domain if a newly registered rackcontroller uses a FQDN
+        # as the hostname, but the domain does not already existing in MAAS,
+        hostname = "newcontroller.example.com"
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        url = 'http://%s/MAAS' % factory.make_name('host')
+        rack_registered = register(
+            "rack-id-foo", interfaces=interfaces, url=urlparse(url),
+            is_loopback=False, hostname=hostname)
+        self.assertEqual("newcontroller", rack_registered.hostname)
+        self.assertEqual("example.com", rack_registered.domain.name)
+        self.assertFalse(rack_registered.domain.authoritative)
+
+    def test_reuses_rackcontroller_domain(self):
+        # If a domain name already exists for a FQDN hostname, it is
+        # not modified.
+        factory.make_Domain("example.com", authoritative=True)
+        hostname = "newcontroller.example.com"
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        url = 'http://%s/MAAS' % factory.make_name('host')
+        rack_registered = register(
+            "rack-id-foo", interfaces=interfaces, url=urlparse(url),
+            is_loopback=False, hostname=hostname)
+        self.assertEqual("newcontroller", rack_registered.hostname)
+        self.assertEqual("example.com", rack_registered.domain.name)
+        self.assertTrue(rack_registered.domain.authoritative)
+
 
 class TestUpdateForeignDHCP(MAASServerTestCase):
 

@@ -1438,7 +1438,9 @@ class TestClusterClient(MAASTestCase):
     @inlineCallbacks
     def test_registerRackWithRegion_end_to_end(self):
         maas_url = factory.make_simple_http_url()
-        hostname = platform.node().split('.')[0]
+        hostname = "rackcontrol.example.com"
+        self.patch_autospec(clusterservice, 'gethostname').return_value = (
+            hostname)
         interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture(
             maas_url=maas_url))
