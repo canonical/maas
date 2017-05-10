@@ -290,7 +290,12 @@ def import_images(sources):
         # download_all_boot_resources() later.
         sources = write_all_keyrings(keyrings_path, sources)
 
-        image_descriptions = download_all_image_descriptions(sources)
+        # The region produces a SimpleStream which is similar, but not
+        # identical to the actual SimpleStream. These differences cause
+        # validation to fail. So grab everything from the region and trust it
+        # did proper filtering before the rack.
+        image_descriptions = download_all_image_descriptions(
+            sources, validate_products=False)
         if image_descriptions.is_empty():
             update_iscsi_targets(os.path.join(storage, 'current'))
             msg = (
