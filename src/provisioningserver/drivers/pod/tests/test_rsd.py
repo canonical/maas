@@ -1424,7 +1424,7 @@ class TestRSDPodDriver(MAASTestCase):
         # Set the tags on the requested machine's block devices
         # and the iscsi_target.
         for idx in range(3):
-            request.block_devices[idx].tags = ['testing tags']
+            request.block_devices[idx].tags = ['testing tags %d' % idx]
             request.block_devices[idx].iscsi_target = "iqn.maas.io:test"
         node_data = SAMPLE_JSON_NODE
         discovered_machine = make_discovered_machine(block_devices=[])
@@ -1452,7 +1452,7 @@ class TestRSDPodDriver(MAASTestCase):
                     serial=Is(None),
                     size=Equals(85899345920.0),
                     block_size=Equals(512),
-                    tags=Equals(['testing tags', 'iscsi']),
+                    tags=Equals(['testing tags 2', 'iscsi']),
                     type=Equals(BlockDeviceType.ISCSI),
                     iscsi_target=Equals(
                         '10.1.0.100:6:3260:0:iqn.maas.io:test'),
@@ -1462,7 +1462,7 @@ class TestRSDPodDriver(MAASTestCase):
                     serial=Is(None),
                     size=Equals(85899345920.0),
                     block_size=Equals(512),
-                    tags=Equals(['testing tags', 'iscsi']),
+                    tags=Equals(['testing tags 1', 'iscsi']),
                     type=Equals(BlockDeviceType.ISCSI),
                     iscsi_target=Equals(
                         '10.1.0.100:6:3260:3:iqn.maas.io:test'),
@@ -1902,11 +1902,10 @@ class TestRSDPodDriver(MAASTestCase):
         }).encode('utf-8')
         mock_convert_request_to_json_payload.side_effect = [payload] * 4
         mock_redfish_request = self.patch(driver, 'redfish_request')
+        node_path = b"redfish/v1/Nodes/%s" % new_machine.power_parameters.get(
+            'node_id').encode('utf-8')
         response_headers = Headers({
-            b"location": [
-                join(url, b"redfish/v1/Nodes/%s" %
-                     new_machine.power_parameters.get(
-                         'node_id').encode('utf-8'))]})
+            b"location": [join(url, node_path)]})
         mock_redfish_request.side_effect = [
             PartialDownloadError(
                 code=HTTPStatus.CONFLICT,
@@ -1932,6 +1931,15 @@ class TestRSDPodDriver(MAASTestCase):
         self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(
             url, new_machine.power_parameters.get(
                 'node_id').encode('utf-8'), headers))
+        self.assertThat(
+            mock_scrape_logical_drives_and_targets, MockCallsMatch(
+                call(url, headers), call(url, headers)))
+        self.assertThat(
+            mock_scrape_remote_drives, MockCallsMatch(
+                call(url, headers), call(url, headers)))
+        self.assertThat(mock_get_pod_machine, MockCalledOnceWith(
+            node_path, url, headers, remote_drives,
+            logical_drives, targets, request))
         self.assertEquals(new_machine, discovered_machine)
         self.assertEquals(discovered_pod.hints, discovered_pod_hints)
 

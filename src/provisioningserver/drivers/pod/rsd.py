@@ -533,8 +533,8 @@ class RSDPodDriver(PodDriver):
             if initiator_iqn:
                 # Since InitiatorIQN is not an empty string we will not be
                 # including this storage into MAAS.
-                # Remove this remote drive, target, and associated logical
-                # drives associated with this target.
+                # Remove the remote drive, target, and logical drives
+                # associated with this target.
                 for lv, lv_data in logical_drives.items():
                     lv_targets = lv_data.get('Links', {}).get('Targets', [])
                     for lv_target in lv_targets:
@@ -579,12 +579,15 @@ class RSDPodDriver(PodDriver):
                 # Iterate over all the request's block devices to match on
                 # target name to retrieve the tags.
                 for block_device in request.block_devices:
-                    if block_device.iscsi_target == target_name:
-                        discovered_machine_block_device.tags = (
-                            block_device.tags)
-                        # Delete this from the request's block devices as it
-                        # is not longer needed.
-                        request.block_devices.remove(block_device)
+                    bd_iscsi_target = getattr(
+                        block_device, "iscsi_target", None)
+                    if bd_iscsi_target is not None:
+                        if block_device.iscsi_target == target_name:
+                            discovered_machine_block_device.tags = (
+                                block_device.tags)
+                            # Delete this from the request's block
+                            # devices as it is not longer needed.
+                            request.block_devices.remove(block_device)
 
             if 'iscsi' not in discovered_machine_block_device.tags:
                 discovered_machine_block_device.tags.append('iscsi')
@@ -1023,9 +1026,13 @@ class RSDPodDriver(PodDriver):
             yield self.set_pxe_boot(url, node_id.encode('utf-8'), headers)
 
             # Retrieve new node.
+            # First, re-scrape the total lvs, used lvs, and targets.
+            logical_drives, targets = (
+                yield self.scrape_logical_drives_and_targets(url, headers))
+            remote_drives = yield self.scrape_remote_drives(url, headers)
             discovered_machine = yield self.get_pod_machine(
-                node_path.encode('utf-8'), url,
-                headers, logical_drives, targets, request)
+                node_path.encode('utf-8'), url, headers,
+                remote_drives, logical_drives, targets, request)
 
             # Retrieve pod resources.
             discovered_pod = yield self.get_pod_resources(url, headers)
