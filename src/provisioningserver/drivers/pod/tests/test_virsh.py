@@ -529,6 +529,13 @@ class TestVirshSSH(MAASTestCase):
             factory.make_name('device'))
         self.assertEqual(21474836480, expected)
 
+    def test_get_machine_local_storage_handles_no_output(self):
+        conn = self.configure_virshssh('')
+        expected = conn.get_machine_local_storage(
+            factory.make_name('machine'),
+            factory.make_name('device'))
+        self.assertIsNone(expected)
+
     def test_get_pod_arch(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
         expected = conn.get_pod_arch()
@@ -681,6 +688,46 @@ class TestVirshSSH(MAASTestCase):
         self.assertTrue(discovered_machine.interfaces[0].boot)
         self.assertFalse(discovered_machine.interfaces[1].boot)
         self.assertFalse(discovered_machine.interfaces[2].boot)
+
+    def test__get_discovered_machine_handles_bad_storage_device(self):
+        conn = self.configure_virshssh('')
+        hostname = factory.make_name('hostname')
+        architecture = factory.make_name('arch')
+        cores = random.randint(1, 8)
+        memory = random.randint(4096, 8192)
+        devices = [
+            factory.make_name('device') for _ in range(3)
+        ]
+        local_storage = [
+            random.randint(4096, 8192) for _ in range(2)
+        ] + [None]  # Last storage device is bad.
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)
+        ]
+        mock_get_machine_arch = self.patch(
+            virsh.VirshSSH, 'get_machine_arch')
+        mock_get_machine_cpu_count = self.patch(
+            virsh.VirshSSH, 'get_machine_cpu_count')
+        mock_get_machine_memory = self.patch(
+            virsh.VirshSSH, 'get_machine_memory')
+        mock_get_machine_state = self.patch(
+            virsh.VirshSSH, 'get_machine_state')
+        mock_list_machine_block_devices = self.patch(
+            virsh.VirshSSH, 'list_machine_block_devices')
+        mock_get_machine_local_storage = self.patch(
+            virsh.VirshSSH, 'get_machine_local_storage')
+        mock_list_machine_mac_addresses = self.patch(
+            virsh.VirshSSH, 'list_machine_mac_addresses')
+        mock_get_machine_arch.return_value = architecture
+        mock_get_machine_cpu_count.return_value = cores
+        mock_get_machine_memory.return_value = memory
+        mock_get_machine_state.return_value = "shut off"
+        mock_list_machine_block_devices.return_value = devices
+        mock_get_machine_local_storage.side_effect = local_storage
+        mock_list_machine_mac_addresses.return_value = mac_addresses
+
+        discovered_machine = conn.get_discovered_machine(hostname)
+        self.assertIsNone(discovered_machine)
 
     def test_poweron(self):
         conn = self.configure_virshssh('')

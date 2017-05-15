@@ -402,7 +402,10 @@ class VirshSSH(pexpect.spawn):
             maaslog.error(
                 "Failed to get available pod local storage")
             return None
-        return int(self.get_key_value(output, "Capacity"))
+        try:
+            return int(self.get_key_value(output, "Capacity"))
+        except TypeError:
+            return None
 
     def get_pod_arch(self):
         """Gets architecture of the pod."""
@@ -487,10 +490,20 @@ class VirshSSH(pexpect.spawn):
             tags = []
             if request is not None:
                 tags = request.block_devices[idx].tags
+            size = self.get_machine_local_storage(machine, device)
+            if size is None:
+                # Bug lp:1690144 - When a domain has a block device where its
+                # storage path is no longer available. The domain cannot be
+                # started when the storage path is missing, so we don't add it
+                # to MAAS.
+                maaslog.error(
+                    "Unable to discover machine '%s' in virsh pod: storage "
+                    "device '%s' is missing its storage backing." % (
+                        machine, device))
+                return None
             block_devices.append(
                 DiscoveredMachineBlockDevice(
-                    model=None, serial=None,
-                    size=self.get_machine_local_storage(machine, device),
+                    model=None, serial=None, size=size,
                     id_path="/dev/%s" % device, tags=tags))
         discovered_machine.block_devices = block_devices
 
@@ -863,8 +876,9 @@ class VirshPodDriver(PodDriver):
         for vm in virtual_machines:
             discovered_machine = yield deferToThread(
                 conn.get_discovered_machine, vm)
-            discovered_machine.cpu_speed = discovered_pod.cpu_speed
-            machines.append(discovered_machine)
+            if discovered_machine is not None:
+                discovered_machine.cpu_speed = discovered_pod.cpu_speed
+                machines.append(discovered_machine)
         discovered_pod.machines = machines
 
         # Return the DiscoveredPod
