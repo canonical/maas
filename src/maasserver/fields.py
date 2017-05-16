@@ -527,15 +527,14 @@ class LargeObjectField(IntegerField):
             % repr(value))
 
 
-def parse_cidr(value):
-    try:
-        return str(IPNetwork(value).cidr)
-    except AddrFormatError as e:
-        raise ValidationError(str(e)) from e
-
-
 class CIDRField(Field, metaclass=SubfieldBase):
     description = "PostgreSQL CIDR field"
+
+    def parse_cidr(self, value):
+        try:
+            return str(IPNetwork(value).cidr)
+        except AddrFormatError as e:
+            raise ValidationError({self.name: str(e)}) from e
 
     def db_type(self, connection):
         return 'cidr'
@@ -543,12 +542,12 @@ class CIDRField(Field, metaclass=SubfieldBase):
     def get_prep_value(self, value):
         if value is None or value == '':
             return None
-        return parse_cidr(value)
+        return self.parse_cidr(value)
 
     def from_db_value(self, value, expression, connection, context):
         if value is None:
             return value
-        return parse_cidr(value)
+        return self.parse_cidr(value)
 
     def to_python(self, value):
         if value is None or value == '':
@@ -557,7 +556,7 @@ class CIDRField(Field, metaclass=SubfieldBase):
             return str(value)
         if not value:
             return value
-        return parse_cidr(value)
+        return self.parse_cidr(value)
 
     def formfield(self, **kwargs):
         defaults = {
@@ -577,10 +576,11 @@ class IPv4CIDRField(CIDRField):
             try:
                 cidr = IPNetwork(value)
             except AddrFormatError:
-                raise ValidationError("Invalid network: %s" % value)
+                raise ValidationError(
+                    {self.name: "Invalid network: %s" % value})
             if cidr.cidr.version != 4:
                 raise ValidationError(
-                    "%s: Only IPv4 networks supported." % value)
+                    {self.name: "%s: Only IPv4 networks supported." % value})
         return str(cidr.cidr)
 
 
