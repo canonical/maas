@@ -893,7 +893,7 @@
                                                       <fieldset class="form__fieldset six-col last-col" data-ng-if="!isLimitedEditingAllowed(interface)">
                                                           <maas-obj-field type="options" key="fabric" label="Fabric" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"
-                                                              data-ng-if="!isDevice && interface.type !== 'vlan'"
+                                                              data-ng-if="!isDevice"
                                                               placeholder="Disconnected" placeholder-enabled="true"
                                                               on-change="fabricChangedForm"
                                                               options="fabric as fabric.name for fabric in fabrics"></maas-obj-field>
@@ -934,7 +934,8 @@
                                                               data-ng-if="isDevice && editInterface.$maasForm.getValue('ip_assignment') === 'static'" label-width="two" input-width="three"
                                                               disable-label="false" input-class="table__input u-margin--none"></maas-obj-field>
                                                       </fieldset>
-                                                    <div class="table__row is-active">
+                                                  </div>
+                                                  <div class="table__row is-active">
                                                       <div class="table__data u-float--left">
                                                           <maas-obj-errors></maas-obj-errors>
                                                       </div>
@@ -945,7 +946,6 @@
                                                            data-ng-disabled="(!isDevice && isInterfaceNameInvalid(editInterface)) || isIPAddressInvalid(editInterface) || isMACAddressInvalid(editInterface.mac_address, true)"
                                                            maas-obj-save>Save</button>
                                                       </div>
-                                                    </div>
                                                   </div>
                                               </maas-obj-form>
                                           </div>
