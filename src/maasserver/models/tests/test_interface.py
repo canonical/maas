@@ -2469,6 +2469,17 @@ class TestClaimAutoIPs(MAASServerTestCase):
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
         self.assertEquals(IPAddress(exclude) + 1, IPAddress(auto_ip.ip))
 
+    def test__excludes_default_gateway(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(
+            vlan=interface.vlan, cidr='10.0.0.0/24', gateway_ip='10.0.0.1')
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        interface.claim_auto_ips()
+        auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertEquals(IPAddress('10.0.0.1') + 1, IPAddress(auto_ip.ip))
+
     def test__can_acquire_multiple_address_from_the_same_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)

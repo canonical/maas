@@ -166,7 +166,7 @@ class StaticIPAddressManager(Manager):
             dynamic_range_low, dynamic_range_high,
             alloc_type=IPADDRESS_TYPE.AUTO, user=None,
             requested_address=None, hostname=None, subnet=None,
-            exclude_addresses=[], in_use_ipset=set()):
+            exclude_addresses=None, in_use_ipset=None):
         """Return a new StaticIPAddress.
 
         :param network: The network the address should be allocated in.
@@ -194,6 +194,12 @@ class StaticIPAddressManager(Manager):
         Note that this method has been designed to work even when the database
         is running with READ COMMITTED isolation. Try to keep it that way.
         """
+        # Set multable default parameters.
+        if exclude_addresses is None:
+            exclude_addresses = set()
+        if in_use_ipset is None:
+            in_use_ipset = set()
+
         # This check for `alloc_type` is important for later on. We rely on
         # detecting IntegrityError as a sign than an IP address is already
         # taken, and so we must first eliminate all other possible causes.

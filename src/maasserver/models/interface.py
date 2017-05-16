@@ -1116,7 +1116,7 @@ class Interface(CleanSave, TimestampedModel):
                 alloc_type=IPADDRESS_TYPE.DISCOVERED):
             self.unlink_ip_address(ip_address, clearing_config=clearing_config)
 
-    def claim_auto_ips(self, exclude_addresses=[]):
+    def claim_auto_ips(self, exclude_addresses=None):
         """Claim IP addresses for this interfaces AUTO IP addresses.
 
         :param exclude_addresses: Exclude the following IP addresses in the
@@ -1124,6 +1124,8 @@ class Interface(CleanSave, TimestampedModel):
             runs to identify available IP address does not include the already
             allocated IP addresses.
         """
+        if exclude_addresses is None:
+            exclude_addresses = set()
         exclude_addresses = set(exclude_addresses)
         affected_nodegroups = set()
         assigned_addresses = []
@@ -1140,11 +1142,16 @@ class Interface(CleanSave, TimestampedModel):
         self._update_dns_zones(affected_nodegroups)
         return assigned_addresses
 
-    def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
+    def _claim_auto_ip(self, auto_ip, exclude_addresses=None):
         """Claim an IP address for the `auto_ip`.
 
         :returns:NodeGroupInterface, new_ip_address
         """
+        if exclude_addresses is None:
+            exclude_addresses = set()
+        else:
+            exclude_addresses = set(exclude_addresses)
+
         # Check if already has a hostmap allocated for this MAC address.
         subnet = auto_ip.subnet
         if subnet is None:
@@ -1203,6 +1210,11 @@ class Interface(CleanSave, TimestampedModel):
             static_ip_range_low, static_ip_range_high = (
                 get_first_and_last_usable_host_in_network(network))
         in_use_ipset = subnet.get_ipranges_in_use()
+
+        # Make sure we don't step on the gateway IP on the subnet.
+        if subnet is not None and subnet.gateway_ip is not None:
+            exclude_addresses.add(unicode(subnet.gateway_ip))
+
         new_ip = StaticIPAddress.objects.allocate_new(
             network, static_ip_range_low, static_ip_range_high,
             None, None, alloc_type=IPADDRESS_TYPE.AUTO,
