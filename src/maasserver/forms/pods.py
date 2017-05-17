@@ -203,7 +203,7 @@ class PodForm(MAASModelForm):
             discovered_pod, discovered = result
 
             # When called with an instance that has no name, be sure to set
-            # it before going any furture. If this is a new instance this will
+            # it before going any further. If this is a new instance this will
             # also create it in the database.
             if not self.instance.name:
                 self.instance.set_random_name()

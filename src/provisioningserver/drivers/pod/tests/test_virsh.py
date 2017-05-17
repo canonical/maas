@@ -877,7 +877,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual({
             'type': 'kvm',
             'emulator': '/usr/bin/qemu-system-x86_64',
-        }, conn.get_domain_capabilites())
+        }, conn.get_domain_capabilities())
 
     def test_get_domain_capabilities_for_qemu(self):
         conn = self.configure_virshssh('')
@@ -888,7 +888,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual({
             'type': 'qemu',
             'emulator': '/usr/bin/qemu-system-x86_64',
-        }, conn.get_domain_capabilites())
+        }, conn.get_domain_capabilities())
 
     def test_cleanup_disks_deletes_all(self):
         conn = self.configure_virshssh('')
@@ -965,7 +965,7 @@ class TestVirshSSH(MAASTestCase):
         disk_info = (factory.make_name('pool'), factory.make_name('vol'))
         self.patch(
             virsh.VirshSSH, "create_local_volume").return_value = disk_info
-        self.patch(virsh.VirshSSH, "get_domain_capabilites").return_value = {
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = {
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
@@ -1367,7 +1367,7 @@ class TestVirshPodDriver(MAASTestCase):
                 power_address, power_id)
 
     @inlineCallbacks
-    def test_discover_erros_on_failed_login(self):
+    def test_discover_errors_on_failed_login(self):
         driver = VirshPodDriver()
         system_id = factory.make_name('system_id')
         context = {

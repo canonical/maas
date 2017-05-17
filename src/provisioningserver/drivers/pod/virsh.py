@@ -359,7 +359,7 @@ class VirshSSH(pexpect.spawn):
         return int(KiB / 1024)
 
     def get_pod_pool_size_map(self, key):
-        """Return the mapping for a size calulation based on key."""
+        """Return the mapping for a size calculation based on key."""
         pools = {}
         for pool in self.list_pools():
             output = self.run(['pool-info', pool]).strip()
@@ -632,7 +632,7 @@ class VirshSSH(pexpect.spawn):
             'attach-interface', domain, 'network', network,
             '--model', 'virtio', '--config'])
 
-    def get_domain_capabilites(self):
+    def get_domain_capabilities(self):
         """Return the domain capabilities.
 
         Determines the type and emulator of the domain to use.
@@ -708,7 +708,7 @@ class VirshSSH(pexpect.spawn):
                     created_disks.append(disk_info)
 
         # Construct the domain XML.
-        domain_params = self.get_domain_capabilites()
+        domain_params = self.get_domain_capabilities()
         domain_params['name'] = request.hostname
         domain_params['uuid'] = str(uuid.uuid4())
         domain_params['arch'] = ARCH_FIX_REVERSE[request.architecture]
@@ -860,7 +860,7 @@ class VirshPodDriver(PodDriver):
     def discover(self, system_id, context):
         """Discover all resources.
 
-        Rertuns a defer to a DiscoveredPod object.
+        Returns a defer to a DiscoveredPod object.
         """
         conn = yield self.get_virsh_connection(context)
 
