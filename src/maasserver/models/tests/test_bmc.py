@@ -17,6 +17,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_CREATION_TYPE,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.exceptions import PodProblem
@@ -985,6 +986,20 @@ class TestPod(MAASServerTestCase):
         pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
         self.assertThat(machine.bmc.id, Equals(pod.id))
+
+    def test_sync_keeps_rack_controller_pod_nodes(self):
+        pod = factory.make_Pod()
+        controller = factory.make_RackController(interface=True)
+        discovered_interface = self.make_discovered_interface(
+            mac_address=controller.interface_set.first().mac_address)
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface])
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine])
+        pod.sync(discovered_pod, factory.make_User())
+        controller = reload_object(controller)
+        self.assertThat(
+            controller.node_type, Equals(NODE_TYPE.RACK_CONTROLLER))
 
     def test_sync_updates_machine_properties_for_dynamic(self):
         pod = factory.make_Pod()

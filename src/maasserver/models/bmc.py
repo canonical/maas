@@ -813,7 +813,7 @@ class Pod(BMC):
             for interface in machine.interfaces
         ]
         existing_machines = list(
-            Machine.objects.filter(
+            Node.objects.filter(
                 interface__mac_address__in=all_macs)
             .prefetch_related("interface_set")
             .prefetch_related('blockdevice_set__physicalblockdevice')
@@ -821,7 +821,7 @@ class Pod(BMC):
             .distinct())
         machines = {
             machine.id: machine
-            for machine in Machine.objects.filter(bmc__id=self.id)
+            for machine in Node.objects.filter(bmc__id=self.id)
         }
         mac_machine_map = {
             interface.mac_address: machine
