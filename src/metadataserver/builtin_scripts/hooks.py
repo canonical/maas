@@ -5,6 +5,7 @@
 
 __all__ = [
     'NODE_INFO_SCRIPTS',
+    'update_node_network_information',
     ]
 
 import fnmatch
@@ -16,11 +17,15 @@ import re
 from lxml import etree
 from maasserver.models import Fabric
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.interface import PhysicalInterface
+from maasserver.models.interface import (
+    Interface,
+    PhysicalInterface,
+)
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from provisioningserver.refresh.node_info_scripts import (
+    IPADDR_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
@@ -154,7 +159,7 @@ def update_node_network_information(node, output, exit_status):
                     interface.vlan = None
                     interface.save(update_fields=['vlan', 'updated'])
 
-    for iface in PhysicalInterface.objects.filter(node=node):
+    for iface in Interface.objects.filter(node=node):
         if iface not in current_interfaces:
             iface.delete()
 
@@ -647,7 +652,7 @@ NODE_INFO_SCRIPTS['00-maas-01-cpuinfo']['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS['00-maas-02-virtuality']['hook'] = set_virtual_tag
 NODE_INFO_SCRIPTS['00-maas-07-block-devices']['hook'] = (
     update_node_physical_block_devices)
-NODE_INFO_SCRIPTS['99-maas-03-network-interfaces']['hook'] = (
+NODE_INFO_SCRIPTS[IPADDR_OUTPUT_NAME]['hook'] = (
     update_node_network_information)
 NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov']['hook'] = (
     update_node_network_interface_tags)

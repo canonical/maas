@@ -4,6 +4,7 @@
 """Builtin node info scripts."""
 
 __all__ = [
+    'IPADDR_OUTPUT_NAME',
     'NODE_INFO_SCRIPTS',
     'LIST_MODALIASES_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
@@ -22,6 +23,9 @@ LSHW_OUTPUT_NAME = '00-maas-01-lshw'
 
 # Name of the file where the node info scripts store LLDP output.
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp'
+
+# Name of the file where the node info scripts store ip addr output.
+IPADDR_OUTPUT_NAME = '99-maas-03-network-interfaces'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -642,7 +646,7 @@ NODE_INFO_SCRIPTS = OrderedDict([
         'timeout': timedelta(minutes=3),
         'run_on_controller': False,
     }),
-    ('99-maas-03-network-interfaces', {
+    (IPADDR_OUTPUT_NAME, {
         'content': IPADDR_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'timeout': timedelta(seconds=10),

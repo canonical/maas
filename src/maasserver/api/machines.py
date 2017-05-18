@@ -730,6 +730,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             raise NodeStateViolation(
                 "Machine must be in a ready state to restore networking "
                 "configuration")
+        machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
         return reload_object(machine)
 
@@ -765,6 +766,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
                 "Machine must be in a ready state to restore default "
                 "networking and storage configuration.")
         machine.set_default_storage_layout()
+        machine.restore_network_interfaces()
         machine.set_initial_networking_configuration()
         return reload_object(machine)
 

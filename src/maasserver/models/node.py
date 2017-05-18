@@ -176,6 +176,7 @@ from provisioningserver.refresh import (
     get_sys_info,
     refresh,
 )
+from provisioningserver.refresh.node_info_scripts import IPADDR_OUTPUT_NAME
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DisableAndShutoffRackd,
@@ -3097,6 +3098,16 @@ class Node(CleanSave, TimestampedModel):
         for interface in interfaces:
             interface.clear_all_links(clearing_config=True)
 
+    def restore_network_interfaces(self):
+        """Restore the network interface to their commissioned state."""
+        # Local import to avoid circular import problems.
+        from metadataserver.builtin_scripts.hooks import (
+            update_node_network_information)
+        script = self.current_commissioning_script_set.find_script_result(
+            script_name=IPADDR_OUTPUT_NAME)
+        update_node_network_information(
+            self, script.output, script.exit_status)
+
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.
 
@@ -3119,6 +3130,9 @@ class Node(CleanSave, TimestampedModel):
             self.status not in [NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED], \
             'Node cannot be in a deploying state when configuring network'
 
+        # Clear the configuration, so that we can call this method
+        # multiple times.
+        self._clear_networking_configuration()
         # Set AUTO mode on the boot interface.
         auto_set = False
         discovered_addresses = boot_interface.ip_addresses.filter(

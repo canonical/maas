@@ -1087,7 +1087,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # ... and ensure that the interface was deleted.
         self.assertItemsEqual([], Interface.objects.filter(id=interface_id))
 
-    def test__does_not_delete_virtual_interfaces_with_shared_mac(self):
+    def test__deletes_virtual_interfaces_with_shared_mac(self):
         # Note: since this VLANInterface will be linked to the default VLAN
         # ("vid 0", which is actually invalid) the VLANInterface will
         # automatically get the name "vlan0".
@@ -1101,7 +1101,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         eth1 = factory.make_Interface(
             name="eth1", mac_address=ETH1_MAC, node=node)
 
-        vlanif = factory.make_Interface(
+        factory.make_Interface(
             INTERFACE_TYPE.VLAN, mac_address=ETH0_MAC, parents=[eth0],
             node=node)
         factory.make_Interface(
@@ -1110,8 +1110,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
         node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(
-            node_interfaces, {vlanif.name: ETH0_MAC, BOND_NAME: ETH1_MAC})
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
 
     def test__interface_names_changed(self):
         # Note: the MACs here are swapped compared to their expected values.
@@ -1182,26 +1181,22 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Make sure the interface that no longer exists has been removed.
         self.assertIsNone(reload_object(eth3))
 
-    def test__does_not_delete_virtual_interfaces_with_unique_mac(self):
+    def test__deletes_virtual_interfaces_with_unique_mac(self):
         ETH0_MAC = self.EXPECTED_INTERFACES['eth0'].get_raw()
         ETH1_MAC = self.EXPECTED_INTERFACES['eth1'].get_raw()
         BOND_MAC = '00:00:00:00:01:02'
         node = factory.make_Node()
         eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
         eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
-        vlan = factory.make_Interface(
+        factory.make_Interface(
             INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
-        bond = factory.make_Interface(
+        factory.make_Interface(
             INTERFACE_TYPE.BOND, mac_address=BOND_MAC, node=node,
             parents=[eth1])
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
-        # Freshen the other objects, since they may have changed names.
-        vlan = reload_object(vlan)
-        bond = reload_object(bond)
         node_interfaces = Interface.objects.filter(node=node)
-        self.assert_expected_interfaces_and_macs_exist(
-            node_interfaces, {vlan.name: ETH0_MAC, bond.name: BOND_MAC})
+        self.assert_expected_interfaces_and_macs_exist(node_interfaces)
 
     def test__deletes_virtual_interfaces_linked_to_removed_macs(self):
         VLAN_MAC = '00:00:00:00:01:01'

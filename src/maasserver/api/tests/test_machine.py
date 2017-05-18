@@ -2128,6 +2128,8 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
     def test_restore_networking_configuration(self):
         self.become_admin()
         machine = factory.make_Machine(status=NODE_STATUS.READY)
+        mock_restore_network_interfaces = self.patch(
+            node_module.Machine, 'restore_network_interfaces')
         mock_set_initial_networking_config = self.patch(
             node_module.Machine, 'set_initial_networking_configuration')
         response = self.client.post(
@@ -2137,6 +2139,7 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
         self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+        self.assertThat(mock_restore_network_interfaces, MockCalledOnce())
 
     def test_restore_networking_configuration_requires_admin(self):
         machine = factory.make_Machine()
@@ -2212,6 +2215,8 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
         machine = factory.make_Machine(status=NODE_STATUS.READY)
         mock_set_default_storage_layout = self.patch(
             node_module.Machine, 'set_default_storage_layout')
+        mock_restore_network_interfaces = self.patch(
+            node_module.Machine, 'restore_network_interfaces')
         mock_set_initial_networking_config = self.patch(
             node_module.Machine, 'set_initial_networking_configuration')
         response = self.client.post(
@@ -2221,6 +2226,7 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
         self.assertThat(mock_set_default_storage_layout, MockCalledOnce())
+        self.assertThat(mock_restore_network_interfaces, MockCalledOnce())
         self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
 
     def test_restore_default_configuration_requires_admin(self):

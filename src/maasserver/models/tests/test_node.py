@@ -8,6 +8,7 @@ __all__ = []
 import base64
 from datetime import datetime
 import email
+import os
 import random
 import re
 from unittest.mock import (
@@ -153,6 +154,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_TYPE,
@@ -176,7 +178,10 @@ from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.refresh.node_info_scripts import (
+    IPADDR_OUTPUT_NAME,
+    NODE_INFO_SCRIPTS,
+)
 from provisioningserver.rpc.cluster import (
     AddChassis,
     DecomposeMachine,
@@ -5184,6 +5189,73 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             for call in mock_ensure_link_up.call_args_list
         )
         self.assertItemsEqual(enabled_interfaces, observed_interfaces)
+
+    def test_set_initial_networking_configuration_no_multiple_auto_ips(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        boot_interface = node.get_boot_interface()
+        subnet = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).first().subnet
+        boot_interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
+        node.set_initial_networking_configuration()
+        boot_interface = reload_object(boot_interface)
+        auto_ips = boot_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertEqual(1, auto_ips.count())
+
+    def test_restore_commisioned_network_interfaces(self):
+        node = factory.make_Node()
+        IP_ADDR_OUTPUT_FILE = os.path.join(
+            os.path.dirname(test_hooks.__file__), 'ip_addr_results_xenial.txt')
+        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
+            IP_ADDR_OUTPUT_XENIAL = fd.read()
+        script = factory.make_Script(
+            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[script.name]))
+        node.current_commissioning_script_set = commissioning_script_set
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set, script=script, exit_status=0,
+            output=IP_ADDR_OUTPUT_XENIAL)
+
+        # restore_network_interfaces() will set up the network intefaces
+        # specified in ip_addr_results_xenial.txt.
+        node.restore_network_interfaces()
+        self.assertEqual(
+            ["ens10", "ens11", "ens12", "ens3"],
+            sorted(interface.name for interface in node.interface_set.all()))
+
+    def test_restore_network_interfaces_extra(self):
+        node = factory.make_Node()
+        IP_ADDR_OUTPUT_FILE = os.path.join(
+            os.path.dirname(test_hooks.__file__), 'ip_addr_results_xenial.txt')
+        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
+            IP_ADDR_OUTPUT_XENIAL = fd.read()
+        script = factory.make_Script(
+            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING)
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[script.name]))
+        node.current_commissioning_script_set = commissioning_script_set
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set, script=script, exit_status=0,
+            output=IP_ADDR_OUTPUT_XENIAL)
+        node.restore_network_interfaces()
+
+        # If extra interfaces are added, they will be removed when
+        # calling restore_network_interfaces().
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node,
+            parents=node.interface_set.all()[:2])
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node,
+            parents=[node.interface_set.all()[3]])
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        node.restore_network_interfaces()
+        self.assertEqual(
+            ["ens10", "ens11", "ens12", "ens3"],
+            sorted(interface.name for interface in node.interface_set.all()))
 
 
 class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
