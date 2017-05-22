@@ -4,9 +4,12 @@
 
 set -e
 
-# Copy the needed files from share.
+# Copy the bind config from /etc.
 mkdir -p $SNAP_DATA/bind/
-cp -f $SNAP/usr/share/maas/bind/* $SNAP_DATA/bind/
+cp -f $SNAP/etc/bind/* $SNAP_DATA/bind/
+
+# Overwrite named.conf from the one shipped with the snap.
+cp -f $SNAP/usr/share/maas/bind/named.conf $SNAP_DATA/bind/
 
 # Ensure the cache directory exists.
 mkdir -p $SNAP_DATA/bind/cache
@@ -15,4 +18,4 @@ mkdir -p $SNAP_DATA/bind/cache
 MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" $SNAP/bin/maas-region set_up_dns
 
 # Run named.
-exec $SNAP/sbin/named -c "$SNAP_DATA/bind/named.conf" -g
+exec $SNAP/usr/sbin/named -c "$SNAP_DATA/bind/named.conf" -g

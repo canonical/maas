@@ -52,6 +52,8 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/named.log
 [program:proxy]
 process_name=proxy
 command=%(ENV_SNAP)s/bin/run-squid
+user=nobody
+group=nogroup
 autostart=false
 stopasgroup=true
 killasgroup=true

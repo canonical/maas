@@ -39,11 +39,12 @@ maximum_object_size 1024 MB
 maximum_object_size_in_memory 100 MB
 {{if running_in_snap}}
 pid_filename {{snap_data_path}}/proxy/squid.pid
-mime_table {{snap_path}}/etc/mime.conf
-unlinkd_program {{snap_path}}/libexec/unlinkd
-logfile_daemon {{snap_path}}/libexec/log_file_daemon
-icon_directory {{snap_path}}/share/icons
-error_directory {{snap_path}}/share/errors/en-uk
+mime_table {{snap_path}}/usr/share/squid/mime.conf
+pinger_program {{snap_path}}/usr/lib/squid/pinger
+unlinkd_program {{snap_path}}/usr/lib/squid/unlinkd
+logfile_daemon {{snap_path}}/usr/lib/squid/log_file_daemon
+icon_directory {{snap_path}}/usr/share/squid/icons
+error_directory {{snap_path}}/usr/share/squid-langpack/en
 coredump_dir {{snap_common_path}}/proxy/spool
 cache_dir aufs {{snap_common_path}}/proxy/cache 40000 16 256
 cache_access_log {{snap_common_path}}/log/proxy/access.log

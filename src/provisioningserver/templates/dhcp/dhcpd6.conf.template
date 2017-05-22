@@ -30,12 +30,7 @@ shared-network {{shared_network["name"]}} {
            {{if 'bootloader' in dhcp_subnet and dhcp_subnet['bootloader']}}
            {{dhcp_subnet['bootloader']}}
            {{endif}}
-           {{# Snap uses a newer version of DHCP that doesn't allow true. }}
-           {{if running_in_snap}}
-           ignore-client-uids;
-           {{else}}
            ignore-client-uids true;
-           {{endif}}
            {{if dhcp_subnet.get('dns_servers')}}
            option dhcp6.name-servers {{dhcp_subnet['dns_servers'] | commalist}};
            {{endif}}

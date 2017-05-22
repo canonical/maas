@@ -58,12 +58,7 @@ failover peer "{{failover_peer["name"]}}" {
 shared-network {{shared_network["name"]}} {
     {{for dhcp_subnet in shared_network["subnets"]}}
     subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
-           {{# Snap uses a newer version of DHCP that doesn't allow true. }}
-           {{if running_in_snap}}
-           ignore-client-uids;
-           {{else}}
            ignore-client-uids true;
-           {{endif}}
            {{if dhcp_subnet.get('next_server')}}
            next-server {{dhcp_subnet['next_server']}};
            {{endif}}

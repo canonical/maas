@@ -30,4 +30,4 @@ fi
 $SNAP/usr/sbin/maas-dhcp-helper clean $LEASES_FILE
 
 # Run dhcpd6.
-exec $SNAP/sbin/dhcpd -f -6 -pf $DHCP_DIR/dhcpd6.pid -cf $DHCP_CONFIG -lf $LEASES_FILE $INTERFACES
+exec $SNAP/usr/sbin/dhcpd -f -6 -pf $DHCP_DIR/dhcpd6.pid -cf $DHCP_CONFIG -lf $LEASES_FILE $INTERFACES

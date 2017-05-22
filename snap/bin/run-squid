@@ -4,14 +4,6 @@
 
 set -e
 
-# Create the required directories.
-mkdir -p $SNAP_COMMON/log/proxy
-chown -R nobody:root $SNAP_COMMON/log/proxy
-mkdir -p $SNAP_COMMON/proxy/cache
-chown -R nobody:root $SNAP_COMMON/proxy/cache
-mkdir -p $SNAP_COMMON/proxy/spool
-chown -R nobody:root $SNAP_COMMON/proxy/spool
-
 # Do not proceed unless maas-proxy.conf exists.
 if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
     echo "Cannot start squid as $SNAP_DATA/proxy/maas-proxy.conf does not exist."
@@ -20,12 +12,12 @@ fi
 
 # Ensure that the cache is initialized.
 if [ ! -d "$SNAP_COMMON/proxy/cache/00" ]; then
-    $SNAP/sbin/squid -z -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
+    $SNAP/usr/sbin/squid -z -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
 fi
 
 # Start squid, force kill it when the script is terminated. Squid sometimes
 # (most of the time) just does not want to die.
 trap 'kill -9 $PID; wait $PID' TERM INT
-$SNAP/sbin/squid -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
+$SNAP/usr/sbin/squid -N -d 5 -f "$SNAP_DATA/proxy/maas-proxy.conf" &
 PID=$!
 wait $PID

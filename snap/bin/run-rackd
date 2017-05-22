@@ -35,4 +35,4 @@ export LANG="C.UTF-8"
 export PERL5LIB="$SNAP/usr/lib/x86_64-linux-gnu/perl/5.22:$SNAP/usr/share/perl/5.22:$SNAP/usr/share/perl5"
 
 # Run the rackd.
-exec $SNAP/bin/twistd --nodaemon --pidfile= maas-rackd
+exec $SNAP/bin/twistd --logger=provisioningserver.logger.EventLogger --nodaemon --pidfile= maas-rackd

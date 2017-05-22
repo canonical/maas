@@ -15,44 +15,44 @@ apps:
     command: bin/maas
 
 parts:
+  distro-info:
+    plugin: nil
+    stage-packages:
+      - python3-distro-info
+    organize:
+      usr/lib/python3/dist-packages/distro_info.py: lib/python3.5/site-packages/distro_info.py
+    stage:
+      - lib/python3.5/site-packages/distro_info.py
+      - usr/share/distro-info/debian.csv
+      - usr/share/distro-info/ubuntu.csv
   packages:
     plugin: nil
-    filesets:
-      keep:
-        - bin/archdetect
-        - bin/ip
-        - etc/iproute2/*
-        - etc/ssh/*
-        - etc/ssl/*
-        - usr/*
-        - var/*
-      remove:
-        - -lib/systemd
-        - -usr/include
-        - -usr/share/apport
-        - -usr/share/doc
-        - -usr/share/man
-        - -usr/share/upstart
     stage-packages:
       - archdetect-deb
       - avahi-utils
-      - lshw
-      - openssh-client
+      - bind9
+      - gpgv
       - iproute2
+      - isc-dhcp-client
+      - isc-dhcp-server
       - libconfig-general-perl
       - libjs-angularjs
       - libjs-jquery
       - libjs-yui3-full
       - libjs-yui3-min
-      - gpgv
+      - lshw
+      - ntp
+      - openssh-client
+      - postgresql
+      - squid
       - tcpdump
+      - tgt
       - ubuntu-cloudimage-keyring
-    stage:
-      - $keep
-      - $remove
-    prime:
-      - $keep
-      - $remove
+    install: |
+      ln -s ../usr/lib/postgresql/9.5/bin/initdb $SNAPCRAFT_PART_INSTALL/bin/initdb
+      ln -s ../usr/lib/postgresql/9.5/bin/pg_ctl $SNAPCRAFT_PART_INSTALL/bin/pg_ctl
+      ln -s ../usr/lib/postgresql/9.5/bin/postgres $SNAPCRAFT_PART_INSTALL/bin/postgres
+      ln -s ../usr/lib/postgresql/9.5/bin/psql $SNAPCRAFT_PART_INSTALL/bin/psql
   power-drivers:
     plugin: nil
     stage-packages:
@@ -71,113 +71,6 @@ parts:
       - $remove
     prime:
       - $remove
-  tgtd:
-    plugin: make
-    source: https://github.com/fujita/tgt/archive/v1.0.68.tar.gz
-    build: |
-      make programs
-      make conf
-      make scripts
-    install: |
-      make install-programs DESTDIR=$SNAPCRAFT_PART_INSTALL
-      make install-conf DESTDIR=$SNAPCRAFT_PART_INSTALL
-      make install-scripts DESTDIR=$SNAPCRAFT_PART_INSTALL
-    filesets:
-      keep:
-        - usr/sbin/*
-      remove:
-        - -usr/share
-    stage:
-      - $keep
-      - $remove
-    prime:
-      - $keep
-      - $remove
-  bind:
-    plugin: autotools
-    source: https://ftp.isc.org/isc/bind9/9.11.0/bind-9.11.0.tar.gz
-    filesets:
-      remove:
-        - -include
-        - -share
-    stage:
-      - $remove
-    prime:
-      - $remove
-  dhcpd:
-    plugin: autotools
-    disable-parallel: true
-    source: https://ftp.isc.org/isc/dhcp/4.1-ESV-R14/dhcp-4.1-ESV-R14.tar.gz
-    filesets:
-      remove:
-        - -include
-        - -share
-    stage:
-      - $remove
-    prime:
-      - $remove
-  squid:
-    plugin: autotools
-    source: http://www.squid-cache.org/Versions/v3/3.5/squid-3.5.24.tar.bz2
-    build-packages:
-      - build-essential
-    configflags:
-      - --disable-arch-native
-    filesets:
-      remove:
-        - -share/man
-    stage:
-      - $remove
-    prime:
-      - $remove
-  postgresql:
-    plugin: autotools
-    source: https://ftp.postgresql.org/pub/source/v9.6.2/postgresql-9.6.2.tar.bz2
-    build-packages:
-      - libreadline-dev
-    filesets:
-      remove:
-        - -include
-    stage:
-      - $remove
-    prime:
-      - $remove
-  ntp:
-    plugin: autotools
-    source: https://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p10.tar.gz
-    filesets:
-      remove:
-        - -share
-    stage:
-      - $remove
-    prime:
-      - $remove
-  distro-info:
-    plugin: dump
-    source: lp:ubuntu/wily/distro-info
-    filesets:
-      keep:
-        - lib/python3.5/site-packages/distro_info.py
-    organize:
-      python/distro_info.py: lib/python3.5/site-packages/distro_info.py
-    stage:
-      - $keep
-    prime:
-      - $keep
-  distro-info-data:
-    plugin: dump
-    source: lp:ubuntu/wily/distro-info-data
-    filesets:
-      keep:
-        - usr/share/distro-info/debian.csv
-        - usr/share/distro-info/ubuntu.csv
-    organize:
-      debian.csv: usr/share/distro-info/debian.csv
-      ubuntu.csv: usr/share/distro-info/ubuntu.csv
-    stage:
-      - $keep
-    prime:
-      - $keep
   maas:
     plugin: python
     source: .
