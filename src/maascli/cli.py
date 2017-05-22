@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CLI management commands."""
@@ -185,6 +185,21 @@ def register_cli_commands(parser):
             safe_name(name), help=help_title, description=help_title,
             epilog=help_body)
         command_parser.set_defaults(execute=command(command_parser))
+
+    # Setup the snap commands into the maascli if in a snap and command exists.
+    if 'SNAP' in os.environ:
+        # Only import snappy if running under the snap.
+        from maascli import snappy
+        for name, command in [
+                ('init', snappy.cmd_init),
+                ('config', snappy.cmd_config),
+                ('status', snappy.cmd_status),
+                ('migrate', snappy.cmd_migrate)]:
+            help_title, help_body = parse_docstring(command)
+            command_parser = parser.subparsers.add_parser(
+                safe_name(name), help=help_title, description=help_title,
+                epilog=help_body)
+            command_parser.set_defaults(execute=command(command_parser))
 
     # Setup and the allowed django commands into the maascli.
     management = get_django_management()

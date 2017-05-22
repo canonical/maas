@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 import argparse
+import os
 import sys
 
 from maascli import api
@@ -65,7 +66,7 @@ def prepare_parser(argv):
     """Create and populate an arguments parser for the maascli command."""
     help_title, help_body = parse_docstring(api)
     parser = ArgumentParser(
-        description=help_body, prog=argv[0],
+        description=help_body, prog=os.path.basename(argv[0]),
         epilog="http://maas.io/")
     register_cli_commands(parser)
     api.register_api_commands(parser)

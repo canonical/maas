@@ -98,6 +98,7 @@ stdout_logfile=%(ENV_SNAP_COMMON)s/log/tgt.log
 {{endif}}
 
 
+{{if rackd or regiond}}
 [program:ntp]
 process_name=ntp
 command=%(ENV_SNAP)s/bin/run-ntpd
@@ -105,3 +106,4 @@ stopasgroup=true
 killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/ntp.log
+{{endif}}

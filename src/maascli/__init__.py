@@ -36,7 +36,8 @@ def main(argv=sys.argv):
     except SystemExit:
         raise  # Pass-through.
     except Exception as error:
-        if options.debug:
+        show = getattr(error, 'always_show', False)
+        if options.debug or show:
             raise
         else:
             # Note: this will call sys.exit() when finished.

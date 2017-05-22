@@ -1,0 +1,15 @@
+#!/bin/sh
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+set -e
+
+# Create the required directories for services to run.
+mkdir -p "$SNAP_COMMON/log"
+mkdir -p "$SNAP_DATA/bind"
+mkdir -p "$SNAP_DATA/proxy"
+mkdir -p "$SNAP_DATA/supervisord"
+mkdir -p "$SNAP_DATA/var/lib/maas"
+
+# Perform migrations. Does nothing in 'rack' or 'none' mode.
+exec "$SNAP/command-maas.wrapper" migrate --configure

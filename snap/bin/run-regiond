@@ -4,32 +4,6 @@
 
 set -e
 
-# Gets the IPv4 address that is on the same network as the default route.
-get_default_route_ip4() {
-    while read Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT
-    do
-        [ "$Mask" = "00000000" ] && break
-    done < /proc/net/route
-    if [ -n "$Iface" ]; then
-        ipaddr=$(LC_ALL=C /sbin/ip -4 addr list dev "$Iface" scope global)
-        ipaddr=${ipaddr#* inet }
-        ipaddr=${ipaddr%%/*}
-        echo $ipaddr
-    fi
-}
-
-# Gets the IPv6 address that is on the same network as the default route.
-get_default_route_ip6() {
-    while read Src SrcPref Dest DestPref Gateway Metric RefCnt Use Flags Iface
-    do
-        [ "$SrcPref" = 00 ] && [ "$Iface" != lo ] && break
-    done < /proc/net/ipv6_route
-    if [ -n "$Iface" ]; then
-        LC_ALL=C /sbin/ip -6 addr list dev "$Iface" scope global permanent |
-            sed -n '/ inet6 /s/.*inet6 \([0-9a-fA-F:]*\).*/[\1]/p' | head -1
-    fi
-}
-
 # Supervisord starts workers at 0 where as systemd starts them at 1. Increment
 # the WORKER_ID by 1 to keep it consistent with systemd.
 MAAS_REGIOND_WORKER_ID=$((MAAS_REGIOND_WORKER_ID+1))
@@ -46,88 +20,6 @@ export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"
 export MAAS_IMAGES_KEYRING_FILEPATH="/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 export MAAS_THIRD_PARTY_DRIVER_SETTINGS="$SNAP/etc/maas/drivers.yaml"
-
-# Get the current snap mode.
-SNAP_MODE=`cat $SNAP_COMMON/snap_mode`
-
-# First worker needs to check if the database should be configured to be ran.
-if [ "$MAAS_REGIOND_WORKER_ID" -eq 1 ]
-then
-    # Don't allow the other workers to run.
-    rm -f "$SNAP_DATA/run-all-workers"
-
-    # First time running the database and maas_url needs to be set correctly.
-    if [ ! -e "$SNAP_DATA/regiond.conf" ]
-    then
-        # Select the default IP address IPv4 over IPv6.
-        IPADDR=$(get_default_route_ip4)
-        if [ -z "$IPADDR" ]; then
-            IPADDR=$(get_default_route_ip6)
-        fi
-        # Fallback default is "localhost"
-        if [ -z "$IPADDR" ]; then
-            IPADDR=localhost
-        fi
-        # Write the initial MAAS URL.
-        cat <<EOF >"$SNAP_DATA/regiond.conf"
-maas_url: http://${IPADDR}:5240/MAAS
-EOF
-
-        # Database should be running in the snap, initialize the database.
-        if [ "$SNAP_MODE" = 'all' ]
-        then
-            while ! sudo -E -n -u nobody \
-                LD_LIBRARY_PATH="$LD_LIBRARY_PATH" $SNAP/bin/psql \
-                -h "$SNAP_COMMON/db" -d postgres -U postgres \
-                -c "SELECT now();"
-            do
-                echo "Worker 0 waiting for database to be started."
-                sleep 0.5
-            done
-
-            echo "Worker 0 initializing database."
-            PASS=$(openssl rand -base64 32 | tr -d /=+ | cut -c -16)
-            sudo -E -n -u nobody LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-                $SNAP/bin/psql -h "$SNAP_COMMON/db" -d postgres -U postgres \
-                -c "CREATE USER maas WITH PASSWORD '$PASS';"
-            sudo -E -n -u nobody LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-                $SNAP/bin/psql -h "$SNAP_COMMON/db" -d postgres -U postgres \
-                -c "CREATE DATABASE maasdb;"
-            sudo -E -n -u nobody LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-                $SNAP/bin/psql -h "$SNAP_COMMON/db" -d postgres -U postgres \
-                -c "GRANT ALL PRIVILEGES ON DATABASE maasdb to maas;"
-
-            cat <<EOF >>"$SNAP_DATA/regiond.conf"
-database_host: $SNAP_COMMON/db
-database_name: maasdb
-database_user: maas
-database_pass: $PASS
-EOF
-        fi
-    fi
-
-    # As the first worker run the migrations to make sure its at the correct
-    # place for the regiond version.
-    echo "Worker 0 started running migrations."
-    $SNAP/bin/maas-region dbupgrade
-    echo "Worker 0 completed running migrations."
-
-    # Ensure that the bind and proxy directorys exist.
-    mkdir -p "$SNAP_DATA/bind"
-    mkdir -p "$SNAP_DATA/proxy"
-
-    # Now all the other workers can run.
-    touch "$SNAP_DATA/run-all-workers"
-fi
-
-# run-all-workers must exists for others to continue.
-if [ ! -e "$SNAP_DATA/run-all-workers" ]
-then
-    while [ ! -e "$SNAP_DATA/run-all-workers" ]
-    do
-        sleep 0.2
-    done
-fi
 
 # Run the regiond.
 exec $SNAP/bin/twistd --nodaemon --pidfile= maas-regiond

@@ -11,14 +11,8 @@ apps:
   supervisor:
     daemon: simple
     command: bin/run-supervisord
-  snap:
-    command: bin/snap-ctl
   maas:
     command: bin/maas
-  region:
-    command: bin/maas-region
-  rack:
-    command: bin/maas-rack
 
 parts:
   packages:
