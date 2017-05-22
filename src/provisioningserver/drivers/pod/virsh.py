@@ -645,6 +645,16 @@ class VirshSSH(pexpect.spawn):
             # Fallback to qemu support. Fail if qemu not supported.
             xml = self.run(['domcapabilities', '--virttype', 'qemu'])
             emulator_type = 'qemu'
+
+        # XXX newell 2017-05-18 bug=1690781
+        # Check to see if the XML output was an error.
+        # See bug for details about why and how this can occur.
+        if xml.startswith('error'):
+            raise VirshError(
+                "`virsh domcapabilities --virttype %s` errored.  Please "
+                "verify that package qemu-kvm is installed and restart "
+                "libvirt-bin service." % emulator_type)
+
         doc = etree.XML(xml)
         evaluator = etree.XPathEvaluator(doc)
         emulator = evaluator('/domainCapabilities/path')[0].text

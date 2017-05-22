@@ -890,6 +890,10 @@ class TestVirshSSH(MAASTestCase):
             'emulator': '/usr/bin/qemu-system-x86_64',
         }, conn.get_domain_capabilities())
 
+    def test_get_domain_capabilities_raises_error(self):
+        conn = self.configure_virshssh('error: some error')
+        self.assertRaises(virsh.VirshError, conn.get_domain_capabilities)
+
     def test_cleanup_disks_deletes_all(self):
         conn = self.configure_virshssh('')
         volumes = [
