@@ -16,7 +16,7 @@ DESCRIPTION="MAAS Xenial development environment"
 cd "$(dirname $0)"/..
 MAAS_SANDBOX=$(basename $PWD)
 
-if lxc profile list | grep -q "^$PROFILE$"; then
+if lxc profile show "$PROFILE" >/dev/null 2>&1; then
     echo "Found LXD profile: $PROFILE"
 else
     echo "LXD profile not found: $PROFILE"
