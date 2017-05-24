@@ -34,7 +34,6 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network,
 )
 import provisioningserver.utils.network as net_utils
-from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import (
     Content,
@@ -151,11 +150,8 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
                     count(1), configuration.splitlines(keepends=True))))))
         # Call `dhcpd` via `aa-exec --profile unconfined`. The latter is
         # needed so that `dhcpd` can open the configuration file from /tmp.
-        # Xenial lxcs don't support using different apparmor profiles:
-        # everything runs with the container profile.
         cmd = "dhcpd", ("-6" if ipv6 else "-4"), "-t", "-cf", conffile.name
-        if not running_in_container():
-            cmd = "aa-exec", "--profile", "unconfined", *cmd
+        cmd = "aa-exec", "--profile", "unconfined", *cmd
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             env=select_c_utf8_locale())
