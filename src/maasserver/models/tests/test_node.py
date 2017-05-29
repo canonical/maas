@@ -5244,12 +5244,14 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
         # If extra interfaces are added, they will be removed when
         # calling restore_network_interfaces().
-        factory.make_Interface(
-            INTERFACE_TYPE.BOND, node=node,
-            parents=node.interface_set.all()[:2])
+        # Order the interfaces, so that the first interface has a VLAN.
+        parents = list(node.interface_set.all().order_by("vlan"))
         factory.make_Interface(
             INTERFACE_TYPE.VLAN, node=node,
-            parents=[node.interface_set.all()[3]])
+            parents=[parents[0]])
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node,
+            parents=parents[1:])
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         node.restore_network_interfaces()
