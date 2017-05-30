@@ -1,5 +1,5 @@
 name: maas
-version: 2.2.0rc3
+version: trunk
 summary: Metal as a Service
 description: |
   Total automation of you physical servers for amazing data center
@@ -76,6 +76,8 @@ parts:
     source: .
     requirements: requirements.txt
     build-packages:
+      - build-essential
+      - bzr
       - git
       - libffi-dev
       - libpq-dev
