@@ -2653,16 +2653,6 @@ class UpdateVirtualBlockDeviceForm(MAASModelForm):
                 self, 'size', 'Size cannot be changed on this device.')
         return cleaned_data
 
-    def save(self):
-        block_device = super(
-            UpdateVirtualBlockDeviceForm, self).save(commit=False)
-        # blake_r: UUID field will not get set on the model for an unknown
-        # reason. Force the updating of the field here.
-        if 'uuid' in self.cleaned_data and self.cleaned_data['uuid']:
-            block_device.uuid = self.cleaned_data['uuid']
-        block_device.save()
-        return block_device
-
 
 def convert_block_device_name_to_id(value):
     """Convert a block device value from an input field into the block device

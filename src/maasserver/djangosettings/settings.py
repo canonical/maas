@@ -5,7 +5,6 @@
 
 import os
 
-import django.template.base
 from maasserver.config import RegionConfiguration
 from maasserver.djangosettings import fix_up_databases
 from maasserver.djangosettings.monkey import patch_get_script_prefix
@@ -39,10 +38,6 @@ def _get_local_timezone(tzfilename='/etc/timezone'):
         # If this fails, just use 'UTC', which should always exist.
         return 'UTC'
 
-
-# Use new style url tag:
-# https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
-django.template.base.add_to_builtins('django.templatetags.future')
 
 # Enable HA which uses the new rack controller and BMC code paths. This is a
 # temporary measure to prevent conflicts during MAAS 2.0 development.

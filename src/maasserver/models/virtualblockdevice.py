@@ -69,7 +69,7 @@ class VirtualBlockDevice(BlockDevice):
     objects = VirtualBlockDeviceManager()
 
     uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False, editable=False)
+        max_length=36, unique=True, null=False, blank=False)
 
     filesystem_group = ForeignKey(
         FilesystemGroup, null=False, blank=False,
