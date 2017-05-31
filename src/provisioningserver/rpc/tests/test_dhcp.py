@@ -905,6 +905,7 @@ class TestConfigureDHCP(MAASTestCase):
 
     @inlineCallbacks
     def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
+        self.patch_sudo_delete_file()
         self.patch_sudo_write_file().side_effect = (
             ExternalProcessError(1, "sudo something"))
         self.patch_restartService()
@@ -920,6 +921,7 @@ class TestConfigureDHCP(MAASTestCase):
     @inlineCallbacks
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
+        self.patch_sudo_delete_file()
         self.patch_restartService().side_effect = ServiceActionError()
         failover_peers = [make_failover_peer_config()]
         shared_networks = fix_shared_networks_failover(
@@ -933,6 +935,7 @@ class TestConfigureDHCP(MAASTestCase):
     @inlineCallbacks
     def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
+        self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
         with ExpectedException(exceptions.CannotConfigureDHCP):
             yield self.configure(
@@ -941,6 +944,7 @@ class TestConfigureDHCP(MAASTestCase):
     @inlineCallbacks
     def test__does_not_log_ServiceActionError(self):
         self.patch_sudo_write_file()
+        self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
         with FakeLogger("maas") as logger:
             with ExpectedException(exceptions.CannotConfigureDHCP):
@@ -951,6 +955,7 @@ class TestConfigureDHCP(MAASTestCase):
     @inlineCallbacks
     def test__does_log_other_exceptions(self):
         self.patch_sudo_write_file()
+        self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = (
             factory.make_exception("DHCP is on strike today"))
         with FakeLogger("maas") as logger:

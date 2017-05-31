@@ -612,7 +612,7 @@ class TestMain(MAASTestCase):
         self.assertThat(
             boot_resources.call_and_check,
             MockCalledOnceWith([
-                '/usr/sbin/tgt-admin',
+                'sudo', '-n', '/usr/sbin/tgt-admin',
                 '--conf', os.path.join(snapshot, 'maas.tgt'),
                 '--update', 'ALL']))
 

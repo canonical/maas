@@ -439,6 +439,17 @@ class TestSudoWriteFile(MAASTestCase):
             ['sudo', '-n', get_library_script_path("maas-write-file"),
              path, "0644"], stdin=PIPE))
 
+    def test_calls_atomic_write_dev_mode(self):
+        patch_popen(self)
+        patch_dev(self, True)
+
+        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        contents = factory.make_bytes()
+        sudo_write_file(path, contents)
+
+        called_command = fs_module.Popen.call_args[0][0]
+        self.assertNotIn('sudo', called_command)
+
     def test_rejects_non_bytes_contents(self):
         self.assertRaises(
             TypeError, sudo_write_file, self.make_file(),
@@ -472,6 +483,16 @@ class TestSudoDeleteFile(MAASTestCase):
 
         self.assertThat(fs_module.Popen, MockCalledOnceWith(
             ['sudo', '-n', get_library_script_path("maas-delete-file"), path]))
+
+    def test_calls_atomic_delete_dev_mode(self):
+        patch_popen(self)
+        patch_dev(self, True)
+
+        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        sudo_delete_file(path)
+
+        called_command = fs_module.Popen.call_args[0][0]
+        self.assertNotIn('sudo', called_command)
 
     def test_catches_failures(self):
         patch_popen(self, 1)

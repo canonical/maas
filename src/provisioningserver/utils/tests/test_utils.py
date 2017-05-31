@@ -234,11 +234,11 @@ class TestSudo(MAASTestCase):
         self.patch(provisioningserver.utils.snappy, 'running_in_snap')
         provisioningserver.utils.snappy.running_in_snap.return_value = value
 
-    def test_returns_same_command_when_is_dev_environment(self):
+    def test_returns_sudo_command_when_is_dev_environment(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
         self.set_is_dev_environment(True)
         self.set_is_in_snap(False)
-        self.assertEqual(cmd, sudo(cmd))
+        self.assertEqual(['sudo', '-n'] + cmd, sudo(cmd))
 
     def test_returns_same_command_when_in_snap(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]

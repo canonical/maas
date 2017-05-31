@@ -30,7 +30,7 @@ DNS_CONNECT = False
 
 # Don't setup DHCP servers in tests, this will be enabled on a case per case
 # basis. TODO: Use the signals manager instead.
-DHCP_CONNECT = False
+DHCP_CONNECT = os.environ.get("MAAS_DHCP_CONNECT", "0") == "1"
 
 # Don't setup PROXY servers in tests, this will be enabled on a case per case
 # basis. TODO: Use the signals manager instead.

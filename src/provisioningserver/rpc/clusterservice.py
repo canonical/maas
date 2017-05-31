@@ -26,7 +26,10 @@ from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from netaddr import IPAddress
 from provisioningserver import concurrency
-from provisioningserver.config import ClusterConfiguration
+from provisioningserver.config import (
+    ClusterConfiguration,
+    is_dev_environment,
+)
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
@@ -153,7 +156,9 @@ def get_scan_all_networks_args(
 
     :param cidrs: an iterable of CIDR strings
     """
-    args = sudo([get_maas_provision_command(), 'scan-network'])
+    args = [get_maas_provision_command(), 'scan-network']
+    if not is_dev_environment():
+        args = sudo(args)
     if threads is not None:
         args.extend(["--threads", str(threads)])
     if force_ping:

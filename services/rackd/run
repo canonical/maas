@@ -19,9 +19,10 @@ cd "$(dirname "$0")/../.."
 
 # Configure the rack's UUID to match sampledata, and also use a high
 # port for TFTP to match this branch's etc/services.
+port=${MAAS_TFTP_PORT:-5244}
 bin/maas-rack config \
     --uuid adfd3977-f251-4f2c-8d61-745dbd690bf2 \
-    --tftp-port 5244
+    --tftp-port $port
 
 # Wait for the installation of the shared-secret.
 until bin/maas-rack check-for-shared-secret; do sleep 2; done

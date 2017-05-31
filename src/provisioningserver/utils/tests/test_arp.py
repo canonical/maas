@@ -446,6 +446,25 @@ class TestObserveARPCommand(MAASTestCase):
                 ['/usr/lib/maas/maas-network-monitor', 'eth0'],
                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
 
+    def test__calls_subprocess_for_interface_sudo(self):
+        is_dev_environment_mock = self.patch_autospec(
+            arp_module, 'is_dev_environment')
+        is_dev_environment_mock.return_value = False
+        parser = ArgumentParser()
+        add_arguments(parser)
+        args = parser.parse_args(['eth0'])
+        popen = self.patch(arp_module.subprocess, 'Popen')
+        popen.return_value.poll = Mock()
+        popen.return_value.poll.return_value = None
+        popen.return_value.stdout = io.BytesIO(test_input)
+        output = io.StringIO()
+        run(args, output=output)
+        self.assertThat(
+            popen,
+            MockCalledOnceWith(
+                ['sudo', '-n', '/usr/lib/maas/maas-network-monitor', 'eth0'],
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE))
+
     def test__checks_for_pipe(self):
         parser = ArgumentParser()
         add_arguments(parser)

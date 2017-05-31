@@ -23,6 +23,7 @@ from netaddr import (
     EUI,
     IPAddress,
 )
+from provisioningserver.config import is_dev_environment
 from provisioningserver.path import get_path
 from provisioningserver.utils import sudo
 from provisioningserver.utils.ethernet import (
@@ -381,12 +382,11 @@ def run(args, output=sys.stdout, stdin=sys.stdin,
     if args.input_file is None:
         if args.interface is None:
             raise ActionScriptError("Required argument: interface")
+        cmd = [get_path("/usr/lib/maas/maas-network-monitor"), args.interface]
+        if not is_dev_environment():
+            cmd = sudo(cmd)
         network_monitor = subprocess.Popen(
-            sudo([
-                get_path("/usr/lib/maas/maas-network-monitor"),
-                args.interface,
-            ]),
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+            cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
         infile = network_monitor.stdout
     else:
         if args.input_file == '-':

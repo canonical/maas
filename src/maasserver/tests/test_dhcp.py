@@ -1734,6 +1734,7 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test__doesnt_call_configure_for_both_ipv4_and_ipv6(self):
         # ... when DHCP_CONNECT is False.
+        self.patch(dhcp.settings, "DHCP_CONNECT", False)
         rack_controller, config = yield deferToDatabase(
             self.create_rack_controller)
         protocol, ipv4_stub, ipv6_stub = yield deferToThread(

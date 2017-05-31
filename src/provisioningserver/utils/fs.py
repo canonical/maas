@@ -306,10 +306,12 @@ def sudo_write_file(filename, contents, mode=0o644):
     Runs an atomic update using non-interactive `sudo`.  This will fail if
     it needs to prompt for a password.
 
-    When running in a snap this function calls `atomic_write` directly.
+    When running in a snap or devel mode, this function calls
+    `atomic_write` directly.
 
     :type contents: `bytes`.
     """
+    from provisioningserver.config import is_dev_environment
     if not isinstance(contents, bytes):
         raise TypeError("Content must be bytes, got: %r" % (contents, ))
     if snappy.running_in_snap():
@@ -317,7 +319,9 @@ def sudo_write_file(filename, contents, mode=0o644):
     else:
         maas_write_file = get_library_script_path("maas-write-file")
         command = _with_dev_python(maas_write_file, filename, "%.4o" % mode)
-        proc = Popen(sudo(command), stdin=PIPE)
+        if not is_dev_environment():
+            command = sudo(command)
+        proc = Popen(command, stdin=PIPE)
         stdout, stderr = proc.communicate(contents)
         if proc.returncode != 0:
             raise ExternalProcessError(proc.returncode, command, stderr)
@@ -331,12 +335,15 @@ def sudo_delete_file(filename):
 
     When running in a snap this function calls `atomic_write` directly.
     """
+    from provisioningserver.config import is_dev_environment
     if snappy.running_in_snap():
         atomic_delete(filename)
     else:
         maas_delete_file = get_library_script_path("maas-delete-file")
         command = _with_dev_python(maas_delete_file, filename)
-        proc = Popen(sudo(command))
+        if not is_dev_environment():
+            command = sudo(command)
+        proc = Popen(command)
         stdout, stderr = proc.communicate()
         if proc.returncode != 0:
             raise ExternalProcessError(proc.returncode, command, stderr)
