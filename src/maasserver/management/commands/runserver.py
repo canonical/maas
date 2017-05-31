@@ -5,7 +5,6 @@
 
 __all__ = ['Command']
 
-from optparse import make_option
 from socketserver import ThreadingMixIn
 
 from django.core.management.commands.runserver import BaseRunserverCommand
@@ -16,12 +15,14 @@ from maasserver.start_up import start_up
 
 class Command(BaseRunserverCommand):
     """Customized "runserver" command that wraps the WSGI handler."""
-    option_list = BaseRunserverCommand.option_list + (
-        make_option(
+
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+
+        parser.add_argument(
             '--threading', action='store_true',
             dest='use_threading', default=False,
-            help='Use threading for web server.'),
-    )
+            help='Use threading for web server.')
 
     def run(self, *args, **options):
         threading = options.get('use_threading', False)

@@ -5,7 +5,6 @@
 
 __all__ = ['Command']
 
-from optparse import make_option
 import subprocess
 from textwrap import dedent
 
@@ -55,12 +54,13 @@ class Command(BaseCommand):
         "needed if repeated updates of MAAS boot images have caused the "
         "database to grow in size.)")
 
-    option_list = BaseCommand.option_list + (
-        make_option(
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+
+        parser.add_argument(
             '--database', default=None,
             help="Database to connect to. (default: the database found in "
-                 "the options file, or 'maasdb' if not found.)"),
-        )
+                 "the options file, or 'maasdb' if not found.)")
 
     def handle(self, **options):
         # Access the global system-installed MAAS database.

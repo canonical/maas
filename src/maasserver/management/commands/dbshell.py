@@ -8,13 +8,9 @@ Overrides the default implementation.
 
 __all__ = ['Command']
 
-from optparse import make_option
 import subprocess
 
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import CommandError
 from django.core.management.commands import dbshell
 
 
@@ -23,22 +19,21 @@ class Command(dbshell.Command):
 
     help = "Interactive psql shell for the MAAS database."
 
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--database', default=None, help="Database to connect to."),
-        make_option(
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--database', default=None, help="Database to connect to.")
+        parser.add_argument(
             '--dev', action='store_true', default=False,
             help=(
                 "Connect to a development database database. "
                 "Default is to start, and connect to, a system-installed "
-                "database.")),
-        make_option(
+                "database."))
+        parser.add_argument(
             '--installed', '-i', action='store_true', default=False,
             help=(
                 "Connect to global, system-installed database. "
                 "This is the default, unless a development environment is "
-                "detected.")),
-        )
+                "detected."))
 
     def get_development_database(self):
         database = None

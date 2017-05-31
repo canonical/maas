@@ -13,7 +13,6 @@ __all__ = [
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime
-from optparse import make_option
 import os
 import shutil
 import sys
@@ -34,30 +33,6 @@ from provisioningserver.utils.isc import (
 
 class Command(BaseCommand):
 
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--config-path', dest='config_path',
-            default="/etc/bind/named.conf.options",
-            help="Specify the configuration file to edit."),
-        make_option(
-            '--dry-run', dest='dry_run',
-            default=False, action='store_true',
-            help="Do not edit any configuration; instead, print to stdout the "
-                 "actions that would be performed, and/or the new "
-                 "configuration that would be written."),
-        make_option(
-            '--force', dest='force',
-            default=False, action='store_true',
-            help="Force the BIND configuration to be written, even if it "
-                 "appears as though nothing has changed."),
-        make_option(
-            '--migrate-conflicting-options', default=False,
-            dest='migrate_conflicting_options', action='store_true',
-            help="Causes any options that conflict with MAAS-managed options "
-                 "to be deleted from the BIND configuration and moved to the "
-                 "MAAS-managed configuration. Requires the MAAS database to "
-                 "be configured and running."),
-    )
     help = " ".join(dedent("""\
     Edit the named.conf.options file so that it includes the
     named.conf.options.inside.maas file, which contains the 'forwarders' and
@@ -66,6 +41,32 @@ class Command(BaseCommand):
     treated as 7-bit ASCII; it's not clear what else BIND will tolerate. This
     program must be run as root.
     """).splitlines())
+
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+
+        parser.add_argument(
+            '--config-path', dest='config_path',
+            default="/etc/bind/named.conf.options",
+            help="Specify the configuration file to edit.")
+        parser.add_argument(
+            '--dry-run', dest='dry_run',
+            default=False, action='store_true',
+            help="Do not edit any configuration; instead, print to stdout the "
+                 "actions that would be performed, and/or the new "
+                 "configuration that would be written.")
+        parser.add_argument(
+            '--force', dest='force',
+            default=False, action='store_true',
+            help="Force the BIND configuration to be written, even if it "
+                 "appears as though nothing has changed.")
+        parser.add_argument(
+            '--migrate-conflicting-options', default=False,
+            dest='migrate_conflicting_options', action='store_true',
+            help="Causes any options that conflict with MAAS-managed options "
+                 "to be deleted from the BIND configuration and moved to the "
+                 "MAAS-managed configuration. Requires the MAAS database to "
+                 "be configured and running.")
 
     def read_file(self, config_path):
         """Open the named file and return its contents as a string."""

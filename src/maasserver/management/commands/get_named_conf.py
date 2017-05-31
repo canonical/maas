@@ -10,8 +10,6 @@ __all__ = [
     ]
 
 
-from optparse import make_option
-
 from django.core.management.base import BaseCommand
 from provisioningserver.dns.config import DNSConfig
 
@@ -24,23 +22,25 @@ INCLUDE_SNIPPET_COMMENT = """\
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--edit', action='store_true', dest='edit',
-            default=False,
-            help="Edit the configuration file instead of simply "
-                 "printing the snippet."),
-        make_option(
-            '--config_path', dest='config_path',
-            default='/etc/bind/named.conf.local',
-            help="Specifies the configuration file location ("
-                 "used in conjonction with --edit). Defaults to "
-                 "/etc/bind/named.conf.local."),
-    )
     help = (
         "Return the named configuration snippet used to include "
         "MAAS' DNS configuration in an existing named "
         "configuration.")
+
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+
+        parser.add_argument(
+            '--edit', action='store_true', dest='edit',
+            default=False,
+            help="Edit the configuration file instead of simply "
+                 "printing the snippet.")
+        parser.add_argument(
+            '--config_path', dest='config_path',
+            default='/etc/bind/named.conf.local',
+            help="Specifies the configuration file location ("
+                 "used in conjonction with --edit). Defaults to "
+                 "/etc/bind/named.conf.local.")
 
     def handle(self, *args, **options):
         edit = options.get('edit')

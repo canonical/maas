@@ -8,9 +8,9 @@ Django command: Upgrade MAAS regiond database using both south and django
 
 __all__ = []
 
+import argparse
 from importlib import import_module
 import json
-import optparse
 import os
 import shutil
 import subprocess
@@ -136,22 +136,24 @@ call_command(
 
 class Command(BaseCommand):
     help = "Upgrades database schema for MAAS regiond."
-    option_list = BaseCommand.option_list + (
-        optparse.make_option(
+
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+
+        parser.add_argument(
             '--database', action='store', dest='database',
             default=DEFAULT_DB_ALIAS,
             help=(
                 'Nominates a database to synchronize. Defaults to the '
-                '"default" database.')),
-        optparse.make_option(
+                '"default" database.'))
+        parser.add_argument(
             '--always-south', action='store_true', help=(
-                'Always run the south migrations even if not required.')),
+                'Always run the south migrations even if not required.'))
         # Hidden argument that is not shown to the user. This argument is used
         # internally to call itself again to run the django builtin migrations
         # in a subprocess.
-        optparse.make_option(
-            '--django', action='store_true', help=optparse.SUPPRESS_HELP),
-    )
+        parser.add_argument(
+            '--django', action='store_true', help=argparse.SUPPRESS)
 
     @classmethod
     def _path_to_django16_south_maas19(cls):
