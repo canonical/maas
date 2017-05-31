@@ -9,9 +9,7 @@ __all__ = [
     "SetCommand",
 ]
 
-from itertools import chain
 import json
-from optparse import make_option
 import sys
 
 from django.core.management.base import (
@@ -23,6 +21,13 @@ from maascli.utils import parse_docstring
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import ConfigurationOption
 import yaml
+
+
+def make_option_tuple(name, **kwargs):
+    """
+    Return a (name, dict) tuple with the dict containing argument options.
+    """
+    return (name, kwargs)
 
 
 def p_configuration_option(name, value):
@@ -69,7 +74,7 @@ def gen_configuration_options_for_getting():
     with Django's management command framework.
     """
     for name, option in sorted(gen_configuration_options()):
-        yield make_option(
+        yield make_option_tuple(
             "--" + name.replace("_", "-"), action="store_true", dest=name,
             default=False, help=option_doc(option))
 
@@ -81,7 +86,7 @@ def gen_configuration_options_for_resetting():
     with Django's management command framework.
     """
     for name, option in sorted(gen_mutable_configuration_options()):
-        yield make_option(
+        yield make_option_tuple(
             "--" + name.replace("_", "-"), action="store_true", dest=name,
             default=False, help=option_doc(option))
 
@@ -93,7 +98,7 @@ def gen_configuration_options_for_setting():
     with Django's management command framework.
     """
     for name, option in sorted(gen_mutable_configuration_options()):
-        yield make_option(
+        yield make_option_tuple(
             "--" + name.replace("_", "-"), action="store", dest=name,
             default=None, help=option_doc(option))
 
@@ -144,30 +149,25 @@ class GetCommand(LocalConfigCommand):
     # like automatically injecting line breaks, and these break the YAML/JSON
     # output.
 
-    option_list_for_output = (
-        make_option(
+    def add_arguments(self, parser):
+        super(GetCommand, self).add_arguments(parser)
+
+        for option_name, kwargs in gen_configuration_options_for_getting():
+            parser.add_argument(option_name, **kwargs)
+
+        parser.add_argument(
             "--json", action="store_const", const=dump_json, dest="dump",
-            default=dump_yaml, help="Output as JSON."
-        ),
-        make_option(
+            default=dump_yaml, help="Output as JSON.")
+        parser.add_argument(
             "--yaml", action="store_const", const=dump_yaml, dest="dump",
-            default=dump_yaml, help="Output as YAML (default)."
-        ),
-        make_option(
+            default=dump_yaml, help="Output as YAML (default).")
+        parser.add_argument(
             "--plain", action="store_const", const=dump_plain, dest="dump",
             default=dump_yaml, help=(
                 "Output as plain strings. The names of the configuration "
                 "settings will not be printed and the order is not defined "
                 "so this is really only useful when obtaining a single "
-                "configuration setting.")
-        ),
-    )
-
-    option_list = tuple(chain(
-        LocalConfigCommand.option_list,
-        gen_configuration_options_for_getting(),
-        option_list_for_output,
-    ))
+                "configuration setting."))
 
     help = "Get local configuration for the MAAS region controller."
 
@@ -184,10 +184,11 @@ class GetCommand(LocalConfigCommand):
 
 class ResetCommand(LocalConfigCommand):
 
-    option_list = tuple(chain(
-        LocalConfigCommand.option_list,
-        gen_configuration_options_for_resetting(),
-    ))
+    def add_arguments(self, parser):
+        super(ResetCommand, self).add_arguments(parser)
+
+        for option_name, kwargs in gen_configuration_options_for_resetting():
+            parser.add_argument(option_name, **kwargs)
 
     help = "Reset local configuration for the MAAS region controller."
 
@@ -200,12 +201,13 @@ class ResetCommand(LocalConfigCommand):
 
 class SetCommand(LocalConfigCommand):
 
-    option_list = tuple(chain(
-        LocalConfigCommand.option_list,
-        gen_configuration_options_for_setting(),
-    ))
-
     help = "Set local configuration for the MAAS region controller."
+
+    def add_arguments(self, parser):
+        super(SetCommand, self).add_arguments(parser)
+
+        for option_name, kwargs in gen_configuration_options_for_setting():
+            parser.add_argument(option_name, **kwargs)
 
     def handle(self, *args, **options):
         with RegionConfiguration.open_for_update() as config:

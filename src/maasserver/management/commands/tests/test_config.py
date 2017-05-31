@@ -23,11 +23,9 @@ from testtools.matchers import (
     Contains,
     Equals,
     HasLength,
-    Is,
     IsInstance,
     MatchesAll,
     MatchesListwise,
-    MatchesStructure,
     Not,
 )
 import yaml
@@ -50,53 +48,52 @@ call_set = partial(call_nnn, "local_config_set")
 
 
 class TestConfigurationGet(MAASTestCase):
-
     scenarios = tuple(
-        (option.dest, {"option": option})
-        for option in config.gen_configuration_options_for_getting()
+        (option, {"option": option.lstrip("-").replace("-", "_")})
+        for option, args in config.gen_configuration_options_for_getting()
     )
 
     def test__dumps_yaml_to_stdout_by_default(self):
-        stdio = call_get(**{self.option.dest: True})
+        stdio = call_get(**{self.option: True})
         settings = yaml.safe_load(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option.dest))
+        self.assertThat(settings, Contains(self.option))
 
     def test__dumps_yaml_to_stdout(self):
-        stdio = call_get(**{self.option.dest: True, "dump": config.dump_yaml})
+        stdio = call_get(**{self.option: True, "dump": config.dump_yaml})
         settings = yaml.safe_load(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option.dest))
+        self.assertThat(settings, Contains(self.option))
 
     def test__dumps_json_to_stdout(self):
-        stdio = call_get(**{self.option.dest: True, "dump": config.dump_json})
+        stdio = call_get(**{self.option: True, "dump": config.dump_json})
         settings = json.loads(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option.dest))
+        self.assertThat(settings, Contains(self.option))
 
     def test__dumps_plain_string_to_stdout(self):
-        stdio = call_get(**{self.option.dest: True, "dump": config.dump_plain})
+        stdio = call_get(**{self.option: True, "dump": config.dump_plain})
         settings = stdio.getOutput()
-        self.assertThat(settings, Not(Contains(self.option.dest)))
+        self.assertThat(settings, Not(Contains(self.option)))
         with RegionConfiguration.open() as configuration:
             self.assertThat(settings, Contains(
-                str(getattr(configuration, self.option.dest))))
+                str(getattr(configuration, self.option))))
 
 
 class TestConfigurationReset(MAASTestCase):
 
     scenarios = tuple(
-        (option.dest, {"option": option})
-        for option in config.gen_configuration_options_for_resetting()
+        (option, {"option": option.lstrip("-").replace("-", "_")})
+        for option, args in config.gen_configuration_options_for_resetting()
     )
 
     def test__options_are_reset(self):
         self.useFixture(RegionConfigurationFixture())
         with RegionConfiguration.open_for_update() as configuration:
             # Give the option a random value.
-            if isinstance(getattr(configuration, self.option.dest), str):
+            if isinstance(getattr(configuration, self.option), str):
                 value = factory.make_name("foobar")
             else:
                 value = factory.pick_port()
-            setattr(configuration, self.option.dest, value)
-        stdio = call_reset(**{self.option.dest: True})
+            setattr(configuration, self.option, value)
+        stdio = call_reset(**{self.option: True})
         # Nothing is echoed back to the user.
         self.assertThat(stdio.getOutput(), Equals(""))
         self.assertThat(stdio.getError(), Equals(""))
@@ -109,20 +106,20 @@ class TestConfigurationReset(MAASTestCase):
 class TestConfigurationSet(MAASTestCase):
 
     scenarios = tuple(
-        (option.dest, {"option": option})
-        for option in config.gen_configuration_options_for_setting()
+        (option, {"option": option.lstrip("-").replace("-", "_")})
+        for option, args in config.gen_configuration_options_for_setting()
     )
 
     def test__options_are_saved(self):
         self.useFixture(RegionConfigurationFixture())
         # Set the option to a random value.
-        if self.option.dest == "database_port":
+        if self.option == "database_port":
             value = factory.pick_port()
         else:
             value = factory.make_name("foobar")
 
         # Values are coming from the command-line so stringify.
-        stdio = call_set(**{self.option.dest: str(value)})
+        stdio = call_set(**{self.option: str(value)})
 
         # Nothing is echoed back to the user.
         self.assertThat(stdio.getOutput(), Equals(""))
@@ -134,7 +131,7 @@ class TestConfigurationSet(MAASTestCase):
         # str so Contains works with int values.
         with RegionConfiguration.open() as configuration:
             self.assertThat(
-                str(getattr(configuration, self.option.dest)),
+                str(getattr(configuration, self.option)),
                 Contains(str(value)))
 
 
@@ -195,40 +192,28 @@ class TestConfigurationCommon(MAASTestCase):
         self.assertThat(
             config.gen_configuration_options_for_getting(),
             AllMatch(
-                MatchesStructure(
-                    _long_opts=MatchesListwise([Not(Contains("_"))]),
-                    _short_opts=MatchesListwise([]),
-                    action=Equals("store_true"),
-                    default=Is(False),
-                    dest=IsInstance(str, bytes),
-                    help=self.is_help_string,
-                ),
+                MatchesListwise([
+                    Not(Contains("_")),
+                    IsInstance(dict)
+                ]),
             ))
 
     def test_gen_configuration_options_for_resetting(self):
         self.assertThat(
             config.gen_configuration_options_for_resetting(),
             AllMatch(
-                MatchesStructure(
-                    _long_opts=MatchesListwise([Not(Contains("_"))]),
-                    _short_opts=MatchesListwise([]),
-                    action=Equals("store_true"),
-                    default=Is(False),
-                    dest=IsInstance(str, bytes),
-                    help=self.is_help_string,
-                ),
+                MatchesListwise([
+                    Not(Contains("_")),
+                    IsInstance(dict)
+                ]),
             ))
 
     def test_gen_configuration_options_for_setting(self):
         self.assertThat(
             config.gen_configuration_options_for_setting(),
             AllMatch(
-                MatchesStructure(
-                    _long_opts=MatchesListwise([Not(Contains("_"))]),
-                    _short_opts=MatchesListwise([]),
-                    action=Equals("store"),
-                    default=Is(None),
-                    dest=IsInstance(str, bytes),
-                    help=self.is_help_string,
-                ),
+                MatchesListwise([
+                    Not(Contains("_")),
+                    IsInstance(dict)
+                ]),
             ))
