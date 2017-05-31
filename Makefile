@@ -66,7 +66,8 @@ build: \
   bin/test.e2e \
   bin/test.parallel \
   bin/py bin/ipy \
-  $(js_enums)
+  $(js_enums) \
+  pycharm
 
 all: build doc
 
@@ -382,6 +383,11 @@ man/%: docs/man/%.rst | bin/sphinx-build
 .run .run-e2e: run-skel
 	@cp --archive --verbose $^ $@
 
+.idea: contrib/pycharm
+	@cp --archive --verbose $^ $@
+
+pycharm: .idea
+
 enums: $(js_enums)
 
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
@@ -422,6 +428,7 @@ clean: stop clean-failed
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
 	$(RM) -r .run .run-e2e
+	$(RM) -r .idea
 	$(RM) xunit.*.xml
 	$(RM) .failed
 
