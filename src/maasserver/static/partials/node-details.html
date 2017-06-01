@@ -377,7 +377,7 @@
                             </dd>
                     </dl>
                 </div>
-                <div class="twelve-col u-align--right ng-hide" data-ng-show="summary.editing">
+                <div class="twelve-col u-align--right ng-hide" sticky anchor="bottom" use-placeholder="true" offset="0" data-ng-show="summary.editing">
                     <button class="button--base button--inline"
                        data-ng-click="cancelEditSummary()">Cancel</button>
                     <button class="button--positive button--inline"
@@ -1017,8 +1017,10 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
+                                                          placeholder="00:00:00:00:00:00"
                                                           data-ng-model="newBondInterface.mac_address"
                                                           data-ng-class="{ 'has-error': isMACAddressInvalid(newBondInterface.mac_address) }"
+                                                          data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
                                                           data-ng-placeholder="getInterfacePlaceholderMACAddress(newBondInterface)">
                                                   </div>
                                                   <div class="form__group">
@@ -1113,7 +1115,9 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
+                                                          placeholder="00:00:00:00:00:00"
                                                           data-ng-model="newBridgeInterface.mac_address"
+                                                          data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
                                                           data-ng-class="{ 'has-error': isMACAddressInvalid(newBridgeInterface.mac_address) }"
                                                           data-ng-placeholder="getInterfacePlaceholderMACAddress(newBridgeInterface)">
                                                   </div>
@@ -1189,7 +1193,9 @@
                                                   <div class="form__group">
                                                       <label for="mac" class="two-col">MAC address</label>
                                                       <input type="text" name="mac" class="three-col"
+                                                          placeholder="00:00:00:00:00:00"
                                                           data-ng-model="newInterface.mac_address"
+                                                          data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
                                                           data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, false) || newInterface.macError }">
                                                   </div>
                                                   <div class="form__group">
@@ -1251,6 +1257,7 @@
                                                       <input name="mac" type="text" class="three-col"
                                                           placeholder="00:00:00:00:00:00"
                                                           data-ng-model="newInterface.mac_address"
+                                                          data-ng-pattern="/^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi" mac-address maxlength="17"
                                                           data-ng-class="{ 'has-error': isMACAddressInvalid(newInterface.mac_address, true) }">
                                                   </div>
                                               </fieldset>

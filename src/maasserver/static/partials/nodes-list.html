@@ -282,8 +282,12 @@
                             <label for="mac-address" class="form__group-label two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span>&nbsp;</label>
                             <div class="form__group-input three-col">
                                 <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
+                                       maxlength="17"
                                        data-ng-class="{ 'has-error': mac.error }"
-                                       data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
+                                       data-ng-model="mac.mac"
+                                       data-ng-pattern="macAddressRegex"
+                                       data-ng-change="validateMac(mac)"
+                                       mac-address>
                                 <span class="form__group-remove" title="Delete MAC"
                                     data-ng-hide="mac === machine.macs[0]" data-ng-click="removeMac(mac)"></span>
                             </div>

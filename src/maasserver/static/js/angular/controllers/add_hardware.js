@@ -28,6 +28,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             "default_min_hwe_kernel");
         $scope.power_types = GeneralManager.getData("power_types");
         $scope.error = null;
+        $scope.macAddressRegex = /^([0-9A-F]{2}[::]){5}([0-9A-F]{2})$/gmi;
 
         // Input values.
         $scope.machine = null;
