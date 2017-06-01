@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers for getting the configuration for a booting machine."""
@@ -269,11 +269,22 @@ def get_config(
                 arch = DEFAULT_ARCH
             else:
                 arch, _ = resource.split_arch()
+        # The subarch defines what kernel is booted. With MAAS 2.1 this changed
+        # from hwe-<letter> to hwe-<version> or ga-<version>. Validation
+        # converts between the two formats to make sure a bootable subarch is
+        # selected.
         if subarch is None:
-            if min_hwe_kernel:
-                subarch = min_hwe_kernel
-            else:
-                subarch = 'generic'
+            min_hwe_kernel = validate_hwe_kernel(
+                None, min_hwe_kernel, '%s/generic' % arch, osystem, series)
+        else:
+            min_hwe_kernel = validate_hwe_kernel(
+                None, min_hwe_kernel, '%s/%s' % (arch, subarch), osystem,
+                series)
+        # If no hwe_kernel was found set the subarch to the default, 'generic.'
+        if min_hwe_kernel is None:
+            subarch = 'generic'
+        else:
+            subarch = min_hwe_kernel
 
         # Global kernel options for enlistment.
         extra_kernel_opts = Config.objects.get_config("kernel_opts")

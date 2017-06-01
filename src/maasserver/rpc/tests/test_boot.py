@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for boot configuration retrieval from RPC."""
@@ -149,7 +149,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         expected_arch = tuple(
             make_usable_architecture(
-                self, arch_name="i386", subarch_name="generic").split("/"))
+                self, arch_name="i386", subarch_name="hwe-16.04").split("/"))
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip)
         observed_arch = observed_config["arch"], observed_config["subarch"]
@@ -209,14 +209,26 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         arch = 'armhf'
-        Config.objects.set_config('default_min_hwe_kernel', 'hwe-v')
+        Config.objects.set_config('default_min_hwe_kernel', 'hwe-x')
         self.patch(boot_module, 'get_boot_filenames').return_value = (
             None, None, None)
+        factory.make_default_ubuntu_release_bootable(arch)
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, arch=arch)
-        self.assertEqual(
-            "hwe-v",
-            observed_config["subarch"])
+        self.assertEqual('hwe-16.04', observed_config['subarch'])
+
+    def test__enlistment_return_generic_when_none(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        arch = 'armhf'
+        self.patch(boot_module, 'get_boot_filenames').return_value = (
+            None, None, None)
+        self.patch(boot_module, 'validate_hwe_kernel').return_value = None
+        factory.make_default_ubuntu_release_bootable(arch)
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, arch=arch)
+        self.assertEqual('generic', observed_config['subarch'])
 
     def test__has_preseed_url_for_known_node(self):
         rack_controller = factory.make_RackController()
