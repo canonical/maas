@@ -8,7 +8,6 @@ __all__ = []
 
 from django.conf.urls import (
     include,
-    patterns,
     url,
 )
 from django.contrib.auth.decorators import user_passes_test
@@ -62,14 +61,12 @@ def adminurl(regexp, view, *args, **kwargs):
 
 # # URLs accessible to anonymous users.
 # Combo URLs.
-urlpatterns = patterns(
-    '',
-    (r'combo/', include('maasserver.urls_combo'))
-)
+urlpatterns = [
+    url(r'combo/', include('maasserver.urls_combo'))
+]
 
 # Anonymous views.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     url(r'^accounts/login/$', login, name='login'),
     url(r'^accounts/authenticate/$', authenticate, name='authenticate'),
     url(
@@ -83,12 +80,11 @@ urlpatterns += patterns(
         r'^robots\.txt$', TextTemplateView.as_view(
             template_name='maasserver/robots.txt'),
         name='robots'),
-)
+]
 
 # # URLs for logged-in users.
 # Preferences views.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     url(r'^account/prefs/$', userprefsview, name='prefs'),
     url(
         r'^account/prefs/sslkey/add/$', SSLKeyCreateView.as_view(),
@@ -96,28 +92,24 @@ urlpatterns += patterns(
     url(
         r'^account/prefs/sslkey/delete/(?P<keyid>\d*)/$',
         SSLKeyDeleteView.as_view(), name='prefs-delete-sslkey'),
-    )
+]
 # Logout view.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     url(r'^accounts/logout/$', logout, name='logout'),
-)
+]
 
 
 # Index view.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     url(
         r'^$',
         IndexView.as_view(),
         name='index'),
-    )
-
+]
 
 # # URLs for admin users.
 # Settings views.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     adminurl(r'^settings/$', settings, name='settings'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(
@@ -149,11 +141,10 @@ urlpatterns += patterns(
         r'^license-key/add/$',
         LicenseKeyCreate.as_view(),
         name='license-key-add'),
-)
+]
 
 # Zone views.
-urlpatterns += patterns(
-    'maasserver.views',
+urlpatterns += [
     url(r'^zones/$', ZoneListView.as_view(), name='zone-list'),
     url(
         r'^zones/(?P<name>[\w\-]+)/view/$', ZoneView.as_view(),
@@ -165,23 +156,21 @@ urlpatterns += patterns(
         r'^zones/(?P<name>[\w\-]+)/delete/$', ZoneDelete.as_view(),
         name='zone-del'),
     adminurl(r'^zones/add/$', ZoneAdd.as_view(), name='zone-add'),
-)
+]
 
 # API URLs. If old API requested, provide error message directing to new API.
-urlpatterns += patterns(
-    '',
-    (r'^api/2\.0/', include('maasserver.urls_api')),
+urlpatterns += [
+    url(r'^api/2\.0/', include('maasserver.urls_api')),
     url(r'^api/version/', lambda request: HttpResponse(
         content='2.0', content_type="text/plain"), name='api_version'),
     url(r'^api/1.0/', lambda request: HttpResponse(
         content_type="text/plain", status=410,
         content='The 1.0 API is no longer available. '
         'Please use API version 2.0.'), name='api_v1_error'),
-)
+]
 
 
 # RPC URLs.
-urlpatterns += patterns(
-    'maasserver.views.rpc',
+urlpatterns += [
     url(r'^rpc/$', info, name="rpc-info"),
-)
+]

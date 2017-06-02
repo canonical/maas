@@ -7,10 +7,7 @@ __all__ = [
     'urlpatterns',
     ]
 
-from django.conf.urls import (
-    patterns,
-    url,
-)
+from django.conf.urls import url
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
 from metadataserver.api import (
@@ -66,8 +63,7 @@ enlist_version_index_handler = OperationsResource(EnlistVersionIndexHandler)
 #
 # The URL patterns must tolerate redundant leading slashes, because
 # cloud-init tends to add these.
-node_patterns = patterns(
-    '',
+node_patterns = [
     # The webhook-style status reporting handler.
     url(
         r'^status/(?P<system_id>[\w\-]+)$', status_handler,
@@ -96,13 +92,12 @@ node_patterns = patterns(
         name='metadata-version'),
     url(
         r'^/*', index_handler, name='metadata'),
-    )
+]
 
 # The curtin-specific metadata API.  Only the user-data end-point is
 # really curtin-specific, all the other end-points are similar to the
 # normal metadata API.
-curtin_patterns = patterns(
-    '',
+curtin_patterns = [
     url(
         r'^/*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_handler,
@@ -115,14 +110,13 @@ curtin_patterns = patterns(
         name='curtin-metadata-version'),
     url(
         r'^/*curtin[/]*$', index_handler, name='curtin-metadata'),
-    )
+]
 
 
 # Anonymous random metadata access, keyed by system ID.  These serve requests
 # from the nodes which happen when the environment is so minimal that proper
 # authenticated calls are not possible.
-by_id_patterns = patterns(
-    '',
+by_id_patterns = [
     # XXX: rvb 2012-06-20 bug=1015559:  This method is accessible
     # without authentication.  This is a security threat.
     url(
@@ -135,13 +129,12 @@ by_id_patterns = patterns(
         r'^/*(?P<version>[^/]+)/enlist-preseed/$',
         meta_data_anon_handler,
         name='metadata-enlist-preseed'),
-    )
+]
 
 # UNSAFE anonymous random metadata access, keyed by MAC address.  These won't
 # work unless ALLOW_UNSAFE_METADATA_ACCESS is enabled, which you should never
 # do on a production MAAS.
-by_mac_patterns = patterns(
-    '',
+by_mac_patterns = [
     url(
         # could-init adds additional slashes in front of urls.
         r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/meta-data/(?P<item>.*)$',
@@ -157,11 +150,10 @@ by_mac_patterns = patterns(
         r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
         version_index_by_mac_handler,
         name='metadata-version-by-mac'),
-    )
+]
 
 # Anonymous enlistment entry point
-enlist_metadata_patterns = patterns(
-    '',
+enlist_metadata_patterns = [
     url(
         r'^/*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         enlist_meta_data_handler,
@@ -173,7 +165,7 @@ enlist_metadata_patterns = patterns(
         r'^/*enlist/(?P<version>[^/]+)[/]*$', enlist_version_index_handler,
         name='enlist-version'),
     url(r'^/*enlist[/]*$', enlist_index_handler, name='enlist'),
-    )
+]
 
 
 # URL patterns.  The anonymous patterns are listed first because they're

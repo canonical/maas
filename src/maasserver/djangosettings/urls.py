@@ -8,23 +8,21 @@ __all__ = []
 from django.conf import settings
 from django.conf.urls import (
     include,
-    patterns,
     url,
 )
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.views.static import serve as static_serve
 
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^', include('maasserver.urls')),
     url(r'^metadata/', include('metadataserver.urls')),
-)
+]
 
 if settings.STATIC_LOCAL_SERVE:
-    urlpatterns += patterns(
-        '',
-        (r'^media/(?P<path>.*)$', 'django.views.static.serve',
-         {'document_root': settings.MEDIA_ROOT}),
-    )
+    urlpatterns += [
+        url(r'^media/(?P<path>.*)$', static_serve,
+            {'document_root': settings.MEDIA_ROOT}),
+    ]
 
     urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PATTERN)

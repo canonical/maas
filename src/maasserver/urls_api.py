@@ -5,10 +5,7 @@
 
 __all__ = []
 
-from django.conf.urls import (
-    patterns,
-    url,
-)
+from django.conf.urls import url
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.bcache import (
@@ -338,17 +335,15 @@ license_keys_handler = AdminRestrictedResource(
 
 
 # API URLs accessible to anonymous users.
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'doc/$', api_doc, name='api-doc'),
     url(r'describe/$', describe, name='describe'),
     url(r'version/$', version_handler, name='version_handler'),
-)
+]
 
 
 # API URLs for logged-in users.
-urlpatterns += patterns(
-    '',
+urlpatterns += [
     url(r'^maas/$', maas_handler, name='maas_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/blockdevices/$',
         blockdevices_handler, name='blockdevices_handler'),
@@ -539,12 +534,11 @@ urlpatterns += patterns(
         notification_handler, name='notification_handler'),
     url(r'^scripts/$', scripts_handler, name='scripts_handler'),
     url(r'^scripts/(?P<name>[^/]+)$', script_handler, name='script_handler'),
-)
+]
 
 
 # API URLs for admin users.
-urlpatterns += patterns(
-    '',
+urlpatterns += [
     url(
         r'^commissioning-scripts/$', commissioning_scripts_handler,
         name='commissioning_scripts_handler'),
@@ -566,11 +560,10 @@ urlpatterns += patterns(
     url(r'^boot-sources/(?P<boot_source_id>[^/]+)/selections/(?P<id>[^/]+)/$',
         boot_source_selection_handler,
         name='boot_source_selection_handler'),
-)
+]
 
 
 # Last resort: return an API 404 response.
-urlpatterns += patterns(
-    '',
+urlpatterns += [
     url(r'^.*', not_found_handler, name='handler_404')
-)
+]
