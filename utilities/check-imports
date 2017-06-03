@@ -198,6 +198,15 @@ RackControllerRule = Rule(
     Allow("attr|attr.**"),
     Allow("bson"),
     Allow("crochet|crochet.**"),
+    # It's best to be selective about cryptography, so we're very specific.
+    # These 'hazmat' modules are often not used directly, but in this case they
+    # appear in the official examples from the documentation on how to use the
+    # cipher with a password as a pre-shared key. See:
+    #     https://cryptography.io/en/latest/fernet/#using-passwords-with-fernet
+    Allow("cryptography.fernet.**"),
+    Allow("cryptography.hazmat.backends.default_backend"),
+    Allow("cryptography.hazmat.primitives.hashes"),
+    Allow("cryptography.hazmat.primitives.kdf.pbkdf2.PBKDF2HMAC"),
     Allow("curtin|curtin.**"),
     Allow("distro_info|distro_info.*"),
     Allow("formencode|formencode.**"),

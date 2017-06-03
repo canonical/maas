@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for MAAS's cluster security module."""
@@ -7,29 +7,59 @@ __all__ = []
 
 import binascii
 from binascii import b2a_hex
+import os
 from os import (
     chmod,
     makedirs,
     stat,
 )
 from os.path import dirname
+from random import randint
+import time
 from unittest.mock import (
     ANY,
     sentinel,
 )
 
+from cryptography.fernet import InvalidToken
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
+from provisioningserver.path import get_data_path
+from provisioningserver.security import (
+    fernet_decrypt,
+    fernet_encrypt,
+)
 from provisioningserver.utils.fs import (
     FileLock,
     read_text_file,
     write_text_file,
 )
+from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
-class TestGetSharedSecretFromFilesystem(MAASTestCase):
+class SharedSecretTestCase(MAASTestCase):
+
+    def setUp(self):
+        """Ensures each test starts cleanly, with no pre-existing secret."""
+        get_secret = self.patch(security, "get_shared_secret_filesystem_path")
+        # Ensure each test uses a different filename for the shared secret,
+        # so that tests cannot interfere with each other.
+        get_secret.return_value = get_data_path(
+            "var", "lib", "maas", "secret-%s" % factory.make_string(16))
+        secret_file = security.get_shared_secret_filesystem_path()
+        # Extremely unlikely, but just in case.
+        if os.path.isfile(secret_file):
+            os.remove(secret_file)
+        super().setUp()
+
+    def tearDown(self):
+        secret_file = security.get_shared_secret_filesystem_path()
+        if os.path.isfile(secret_file):
+            os.remove(secret_file)
+        super().tearDown()
 
     def write_secret(self):
         secret = factory.make_bytes()
@@ -37,6 +67,9 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
         makedirs(dirname(secret_path), exist_ok=True)
         write_text_file(secret_path, security.to_hex(secret))
         return secret
+
+
+class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
 
     def test__returns_None_when_no_secret_exists(self):
         self.assertIsNone(security.get_shared_secret_from_filesystem())
@@ -55,7 +88,6 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
     def test__errors_reading_file_are_raised(self):
         self.write_secret()
         secret_path = security.get_shared_secret_filesystem_path()
-        self.addCleanup(chmod, secret_path, 0o600)
         chmod(secret_path, 0o000)
         self.assertRaises(IOError, security.get_shared_secret_from_filesystem)
 
@@ -263,3 +295,109 @@ class TestCheckForSharedSecretScript(MAASTestCase):
         self.assertEqual(0, error.code)
         self.assertThat(
             print, MockCalledOnceWith("Shared-secret is installed."))
+
+
+class TestFernetEncryption(SharedSecretTestCase):
+
+    def setUp(self):
+        security._fernet_psk = None
+        # Ensure that the iteration count is high by default. This is very
+        # important so that the MAAS secret cannot be determined by
+        # brute-force. As a side effect, this ensures our tearDown (which
+        # resets the iteration count to its default) works properly.
+        self.assertThat(security.DEFAULT_ITERATION_COUNT, Equals(100000))
+        self._previous_iteration_count = security.DEFAULT_ITERATION_COUNT
+        # The default high iteration count would make the tests very slow.
+        security.DEFAULT_ITERATION_COUNT = 2
+        super().setUp()
+
+    def tearDown(self):
+        security._fernet_psk = None
+        security.DEFAULT_ITERATION_COUNT = self._previous_iteration_count
+        super().tearDown()
+
+    def test__first_encrypt_caches_psk(self):
+        self.write_secret()
+        self.assertIsNone(security._fernet_psk)
+        testdata = factory.make_string()
+        fernet_encrypt(testdata)
+        self.assertIsNotNone(security._fernet_psk)
+
+    def test__derives_identical_key_on_decrypt(self):
+        self.write_secret()
+        self.assertIsNone(security._fernet_psk)
+        testdata = factory.make_bytes()
+        token = fernet_encrypt(testdata)
+        first_key = security._fernet_psk
+        # Make it seem like we're decrypting something without ever encrypting
+        # anything first.
+        security._fernet_psk = None
+        decrypted = fernet_decrypt(token)
+        second_key = security._fernet_psk
+        self.assertEqual(first_key, second_key)
+        self.assertEqual(testdata, decrypted)
+
+    def test__can_encrypt_and_decrypt_string(self):
+        self.write_secret()
+        testdata = factory.make_string()
+        token = fernet_encrypt(testdata)
+        decrypted = fernet_decrypt(token)
+        decrypted = decrypted.decode("utf-8")
+        self.assertThat(decrypted, Equals(testdata))
+
+    def test__can_encrypt_and_decrypt_bytes(self):
+        self.write_secret()
+        testdata = factory.make_bytes()
+        token = fernet_encrypt(testdata)
+        decrypted = fernet_decrypt(token)
+        self.assertThat(decrypted, Equals(testdata))
+
+    def test__raises_when_no_secret_exists(self):
+        testdata = factory.make_bytes()
+        with ExpectedException(AssertionError):
+            fernet_encrypt(testdata)
+        with ExpectedException(AssertionError):
+            fernet_decrypt(b"")
+
+    def test__assures_data_integrity(self):
+        self.write_secret()
+        testdata = factory.make_bytes(size=10)
+        token = fernet_encrypt(testdata)
+        bad_token = bytearray(token)
+        # Flip a bit in the token, so we can ensure it won't decrypt if it
+        # has been corrupted. Subtract 4 to avoid the end of the token; that
+        # portion is just padding, and isn't covered by the HMAC.
+        byte_to_flip = randint(0, len(bad_token) - 4)
+        bit_to_flip = 1 << randint(0, 7)
+        bad_token[byte_to_flip] ^= bit_to_flip
+        bad_token = bytes(bad_token)
+        test_description = ("token=%s; token[%d] ^= 0x%02x" % (
+            token.decode("utf-8"), byte_to_flip, bit_to_flip))
+        with ExpectedException(InvalidToken, msg=test_description):
+            fernet_decrypt(bad_token)
+
+    def test__messages_from_up_to_a_minute_in_the_future_accepted(self):
+        self.write_secret()
+        testdata = factory.make_bytes()
+        now = time.time()
+        self.patch(time, "time").side_effect = [now + 60, now]
+        token = fernet_encrypt(testdata)
+        fernet_decrypt(token, ttl=1)
+
+    def test__messages_from_the_past_exceeding_ttl_rejected(self):
+        self.write_secret()
+        testdata = factory.make_bytes()
+        now = time.time()
+        self.patch(time, "time").side_effect = [now - 2, now]
+        token = fernet_encrypt(testdata)
+        with ExpectedException(InvalidToken):
+            fernet_decrypt(token, ttl=1)
+
+    def test__messages_from_future_exceeding_clock_skew_limit_rejected(self):
+        self.write_secret()
+        testdata = factory.make_bytes()
+        now = time.time()
+        self.patch(time, "time").side_effect = [now + 61, now]
+        token = fernet_encrypt(testdata)
+        with ExpectedException(InvalidToken):
+            fernet_decrypt(token, ttl=1)
