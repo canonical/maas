@@ -2002,63 +2002,45 @@ class TestRSDPodDriver(MAASTestCase):
                 factory.make_name('system_id'), context, request)
 
     @inlineCallbacks
-    def test__decompose(self):
+    def test__delete_node(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
-        headers = driver.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/%s" % node_id
+        headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
-        mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
-        discovered_pod = make_discovered_pod()
-        mock_get_pod_resources.return_value = discovered_pod
-        mock_get_pod_hints = self.patch(driver, 'get_pod_hints')
 
-        yield driver.decompose(
-            factory.make_name('system_id'), context)
+        yield driver.delete_node(url, node_id, headers)
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
             b"DELETE", join(url, endpoint), headers))
-        self.assertThat(mock_get_pod_resources, MockCalledOnceWith(
-            url, headers))
-        self.assertThat(mock_get_pod_hints, MockCalledOnceWith(
-            discovered_pod))
 
     @inlineCallbacks
-    def test_decompose_continues_on_404_error(self):
+    def test_delete_node_continues_on_404_error(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
-        headers = driver.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/%s" % node_id
+        headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
             code=HTTPStatus.NOT_FOUND)
         mock_redfish_request.side_effect = error
-        mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
-        discovered_pod = make_discovered_pod()
-        mock_get_pod_resources.return_value = discovered_pod
-        mock_get_pod_hints = self.patch(driver, 'get_pod_hints')
 
-        yield driver.decompose(
-            factory.make_name('system_id'), context)
+        yield driver.delete_node(url, node_id, headers)
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
             b"DELETE", join(url, endpoint), headers))
-        self.assertThat(mock_get_pod_resources, MockCalledOnceWith(
-            url, headers))
-        self.assertThat(mock_get_pod_hints, MockCalledOnceWith(
-            discovered_pod))
 
     @inlineCallbacks
-    def test_decompose_raises_when_not_404_error(self):
+    def test_delete_node_raises_when_not_404_error(self):
         driver = RSDPodDriver()
         context = make_context()
         url = driver.get_url(context)
         node_id = context.get('node_id').encode('utf-8')
-        headers = driver.make_auth_headers(**context)
         endpoint = b"redfish/v1/Nodes/%s" % node_id
+        headers = driver.make_auth_headers(**context)
         mock_redfish_request = self.patch(driver, 'redfish_request')
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode('utf-8'),
@@ -2066,10 +2048,31 @@ class TestRSDPodDriver(MAASTestCase):
         mock_redfish_request.side_effect = error
 
         with ExpectedException(PartialDownloadError):
-            yield driver.decompose(
-                factory.make_name('system_id'), context)
+            yield driver.delete_node(url, node_id, headers)
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
             b"DELETE", join(url, endpoint), headers))
+
+    @inlineCallbacks
+    def test__decompose(self):
+        driver = RSDPodDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = context.get('node_id').encode('utf-8')
+        headers = driver.make_auth_headers(**context)
+        mock_delete_node = self.patch(driver, 'delete_node')
+        mock_get_pod_resources = self.patch(driver, 'get_pod_resources')
+        discovered_pod = make_discovered_pod()
+        mock_get_pod_resources.return_value = discovered_pod
+        mock_get_pod_hints = self.patch(driver, 'get_pod_hints')
+
+        yield driver.decompose(
+            factory.make_name('system_id'), context)
+        self.assertThat(mock_delete_node, MockCalledOnceWith(
+            url, node_id, headers))
+        self.assertThat(mock_get_pod_resources, MockCalledOnceWith(
+            url, headers))
+        self.assertThat(mock_get_pod_hints, MockCalledOnceWith(
+            discovered_pod))
 
     @inlineCallbacks
     def test__set_pxe_boot(self):
@@ -2164,11 +2167,14 @@ class TestRSDPodDriver(MAASTestCase):
         mock_get_composed_node_state = self.patch(
             driver, 'get_composed_node_state')
         mock_get_composed_node_state.return_value = "Failed"
+        mock_delete_node = self.patch(driver, 'delete_node')
         mock_redfish_request = self.patch(driver, 'redfish_request')
 
         with ExpectedException(PodFatalError):
             yield driver.assemble_node(url, node_id, headers)
         self.assertThat(mock_get_composed_node_state, MockCalledOnceWith(
+            url, node_id, headers))
+        self.assertThat(mock_delete_node, MockCalledOnceWith(
             url, node_id, headers))
         self.assertThat(mock_redfish_request, MockNotCalled())
 
@@ -2183,6 +2189,7 @@ class TestRSDPodDriver(MAASTestCase):
             driver, 'get_composed_node_state')
         mock_get_composed_node_state.side_effect = [
             "Allocated", "Assembling", "Failed"]
+        mock_delete_node = self.patch(driver, 'delete_node')
         mock_redfish_request = self.patch(driver, 'redfish_request')
         endpoint = (
             b"redfish/v1/Nodes/%s/Actions/ComposedNode.Assemble" % node_id)
@@ -2196,6 +2203,8 @@ class TestRSDPodDriver(MAASTestCase):
             call(url, node_id, headers)))
         self.assertThat(mock_redfish_request, MockCalledOnceWith(
             b"POST", uri, headers))
+        self.assertThat(mock_delete_node, MockCalledOnceWith(
+            url, node_id, headers))
 
     @inlineCallbacks
     def test_power_issues_power_reset(self):

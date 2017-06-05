@@ -1046,11 +1046,8 @@ class RSDPodDriver(PodDriver):
             "Unable to allocate machine with requested resources.")
 
     @inlineCallbacks
-    def decompose(self, pod_id, context):
-        """Decompose machine."""
-        url = self.get_url(context)
-        node_id = context.get('node_id').encode('utf-8')
-        headers = self.make_auth_headers(**context)
+    def delete_node(self, url, node_id, headers):
+        """Delete node at node_id."""
         # Delete machine at node_id.
         endpoint = b"redfish/v1/Nodes/%s" % node_id
         try:
@@ -1060,11 +1057,16 @@ class RSDPodDriver(PodDriver):
             # XXX newell 2017-02-27 bug=1667754:
             # Catch the 404 error when trying to decompose the
             # resource that has already been decomposed.
-            # This is a work around and will need to be handled
-            # differently on the region so we don't try to
-            # decompose a machine multiple times.
             if int(error.status) != HTTPStatus.NOT_FOUND:
                 raise
+
+    @inlineCallbacks
+    def decompose(self, pod_id, context):
+        """Decompose machine."""
+        url = self.get_url(context)
+        node_id = context.get('node_id').encode('utf-8')
+        headers = self.make_auth_headers(**context)
+        yield self.delete_node(url, node_id, headers)
 
         # Retrieve pod resources.
         discovered_pod = yield self.get_pod_resources(url, headers)
@@ -1114,7 +1116,8 @@ class RSDPodDriver(PodDriver):
             yield self.redfish_request(
                 b"POST", join(url, endpoint), headers)
         elif node_state == 'Failed':
-            # Broken system.
+            # Broken system, delete allocated node.
+            yield self.delete_node(url, node_id, headers)
             raise PodFatalError(
                 "Composed machine at node ID %s has a ComposedNodeState"
                 " of Failed." % node_id)
@@ -1131,7 +1134,8 @@ class RSDPodDriver(PodDriver):
         # Check one last time if the state has became `Failed`.
 
         if node_state == 'Failed':
-            # Broken system.
+            # Broken system, delete allocated node.
+            yield self.delete_node(url, node_id, headers)
             raise PodFatalError(
                 "Composed machine at node ID %s has a ComposedNodeState"
                 " of Failed." % node_id)
