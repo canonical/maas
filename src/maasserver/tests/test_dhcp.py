@@ -748,6 +748,33 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
                     (address.ip for address in addresses), key=IPAddress),
             }))
 
+    def test__returned_dict_prefers_vlans_with_dhcp_on(self):
+        rack = factory.make_RackController()
+        space = factory.make_Space()
+        ip_version = random.choice([4, 6])
+        cidr1 = factory.make_ip4_or_6_network(version=ip_version, host_bits=16)
+        cidr2 = factory.make_ip4_or_6_network(version=ip_version, host_bits=16)
+        subnet1 = factory.make_Subnet(space=space, cidr=cidr1)
+        subnet2 = factory.make_Subnet(space=space, cidr=cidr2)
+        # Expect subnet2 to be selected, since DHCP is enabled.
+        subnet2.vlan.dhcp_on = True
+        subnet2.vlan.save()
+        interface = factory.make_Interface(node=rack)
+        # Make some addresses that won't be selected since they're on the
+        # incorrect VLAN (without DHCP enabled).
+        for _ in range(3):
+            factory.make_StaticIPAddress(
+                interface=interface, subnet=subnet1,
+                alloc_type=IPADDRESS_TYPE.STICKY)
+        expected_address = factory.make_StaticIPAddress(
+            interface=interface, subnet=subnet2,
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        self.assertThat(
+            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({
+                (space.id, subnet2.get_ipnetwork().version):
+                    expected_address.ip
+            }))
+
     def test__constant_query_count(self):
         rack = factory.make_RackController()
         interface = factory.make_Interface(node=rack)
