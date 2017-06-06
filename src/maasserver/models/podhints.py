@@ -10,6 +10,7 @@ __all__ = [
 
 from django.db.models import (
     BigIntegerField,
+    CASCADE,
     IntegerField,
     Model,
     OneToOneField,
@@ -24,7 +25,7 @@ class PodHints(CleanSave, Model):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    pod = OneToOneField('BMC', related_name="hints")
+    pod = OneToOneField('BMC', related_name="hints", on_delete=CASCADE)
 
     cores = IntegerField(default=0)
 

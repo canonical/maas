@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+# -*- coding: utf-8 -*-
 from django.db import (
     migrations,
     models,
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('ip', maasserver.fields.MAASIPAddressField(editable=False, verbose_name='IP')),
                 ('hostname', models.CharField(max_length=256, null=True)),
                 ('hostnames', maasserver.fields.JSONObjectField()),
-                ('observer', models.ForeignKey(to='maasserver.Node', editable=False)),
+                ('observer', models.ForeignKey(to='maasserver.Node', editable=False, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name_plural': 'Reverse-DNS entries',

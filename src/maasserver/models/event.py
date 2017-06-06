@@ -10,6 +10,7 @@ __all__ = [
 import logging
 
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     Manager,
     TextField,
@@ -73,9 +74,10 @@ class Event(CleanSave, TimestampedModel):
     :ivar description: A free-form description of the event.
     """
 
-    type = ForeignKey('EventType', null=False, editable=False)
+    type = ForeignKey(
+        'EventType', null=False, editable=False, on_delete=CASCADE)
 
-    node = ForeignKey('Node', null=False, editable=False)
+    node = ForeignKey('Node', null=False, editable=False, on_delete=CASCADE)
 
     action = TextField(default='', blank=True, editable=False)
 

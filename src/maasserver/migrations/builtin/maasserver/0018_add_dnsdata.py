@@ -43,6 +43,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='dnsdata',
             name='dnsresource',
-            field=models.ForeignKey(to='maasserver.DNSResource', help_text='DNSResource which is the left-hand side.'),
+            field=models.ForeignKey(to='maasserver.DNSResource', help_text='DNSResource which is the left-hand side.', on_delete=models.CASCADE),
         ),
     ]

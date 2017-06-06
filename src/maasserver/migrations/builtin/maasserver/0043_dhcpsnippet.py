@@ -23,9 +23,9 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=255)),
                 ('description', models.TextField(blank=True)),
                 ('enabled', models.BooleanField(default=True)),
-                ('node', models.ForeignKey(to='maasserver.Node', null=True, blank=True)),
-                ('subnet', models.ForeignKey(to='maasserver.Subnet', null=True, blank=True)),
-                ('value', models.ForeignKey(to='maasserver.VersionedTextFile')),
+                ('node', models.ForeignKey(to='maasserver.Node', null=True, blank=True, on_delete=models.CASCADE)),
+                ('subnet', models.ForeignKey(to='maasserver.Subnet', null=True, blank=True, on_delete=models.CASCADE)),
+                ('value', models.ForeignKey(to='maasserver.VersionedTextFile', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,

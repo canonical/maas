@@ -907,7 +907,8 @@ class Node(CleanSave, TimestampedModel):
     swap_size = BigIntegerField(null=True, blank=True, default=None)
 
     bmc = ForeignKey(
-        'BMC', db_index=True, null=True, editable=False, unique=False)
+        'BMC', db_index=True, null=True, editable=False, unique=False,
+        on_delete=CASCADE)
 
     # Power parameters specific to this node instance. Global power parameters
     # are stored in this node's BMC.
@@ -935,7 +936,8 @@ class Node(CleanSave, TimestampedModel):
         null=True, blank=False, default=None, editable=False)
 
     token = ForeignKey(
-        Token, db_index=True, null=True, editable=False, unique=False)
+        Token, db_index=True, null=True, editable=False, unique=False,
+        on_delete=CASCADE)
 
     error = CharField(max_length=255, blank=True, default='')
 
@@ -5032,4 +5034,5 @@ class NodeGroupToRackController(CleanSave, Model):
 
     # The subnet that the nodegroup is connected to. There can be multiple
     # rows for multiple subnets on a signal nodegroup
-    subnet = ForeignKey('Subnet', null=False, blank=False, editable=True)
+    subnet = ForeignKey(
+        'Subnet', null=False, blank=False, editable=True, on_delete=CASCADE)

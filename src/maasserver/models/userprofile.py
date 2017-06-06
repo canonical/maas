@@ -11,6 +11,7 @@ __all__ = [
 from django.contrib.auth.models import User
 from django.db.models import (
     BooleanField,
+    CASCADE,
     Manager,
     Model,
     OneToOneField,
@@ -58,7 +59,7 @@ class UserProfile(CleanSave, Model):
         """Needed for South to recognize this model."""
 
     objects = UserProfileManager()
-    user = OneToOneField(User)
+    user = OneToOneField(User, on_delete=CASCADE)
 
     # Set to true when the user has completed the intro page of the Web UI.
     completed_intro = BooleanField(default=False)

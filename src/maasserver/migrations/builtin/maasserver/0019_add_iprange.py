@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('start_ip', maasserver.fields.MAASIPAddressField(verbose_name='Start IP', editable=False)),
                 ('end_ip', maasserver.fields.MAASIPAddressField(verbose_name='End IP', editable=False)),
                 ('comment', models.CharField(max_length=255, null=True, blank=True)),
-                ('subnet', models.ForeignKey(to='maasserver.Subnet')),
+                ('subnet', models.ForeignKey(to='maasserver.Subnet', on_delete=models.CASCADE)),
                 ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, editable=False, default=None, to=settings.AUTH_USER_MODEL, blank=True)),
             ],
             options={

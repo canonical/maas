@@ -15,6 +15,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -303,7 +304,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         choices=CACHE_MODE_TYPE_CHOICES)
 
     cache_set = ForeignKey(
-        CacheSet, null=True, blank=True)
+        CacheSet, null=True, blank=True, on_delete=CASCADE)
 
     def __str__(self):
         return '%s device %s %d' % (self.group_type, self.name, self.id)

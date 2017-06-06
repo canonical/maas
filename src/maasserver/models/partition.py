@@ -15,6 +15,7 @@ from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
     BooleanField,
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -110,7 +111,7 @@ class Partition(CleanSave, TimestampedModel):
 
     partition_table = ForeignKey(
         'maasserver.PartitionTable', null=False, blank=False,
-        related_name="partitions")
+        related_name="partitions", on_delete=CASCADE)
 
     uuid = CharField(
         max_length=36, unique=True, null=True, blank=True)

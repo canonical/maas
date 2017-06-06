@@ -19,6 +19,7 @@ from django.core.exceptions import (
 from django.core.validators import MinValueValidator
 from django.db.models import (
     BigIntegerField,
+    CASCADE,
     CharField,
     FilePathField,
     ForeignKey,
@@ -116,7 +117,7 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     objects = BlockDeviceManager()
 
-    node = ForeignKey('Node', null=False, editable=False)
+    node = ForeignKey('Node', null=False, editable=False, on_delete=CASCADE)
 
     name = CharField(
         max_length=255, blank=False,

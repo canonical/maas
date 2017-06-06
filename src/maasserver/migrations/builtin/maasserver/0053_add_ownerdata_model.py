@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', auto_created=True, primary_key=True, serialize=False)),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.TextField()),
-                ('node', models.ForeignKey(to='maasserver.Node')),
+                ('node', models.ForeignKey(to='maasserver.Node', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),

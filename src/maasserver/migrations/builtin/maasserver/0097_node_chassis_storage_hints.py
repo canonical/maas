@@ -68,6 +68,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='chassishints',
             name='chassis',
-            field=models.OneToOneField(to='maasserver.Node', related_name='chassis_hints'),
+            field=models.OneToOneField(to='maasserver.Node', related_name='chassis_hints', on_delete=models.CASCADE),
         ),
     ]

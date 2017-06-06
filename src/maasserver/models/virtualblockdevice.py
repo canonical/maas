@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
 )
@@ -73,7 +74,7 @@ class VirtualBlockDevice(BlockDevice):
 
     filesystem_group = ForeignKey(
         FilesystemGroup, null=False, blank=False,
-        related_name="virtual_devices")
+        related_name="virtual_devices", on_delete=CASCADE)
 
     def get_name(self):
         """Return the name."""

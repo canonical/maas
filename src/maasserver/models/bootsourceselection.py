@@ -11,6 +11,7 @@ __all__ = [
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -35,7 +36,8 @@ class BootSourceSelection(CleanSave, TimestampedModel):
 
     objects = BootSourceSelectionManager()
 
-    boot_source = ForeignKey('maasserver.BootSource', blank=False)
+    boot_source = ForeignKey(
+        'maasserver.BootSource', blank=False, on_delete=CASCADE)
 
     os = CharField(
         max_length=20, blank=True, default='',

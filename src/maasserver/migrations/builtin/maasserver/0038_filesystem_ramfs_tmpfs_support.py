@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='filesystem',
             name='node',
-            field=models.ForeignKey(to='maasserver.Node', blank=True, null=True),
+            field=models.ForeignKey(to='maasserver.Node', blank=True, null=True, on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='filesystem',

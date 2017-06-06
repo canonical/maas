@@ -17,6 +17,7 @@ from django.db import transaction
 from django.db.models import (
     BigIntegerField,
     BooleanField,
+    CASCADE,
     CharField,
     ForeignKey,
     IntegerField,
@@ -1071,7 +1072,9 @@ class BMCRoutableRackControllerRelationship(CleanSave, TimestampedModel):
     this table to record the last time it was checked and if it was `routable`
     or not.
     """
-    bmc = ForeignKey(BMC, related_name="routable_rack_relationships")
+    bmc = ForeignKey(
+        BMC, related_name="routable_rack_relationships", on_delete=CASCADE)
     rack_controller = ForeignKey(
-        "RackController", related_name="routable_bmc_relationships")
+        "RackController", related_name="routable_bmc_relationships",
+        on_delete=CASCADE)
     routable = BooleanField()

@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(help_text='Name of service. (e.g. maas-dhcpd)', editable=False, max_length=255)),
                 ('status', models.CharField(default='unknown', choices=[('unknown', 'Unknown'), ('running', 'Running'), ('degraged', 'Degraded'), ('dead', 'Dead'), ('off', 'Off')], editable=False, max_length=10)),
                 ('status_info', models.CharField(blank=True, editable=False, max_length=255)),
-                ('node', models.ForeignKey(to='maasserver.Node', editable=False)),
+                ('node', models.ForeignKey(to='maasserver.Node', editable=False, on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ['id'],

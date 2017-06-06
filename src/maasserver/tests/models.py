@@ -19,6 +19,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Model,
@@ -74,7 +75,8 @@ class BulkManagerParentTestModel(Model):
 
 
 class BulkManagerTestModel(Model):
-    parent = ForeignKey('BulkManagerParentTestModel', editable=False)
+    parent = ForeignKey(
+        'BulkManagerParentTestModel', editable=False, on_delete=CASCADE)
 
     objects = BulkManager()
 

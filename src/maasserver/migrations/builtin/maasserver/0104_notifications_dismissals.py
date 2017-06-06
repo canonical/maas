@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
 from django.conf import settings
+# -*- coding: utf-8 -*-
 from django.db import (
     migrations,
     models,
@@ -20,8 +20,8 @@ class Migration(migrations.Migration):
             name='NotificationDismissal',
             fields=[
                 ('id', models.AutoField(auto_created=True, verbose_name='ID', serialize=False, primary_key=True)),
-                ('notification', models.ForeignKey(to='maasserver.Notification')),
-                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('notification', models.ForeignKey(to='maasserver.Notification', on_delete=models.CASCADE)),
+                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
         ),
     ]

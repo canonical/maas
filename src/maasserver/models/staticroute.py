@@ -13,6 +13,7 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     Manager,
     PositiveIntegerField,
@@ -61,10 +62,10 @@ class StaticRoute(CleanSave, TimestampedModel):
     objects = StaticRouteManager()
 
     source = ForeignKey(
-        'Subnet', blank=False, null=False, related_name="+")
+        'Subnet', blank=False, null=False, related_name="+", on_delete=CASCADE)
 
     destination = ForeignKey(
-        'Subnet', blank=False, null=False, related_name="+")
+        'Subnet', blank=False, null=False, related_name="+", on_delete=CASCADE)
 
     gateway_ip = MAASIPAddressField(
         unique=False, null=False, blank=False, editable=True,

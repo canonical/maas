@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+# -*- coding: utf-8 -*-
 from django.db import (
     migrations,
     models,
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='sshkey',
             name='keysource',
-            field=models.ForeignKey(to='maasserver.KeySource', editable=False, blank=True, null=True),
+            field=models.ForeignKey(to='maasserver.KeySource', editable=False, blank=True, null=True, on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='sshkey',

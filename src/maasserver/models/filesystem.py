@@ -13,6 +13,7 @@ from uuid import uuid4
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -94,14 +95,14 @@ class Filesystem(CleanSave, TimestampedModel):
         default=FILESYSTEM_TYPE.EXT4)
 
     partition = ForeignKey(
-        Partition, unique=False, null=True, blank=True)
+        Partition, unique=False, null=True, blank=True, on_delete=CASCADE)
 
     block_device = ForeignKey(
-        BlockDevice, unique=False, null=True, blank=True)
+        BlockDevice, unique=False, null=True, blank=True, on_delete=CASCADE)
 
     node = ForeignKey(
         "Node", unique=False, null=True, blank=True,
-        related_name="special_filesystems")
+        related_name="special_filesystems", on_delete=CASCADE)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
@@ -109,7 +110,8 @@ class Filesystem(CleanSave, TimestampedModel):
         max_length=255, null=True, blank=True)
 
     filesystem_group = ForeignKey(
-        FilesystemGroup, null=True, blank=True, related_name='filesystems')
+        FilesystemGroup, null=True, blank=True, related_name='filesystems',
+        on_delete=CASCADE)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
@@ -127,7 +129,8 @@ class Filesystem(CleanSave, TimestampedModel):
         max_length=255, null=True, blank=True)
 
     cache_set = ForeignKey(
-        CacheSet, null=True, blank=True, related_name='filesystems')
+        CacheSet, null=True, blank=True, related_name='filesystems',
+        on_delete=CASCADE)
 
     # When a node is allocated all Filesystem objects assigned to that node
     # with mountable filesystems will be duplicated with this field set to

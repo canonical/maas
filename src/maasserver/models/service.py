@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -135,7 +136,7 @@ class Service(CleanSave, TimestampedModel):
 
     objects = ServiceManager()
 
-    node = ForeignKey('Node', null=False, editable=False)
+    node = ForeignKey('Node', null=False, editable=False, on_delete=CASCADE)
 
     name = CharField(
         max_length=255, null=False, blank=False, editable=False,

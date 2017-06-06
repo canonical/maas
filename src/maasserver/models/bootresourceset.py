@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Sum,
@@ -56,7 +57,8 @@ class BootResourceSet(CleanSave, TimestampedModel):
             ('resource', 'version'),
             )
 
-    resource = ForeignKey('BootResource', related_name='sets', editable=False)
+    resource = ForeignKey(
+        'BootResource', related_name='sets', editable=False, on_delete=CASCADE)
 
     version = CharField(max_length=255, editable=False)
 

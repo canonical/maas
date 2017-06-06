@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     CharField,
     Manager,
     Model,
@@ -124,8 +125,8 @@ class NodeKey(CleanSave, Model):
     objects = NodeKeyManager()
 
     node = OneToOneField(
-        'maasserver.Node', null=False, editable=False)
+        'maasserver.Node', null=False, editable=False, on_delete=CASCADE)
     token = OneToOneField(
-        Token, null=False, editable=False)
+        Token, null=False, editable=False, on_delete=CASCADE)
     key = CharField(
         max_length=KEY_SIZE, null=False, editable=False, unique=True)

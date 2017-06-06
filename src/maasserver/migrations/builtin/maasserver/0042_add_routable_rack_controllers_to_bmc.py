@@ -21,8 +21,8 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('routable', models.BooleanField()),
-                ('bmc', models.ForeignKey(related_name='routable_rack_relationships', to='maasserver.BMC')),
-                ('rack_controller', models.ForeignKey(related_name='routable_bmc_relationships', to='maasserver.RackController')),
+                ('bmc', models.ForeignKey(related_name='routable_rack_relationships', to='maasserver.BMC', on_delete=models.CASCADE)),
+                ('rack_controller', models.ForeignKey(related_name='routable_bmc_relationships', to='maasserver.RackController', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,

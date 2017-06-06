@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     deletion,
     ForeignKey,
@@ -165,7 +166,8 @@ class VLAN(CleanSave, TimestampedModel):
 
     vid = IntegerField(editable=True)
 
-    fabric = ForeignKey('Fabric', blank=False, editable=True)
+    fabric = ForeignKey(
+        'Fabric', blank=False, editable=True, on_delete=CASCADE)
 
     mtu = IntegerField(default=DEFAULT_MTU)
 
@@ -176,11 +178,11 @@ class VLAN(CleanSave, TimestampedModel):
 
     primary_rack = ForeignKey(
         'RackController', null=True, blank=True, editable=True,
-        related_name='+')
+        related_name='+', on_delete=CASCADE)
 
     secondary_rack = ForeignKey(
         'RackController', null=True, blank=True, editable=True,
-        related_name='+')
+        related_name='+', on_delete=CASCADE)
 
     relay_vlan = ForeignKey(
         'self', null=True, blank=True, editable=True,

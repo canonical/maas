@@ -33,6 +33,6 @@ class Migration(migrations.Migration):
             model_name='notification', name='user',
             field=models.ForeignKey(
                 null=True, default=None, blank=True,
-                to=settings.AUTH_USER_MODEL),
+                to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE),
         ),
     ]

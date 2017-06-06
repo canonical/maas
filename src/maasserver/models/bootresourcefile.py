@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
 )
@@ -47,9 +48,10 @@ class BootResourceFile(CleanSave, TimestampedModel):
             )
 
     resource_set = ForeignKey(
-        BootResourceSet, related_name='files', editable=False)
+        BootResourceSet, related_name='files', editable=False,
+        on_delete=CASCADE)
 
-    largefile = ForeignKey(LargeFile, editable=False)
+    largefile = ForeignKey(LargeFile, editable=False, on_delete=CASCADE)
 
     filename = CharField(max_length=255, editable=False)
 

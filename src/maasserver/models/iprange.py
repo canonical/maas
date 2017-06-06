@@ -13,6 +13,7 @@ __all__ = [
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -100,7 +101,8 @@ class IPRange(CleanSave, TimestampedModel):
 
     objects = IPRangeManager()
 
-    subnet = ForeignKey('Subnet', editable=True, blank=False, null=False)
+    subnet = ForeignKey(
+        'Subnet', editable=True, blank=False, null=False, on_delete=CASCADE)
 
     type = CharField(
         max_length=20, editable=True, choices=IPRANGE_TYPE_CHOICES,

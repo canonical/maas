@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='bmc',
-            field=models.ForeignKey(editable=False, null=True, to='maasserver.BMC'),
+            field=models.ForeignKey(editable=False, null=True, to='maasserver.BMC', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='bmc',

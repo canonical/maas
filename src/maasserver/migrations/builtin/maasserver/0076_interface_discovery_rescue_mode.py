@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+# -*- coding: utf-8 -*-
 from django.db import (
     migrations,
     models,
@@ -88,12 +88,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='neighbour',
             name='interface',
-            field=models.ForeignKey(editable=False, to='maasserver.Interface'),
+            field=models.ForeignKey(editable=False, to='maasserver.Interface', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='mdns',
             name='interface',
-            field=models.ForeignKey(editable=False, to='maasserver.Interface'),
+            field=models.ForeignKey(editable=False, to='maasserver.Interface', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='neighbour',

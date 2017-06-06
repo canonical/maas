@@ -9,6 +9,7 @@ __all__ = [
 
 
 from django.db.models import (
+    CASCADE,
     CharField,
     DateField,
     ForeignKey,
@@ -50,7 +51,7 @@ class BootSourceCache(CleanSave, TimestampedModel):
 
     objects = BootSourceCacheManager()
 
-    boot_source = ForeignKey(BootSource, blank=False)
+    boot_source = ForeignKey(BootSource, blank=False, on_delete=CASCADE)
 
     os = CharField(max_length=32, blank=False, null=False)
 

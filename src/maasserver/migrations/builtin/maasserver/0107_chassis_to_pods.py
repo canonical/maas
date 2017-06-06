@@ -102,6 +102,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='podhints',
             name='pod',
-            field=models.OneToOneField(related_name='hints', to='maasserver.BMC'),
+            field=models.OneToOneField(related_name='hints', to='maasserver.BMC', on_delete=models.CASCADE),
         ),
     ]

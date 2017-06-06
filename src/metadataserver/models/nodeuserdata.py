@@ -9,6 +9,7 @@ __all__ = [
 
 
 from django.db.models import (
+    CASCADE,
     Manager,
     Model,
     OneToOneField,
@@ -85,5 +86,5 @@ class NodeUserData(CleanSave, Model):
     objects = NodeUserDataManager()
 
     node = OneToOneField(
-        'maasserver.Node', null=False, editable=False)
+        'maasserver.Node', null=False, editable=False, on_delete=CASCADE)
     data = BinaryField(null=False)

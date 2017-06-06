@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     IntegerField,
 )
@@ -34,6 +35,7 @@ class RegionControllerProcess(CleanSave, TimestampedModel):
     # It links to `Node` but it will be either
     # `RegionController` or `RegionRackController`.
     region = ForeignKey(
-        Node, null=False, blank=False, related_name="processes")
+        Node, null=False, blank=False, related_name="processes",
+        on_delete=CASCADE)
 
     pid = IntegerField()

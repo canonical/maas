@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('data', models.TextField(help_text='File contents', null=True, editable=False, blank=True)),
                 ('comment', models.CharField(help_text='Description of this version', null=True, max_length=255, blank=True)),
-                ('previous_version', models.ForeignKey(related_name='next_versions', to='maasserver.VersionedTextFile', blank=True, default=None, null=True)),
+                ('previous_version', models.ForeignKey(related_name='next_versions', to='maasserver.VersionedTextFile', blank=True, default=None, null=True, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name_plural': 'VersionedTextFiles',
@@ -47,11 +47,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='default_version',
-            field=models.ForeignKey(related_name='default_templates', to='maasserver.VersionedTextFile', help_text='Default data for this template.', editable=False),
+            field=models.ForeignKey(related_name='default_templates', to='maasserver.VersionedTextFile', help_text='Default data for this template.', editable=False, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='template',
             name='version',
-            field=models.ForeignKey(related_name='templates', blank=True, to='maasserver.VersionedTextFile', help_text='Custom data for this template.', null=True),
+            field=models.ForeignKey(related_name='templates', blank=True, to='maasserver.VersionedTextFile', help_text='Custom data for this template.', null=True, on_delete=models.CASCADE),
         ),
     ]

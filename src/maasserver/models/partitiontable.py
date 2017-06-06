@@ -9,6 +9,7 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
 )
@@ -70,7 +71,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         max_length=20, choices=PARTITION_TABLE_TYPE_CHOICES, default=None)
 
     block_device = ForeignKey(
-        BlockDevice, null=False, blank=False)
+        BlockDevice, null=False, blank=False, on_delete=CASCADE)
 
     def get_node(self):
         """`Node` this partition belongs to."""

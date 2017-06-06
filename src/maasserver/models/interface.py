@@ -22,6 +22,7 @@ from django.core.exceptions import (
 )
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     Count,
     ForeignKey,
@@ -488,7 +489,8 @@ class Interface(CleanSave, TimestampedModel):
 
     objects = InterfaceManager()
 
-    node = ForeignKey('Node', editable=False, null=True, blank=True)
+    node = ForeignKey(
+        'Node', editable=False, null=True, blank=True, on_delete=CASCADE)
 
     name = CharField(
         blank=False, editable=True, max_length=255,
@@ -1414,8 +1416,10 @@ class Interface(CleanSave, TimestampedModel):
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
-    child = ForeignKey(Interface, related_name="parent_relationships")
-    parent = ForeignKey(Interface, related_name="children_relationships")
+    child = ForeignKey(
+        Interface, related_name="parent_relationships", on_delete=CASCADE)
+    parent = ForeignKey(
+        Interface, related_name="children_relationships", on_delete=CASCADE)
 
 
 class PhysicalInterface(Interface):

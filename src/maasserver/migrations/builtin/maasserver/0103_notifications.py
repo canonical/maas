@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
 from django.conf import settings
+# -*- coding: utf-8 -*-
 from django.db import (
     migrations,
     models,
@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 ('admins', models.BooleanField(default=False)),
                 ('message', models.TextField(blank=True)),
                 ('context', maasserver.fields.JSONObjectField(default=dict, blank=True)),
-                ('user', models.ForeignKey(null=True, to=settings.AUTH_USER_MODEL, blank=True)),
+                ('user', models.ForeignKey(null=True, to=settings.AUTH_USER_MODEL, blank=True, on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model, object),
         ),

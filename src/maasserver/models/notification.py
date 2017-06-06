@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -163,7 +164,8 @@ class Notification(CleanSave, TimestampedModel):
     # migrations for the SQL used to create this index.
     ident = CharField(max_length=40, null=True, blank=True, default=None)
 
-    user = ForeignKey(User, null=True, blank=True, default=None)
+    user = ForeignKey(
+        User, null=True, blank=True, default=None, on_delete=CASCADE)
     users = BooleanField(null=False, blank=True, default=False)
     admins = BooleanField(null=False, blank=True, default=False)
 
@@ -244,5 +246,6 @@ class NotificationDismissal(Model):
 
     objects = Manager()
 
-    notification = ForeignKey(Notification, null=False, blank=False)
-    user = ForeignKey(User, null=False, blank=False)
+    notification = ForeignKey(
+        Notification, null=False, blank=False, on_delete=CASCADE)
+    user = ForeignKey(User, null=False, blank=False, on_delete=CASCADE)

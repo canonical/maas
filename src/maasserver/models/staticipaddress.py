@@ -24,6 +24,7 @@ from django.db import (
     transaction,
 )
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     IntegerField,
     Manager,
@@ -682,7 +683,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     # Subnet is only null for IP addresses allocate before the new networking
     # model.
-    subnet = ForeignKey('Subnet', editable=True, blank=True, null=True)
+    subnet = ForeignKey(
+        'Subnet', editable=True, blank=True, null=True, on_delete=CASCADE)
 
     user = ForeignKey(
         User, default=None, blank=True, null=True, editable=False,

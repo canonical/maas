@@ -9,6 +9,7 @@ __all__ = [
 
 
 from django.db.models import (
+    CASCADE,
     CharField,
     ForeignKey,
     Manager,
@@ -55,7 +56,7 @@ class OwnerData(CleanSave, Model):
 
     objects = OwnerDataManager()
 
-    node = ForeignKey("Node", blank=False, null=False)
+    node = ForeignKey("Node", blank=False, null=False, on_delete=CASCADE)
 
     key = CharField(max_length=255, blank=False, null=False)
 

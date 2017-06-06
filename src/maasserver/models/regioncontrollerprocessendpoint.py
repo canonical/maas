@@ -12,6 +12,7 @@ from django.core.validators import (
     MinValueValidator,
 )
 from django.db.models import (
+    CASCADE,
     ForeignKey,
     IntegerField,
 )
@@ -38,7 +39,7 @@ class RegionControllerProcessEndpoint(CleanSave, TimestampedModel):
 
     process = ForeignKey(
         RegionControllerProcess, null=False, blank=False,
-        related_name="endpoints")
+        related_name="endpoints", on_delete=CASCADE)
     address = MAASIPAddressField(
         null=False, blank=False, editable=False)
     port = IntegerField(

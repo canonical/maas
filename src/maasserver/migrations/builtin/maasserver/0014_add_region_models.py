@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('address', maasserver.fields.MAASIPAddressField(editable=False)),
                 ('port', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(65535)])),
-                ('process', models.ForeignKey(to='maasserver.RegionControllerProcess', related_name='endpoints')),
+                ('process', models.ForeignKey(to='maasserver.RegionControllerProcess', related_name='endpoints', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -60,12 +60,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='node',
             name='nodegroup',
-            field=models.ForeignKey(blank=True, null=True, to='maasserver.NodeGroup'),
+            field=models.ForeignKey(blank=True, null=True, to='maasserver.NodeGroup', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='regioncontrollerprocess',
             name='region',
-            field=models.ForeignKey(to='maasserver.Node', related_name='processes'),
+            field=models.ForeignKey(to='maasserver.Node', related_name='processes', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='node',

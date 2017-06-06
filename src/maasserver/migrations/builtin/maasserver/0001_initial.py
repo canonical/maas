@@ -81,7 +81,7 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('version', models.CharField(max_length=255, editable=False)),
                 ('label', models.CharField(max_length=255, editable=False)),
-                ('resource', models.ForeignKey(related_name='sets', editable=False, to='maasserver.BootResource')),
+                ('resource', models.ForeignKey(related_name='sets', editable=False, to='maasserver.BootResource', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -108,7 +108,7 @@ class Migration(migrations.Migration):
                 ('subarch', models.CharField(max_length=20)),
                 ('release', models.CharField(max_length=20)),
                 ('label', models.CharField(max_length=20)),
-                ('boot_source', models.ForeignKey(to='maasserver.BootSource')),
+                ('boot_source', models.ForeignKey(to='maasserver.BootSource', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -123,7 +123,7 @@ class Migration(migrations.Migration):
                 ('arches', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
                 ('subarches', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
                 ('labels', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
-                ('boot_source', models.ForeignKey(to='maasserver.BootSource')),
+                ('boot_source', models.ForeignKey(to='maasserver.BootSource', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -283,7 +283,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=255)),
                 ('create_params', models.CharField(max_length=255, null=True, blank=True)),
                 ('cache_mode', models.CharField(blank=True, max_length=20, null=True, choices=[('writeback', 'Writeback'), ('writethrough', 'Writethrough'), ('writearound', 'Writearound')])),
-                ('cache_set', models.ForeignKey(blank=True, to='maasserver.CacheSet', null=True)),
+                ('cache_set', models.ForeignKey(blank=True, to='maasserver.CacheSet', null=True, on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -315,8 +315,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('child', models.ForeignKey(related_name='parent_relationships', to='maasserver.Interface')),
-                ('parent', models.ForeignKey(related_name='children_relationships', to='maasserver.Interface')),
+                ('child', models.ForeignKey(related_name='parent_relationships', to='maasserver.Interface', on_delete=models.CASCADE)),
+                ('parent', models.ForeignKey(related_name='children_relationships', to='maasserver.Interface', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -399,7 +399,7 @@ class Migration(migrations.Migration):
                 ('uuid', models.CharField(unique=True, max_length=36)),
                 ('maas_url', models.CharField(default='', max_length=255, editable=False, blank=True)),
                 ('default_disable_ipv4', models.BooleanField(default=False, help_text='Default setting for new nodes: disable IPv4 when deploying, on operating systems where this is supported.', verbose_name='Disable IPv4 by default when deploying nodes')),
-                ('api_token', models.OneToOneField(editable=False, to='piston3.Token')),
+                ('api_token', models.OneToOneField(editable=False, to='piston3.Token', on_delete=models.CASCADE)),
             ],
         ),
         migrations.CreateModel(
@@ -417,7 +417,7 @@ class Migration(migrations.Migration):
                 ('static_ip_range_low', maasserver.fields.MAASIPAddressField(default=None, blank=True, help_text='Lowest IP number of the range for IPs given to allocated nodes, must be in same network as dynamic range.', null=True, verbose_name='Static IP range low value')),
                 ('static_ip_range_high', maasserver.fields.MAASIPAddressField(default=None, blank=True, help_text='Highest IP number of the range for IPs given to allocated nodes, must be in same network as dynamic range.', null=True, verbose_name='Static IP range high value')),
                 ('foreign_dhcp_ip', maasserver.fields.MAASIPAddressField(default=None, null=True, blank=True)),
-                ('nodegroup', models.ForeignKey(to='maasserver.NodeGroup')),
+                ('nodegroup', models.ForeignKey(to='maasserver.NodeGroup', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -464,7 +464,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('key', models.TextField(validators=[maasserver.models.sshkey.validate_ssh_public_key])),
-                ('user', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'SSH key',
@@ -478,7 +478,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('key', models.TextField(validators=[maasserver.models.sslkey.validate_ssl_key])),
-                ('user', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(editable=False, to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'SSL key',
@@ -532,7 +532,7 @@ class Migration(migrations.Migration):
             name='UserProfile',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -545,7 +545,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(blank=True, max_length=256, null=True, validators=[django.core.validators.RegexValidator('^[ \\w-]+$')])),
                 ('vid', models.IntegerField()),
                 ('mtu', models.IntegerField(default=1500)),
-                ('fabric', models.ForeignKey(to='maasserver.Fabric')),
+                ('fabric', models.ForeignKey(to='maasserver.Fabric', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'VLAN',
@@ -572,7 +572,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PhysicalBlockDevice',
             fields=[
-                ('blockdevice_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='maasserver.BlockDevice')),
+                ('blockdevice_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='maasserver.BlockDevice', on_delete=models.CASCADE)),
                 ('model', models.CharField(help_text='Model name of block device.', max_length=255, blank=True)),
                 ('serial', models.CharField(help_text='Serial number of block device.', max_length=255, blank=True)),
             ],
@@ -581,7 +581,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='VirtualBlockDevice',
             fields=[
-                ('blockdevice_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='maasserver.BlockDevice')),
+                ('blockdevice_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='maasserver.BlockDevice', on_delete=models.CASCADE)),
                 ('uuid', models.CharField(unique=True, max_length=36, editable=False)),
             ],
             bases=('maasserver.blockdevice',),
@@ -594,7 +594,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='staticipaddress',
             name='subnet',
-            field=models.ForeignKey(blank=True, to='maasserver.Subnet', null=True),
+            field=models.ForeignKey(blank=True, to='maasserver.Subnet', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='staticipaddress',
@@ -604,12 +604,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='partitiontable',
             name='block_device',
-            field=models.ForeignKey(to='maasserver.BlockDevice'),
+            field=models.ForeignKey(to='maasserver.BlockDevice', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='partition',
             name='partition_table',
-            field=models.ForeignKey(related_name='partitions', to='maasserver.PartitionTable'),
+            field=models.ForeignKey(related_name='partitions', to='maasserver.PartitionTable', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='nodegroupinterface',
@@ -634,7 +634,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='nodegroup',
-            field=models.ForeignKey(to='maasserver.NodeGroup', null=True),
+            field=models.ForeignKey(to='maasserver.NodeGroup', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='node',
@@ -644,7 +644,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='parent',
-            field=models.ForeignKey(related_name='children', default=None, blank=True, to='maasserver.Node', null=True),
+            field=models.ForeignKey(related_name='children', default=None, blank=True, to='maasserver.Node', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='node',
@@ -654,7 +654,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='token',
-            field=models.ForeignKey(editable=False, to='piston3.Token', null=True),
+            field=models.ForeignKey(editable=False, to='piston3.Token', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='node',
@@ -673,7 +673,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='interface',
             name='node',
-            field=models.ForeignKey(blank=True, editable=False, to='maasserver.Node', null=True),
+            field=models.ForeignKey(blank=True, editable=False, to='maasserver.Node', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='interface',
@@ -688,37 +688,37 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='filesystem',
             name='block_device',
-            field=models.ForeignKey(blank=True, to='maasserver.BlockDevice', null=True),
+            field=models.ForeignKey(blank=True, to='maasserver.BlockDevice', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='filesystem',
             name='cache_set',
-            field=models.ForeignKey(related_name='filesystems', blank=True, to='maasserver.CacheSet', null=True),
+            field=models.ForeignKey(related_name='filesystems', blank=True, to='maasserver.CacheSet', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='filesystem',
             name='filesystem_group',
-            field=models.ForeignKey(related_name='filesystems', blank=True, to='maasserver.FilesystemGroup', null=True),
+            field=models.ForeignKey(related_name='filesystems', blank=True, to='maasserver.FilesystemGroup', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='filesystem',
             name='partition',
-            field=models.ForeignKey(blank=True, to='maasserver.Partition', null=True),
+            field=models.ForeignKey(blank=True, to='maasserver.Partition', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='event',
             name='node',
-            field=models.ForeignKey(editable=False, to='maasserver.Node'),
+            field=models.ForeignKey(editable=False, to='maasserver.Node', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='event',
             name='type',
-            field=models.ForeignKey(editable=False, to='maasserver.EventType'),
+            field=models.ForeignKey(editable=False, to='maasserver.EventType', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='downloadprogress',
             name='nodegroup',
-            field=models.ForeignKey(editable=False, to='maasserver.NodeGroup'),
+            field=models.ForeignKey(editable=False, to='maasserver.NodeGroup', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='candidatename',
@@ -727,12 +727,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='bootresourcefile',
             name='largefile',
-            field=models.ForeignKey(editable=False, to='maasserver.LargeFile'),
+            field=models.ForeignKey(editable=False, to='maasserver.LargeFile', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='bootresourcefile',
             name='resource_set',
-            field=models.ForeignKey(related_name='files', editable=False, to='maasserver.BootResourceSet'),
+            field=models.ForeignKey(related_name='files', editable=False, to='maasserver.BootResourceSet', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='bootresource',
@@ -741,7 +741,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='blockdevice',
             name='node',
-            field=models.ForeignKey(editable=False, to='maasserver.Node'),
+            field=models.ForeignKey(editable=False, to='maasserver.Node', on_delete=models.CASCADE),
         ),
         migrations.CreateModel(
             name='Bcache',
@@ -834,7 +834,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='virtualblockdevice',
             name='filesystem_group',
-            field=models.ForeignKey(related_name='virtual_devices', to='maasserver.FilesystemGroup'),
+            field=models.ForeignKey(related_name='virtual_devices', to='maasserver.FilesystemGroup', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='subnet',

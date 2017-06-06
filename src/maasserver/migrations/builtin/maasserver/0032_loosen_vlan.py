@@ -18,11 +18,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='vlan',
             name='primary_rack',
-            field=models.ForeignKey(blank=True, null=True, related_name='+', to='maasserver.RackController'),
+            field=models.ForeignKey(blank=True, null=True, related_name='+', to='maasserver.RackController', on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='vlan',
             name='secondary_rack',
-            field=models.ForeignKey(blank=True, null=True, related_name='+', to='maasserver.RackController'),
+            field=models.ForeignKey(blank=True, null=True, related_name='+', to='maasserver.RackController', on_delete=models.CASCADE),
         ),
     ]

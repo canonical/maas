@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
 import datetime
 
 import django.contrib.postgres.fields
@@ -35,7 +34,7 @@ class Migration(migrations.Migration):
                 ('timeout', models.DurationField(default=datetime.timedelta(0))),
                 ('destructive', models.BooleanField(default=False)),
                 ('default', models.BooleanField(default=False)),
-                ('script', models.OneToOneField(to='maasserver.VersionedTextFile')),
+                ('script', models.OneToOneField(to='maasserver.VersionedTextFile', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model, object),
         ),
@@ -61,7 +60,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
                 ('last_ping', models.DateTimeField(blank=True, null=True)),
                 ('result_type', models.IntegerField(default=0, choices=[(0, 'Commissioning'), (1, 'Installation'), (2, 'Testing')], editable=False)),
-                ('node', models.ForeignKey(to='maasserver.Node')),
+                ('node', models.ForeignKey(to='maasserver.Node', on_delete=models.CASCADE)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -73,7 +72,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scriptresult',
             name='script_set',
-            field=models.ForeignKey(to='metadataserver.ScriptSet', editable=False),
+            field=models.ForeignKey(to='metadataserver.ScriptSet', editable=False, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='scriptresult',
