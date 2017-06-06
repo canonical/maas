@@ -290,10 +290,14 @@ class DictCharWidget(forms.widgets.MultiWidget):
         if not isinstance(value, list):
             value = self.decompress(value)
         if len(widgets) == 0:
-            return mark_safe(self.format_output(''))
+            return mark_safe('')
 
         output = ['<fieldset>']
-        final_attrs = self.build_attrs(attrs)
+        if attrs is None:
+            final_attrs = {}
+        else:
+            final_attrs = self.build_attrs(attrs)
+
         id_ = final_attrs.get('id', None)
 
         for index, widget in enumerate(widgets):
@@ -320,7 +324,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
                     '%s_%s' % (name, self.names[index]), widget_value,
                     final_attrs))
         output.append('</fieldset>')
-        return mark_safe(self.format_output(output))
+        return mark_safe(''.join(output))
 
     def id_for_label(self, id_):
         """Returns the HTML ID attribute of this Widget.  Since this is a

@@ -37,9 +37,13 @@ class TestDictCharField(MAASServerTestCase):
         self.assertEqual(['field_a', 'field_b', 'field_c'], testField.names)
         self.assertEqual(
             ['field_a', 'field_b', 'field_c'], testField.widget.names)
-        self.assertEqual(
-            [field.widget for field in testField.field_dict.values()],
-            testField.widget.widgets)
+        # In Django 1.11, widgets are deep-copied in the Field constructor,
+        # so instead of comparing directly, we compare their types and names.
+        expected_widgets = [
+            type(widget) for widget in testField.widget.widgets]
+        got_widgets = [
+            type(field.widget) for field in testField.field_dict.values()]
+        self.assertEqual(got_widgets, expected_widgets)
 
     def test_DictCharField_does_not_allow_subfield_named_skip_check(self):
         # Creating a DictCharField with a subfield named 'skip_check' is not
@@ -278,9 +282,9 @@ class TestDictCharWidget(MAASServerTestCase):
         initials = [factory.make_name()]
         labels = [factory.make_name()]
         mock_widget = Mock()
+        mock_widget.configure_mock(**{"render.return_value": ""})
         widget = DictCharWidget([mock_widget, widgets.TextInput],
                                 names, initials, labels, skip_check=True)
-        self.patch(widget, 'format_output')
         widget.render('foo', [])
 
         self.assertThat(
