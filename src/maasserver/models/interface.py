@@ -1267,8 +1267,8 @@ class Interface(CleanSave, TimestampedModel):
     def clean(self):
         super(Interface, self).clean()
 
-        # Verify that the MAC address is legal.
-        if self.mac_address is not None:
+        # Verify that the MAC address is legal if it is not empty.
+        if self.mac_address:
             validate_mac(self.mac_address)
 
         # Acquired can only be set on bridge interface types and the node

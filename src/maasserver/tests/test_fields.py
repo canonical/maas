@@ -61,7 +61,6 @@ from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
 from testtools.matchers import (
     AfterPreprocessing,
-    Contains,
     Equals,
     Is,
 )
@@ -507,8 +506,7 @@ class TestCIDRField(MAASLegacyServerTestCase):
         cidr = 'invalid-cidr'
         error = self.assertRaises(
             ValidationError, CIDRTestModel.objects.create, cidr=cidr)
-        self.assertThat(error.error_dict, Contains("cidr"))
-        self.assertThat(str(error), Contains("invalid IPNetwork %s" % cidr))
+        self.assertEqual(["invalid IPNetwork %s" % cidr], error.messages)
 
     def test_stores_cidr_with_bit_set_in_host_part(self):
         cidr = '192.0.2.1/24'
@@ -530,8 +528,7 @@ class TestIPv4CIDRField(MAASLegacyServerTestCase):
         cidr = 'invalid-cidr'
         error = self.assertRaises(
             ValidationError, IPv4CIDRTestModel.objects.create, cidr=cidr)
-        self.assertThat(error.error_dict, Contains("cidr"))
-        self.assertThat(str(error), Contains("Invalid network: %s" % cidr))
+        self.assertEqual(["Invalid network: %s" % cidr], error.messages)
 
     def test_stores_cidr_with_bit_set_in_host_part(self):
         cidr = '192.0.2.1/24'
@@ -543,8 +540,8 @@ class TestIPv4CIDRField(MAASLegacyServerTestCase):
         cidr = "2001:DB8::/32"
         error = self.assertRaises(
             ValidationError, IPv4CIDRTestModel.objects.create, cidr=cidr)
-        self.assertThat(error.error_dict, Contains("cidr"))
-        self.assertThat(str(error), Contains("Only IPv4 networks supported."))
+        self.assertEqual(
+            ["2001:DB8::/32: Only IPv4 networks supported."], error.messages)
 
 
 class IPListFormFieldTest(MAASTestCase):

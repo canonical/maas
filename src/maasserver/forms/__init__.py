@@ -46,7 +46,10 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    NON_FIELD_ERRORS,
+    ValidationError,
+)
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
@@ -399,6 +402,14 @@ class MAASModelForm(APIEditMixin, forms.ModelForm):
             dict_type = self.fields.__class__
             self.fields = dict_type(
                 [ui_submission_field] + list(self.fields.items()))
+
+    def _update_errors(self, errors):
+        """Provide Django 1.11-like behaviour in 1.8 as well."""
+        if hasattr(errors, 'error_dict'):
+            error_dict = errors
+        else:
+            error_dict = ValidationError({NON_FIELD_ERRORS: errors})
+        super(MAASModelForm, self)._update_errors(error_dict)
 
 
 def list_all_usable_architectures():

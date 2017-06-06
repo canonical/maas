@@ -13,7 +13,6 @@ from base64 import (
 )
 
 from django.db import connection
-from django.db.models import SubfieldBase
 from maasserver.fields import Field
 
 
@@ -58,7 +57,7 @@ class Bin(bytes):
         return b64encode(self).decode('ascii')
 
 
-class BinaryField(Field, metaclass=SubfieldBase):
+class BinaryField(Field):
     """A field that stores binary data.
 
     The data is base64-encoded internally, so this is not very efficient.
@@ -85,6 +84,9 @@ class BinaryField(Field, metaclass=SubfieldBase):
             raise AssertionError(
                 "Invalid BinaryField value (expected unicode): '%s'"
                 % repr(value))
+
+    def from_db_value(self, value, expression, connection, context):
+        return self.to_python(value)
 
     def get_db_prep_value(self, value, connection=None, prepared=False):
         """Django overridable: convert python-side value to database value."""

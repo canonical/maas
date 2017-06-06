@@ -45,10 +45,8 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Q,
-    SubfieldBase,
     URLField,
 )
-from django.db.models.fields.subclassing import Creator
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
@@ -148,7 +146,7 @@ class MACAddressFormField(VerboseRegexField):
             regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs)
 
 
-class MACAddressField(Field, metaclass=SubfieldBase):
+class MACAddressField(Field):
     """Model field type: MAC address."""
 
     description = "MAC address"
@@ -160,6 +158,16 @@ class MACAddressField(Field, metaclass=SubfieldBase):
 
     def to_python(self, value):
         return MAC(value)
+
+    def from_db_value(self, value, expression, connection, context):
+        return MAC(value)
+
+    def get_prep_value(self, value):
+        value = super(MACAddressField, self).get_prep_value(value)
+        # Convert empty string to None.
+        if not value:
+            return None
+        return value
 
 
 class MAC:
@@ -278,7 +286,7 @@ def register_mac_type(cursor):
         (oid, ), "macaddr", mac_caster))
 
 
-class JSONObjectField(Field, metaclass=SubfieldBase):
+class JSONObjectField(Field):
     """A field that will store any jsonizable python object."""
 
     def to_python(self, value):
@@ -293,6 +301,9 @@ class JSONObjectField(Field, metaclass=SubfieldBase):
             return value
         else:
             return None
+
+    def from_db_value(self, value, expression, connection, context):
+        return self.to_python(value)
 
     def get_db_prep_value(self, value, connection=None, prepared=False):
         """python -> db: json dump.
@@ -462,8 +473,16 @@ class LargeObjectFile:
         return r
 
 
-class LargeObjectDescriptor(Creator):
+class LargeObjectDescriptor(object):
     """LargeObjectField descriptor."""
+
+    def __init__(self, field):
+        self.field = field
+
+    def __get__(self, instance, type=None):
+        if instance is None:
+            return self
+        return instance.__dict__[self.field.name]
 
     def __set__(self, instance, value):
         value = self.field.to_python(value)
@@ -527,14 +546,14 @@ class LargeObjectField(IntegerField):
             % repr(value))
 
 
-class CIDRField(Field, metaclass=SubfieldBase):
+class CIDRField(Field):
     description = "PostgreSQL CIDR field"
 
     def parse_cidr(self, value):
         try:
             return str(IPNetwork(value).cidr)
         except AddrFormatError as e:
-            raise ValidationError({self.name: str(e)}) from e
+            raise ValidationError(str(e)) from e
 
     def db_type(self, connection):
         return 'cidr'
@@ -569,6 +588,11 @@ class CIDRField(Field, metaclass=SubfieldBase):
 class IPv4CIDRField(CIDRField):
     """IPv4-only CIDR"""
 
+    def get_prep_value(self, value):
+        if value is None or value == '':
+            return None
+        return self.to_python(value)
+
     def to_python(self, value):
         if value is None or value == '':
             return None
@@ -577,10 +601,11 @@ class IPv4CIDRField(CIDRField):
                 cidr = IPNetwork(value)
             except AddrFormatError:
                 raise ValidationError(
-                    {self.name: "Invalid network: %s" % value})
+                    "Invalid network: %(cidr)s", params={"cidr": value})
             if cidr.cidr.version != 4:
                 raise ValidationError(
-                    {self.name: "%s: Only IPv4 networks supported." % value})
+                    "%(cidr)s: Only IPv4 networks supported.",
+                    params={"cidr": value})
         return str(cidr.cidr)
 
 
