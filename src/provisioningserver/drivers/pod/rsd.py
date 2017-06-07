@@ -474,12 +474,13 @@ class RSDPodDriver(PodDriver):
         """Get pod machine local strorages."""
         local_drives = node_data.get('Links', {}).get('LocalDrives', [])
         for local_drive in local_drives:
+            local_drive_endpoint = local_drive['@odata.id']
             discovered_machine_block_device = (
                 DiscoveredMachineBlockDevice(
                     model='', serial='', size=0))
             drive_data, _ = yield self.redfish_request(
-                b"GET", join(url, local_drive[
-                    '@odata.id'].lstrip('/').encode('utf-8')), headers)
+                b"GET", join(url, local_drive_endpoint.lstrip(
+                    '/').encode('utf-8')), headers)
             discovered_machine_block_device.model = drive_data['Model']
             discovered_machine_block_device.serial = drive_data['SerialNumber']
             discovered_machine_block_device.size = float(
@@ -489,26 +490,33 @@ class RSDPodDriver(PodDriver):
             # block devices. This ensures that the composed machine has the
             # requested tags on the block device.
             if request is not None:
-                # Iterate over all the request's block devices and pick first
+                # Iterate over all the request's block devices and pick
                 # device that has 'local' flag set with smallest adequate size.
                 chosen_block_device = None
                 smallest_size = discovered_machine_block_device.size
                 for block_device in request.block_devices:
                     if ('local' in block_device.tags and
-                            block_device.size >= smallest_size):
+                            smallest_size >= block_device.size):
                         smallest_size = block_device.size
                         chosen_block_device = block_device
                 if chosen_block_device is not None:
                     discovered_machine_block_device.tags = (
                         chosen_block_device.tags)
                     # Delete this from the request's block devices as it
-                    # is not longer needed.
+                    # is no longer needed.
                     request.block_devices.remove(chosen_block_device)
                 else:
                     # Log the fact that we did not find a chosen block device
-                    # to set the tags.
-                    maaslog.info(
-                        "Unable to set tags for local drive: %r" % local_drive)
+                    # to set the tags.  If the RSD is performing the way it
+                    # should, the user should not be seeing this as the
+                    # allocation process for composition should have failed.
+                    # Warn the user of this.
+                    maaslog.warning(
+                        "Requested disk size is larger than %d GiB, which "
+                        "drive '%r' contains.  RSD allocation should have "
+                        "failed.  Please report this to your RSD Pod "
+                        "administrator." % (
+                            smallest_size / (1024 ** 3), local_drive_endpoint))
 
             if 'local' not in discovered_machine_block_device.tags:
                 discovered_machine_block_device.tags.append('local')
