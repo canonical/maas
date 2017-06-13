@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -68,7 +68,10 @@ from maasserver.clusterrpc.driver_parameters import (
     get_driver_parameters,
     get_driver_types,
 )
-from maasserver.clusterrpc.osystems import validate_license_key
+from maasserver.clusterrpc.osystems import (
+    gen_all_known_operating_systems,
+    validate_license_key,
+)
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -2235,6 +2238,21 @@ class BootResourceForm(MAASModelForm):
         name = self.cleaned_data['name']
         if name.startswith('custom/'):
             name = name[7:]
+
+        # Prevent the user from uploading any osystem/release or system name
+        # already used in the SimpleStreams.
+        reserved_names = [
+            '%s/%s' % (bsc['os'], bsc['release'])
+            for bsc in BootSourceCache.objects.values(
+                'os', 'release').distinct()
+        ]
+        reserved_names += [
+            i for name in reserved_names for i in name.split('/')] + [
+            i['name'] for i in gen_all_known_operating_systems()]
+
+        # Reserve CentOS version names for future MAAS use.
+        if name in reserved_names or re.search('^centos\d\d?$', name):
+            raise ValidationError('%s is a reserved name' % name)
         return name
 
     def get_existing_resource(self, resource):
