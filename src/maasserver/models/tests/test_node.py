@@ -3418,19 +3418,17 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.assertThat(release, MockNotCalled())
 
-    def test_update_power_state_sets_status_to_ready(self):
+    def test_update_power_state_reverts_status(self):
+        previous_status = random.choice([
+            transition
+            for transition, statuses in NODE_TRANSITIONS.items()
+            if NODE_STATUS.ENTERING_RESCUE_MODE in statuses and
+            transition != NODE_STATUS.DEPLOYED])
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
-            previous_status=NODE_STATUS.READY)
+            previous_status=previous_status)
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.status, Equals(NODE_STATUS.READY))
-
-    def test_update_power_state_sets_status_to_broken(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.EXITING_RESCUE_MODE,
-            previous_status=NODE_STATUS.BROKEN)
-        node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.status, Equals(NODE_STATUS.BROKEN))
+        self.assertThat(node.status, Equals(previous_status))
 
     def test_update_power_state_sets_status_to_deployed(self):
         node = factory.make_Node(

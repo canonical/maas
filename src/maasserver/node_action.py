@@ -517,10 +517,21 @@ class RescueMode(NodeAction):
     display = "Rescue mode"
     display_sentence = "rescue mode"
     actionable_statuses = (
+        NODE_STATUS.NEW,
+        NODE_STATUS.FAILED_COMMISSIONING,
         NODE_STATUS.READY,
-        NODE_STATUS.BROKEN,
+        NODE_STATUS.RESERVED,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.DEPLOYED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.FAILED_DISK_ERASING,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+        NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+        NODE_STATUS.FAILED_TESTING,
     )
     permission = NODE_PERMISSION.ADMIN
     for_type = {NODE_TYPE.MACHINE}
