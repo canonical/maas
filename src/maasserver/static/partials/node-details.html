@@ -658,9 +658,10 @@
                                   configuration cannot be modified unless the
                                   node is Ready or Broken.</p>
                             </div>
-                            <div class="p-notification" data-ng-if="!isController && !isUbuntuOS() && !isUbuntuCoreOS()">
+                            <div class="p-notification--warning" data-ng-if="!isController && isCustomOS()">
                                 <p class="p-notification__response">
-                                  <span class="p-notification__status">Error:</span>Custom network configuration only supported on Ubuntu. Using OS default configuration.</p>
+                                  <span class="p-notification__status">Important:</span>Custom images may require special preparation to support custom network configuration.
+                                </p>
                             </div>
                     </div>
                     <div class="twelve-col">

@@ -555,6 +555,20 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return false;
         };
 
+        $scope.isCustomOS = function() {
+            // This will get called very early and node can be empty.
+            // In that case just return an empty string. It will be
+            // called again to show the correct information.
+            if(!angular.isObject($scope.node)) {
+                return false;
+            }
+
+            if($scope.node.osystem === "custom") {
+                return true;
+            }
+            return false;
+        };
+
         // Return true if there is an action error.
         $scope.isActionError = function() {
             return $scope.action.error !== null;

@@ -359,7 +359,7 @@ def get_curtin_yaml_config(node):
 
     if node.osystem != "ubuntu":
         maaslog.info(
-            "%s: custom network and storage options are only supported on "
+            "%s: custom storage options are only supported on "
             "Ubuntu. Using flat storage layout."
             % node.hostname)
         supports_custom_storage = False
@@ -371,6 +371,12 @@ def get_curtin_yaml_config(node):
             #
             # This also requires curtin support. See (LP:1640301).
             supports_custom_storage = True
+
+    if node.osystem == "custom":
+        maaslog.info(
+            "%s: deploying custom image '%s' with custom networking options. "
+            "Please verify that this image supports custom network "
+            "configuration." % (node.hostname, node.distro_series))
 
     if supports_custom_storage:
         storage_config = compose_curtin_storage_config(node)

@@ -885,6 +885,24 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isCustomOS", function() {
+        it("returns true when custom OS", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = 'custom';
+            node.distro_series = makeName("distro_series");
+            expect($scope.isCustomOS()).toBe(true);
+        });
+
+        it("returns false when otheros", function() {
+            var controller = makeController();
+            $scope.node = node;
+            node.osystem = makeName("osystem");
+            node.distro_series = makeName("distro_series");
+            expect($scope.isCustomOS()).toBe(false);
+        });
+    });
+
     describe("isActionError", function() {
 
         it("returns true if actionError", function() {
