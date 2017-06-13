@@ -17,4 +17,4 @@ fi
 
 exec /usr/sbin/tcpdump --interface "$1" --no-promiscuous-mode \
     --packet-buffered --immediate-mode --snapshot-length=1500 -n -w - \
-    "(port 67 or port 68) or (vlan and (port 67 or port 68))"
+    "udp and (port 67 or port 68) or (vlan and udp and (port 67 or port 68))"

@@ -5,14 +5,22 @@
 
 __all__ = []
 
+from io import BytesIO
+from random import randint
+import time
+
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.network import hex_str_to_bytes
+from provisioningserver.utils.pcap import PCAP
 from provisioningserver.utils.tcpip import (
+    decode_ethernet_udp_packet,
     IPv4,
+    PacketProcessingError,
     UDP,
 )
+from testtools import ExpectedException
 from testtools.matchers import Equals
 
 
@@ -163,3 +171,87 @@ class TestUDP(MAASTestCase):
         self.assertThat(udp.is_valid(), Equals(False))
         self.assertThat(
             udp.invalid_reason, DocTestMatches("UDP packet truncated..."))
+
+
+GOOD_ETHERNET_UDP_PCAP = (
+    b'\xd4\xc3\xb2\xa1\x02\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    b'\x00@\x00\x00\x01\x00\x00\x00v\xe19Y\xadF\x08\x00^\x00\x00\x00^\x00\x00'
+    b'\x00\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00E\x00\x00P\xe2E@\x00\x01'
+    b'\x11\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xda\xc2\x14x\x00<h(4\x00\x00\x00'
+    b'\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a7a\x00\x00')
+
+GOOD_ETHERNET_UDP_PACKET = (
+    b'\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00E\x00\x00P\xe2E@\x00\x01'
+    b'\x11\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xda\xc2\x14x\x00<h(4\x00\x00\x00'
+    b'\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a7a\x00\x00')
+
+TRUNCATED_UDP_PAYLOAD = (
+    b'\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00E\x00\x00P\xe2E@\x00\x01'
+    b'\x11\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xda\xc2\x14x\x00<h(4\x00\x00\x00'
+    b'\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a7a\x00')
+
+BAD_ETHERTYPE = (
+    b'\x01\x00^\x00\x00v\x00\x16>\x91zz\x07\xFFE\x00\x00P\xe2E@\x00\x01'
+    b'\x11\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xda\xc2\x14x\x00<h(4\x00\x00\x00'
+    b'\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a7a\x00\x00')
+
+BAD_IPV4_UDP_HEADER = (
+    b'\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00E\x00\x00P\xe2E@\x00\x01'
+    b'\x11\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xdb')
+
+NOT_UDP_PROTOCOL = (
+    b'\x01\x00^\x00\x00v\x00\x16>\x91zz\x08\x00E\x00\x00P\xe2E@\x00\x01'
+    b'\x12\xe0\xce\xac\x10*\x02\xe0\x00\x00v\xda\xc2\x14x\x00<h(4\x00\x00\x00'
+    b'\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a7a\x00\x00')
+
+TRUNCATED_ETHERNET_HEADER = b'\x01\x00^\x00\x00v'
+
+EXPECTED_PCAP_TIME = 1496965494
+
+EXPECTED_PAYLOAD = (
+    b'4\x00\x00\x00\x02uuid\x00%\x00\x00\x0078d1a4f0-4ca4-11e7-b2bb-00163e917a'
+    b'7a\x00\x00'
+)
+
+
+class TestDecodeEthernetUDPPacket(MAASTestCase):
+
+    def test__gets_time_from_pcap_header(self):
+        pcap_file = BytesIO(GOOD_ETHERNET_UDP_PCAP)
+        pcap = PCAP(pcap_file)
+        for header, packet_bytes in pcap:
+            packet = decode_ethernet_udp_packet(packet_bytes, header)
+            self.expectThat(packet.timestamp, Equals(EXPECTED_PCAP_TIME))
+            self.expectThat(packet.payload, Equals(EXPECTED_PAYLOAD))
+
+    def test__decodes_from_bytes(self):
+        expected_time = EXPECTED_PCAP_TIME + randint(1, 100)
+        self.patch(time, "time").return_value = expected_time
+        packet = decode_ethernet_udp_packet(GOOD_ETHERNET_UDP_PACKET)
+        self.expectThat(packet.timestamp, Equals(expected_time))
+        self.expectThat(packet.payload, Equals(EXPECTED_PAYLOAD))
+
+    def test__fails_for_bad_ethertype(self):
+        self.patch(time, "time").return_value = EXPECTED_PCAP_TIME
+        with ExpectedException(PacketProcessingError, '.*Invalid ethertype.*'):
+            decode_ethernet_udp_packet(BAD_ETHERTYPE)
+
+    def test__fails_for_bad_ethernet_packet(self):
+        self.patch(time, "time").return_value = EXPECTED_PCAP_TIME
+        with ExpectedException(PacketProcessingError, '.*Invalid Ethernet.*'):
+            decode_ethernet_udp_packet(TRUNCATED_ETHERNET_HEADER)
+
+    def test__fails_for_bad_udp_header(self):
+        self.patch(time, "time").return_value = EXPECTED_PCAP_TIME
+        with ExpectedException(PacketProcessingError, '.*Truncated UDP.*'):
+            decode_ethernet_udp_packet(BAD_IPV4_UDP_HEADER)
+
+    def test__fails_if_not_udp_protocol(self):
+        self.patch(time, "time").return_value = EXPECTED_PCAP_TIME
+        with ExpectedException(PacketProcessingError, '.*Invalid protocol*'):
+            decode_ethernet_udp_packet(NOT_UDP_PROTOCOL)
+
+    def test__fails_if_udp_packet_truncated(self):
+        self.patch(time, "time").return_value = EXPECTED_PCAP_TIME
+        with ExpectedException(PacketProcessingError, '.*UDP packet trunc.*'):
+            decode_ethernet_udp_packet(TRUNCATED_UDP_PAYLOAD)

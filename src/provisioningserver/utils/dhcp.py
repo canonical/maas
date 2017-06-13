@@ -21,10 +21,6 @@ import sys
 from textwrap import dedent
 
 from netaddr import IPAddress
-from provisioningserver.utils.ethernet import (
-    Ethernet,
-    ETHERTYPE,
-)
 from provisioningserver.utils.network import (
     bytes_to_ipaddress,
     format_eui,
@@ -35,9 +31,8 @@ from provisioningserver.utils.pcap import (
 )
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.tcpip import (
-    IPv4,
-    PROTOCOL,
-    UDP,
+    decode_ethernet_udp_packet,
+    PacketProcessingError,
 )
 
 # The SEEN_AGAIN_THRESHOLD is a time (in seconds) that determines how often
@@ -197,55 +192,30 @@ def observe_dhcp_packets(input=sys.stdin.buffer, out=sys.stdout):
             # Not an Ethernet interface. Need to exit here, because our
             # assumptions about the link layer header won't be correct.
             return 4
-        for header, packet in pcap:
-            # Interpret Layer 2
-            ethernet = Ethernet(packet, time=header.timestamp_seconds)
+        for pcap_header, packet_bytes in pcap:
             out.write(str(datetime.now()))
             out.write("\n")
-            if not ethernet.is_valid():
-                out.write("Invalid Ethernet packet.\n\n")
+            try:
+                packet = decode_ethernet_udp_packet(packet_bytes, pcap_header)
+                dhcp = DHCP(packet.payload)
+                if not dhcp.is_valid():
+                    out.write(dhcp.invalid_reason)
+                out.write(
+                    "     Source MAC address: %s\n" % format_eui(
+                        packet.l2.src_eui))
+                out.write(
+                    "Destination MAC address: %s\n" % format_eui(
+                        packet.l2.dst_eui))
+                if packet.l2.vid is not None:
+                    out.write("     Seen on 802.1Q VID: %s\n" % packet.l2.vid)
+                out.write("      Source IP address: %s\n" % packet.l3.src_ip)
+                out.write(" Destination IP address: %s\n" % packet.l3.dst_ip)
+                dhcp.write(out=out)
                 out.flush()
-                # Ignore packets with a truncated Ethernet header.
-                continue
-            if ethernet.ethertype != ETHERTYPE.IPV4:
-                out.write("Invalid ethertype; expected %04x, got %04x.\n\n" % (
-                    ethernet.ethertype, ETHERTYPE.IPV4))
-                out.flush()
-                # Ignore non-IPv4 packets.
-                continue
-            # Interpret Layer 3
-            ipv4 = IPv4(ethernet.payload)
-            if not ipv4.is_valid():
-                out.write(ipv4.invalid_reason)
+            except PacketProcessingError as e:
+                out.write(e.error)
                 out.write("\n\n")
                 out.flush()
-                continue
-            if ipv4.packet.protocol != PROTOCOL.UDP:
-                # Ignore non-IPv4 packets.
-                out.write("Invalid IPv4 protocol; expected %d, got %d.\n\n" % (
-                    ipv4.packet.protocol, PROTOCOL.UDP))
-                out.flush()
-                continue
-            # Interpret Layer 4
-            udp = UDP(ipv4.payload)
-            if not udp.is_valid():
-                out.write(udp.invalid_reason)
-                out.write("\n\n")
-                out.flush()
-                continue
-            dhcp = DHCP(udp.payload)
-            if not dhcp.is_valid():
-                out.write(dhcp.invalid_reason)
-            out.write(
-                "     Source MAC address: %s\n" % format_eui(ethernet.src_eui))
-            out.write(
-                "Destination MAC address: %s\n" % format_eui(ethernet.dst_eui))
-            if ethernet.vid is not None:
-                out.write("     Seen on 802.1Q VID: %s\n" % ethernet.vid)
-            out.write("      Source IP address: %s\n" % ipv4.src_ip)
-            out.write(" Destination IP address: %s\n" % ipv4.dst_ip)
-            dhcp.write(out=out)
-            out.flush()
     except EOFError:
         # Capture aborted before it could even begin. Note that this does not
         # occur if the end-of-stream occurs normally. (In that case, the

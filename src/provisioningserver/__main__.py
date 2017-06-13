@@ -12,6 +12,7 @@ import provisioningserver.support_dump
 import provisioningserver.upgrade_cluster
 import provisioningserver.utils.arp
 import provisioningserver.utils.avahi
+import provisioningserver.utils.beaconing
 import provisioningserver.utils.dhcp
 import provisioningserver.utils.scan_network
 from provisioningserver.utils.script import MainScript
@@ -23,6 +24,7 @@ script_commands = {
     'install-shared-secret': security.InstallSharedSecretScript,
     'install-uefi-config': provisioningserver.boot.install_grub,
     'observe-arp': provisioningserver.utils.arp,
+    'observe-beacons': provisioningserver.utils.beaconing,
     'observe-mdns': provisioningserver.utils.avahi,
     'observe-dhcp': provisioningserver.utils.dhcp,
     'scan-network': provisioningserver.utils.scan_network,

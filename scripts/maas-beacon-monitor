@@ -1,0 +1,24 @@
+#!/bin/sh -euf
+# Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Utility script to wrap `tcpdump`, so that this script can be called with
+# `sudo` without allowing MAAS access to read arbitrary network traffic.
+# This script is designed to be as minimal as possible, to prevent arbitrary
+# code execution.
+
+if [ $# -ne 1 ]; then
+    echo "Writes beacon traffic (and beacon traffic on VLANs) to stdout" >&2
+    echo "using tcpdump's binary PCAP format." >&2
+    echo "" >&2
+    echo "Usage:" >&2
+    echo "    $0 <interface>" >&2
+    exit 32
+fi
+
+FILTER="udp dst port 5240"
+
+exec "${SNAP:-}/usr/sbin/tcpdump" --interface "$1" --direction=in \
+    --no-promiscuous-mode --packet-buffered --immediate-mode \
+    --snapshot-length=16384 -n -w - \
+    "($FILTER) or (vlan and $FILTER)"

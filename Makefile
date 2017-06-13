@@ -91,9 +91,8 @@ configure-buildout:
 	utilities/configure-buildout
 
 sudoers:
+	utilities/install-sudoers
 	utilities/grant-nmap-permissions
-	utilities/install-arp-observer
-	utilities/install-dhcp-observer
 
 bin/buildout: bootstrap-buildout.py
 	@utilities/configure-buildout --quiet

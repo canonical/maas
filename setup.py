@@ -118,6 +118,7 @@ setup(
             ['scripts/maas-dhcp-helper']),
         ('/usr/lib/maas',
             ['scripts/maas-dhcp-monitor',
+             'scripts/maas-beacon-monitor',
              'scripts/maas-network-monitor',
              'scripts/maas-delete-file',
              'scripts/maas-test-enlistment',

@@ -10,8 +10,13 @@ __all__ = [
 
 from collections import namedtuple
 import struct
+import time
 
 from netaddr import IPAddress
+from provisioningserver.utils.ethernet import (
+    Ethernet,
+    ETHERTYPE,
+)
 
 # Definitions for IPv4 packets used with `struct`.
 # See https://tools.ietf.org/html/rfc791#section-3.1 for more details.
@@ -29,6 +34,23 @@ IPv4Packet = namedtuple('IPv4Packet', (
     'dst_ip',
 ))
 IPV4_HEADER_MIN_LENGTH = 20
+
+# Definition for a decoded network packet.
+Packet = namedtuple("Packet", (
+    'timestamp',
+    'l2',
+    'l3',
+    'l4',
+    'payload'
+))
+
+
+class PacketProcessingError(Exception):
+    """Raised when an error occurs while interpreting a raw packet."""
+
+    def __init__(self, error):
+        self.error = error
+        super().__init__(error)
 
 
 class PROTOCOL:
@@ -152,6 +174,10 @@ class UDP:
         # UDP length includes UDP header, so subtract it to get payload length.
         payload_length = packet.length - UDP_HEADER_LENGTH
         self.payload = pkt_bytes[UDP_HEADER_LENGTH:]
+        # Note: the payload could be more that the stated length due to
+        # padding. Truncate it to the correct length.
+        if len(self.payload) > payload_length:
+            self.payload = self.payload[0:payload_length]
         if len(self.payload) != payload_length:
             self.valid = False
             self.invalid_reason = (
@@ -160,3 +186,32 @@ class UDP:
 
     def is_valid(self):
         return self.valid
+
+
+def decode_ethernet_udp_packet(packet, pcap_header=None):
+    if pcap_header is None:
+        timestamp = int(time.time())
+    else:
+        timestamp = pcap_header.timestamp_seconds
+    ethernet = Ethernet(packet, time=timestamp)
+    if not ethernet.is_valid():
+        raise PacketProcessingError("Invalid Ethernet packet.")
+    # XXX Need to support IPv6 as well.
+    if ethernet.ethertype != ETHERTYPE.IPV4:
+        raise PacketProcessingError(
+            "Invalid ethertype; expected %r, got %r." % (
+                ETHERTYPE.IPV4, ethernet.ethertype))
+    # Interpret Layer 3
+    ip = IPv4(ethernet.payload)
+    if not ip.is_valid():
+        raise PacketProcessingError(ip.invalid_reason)
+    if ip.packet.protocol != PROTOCOL.UDP:
+        # Ignore non-IPv4 packets.
+        raise PacketProcessingError(
+            "Invalid protocol; expected %d (UDP), got %d." % (
+                PROTOCOL.UDP, ip.packet.protocol))
+    # Interpret Layer 4
+    udp = UDP(ip.payload)
+    if not udp.is_valid():
+        raise PacketProcessingError(udp.invalid_reason)
+    return Packet(timestamp, ethernet, ip, udp, udp.payload)

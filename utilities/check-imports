@@ -196,7 +196,7 @@ RackControllerRule = Rule(
     Allow("apiclient.maas_client.*"),
     Allow("apiclient.utils.*"),
     Allow("attr|attr.**"),
-    Allow("bson"),
+    Allow("bson|bson.**"),
     Allow("crochet|crochet.**"),
     # It's best to be selective about cryptography, so we're very specific.
     # These 'hazmat' modules are often not used directly, but in this case they
