@@ -2079,8 +2079,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        fabric = factory.make_Fabric()
-        vlan = fabric.get_default_vlan()
+        vlan = factory.make_VLAN()
         handler.create_physical({
             "system_id": node.system_id,
             "name": name,
@@ -2097,8 +2096,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        fabric = factory.make_Fabric()
-        vlan = fabric.get_default_vlan()
+        vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         handler.create_physical({
             "system_id": node.system_id,
@@ -2120,8 +2118,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        fabric = factory.make_Fabric()
-        vlan = fabric.get_default_vlan()
+        vlan = factory.make_VLAN()
         handler.create_physical({
             "system_id": node.system_id,
             "name": name,
@@ -2141,8 +2138,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         name = factory.make_name("eth")
         mac_address = factory.make_mac_address()
-        fabric = factory.make_Fabric()
-        vlan = fabric.get_default_vlan()
+        vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         handler.create_physical({
             "system_id": node.system_id,
@@ -2162,12 +2158,13 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         handler = MachineHandler(user, {})
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        new_vlan = factory.make_VLAN(fabric=interface.vlan.fabric)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
         handler.create_vlan({
             "system_id": node.system_id,
             "parent": interface.id,
-            "vlan": new_vlan.id,
+            "vlan": vlan.id,
             })
         vlan_interface = get_one(
             Interface.objects.filter(
@@ -2178,13 +2175,14 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         handler = MachineHandler(user, {})
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        new_vlan = factory.make_VLAN(fabric=interface.vlan.fabric)
-        new_subnet = factory.make_Subnet(vlan=new_vlan)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        new_subnet = factory.make_Subnet(vlan=vlan)
         handler.create_vlan({
             "system_id": node.system_id,
             "parent": interface.id,
-            "vlan": new_vlan.id,
+            "vlan": vlan.id,
             "mode": INTERFACE_LINK_TYPE.AUTO,
             "subnet": new_subnet.id,
             })
@@ -2200,12 +2198,13 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         handler = MachineHandler(user, {})
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        new_vlan = factory.make_VLAN(fabric=interface.vlan.fabric)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
         handler.create_vlan({
             "system_id": node.system_id,
             "parent": interface.id,
-            "vlan": new_vlan.id,
+            "vlan": vlan.id,
             "mode": INTERFACE_LINK_TYPE.LINK_UP,
             })
         vlan_interface = get_one(
@@ -2220,13 +2219,14 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         handler = MachineHandler(user, {})
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        new_vlan = factory.make_VLAN(fabric=interface.vlan.fabric)
-        new_subnet = factory.make_Subnet(vlan=new_vlan)
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        new_subnet = factory.make_Subnet(vlan=vlan)
         handler.create_vlan({
             "system_id": node.system_id,
             "parent": interface.id,
-            "vlan": new_vlan.id,
+            "vlan": vlan.id,
             "mode": INTERFACE_LINK_TYPE.LINK_UP,
             "subnet": new_subnet.id,
             })
@@ -2317,8 +2317,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {})
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
-        new_fabric = factory.make_Fabric()
-        new_vlan = new_fabric.get_default_vlan()
+        new_vlan = factory.make_VLAN()
         handler.update_interface({
             "system_id": node.system_id,
             "interface_id": interface.id,
