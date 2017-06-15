@@ -209,6 +209,26 @@ describe("FabricDetailsController", function() {
         expect(rows[0].space_name).toBe(null);
     });
 
+    describe("editSubnetSummary", function() {
+
+        it("enters edit mode for summary", function() {
+            var controller = makeController();
+            $scope.editSummary = false;
+            $scope.enterEditSummary();
+            expect($scope.editSummary).toBe(true);
+        });
+    });
+
+    describe("exitEditSubnetSummary", function() {
+
+        it("enters edit mode for summary", function() {
+            var controller = makeController();
+            $scope.editSummary = true;
+            $scope.exitEditSummary();
+            expect($scope.editSummary).toBe(false);
+        });
+    });
+
     describe("canBeDeleted", function() {
 
         it("returns false if fabric is null", function() {

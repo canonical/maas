@@ -46,9 +46,26 @@
         <section class="row">
             <div class="wrapper--inner">
                 <div class="twelve-col">
-                    <h2>Fabric summary</h2>
+                    <h2 class="u-float--left">Fabric summary</h2>
+                    <button type="button" name="button" class="button--secondary button--inline u-float--right" data-ng-click="enterEditSummary()" data-ng-if="editSummary != true">Edit</button>
                 </div>
-                <maas-obj-form obj="fabric" table-form="true" manager="fabricManager" data-ng-disabled="!isSuperUser()">
+                <div class="twelve-col" data-ng-if="editSummary != true">
+                    <dl class="six-col">
+                        <dt class="two-col">Name</dt>
+                        <dd class="four-col last-col">{$ fabric.name $}</dd>
+                        <dt class="two-col">Description</dt>
+                        <dd class="four-col last-col">{$ fabric.description $}</dd>
+                    </dl>
+                    <dl class="six-col last-col">
+                        <dt class="two-col">Rack controllers</dt>
+                        <dd class="four-col last-col">
+                            <span class="u-margin--right-small" data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+                <maas-obj-form obj="fabric" data-ng-if="editSummary == true" table-form="true" save-on-blur="false" after-save="exitEditSummary" manager="fabricManager" data-ng-disabled="!isSuperUser()">
                     <fieldset class="form__fieldset six-col">
                         <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
                             label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
@@ -65,6 +82,11 @@
                             </dd>
                         </dl>
                     </fieldset>
+                    <div class="twelve-col u-align--right">
+                        <button class="button--base button--inline"
+                           data-ng-click="exitEditSummary()">Cancel</button>
+                        <button class="button--positive button--inline" maas-obj-save>Save summary</button>
+                    </div>
                 </maas-obj-form>
             </div>
         </section>

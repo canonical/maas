@@ -25,6 +25,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
         // Initial values.
         $scope.fabric = null;
         $scope.fabricManager = FabricsManager;
+        $scope.editSummary = false;
         $scope.vlans = VLANsManager.getItems();
         $scope.subnets = SubnetsManager.getItems();
         $scope.controllers = ControllersManager.getItems();
@@ -34,6 +35,16 @@ angular.module('MAAS').controller('FabricDetailsController', [
         function updateTitle() {
             $rootScope.title = $scope.fabric.name;
         }
+
+        // Called when the "edit" button is cliked in the fabric summary
+        $scope.enterEditSummary = function() {
+            $scope.editSummary = true;
+        };
+
+        // Called when the "cancel" button is cliked in the fabric summary
+        $scope.exitEditSummary = function() {
+            $scope.editSummary = false;
+        };
 
         // Called when the fabric has been loaded.
         function fabricLoaded(fabric) {
