@@ -39,7 +39,7 @@
             </th>
         </tr>
     </thead>
-    <tbody>
+    <tbody vs-repeat vs-scroll-parent="window">
         <tr
             data-ng-repeat="node in filteredMachines = (machines | nodesFilter:search | orderBy:table.predicate:table.reverse) track by node.system_id"
             data-ng-class="{ 'table--error': machineHasError({ $machine: node }), selected: node.$selected }">

@@ -46,7 +46,8 @@
                             No new discoveries
                         </div>
                     </div>
-                    <div class="table__row"
+                    <div vs-repeat vs-scroll-parent="window">
+                        <div class="table__row"
                         data-ng-repeat="discovery in discoveredDevices | orderBy:'-last_seen' track by discovery.first_seen"
                         data-ng-class="{'is-active' : discovery.first_seen === selectedDevice}">
                         <div data-ng-if="discovery.first_seen !== selectedDevice"
@@ -178,6 +179,7 @@
                                 </div>
                             </div>
                         </maas-obj-form>
+                    </div>
                     </div>
                 </div>
             </div>

@@ -123,7 +123,7 @@
                         </div>
                     </div>
                 </header>
-                <div class="table__body">
+                <div class="table__body" vs-repeat vs-scroll-parent="window">
                     <div class="table__row" data-ng-repeat="pod in filteredItems = (pods | nodesFilter:search | orderBy:predicate:reverse) track by pod.id"
                         data-ng-class="{ selected: pod.$selected, 'is-active': pod.$selected && pod.action_failed }">
                         <div data-ng-if="isSuperUser()">

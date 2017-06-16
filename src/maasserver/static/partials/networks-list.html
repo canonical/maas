@@ -147,7 +147,7 @@
                         <th class="table__column--13 align-right">Available IPs</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody vs-repeat vs-scroll-parent="window">
                     <tr class="table-listing__row" data-ng-repeat="row in group.spaces.rows">
                         <!-- <td class="table-listing__cell table__column--3 ng-hide">
                             <div data-ng-if="row.space_name">
@@ -207,7 +207,7 @@
                         <th class="table__column--25">Space</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody vs-repeat vs-scroll-parent="window">
                     <tr class="table-listing__row" data-ng-repeat="row in group.fabrics.rows">
                         <!-- <td class="table-listing__cell table__column--3 ng-hide">
                             <div data-ng-if="row.fabric_name">
