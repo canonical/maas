@@ -2,8 +2,19 @@
 Changelog
 =========
 
-2.2.0 (beta1)
-=============
+2.2.1
+=====
+
+Bugs fixed in this release
+--------------------------
+
+LP: #1690781    Make virsh-based pods more robust when empty XML is returned.
+
+LP: #1695083    Improve NTP IP address selection for MAAS DHCP clients.
+
+
+2.2.0
+=====
 
 Important announcements
 -----------------------

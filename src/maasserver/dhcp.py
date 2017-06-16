@@ -256,19 +256,36 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
             IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED})
     rack_addresses = rack_addresses.exclude(subnet__isnull=True)
     rack_addresses = rack_addresses.order_by(
-        "subnet__vlan__space_id", "subnet__cidr", "ip")
+        # Prefer subnets with DHCP enabled.
+        "-subnet__vlan__dhcp_on",
+        "subnet__vlan__space_id",
+        "subnet__cidr",
+        "ip"
+    )
     rack_addresses = rack_addresses.values_list(
-        "subnet__vlan__space_id", "subnet__cidr", "ip")
+        "subnet__vlan__dhcp_on",
+        "subnet__vlan__space_id",
+        "subnet__cidr",
+        "ip"
+    )
 
     def get_space_id_and_family(record):
-        space_id, cidr, ip = record
+        dhcp_on, space_id, cidr, ip = record
         return space_id, IPNetwork(cidr).version
 
+    def sort_key__dhcp_on__ip(record):
+        dhcp_on, space_id, cidr, ip = record
+        return -int(dhcp_on), IPAddress(ip)
+
+    best_ntp_servers = {
+        space_id_and_family:
+            min(group, key=sort_key__dhcp_on__ip)
+            for space_id_and_family, group in groupby(
+                rack_addresses, get_space_id_and_family)
+    }
     return {
-        space_id_and_family: min(
-            (ip for _, _, ip in group), key=IPAddress)
-        for space_id_and_family, group in groupby(
-            rack_addresses, get_space_id_and_family)
+        key: value[3]
+        for key, value in best_ntp_servers.items()
     }
 
 
