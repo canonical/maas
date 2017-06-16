@@ -57,7 +57,7 @@ def list_osystem_choices(osystems, include_default=True):
         (osystem['name'], osystem['title'])
         for osystem in osystems
         ]
-    return choices
+    return sorted(list(set(choices)))
 
 
 def list_all_usable_releases(osystems):

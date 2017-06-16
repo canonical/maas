@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Osystem Drivers."""
@@ -205,6 +205,7 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.drivers.osystem.ubuntucore import UbuntuCoreOS
 from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
 from provisioningserver.drivers.osystem.centos import CentOS
+from provisioningserver.drivers.osystem.rhel import RHELOS
 from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.windows import WindowsOS
 from provisioningserver.drivers.osystem.suse import SUSEOS
@@ -214,6 +215,7 @@ builtin_osystems = [
     UbuntuCoreOS(),
     BootLoaderOS(),
     CentOS(),
+    RHELOS(),
     CustomOS(),
     WindowsOS(),
     SUSEOS(),

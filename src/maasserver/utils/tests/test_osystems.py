@@ -95,6 +95,15 @@ class TestOsystems(MAASServerTestCase):
             [(osystem['name'], osystem['title'])],
             list_osystem_choices([osystem], include_default=False))
 
+    def test_list_osystem_choices_doesnt_duplicate(self):
+        self.assertEqual(
+            [('custom', 'Custom')],
+            list_osystem_choices(
+                [
+                    {'name': 'custom', 'title': 'Custom'},
+                    {'name': 'custom', 'title': 'Custom'},
+                ], include_default=False))
+
 
 class TestReleases(MAASServerTestCase):
 

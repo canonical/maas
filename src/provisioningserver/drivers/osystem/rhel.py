@@ -1,10 +1,10 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""CentOS Operating System."""
+"""RHELOS Operating System."""
 
 __all__ = [
-    "CentOS",
+    "RHELOS",
     ]
 
 import re
@@ -15,19 +15,19 @@ from provisioningserver.drivers.osystem import (
 )
 
 # Regex matcher that is used to check if the release is supported. The release
-# name just has to start with 'centos' to be supported but the major, minor,
+# name just has to start with 'rhel' to be supported but the major, minor,
 # and title are found if available to help format the title.
 DISTRO_MATCHER = re.compile(
-    '^centos((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
+    '^rhel((?P<major>[0-9])(?P<minor>[0-9])?)?([\-\.]?(?P<title>.+))?$',
     re.I)
-DISTRO_SERIES_DEFAULT = 'centos70'
+DISTRO_SERIES_DEFAULT = 'rhel7'
 
 
-class CentOS(OperatingSystem):
-    """CentOS operating system."""
+class RHELOS(OperatingSystem):
+    """RHELOS operating system."""
 
-    name = 'centos'
-    title = 'CentOS'
+    name = 'rhel'
+    title = 'Redhat Enterprise Linux'
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
@@ -56,24 +56,10 @@ class CentOS(OperatingSystem):
         major = matched.group('major')
         minor = matched.group('minor')
         title = matched.group('title')
-        # MAAS provided images via streams are not bound to a minor
-        # release version, which means we always provide the latest
-        # available release from CentOS 6 and CentOS 7.  To address
-        # LP: #1654063, we need to ensure we don't surface a version
-        # unless we have specifically done so in the streams.
-        #
-        # Since we cannot change the streams without breaking backwards
-        # compat on older MAAS', we need to ensure that we don't show
-        # the minor version on CentOS 7.0, and CentOS 6.6, as they come
-        # from the stream and the minor version doesn't match to what
-        # we publish. As such, we ensure that we only return minor
-        # if we have any other version other that X.0, 7.0 and 6.6.
-        if major is not None and minor is None or minor == '0':
-            ret = "%s %s" % (ret, major)
-        elif major == '6' and minor == '6':
-            ret = "%s %s" % (ret, major)
-        elif None not in (major, minor):
+        if None not in (major, minor):
             ret = "%s %s.%s" % (ret, major, minor)
+        elif major is not None:
+            ret = "%s %s" % (ret, major)
 
         if title is not None:
             ret = "%s %s" % (ret, title)
