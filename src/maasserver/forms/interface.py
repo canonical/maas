@@ -252,18 +252,6 @@ class PhysicalInterfaceForm(InterfaceForm):
         if len(parents) > 0:
             raise ValidationError("A physical interface cannot have parents.")
 
-    def clean_vlan(self):
-        new_vlan = self.cleaned_data.get('vlan')
-        if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
-            # A device's physical interface can be connected to a tagged VLAN.
-            # This is because a container or VM could be bridged on the machine
-            # to a tagged VLAN interface. See lp:1572070 for details.
-            if self.node.node_type != NODE_TYPE.DEVICE:
-                raise ValidationError(
-                    "A physical interface can only belong to an "
-                    "untagged VLAN.")
-        return new_vlan
-
     def clean(self):
         cleaned_data = super(PhysicalInterfaceForm, self).clean()
         new_name = cleaned_data.get('name')
@@ -313,7 +301,7 @@ class VLANInterfaceForm(InterfaceForm):
                 not created and new_vlan is None and vlan_was_set):
             raise ValidationError(
                 "A VLAN interface must be connected to a tagged VLAN.")
-        if new_vlan and new_vlan.fabric.get_default_vlan() == new_vlan:
+        if new_vlan and new_vlan.vid == 0:
             raise ValidationError(
                 "A VLAN interface can only belong to a tagged VLAN.")
         return new_vlan
@@ -455,16 +443,9 @@ class BondInterfaceForm(ChildInterfaceForm):
             'name',
         )
 
-    def clean_vlan(self):
-        new_vlan = self.cleaned_data.get('vlan')
-        if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
-            raise ValidationError(
-                "A bond interface can only belong to an untagged VLAN.")
-        return new_vlan
-
     def clean(self):
         cleaned_data = super().clean()
-        if self.fields_ok(['vlan', 'parents']):
+        if self.fields_ok(['parents']):
             parents = self.cleaned_data.get('parents')
             # Set the mac_address if its missing and the interface is being
             # created.
