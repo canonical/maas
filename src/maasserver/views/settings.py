@@ -18,9 +18,8 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import (
     get_object_or_404,
-    render_to_response,
+    render,
 )
-from django.template import RequestContext
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -271,7 +270,8 @@ def settings(request):
     for license_key in license_keys:
         set_license_key_titles(license_key, osystems)
 
-    return render_to_response(
+    return render(
+        request,
         'maasserver/settings.html',
         {
             'user_list': user_list,
@@ -288,5 +288,4 @@ def settings(request):
             'ubuntu_form': ubuntu_form,
             'windows_form': windows_form,
             'kernelopts_form': kernelopts_form,
-        },
-        context_instance=RequestContext(request))
+        })

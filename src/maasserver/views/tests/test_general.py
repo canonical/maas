@@ -12,10 +12,11 @@ from urllib.parse import (
 )
 
 from django.conf import settings
-from django.conf.urls import patterns
+from django.conf.urls import url
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.test.client import RequestFactory
+from django.views.defaults import server_error
 from lxml.html import fromstring
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
@@ -49,10 +50,7 @@ class Test404500(MAASServerTestCase):
     def test_500(self):
         self.client_log_in()
         from maasserver.urls import urlpatterns
-        urlpatterns += patterns(
-            '',
-            (r'^500/$', 'django.views.defaults.server_error'),
-        )
+        urlpatterns += [url(r'^500/$', server_error)]
         response = self.client.get('/500/')
         doc = fromstring(response.content)
         self.assertIn(

@@ -66,8 +66,7 @@ import sys
 from textwrap import dedent
 
 from django.http import HttpResponse
-from django.shortcuts import render_to_response
-from django.template import RequestContext
+from django.shortcuts import render
 from docutils import core
 from maasserver.api.doc import (
     describe_api,
@@ -172,10 +171,9 @@ def api_doc(request):
     # Generate the documentation and keep it cached.  Note that we can't do
     # that at the module level because the API doc generation needs Django
     # fully initialized.
-    return render_to_response(
-        'maasserver/api_doc.html',
-        {'doc': reST_to_html_fragment(render_api_docs())},
-        context_instance=RequestContext(request))
+    return render(
+        request, 'maasserver/api_doc.html',
+        {'doc': reST_to_html_fragment(render_api_docs())})
 
 
 def describe(request):

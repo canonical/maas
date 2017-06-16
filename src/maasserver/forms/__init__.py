@@ -1512,7 +1512,6 @@ class UbuntuForm(Form):
             name='main_archive',
             defaults={
                 'url': self.cleaned_data['main_archive'],
-                'description': 'main_archive',
                 'arches': PackageRepository.MAIN_ARCHES,
                 'default': True,
                 'enabled': True})
@@ -1520,7 +1519,6 @@ class UbuntuForm(Form):
             name='ports_archive',
             defaults={
                 'url': self.cleaned_data['ports_archive'],
-                'description': 'ports_archive',
                 'arches': PackageRepository.PORTS_ARCHES,
                 'default': True,
                 'enabled': True})

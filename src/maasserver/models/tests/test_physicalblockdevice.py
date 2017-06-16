@@ -20,33 +20,31 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
     def test_model_serial_and_no_id_path_requirements_should_save(self):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
-            node=node, name='sda',
-            path='/dev/sda', block_size=512,
-            size=MIN_BLOCK_DEVICE_SIZE, model='A2M0003',
-            serial='001')
+            node=node, name='sda', block_size=512, size=MIN_BLOCK_DEVICE_SIZE,
+            model='A2M0003', serial='001')
         # Should work without issue
         blockdevice.save()
 
     def test_id_path_and_no_model_serial_requirements_should_save(self):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=MIN_BLOCK_DEVICE_SIZE, id_path='/dev/disk/by-id/A2M0003-001')
+            node=node, name='sda', block_size=512, size=MIN_BLOCK_DEVICE_SIZE,
+            id_path='/dev/disk/by-id/A2M0003-001')
         # Should work without issue
         blockdevice.save()
 
     def test_no_id_path_and_no_serial(self):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=MIN_BLOCK_DEVICE_SIZE, model='A2M0003')
+            node=node, name='sda', block_size=512, size=MIN_BLOCK_DEVICE_SIZE,
+            model='A2M0003')
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_no_id_path_and_no_model(self):
         node = factory.make_Node()
         blockdevice = PhysicalBlockDevice(
-            node=node, name='sda', path='/dev/sda', block_size=512,
-            size=MIN_BLOCK_DEVICE_SIZE, serial='001')
+            node=node, name='sda', block_size=512, size=MIN_BLOCK_DEVICE_SIZE,
+            serial='001')
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_number_of_physical_devices_for_returns_correct_count(self):

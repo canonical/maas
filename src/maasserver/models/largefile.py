@@ -149,8 +149,9 @@ class LargeFile(CleanSave, TimestampedModel):
         referencing this object.
         """
         links = [
-            rel.get_accessor_name()
-            for rel in self._meta.get_all_related_objects()
+            f.get_accessor_name() for f in self._meta.get_fields()
+            if ((f.one_to_many or f.one_to_one) and
+                f.auto_created and not f.concrete)
         ]
         for link in links:
             if getattr(self, link).exists():

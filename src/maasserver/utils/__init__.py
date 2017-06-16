@@ -86,10 +86,7 @@ def absolute_url_reverse(view_name, query=None, *args, **kwargs):
     if not abs_path.endswith('/'):
         # Add trailing '/' to get urljoin to behave.
         abs_path = abs_path + '/'
-    # Force prefix to be '' so that Django doesn't use the 'script prefix' (
-    # which might be there or not depending on whether or not the thread local
-    # variable has been initialized).
-    reverse_link = reverse(view_name, prefix='', *args, **kwargs)
+    reverse_link = reverse(view_name, *args, **kwargs)
     if reverse_link.startswith('/'):
         # Drop the leading '/'.
         reverse_link = reverse_link[1:]

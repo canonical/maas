@@ -187,25 +187,31 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'zk@qw+fdhu_b4ljx+pmb*8sju4lpx!5zkez%&4hep_(o6y1nf0'
 
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-    # 'django.template.loaders.eggs.Loader',
-)
-
-TEMPLATE_CONTEXT_PROCESSORS = (
-    "django.contrib.auth.context_processors.auth",
-    "django.core.context_processors.debug",
-    "django.core.context_processors.i18n",
-    "django.core.context_processors.request",
-    "django.core.context_processors.media",
-    "django.core.context_processors.static",
-    # "django.core.context_processors.tz",
-    "django.contrib.messages.context_processors.messages",
-    "maasserver.context_processors.yui",
-    "maasserver.context_processors.global_options",
-)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join(os.path.dirname(__file__), "templates"),
+        ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                # Insert your TEMPLATE_CONTEXT_PROCESSORS here or use this
+                # list if you haven't customized them:
+                "django.contrib.auth.context_processors.auth",
+                "django.template.context_processors.debug",
+                "django.template.context_processors.i18n",
+                "django.template.context_processors.media",
+                "django.template.context_processors.request",
+                "django.template.context_processors.static",
+                # "django.template.context_processors.tz",
+                "django.contrib.messages.context_processors.messages",
+                "maasserver.context_processors.yui",
+                "maasserver.context_processors.global_options",
+            ],
+        },
+    },
+]
 
 MIDDLEWARE_CLASSES = (
 
@@ -264,14 +270,6 @@ MIDDLEWARE_CLASSES = (
 )
 
 ROOT_URLCONF = 'maasserver.djangosettings.urls'
-
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates"
-    # or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-    os.path.join(os.path.dirname(__file__), "templates"),
-)
 
 SOUTH_MIGRATION_MODULES = {
     # Migrations before MAAS 2.0 are located in south sub-directory.
@@ -349,6 +347,10 @@ ALLOWED_HOSTS = ['*']
 SERIALIZATION_MODULES = {
     'maasjson': 'maasserver.json',
 }
+
+# MAAS has no upload limit to allow for big image files.
+# (Django 1.10 introduced this limit with a default of 2.5MB.)
+DATA_UPLOAD_MAX_MEMORY_SIZE = None
 
 # Patch the get_script_prefix method to allow twisted to work with django.
 patch_get_script_prefix()

@@ -391,25 +391,25 @@ class TestBlockDevice(MAASServerTestCase):
 
     def test_negative_size(self):
         node = factory.make_Node()
-        blockdevice = BlockDevice(node=node, name='sda', path='/dev/sda',
+        blockdevice = BlockDevice(node=node, name='sda',
                                   block_size=512, size=-1)
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_minimum_size(self):
         node = factory.make_Node()
-        blockdevice = BlockDevice(node=node, name='sda', path='/dev/sda',
+        blockdevice = BlockDevice(node=node, name='sda',
                                   block_size=512, size=143359)
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_negative_block_device_size(self):
         node = factory.make_Node()
-        blockdevice = BlockDevice(node=node, name='sda', path='/dev/sda',
+        blockdevice = BlockDevice(node=node, name='sda',
                                   block_size=-1, size=143360)
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_minimum_block_device_size(self):
         node = factory.make_Node()
-        blockdevice = BlockDevice(node=node, name='sda', path='/dev/sda',
+        blockdevice = BlockDevice(node=node, name='sda',
                                   block_size=511, size=143360)
         self.assertRaises(ValidationError, blockdevice.save)
 

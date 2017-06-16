@@ -30,7 +30,6 @@ from django.core.handlers.wsgi import (
 from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpResponse
-from django.http.response import REASON_PHRASES
 from fixtures import FakeLogger
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -387,7 +386,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.expectThat(response.status_code, Equals(http.client.CONFLICT))
         self.expectThat(
             response.reason_phrase,
-            Equals(REASON_PHRASES[http.client.CONFLICT]))
+            Equals(http.client.responses[http.client.CONFLICT]))
 
     def test__get_response_prepare_retry_context_before_each_try(self):
 

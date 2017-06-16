@@ -13,9 +13,8 @@ from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.shortcuts import (
     get_object_or_404,
-    render_to_response,
+    render,
 )
-from django.template import RequestContext
 from django.views.generic import CreateView
 from maasserver.forms import (
     ProfileForm,
@@ -79,10 +78,10 @@ def userprefsview(request):
     if response is not None:
         return response
 
-    return render_to_response(
+    return render(
+        request,
         'maasserver/prefs.html',
         {
             'profile_form': profile_form,
-            'password_form': password_form,
-        },
-        context_instance=RequestContext(request))
+            'password_form': password_form
+        })

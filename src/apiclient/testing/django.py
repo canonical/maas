@@ -23,7 +23,8 @@ html.parser.HTMLParseError = HTMLParseError
 
 
 # Django 1.6 needs to be configured before we can import WSGIRequest.
-settings.configure(DEBUG=True)
+if not settings.configured:
+    settings.configure(DEBUG=True)
 
 
 class Base64Decoder:
@@ -65,6 +66,10 @@ def parse_headers_and_body_with_django(headers, body):
     """
     handler = MemoryFileUploadHandler()
     meta = {
+        "CONTENT_TYPE": headers["Content-Type"],
+        "CONTENT_LENGTH": headers["Content-Length"],
+        # To make things even more entertaining, 1.8 prefixed meta vars
+        # with "HTTP_" and 1.11 does not.
         "HTTP_CONTENT_TYPE": headers["Content-Type"],
         "HTTP_CONTENT_LENGTH": headers["Content-Length"],
         }

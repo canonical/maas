@@ -26,8 +26,7 @@ from django.http import (
     HttpResponseRedirect,
     JsonResponse,
 )
-from django.shortcuts import render_to_response
-from django.template import RequestContext
+from django.shortcuts import render
 from maasserver.models import UserProfile
 from maasserver.models.user import (
     create_auth_token,
@@ -70,11 +69,8 @@ def logout(request):
     else:
         form = LogoutForm()
 
-    return render_to_response(
-        'maasserver/logout_confirm.html',
-        {'form': form},
-        context_instance=RequestContext(request),
-    )
+    return render(
+        request, 'maasserver/logout_confirm.html', {'form': form})
 
 
 def authenticate(request):

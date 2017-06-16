@@ -12,6 +12,10 @@ from django.conf.urls import (
 )
 from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse
+from maasserver import (
+    urls_api,
+    urls_combo,
+)
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
@@ -62,7 +66,7 @@ def adminurl(regexp, view, *args, **kwargs):
 # # URLs accessible to anonymous users.
 # Combo URLs.
 urlpatterns = [
-    url(r'combo/', include('maasserver.urls_combo'))
+    url(r'combo/', include(urls_combo))
 ]
 
 # Anonymous views.
@@ -160,7 +164,7 @@ urlpatterns += [
 
 # API URLs. If old API requested, provide error message directing to new API.
 urlpatterns += [
-    url(r'^api/2\.0/', include('maasserver.urls_api')),
+    url(r'^api/2\.0/', include(urls_api)),
     url(r'^api/version/', lambda request: HttpResponse(
         content='2.0', content_type="text/plain"), name='api_version'),
     url(r'^api/1.0/', lambda request: HttpResponse(

@@ -184,7 +184,7 @@ Finding notifications that are both:
 
 should be done with ``find_for_user``:
 
-  >>> Notification.objects.find_for_user(user)
+  >>> list(Notification.objects.find_for_user(user))
   [<Notification ...]
 
 
