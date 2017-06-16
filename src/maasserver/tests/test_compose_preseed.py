@@ -9,7 +9,7 @@ import random
 
 from maasserver.compose_preseed import (
     compose_preseed,
-    get_apt_proxy_for_node,
+    get_apt_proxy,
 )
 from maasserver.enum import (
     NODE_STATUS,
@@ -89,7 +89,7 @@ class TestAptProxy(MAASServerTestCase):
             interface=True, status=NODE_STATUS.COMMISSIONING)
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
-        actual = get_apt_proxy_for_node(node)
+        actual = get_apt_proxy(node.get_boot_rack_controller())
         self.assertEqual(self.result, actual)
 
 
@@ -180,7 +180,7 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.dhcp_on = True
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
-        apt_proxy = get_apt_proxy_for_node(node)
+        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertIn('datasource', preseed)
@@ -365,7 +365,7 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.primary_rack = rack_controller
         nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
-        apt_proxy = get_apt_proxy_for_node(node)
+        apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 

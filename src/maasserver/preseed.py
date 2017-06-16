@@ -33,6 +33,7 @@ from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
+    get_apt_proxy,
     get_archive_config,
     get_system_info,
     RSYSLOG_PORT,
@@ -111,13 +112,7 @@ def get_enlist_userdata(rack_controller=None):
     :return: The rendered enlistment user-data string.
     :rtype: unicode.
     """
-    server_host = get_maas_facing_server_host(rack_controller=rack_controller)
-    http_proxy = None
-    if Config.objects.get_config('enable_http_proxy'):
-        if Config.objects.get_config('http_proxy'):
-            http_proxy = Config.objects.get_config('http_proxy')
-        elif server_host:
-            http_proxy = "http://%s:8000/" % server_host
+    http_proxy = get_apt_proxy(rack_controller=rack_controller)
     enlist_userdata = render_enlistment_preseed(
         USERDATA_TYPE.ENLIST, rack_controller=rack_controller)
     config = get_system_info()

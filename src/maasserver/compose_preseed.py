@@ -31,17 +31,17 @@ import yaml
 RSYSLOG_PORT = 514
 
 
-def get_apt_proxy_for_node(node):
-    """Return the APT proxy for the `node`."""
+def get_apt_proxy(rack_controller=None):
+    """Return the APT proxy for the `rack_controller`."""
     if Config.objects.get_config("enable_http_proxy"):
         http_proxy = Config.objects.get_config("http_proxy")
-        if (http_proxy is not None and len(http_proxy) > 0 and
-                not http_proxy.isspace()):
+        if http_proxy is not None:
+            http_proxy = http_proxy.strip()
+        if http_proxy:
             return http_proxy
         else:
             return compose_URL(
-                "http://:8000/", get_maas_facing_server_host(
-                    node.get_boot_rack_controller()))
+                "http://:8000/", get_maas_facing_server_host(rack_controller))
     else:
         return None
 
@@ -58,7 +58,7 @@ def get_archive_config(node, preserve_sources=False):
     arch = node.split_arch()[0]
     archive = PackageRepository.objects.get_default_archive(arch)
     repositories = PackageRepository.objects.get_additional_repositories(arch)
-    apt_proxy = get_apt_proxy_for_node(node)
+    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
 
     # Process the default Ubuntu Archives or Mirror.
     archives = {}
@@ -225,7 +225,7 @@ def compose_cloud_init_preseed(node, token, base_url=''):
     }
     # Add the system configuration information.
     config.update(get_system_info())
-    apt_proxy = get_apt_proxy_for_node(node)
+    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
     if apt_proxy:
         config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
@@ -313,7 +313,7 @@ def _compose_cloud_init_preseed(
     }
     # Add the system configuration information.
     cloud_config.update(get_system_info())
-    apt_proxy = get_apt_proxy_for_node(node)
+    apt_proxy = get_apt_proxy(node.get_boot_rack_controller())
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
     # Add APT configuration for new cloud-init (>= 0.7.7-17)
