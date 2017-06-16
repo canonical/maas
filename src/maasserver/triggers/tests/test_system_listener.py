@@ -3713,7 +3713,7 @@ class TestDNSConfigListenerLegacy(
                 % (json.dumps(kms_host_old), json.dumps(kms_host_new))))
 
 
-class TestProxySubnetListener(
+class TestProxyListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the proxy triggers code."""
 
@@ -3784,6 +3784,102 @@ class TestProxySubnetListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_insert_enable_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_config, "enable_proxy", True)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_insert_use_peer_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_config, "use_peer_proxy", True)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_insert_http_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_config, "http_proxy", "http://proxy.example.com")
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_update_enable_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(self.create_config, "enable_proxy", True)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.set_config, "enable_proxy", False)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_update_use_peer_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(self.create_config, "use_peer_proxy", True)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.set_config, "use_peer_proxy", False)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_update_http_proxy(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            self.create_config, "http_proxy", "http://proxy1.example.com")
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.set_config, "http_proxy", "http://proxy2.example.com")
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()

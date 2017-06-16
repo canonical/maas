@@ -6,11 +6,13 @@
 __all__ = []
 
 import os
+from pathlib import Path
 
 from crochet import wait_for
 from django.conf import settings
 from fixtures import EnvironmentVariableFixture
 from maasserver import proxyconfig
+from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -58,6 +60,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestProxyUpdateConfig, self).setUp()
         self.tmpdir = self.make_dir()
+        self.proxy_path = Path(self.tmpdir) / proxyconfig.MAAS_PROXY_CONF_NAME
         self.service_monitor = self.patch(proxyconfig, "service_monitor")
         self.useFixture(
             EnvironmentVariableFixture('MAAS_PROXY_CONFIG_DIR', self.tmpdir))
@@ -83,6 +86,71 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.assertThat(
             "%s/%s" % (self.tmpdir, proxyconfig.MAAS_PROXY_CONF_NAME),
             FileContains(matcher=matcher))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__with_use_peer_proxy_with_http_proxy(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "use_peer_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", "http://example.com:8000/")
+        yield deferToDatabase(self.make_subnet, allow_proxy=False)
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        cache_peer_line = (
+            "cache_peer example.com parent 8000 0 no-query default")
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn('never_direct allow all', lines)
+            self.assertIn(cache_peer_line, lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__with_use_peer_proxy_without_http_proxy(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "use_peer_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", "")
+        yield deferToDatabase(self.make_subnet, allow_proxy=False)
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertNotIn('never_direct allow all', lines)
+            self.assertNotIn('cache_peer', lines)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__without_use_peer_proxy(self):
+        self.patch(settings, "PROXY_CONNECT", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "use_peer_proxy", False)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", "http://example.com:8000/")
+        yield deferToDatabase(self.make_subnet, allow_proxy=False)
+        yield deferToDatabase(self.make_subnet)
+        yield proxyconfig.proxy_update_config(reload_proxy=False)
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertNotIn('never_direct allow all', lines)
+            self.assertNotIn('cache_peer', lines)
 
     @wait_for_reactor
     @inlineCallbacks

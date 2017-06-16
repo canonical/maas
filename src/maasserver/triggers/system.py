@@ -1050,6 +1050,38 @@ PROXY_SUBNET_UPDATE = dedent("""\
     """)
 
 
+# Triggered when the proxy settings are updated.
+PEER_PROXY_CONFIG_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_proxy_config_use_peer_proxy_insert()
+    RETURNS trigger as $$
+    BEGIN
+      IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'use_peer_proxy' OR
+          NEW.name = 'http_proxy') THEN
+        PERFORM pg_notify('sys_proxy', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when the proxy settings are updated.
+PEER_PROXY_CONFIG_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_proxy_config_use_peer_proxy_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF (NEW.name = 'enable_proxy' OR
+          NEW.name = 'use_peer_proxy' OR
+          NEW.name = 'http_proxy') THEN
+        PERFORM pg_notify('sys_proxy', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_sys_dns_procedure(proc_name, on_delete=False):
     """Render a database procedure that creates a new DNS publication.
 
@@ -1338,3 +1370,13 @@ def register_system_triggers():
     register_trigger(
         "maasserver_subnet",
         "sys_proxy_subnet_delete", "delete")
+
+    # - Config/http_proxy (when use_peer_proxy)
+    register_procedure(PEER_PROXY_CONFIG_INSERT)
+    register_trigger(
+        "maasserver_config", "sys_proxy_config_use_peer_proxy_insert",
+        "insert")
+    register_procedure(PEER_PROXY_CONFIG_UPDATE)
+    register_trigger(
+        "maasserver_config", "sys_proxy_config_use_peer_proxy_update",
+        "update")

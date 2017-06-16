@@ -123,6 +123,8 @@ class TestTriggersUsed(MAASServerTestCase):
         "config_config_create_notify",
         "config_config_delete_notify",
         "config_config_update_notify",
+        "config_sys_proxy_config_use_peer_proxy_insert",
+        "config_sys_proxy_config_use_peer_proxy_update",
         "dhcpsnippet_dhcpsnippet_create_notify",
         "dhcpsnippet_dhcpsnippet_delete_notify",
         "dhcpsnippet_dhcpsnippet_update_notify",

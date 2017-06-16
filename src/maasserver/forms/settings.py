@@ -225,6 +225,18 @@ CONFIG_ITEMS = {
                 "downloading boot images.")
         }
     },
+    'use_peer_proxy': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "Use the built-in proxy with an external proxy as a peer",
+            'required': False,
+            'help_text': (
+                "If enable_http_proxy is set, the built-in proxy will be "
+                "configured to use http_proxy as a peer proxy. The deployed "
+                "machines will be configured to use the built-in proxy.")
+        }
+    },
     'http_proxy': {
         'default': None,
         'form': forms.URLField,

@@ -51,26 +51,37 @@ class TestAptProxy(MAASServerTestCase):
             rack='2001:db8::1',
             result='http://[2001:db8::1]:8000/',
             enable=True,
+            use_peer_proxy=False,
             http_proxy='')),
         ("ipv4", dict(
             rack='10.0.1.1',
             result='http://10.0.1.1:8000/',
             enable=True,
+            use_peer_proxy=False,
             http_proxy='')),
-        ("name", dict(
-            rack='example.com',
-            result='http://example.com:8000/',
+        ("builtin", dict(
+            rack='region.example.com',
+            result='http://region.example.com:8000/',
             enable=True,
+            use_peer_proxy=False,
             http_proxy='')),
-        ("override", dict(
-            rack='wrong.com',
-            result='http://example.com:111/',
+        ("external", dict(
+            rack='region.example.com',
+            result='http://proxy.example.com:111/',
             enable=True,
-            http_proxy='http://example.com:111/')),
+            use_peer_proxy=False,
+            http_proxy='http://proxy.example.com:111/')),
+        ("peer-proxy", dict(
+            rack='region.example.com',
+            result='http://region.example.com:8000/',
+            enable=True,
+            use_peer_proxy=True,
+            http_proxy='http://proxy.example.com:111/')),
         ("disabled", dict(
             rack='example.com',
             result=None,
             enable=False,
+            use_peer_proxy=False,
             http_proxy='')),
     )
 
@@ -89,6 +100,7 @@ class TestAptProxy(MAASServerTestCase):
             interface=True, status=NODE_STATUS.COMMISSIONING)
         Config.objects.set_config("enable_http_proxy", self.enable)
         Config.objects.set_config("http_proxy", self.http_proxy)
+        Config.objects.set_config("use_peer_proxy", self.use_peer_proxy)
         actual = get_apt_proxy(node.get_boot_rack_controller())
         self.assertEqual(self.result, actual)
 

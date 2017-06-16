@@ -378,6 +378,13 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.reloadService(fake_service.name)
 
     @inlineCallbacks
+    def test__reloadService_returns_when_if_on(self):
+        fake_service = make_fake_service(SERVICE_STATE.OFF)
+        service_monitor = self.make_service_monitor([fake_service])
+        yield service_monitor.restartService(fake_service.name, if_on=True)
+        # No exception expected.
+
+    @inlineCallbacks
     def test__reloadService_calls_ensureService_then_reloads(self):
         fake_service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([fake_service])

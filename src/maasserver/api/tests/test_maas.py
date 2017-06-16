@@ -281,3 +281,14 @@ class MAASHandlerAPITest(APITestCase.ForUser):
         self.assertThat(
             PackageRepository.get_ports_archive().url,
             Equals(ports_archive))
+
+    def test_set_config_use_peer_proxy(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('maas_handler'), {
+                "op": "set_config",
+                "name": "use_peer_proxy",
+                "value": True,
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertTrue(Config.objects.get_config("use_peer_proxy"))

@@ -19,6 +19,7 @@ from maasserver.models.bmc import (
     Pod,
 )
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnspublication import DNSPublication
@@ -750,6 +751,19 @@ class TransactionalHelpersMixin:
     @transactional
     def reload_object(self, obj):
         return reload_object(obj)
+
+    @transactional
+    def create_config(self, name, value):
+        config, freshly_created = Config.objects.get_or_create(
+            name=name, defaults=dict(value=value))
+        assert freshly_created, "Config already created."
+        return config
+
+    @transactional
+    def set_config(self, name, value):
+        config = Config.objects.get(name=name)
+        config.value = value
+        config.save()
 
 
 class DNSHelpersMixin:

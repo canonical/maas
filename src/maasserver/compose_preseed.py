@@ -37,7 +37,8 @@ def get_apt_proxy(rack_controller=None):
         http_proxy = Config.objects.get_config("http_proxy")
         if http_proxy is not None:
             http_proxy = http_proxy.strip()
-        if http_proxy:
+        use_peer_proxy = Config.objects.get_config("use_peer_proxy")
+        if http_proxy and not use_peer_proxy:
             return http_proxy
         else:
             return compose_URL(

@@ -52,7 +52,8 @@ class ProxyService(Service):
             # Avoid recursive import.
             from maasserver import proxyconfig
             if (Config.objects.get_config("enable_http_proxy") and
-                    Config.objects.get_config("http_proxy")):
+                    Config.objects.get_config("http_proxy") and
+                    not Config.objects.get_config("use_peer_proxy")):
                 return (SERVICE_STATE.OFF,
                         "disabled, alternate proxy is configured in settings.")
             elif proxyconfig.is_config_present() is False:

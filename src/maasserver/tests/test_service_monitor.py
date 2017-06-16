@@ -131,3 +131,24 @@ class TestProxyService(MAASTransactionServerTestCase):
             (SERVICE_STATE.OFF,
              'disabled, alternate proxy is configured in settings.'),
             expected_state)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_getExpectedState_returns_on_for_proxy_on_and_set_peer_proxy(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
+        service = self.make_proxy_service()
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "use_peer_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", factory.make_url())
+        self.patch(proxyconfig, "is_config_present").return_value = True
+        expected_state = yield maybeDeferred(service.getExpectedState)
+        self.assertEqual((SERVICE_STATE.ON, None), expected_state)

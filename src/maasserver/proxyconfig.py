@@ -13,8 +13,10 @@ import datetime
 import os
 import socket
 import sys
+from urllib.parse import urlparse
 
 from django.conf import settings
+from maasserver.models import Config
 from maasserver.models.subnet import Subnet
 from maasserver.service_monitor import service_monitor
 from maasserver.utils.orm import transactional
@@ -67,6 +69,10 @@ def proxy_update_config(reload_proxy=True):
     def write_config():
         allowed_subnets = Subnet.objects.filter(allow_proxy=True)
         cidrs = [subnet.cidr for subnet in allowed_subnets]
+
+        http_proxy = Config.objects.get_config("http_proxy")
+        upstream_proxy_enabled = (
+            Config.objects.get_config("use_peer_proxy") and http_proxy)
         context = {
             'allowed': allowed_subnets,
             'modified': str(datetime.date.today()),
@@ -76,7 +82,18 @@ def proxy_update_config(reload_proxy=True):
             'snap_path': snappy.get_snap_path(),
             'snap_data_path': snappy.get_snap_data_path(),
             'snap_common_path': snappy.get_snap_common_path(),
+            'upstream_peer_proxy': upstream_proxy_enabled,
         }
+
+        proxy_enabled = Config.objects.get_config("enable_http_proxy")
+        if proxy_enabled and upstream_proxy_enabled:
+            http_proxy_hostname = urlparse(http_proxy).hostname
+            http_proxy_port = urlparse(http_proxy).port
+            context.update({
+                'upstream_proxy_address': http_proxy_hostname,
+                'upstream_proxy_port': http_proxy_port,
+            })
+
         template_path = locate_template('proxy', MAAS_PROXY_CONF_TEMPLATE)
         template = tempita.Template.from_filename(
             template_path, encoding="UTF-8")

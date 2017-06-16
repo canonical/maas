@@ -299,17 +299,19 @@ class ServiceMonitor:
 
     @asynchronous
     @inlineCallbacks
-    def restartService(self, name):
+    def restartService(self, name, if_on=False):
         """Restart service.
 
         Service will only be restarted if its expected state is ON.
         `ServiceNotOnError` will be raised if restart is called and the
-        services expected state is not ON.
+        services expected state is not ON, except if if_on is True.
         """
         service = self.getServiceByName(name)
         expected_state, _ = yield maybeDeferred(service.getExpectedState)
         _check_service_state_expected(expected_state)
         if expected_state != SERVICE_STATE.ON:
+            if if_on:
+                return
             raise ServiceNotOnError(
                 "Service '%s' is not expected to be on, unable to restart." % (
                     service.service_name))

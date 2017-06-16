@@ -34,6 +34,7 @@ from maasserver.models import (
     BootResource,
     Config,
     PackageRepository,
+    signals,
 )
 from maasserver.preseed import (
     compose_curtin_archive_config,
@@ -1658,6 +1659,12 @@ class TestPreseedMethods(
     These tests check that the preseed templates render and 'look right'.
     """
 
+    def setUp(self):
+        super().setUp()
+        # We don't want to test that the bootsources get updated.
+        self.addCleanup(signals.bootsources.signals.enable)
+        signals.bootsources.signals.disable()
+
     def assertSystemInfo(self, config):
         self.assertThat(config, ContainsDict({
             'system_info': MatchesDict({
@@ -1746,6 +1753,35 @@ class TestPreseedMethods(
         apt_proxy = 'http://localhost:8000/'
         self.assertAptConfig(preseed, apt_proxy)
         self.assertSystemInfo(preseed)
+
+    def test_get_enlist_userdata_no_proxy(self):
+        Config.objects.set_config('enable_http_proxy', False)
+        Config.objects.set_config('http_proxy', 'http://example.com:3128')
+        preseed = yaml.safe_load(get_enlist_userdata())
+        self.assertIsNone(preseed['apt_proxy'])
+        self.assertNotIn('proxy', preseed['apt'])
+
+    def test_get_enlist_userdata_use_builtin_proxy(self):
+        Config.objects.set_config('enable_http_proxy', True)
+        Config.objects.set_config('http_proxy', '')
+        preseed = yaml.safe_load(get_enlist_userdata())
+        self.assertEqual('http://localhost:8000/', preseed['apt_proxy'])
+        self.assertEqual('http://localhost:8000/', preseed['apt']['proxy'])
+
+    def test_get_enlist_userdata_use_external_proxy(self):
+        Config.objects.set_config('enable_http_proxy', True)
+        Config.objects.set_config('http_proxy', 'http://example.com:3128/')
+        preseed = yaml.safe_load(get_enlist_userdata())
+        self.assertEqual('http://example.com:3128/', preseed['apt_proxy'])
+        self.assertEqual('http://example.com:3128/', preseed['apt']['proxy'])
+
+    def test_get_enlist_userdata_use_peer_proxy(self):
+        Config.objects.set_config('enable_http_proxy', True)
+        Config.objects.set_config('use_peer_proxy', True)
+        Config.objects.set_config('http_proxy', 'http://example.com:3128/')
+        preseed = yaml.safe_load(get_enlist_userdata())
+        self.assertEqual('http://localhost:8000/', preseed['apt_proxy'])
+        self.assertEqual('http://localhost:8000/', preseed['apt']['proxy'])
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
