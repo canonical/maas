@@ -765,11 +765,11 @@
                                               <button class="table__controls-action"
                                                   data-ng-if="!cannotEditInterface(interface)"
                                                   aria-label="Edit"
-                                                  data-ng-click="toggleMenu(); edit(interface)">Edit interface</button>
+                                                  data-ng-click="toggleMenu(); edit(interface)">Edit {$ getInterfaceTypeText(interface) $}</button>
                                               <button class="table__controls-action u-text--error"
                                                   data-ng-if="canBeRemoved()"
                                                   aria-label="Remove"
-                                                  data-ng-click="toggleMenu(); quickRemove(interface)">Remove interface&hellip;</button>
+                                                  data-ng-click="toggleMenu(); quickRemove(interface)">Remove {$ getInterfaceTypeText(interface) $}&hellip;</button>
                                           </div>
                                       </div>
                                   </div>
