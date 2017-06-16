@@ -1312,14 +1312,20 @@ class TestRSDPodDriver(MAASTestCase):
         headers = driver.make_auth_headers(**context)
         request = make_requested_machine()
         # Set the tags on the requested machine's block devices
-        # and the size.
-        for idx in range(3):
-            request.block_devices[idx].size = 200 * 1024 ** 3
-            request.block_devices[idx].tags = ['local', 'testing tags']
+        # and the size.  First device will be a device that has
+        # its tags mapped, while the second one will be at a size
+        # that is bigger than the available local disk size so its
+        # tags will not be mapped.
+        request.block_devices[0].size = 100 * 1024 ** 3
+        request.block_devices[0].tags = ['local', 'tags mapped']
+        request.block_devices[1].size = 200 * 1024 ** 3
+        request.block_devices[1].tags = ['local', 'tags not mapped']
+        local_drive = "/redfish/v1/Systems/1/Adapters/3/Devices/3"
         node_data = SAMPLE_JSON_NODE
         discovered_machine = make_discovered_machine(block_devices=[])
         mock_redfish_request = self.patch(driver, 'redfish_request')
         mock_redfish_request.return_value = (SAMPLE_JSON_DEVICE, None)
+        self.patch_autospec(rsd_module.maaslog, 'warning')
 
         yield driver.get_pod_machine_local_storages(
             node_data, url, headers, discovered_machine, request)
@@ -1330,7 +1336,7 @@ class TestRSDPodDriver(MAASTestCase):
                     serial=Equals('CVLI310601PY120E'),
                     size=Equals(119999999999.99997),
                     block_size=Equals(512),
-                    tags=Equals(['local', 'testing tags', 'ssd']),
+                    tags=Equals(['local', 'tags mapped', 'ssd']),
                     type=Equals(BlockDeviceType.PHYSICAL),
                 ),
                 MatchesStructure(
@@ -1338,9 +1344,16 @@ class TestRSDPodDriver(MAASTestCase):
                     serial=Equals('CVLI310601PY120E'),
                     size=Equals(119999999999.99997),
                     block_size=Equals(512),
-                    tags=Equals(['local', 'testing tags', 'ssd']),
+                    tags=Equals(['local', 'ssd']),
                     type=Equals(BlockDeviceType.PHYSICAL),
                 )]))
+        self.assertThat(rsd_module.maaslog.warning, MockCalledOnceWith(
+            "Requested disk size is larger than %d GiB, which "
+            "drive '%r' contains.  RSD allocation should have "
+            "failed.  Please report this to your RSD Pod "
+            "administrator." % (
+                discovered_machine.block_devices[1].size / (1024 ** 3),
+                local_drive)))
 
     def test__get_pod_machine_remote_storages(self):
         driver = RSDPodDriver()
