@@ -1159,6 +1159,7 @@ def get_all_interfaces_definition(annotate_with_monitored: bool=True) -> dict:
         # Create the interface definition will links for both IPv4 and IPv6.
         interface = {
             "type": iface_type,
+            "index": ipaddr['index'],
             "links": [],
             "enabled": True if 'UP' in ipaddr['flags'] else False,
             "parents": parents,
