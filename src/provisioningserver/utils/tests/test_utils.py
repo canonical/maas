@@ -21,6 +21,7 @@ import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
     classify,
+    convert_size_to_bytes,
     flatten,
     is_instance_or_subclass,
     locate_config,
@@ -30,6 +31,7 @@ from provisioningserver.utils import (
     ShellTemplate,
     sorttop,
     sudo,
+    UnknownCapacityUnitError,
 )
 from testtools.matchers import (
     DirExists,
@@ -369,3 +371,39 @@ class TestIsInstanceOrSubclass(MAASTestCase):
         self.assertThat(
             is_instance_or_subclass(
                 self.bar, *[Baz, [Bar, [Foo]]]), Equals(True))
+
+
+class TestConvertSizeToBytes(MAASTestCase):
+    """Tests for `convert_size_to_bytes`."""
+
+    scenarios = (
+        ("bytes", {"value": "24111", "expected": 24111}),
+        ("KiB", {"value": "2.21 KiB", "expected": int(2.21 * 2**10)}),
+        ("MiB", {"value": "2.21 MiB", "expected": int(2.21 * 2**20)}),
+        ("GiB", {"value": "2.21 GiB", "expected": int(2.21 * 2**30)}),
+        ("TiB", {"value": "2.21 TiB", "expected": int(2.21 * 2**40)}),
+        ("PiB", {"value": "2.21 PiB", "expected": int(2.21 * 2**50)}),
+        ("EiB", {"value": "2.21 EiB", "expected": int(2.21 * 2**60)}),
+        ("ZiB", {"value": "2.21 ZiB", "expected": int(2.21 * 2**70)}),
+        ("YiB", {"value": "2.21 YiB", "expected": int(2.21 * 2**80)}),
+        ("whitespace", {"value": "2.21   GiB", "expected": int(2.21 * 2**30)}),
+        ("zero", {"value": "0 TiB", "expected": 0}),
+    )
+
+    def test__convert_size_to_bytes(self):
+        self.assertEqual(self.expected, convert_size_to_bytes(self.value))
+
+
+class TestConvertSizeToBytesErrors(MAASTestCase):
+    """Error handling tests for `convert_size_to_bytes`."""
+
+    def test__unknown_capacity_unit(self):
+        error = self.assertRaises(
+            UnknownCapacityUnitError, convert_size_to_bytes, "200 superbytes")
+        self.assertEqual("Unknown capacity unit 'superbytes'", str(error))
+
+    def test__empty_string(self):
+        self.assertRaises(ValueError, convert_size_to_bytes, "")
+
+    def test__empty_value(self):
+        self.assertRaises(ValueError, convert_size_to_bytes, " KiB")
