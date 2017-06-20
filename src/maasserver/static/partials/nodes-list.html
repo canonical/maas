@@ -448,7 +448,7 @@
                             <th class="table-col--5"></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody vs-repeat vs-scroll-parent="window">
                         <tr data-ng-repeat="interface in device.interfaces">
                             <td class="table-col--20" aria-label="MAC address">
                                 <input type="text" id="mac-address1" placeholder="00:00:00:00:00:00"
@@ -853,7 +853,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody vs-repeat vs-scroll-parent="window">
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
@@ -917,7 +917,7 @@ sudo maas-rack register --url {$ tabs.controllers.registerUrl $} --secret {$ tab
                     </th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody vs-repeat vs-scroll-parent="window">
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr
                     data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"

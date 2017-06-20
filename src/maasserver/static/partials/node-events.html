@@ -35,7 +35,7 @@
                             <th class="table-col--20">Time</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody vs-repeat vs-scroll-parent="window">
                         <tr
                             data-ng-repeat="event in events | filter:search | orderByDate:'created':'id' track by event.id">
                             <td class="table-col--1 u-padding--right-none u-padding--left-none">

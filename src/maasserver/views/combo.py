@@ -53,6 +53,12 @@ MERGE_VIEWS = {
             "js/angular/3rdparty/sticky.js",
         ]
     },
+    "vs-repeat.js": {
+        "content_type": "text/javascript; charset=UTF-8",
+        "files": [
+            "js/angular/3rdparty/vs-repeat.js",
+        ]
+    },
     "maas-angular.js": {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
