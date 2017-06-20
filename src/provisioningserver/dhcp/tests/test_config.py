@@ -26,6 +26,7 @@ from maastesting.testcase import MAASTestCase
 import netaddr
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
+from provisioningserver.dhcp.config import _get_addresses
 from provisioningserver.dhcp.testing.config import (
     fix_shared_networks_failover,
     make_failover_peer_config,
@@ -33,6 +34,7 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_shared_network,
 )
+from provisioningserver.utils import flatten
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.content import (
@@ -87,13 +89,24 @@ def make_sample_params_only(ipv6=False):
     }
 
 
+def _resolve(name):
+    # Find the first address that `getaddrinfo` returns for any address
+    # family, socket type, and protocol. This is like `gethostbyname` that
+    # also finds names in `/etc/hosts` and works with IPv6.
+    for *_, addr in socket.getaddrinfo(name, 0):
+        return addr[0]
+
+
 def read_aliases_from_etc_hosts():
     """Read all the aliases (hostnames) from /etc/hosts."""
     with open("/etc/hosts", "r", encoding="ascii") as hosts:
         for line in map(str.strip, hosts):
             if len(line) > 0 and not line.startswith("#"):
                 address, *aliases = line.split()
-                yield from aliases
+                for alias in aliases:
+                    # Ensure each alias resolves as expected before returning.
+                    if _resolve(alias) == address:
+                        yield alias
 
 
 # Names that will resolve without network activity.
@@ -246,23 +259,16 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.name-servers", rendered)  # IPv6
         self.assertNotIn("domain-name-servers", rendered)  # IPv4
 
-    def _resolve(self, name):
-        # Find the first address that `getaddrinfo` returns for any address
-        # family, socket type, and protocol. This is like `gethostbyname` that
-        # also finds names in `/etc/hosts` and works with IPv6.
-        for *_, addr in socket.getaddrinfo(name, 0):
-            return addr[0]
-
     def test__renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
-        ntp_servers_expected = [
-            server if is_ip_address(server) else self._resolve(server)
+        ntp_servers_expected = flatten([
+            server if is_ip_address(server) else _get_addresses(server)
             for network in params['shared_networks']
             for subnet in network['subnets']
             for server in subnet["ntp_servers"]
-        ]
+        ])
         ntp_servers_observed = [
             server for server_line in re.findall(
                 r"\b(?:ntp-servers|dhcp6[.]sntp-servers)\s+(.+);", rendered)
