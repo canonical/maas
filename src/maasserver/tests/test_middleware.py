@@ -20,7 +20,6 @@ from django.core.exceptions import (
 )
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
-from django.http.request import build_request_repr
 from fixtures import FakeLogger
 from maasserver import middleware as middleware_module
 from maasserver.components import (
@@ -239,9 +238,8 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
         request = factory.make_fake_request("/api/2.0/nodes/")
         DebuggingLoggerMiddleware().process_request(request)
-        self.assertThat(
-            logger.output,
-            Not(Contains(build_request_repr(request))))
+        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
+        self.assertThat(logger.output, Not(Contains(debug_output)))
 
     def test_debugging_logger_does_not_log_response_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
@@ -250,15 +248,17 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
             content="test content",
             content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
+        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
         self.assertThat(
-            logger.output, Not(Contains(build_request_repr(request))))
+            logger.output, Not(Contains(debug_output)))
 
     def test_debugging_logger_logs_request(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("/api/2.0/nodes/")
         request.content = "test content"
         DebuggingLoggerMiddleware().process_request(request)
-        self.assertThat(logger.output, Contains(build_request_repr(request)))
+        debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
+        self.assertThat(logger.output, Contains(debug_output))
 
     def test_debugging_logger_logs_response(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))

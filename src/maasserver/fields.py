@@ -320,12 +320,6 @@ class JSONObjectField(Field):
     def get_internal_type(self):
         return 'TextField'
 
-    def get_prep_lookup(self, lookup_type, value):
-        if lookup_type not in ['exact', 'isnull']:
-            raise TypeError("Lookup type %s is not supported." % lookup_type)
-        return super(JSONObjectField, self).get_prep_lookup(
-            lookup_type, value)
-
     def formfield(self, form_class=None, **kwargs):
         """Return a plain `forms.Field` here to avoid "helpful" conversions.
 
@@ -354,17 +348,6 @@ class XMLField(Field):
 
     def db_type(self, connection):
         return "xml"
-
-    def get_db_prep_lookup(self, lookup_type, value, **kwargs):
-        """Limit lookup types to those that work on xml.
-
-        Unlike character fields the xml type is non-comparible, see:
-        <http://www.postgresql.org/docs/devel/static/datatype-xml.html>
-        """
-        if lookup_type != 'isnull':
-            raise TypeError("Lookup type %s is not supported." % lookup_type)
-        return super(XMLField, self).get_db_prep_lookup(
-            lookup_type, value, **kwargs)
 
 
 class EditableBinaryField(BinaryField):

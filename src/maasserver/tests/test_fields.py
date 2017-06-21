@@ -306,10 +306,6 @@ class TestJSONObjectField(MAASLegacyServerTestCase):
         test_instance = JSONFieldModel.objects.get(value__isnull=True)
         self.assertIsNone(test_instance.value)
 
-    def test_field_another_lookup_fails(self):
-        # Others lookups are not allowed.
-        self.assertRaises(TypeError, JSONFieldModel.objects.get, value__gte=3)
-
     def test_form_field_is_a_plain_field(self):
         self.assertThat(
             JSONObjectField().formfield(),
@@ -349,9 +345,6 @@ class TestXMLField(MAASLegacyServerTestCase):
         XMLFieldModel.objects.create(value=None)
         test_instance = XMLFieldModel.objects.get(value__isnull=True)
         self.assertIsNone(test_instance.value)
-
-    def test_lookup_exact_unsupported(self):
-        self.assertRaises(TypeError, XMLFieldModel.objects.get, value="")
 
 
 class TestEditableBinaryField(MAASServerTestCase):

@@ -14,8 +14,6 @@ from time import (
     time,
 )
 
-from django.apps import apps as django_apps
-from django.core.management import call_command
 from django.core.signals import request_started
 from django.db import (
     connection,
@@ -170,45 +168,7 @@ def check_for_rogue_database_activity(test):
         )
 
 
-class InstallDjangoAppsMixin:
-    """Install extra applications into the Django ``INSTALLED_APPS`` setting.
-
-    :deprecated: Do NOT use in new tests.
-    """
-
-    def _setup_apps(self, apps):
-        self._did_set_apps = False
-        if len(apps) > 0:
-            # Inject the apps into django now that the fixture is setup.
-            self._did_set_apps = True
-            current_apps = [
-                current_app.name
-                for current_app in django_apps.get_app_configs()
-            ]
-            need_to_add = [
-                new_app
-                for new_app in apps
-                if new_app not in current_apps
-            ]
-            for app in need_to_add:
-                current_apps.append(app)
-            # Set the installed applications in django. This requires another
-            # call to unset_installed_apps to reset to the previous value.
-            django_apps.set_installed_apps(current_apps)
-            # Call migrate that will actual perform the migrations for this
-            # applications and if no migrations exists then it will fallback
-            # to performing 'syncdb'.
-            call_command("migrate")
-
-    def _teardown_apps(self):
-        # Check that the internal __set_apps is set so that the required
-        # unset_installed_apps can be called.
-        if self._did_set_apps:
-            django_apps.unset_installed_apps()
-
-
-class DjangoTestCase(
-        django.test.TestCase, MAASTestCase, InstallDjangoAppsMixin):
+class DjangoTestCase(django.test.TestCase, MAASTestCase):
     """A Django `TestCase` for MAAS.
 
     Generally you should NOT directly subclass this for tests; use an
@@ -232,12 +192,7 @@ class DjangoTestCase(
     # This attribute is used as a tag with Nose.
     legacy = True
 
-    def _fixture_setup(self):
-        super(DjangoTestCase, self)._fixture_setup()
-        self._setup_apps(self.apps)
-
     def _fixture_teardown(self):
-        self._teardown_apps()
         super(DjangoTestCase, self)._fixture_teardown()
         # TODO blake_r: Fix so this is not disabled. Currently not
         # working with Django 1.8.
@@ -245,8 +200,7 @@ class DjangoTestCase(
         # check_for_rogue_database_activity(self)
 
 
-class DjangoTransactionTestCase(
-        django.test.TransactionTestCase, MAASTestCase, InstallDjangoAppsMixin):
+class DjangoTransactionTestCase(django.test.TransactionTestCase, MAASTestCase):
     """A Django `TransactionTestCase` for MAAS.
 
     A version of `MAASTestCase` that supports transactions.
@@ -273,12 +227,7 @@ class DjangoTransactionTestCase(
     # This attribute is used as a tag with Nose.
     legacy = True
 
-    def _fixture_setup(self):
-        super(DjangoTransactionTestCase, self)._fixture_setup()
-        self._setup_apps(self.apps)
-
     def _fixture_teardown(self):
-        self._teardown_apps()
         super(DjangoTransactionTestCase, self)._fixture_teardown()
         # TODO blake_r: Fix so this is not disabled. Currently not
         # working with Django 1.8.

@@ -16,6 +16,7 @@ from abc import (
 import http.client
 import json
 import logging
+from pprint import pformat
 import re
 import sys
 import traceback
@@ -34,6 +35,8 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
 )
+from django.utils import six
+from django.utils.encoding import force_str
 from django.utils.http import urlquote_plus
 from maasserver import logger
 from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
@@ -54,16 +57,6 @@ from provisioningserver.rpc.exceptions import (
     PowerActionAlreadyInProgress,
 )
 from provisioningserver.utils.shell import ExternalProcessError
-
-
-try:
-    from django.http.request import build_request_repr
-except ImportError:
-    # build_request_repr is only used for debugging: use
-    # a degraded version if build_request_repr is not
-    # available (i.e. if Django version < 1.5).
-    build_request_repr = repr
-
 
 # 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
 # responses.
@@ -272,12 +265,61 @@ class DebuggingLoggerMiddleware:
 
     log_level = logging.DEBUG
 
+    # Taken straight out of Django 1.8 django.http.request module to improve
+    # our debug output on requests (dropped in Django 1.9).
+    @classmethod
+    def _build_request_repr(
+            self, request, path_override=None, GET_override=None,
+            POST_override=None, COOKIES_override=None, META_override=None):
+        """
+        Builds and returns the request's representation string. The request's
+        attributes may be overridden by pre-processed values.
+        """
+        # Since this is called as part of error handling, we need to be very
+        # robust against potentially malformed input.
+        try:
+            get = (pformat(GET_override)
+                   if GET_override is not None
+                   else pformat(request.GET))
+        except Exception:
+            get = '<could not parse>'
+        if request._post_parse_error:
+            post = '<could not parse>'
+        else:
+            try:
+                post = (pformat(POST_override)
+                        if POST_override is not None
+                        else pformat(request.POST))
+            except Exception:
+                post = '<could not parse>'
+        try:
+            cookies = (pformat(COOKIES_override)
+                       if COOKIES_override is not None
+                       else pformat(request.COOKIES))
+        except Exception:
+            cookies = '<could not parse>'
+        try:
+            meta = (pformat(META_override)
+                    if META_override is not None
+                    else pformat(request.META))
+        except Exception:
+            meta = '<could not parse>'
+        path = path_override if path_override is not None else request.path
+        return force_str(
+            '<%s\npath:%s,\nGET:%s,\nPOST:%s,\nCOOKIES:%s,\nMETA:%s>' %
+            (request.__class__.__name__,
+             path,
+             six.text_type(get),
+             six.text_type(post),
+             six.text_type(cookies),
+             six.text_type(meta)))
+
     def process_request(self, request):
         if logger.isEnabledFor(self.log_level):
             header = " Request dump ".center(79, "#")
             logger.log(
-                self.log_level,
-                "%s\n%s", header, build_request_repr(request))
+                self.log_level, "%s\n%s", header,
+                self._build_request_repr(request))
         return None  # Allow request processing to continue unabated.
 
     def process_response(self, request, response):

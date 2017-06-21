@@ -14,11 +14,18 @@ from maasserver.djangosettings import (
 )
 
 # We expect the following settings to be overridden. They are mentioned here
-# to silence lint warnings.
+# to silence lint warnings: import_settings() below will actually re-set it
+# to a tuple as set in settings.INSTALLED_APPS.
 INSTALLED_APPS = None
 
 # Extend base settings.
 import_settings(settings)
+
+prevent_migrations = StringBool().to_python(
+    os.environ.get("MAAS_PREVENT_MIGRATIONS", 0))
+
+if prevent_migrations:
+    INSTALLED_APPS += ("maasserver.tests", "metadataserver.tests")
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
@@ -97,7 +104,9 @@ if prevent_migrations:
         'sites': 'maastesting.empty',
         'piston3': 'maastesting.empty',
         'maasserver': 'maastesting.empty',
+        'maasserver.tests': 'maastesting.empty',
         'metadataserver': 'maastesting.empty',
+        'metadataserver.tests': 'maastesting.empty',
     }
 
 PASSWORD_HASHERS = (

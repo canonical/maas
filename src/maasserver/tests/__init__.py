@@ -3,4 +3,12 @@
 
 """Tests for `maasserver`."""
 
-__all__ = []
+from django.apps import AppConfig
+
+
+class MAASServerTestsConfig(AppConfig):
+    name = 'maasserver.tests'
+    label = 'maasserver_tests'
+
+
+default_app_config = 'maasserver.tests.MAASServerTestsConfig'
