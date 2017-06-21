@@ -21,6 +21,7 @@ from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.nova import NovaPowerDriver
+from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
@@ -59,6 +60,7 @@ power_drivers = [
     MSCMPowerDriver(),
     MicrosoftOCSPowerDriver(),
     NovaPowerDriver(),
+    RECSPowerDriver(),
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),
     VirshPowerDriver(),

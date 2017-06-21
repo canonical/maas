@@ -1524,6 +1524,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             msftocs is the type for the Microsoft OCS Chassis Manager.
             powerkvm is the type for Virtual Machines on Power KVM,
             managed by Virsh.
+            recs_box is the type for the christmann RECS|Box servers.
             seamicro15k is the type for the Seamicro 1500 Chassis.
             ucsm is the type for the Cisco UCS Manager.
             virsh is the type for virtual machines managed by Virsh.
@@ -1535,13 +1536,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
         :type url: unicode
 
         :param username: The username used to access the chassis. This field
-            is required for the seamicro15k, vmware, mscm, msftocs, and ucsm
-            chassis types.
+            is required for the recs_box, seamicro15k, vmware, mscm, msftocs,
+            and ucsm chassis types.
         :type username: unicode
 
         :param password: The password used to access the chassis. This field
-            is required for the seamicro15k, vmware, mscm, msftocs, and ucsm
-            chassis types.
+            is required for the recs_box, seamicro15k, vmware, mscm, msftocs,
+            and ucsm chassis types.
         :type password: unicode
 
         :param accept_all: If true, all enlisted machines will be
@@ -1568,8 +1569,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
             restapi, or restapi2.
         :type power_control: unicode
 
-        The following are optional if you are adding a vmware or msftocs
-        chassis.
+        The following are optional if you are adding a recs_box, vmware or
+        msftocs chassis.
 
         :param port: The port to use when accessing the chassis.
         :type port: integer
@@ -1591,12 +1592,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
         chassis_type = get_mandatory_param(
             request.POST, 'chassis_type',
             validator=validators.OneOf([
-                'mscm', 'msftocs', 'powerkvm', 'seamicro15k', 'ucsm', 'virsh',
-                'vmware']))
+                'mscm', 'msftocs', 'powerkvm', 'recs_box', 'seamicro15k',
+                'ucsm', 'virsh', 'vmware']))
         hostname = get_mandatory_param(request.POST, 'hostname')
 
         if chassis_type in (
-                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+                'mscm', 'msftocs', 'recs_box', 'seamicro15k', 'ucsm',
+                'vmware'):
             username = get_mandatory_param(request.POST, 'username')
             password = get_mandatory_param(request.POST, 'password')
         else:
@@ -1633,9 +1635,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 chassis_type, content_type=(
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
-        # Only available with vmware or msftocs
+        # Only available with vmware, recs_box or msftocs
         port = get_optional_param(request.POST, 'port')
-        if port is not None and chassis_type not in ('msftocs', 'vmware'):
+        if port is not None and chassis_type not in ('msftocs', 'recs_box',
+                                                     'vmware'):
             return HttpResponseBadRequest(
                 "port is unavailable with the %s chassis type" %
                 chassis_type, content_type=(

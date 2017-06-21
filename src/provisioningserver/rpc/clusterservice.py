@@ -39,6 +39,7 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
+from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import (
     get_maas_logger,
@@ -572,6 +573,12 @@ class Cluster(RPCProtocol):
                 user, hostname, username, password, port, protocol,
                 prefix_filter, accept_all, domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "VMware"))
+        elif chassis_type == 'recs_box':
+            d = deferToThread(
+                probe_and_enlist_recs,
+                user, hostname, port, username, password, accept_all, domain)
+            d.addErrback(
+                partial(catch_probe_and_enlist_error, "RECS|Box"))
         elif chassis_type == 'seamicro15k':
             d = deferToThread(
                 probe_seamicro15k_and_enlist,

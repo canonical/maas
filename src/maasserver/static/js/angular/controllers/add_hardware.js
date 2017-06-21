@@ -100,6 +100,44 @@ angular.module('MAAS').controller('AddHardwareController', [
                 fields: virshFields
             },
             {
+                name: 'recs_box',
+                description: 'Christmann RECS|Box',
+                fields: [
+                    {
+                        name: 'hostname',
+                        label: 'Hostname',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'port',
+                        label: 'Port',
+                        field_type: 'string',
+                        "default": '80',
+                        choices: [],
+                        required: false
+                    },
+                    {
+                        name: 'username',
+                        label: 'Username',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'password',
+                        label: 'Password',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    }
+                ]
+            },
+            {
                 name: 'seamicro15k',
                 description: 'SeaMicro 15000',
                 fields: [

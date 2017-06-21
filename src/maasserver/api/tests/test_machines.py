@@ -1817,7 +1817,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         self.patch(rack, 'add_chassis')
         for chassis_type in (
-                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+                'mscm', 'msftocs', 'recs_box', 'seamicro15k', 'ucsm',
+                'vmware'):
             response = self.client.post(
                 reverse('machines_handler'),
                 {
@@ -1838,7 +1839,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         self.patch(rack, 'add_chassis')
         for chassis_type in (
-                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+                'mscm', 'msftocs', 'recs_box', 'seamicro15k', 'ucsm',
+                'vmware'):
             response = self.client.post(
                 reverse('machines_handler'),
                 {
@@ -1957,7 +1959,8 @@ class TestMachinesAPI(APITestCase.ForUser):
     def test_POST_add_chassis_only_allows_prefix_filter_on_virtual_chassis(
             self):
         self.become_admin()
-        for chassis_type in ('mscm', 'msftocs', 'seamicro15k', 'ucsm'):
+        for chassis_type in ('mscm', 'msftocs', 'recs_box', 'seamicro15k',
+                             'ucsm'):
             response = self.client.post(
                 reverse('machines_handler'),
                 {
@@ -2050,7 +2053,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         username = factory.make_name('username')
         password = factory.make_name('password')
         port = "%s" % random.randint(0, 65535)
-        for chassis_type in ('msftocs', 'vmware'):
+        for chassis_type in ('msftocs', 'recs_box', 'vmware'):
             response = self.client.post(
                 reverse('machines_handler'), {
                     'op': 'add_chassis',
