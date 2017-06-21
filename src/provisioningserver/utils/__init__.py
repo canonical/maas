@@ -246,3 +246,48 @@ def is_instance_or_subclass(test, *query):
         return issubclass(test, query_tuple)
     except TypeError:
         return False
+
+
+# Capacity units supported by convert_size_to_bytes() function.
+CAPACITY_UNITS = {
+    "KiB": 2 ** 10,
+    "MiB": 2 ** 20,
+    "GiB": 2 ** 30,
+    "TiB": 2 ** 40,
+    "PiB": 2 ** 50,
+    "EiB": 2 ** 60,
+    "ZiB": 2 ** 70,
+    "YiB": 2 ** 80,
+}
+
+
+class UnknownCapacityUnitError(Exception):
+    """Unknown capacity unit used."""
+
+
+def convert_size_to_bytes(value):
+    """
+    Converts storage size values with units (GiB, TiB...) to bytes.
+
+    :param value: A string containing a number and unit separated by at least
+        one space character.  If unit is not specified, defaults to bytes.
+    :return: An integer indicating the number of bytes for the given value in
+        any other size unit.
+    :raises UnknownCapacityUnitError: unsupported capacity unit.
+    """
+    # Split value on the first space.
+    capacity_def = value.split(" ", 1)
+    if len(capacity_def) == 1:
+        # No unit specified, default to bytes.
+        return int(capacity_def[0])
+
+    capacity_value, capacity_unit = capacity_def
+    capacity_value = float(capacity_value)
+    capacity_unit = capacity_unit.strip()
+    if capacity_unit in CAPACITY_UNITS:
+        multiplier = CAPACITY_UNITS[capacity_unit]
+    else:
+        raise UnknownCapacityUnitError(
+            "Unknown capacity unit '%s'" % capacity_unit)
+    # Convert value to bytes.
+    return int(capacity_value * multiplier)

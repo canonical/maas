@@ -37,6 +37,7 @@ from provisioningserver.rpc.utils import (
     create_node,
 )
 from provisioningserver.utils import (
+    convert_size_to_bytes,
     shell,
     typed,
 )
@@ -273,7 +274,13 @@ class VirshSSH(pexpect.spawn):
         data = data.strip().splitlines()
         for d in data:
             if key == d.split(':')[0].strip():
-                return d.split(':')[1].split()[0]
+                return d.split(':')[1].strip()
+
+    def get_key_value_unitless(self, data, key):
+        """Return value based off of key with unit (if any) stripped off."""
+        value = self.get_key_value(data, key)
+        if value:
+            return value.split()[0]
 
     def list_machines(self):
         """Lists all VMs by name."""
@@ -336,7 +343,7 @@ class VirshSSH(pexpect.spawn):
         if output is None:
             maaslog.error("Failed to get pod CPU speed")
             return None
-        return int(self.get_key_value(output, "CPU frequency"))
+        return int(self.get_key_value_unitless(output, "CPU frequency"))
 
     def get_pod_memory(self):
         """Gets the total memory of the pod."""
@@ -344,7 +351,7 @@ class VirshSSH(pexpect.spawn):
         if output is None:
             maaslog.error("Failed to get pod memory")
             return None
-        KiB = int(self.get_key_value(output, "Memory size"))
+        KiB = int(self.get_key_value_unitless(output, "Memory size"))
         # Memory in MiB.
         return int(KiB / 1024)
 
@@ -354,7 +361,7 @@ class VirshSSH(pexpect.spawn):
         if output is None:
             maaslog.error("%s: Failed to get machine memory", machine)
             return None
-        KiB = int(self.get_key_value(output, "Max memory"))
+        KiB = int(self.get_key_value_unitless(output, "Max memory"))
         # Memory in MiB.
         return int(KiB / 1024)
 
@@ -366,10 +373,8 @@ class VirshSSH(pexpect.spawn):
             if output is None:
                 # Skip if cannot get more information.
                 continue
-            capacity = float(
-                self.get_key_value(output, key))
-            # Convert GiB to bytes.
-            pools[pool] = int(capacity * 2**30)
+            pools[pool] = convert_size_to_bytes(
+                self.get_key_value(output, "Capacity"))
         return pools
 
     def get_pod_local_storage(self):
@@ -390,10 +395,10 @@ class VirshSSH(pexpect.spawn):
                 maaslog.error(
                     "Failed to get available pod local storage")
                 return None
-            local_storage += float(self.get_key_value(
-                output, "Available"))
-        # Local storage in bytes. GiB to bytes.
-        return int(local_storage * 2**30)
+            local_storage += convert_size_to_bytes(
+                self.get_key_value(output, "Available"))
+        # Local storage in bytes.
+        return local_storage
 
     def get_machine_local_storage(self, machine, device):
         """Gets the VM local storage for device."""

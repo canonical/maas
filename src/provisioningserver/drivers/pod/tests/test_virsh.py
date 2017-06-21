@@ -105,6 +105,17 @@ SAMPLE_POOLINFO = dedent("""
     Available:      173.84 GiB
     """)
 
+SAMPLE_POOLINFO_TB = dedent("""
+    Name:           default
+    UUID:           59edc0cb-4635-449a-80e2-2c8a59afa327
+    State:          running
+    Persistent:     yes
+    Autostart:      yes
+    Capacity:       2.21 TiB
+    Allocation:     880.64 GiB
+    Available:      1.35 TiB
+    """)
+
 SAMPLE_IFLIST = dedent("""
     Interface  Type       Source     Model       MAC
     -------------------------------------------------------
@@ -501,6 +512,18 @@ class TestVirshSSH(MAASTestCase):
             factory.make_name('pool') for _ in range(3)]
         expected = conn.get_pod_pool_size_map('Capacity')
         capacity = int(452.96 * 2**30)
+        self.assertEqual({
+            pool: capacity
+            for pool in pools_mock.return_value
+        }, expected)
+
+    def test_get_pod_pool_size_map_terabytes(self):
+        conn = self.configure_virshssh(SAMPLE_POOLINFO_TB)
+        pools_mock = self.patch(virsh.VirshSSH, 'list_pools')
+        pools_mock.return_value = [
+            factory.make_name('pool') for _ in range(3)]
+        expected = conn.get_pod_pool_size_map('Capacity')
+        capacity = int(2.21 * 2**40)
         self.assertEqual({
             pool: capacity
             for pool in pools_mock.return_value
