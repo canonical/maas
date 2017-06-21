@@ -17,7 +17,7 @@ Stable Release
 
  * Status: Current Stable Release
  * Latest version: 2.2.0
- * Support: Ubuntu Xenial LTS.
+ * Support: Ubuntu Xenial LTS & PPA.
 
 Development release
 ===================
