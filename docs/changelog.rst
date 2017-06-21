@@ -12,6 +12,8 @@ LP: #1690781    Make virsh-based pods more robust when empty XML is returned.
 
 LP: #1695083    Improve NTP IP address selection for MAAS DHCP clients.
 
+LP: #1652298    Device Discovery, Node Listing and Events page performance improvements.
+
 
 2.2.0
 =====
