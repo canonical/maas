@@ -5,18 +5,35 @@
 
 __all__ = [
     "BeaconingPacket",
+    "BeaconPayload",
+    "InvalidBeaconingPacket",
+    "create_beacon_payload",
+    "read_beacon_payload",
     "add_arguments",
     "run"
 ]
 
+from collections import namedtuple
+from gzip import (
+    compress,
+    decompress,
+)
 import json
 import os
 import stat
+import struct
 import subprocess
 import sys
 from textwrap import dedent
+import uuid
 
-import bson
+from bson import BSON
+from bson.errors import BSONError
+from cryptography.fernet import InvalidToken
+from provisioningserver.security import (
+    fernet_decrypt_psk,
+    fernet_encrypt_psk,
+)
 from provisioningserver.utils import sudo
 from provisioningserver.utils.network import format_eui
 from provisioningserver.utils.pcap import (
@@ -30,8 +47,119 @@ from provisioningserver.utils.tcpip import (
 )
 
 
+BEACON_PORT = 5240
+
+BEACON_TYPES = {
+    "solicitation": 1,
+    "advertisement": 2
+}
+
+BEACON_TYPE_VALUES = {
+    value: name for name, value in BEACON_TYPES.items()
+}
+
+PROTOCOL_VERSION = 1
+BEACON_HEADER_FORMAT_V1 = "!BBH"
+BEACON_HEADER_LENGTH_V1 = 4
+
+
+BeaconPayload = namedtuple('BeaconPayload', (
+    'bytes',
+    'version',
+    'type',
+    'payload',
+))
+
+
+def create_beacon_payload(beacon_type, payload=None, version=PROTOCOL_VERSION):
+    """Creates a beacon payload of the specified type, with the given data.
+
+    :param beacon_type: The beacon packet type. Indicates the purpose of the
+        beacon to the receiver.
+    :param payload: Optional JSON-encodable dictionary. Will be converted to an
+        inner encrypted payload and presented in the "data" field in the
+        resulting dictionary.
+    :param version: Optional protocol version to use (defaults to most recent).
+    :return: BeaconPayload namedtuple representing the packet bytes, the outer
+        payload, and the inner encrypted data (if any).
+    """
+    beacon_type_code = BEACON_TYPES[beacon_type]
+    if payload is not None:
+        payload = payload.copy()
+        payload["uuid"] = str(uuid.uuid1())
+        payload["type"] = beacon_type_code
+        data_bytes = BSON.encode(payload)
+        compressed_bytes = compress(data_bytes, compresslevel=9)
+        payload_bytes = fernet_encrypt_psk(compressed_bytes, raw=True)
+    else:
+        payload_bytes = b''
+    beacon_bytes = struct.pack(
+        BEACON_HEADER_FORMAT_V1 + "%ds" % len(payload_bytes),
+        version, beacon_type_code, len(payload_bytes), payload_bytes)
+    return BeaconPayload(
+        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload)
+
+
+def read_beacon_payload(beacon_bytes):
+    """Returns a BeaconPayload namedtuple representing the given beacon bytes.
+
+    Decrypts the inner beacon data if necessary.
+
+    :param beacon_bytes: beacon payload (bytes).
+    :return: dict
+    """
+    if len(beacon_bytes) < BEACON_HEADER_LENGTH_V1:
+        raise InvalidBeaconingPacket(
+            "Beaconing packet must be at least %d bytes." % (
+                BEACON_HEADER_LENGTH_V1))
+    header = beacon_bytes[:BEACON_HEADER_LENGTH_V1]
+    version, beacon_type_code, expected_payload_length = struct.unpack(
+        BEACON_HEADER_FORMAT_V1, header)
+    actual_payload_length = len(beacon_bytes) - BEACON_HEADER_LENGTH_V1
+    if len(beacon_bytes) - BEACON_HEADER_LENGTH_V1 < expected_payload_length:
+        raise InvalidBeaconingPacket(
+            "Invalid payload length: expected %d bytes, got %d bytes." % (
+                expected_payload_length, actual_payload_length))
+    payload_start = BEACON_HEADER_LENGTH_V1
+    payload_end = BEACON_HEADER_LENGTH_V1 + expected_payload_length
+    payload_bytes = beacon_bytes[payload_start:payload_end]
+    payload = None
+    if version == 1:
+        if len(payload_bytes) == 0:
+            # No encrypted inner payload; nothing to do.
+            pass
+        else:
+            try:
+                decrypted_data = fernet_decrypt_psk(
+                    payload_bytes, raw=True)
+            except InvalidToken:
+                raise InvalidBeaconingPacket(
+                    "Failed to decrypt inner payload: check MAAS secret key.")
+            try:
+                decompressed_data = decompress(decrypted_data)
+            except OSError:
+                raise InvalidBeaconingPacket(
+                    "Failed to decompress inner payload: %r" % decrypted_data)
+            try:
+                # Replace the data in the dictionary with its decrypted form.
+                payload = BSON.decode(decompressed_data)
+            except BSONError:
+                raise InvalidBeaconingPacket(
+                    "Inner beacon payload is not BSON: %r" % decompressed_data)
+    else:
+        raise InvalidBeaconingPacket(
+            "Unknown beacon version: %d" % version)
+    beacon_type_code = payload["type"] if payload else beacon_type_code
+    return BeaconPayload(
+        beacon_bytes, version, BEACON_TYPE_VALUES[beacon_type_code], payload)
+
+
 class InvalidBeaconingPacket(Exception):
-    """Raised internally when a beaconing packet is not valid."""
+    """Raised when a beaconing packet is not valid."""
+
+    def __init__(self, invalid_reason):
+        self.invalid_reason = invalid_reason
+        super().__init__(invalid_reason)
 
 
 class BeaconingPacket:
@@ -57,12 +185,12 @@ class BeaconingPacket:
         :param out: An object with `write(str)` and `flush()` methods.
         """
         try:
-            payload = bson.decode_all(self.packet)
+            payload = read_beacon_payload(self.packet)
             self.valid = True
             return payload
-        except bson.InvalidBSON:
+        except InvalidBeaconingPacket as ibp:
             self.valid = False
-            self.invalid_reason = "Packet payload is not BSON."
+            self.invalid_reason = ibp.invalid_reason
             return None
 
 
@@ -90,6 +218,8 @@ def observe_beaconing_packets(input=sys.stdin.buffer, out=sys.stdout):
                     "destination_mac": format_eui(packet.l2.dst_eui),
                     "source_ip": str(packet.l3.src_ip),
                     "destination_ip": str(packet.l3.dst_ip),
+                    "source_port": packet.l4.packet.src_port,
+                    "destination_port": packet.l4.packet.dst_port,
                 }
                 if packet.l2.vid is not None:
                     output_json["vid"] = packet.l2.vid
@@ -99,11 +229,6 @@ def observe_beaconing_packets(input=sys.stdin.buffer, out=sys.stdout):
                     out.write(json.dumps(output_json))
                     out.write('\n')
                     out.flush()
-                else:
-                    err.write(
-                        "Invalid beacon payload (not BSON): %r.\n" % (
-                            beacon.packet))
-                    err.flush()
             except PacketProcessingError as e:
                 err.write(e.error)
                 err.write("\n")

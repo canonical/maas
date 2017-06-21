@@ -9,7 +9,10 @@ __all__ = [
     "get_shared_secret_from_filesystem",
 ]
 
-from base64 import urlsafe_b64encode
+from base64 import (
+    urlsafe_b64decode,
+    urlsafe_b64encode,
+)
 import binascii
 from binascii import (
     a2b_hex,
@@ -39,6 +42,10 @@ from provisioningserver.utils.fs import (
     read_text_file,
     write_text_file,
 )
+
+
+class MissingSharedSecret(RuntimeError):
+    """Raised when the MAAS shared secret is missing."""
 
 
 def to_hex(b):
@@ -140,7 +147,8 @@ def _get_or_create_fernet_psk():
         global _fernet_psk
         if _fernet_psk is None:
             secret = get_shared_secret_from_filesystem()
-            assert secret is not None, "MAAS shared secret not found."
+            if secret is None:
+                raise MissingSharedSecret("MAAS shared secret not found.")
             # Keying material is required by PBKDF2 to be a byte string.
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
@@ -171,7 +179,7 @@ def _get_fernet_context():
     return f
 
 
-def fernet_encrypt(message):
+def fernet_encrypt_psk(message, raw=False):
     """Encrypts the specified message using the Fernet format.
 
     Returns the encrypted token, as a byte string.
@@ -183,29 +191,43 @@ def fernet_encrypt(message):
 
     :param message: The message to encrypt.
     :type message: Must be of type 'bytes' or a UTF-8 'str'.
+    :param raw: if True, returns the decoded base64 bytes representing the
+        Fernet token. The bytes must be converted back to base64 to be
+        decrypted. (Or the 'raw' argument on the corresponding
+        fernet_decrypt_psk() function can be used.)
     :return: the encryption token, as a base64-encoded byte string.
     """
-    f = _get_fernet_context()
+    fernet = _get_fernet_context()
     if isinstance(message, str):
         message = message.encode("utf-8")
-    return f.encrypt(message)
+    token = fernet.encrypt(message)
+    if raw is True:
+        token = urlsafe_b64decode(token)
+    return token
 
 
-def fernet_decrypt(token, ttl=None):
+def fernet_decrypt_psk(token, ttl=None, raw=False):
     """Decrypts the specified Fernet token using the MAAS secret.
 
     Returns the decrypted token as a byte string; the user is responsible for
     converting it to the correct format or encoding.
 
     :param message: The token to decrypt.
-    :type token: bytes
+    :type token: Must be of type 'bytes', or an ASCII base64 string.
     :param ttl: Optional amount of time (in seconds) allowed to have elapsed
         before the message is rejected upon decryption. Note that the Fernet
         library considers times up to 60 seconds into the future (beyond the
         TTL) to be valid.
+    :param raw: if True, treats the string as the decoded base64 bytes of a
+        Fernet token, and attempts to encode them (as expected by the Fernet
+        APIs) before decrypting.
     :return: bytes
     """
+    if raw is True:
+        token = urlsafe_b64encode(token)
     f = _get_fernet_context()
+    if isinstance(token, str):
+        token = token.encode("ascii")
     return f.decrypt(token, ttl=ttl)
 
 

@@ -28,8 +28,9 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver import security
 from provisioningserver.path import get_data_path
 from provisioningserver.security import (
-    fernet_decrypt,
-    fernet_encrypt,
+    fernet_decrypt_psk,
+    fernet_encrypt_psk,
+    MissingSharedSecret,
 )
 from provisioningserver.utils.fs import (
     FileLock,
@@ -37,7 +38,10 @@ from provisioningserver.utils.fs import (
     write_text_file,
 )
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+)
 
 
 class SharedSecretTestCase(MAASTestCase):
@@ -49,17 +53,24 @@ class SharedSecretTestCase(MAASTestCase):
         # so that tests cannot interfere with each other.
         get_secret.return_value = get_data_path(
             "var", "lib", "maas", "secret-%s" % factory.make_string(16))
-        secret_file = security.get_shared_secret_filesystem_path()
         # Extremely unlikely, but just in case.
-        if os.path.isfile(secret_file):
-            os.remove(secret_file)
+        self.delete_secret()
+        self.addCleanup(
+            setattr, security, "DEFAULT_ITERATION_COUNT",
+            security.DEFAULT_ITERATION_COUNT)
+        # The default high iteration count would make the tests very slow.
+        security.DEFAULT_ITERATION_COUNT = 2
         super().setUp()
 
     def tearDown(self):
+        self.delete_secret()
+        super().tearDown()
+
+    def delete_secret(self):
+        security._fernet_psk = None
         secret_file = security.get_shared_secret_filesystem_path()
         if os.path.isfile(secret_file):
             os.remove(secret_file)
-        super().tearDown()
 
     def write_secret(self):
         secret = factory.make_bytes()
@@ -120,6 +131,12 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
 
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
+
+    def test__default_iteration_count_is_reasonably_large(self):
+        # Ensure that the iteration count is high by default. This is very
+        # important so that the MAAS secret cannot be determined by
+        # brute-force.
+        self.assertThat(security.DEFAULT_ITERATION_COUNT, Equals(100000))
 
     def read_secret(self):
         secret_path = security.get_shared_secret_filesystem_path()
@@ -299,40 +316,23 @@ class TestCheckForSharedSecretScript(MAASTestCase):
 
 class TestFernetEncryption(SharedSecretTestCase):
 
-    def setUp(self):
-        security._fernet_psk = None
-        # Ensure that the iteration count is high by default. This is very
-        # important so that the MAAS secret cannot be determined by
-        # brute-force. As a side effect, this ensures our tearDown (which
-        # resets the iteration count to its default) works properly.
-        self.assertThat(security.DEFAULT_ITERATION_COUNT, Equals(100000))
-        self._previous_iteration_count = security.DEFAULT_ITERATION_COUNT
-        # The default high iteration count would make the tests very slow.
-        security.DEFAULT_ITERATION_COUNT = 2
-        super().setUp()
-
-    def tearDown(self):
-        security._fernet_psk = None
-        security.DEFAULT_ITERATION_COUNT = self._previous_iteration_count
-        super().tearDown()
-
     def test__first_encrypt_caches_psk(self):
         self.write_secret()
         self.assertIsNone(security._fernet_psk)
         testdata = factory.make_string()
-        fernet_encrypt(testdata)
+        fernet_encrypt_psk(testdata)
         self.assertIsNotNone(security._fernet_psk)
 
     def test__derives_identical_key_on_decrypt(self):
         self.write_secret()
         self.assertIsNone(security._fernet_psk)
         testdata = factory.make_bytes()
-        token = fernet_encrypt(testdata)
+        token = fernet_encrypt_psk(testdata)
         first_key = security._fernet_psk
         # Make it seem like we're decrypting something without ever encrypting
         # anything first.
         security._fernet_psk = None
-        decrypted = fernet_decrypt(token)
+        decrypted = fernet_decrypt_psk(token)
         second_key = security._fernet_psk
         self.assertEqual(first_key, second_key)
         self.assertEqual(testdata, decrypted)
@@ -340,29 +340,40 @@ class TestFernetEncryption(SharedSecretTestCase):
     def test__can_encrypt_and_decrypt_string(self):
         self.write_secret()
         testdata = factory.make_string()
-        token = fernet_encrypt(testdata)
-        decrypted = fernet_decrypt(token)
-        decrypted = decrypted.decode("utf-8")
+        token = fernet_encrypt_psk(testdata)
+        # Round-trip this to a string, since Fernet tokens are used inside
+        # strings (such as JSON objects) typically.
+        token = token.decode("ascii")
+        decrypted = fernet_decrypt_psk(token)
+        decrypted = decrypted.decode("ascii")
+        self.assertThat(decrypted, Equals(testdata))
+
+    def test__can_encrypt_and_decrypt_with_raw_bytes(self):
+        self.write_secret()
+        testdata = factory.make_bytes()
+        token = fernet_encrypt_psk(testdata, raw=True)
+        self.assertThat(token, IsInstance(bytes))
+        decrypted = fernet_decrypt_psk(token, raw=True)
         self.assertThat(decrypted, Equals(testdata))
 
     def test__can_encrypt_and_decrypt_bytes(self):
         self.write_secret()
         testdata = factory.make_bytes()
-        token = fernet_encrypt(testdata)
-        decrypted = fernet_decrypt(token)
+        token = fernet_encrypt_psk(testdata)
+        decrypted = fernet_decrypt_psk(token)
         self.assertThat(decrypted, Equals(testdata))
 
     def test__raises_when_no_secret_exists(self):
         testdata = factory.make_bytes()
-        with ExpectedException(AssertionError):
-            fernet_encrypt(testdata)
-        with ExpectedException(AssertionError):
-            fernet_decrypt(b"")
+        with ExpectedException(MissingSharedSecret):
+            fernet_encrypt_psk(testdata)
+        with ExpectedException(MissingSharedSecret):
+            fernet_decrypt_psk(b"")
 
     def test__assures_data_integrity(self):
         self.write_secret()
         testdata = factory.make_bytes(size=10)
-        token = fernet_encrypt(testdata)
+        token = fernet_encrypt_psk(testdata)
         bad_token = bytearray(token)
         # Flip a bit in the token, so we can ensure it won't decrypt if it
         # has been corrupted. Subtract 4 to avoid the end of the token; that
@@ -374,30 +385,30 @@ class TestFernetEncryption(SharedSecretTestCase):
         test_description = ("token=%s; token[%d] ^= 0x%02x" % (
             token.decode("utf-8"), byte_to_flip, bit_to_flip))
         with ExpectedException(InvalidToken, msg=test_description):
-            fernet_decrypt(bad_token)
+            fernet_decrypt_psk(bad_token)
 
     def test__messages_from_up_to_a_minute_in_the_future_accepted(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()
         self.patch(time, "time").side_effect = [now + 60, now]
-        token = fernet_encrypt(testdata)
-        fernet_decrypt(token, ttl=1)
+        token = fernet_encrypt_psk(testdata)
+        fernet_decrypt_psk(token, ttl=1)
 
     def test__messages_from_the_past_exceeding_ttl_rejected(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()
         self.patch(time, "time").side_effect = [now - 2, now]
-        token = fernet_encrypt(testdata)
+        token = fernet_encrypt_psk(testdata)
         with ExpectedException(InvalidToken):
-            fernet_decrypt(token, ttl=1)
+            fernet_decrypt_psk(token, ttl=1)
 
     def test__messages_from_future_exceeding_clock_skew_limit_rejected(self):
         self.write_secret()
         testdata = factory.make_bytes()
         now = time.time()
         self.patch(time, "time").side_effect = [now + 61, now]
-        token = fernet_encrypt(testdata)
+        token = fernet_encrypt_psk(testdata)
         with ExpectedException(InvalidToken):
-            fernet_decrypt(token, ttl=1)
+            fernet_decrypt_psk(token, ttl=1)
